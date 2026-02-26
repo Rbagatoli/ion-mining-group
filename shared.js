@@ -136,7 +136,7 @@ async function fetchLiveMarketData() {
                 visibleRows: rowsNeeded,
                 scrollY: Math.random() * totalRows * HEX_LINE_HEIGHT,
                 speed: 8 + s * 12,
-                opacity: 0.04 + s * 0.025
+                opacity: 0.02 + s * 0.012
             });
         }
 
