@@ -112,14 +112,14 @@ function filterMiningArray(arr, timeKey, tfDays) {
 
 // ===== Fetch BTC price from Binance (paginated) =====
 
-async function fetchBinancePriceData() {
+async function fetchBinanceKlines(baseUrl) {
     var BINANCE_START = 1502928000000; // Aug 17 2017 00:00 UTC
     var LIMIT = 1000;
     var allKlines = [];
     var startTime = BINANCE_START;
 
     while (true) {
-        var url = 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=' + startTime + '&limit=' + LIMIT;
+        var url = baseUrl + '/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=' + startTime + '&limit=' + LIMIT;
         var res = await fetch(url);
         if (!res.ok) throw new Error('Binance API error ' + res.status);
         var klines = await res.json();
@@ -137,6 +137,26 @@ async function fetchBinancePriceData() {
     }
 
     return allKlines;
+}
+
+async function fetchCryptoCompareFallback() {
+    var res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true');
+    if (!res.ok) throw new Error('CryptoCompare API error ' + res.status);
+    var json = await res.json();
+    return (json.Data && json.Data.Data) || [];
+}
+
+async function fetchPriceData() {
+    // Try Binance.com, then Binance.us, then CryptoCompare as fallback
+    var endpoints = ['https://api.binance.com', 'https://api.binance.us'];
+    for (var i = 0; i < endpoints.length; i++) {
+        try {
+            var data = await fetchBinanceKlines(endpoints[i]);
+            if (data.length > 0) return data;
+        } catch (e) { /* try next */ }
+    }
+    // Final fallback: CryptoCompare
+    return fetchCryptoCompareFallback();
 }
 
 // ===== Render BTC Price Chart =====
@@ -411,39 +431,44 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
 (async function() {
     statusEl.textContent = 'Loading chart data...';
 
-    try {
-        // Fetch price (Binance — accurate exchange data) and mining data in parallel
-        var [priceData, miningRes] = await Promise.all([
-            fetchBinancePriceData(),
-            fetch('https://mempool.space/api/v1/mining/hashrate/all')
-        ]);
+    var priceOk = false;
+    var miningOk = false;
 
-        var priceOk = priceData && priceData.length > 0;
-        if (priceOk) {
+    // Fetch price and mining data independently so one failure doesn't block the other
+    try {
+        var priceData = await fetchPriceData();
+        if (priceData && priceData.length > 0) {
             allPriceData = priceData;
             renderPriceChart(90);
+            priceOk = true;
         } else {
             statusEl.textContent = 'No price data received';
             statusEl.style.color = '#f55';
         }
+    } catch (e) {
+        statusEl.textContent = 'Price load failed: ' + e.message;
+        statusEl.style.color = '#f55';
+    }
 
+    try {
+        var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all');
         if (miningRes.ok) {
             allMiningData = await miningRes.json();
             renderDifficultyChart('1y');
             renderHashrateChart('1y');
+            miningOk = true;
         } else {
             statusEl.textContent = 'Mining API error ' + miningRes.status;
             statusEl.style.color = '#f55';
         }
-
-        if (priceOk && miningRes.ok) {
-            statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
-            statusEl.style.color = '#4ade80';
-        }
-
     } catch (e) {
-        statusEl.textContent = 'Failed to load chart data: ' + e.message;
+        statusEl.textContent = 'Mining load failed: ' + e.message;
         statusEl.style.color = '#f55';
+    }
+
+    if (priceOk && miningOk) {
+        statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        statusEl.style.color = '#4ade80';
     }
 })();
 
