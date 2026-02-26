@@ -43,8 +43,9 @@ function initNav(activePage) {
         if (dx < 0 && current > 0) location.href = './' + pages[current - 1];
     }
 
-    // Touch — allow swiping anywhere on screen (horizontal > vertical check prevents scroll conflicts)
+    // Touch only (mobile) — skip charts and interactive elements
     document.addEventListener('touchstart', function(e) {
+        if (shouldIgnore(e.target)) { startX = 0; return; }
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
     }, { passive: true });
@@ -56,19 +57,6 @@ function initNav(activePage) {
         navigate(startX - endX, startY - endY);
         startX = 0;
     }, { passive: true });
-
-    // Mouse
-    document.addEventListener('mousedown', function(e) {
-        if (e.button !== 0 || shouldIgnore(e.target)) return;
-        startX = e.clientX;
-        startY = e.clientY;
-    });
-
-    document.addEventListener('mouseup', function(e) {
-        if (!startX) return;
-        navigate(startX - e.clientX, startY - e.clientY);
-        startX = 0;
-    });
 })();
 
 // --- Format Helpers ---
