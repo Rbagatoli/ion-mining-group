@@ -22,21 +22,36 @@
 <main>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3>BTC Price (90 Days)</h3>
+        <h3 id="priceTitle">BTC Price (90 Days)</h3>
+        <div class="time-range-selector" id="priceRange">
+            <button data-days="7">7D</button>
+            <button data-days="30">30D</button>
+            <button data-days="90" class="active">90D</button>
+            <button data-days="180">180D</button>
+            <button data-days="365">1Y</button>
+            <button data-days="max">MAX</button>
+        </div>
         <div class="earnings-chart-container">
             <canvas id="priceChart"></canvas>
         </div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3>Network Difficulty (1 Year)</h3>
+        <h3 id="diffTitle">Network Difficulty (1 Year)</h3>
+        <div class="time-range-selector" id="miningRange">
+            <button data-tf="3m">3M</button>
+            <button data-tf="6m">6M</button>
+            <button data-tf="1y" class="active">1Y</button>
+            <button data-tf="3y">3Y</button>
+            <button data-tf="all">ALL</button>
+        </div>
         <div class="earnings-chart-container">
             <canvas id="difficultyChart"></canvas>
         </div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3>Network Hashrate (1 Year)</h3>
+        <h3 id="hashTitle">Network Hashrate (1 Year)</h3>
         <div class="earnings-chart-container">
             <canvas id="hashrateChart"></canvas>
         </div>

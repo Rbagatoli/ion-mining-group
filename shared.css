@@ -696,3 +696,36 @@ footer {
     margin-top: 4px;
 }
 .stat-total .stat-value { font-size: 16px; font-weight: 700; }
+
+/* ===== TIME RANGE SELECTOR ===== */
+.time-range-selector {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.time-range-selector button {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #888;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.time-range-selector button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e8e8e8;
+}
+.time-range-selector button.active {
+    background: rgba(247, 147, 26, 0.15);
+    color: #f7931a;
+    border-color: rgba(247, 147, 26, 0.30);
+}
+.time-range-selector button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
