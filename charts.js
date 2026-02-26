@@ -293,10 +293,18 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
     statusEl.textContent = 'Loading chart data...';
 
     try {
-        var [priceRes, miningRes] = await Promise.all([
-            fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=max&precision=0'),
-            fetch('https://mempool.space/api/v1/mining/hashrate/all')
-        ]);
+        // Fetch price and mining data in parallel
+        // Try days=max first for full history, fall back to 365 if free tier blocks it
+        var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all');
+
+        var priceRes = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=max');
+        if (!priceRes.ok) {
+            // Free tier may block days=max — fall back to 365
+            priceRes = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365');
+            // Disable MAX button since API doesn't support it
+            var maxBtn = document.querySelector('#priceRange button[data-days="max"]');
+            if (maxBtn) { maxBtn.disabled = true; maxBtn.title = 'Requires API key'; }
+        }
 
         if (priceRes.ok) {
             var priceData = await priceRes.json();
