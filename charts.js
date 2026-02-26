@@ -3,7 +3,6 @@
 initNav('charts');
 
 var statusEl = document.getElementById('chartsStatus');
-var priceChartInstance = null;
 var diffChartInstance = null;
 var hashChartInstance = null;
 
@@ -12,12 +11,10 @@ var priceValueEl = document.getElementById('priceValue');
 var diffValueEl = document.getElementById('diffValue');
 var hashValueEl = document.getElementById('hashValue');
 
-// Cached raw data — fetched once, filtered client-side
-var allPriceData = null;
+// Cached mining data — fetched once, filtered client-side
 var allMiningData = null;
 
 // Track latest values for reset on mouse leave
-var latestPrice = null;
 var latestDiff = null;
 var latestHash = null;
 
@@ -50,28 +47,14 @@ var chartOptions = {
 
 // ===== Date formatters =====
 
-function formatDate(ts) {
-    var d = new Date(ts);
-    return (d.getMonth() + 1) + '/' + d.getDate();
-}
-
 function formatMonthYear(ts) {
     var d = new Date(ts * 1000);
     var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return months[d.getMonth()] + ' ' + d.getFullYear().toString().slice(2);
 }
 
-function formatFullDate(ts) {
-    var d = new Date(ts);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-}
-
 // ===== Value formatters =====
 
-function formatPriceValue(v) {
-    return '$' + Math.round(v).toLocaleString();
-}
 function formatDiffValue(v) {
     return v.toFixed(2) + ' T';
 }
@@ -81,7 +64,6 @@ function formatHashValue(v) {
 
 // ===== Label maps =====
 
-var priceDaysLabels = { '7': '7 Days', '30': '30 Days', '90': '90 Days', '180': '6 Months', '365': '1 Year', 'max': 'All Time' };
 var miningTfLabels = { '3m': '3 Months', '6m': '6 Months', '1y': '1 Year', '3y': '3 Years', 'all': 'All Time' };
 var miningTfDays = { '3m': 90, '6m': 180, '1y': 365, '3y': 1095, 'all': Infinity };
 
@@ -93,15 +75,6 @@ function setActiveButton(container, btn) {
     btn.classList.add('active');
 }
 
-// ===== Filter price data by days =====
-// allPriceData format: [{time: unixSec, close: price}, ...]
-
-function filterPriceData(prices, days) {
-    if (days === 'max') return prices;
-    var cutoff = (Date.now() / 1000) - (days * 24 * 60 * 60);
-    return prices.filter(function(p) { return p.time >= cutoff; });
-}
-
 // ===== Filter mining data by timeframe =====
 
 function filterMiningArray(arr, timeKey, tfDays) {
@@ -110,141 +83,28 @@ function filterMiningArray(arr, timeKey, tfDays) {
     return arr.filter(function(item) { return item[timeKey] >= cutoff; });
 }
 
-// ===== Fetch BTC price from Binance (paginated) =====
+// ===== Fetch current BTC price for title display =====
 
-async function fetchBinanceKlines(baseUrl) {
-    var BINANCE_START = 1502928000000; // Aug 17 2017 00:00 UTC
-    var LIMIT = 1000;
-    var allKlines = [];
-    var startTime = BINANCE_START;
-
-    while (true) {
-        var url = baseUrl + '/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=' + startTime + '&limit=' + LIMIT;
-        var res = await fetch(url);
-        if (!res.ok) throw new Error('Binance API error ' + res.status);
-        var klines = await res.json();
-        if (!klines.length) break;
-
-        for (var i = 0; i < klines.length; i++) {
-            allKlines.push({
-                time: klines[i][0] / 1000,
-                close: parseFloat(klines[i][4])
-            });
+async function fetchCurrentPrice() {
+    // Try CoinGecko simple price (single value, no history needed)
+    try {
+        var res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        if (res.ok) {
+            var json = await res.json();
+            return json.bitcoin.usd;
         }
+    } catch (e) { /* try next */ }
 
-        if (klines.length < LIMIT) break;
-        startTime = klines[klines.length - 1][0] + 86400000;
-    }
-
-    return allKlines;
-}
-
-async function fetchCryptoCompareFallback() {
-    var res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true');
-    if (!res.ok) throw new Error('CryptoCompare API error ' + res.status);
-    var json = await res.json();
-    return (json.Data && json.Data.Data) || [];
-}
-
-async function fetchPriceData() {
-    // Try Binance.com, then Binance.us, then CryptoCompare as fallback
-    var endpoints = ['https://api.binance.com', 'https://api.binance.us'];
-    for (var i = 0; i < endpoints.length; i++) {
-        try {
-            var data = await fetchBinanceKlines(endpoints[i]);
-            if (data.length > 0) return data;
-        } catch (e) { /* try next */ }
-    }
-    // Final fallback: CryptoCompare
-    return fetchCryptoCompareFallback();
-}
-
-// ===== Render BTC Price Chart =====
-
-function renderPriceChart(days) {
-    if (!allPriceData) return;
-
-    var filtered = filterPriceData(allPriceData, days);
-    var priceLabels = [];
-    var priceValues = [];
-
-    var maxPoints = 120;
-    var step = Math.max(1, Math.floor(filtered.length / maxPoints));
-    for (var i = 0; i < filtered.length; i += step) {
-        var tsMs = filtered[i].time * 1000;
-        if (days === 'max' || days >= 365) {
-            priceLabels.push(formatFullDate(tsMs));
-        } else {
-            priceLabels.push(formatDate(tsMs));
+    // Fallback: CryptoCompare
+    try {
+        var res2 = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD');
+        if (res2.ok) {
+            var json2 = await res2.json();
+            return json2.USD;
         }
-        priceValues.push(Math.round(filtered[i].close));
-    }
+    } catch (e) { /* give up */ }
 
-    // Set latest value
-    latestPrice = priceValues[priceValues.length - 1];
-    if (priceValueEl) priceValueEl.textContent = formatPriceValue(latestPrice);
-
-    if (priceChartInstance) priceChartInstance.destroy();
-
-    priceChartInstance = new Chart(document.getElementById('priceChart'), {
-        type: 'line',
-        data: {
-            labels: priceLabels,
-            datasets: [{
-                label: 'BTC Price (USD)',
-                data: priceValues,
-                borderColor: '#f7931a',
-                backgroundColor: 'rgba(247, 147, 26, 0.10)',
-                fill: true,
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.3
-            }]
-        },
-        options: Object.assign({}, chartOptions, {
-            scales: Object.assign({}, chartOptions.scales, {
-                y: {
-                    ticks: {
-                        color: '#f7931a',
-                        font: { size: 11 },
-                        callback: function(v) {
-                            if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
-                            if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'k';
-                            return '$' + v;
-                        }
-                    },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
-                }
-            }),
-            plugins: Object.assign({}, chartOptions.plugins, {
-                tooltip: Object.assign({}, chartOptions.plugins.tooltip, {
-                    callbacks: {
-                        label: function(ctx) { return '$' + ctx.parsed.y.toLocaleString(); }
-                    },
-                    external: function(context) {
-                        var tooltip = context.tooltip;
-                        if (tooltip.opacity === 0) {
-                            if (priceValueEl && latestPrice != null) priceValueEl.textContent = formatPriceValue(latestPrice);
-                            return;
-                        }
-                        if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
-                            if (priceValueEl) priceValueEl.textContent = formatPriceValue(tooltip.dataPoints[0].parsed.y);
-                        }
-                    }
-                })
-            })
-        }),
-        plugins: [{
-            id: 'priceMouseLeave',
-            beforeEvent: function(chart, args) {
-                if (args.event.type === 'mouseout' && priceValueEl && latestPrice != null) {
-                    priceValueEl.textContent = formatPriceValue(latestPrice);
-                }
-            }
-        }]
-    });
-
-    document.getElementById('priceTitle').textContent = 'BTC Price (' + priceDaysLabels[days] + ')';
+    return null;
 }
 
 // ===== Render Difficulty Chart =====
@@ -404,14 +264,6 @@ function renderHashrateChart(timeframe) {
 
 // ===== Button click handlers =====
 
-document.getElementById('priceRange').addEventListener('click', function(e) {
-    var btn = e.target.closest('button');
-    if (!btn) return;
-    setActiveButton(this, btn);
-    var days = btn.dataset.days === 'max' ? 'max' : parseInt(btn.dataset.days);
-    renderPriceChart(days);
-});
-
 document.getElementById('miningRange').addEventListener('click', function(e) {
     var btn = e.target.closest('button');
     if (!btn) return;
@@ -426,7 +278,7 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
     renderHashrateChart(btn.dataset.tf);
 });
 
-// ===== Initial data load — fetch once, render from cache =====
+// ===== Initial data load =====
 
 (async function() {
     statusEl.textContent = 'Loading chart data...';
@@ -434,22 +286,16 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
     var priceOk = false;
     var miningOk = false;
 
-    // Fetch price and mining data independently so one failure doesn't block the other
+    // Fetch current BTC price for title display (TradingView widget handles the chart)
     try {
-        var priceData = await fetchPriceData();
-        if (priceData && priceData.length > 0) {
-            allPriceData = priceData;
-            renderPriceChart(90);
+        var price = await fetchCurrentPrice();
+        if (price) {
+            if (priceValueEl) priceValueEl.textContent = '$' + Math.round(price).toLocaleString();
             priceOk = true;
-        } else {
-            statusEl.textContent = 'No price data received';
-            statusEl.style.color = '#f55';
         }
-    } catch (e) {
-        statusEl.textContent = 'Price load failed: ' + e.message;
-        statusEl.style.color = '#f55';
-    }
+    } catch (e) { /* non-critical */ }
 
+    // Fetch mining data for difficulty and hashrate charts
     try {
         var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all');
         if (miningRes.ok) {
@@ -466,7 +312,7 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
         statusEl.style.color = '#f55';
     }
 
-    if (priceOk && miningOk) {
+    if (miningOk) {
         statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
         statusEl.style.color = '#4ade80';
     }
