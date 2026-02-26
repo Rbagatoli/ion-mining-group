@@ -52,6 +52,13 @@
 
     <div class="card" style="margin-bottom:20px;">
         <h3 id="hashTitle">Network Hashrate (1 Year)</h3>
+        <div class="time-range-selector" id="hashRange">
+            <button data-tf="3m">3M</button>
+            <button data-tf="6m">6M</button>
+            <button data-tf="1y" class="active">1Y</button>
+            <button data-tf="3y">3Y</button>
+            <button data-tf="all">ALL</button>
+        </div>
         <div class="earnings-chart-container">
             <canvas id="hashrateChart"></canvas>
         </div>
