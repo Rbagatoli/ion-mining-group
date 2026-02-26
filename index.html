@@ -146,6 +146,19 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Dialog -->
+    <div class="delete-dialog-overlay" id="deleteDialog" style="display:none">
+        <div class="delete-dialog">
+            <h4>Delete Miner</h4>
+            <p id="deleteDialogText">What would you like to do?</p>
+            <div class="delete-dialog-actions">
+                <button class="btn btn-secondary" id="deleteCancel">Cancel</button>
+                <button class="btn btn-danger" id="deleteOne">Delete This One</button>
+                <button class="btn btn-danger" id="deleteAll">Delete All</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== MINER CARDS ===== -->
     <div class="section-label">Miners</div>
     <div class="miner-cards-grid" id="minerCardsGrid">

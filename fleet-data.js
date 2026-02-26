@@ -70,6 +70,20 @@ var FleetData = (function() {
         saveFleet(fleet);
     }
 
+    function reduceQuantity(id) {
+        var fleet = getFleet();
+        for (var i = 0; i < fleet.miners.length; i++) {
+            if (fleet.miners[i].id === id) {
+                fleet.miners[i].quantity -= 1;
+                if (fleet.miners[i].quantity <= 0) {
+                    fleet.miners.splice(i, 1);
+                }
+                break;
+            }
+        }
+        saveFleet(fleet);
+    }
+
     // --- Fleet Summary ---
     function getFleetSummary() {
         var fleet = getFleet();
@@ -145,6 +159,7 @@ var FleetData = (function() {
         addMiner: addMiner,
         updateMiner: updateMiner,
         removeMiner: removeMiner,
+        reduceQuantity: reduceQuantity,
         getFleetSummary: getFleetSummary,
         getSettings: getSettings,
         saveSettings: saveSettings,

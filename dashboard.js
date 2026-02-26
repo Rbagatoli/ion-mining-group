@@ -201,12 +201,55 @@ function startEditMiner(id) {
     addMinerPanel.classList.add('open');
 }
 
+var pendingDeleteId = null;
+var deleteDialog = document.getElementById('deleteDialog');
+
 function deleteMiner(id) {
     if (useMockData) return;
-    FleetData.removeMiner(id);
-    renderDashboard();
-    updateEarningsChart();
+    pendingDeleteId = id;
+
+    // Check quantity — if only 1, skip dialog and just delete
+    var fleet = FleetData.getFleet();
+    var miner = null;
+    for (var i = 0; i < fleet.miners.length; i++) {
+        if (fleet.miners[i].id === id) { miner = fleet.miners[i]; break; }
+    }
+    if (!miner || miner.quantity <= 1) {
+        FleetData.removeMiner(id);
+        renderDashboard();
+        updateEarningsChart();
+        return;
+    }
+
+    document.getElementById('deleteDialogText').textContent =
+        'This group has ' + miner.quantity + ' ' + escapeHtml(miner.model) + ' miners.';
+    deleteDialog.style.display = '';
 }
+
+document.getElementById('deleteCancel').addEventListener('click', function() {
+    deleteDialog.style.display = 'none';
+    pendingDeleteId = null;
+});
+
+document.getElementById('deleteOne').addEventListener('click', function() {
+    if (pendingDeleteId) {
+        FleetData.reduceQuantity(pendingDeleteId);
+        renderDashboard();
+        updateEarningsChart();
+    }
+    deleteDialog.style.display = 'none';
+    pendingDeleteId = null;
+});
+
+document.getElementById('deleteAll').addEventListener('click', function() {
+    if (pendingDeleteId) {
+        FleetData.removeMiner(pendingDeleteId);
+        renderDashboard();
+        updateEarningsChart();
+    }
+    deleteDialog.style.display = 'none';
+    pendingDeleteId = null;
+});
 
 // ===== F2POOL API PANEL =====
 document.getElementById('btnConnectAPI').addEventListener('click', function() {
