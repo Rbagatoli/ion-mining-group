@@ -72,11 +72,12 @@ function setActiveButton(container, btn) {
 }
 
 // ===== Filter price data by days =====
+// allPriceData format: [{time: unixSec, close: price}, ...]
 
 function filterPriceData(prices, days) {
     if (days === 'max') return prices;
-    var cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
-    return prices.filter(function(p) { return p[0] >= cutoff; });
+    var cutoff = (Date.now() / 1000) - (days * 24 * 60 * 60);
+    return prices.filter(function(p) { return p.time >= cutoff; });
 }
 
 // ===== Filter mining data by timeframe =====
@@ -99,12 +100,13 @@ function renderPriceChart(days) {
     var maxPoints = 120;
     var step = Math.max(1, Math.floor(filtered.length / maxPoints));
     for (var i = 0; i < filtered.length; i += step) {
+        var tsMs = filtered[i].time * 1000;
         if (days === 'max' || days >= 365) {
-            priceLabels.push(formatFullDate(filtered[i][0]));
+            priceLabels.push(formatFullDate(tsMs));
         } else {
-            priceLabels.push(formatDate(filtered[i][0]));
+            priceLabels.push(formatDate(tsMs));
         }
-        priceValues.push(Math.round(filtered[i][1]));
+        priceValues.push(Math.round(filtered[i].close));
     }
 
     if (priceChartInstance) priceChartInstance.destroy();
@@ -293,22 +295,15 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
     statusEl.textContent = 'Loading chart data...';
 
     try {
-        // Fetch price and mining data in parallel
-        // Try days=max first for full history, fall back to 365 if free tier blocks it
-        var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all');
-
-        var priceRes = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=max');
-        if (!priceRes.ok) {
-            // Free tier may block days=max — fall back to 365
-            priceRes = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365');
-            // Disable MAX button since API doesn't support it
-            var maxBtn = document.querySelector('#priceRange button[data-days="max"]');
-            if (maxBtn) { maxBtn.disabled = true; maxBtn.title = 'Requires API key'; }
-        }
+        // Fetch price (CryptoCompare — free, full history) and mining data in parallel
+        var [priceRes, miningRes] = await Promise.all([
+            fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true'),
+            fetch('https://mempool.space/api/v1/mining/hashrate/all')
+        ]);
 
         if (priceRes.ok) {
-            var priceData = await priceRes.json();
-            allPriceData = priceData.prices || [];
+            var priceJson = await priceRes.json();
+            allPriceData = (priceJson.Data && priceJson.Data.Data) || [];
             renderPriceChart(90);
         } else {
             statusEl.textContent = 'Price API error ' + priceRes.status;
