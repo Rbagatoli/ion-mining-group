@@ -1,13 +1,15 @@
-const CACHE_NAME = 'ion-mining-v14';
+const CACHE_NAME = 'ion-mining-v15';
 const ASSETS = [
   './index.html',
   './calculator.html',
+  './charts.html',
   './btc-mining-calculator.html',
   './shared.css',
   './shared.js',
   './fleet-data.js',
   './dashboard.js',
   './calculator.js',
+  './charts.js',
   './chart.min.js',
   './manifest.json'
 ];
