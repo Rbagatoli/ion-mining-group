@@ -98,13 +98,11 @@ function renderMinerCards(miners) {
 
         // Render one card per unit
         for (var u = 0; u < m.quantity; u++) {
-            var unitLabel = m.quantity > 1 ? (u + 1) + ' of ' + m.quantity : '';
             var card = document.createElement('div');
             card.className = 'miner-card';
             card.innerHTML =
                 '<div class="miner-card-header">' +
                     '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
-                    (unitLabel ? '<div class="miner-card-qty">' + unitLabel + '</div>' : '') +
                 '</div>' +
                 '<div class="miner-card-stats">' +
                     '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
