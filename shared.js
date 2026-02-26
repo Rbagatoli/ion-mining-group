@@ -207,7 +207,8 @@ async function fetchLiveMarketData() {
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + S.opacity.toFixed(4) + ')';
+            var hexOpacity = isMobile ? S.opacity * 0.5 : S.opacity;
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + hexOpacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
             var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
 
