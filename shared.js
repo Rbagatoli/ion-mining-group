@@ -78,6 +78,7 @@ async function fetchLiveMarketData() {
     var lines = [];
     var nodes = [];
     var pulses = [];
+    var columns = [];
     var animId = null;
     var lastFrame = 0;
     var isMobile = window.innerWidth < 768;
@@ -85,6 +86,12 @@ async function fetchLiveMarketData() {
     var LINE_COUNT = isMobile ? 25 : 45;
     var NODE_COUNT = isMobile ? 15 : 30;
     var PULSE_COUNT = isMobile ? 6 : 12;
+    var COLUMN_COUNT = isMobile ? 15 : 30;
+    var FONT_SIZE = 12;
+    var CHAR_GAP = 16;
+
+    // Actual Bitcoin genesis block raw hex (block header + coinbase tx)
+    var GENESIS_HEX = '0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c0101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a0100000043410467e6e18906b18c1a10c82c3017656397f490eee7abcb2e24079cd82afa96d38';
 
     function resize() {
         var dpr = window.devicePixelRatio || 1;
@@ -100,8 +107,27 @@ async function fetchLiveMarketData() {
         lines = [];
         nodes = [];
         pulses = [];
+        columns = [];
         var w = window.innerWidth;
         var h = window.innerHeight;
+
+        // Generate hex rain columns from genesis block data
+        var maxChars = Math.ceil(h / CHAR_GAP) + 5;
+        for (var c = 0; c < COLUMN_COUNT; c++) {
+            var hexOffset = Math.floor(Math.random() * GENESIS_HEX.length);
+            var chars = [];
+            for (var j = 0; j < maxChars; j++) {
+                chars.push(GENESIS_HEX[(hexOffset + j) % GENESIS_HEX.length]);
+            }
+            columns.push({
+                x: Math.random() * w,
+                y: Math.random() * h * 2 - h,
+                speed: 15 + Math.random() * 35,
+                chars: chars,
+                trailLen: 8 + Math.floor(Math.random() * 15),
+                maxOpacity: 0.06 + Math.random() * 0.08
+            });
+        }
 
         // Generate grid lines — horizontal and vertical
         for (var i = 0; i < LINE_COUNT; i++) {
@@ -160,6 +186,34 @@ async function fetchLiveMarketData() {
         var dt = FRAME_INTERVAL / 1000;
 
         ctx.clearRect(0, 0, w, h);
+
+        // Draw genesis block hex rain (behind everything)
+        ctx.font = FONT_SIZE + 'px monospace';
+        ctx.textAlign = 'center';
+        for (var c = 0; c < columns.length; c++) {
+            var C = columns[c];
+            C.y += C.speed * dt;
+            // Reset when column scrolls off bottom
+            if (C.y - C.trailLen * CHAR_GAP > h) {
+                C.y = -C.trailLen * CHAR_GAP;
+                C.x = Math.random() * w;
+            }
+            for (var j = 0; j < C.trailLen; j++) {
+                var cy = C.y - j * CHAR_GAP;
+                if (cy < -CHAR_GAP || cy > h + CHAR_GAP) continue;
+                var fade = 1 - (j / C.trailLen);
+                var charOpacity;
+                if (j === 0) {
+                    // Head character — brightest
+                    charOpacity = C.maxOpacity * 2.5;
+                } else {
+                    charOpacity = C.maxOpacity * fade * fade;
+                }
+                if (charOpacity < 0.005) continue;
+                ctx.fillStyle = 'rgba(247, 147, 26, ' + charOpacity.toFixed(4) + ')';
+                ctx.fillText(C.chars[j % C.chars.length], C.x, cy);
+            }
+        }
 
         // Draw lines with glow
         for (var i = 0; i < lines.length; i++) {
@@ -273,6 +327,7 @@ async function fetchLiveMarketData() {
             LINE_COUNT = isMobile ? 25 : 45;
             NODE_COUNT = isMobile ? 15 : 30;
             PULSE_COUNT = isMobile ? 6 : 12;
+            COLUMN_COUNT = isMobile ? 15 : 30;
             resize();
         }, 200);
     });
