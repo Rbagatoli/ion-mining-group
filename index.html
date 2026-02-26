@@ -124,24 +124,25 @@
             <h4>Connect F2Pool API</h4>
             <div class="panel-form-grid">
                 <div class="input-group">
-                    <label>API Key</label>
+                    <label>Proxy Worker URL</label>
                     <div class="input-wrapper">
-                        <input type="text" id="fmApiKey" placeholder="Your F2Pool API key">
+                        <input type="text" id="fmWorkerUrl" placeholder="https://ion-f2pool.yourname.workers.dev">
                     </div>
                 </div>
                 <div class="input-group">
-                    <label>Worker Name</label>
+                    <label>F2Pool Username</label>
                     <div class="input-wrapper">
-                        <input type="text" id="fmWorkerName" placeholder="e.g. worker001">
+                        <input type="text" id="fmUsername" placeholder="Your F2Pool mining username">
                     </div>
                 </div>
             </div>
-            <div style="margin-top:12px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(255,255,255,0.06);">
-                <div style="font-size:12px; color:#888;">API integration coming soon. Save your credentials now and they'll connect automatically when available.</div>
+            <div id="apiStatus" style="margin-top:12px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(255,255,255,0.06); display:none;">
+                <div style="font-size:12px; color:#888;" id="apiStatusText"></div>
             </div>
             <div class="panel-actions">
                 <button class="btn btn-secondary" id="cancelAPI">Cancel</button>
-                <button class="btn btn-primary" id="saveAPI">Save Settings</button>
+                <button class="btn btn-secondary" id="testAPI">Test Connection</button>
+                <button class="btn btn-primary" id="saveAPI">Save & Connect</button>
             </div>
         </div>
     </div>
@@ -177,7 +178,7 @@
 
 <footer>
     Ion Mining Group &mdash; Fleet Dashboard<br>
-    <span style="font-size:11px; color:#555;">Data updates when you refresh. API integration coming soon.</span>
+    <span style="font-size:11px; color:#555;">Data updates when you refresh. Connect F2Pool API for live data.</span>
 </footer>
 
 <script src="./shared.js"></script>

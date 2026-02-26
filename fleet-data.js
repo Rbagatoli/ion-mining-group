@@ -130,7 +130,7 @@ var FleetData = (function() {
     function defaultSettings() {
         return {
             _v: 1,
-            f2pool: { enabled: false, apiKey: '', workerName: '' },
+            f2pool: { enabled: false, workerUrl: '', username: '' },
             useFleetData: false
         };
     }

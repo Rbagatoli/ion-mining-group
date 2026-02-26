@@ -339,6 +339,10 @@ footer {
     padding: 2px 8px;
     border-radius: 10px;
 }
+.live-badge {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
 .miner-card-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;

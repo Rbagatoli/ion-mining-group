@@ -20,6 +20,7 @@ initNav('dashboard');
     else liveBtcPrice = 96000;
     if (data.difficulty) liveDifficulty = data.difficulty;
     else liveDifficulty = 125.86;
+    await loadF2PoolData();
     renderDashboard();
     initEarningsChart();
 })();
@@ -28,6 +29,11 @@ initNav('dashboard');
 function renderDashboard() {
     var fleet = FleetData.getFleet();
     var miners = fleet.miners;
+
+    // Append F2Pool live miners
+    if (f2poolMiners.length > 0) {
+        miners = miners.concat(f2poolMiners);
+    }
 
     // Check if we need mock data
     if (miners.length === 0) {
@@ -97,25 +103,28 @@ function renderMinerCards(miners) {
         var mDailyUSD = mDailyBTC * liveBtcPrice;
 
         // Render one card per unit
+        var isLive = m.source === 'f2pool';
         for (var u = 0; u < m.quantity; u++) {
             var card = document.createElement('div');
             card.className = 'miner-card';
             card.innerHTML =
                 '<div class="miner-card-header">' +
                     '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
+                    (isLive ? '<div class="miner-card-qty live-badge">LIVE</div>' : '') +
                 '</div>' +
                 '<div class="miner-card-stats">' +
                     '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + m.power + ' kW</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + eff + ' J/TH</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + (m.power ? m.power + ' kW' : '--') + '</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
                     '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost) : '--') + '</div></div>' +
                     '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + '"></span>' + m.status + '</div></div>' +
                     '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
                 '</div>' +
+                (isLive ? '' :
                 '<div class="miner-card-actions">' +
                     '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
                     '<button class="delete delete-miner" data-id="' + m.id + '">Delete</button>' +
-                '</div>';
+                '</div>');
             grid.appendChild(card);
         }
     }
@@ -252,10 +261,14 @@ document.getElementById('deleteAll').addEventListener('click', function() {
 });
 
 // ===== F2POOL API PANEL =====
+var apiStatusEl = document.getElementById('apiStatus');
+var apiStatusText = document.getElementById('apiStatusText');
+
 document.getElementById('btnConnectAPI').addEventListener('click', function() {
     var settings = FleetData.getSettings();
-    document.getElementById('fmApiKey').value = settings.f2pool.apiKey || '';
-    document.getElementById('fmWorkerName').value = settings.f2pool.workerName || '';
+    document.getElementById('fmWorkerUrl').value = settings.f2pool.workerUrl || '';
+    document.getElementById('fmUsername').value = settings.f2pool.username || '';
+    apiStatusEl.style.display = 'none';
     addMinerPanel.classList.remove('open');
     apiPanel.classList.toggle('open');
 });
@@ -264,14 +277,98 @@ document.getElementById('cancelAPI').addEventListener('click', function() {
     apiPanel.classList.remove('open');
 });
 
-document.getElementById('saveAPI').addEventListener('click', function() {
+document.getElementById('testAPI').addEventListener('click', async function() {
+    var workerUrl = document.getElementById('fmWorkerUrl').value.trim().replace(/\/+$/, '');
+    var username = document.getElementById('fmUsername').value.trim();
+    if (!workerUrl || !username) {
+        apiStatusText.textContent = 'Please enter both fields.';
+        apiStatusText.style.color = '#f55';
+        apiStatusEl.style.display = '';
+        return;
+    }
+    apiStatusText.textContent = 'Testing connection...';
+    apiStatusText.style.color = '#888';
+    apiStatusEl.style.display = '';
+    try {
+        var res = await fetch(workerUrl + '/ping?user=' + encodeURIComponent(username));
+        var data = await res.json();
+        if (res.ok && data.ok) {
+            apiStatusText.textContent = 'Connected successfully!';
+            apiStatusText.style.color = '#4caf50';
+        } else {
+            apiStatusText.textContent = 'Error: ' + (data.error || 'Unknown error');
+            apiStatusText.style.color = '#f55';
+        }
+    } catch (e) {
+        apiStatusText.textContent = 'Failed to connect: ' + e.message;
+        apiStatusText.style.color = '#f55';
+    }
+});
+
+document.getElementById('saveAPI').addEventListener('click', async function() {
     var settings = FleetData.getSettings();
-    settings.f2pool.apiKey = document.getElementById('fmApiKey').value.trim();
-    settings.f2pool.workerName = document.getElementById('fmWorkerName').value.trim();
-    settings.f2pool.enabled = !!(settings.f2pool.apiKey && settings.f2pool.workerName);
+    settings.f2pool.workerUrl = document.getElementById('fmWorkerUrl').value.trim().replace(/\/+$/, '');
+    settings.f2pool.username = document.getElementById('fmUsername').value.trim();
+    settings.f2pool.enabled = !!(settings.f2pool.workerUrl && settings.f2pool.username);
     FleetData.saveSettings(settings);
     apiPanel.classList.remove('open');
+    if (settings.f2pool.enabled) {
+        await loadF2PoolData();
+        renderDashboard();
+        updateEarningsChart();
+    }
 });
+
+// ===== F2POOL LIVE DATA =====
+var f2poolMiners = [];
+
+async function loadF2PoolData() {
+    var settings = FleetData.getSettings();
+    if (!settings.f2pool.enabled) return;
+    var url = settings.f2pool.workerUrl;
+    var user = settings.f2pool.username;
+
+    try {
+        var [workersRes, earningsRes] = await Promise.all([
+            fetch(url + '/workers?user=' + encodeURIComponent(user)),
+            fetch(url + '/earnings?user=' + encodeURIComponent(user))
+        ]);
+
+        f2poolMiners = [];
+
+        if (workersRes.ok) {
+            var workersData = await workersRes.json();
+            var workers = workersData.workers || workersData.data || [];
+            for (var i = 0; i < workers.length; i++) {
+                var w = workers[i];
+                var hashTH = (w.hashrate || w.hashrate_current || 0) / 1e12;
+                f2poolMiners.push({
+                    id: 'f2pool_' + (w.worker_name || i),
+                    model: w.worker_name || 'Worker ' + (i + 1),
+                    hashrate: parseFloat(hashTH.toFixed(1)),
+                    power: 0,
+                    cost: 0,
+                    quantity: 1,
+                    status: (w.status === 'Online' || w.status === 'online') ? 'online' : 'offline',
+                    source: 'f2pool'
+                });
+            }
+        }
+
+        if (earningsRes.ok) {
+            var earningsData = await earningsRes.json();
+            // Store earnings data for display
+            window.f2poolEarnings = {
+                balance: earningsData.balance || 0,
+                totalIncome: earningsData.income_total || earningsData.total_income || 0,
+                yesterdayIncome: earningsData.income_yesterday || earningsData.yesterday_income || 0,
+                estimatedDaily: earningsData.income_estimated_daily || earningsData.estimated_daily_income || 0
+            };
+        }
+    } catch (e) {
+        f2poolMiners = [];
+    }
+}
 
 // ===== MOCK BANNER =====
 document.getElementById('dismissMock').addEventListener('click', function() {
