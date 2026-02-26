@@ -195,11 +195,6 @@ function renderPriceChart(days) {
     });
 
     document.getElementById('priceTitle').textContent = 'BTC Price (' + priceDaysLabels[days] + ')';
-
-    // Reliable reset on mouse leave
-    document.getElementById('priceChart').addEventListener('mouseleave', function() {
-        if (priceValueEl && latestPrice != null) priceValueEl.textContent = formatPriceValue(latestPrice);
-    });
 }
 
 // ===== Render Difficulty Chart =====
@@ -278,11 +273,6 @@ function renderDifficultyChart(timeframe) {
     });
 
     document.getElementById('diffTitle').textContent = 'Network Difficulty (' + miningTfLabels[timeframe] + ')';
-
-    // Reliable reset on mouse leave
-    document.getElementById('difficultyChart').addEventListener('mouseleave', function() {
-        if (diffValueEl && latestDiff != null) diffValueEl.textContent = formatDiffValue(latestDiff);
-    });
 }
 
 // ===== Render Hashrate Chart =====
@@ -360,12 +350,18 @@ function renderHashrateChart(timeframe) {
     });
 
     document.getElementById('hashTitle').textContent = 'Network Hashrate (' + miningTfLabels[timeframe] + ')';
+}
 
-    // Reliable reset on mouse leave
-    document.getElementById('hashrateChart').addEventListener('mouseleave', function() {
+// ===== Reset values when pointer leaves chart containers =====
+
+var chartContainers = document.querySelectorAll('.earnings-chart-container');
+chartContainers.forEach(function(container) {
+    container.addEventListener('pointerleave', function() {
+        if (priceValueEl && latestPrice != null) priceValueEl.textContent = formatPriceValue(latestPrice);
+        if (diffValueEl && latestDiff != null) diffValueEl.textContent = formatDiffValue(latestDiff);
         if (hashValueEl && latestHash != null) hashValueEl.textContent = formatHashValue(latestHash);
     });
-}
+});
 
 // ===== Button click handlers =====
 
