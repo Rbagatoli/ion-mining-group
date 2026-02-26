@@ -23,31 +23,19 @@
 
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
-            <h3>BTC Price</h3>
+            <h3 id="priceTitle">BTC Price (90 Days)</h3>
             <span id="priceValue" class="chart-live-value" style="color:#f7931a;">--</span>
         </div>
-        <div class="tradingview-widget-container" style="height:400px; border-radius:12px; overflow:hidden;">
-            <div class="tradingview-widget-container__widget" style="height:100%; width:100%;"></div>
-            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-            {
-                "symbol": "BINANCE:BTCUSDT",
-                "interval": "D",
-                "timezone": "exchange",
-                "theme": "dark",
-                "style": "1",
-                "locale": "en",
-                "height": "100%",
-                "width": "100%",
-                "backgroundColor": "rgba(0, 0, 0, 0)",
-                "gridColor": "rgba(255, 255, 255, 0.06)",
-                "hide_legend": true,
-                "hide_volume": false,
-                "allow_symbol_change": false,
-                "save_image": false,
-                "calendar": false,
-                "support_host": "https://www.tradingview.com"
-            }
-            </script>
+        <div class="time-range-selector" id="priceRange">
+            <button data-days="7">7D</button>
+            <button data-days="30">30D</button>
+            <button data-days="90" class="active">90D</button>
+            <button data-days="180">180D</button>
+            <button data-days="365">1Y</button>
+            <button data-days="max">MAX</button>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="priceChart"></canvas>
         </div>
     </div>
 
