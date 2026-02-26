@@ -81,7 +81,7 @@ async function fetchLiveMarketData() {
     var hexSheets = [];
     var animId = null;
     var lastFrame = 0;
-    var isMobile = window.innerWidth < 768;
+    var isMobile = Math.min(window.innerWidth, window.innerHeight) < 768;
     var FRAME_INTERVAL = isMobile ? 40 : 25;
     var LINE_COUNT = isMobile ? 25 : 45;
     var NODE_COUNT = isMobile ? 15 : 30;
@@ -207,7 +207,7 @@ async function fetchLiveMarketData() {
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
-            var hexOpacity = isMobile ? S.opacity * 0.5 : S.opacity;
+            var hexOpacity = isMobile ? S.opacity * 0.3 : S.opacity;
             ctx.fillStyle = 'rgba(247, 147, 26, ' + hexOpacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
             var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
@@ -327,7 +327,7 @@ async function fetchLiveMarketData() {
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {
-            isMobile = window.innerWidth < 768;
+            isMobile = Math.min(window.innerWidth, window.innerHeight) < 768;
             FRAME_INTERVAL = isMobile ? 40 : 25;
             LINE_COUNT = isMobile ? 25 : 45;
             NODE_COUNT = isMobile ? 15 : 30;
