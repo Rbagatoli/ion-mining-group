@@ -67,3 +67,95 @@ async function fetchLiveMarketData() {
     } catch (e) {}
     return result;
 }
+
+// ===== TECH LINES BACKGROUND =====
+(function() {
+    var canvas = document.getElementById('techLinesCanvas');
+    if (!canvas) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var ctx = canvas.getContext('2d');
+    var lines = [];
+    var animId = null;
+    var lastFrame = 0;
+    var isMobile = window.innerWidth < 768;
+    var FRAME_INTERVAL = isMobile ? 50 : 33;
+    var LINE_COUNT = isMobile ? 12 : 20;
+
+    function resize() {
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        generateLines();
+    }
+
+    function generateLines() {
+        lines = [];
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        for (var i = 0; i < LINE_COUNT; i++) {
+            var isHorizontal = Math.random() > 0.5;
+            lines.push({
+                horizontal: isHorizontal,
+                pos: Math.random() * (isHorizontal ? h : w),
+                start: Math.random() * 0.3,
+                end: 0.5 + Math.random() * 0.5,
+                phase: Math.random() * Math.PI * 2,
+                speed: 0.3 + Math.random() * 0.7,
+                maxOpacity: 0.03 + Math.random() * 0.05
+            });
+        }
+    }
+
+    function draw(timestamp) {
+        animId = requestAnimationFrame(draw);
+        if (timestamp - lastFrame < FRAME_INTERVAL) return;
+        lastFrame = timestamp;
+        if (document.hidden) return;
+
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        var t = timestamp / 1000;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.lineWidth = 1;
+
+        for (var i = 0; i < lines.length; i++) {
+            var L = lines[i];
+            var opacity = L.maxOpacity * (0.5 + 0.5 * Math.sin(t * L.speed + L.phase));
+            ctx.strokeStyle = 'rgba(247, 147, 26, ' + opacity.toFixed(4) + ')';
+            ctx.beginPath();
+            if (L.horizontal) {
+                ctx.moveTo(L.start * w, L.pos);
+                ctx.lineTo(L.end * w, L.pos);
+            } else {
+                ctx.moveTo(L.pos, L.start * h);
+                ctx.lineTo(L.pos, L.end * h);
+            }
+            ctx.stroke();
+        }
+    }
+
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            isMobile = window.innerWidth < 768;
+            FRAME_INTERVAL = isMobile ? 50 : 33;
+            LINE_COUNT = isMobile ? 12 : 20;
+            resize();
+        }, 200);
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && !animId) {
+            animId = requestAnimationFrame(draw);
+        }
+    });
+
+    resize();
+    animId = requestAnimationFrame(draw);
+})();
