@@ -1,11 +1,22 @@
 // Ion Mining Group — F2Pool API Proxy (Cloudflare Worker)
 
 const F2POOL_BASE = 'https://api.f2pool.com/v2';
-const ALLOWED_ORIGIN = 'https://rbagatoli.github.io';
+const ALLOWED_ORIGINS = [
+    'https://rbagatoli.github.io',
+    'http://localhost',
+    'http://127.0.0.1'
+];
+
+function isAllowedOrigin(origin) {
+    for (var i = 0; i < ALLOWED_ORIGINS.length; i++) {
+        if (origin === ALLOWED_ORIGINS[i] || origin.startsWith(ALLOWED_ORIGINS[i] + ':')) return true;
+    }
+    return false;
+}
 
 function corsHeaders(origin) {
     return {
-        'Access-Control-Allow-Origin': origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN,
+        'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0],
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Content-Type': 'application/json'
