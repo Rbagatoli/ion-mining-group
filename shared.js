@@ -203,9 +203,9 @@ async function fetchLiveMarketData() {
         ctx.textAlign = 'left';
         for (var s = 0; s < hexSheets.length; s++) {
             var S = hexSheets[s];
-            S.scrollY += S.speed * dt;
+            S.scrollY -= S.speed * dt;
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
-            if (S.scrollY >= sheetHeight / 2) S.scrollY -= sheetHeight / 2;
+            if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
             ctx.fillStyle = 'rgba(247, 147, 26, ' + S.opacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
