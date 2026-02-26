@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ion Mining Group — Charts</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./shared.css">
+    <script src="./chart.min.js"></script>
+</head>
+<body>
+<canvas id="techLinesCanvas"></canvas>
+
+<nav id="ion-nav"></nav>
+
+<header style="text-align:center; padding:24px 16px 12px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+    <h1 style="font-size:28px; font-weight:600; color:#f7931a; margin-bottom:4px;">Network Charts</h1>
+    <p style="color:#888; font-size:14px;">Live Bitcoin price, difficulty, and hashrate</p>
+    <div id="chartsStatus" style="font-size:12px; color:#555; margin-top:6px;"></div>
+</header>
+
+<main>
+
+    <div class="card" style="margin-bottom:20px;">
+        <h3>BTC Price (90 Days)</h3>
+        <div class="earnings-chart-container">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        <h3>Network Difficulty (1 Year)</h3>
+        <div class="earnings-chart-container">
+            <canvas id="difficultyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        <h3>Network Hashrate (1 Year)</h3>
+        <div class="earnings-chart-container">
+            <canvas id="hashrateChart"></canvas>
+        </div>
+    </div>
+
+</main>
+
+<footer>
+    <p>Ion Mining Group &copy; 2025</p>
+</footer>
+
+<script src="./shared.js"></script>
+<script src="./fleet-data.js"></script>
+<script src="./charts.js"></script>
+</body>
+</html>

@@ -13,6 +13,7 @@ function initNav(activePage) {
         '<div class="ion-nav-tabs">' +
             '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">Dashboard</a>' +
             '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">Calculator</a>' +
+            '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">Charts</a>' +
         '</div>';
 }
 

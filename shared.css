@@ -113,13 +113,13 @@ main {
 
 /* ===== GLASSMORPHISM CARD ===== */
 .card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 12px;
     padding: 20px;
     backdrop-filter: blur(20px) saturate(1.2);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: #e8e8e8; letter-spacing: 0.3px; }
 
@@ -182,11 +182,11 @@ main {
 @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .metric-card {
-    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px;
     padding: 14px 16px; text-align: center;
     backdrop-filter: blur(16px) saturate(1.2);
     -webkit-backdrop-filter: blur(16px) saturate(1.2);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.02);
     transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
 }
 .metric-card:hover {
@@ -307,8 +307,8 @@ footer {
     gap: 16px;
 }
 .miner-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 12px;
     padding: 16px;
     backdrop-filter: blur(16px) saturate(1.2);
@@ -608,3 +608,91 @@ footer {
     border-radius: 12px;
     padding: 12px;
 }
+
+/* ===== GROUPED MINER CARDS ===== */
+.miner-group {
+    gap: 16px;
+}
+.miner-group.expanded {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.miner-card-stacked {
+    position: relative;
+    margin-bottom: 8px;
+}
+.miner-card-stacked::before,
+.miner-card-stacked::after {
+    content: '';
+    position: absolute;
+    left: 4px; right: 4px;
+    top: 6px; bottom: -4px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    z-index: -1;
+}
+.miner-card-stacked::after {
+    left: 8px; right: 8px;
+    top: 10px; bottom: -8px;
+    background: rgba(255, 255, 255, 0.01);
+    border-color: rgba(255, 255, 255, 0.03);
+    z-index: -2;
+}
+.qty-badge {
+    background: rgba(247, 147, 26, 0.15);
+    color: #f7931a;
+    font-weight: 700;
+}
+.miner-card-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.miner-card-group-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    gap: 8px;
+}
+.miner-group-toggle {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: #888;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.miner-group-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e8e8e8;
+}
+.toggle-chevron { font-size: 9px; }
+.miner-group-units {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+.miner-card-unit {
+    border-color: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.015);
+}
+.miner-card-unit .miner-card-model { font-size: 14px; font-weight: 500; }
+.unit-number { color: #555; font-weight: 400; font-size: 12px; }
+.miner-card-stat.stat-total {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 6px 0 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: 4px;
+}
+.stat-total .stat-value { font-size: 16px; font-weight: 700; }

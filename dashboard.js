@@ -5,6 +5,7 @@ var useMockData = false;
 var editingMinerId = null;
 var liveBtcPrice = null;
 var liveDifficulty = null;
+var expandedGroups = new Set();
 
 const SECONDS_PER_DAY = 86400;
 const TWO_POW_32 = 4294967296;
@@ -89,36 +90,35 @@ function renderMinerCards(miners) {
         var m = miners[i];
         var eff = m.hashrate > 0 ? ((m.power * 1000) / m.hashrate).toFixed(1) : '0';
 
-        // Daily earnings for a single unit
         var mHashH = m.hashrate * 1e12;
         var diffFull = liveDifficulty * 1e12;
         var mDailyBTC = m.status === 'online' ? (mHashH * SECONDS_PER_DAY * CURRENT_BLOCK_REWARD) / (diffFull * TWO_POW_32) : 0;
         var mDailyUSD = mDailyBTC * liveBtcPrice;
 
-        // Render one card per unit
         var isLive = m.source === 'f2pool';
-        for (var u = 0; u < m.quantity; u++) {
-            var card = document.createElement('div');
-            card.className = 'miner-card';
-            card.innerHTML =
-                '<div class="miner-card-header">' +
-                    '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
-                    (isLive ? '<div class="miner-card-qty live-badge">LIVE</div>' : '') +
-                '</div>' +
-                '<div class="miner-card-stats">' +
-                    '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + (m.power ? m.power + ' kW' : '--') + '</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost) : '--') + '</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + '"></span>' + m.status + '</div></div>' +
-                    '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
-                '</div>' +
-                (isLive ? '' :
-                '<div class="miner-card-actions">' +
-                    '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
-                    '<button class="delete delete-miner" data-id="' + m.id + '">Delete</button>' +
-                '</div>');
-            grid.appendChild(card);
+        var isGroup = m.quantity > 1;
+        var isExpanded = expandedGroups.has(m.id);
+
+        if (!isGroup) {
+            // Single unit — normal card
+            grid.appendChild(buildMinerCard(m, eff, mDailyUSD, isLive, false, false));
+        } else {
+            // Grouped units — stacked wrapper
+            var wrapper = document.createElement('div');
+            wrapper.className = 'miner-group' + (isExpanded ? ' expanded' : '');
+
+            wrapper.appendChild(buildMinerCard(m, eff, mDailyUSD, isLive, true, isExpanded));
+
+            if (isExpanded) {
+                var units = document.createElement('div');
+                units.className = 'miner-group-units';
+                for (var u = 0; u < m.quantity; u++) {
+                    units.appendChild(buildUnitCard(m, eff, mDailyUSD, u + 1, isLive));
+                }
+                wrapper.appendChild(units);
+            }
+
+            grid.appendChild(wrapper);
         }
     }
 
@@ -129,6 +129,110 @@ function renderMinerCards(miners) {
     grid.querySelectorAll('.delete-miner').forEach(function(btn) {
         btn.addEventListener('click', function() { deleteMiner(this.dataset.id); });
     });
+    grid.querySelectorAll('.miner-group-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() { toggleMinerGroup(this.dataset.id); });
+    });
+    grid.querySelectorAll('.delete-unit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            FleetData.reduceQuantity(this.dataset.id);
+            renderDashboard();
+            updateEarningsChart();
+        });
+    });
+    grid.querySelectorAll('.add-unit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var fleet = FleetData.getFleet();
+            for (var i = 0; i < fleet.miners.length; i++) {
+                if (fleet.miners[i].id === id) {
+                    FleetData.updateMiner(id, { quantity: fleet.miners[i].quantity + 1 });
+                    break;
+                }
+            }
+            renderDashboard();
+            updateEarningsChart();
+        });
+    });
+}
+
+function buildMinerCard(m, eff, mDailyUSD, isLive, isGroupSummary, isExpanded) {
+    var card = document.createElement('div');
+    card.className = 'miner-card' + (isGroupSummary ? ' miner-card-stacked' : '');
+
+    var badges = '';
+    if (isLive) badges += '<div class="miner-card-qty live-badge">LIVE</div>';
+    if (isGroupSummary) badges += '<div class="miner-card-qty qty-badge">x' + m.quantity + '</div>';
+
+    var totalRow = '';
+    if (isGroupSummary) {
+        totalRow = '<div class="miner-card-stat stat-total"><div class="stat-label">Total Daily (' + m.quantity + ' units)</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD * m.quantity) + '</div></div>';
+    }
+
+    var toggleBtn = '';
+    if (isGroupSummary) {
+        var chevron = isExpanded ? '&#x25B2;' : '&#x25BC;';
+        var toggleText = isExpanded ? 'Collapse' : 'Show all ' + m.quantity;
+        toggleBtn = '<button class="miner-group-toggle" data-id="' + m.id + '"><span class="toggle-chevron">' + chevron + '</span> ' + toggleText + '</button>';
+    }
+
+    var actions = isLive ? '' :
+        '<div class="miner-card-actions">' +
+            '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
+            '<button class="add-unit" data-id="' + m.id + '">+1</button>' +
+            '<button class="delete delete-miner" data-id="' + m.id + '">Delete</button>' +
+        '</div>';
+
+    var footer = '';
+    if (isGroupSummary) {
+        footer = '<div class="miner-card-group-footer">' + toggleBtn + actions + '</div>';
+        actions = '';
+    }
+
+    card.innerHTML =
+        '<div class="miner-card-header">' +
+            '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
+            '<div class="miner-card-badges">' + badges + '</div>' +
+        '</div>' +
+        '<div class="miner-card-stats">' +
+            '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + (m.power ? m.power + ' kW' : '--') + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost) : '--') + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + '"></span>' + m.status + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">' + (isGroupSummary ? 'Daily (each)' : 'Daily Est.') + '</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
+            totalRow +
+        '</div>' +
+        actions + footer;
+
+    return card;
+}
+
+function buildUnitCard(m, eff, mDailyUSD, unitNumber, isLive) {
+    var card = document.createElement('div');
+    card.className = 'miner-card miner-card-unit';
+    card.innerHTML =
+        '<div class="miner-card-header">' +
+            '<div class="miner-card-model">' + escapeHtml(m.model) + ' <span class="unit-number">#' + unitNumber + '</span></div>' +
+            (isLive ? '<div class="miner-card-qty live-badge">LIVE</div>' : '') +
+        '</div>' +
+        '<div class="miner-card-stats">' +
+            '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + (m.power ? m.power + ' kW' : '--') + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
+        '</div>' +
+        (isLive ? '' :
+        '<div class="miner-card-actions">' +
+            '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
+            '<button class="delete delete-unit" data-id="' + m.id + '">Remove</button>' +
+        '</div>');
+    return card;
+}
+
+function toggleMinerGroup(id) {
+    if (expandedGroups.has(id)) expandedGroups.delete(id);
+    else expandedGroups.add(id);
+    renderDashboard();
 }
 
 function escapeHtml(str) {
