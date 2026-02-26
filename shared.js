@@ -24,7 +24,7 @@ function initNav(activePage) {
     if (current === -1) current = 0;
 
     var startX = 0, startY = 0;
-    var THRESHOLD = 50;
+    var THRESHOLD = 30;
     var ignore = 'INPUT,BUTTON,CANVAS,SELECT,TEXTAREA,A';
 
     function shouldIgnore(el) {
