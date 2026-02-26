@@ -17,6 +17,61 @@ function initNav(activePage) {
         '</div>';
 }
 
+// --- Swipe / Slide Page Navigation ---
+(function() {
+    var pages = ['index.html', 'calculator.html', 'charts.html'];
+    var current = pages.indexOf(location.pathname.split('/').pop());
+    if (current === -1) current = 0;
+
+    var startX = 0, startY = 0;
+    var THRESHOLD = 50;
+    var ignore = 'INPUT,BUTTON,CANVAS,SELECT,TEXTAREA,A';
+
+    function shouldIgnore(el) {
+        while (el && el !== document.body) {
+            if (ignore.indexOf(el.tagName) !== -1) return true;
+            if (el.classList && el.classList.contains('earnings-chart-container')) return true;
+            if (el.type === 'range') return true;
+            el = el.parentElement;
+        }
+        return false;
+    }
+
+    function navigate(dx, dy) {
+        if (Math.abs(dx) < THRESHOLD || Math.abs(dy) > Math.abs(dx)) return;
+        if (dx < 0 && current < pages.length - 1) location.href = './' + pages[current + 1];
+        if (dx > 0 && current > 0) location.href = './' + pages[current - 1];
+    }
+
+    // Touch
+    document.addEventListener('touchstart', function(e) {
+        if (shouldIgnore(e.target)) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        if (!startX) return;
+        var endX = e.changedTouches[0].clientX;
+        var endY = e.changedTouches[0].clientY;
+        navigate(startX - endX, startY - endY);
+        startX = 0;
+    }, { passive: true });
+
+    // Mouse
+    document.addEventListener('mousedown', function(e) {
+        if (e.button !== 0 || shouldIgnore(e.target)) return;
+        startX = e.clientX;
+        startY = e.clientY;
+    });
+
+    document.addEventListener('mouseup', function(e) {
+        if (!startX) return;
+        navigate(startX - e.clientX, startY - e.clientY);
+        startX = 0;
+    });
+})();
+
 // --- Format Helpers ---
 function fmtUSD(v) {
     if (!isFinite(v)) return 'N/A';
