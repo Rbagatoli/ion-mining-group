@@ -22,7 +22,10 @@
 <main>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3 id="priceTitle">BTC Price (90 Days)</h3>
+        <div class="chart-title-row">
+            <h3 id="priceTitle">BTC Price (90 Days)</h3>
+            <span id="priceValue" class="chart-live-value" style="color:#f7931a;">--</span>
+        </div>
         <div class="time-range-selector" id="priceRange">
             <button data-days="7">7D</button>
             <button data-days="30">30D</button>
@@ -37,7 +40,10 @@
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3 id="diffTitle">Network Difficulty (1 Year)</h3>
+        <div class="chart-title-row">
+            <h3 id="diffTitle">Network Difficulty (1 Year)</h3>
+            <span id="diffValue" class="chart-live-value" style="color:#4ade80;">--</span>
+        </div>
         <div class="time-range-selector" id="miningRange">
             <button data-tf="3m">3M</button>
             <button data-tf="6m">6M</button>
@@ -51,7 +57,10 @@
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-        <h3 id="hashTitle">Network Hashrate (1 Year)</h3>
+        <div class="chart-title-row">
+            <h3 id="hashTitle">Network Hashrate (1 Year)</h3>
+            <span id="hashValue" class="chart-live-value" style="color:#60a5fa;">--</span>
+        </div>
         <div class="time-range-selector" id="hashRange">
             <button data-tf="3m">3M</button>
             <button data-tf="6m">6M</button>

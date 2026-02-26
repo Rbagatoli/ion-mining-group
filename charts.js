@@ -7,9 +7,19 @@ var priceChartInstance = null;
 var diffChartInstance = null;
 var hashChartInstance = null;
 
+// Live value display elements
+var priceValueEl = document.getElementById('priceValue');
+var diffValueEl = document.getElementById('diffValue');
+var hashValueEl = document.getElementById('hashValue');
+
 // Cached raw data — fetched once, filtered client-side
 var allPriceData = null;
 var allMiningData = null;
+
+// Track latest values for reset on mouse leave
+var latestPrice = null;
+var latestDiff = null;
+var latestHash = null;
 
 var chartOptions = {
     responsive: true,
@@ -57,6 +67,18 @@ function formatFullDate(ts) {
     return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 }
 
+// ===== Value formatters =====
+
+function formatPriceValue(v) {
+    return '$' + Math.round(v).toLocaleString();
+}
+function formatDiffValue(v) {
+    return v.toFixed(2) + ' T';
+}
+function formatHashValue(v) {
+    return v.toFixed(1) + ' EH/s';
+}
+
 // ===== Label maps =====
 
 var priceDaysLabels = { '7': '7 Days', '30': '30 Days', '90': '90 Days', '180': '6 Months', '365': '1 Year', 'max': 'All Time' };
@@ -88,6 +110,35 @@ function filterMiningArray(arr, timeKey, tfDays) {
     return arr.filter(function(item) { return item[timeKey] >= cutoff; });
 }
 
+// ===== Fetch BTC price from Binance (paginated) =====
+
+async function fetchBinancePriceData() {
+    var BINANCE_START = 1502928000000; // Aug 17 2017 00:00 UTC
+    var LIMIT = 1000;
+    var allKlines = [];
+    var startTime = BINANCE_START;
+
+    while (true) {
+        var url = 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=' + startTime + '&limit=' + LIMIT;
+        var res = await fetch(url);
+        if (!res.ok) throw new Error('Binance API error ' + res.status);
+        var klines = await res.json();
+        if (!klines.length) break;
+
+        for (var i = 0; i < klines.length; i++) {
+            allKlines.push({
+                time: klines[i][0] / 1000,
+                close: parseFloat(klines[i][4])
+            });
+        }
+
+        if (klines.length < LIMIT) break;
+        startTime = klines[klines.length - 1][0] + 86400000;
+    }
+
+    return allKlines;
+}
+
 // ===== Render BTC Price Chart =====
 
 function renderPriceChart(days) {
@@ -108,6 +159,10 @@ function renderPriceChart(days) {
         }
         priceValues.push(Math.round(filtered[i].close));
     }
+
+    // Set latest value
+    latestPrice = priceValues[priceValues.length - 1];
+    if (priceValueEl) priceValueEl.textContent = formatPriceValue(latestPrice);
 
     if (priceChartInstance) priceChartInstance.destroy();
 
@@ -145,10 +200,28 @@ function renderPriceChart(days) {
                 tooltip: Object.assign({}, chartOptions.plugins.tooltip, {
                     callbacks: {
                         label: function(ctx) { return '$' + ctx.parsed.y.toLocaleString(); }
+                    },
+                    external: function(context) {
+                        var tooltip = context.tooltip;
+                        if (tooltip.opacity === 0) {
+                            if (priceValueEl && latestPrice != null) priceValueEl.textContent = formatPriceValue(latestPrice);
+                            return;
+                        }
+                        if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                            if (priceValueEl) priceValueEl.textContent = formatPriceValue(tooltip.dataPoints[0].parsed.y);
+                        }
                     }
                 })
             })
-        })
+        }),
+        plugins: [{
+            id: 'priceMouseLeave',
+            beforeEvent: function(chart, args) {
+                if (args.event.type === 'mouseout' && priceValueEl && latestPrice != null) {
+                    priceValueEl.textContent = formatPriceValue(latestPrice);
+                }
+            }
+        }]
     });
 
     document.getElementById('priceTitle').textContent = 'BTC Price (' + priceDaysLabels[days] + ')';
@@ -167,6 +240,10 @@ function renderDifficultyChart(timeframe) {
         diffLabels.push(formatMonthYear(diffs[d].time));
         diffValues.push(parseFloat((diffs[d].difficulty / 1e12).toFixed(2)));
     }
+
+    // Set latest value
+    latestDiff = diffValues[diffValues.length - 1];
+    if (diffValueEl) diffValueEl.textContent = formatDiffValue(latestDiff);
 
     if (diffChartInstance) diffChartInstance.destroy();
 
@@ -201,10 +278,28 @@ function renderDifficultyChart(timeframe) {
                 tooltip: Object.assign({}, chartOptions.plugins.tooltip, {
                     callbacks: {
                         label: function(ctx) { return ctx.parsed.y.toFixed(2) + ' T'; }
+                    },
+                    external: function(context) {
+                        var tooltip = context.tooltip;
+                        if (tooltip.opacity === 0) {
+                            if (diffValueEl && latestDiff != null) diffValueEl.textContent = formatDiffValue(latestDiff);
+                            return;
+                        }
+                        if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                            if (diffValueEl) diffValueEl.textContent = formatDiffValue(tooltip.dataPoints[0].parsed.y);
+                        }
                     }
                 })
             })
-        })
+        }),
+        plugins: [{
+            id: 'diffMouseLeave',
+            beforeEvent: function(chart, args) {
+                if (args.event.type === 'mouseout' && diffValueEl && latestDiff != null) {
+                    diffValueEl.textContent = formatDiffValue(latestDiff);
+                }
+            }
+        }]
     });
 
     document.getElementById('diffTitle').textContent = 'Network Difficulty (' + miningTfLabels[timeframe] + ')';
@@ -223,6 +318,10 @@ function renderHashrateChart(timeframe) {
         hashLabels.push(formatMonthYear(hashes[h].timestamp));
         hashValues.push(parseFloat((hashes[h].avgHashrate / 1e18).toFixed(1)));
     }
+
+    // Set latest value
+    latestHash = hashValues[hashValues.length - 1];
+    if (hashValueEl) hashValueEl.textContent = formatHashValue(latestHash);
 
     if (hashChartInstance) hashChartInstance.destroy();
 
@@ -256,10 +355,28 @@ function renderHashrateChart(timeframe) {
                 tooltip: Object.assign({}, chartOptions.plugins.tooltip, {
                     callbacks: {
                         label: function(ctx) { return ctx.parsed.y.toFixed(1) + ' EH/s'; }
+                    },
+                    external: function(context) {
+                        var tooltip = context.tooltip;
+                        if (tooltip.opacity === 0) {
+                            if (hashValueEl && latestHash != null) hashValueEl.textContent = formatHashValue(latestHash);
+                            return;
+                        }
+                        if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                            if (hashValueEl) hashValueEl.textContent = formatHashValue(tooltip.dataPoints[0].parsed.y);
+                        }
                     }
                 })
             })
-        })
+        }),
+        plugins: [{
+            id: 'hashMouseLeave',
+            beforeEvent: function(chart, args) {
+                if (args.event.type === 'mouseout' && hashValueEl && latestHash != null) {
+                    hashValueEl.textContent = formatHashValue(latestHash);
+                }
+            }
+        }]
     });
 
     document.getElementById('hashTitle').textContent = 'Network Hashrate (' + miningTfLabels[timeframe] + ')';
@@ -295,18 +412,18 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
     statusEl.textContent = 'Loading chart data...';
 
     try {
-        // Fetch price (CryptoCompare — free, full history) and mining data in parallel
-        var [priceRes, miningRes] = await Promise.all([
-            fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true'),
+        // Fetch price (Binance — accurate exchange data) and mining data in parallel
+        var [priceData, miningRes] = await Promise.all([
+            fetchBinancePriceData(),
             fetch('https://mempool.space/api/v1/mining/hashrate/all')
         ]);
 
-        if (priceRes.ok) {
-            var priceJson = await priceRes.json();
-            allPriceData = (priceJson.Data && priceJson.Data.Data) || [];
+        var priceOk = priceData && priceData.length > 0;
+        if (priceOk) {
+            allPriceData = priceData;
             renderPriceChart(90);
         } else {
-            statusEl.textContent = 'Price API error ' + priceRes.status;
+            statusEl.textContent = 'No price data received';
             statusEl.style.color = '#f55';
         }
 
@@ -319,7 +436,7 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
             statusEl.style.color = '#f55';
         }
 
-        if (priceRes.ok && miningRes.ok) {
+        if (priceOk && miningRes.ok) {
             statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
             statusEl.style.color = '#4ade80';
         }

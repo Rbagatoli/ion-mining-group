@@ -729,3 +729,25 @@ footer {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* ===== CHART LIVE VALUE DISPLAY ===== */
+.chart-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.chart-title-row h3 {
+    margin-bottom: 0;
+}
+.chart-live-value {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+    .chart-live-value { font-size: 20px; }
+    .chart-title-row { gap: 8px; }
+}
