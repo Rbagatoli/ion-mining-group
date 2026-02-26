@@ -21,7 +21,7 @@ body::before {
     pointer-events: none;
     z-index: 0;
 }
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
     body::before {
         background:
             radial-gradient(ellipse 300px 300px at 15% 10%, rgba(247, 147, 26, 0.08), transparent),
