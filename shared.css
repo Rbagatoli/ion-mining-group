@@ -307,8 +307,8 @@ footer {
     gap: 16px;
 }
 .miner-card {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 16px;
     backdrop-filter: blur(16px) saturate(1.2);
