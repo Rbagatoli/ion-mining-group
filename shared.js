@@ -76,11 +76,15 @@ async function fetchLiveMarketData() {
 
     var ctx = canvas.getContext('2d');
     var lines = [];
+    var nodes = [];
+    var pulses = [];
     var animId = null;
     var lastFrame = 0;
     var isMobile = window.innerWidth < 768;
-    var FRAME_INTERVAL = isMobile ? 50 : 33;
-    var LINE_COUNT = isMobile ? 12 : 20;
+    var FRAME_INTERVAL = isMobile ? 40 : 25;
+    var LINE_COUNT = isMobile ? 25 : 45;
+    var NODE_COUNT = isMobile ? 15 : 30;
+    var PULSE_COUNT = isMobile ? 6 : 12;
 
     function resize() {
         var dpr = window.devicePixelRatio || 1;
@@ -89,23 +93,57 @@ async function fetchLiveMarketData() {
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        generateLines();
+        generate();
     }
 
-    function generateLines() {
+    function generate() {
         lines = [];
+        nodes = [];
+        pulses = [];
         var w = window.innerWidth;
         var h = window.innerHeight;
+
+        // Generate grid lines — horizontal and vertical
         for (var i = 0; i < LINE_COUNT; i++) {
-            var isHorizontal = Math.random() > 0.5;
+            var isHorizontal = Math.random() > 0.45;
+            var pos = Math.random() * (isHorizontal ? h : w);
+            var startPct = Math.random() * 0.2;
+            var endPct = 0.4 + Math.random() * 0.6;
             lines.push({
                 horizontal: isHorizontal,
-                pos: Math.random() * (isHorizontal ? h : w),
-                start: Math.random() * 0.3,
-                end: 0.5 + Math.random() * 0.5,
+                pos: pos,
+                start: startPct,
+                end: endPct,
                 phase: Math.random() * Math.PI * 2,
-                speed: 0.3 + Math.random() * 0.7,
-                maxOpacity: 0.03 + Math.random() * 0.05
+                speed: 0.2 + Math.random() * 0.6,
+                maxOpacity: 0.08 + Math.random() * 0.12,
+                width: Math.random() > 0.7 ? 2 : 1,
+                glow: Math.random() > 0.6
+            });
+        }
+
+        // Generate connection nodes at random positions
+        for (var n = 0; n < NODE_COUNT; n++) {
+            nodes.push({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                radius: 1.5 + Math.random() * 2.5,
+                phase: Math.random() * Math.PI * 2,
+                speed: 0.3 + Math.random() * 0.8,
+                maxOpacity: 0.1 + Math.random() * 0.2,
+                ring: Math.random() > 0.5
+            });
+        }
+
+        // Generate traveling pulses along some lines
+        for (var p = 0; p < PULSE_COUNT; p++) {
+            var lineIdx = Math.floor(Math.random() * lines.length);
+            pulses.push({
+                lineIdx: lineIdx,
+                progress: Math.random(),
+                speed: 0.08 + Math.random() * 0.15,
+                size: 3 + Math.random() * 4,
+                maxOpacity: 0.3 + Math.random() * 0.4
             });
         }
     }
@@ -119,14 +157,34 @@ async function fetchLiveMarketData() {
         var w = window.innerWidth;
         var h = window.innerHeight;
         var t = timestamp / 1000;
+        var dt = FRAME_INTERVAL / 1000;
 
         ctx.clearRect(0, 0, w, h);
-        ctx.lineWidth = 1;
 
+        // Draw lines with glow
         for (var i = 0; i < lines.length; i++) {
             var L = lines[i];
-            var opacity = L.maxOpacity * (0.5 + 0.5 * Math.sin(t * L.speed + L.phase));
+            var opacity = L.maxOpacity * (0.3 + 0.7 * Math.sin(t * L.speed + L.phase));
+            if (opacity < 0.01) continue;
+
+            // Glow pass
+            if (L.glow && opacity > 0.04) {
+                ctx.strokeStyle = 'rgba(247, 147, 26, ' + (opacity * 0.3).toFixed(4) + ')';
+                ctx.lineWidth = L.width + 4;
+                ctx.beginPath();
+                if (L.horizontal) {
+                    ctx.moveTo(L.start * w, L.pos);
+                    ctx.lineTo(L.end * w, L.pos);
+                } else {
+                    ctx.moveTo(L.pos, L.start * h);
+                    ctx.lineTo(L.pos, L.end * h);
+                }
+                ctx.stroke();
+            }
+
+            // Main line
             ctx.strokeStyle = 'rgba(247, 147, 26, ' + opacity.toFixed(4) + ')';
+            ctx.lineWidth = L.width;
             ctx.beginPath();
             if (L.horizontal) {
                 ctx.moveTo(L.start * w, L.pos);
@@ -137,6 +195,73 @@ async function fetchLiveMarketData() {
             }
             ctx.stroke();
         }
+
+        // Draw nodes (connection dots)
+        for (var n = 0; n < nodes.length; n++) {
+            var N = nodes[n];
+            var nOpacity = N.maxOpacity * (0.3 + 0.7 * Math.sin(t * N.speed + N.phase));
+            if (nOpacity < 0.02) continue;
+
+            // Outer ring
+            if (N.ring) {
+                ctx.strokeStyle = 'rgba(247, 147, 26, ' + (nOpacity * 0.4).toFixed(4) + ')';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(N.x, N.y, N.radius + 3, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Filled dot
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + nOpacity.toFixed(4) + ')';
+            ctx.beginPath();
+            ctx.arc(N.x, N.y, N.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glow
+            if (nOpacity > 0.1) {
+                ctx.fillStyle = 'rgba(247, 147, 26, ' + (nOpacity * 0.15).toFixed(4) + ')';
+                ctx.beginPath();
+                ctx.arc(N.x, N.y, N.radius + 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Draw traveling pulses
+        for (var p = 0; p < pulses.length; p++) {
+            var P = pulses[p];
+            P.progress += P.speed * dt;
+            if (P.progress > 1) P.progress -= 1;
+
+            var line = lines[P.lineIdx];
+            if (!line) continue;
+
+            var px, py;
+            if (line.horizontal) {
+                px = (line.start + (line.end - line.start) * P.progress) * w;
+                py = line.pos;
+            } else {
+                px = line.pos;
+                py = (line.start + (line.end - line.start) * P.progress) * h;
+            }
+
+            // Bright pulse dot
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + P.maxOpacity.toFixed(3) + ')';
+            ctx.beginPath();
+            ctx.arc(px, py, P.size * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pulse glow
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + (P.maxOpacity * 0.2).toFixed(4) + ')';
+            ctx.beginPath();
+            ctx.arc(px, py, P.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Large soft glow
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + (P.maxOpacity * 0.06).toFixed(4) + ')';
+            ctx.beginPath();
+            ctx.arc(px, py, P.size * 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     var resizeTimer;
@@ -144,8 +269,10 @@ async function fetchLiveMarketData() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {
             isMobile = window.innerWidth < 768;
-            FRAME_INTERVAL = isMobile ? 50 : 33;
-            LINE_COUNT = isMobile ? 12 : 20;
+            FRAME_INTERVAL = isMobile ? 40 : 25;
+            LINE_COUNT = isMobile ? 25 : 45;
+            NODE_COUNT = isMobile ? 15 : 30;
+            PULSE_COUNT = isMobile ? 6 : 12;
             resize();
         }, 200);
     });
