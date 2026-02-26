@@ -90,32 +90,36 @@ function renderMinerCards(miners) {
         var m = miners[i];
         var eff = m.hashrate > 0 ? ((m.power * 1000) / m.hashrate).toFixed(1) : '0';
 
-        // Daily earnings for this miner group
-        var mHashH = m.hashrate * m.quantity * 1e12;
+        // Daily earnings for a single unit
+        var mHashH = m.hashrate * 1e12;
         var diffFull = liveDifficulty * 1e12;
         var mDailyBTC = m.status === 'online' ? (mHashH * SECONDS_PER_DAY * CURRENT_BLOCK_REWARD) / (diffFull * TWO_POW_32) : 0;
         var mDailyUSD = mDailyBTC * liveBtcPrice;
 
-        var card = document.createElement('div');
-        card.className = 'miner-card';
-        card.innerHTML =
-            '<div class="miner-card-header">' +
-                '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
-                '<div class="miner-card-qty">x' + m.quantity + '</div>' +
-            '</div>' +
-            '<div class="miner-card-stats">' +
-                '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + m.power + ' kW</div></div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + eff + ' J/TH</div></div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost) : '--') + '</div></div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + '"></span>' + m.status + '</div></div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
-            '</div>' +
-            '<div class="miner-card-actions">' +
-                '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
-                '<button class="delete delete-miner" data-id="' + m.id + '">Delete</button>' +
-            '</div>';
-        grid.appendChild(card);
+        // Render one card per unit
+        for (var u = 0; u < m.quantity; u++) {
+            var unitLabel = m.quantity > 1 ? (u + 1) + ' of ' + m.quantity : '';
+            var card = document.createElement('div');
+            card.className = 'miner-card';
+            card.innerHTML =
+                '<div class="miner-card-header">' +
+                    '<div class="miner-card-model">' + escapeHtml(m.model) + '</div>' +
+                    (unitLabel ? '<div class="miner-card-qty">' + unitLabel + '</div>' : '') +
+                '</div>' +
+                '<div class="miner-card-stats">' +
+                    '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + m.power + ' kW</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + eff + ' J/TH</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost) : '--') + '</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + '"></span>' + m.status + '</div></div>' +
+                    '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
+                '</div>' +
+                '<div class="miner-card-actions">' +
+                    '<button class="edit-miner" data-id="' + m.id + '">Edit</button>' +
+                    '<button class="delete delete-miner" data-id="' + m.id + '">Delete</button>' +
+                '</div>';
+            grid.appendChild(card);
+        }
     }
 
     // Attach event listeners
