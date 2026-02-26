@@ -28,6 +28,9 @@ body::before {
             radial-gradient(ellipse 250px 250px at 85% 40%, rgba(247, 147, 26, 0.05), transparent),
             radial-gradient(ellipse 350px 200px at 50% 85%, rgba(247, 147, 26, 0.04), transparent);
     }
+    .card, .metric-card, .miner-card, .input-wrapper, .ion-nav, .fleet-toggle-row, .slide-panel .panel-inner {
+        background: rgba(6, 6, 6, 0.85);
+    }
 }
 
 /* ===== TECH LINES BACKGROUND ===== */

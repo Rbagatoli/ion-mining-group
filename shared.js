@@ -207,8 +207,7 @@ async function fetchLiveMarketData() {
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
-            var hexOpacity = isMobile ? S.opacity * 0.3 : S.opacity;
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + hexOpacity.toFixed(4) + ')';
+            ctx.fillStyle = 'rgba(247, 147, 26, ' + S.opacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
             var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
 
@@ -335,6 +334,7 @@ async function fetchLiveMarketData() {
             HEX_FONT_SIZE = isMobile ? 10 : 11;
             HEX_LINE_HEIGHT = isMobile ? 14 : 15;
             HEX_CHAR_WIDTH = isMobile ? 6.6 : 7.3;
+            HEX_SHEET_COUNT = 3;
             resize();
         }, 200);
     });
