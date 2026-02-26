@@ -43,9 +43,8 @@ function initNav(activePage) {
         if (dx > 0 && current > 0) location.href = './' + pages[current - 1];
     }
 
-    // Touch
+    // Touch — allow swiping anywhere on screen (horizontal > vertical check prevents scroll conflicts)
     document.addEventListener('touchstart', function(e) {
-        if (shouldIgnore(e.target)) return;
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
     }, { passive: true });
