@@ -11,15 +11,15 @@ function initNav(activePage) {
             '<span class="name">Ion Mining Group</span>' +
         '</a>' +
         '<div class="ion-nav-tabs">' +
-            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">Dashboard</a>' +
             '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">Calculator</a>' +
+            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">Dashboard</a>' +
             '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">Charts</a>' +
         '</div>';
 }
 
 // --- Swipe / Slide Page Navigation ---
 (function() {
-    var pages = ['index.html', 'calculator.html', 'charts.html'];
+    var pages = ['calculator.html', 'index.html', 'charts.html'];
     var current = pages.indexOf(location.pathname.split('/').pop());
     if (current === -1) current = 0;
 
