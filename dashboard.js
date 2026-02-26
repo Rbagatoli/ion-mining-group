@@ -35,15 +35,8 @@ function renderDashboard() {
         miners = miners.concat(f2poolMiners);
     }
 
-    // Check if we need mock data
-    if (miners.length === 0) {
-        useMockData = true;
-        miners = FleetData.getMockMiners();
-        document.getElementById('mockBanner').style.display = '';
-    } else {
-        useMockData = false;
-        document.getElementById('mockBanner').style.display = 'none';
-    }
+    useMockData = false;
+    document.getElementById('mockBanner').style.display = 'none';
 
     // Compute summary from current miners list
     var totalHashrate = 0, totalPower = 0, onlineCount = 0, offlineCount = 0, totalMachines = 0, totalCost = 0;
@@ -440,7 +433,7 @@ function initEarningsChart() {
 
 function generateEarningsData() {
     var fleet = FleetData.getFleet();
-    var miners = fleet.miners.length > 0 ? fleet.miners : FleetData.getMockMiners();
+    var miners = fleet.miners;
 
     var totalHashrate = 0;
     for (var i = 0; i < miners.length; i++) {
