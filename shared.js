@@ -39,8 +39,8 @@ function initNav(activePage) {
 
     function navigate(dx, dy) {
         if (Math.abs(dx) < THRESHOLD || Math.abs(dy) > Math.abs(dx)) return;
-        if (dx < 0 && current < pages.length - 1) location.href = './' + pages[current + 1];
-        if (dx > 0 && current > 0) location.href = './' + pages[current - 1];
+        if (dx > 0 && current < pages.length - 1) location.href = './' + pages[current + 1];
+        if (dx < 0 && current > 0) location.href = './' + pages[current - 1];
     }
 
     // Touch — allow swiping anywhere on screen (horizontal > vertical check prevents scroll conflicts)
