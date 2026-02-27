@@ -159,10 +159,9 @@ function loadSettings() {
 // ===== LIVE DATA FETCH =====
 async function fetchLiveData() {
     const status = document.getElementById('liveStatus');
-    var hasSaved = !!localStorage.getItem(STORAGE_KEY);
     var data = await fetchLiveMarketData();
     if (data.price || data.difficulty) {
-        if (!hasSaved) {
+        if (!hadSavedSettings) {
             if (data.price) el.btcPrice.value = data.price;
             if (data.difficulty) el.difficulty.value = data.difficulty;
         }
@@ -691,6 +690,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ===== INIT =====
+var hadSavedSettings = !!localStorage.getItem(STORAGE_KEY);
 initNav('calculator');
 initChart();
 loadSettings();
