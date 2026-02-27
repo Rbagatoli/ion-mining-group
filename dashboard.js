@@ -89,7 +89,8 @@ function renderPaymentTracker() {
     var section = document.getElementById('paymentTrackerSection');
     var hint = document.getElementById('paymentTrackerHint');
 
-    if (!settings.f2pool.enabled) {
+    var f2pool = settings.f2pool || {};
+    if (!f2pool.enabled) {
         section.style.display = 'none';
         hint.style.display = '';
         return;
