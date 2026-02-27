@@ -1,13 +1,12 @@
 // ===== ION MINING GROUP — Calculator Engine =====
 
-// One-time migration: clear stale autoReplace=false from old saves
+// One-time migration: clear old settings so new defaults take effect
 try {
     var _raw = localStorage.getItem('btcMinerCalcSettings');
     if (_raw) {
         var _s = JSON.parse(_raw);
-        if ('autoReplace' in _s) {
-            delete _s.autoReplace;
-            localStorage.setItem('btcMinerCalcSettings', JSON.stringify(_s));
+        if (!_s._v || _s._v < 3) {
+            localStorage.removeItem('btcMinerCalcSettings');
         }
     }
 } catch(e) {}
@@ -128,7 +127,7 @@ function saveSettings() {
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
     settings.savingsElec = savingsElecToggle.checked;
-    settings._v = 2;
+    settings._v = 3;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch(e) {}
 }
 
@@ -160,10 +159,13 @@ function loadSettings() {
 // ===== LIVE DATA FETCH =====
 async function fetchLiveData() {
     const status = document.getElementById('liveStatus');
+    var hasSaved = !!localStorage.getItem(STORAGE_KEY);
     var data = await fetchLiveMarketData();
     if (data.price || data.difficulty) {
-        if (data.price) el.btcPrice.value = data.price;
-        if (data.difficulty) el.difficulty.value = data.difficulty;
+        if (!hasSaved) {
+            if (data.price) el.btcPrice.value = data.price;
+            if (data.difficulty) el.difficulty.value = data.difficulty;
+        }
         status.textContent = 'Live data loaded';
         status.className = 'live-status live';
     } else {
