@@ -47,6 +47,9 @@ function initNav(activePage) {
         while (el && el !== document.body) {
             if (ignore.indexOf(el.tagName) !== -1) return true;
             if (el.classList && el.classList.contains('earnings-chart-container')) return true;
+            if (el.classList && el.classList.contains('metric-card')) return true;
+            if (el.classList && el.classList.contains('miner-card')) return true;
+            if (el.classList && el.classList.contains('slide-panel')) return true;
             if (el.type === 'range') return true;
             el = el.parentElement;
         }
