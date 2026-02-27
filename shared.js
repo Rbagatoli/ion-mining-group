@@ -1,5 +1,21 @@
 // ===== ION MINING GROUP — Shared Module =====
 
+// --- One-time SW cleanup (removes old cached service workers) ---
+(function() {
+    if (localStorage.getItem('sw_clean_v18')) return;
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+        var promises = regs.map(function(r) { return r.unregister(); });
+        promises.push(caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+        }));
+        Promise.all(promises).then(function() {
+            localStorage.setItem('sw_clean_v18', '1');
+            location.reload();
+        });
+    });
+})();
+
 // --- Nav Renderer ---
 function initNav(activePage) {
     const nav = document.getElementById('ion-nav');
