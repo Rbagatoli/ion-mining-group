@@ -176,6 +176,45 @@
         <!-- Rendered by JS -->
     </div>
 
+    <!-- ===== PAYMENT TRACKER ===== -->
+    <div id="paymentTrackerSection" style="display:none">
+        <div class="section-label">F2Pool Earnings</div>
+        <section class="fleet-grid">
+            <div class="metric-card">
+                <div class="label">Unpaid Balance</div>
+                <div class="value btc-orange" id="ptBalance">--</div>
+                <div class="sub">BTC</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Yesterday Income</div>
+                <div class="value positive" id="ptYesterday">--</div>
+                <div class="sub" id="ptYesterdayUSD">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Est. Daily Income</div>
+                <div class="value btc-orange" id="ptEstDaily">--</div>
+                <div class="sub" id="ptEstDailyUSD">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Total Income</div>
+                <div class="value" id="ptTotalIncome">--</div>
+                <div class="sub">BTC (all-time)</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Balance Value</div>
+                <div class="value neutral" id="ptBalanceUSD">--</div>
+                <div class="sub">at current price</div>
+            </div>
+        </section>
+    </div>
+    <div id="paymentTrackerHint" style="display:none">
+        <div class="section-label">F2Pool Earnings</div>
+        <div class="empty-state" style="padding:20px;">
+            <p>Connect F2Pool to see your earnings</p>
+            <div class="hint">Click "Connect F2Pool API" above to get started</div>
+        </div>
+    </div>
+
     <!-- ===== EARNINGS CHART ===== -->
     <div class="card">
         <h3>Estimated Daily Earnings (14-Day)</h3>

@@ -21,6 +21,74 @@
 
 <main>
 
+    <!-- ===== NETWORK STATS ===== -->
+    <div class="section-label">Network Stats</div>
+    <section class="fleet-grid" id="networkStatsGrid">
+        <div class="metric-card">
+            <div class="label">Block Height</div>
+            <div class="value btc-orange" id="nsBlockHeight">--</div>
+            <div class="sub" id="nsBlockHeightSub">loading...</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Mempool Size</div>
+            <div class="value" id="nsMempoolCount">--</div>
+            <div class="sub" id="nsMempoolSize">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Fastest Fee</div>
+            <div class="value positive" id="nsFastFee">--</div>
+            <div class="sub">sat/vB</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Medium Fee</div>
+            <div class="value neutral" id="nsMedFee">--</div>
+            <div class="sub">sat/vB (30 min)</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Avg Block Time</div>
+            <div class="value" id="nsAvgBlockTime">--</div>
+            <div class="sub">minutes (last 6 blocks)</div>
+        </div>
+    </section>
+
+    <!-- ===== HALVING COUNTDOWN ===== -->
+    <div class="card" id="halvingCard" style="display:none; margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3>Bitcoin Halving Countdown</h3>
+            <span class="chart-live-value btc-orange" id="halvingBlocksLeft">--</span>
+        </div>
+        <div class="fleet-grid" style="margin-bottom:16px;">
+            <div class="metric-card">
+                <div class="label">Blocks Remaining</div>
+                <div class="value btc-orange" id="halvingRemaining">--</div>
+                <div class="sub" id="halvingTarget">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Estimated Date</div>
+                <div class="value" id="halvingEstDate">--</div>
+                <div class="sub" id="halvingEstTime">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Current Epoch</div>
+                <div class="value" id="halvingEpoch">--</div>
+                <div class="sub" id="halvingReward">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Epoch Progress</div>
+                <div class="value positive" id="halvingProgress">--%</div>
+                <div class="sub" id="halvingProgressSub">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="label">Days Remaining</div>
+                <div class="value neutral" id="halvingDays">--</div>
+                <div class="sub">estimated</div>
+            </div>
+        </div>
+        <div class="halving-progress-bar">
+            <div class="halving-progress-fill" id="halvingProgressBar" style="width:0%"></div>
+        </div>
+    </div>
+
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="priceTitle">BTC Price (90 Days)</h3>

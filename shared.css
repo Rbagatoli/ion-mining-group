@@ -751,3 +751,19 @@ footer {
     .chart-live-value { font-size: 20px; }
     .chart-title-row { gap: 8px; }
 }
+
+/* ===== HALVING COUNTDOWN PROGRESS BAR ===== */
+.halving-progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.halving-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f7931a, #fbbf24);
+    border-radius: 4px;
+    transition: width 1s ease;
+    box-shadow: 0 0 8px rgba(247, 147, 26, 0.3);
+}

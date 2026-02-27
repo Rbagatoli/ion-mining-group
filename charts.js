@@ -435,9 +435,114 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
         statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
         statusEl.style.color = '#4ade80';
     }
+
+    // Load network stats (non-blocking)
+    loadNetworkStats();
 })();
+
+// ===== NETWORK STATS =====
+
+async function loadNetworkStats() {
+    var results = { height: null, mempool: null, fees: null, blocks: null };
+
+    try {
+        var responses = await Promise.all([
+            fetch('https://mempool.space/api/blocks/tip/height'),
+            fetch('https://mempool.space/api/mempool'),
+            fetch('https://mempool.space/api/v1/fees/recommended'),
+            fetch('https://mempool.space/api/v1/blocks')
+        ]);
+
+        if (responses[0].ok) results.height = await responses[0].json();
+        if (responses[1].ok) results.mempool = await responses[1].json();
+        if (responses[2].ok) results.fees = await responses[2].json();
+        if (responses[3].ok) results.blocks = await responses[3].json();
+    } catch (e) {
+        // Partial failure is OK — individual cards show "--"
+    }
+
+    // Block Height
+    if (results.height != null) {
+        document.getElementById('nsBlockHeight').textContent = results.height.toLocaleString();
+        document.getElementById('nsBlockHeightSub').textContent = 'epoch ' + Math.floor(results.height / 210000);
+    } else {
+        document.getElementById('nsBlockHeightSub').textContent = 'offline';
+    }
+
+    // Mempool
+    if (results.mempool) {
+        document.getElementById('nsMempoolCount').textContent = results.mempool.count.toLocaleString();
+        var vsizeMB = (results.mempool.vsize / 1e6).toFixed(1);
+        document.getElementById('nsMempoolSize').textContent = vsizeMB + ' MvB';
+    }
+
+    // Fee Rates
+    if (results.fees) {
+        document.getElementById('nsFastFee').textContent = results.fees.fastestFee;
+        document.getElementById('nsMedFee').textContent = results.fees.halfHourFee;
+    }
+
+    // Average Block Time (from last ~6 blocks)
+    if (results.blocks && results.blocks.length >= 2) {
+        var blockCount = Math.min(results.blocks.length, 6);
+        var newest = results.blocks[0].timestamp;
+        var oldest = results.blocks[blockCount - 1].timestamp;
+        var avgSeconds = (newest - oldest) / (blockCount - 1);
+        var avgMinutes = (avgSeconds / 60).toFixed(1);
+        document.getElementById('nsAvgBlockTime').textContent = avgMinutes;
+    }
+
+    // Store block height for halving countdown
+    window.currentBlockHeight = results.height;
+    renderHalvingCountdown();
+}
+
+// ===== HALVING COUNTDOWN =====
+
+var HALVING_INTERVAL = 210000;
+
+function renderHalvingCountdown() {
+    var card = document.getElementById('halvingCard');
+    var height = window.currentBlockHeight;
+
+    if (!height) {
+        card.style.display = 'none';
+        return;
+    }
+
+    card.style.display = '';
+
+    var epoch = Math.floor(height / HALVING_INTERVAL);
+    var nextHalvingBlock = (epoch + 1) * HALVING_INTERVAL;
+    var blocksRemaining = nextHalvingBlock - height;
+    var blocksIntoEpoch = height % HALVING_INTERVAL;
+    var progressPct = ((blocksIntoEpoch / HALVING_INTERVAL) * 100).toFixed(2);
+
+    // Time estimate: average 10 minutes per block
+    var secondsRemaining = blocksRemaining * 10 * 60;
+    var daysRemaining = Math.floor(secondsRemaining / 86400);
+    var estDate = new Date(Date.now() + secondsRemaining * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var estDateStr = months[estDate.getMonth()] + ' ' + estDate.getDate() + ', ' + estDate.getFullYear();
+
+    // Current block reward (halves each epoch: 50, 25, 12.5, 6.25, 3.125, ...)
+    var reward = 50 / Math.pow(2, epoch);
+
+    // Render values
+    document.getElementById('halvingBlocksLeft').textContent = blocksRemaining.toLocaleString() + ' blocks';
+    document.getElementById('halvingRemaining').textContent = blocksRemaining.toLocaleString();
+    document.getElementById('halvingTarget').textContent = 'block ' + nextHalvingBlock.toLocaleString();
+    document.getElementById('halvingEstDate').textContent = estDateStr;
+    document.getElementById('halvingEstTime').textContent = '~' + daysRemaining + ' days';
+    document.getElementById('halvingEpoch').textContent = epoch;
+    document.getElementById('halvingReward').textContent = reward + ' BTC/block';
+    document.getElementById('halvingProgress').textContent = progressPct + '%';
+    document.getElementById('halvingProgressSub').textContent = blocksIntoEpoch.toLocaleString() + ' / ' + HALVING_INTERVAL.toLocaleString();
+    document.getElementById('halvingDays').textContent = daysRemaining;
+    document.getElementById('halvingProgressBar').style.width = progressPct + '%';
+}
 
 // PWA Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=18').catch(function() {});
+    navigator.serviceWorker.register('./sw.js?v=19').catch(function() {});
 }

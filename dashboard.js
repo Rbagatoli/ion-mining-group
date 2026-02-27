@@ -79,6 +79,40 @@ function renderDashboard() {
 
     // Render miner cards
     renderMinerCards(miners);
+
+    // Render payment tracker
+    renderPaymentTracker();
+}
+
+function renderPaymentTracker() {
+    var settings = FleetData.getSettings();
+    var section = document.getElementById('paymentTrackerSection');
+    var hint = document.getElementById('paymentTrackerHint');
+
+    if (!settings.f2pool.enabled) {
+        section.style.display = 'none';
+        hint.style.display = '';
+        return;
+    }
+
+    hint.style.display = 'none';
+
+    if (!window.f2poolEarnings) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = '';
+    var e = window.f2poolEarnings;
+    var price = liveBtcPrice || 0;
+
+    document.getElementById('ptBalance').textContent = fmtBTC(e.balance, 8);
+    document.getElementById('ptYesterday').textContent = fmtBTC(e.yesterdayIncome, 8);
+    document.getElementById('ptYesterdayUSD').textContent = fmtUSD(e.yesterdayIncome * price);
+    document.getElementById('ptEstDaily').textContent = fmtBTC(e.estimatedDaily, 8);
+    document.getElementById('ptEstDailyUSD').textContent = fmtUSD(e.estimatedDaily * price);
+    document.getElementById('ptTotalIncome').textContent = fmtBTC(e.totalIncome, 8);
+    document.getElementById('ptBalanceUSD').textContent = fmtUSD(e.balance * price);
 }
 
 function renderMinerCards(miners) {
@@ -583,5 +617,5 @@ function updateEarningsChart() {
 
 // ===== PWA SERVICE WORKER =====
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=18').catch(function() {});
+    navigator.serviceWorker.register('./sw.js?v=19').catch(function() {});
 }
