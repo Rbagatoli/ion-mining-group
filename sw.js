@@ -31,6 +31,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Only handle GET requests — Cache API doesn't support POST
+  if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
 
   // Redirect old calculator URL directly to dashboard
