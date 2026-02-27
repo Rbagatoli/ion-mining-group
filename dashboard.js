@@ -72,6 +72,10 @@ function renderDashboard() {
     document.getElementById('fleetEfficiency').textContent = efficiency.toFixed(1);
     document.getElementById('fleetAvgCost').textContent = fmtUSD(avgCost);
     document.getElementById('fleetTotalCost').textContent = 'Total: ' + fmtUSD(totalCost);
+    var avgHashrate = totalMachines > 0 ? totalHashrate / totalMachines : 0;
+    var avgPower = totalMachines > 0 ? totalPower / totalMachines : 0;
+    document.getElementById('fleetAvgHashrate').textContent = avgHashrate.toFixed(1);
+    document.getElementById('fleetAvgPower').textContent = avgPower.toFixed(2);
 
     // Render miner cards
     renderMinerCards(miners);
