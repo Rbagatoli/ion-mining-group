@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v16';
+const CACHE_NAME = 'ion-mining-v17';
 const ASSETS = [
   './index.html',
   './calculator.html',
@@ -35,6 +35,9 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Only handle same-origin requests — let API calls (CoinGecko, Mempool) pass through directly
+  if (url.origin !== self.location.origin) return;
 
   // Redirect old calculator URL directly to dashboard
   if (url.pathname.endsWith('btc-mining-calculator.html')) {
