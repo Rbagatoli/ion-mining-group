@@ -87,18 +87,30 @@ function fmtUSDFull(v) {
 // --- Live Market Data ---
 async function fetchLiveMarketData() {
     var result = { price: null, difficulty: null };
-    try {
-        var [priceRes, diffRes] = await Promise.all([
-            fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'),
-            fetch('https://mempool.space/api/v1/mining/hashrate/1d')
-        ]);
 
+    // Fetch BTC price — try CoinGecko first, fall back to CryptoCompare
+    try {
+        var priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
         if (priceRes.ok) {
             var priceData = await priceRes.json();
             var price = priceData?.bitcoin?.usd;
             if (price && price > 0) result.price = Math.round(price);
         }
+    } catch (e) {}
 
+    if (!result.price) {
+        try {
+            var fallbackRes = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD');
+            if (fallbackRes.ok) {
+                var fallbackData = await fallbackRes.json();
+                if (fallbackData?.USD > 0) result.price = Math.round(fallbackData.USD);
+            }
+        } catch (e) {}
+    }
+
+    // Fetch network difficulty
+    try {
+        var diffRes = await fetch('https://mempool.space/api/v1/mining/hashrate/1d');
         if (diffRes.ok) {
             var diffData = await diffRes.json();
             var diffs = diffData?.difficulty;
@@ -108,6 +120,7 @@ async function fetchLiveMarketData() {
             }
         }
     } catch (e) {}
+
     return result;
 }
 

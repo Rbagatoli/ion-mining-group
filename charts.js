@@ -439,5 +439,5 @@ document.getElementById('hashRange').addEventListener('click', function(e) {
 
 // PWA Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=17').catch(function() {});
+    navigator.serviceWorker.register('./sw.js?v=18').catch(function() {});
 }
