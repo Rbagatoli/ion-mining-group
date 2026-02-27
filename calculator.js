@@ -161,10 +161,8 @@ async function fetchLiveData() {
     const status = document.getElementById('liveStatus');
     var data = await fetchLiveMarketData();
     if (data.price || data.difficulty) {
-        if (!hadSavedSettings) {
-            if (data.price) el.btcPrice.value = data.price;
-            if (data.difficulty) el.difficulty.value = data.difficulty;
-        }
+        if (data.price) el.btcPrice.value = data.price;
+        if (data.difficulty) el.difficulty.value = data.difficulty;
         status.textContent = 'Live data loaded';
         status.className = 'live-status live';
     } else {
@@ -690,7 +688,6 @@ if ('serviceWorker' in navigator) {
 }
 
 // ===== INIT =====
-var hadSavedSettings = !!localStorage.getItem(STORAGE_KEY);
 initNav('calculator');
 initChart();
 loadSettings();
