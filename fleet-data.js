@@ -29,6 +29,7 @@ var FleetData = (function() {
 
     function saveFleet(fleet) {
         try { localStorage.setItem(FLEET_KEY, JSON.stringify(fleet)); } catch(e) {}
+        if (typeof SyncEngine !== 'undefined') SyncEngine.save('fleet', fleet);
     }
 
     function addMiner(miner) {
@@ -41,6 +42,10 @@ var FleetData = (function() {
             cost: parseFloat(miner.cost) || 0,
             quantity: parseInt(miner.quantity) || 1,
             status: miner.status || 'online',
+            elecCost: (miner.elecCost !== undefined && miner.elecCost !== '') ? parseFloat(miner.elecCost) : null,
+            country: miner.country || '',
+            state: miner.state || '',
+            purchaseDate: miner.purchaseDate || new Date().toISOString().split('T')[0],
             dateAdded: new Date().toISOString()
         };
         fleet.miners.push(entry);
@@ -58,6 +63,10 @@ var FleetData = (function() {
                 if (updates.cost !== undefined) fleet.miners[i].cost = parseFloat(updates.cost);
                 if (updates.quantity !== undefined) fleet.miners[i].quantity = parseInt(updates.quantity);
                 if (updates.status !== undefined) fleet.miners[i].status = updates.status;
+                if (updates.elecCost !== undefined) fleet.miners[i].elecCost = (updates.elecCost !== '' && updates.elecCost !== null) ? parseFloat(updates.elecCost) : null;
+                if (updates.purchaseDate !== undefined) fleet.miners[i].purchaseDate = updates.purchaseDate;
+                if (updates.country !== undefined) fleet.miners[i].country = updates.country;
+                if (updates.state !== undefined) fleet.miners[i].state = updates.state;
                 break;
             }
         }
@@ -107,6 +116,19 @@ var FleetData = (function() {
 
         var efficiency = totalHashrate > 0 ? (totalPower * 1000) / totalHashrate : 0;
 
+        // Weighted average electricity cost (weighted by power x quantity)
+        var weightedElecSum = 0;
+        var totalPowerWeight = 0;
+        for (var j = 0; j < fleet.miners.length; j++) {
+            var mj = fleet.miners[j];
+            if (mj.status === 'online') {
+                var ec = (mj.elecCost !== null && mj.elecCost !== undefined) ? mj.elecCost : fleet.defaults.elecCost;
+                weightedElecSum += ec * mj.power * mj.quantity;
+                totalPowerWeight += mj.power * mj.quantity;
+            }
+        }
+        var avgElecCost = totalPowerWeight > 0 ? weightedElecSum / totalPowerWeight : fleet.defaults.elecCost;
+
         return {
             totalHashrate: totalHashrate,
             totalPower: totalPower,
@@ -114,6 +136,7 @@ var FleetData = (function() {
             offlineCount: offlineCount,
             totalMachines: totalMachines,
             efficiency: efficiency,
+            avgElecCost: avgElecCost,
             defaults: fleet.defaults
         };
     }
@@ -123,20 +146,40 @@ var FleetData = (function() {
         try {
             var raw = localStorage.getItem(SETTINGS_KEY);
             if (!raw) return defaultSettings();
-            return JSON.parse(raw);
+            var settings = JSON.parse(raw);
+            // Migrate v1 f2pool → v2 pools array
+            if (settings.f2pool && !settings.pools) {
+                settings.pools = [];
+                if (settings.f2pool.workerUrl || settings.f2pool.username) {
+                    settings.pools.push({
+                        id: 'pool_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        type: 'f2pool',
+                        name: 'F2Pool',
+                        workerUrl: settings.f2pool.workerUrl || '',
+                        username: settings.f2pool.username || '',
+                        enabled: settings.f2pool.enabled || false
+                    });
+                }
+                delete settings.f2pool;
+                settings._v = 2;
+                saveSettings(settings);
+            }
+            if (!settings.pools) settings.pools = [];
+            return settings;
         } catch(e) { return defaultSettings(); }
     }
 
     function defaultSettings() {
         return {
-            _v: 1,
-            f2pool: { enabled: false, workerUrl: '', username: '' },
+            _v: 2,
+            pools: [],
             useFleetData: false
         };
     }
 
     function saveSettings(settings) {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+        if (typeof SyncEngine !== 'undefined') SyncEngine.save('settings', settings);
     }
 
     // --- Mock Data ---

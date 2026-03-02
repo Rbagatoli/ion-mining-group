@@ -1,41 +1,213 @@
 // ===== ION MINING GROUP — Shared Module =====
 
-// --- One-time SW cleanup (removes old cached service workers) ---
+// --- Embed Mode Detection (for Workstation multi-pane) ---
+window.ION_EMBED = (new URLSearchParams(window.location.search)).get('embed') === '1';
+if (window.ION_EMBED) {
+    document.documentElement.setAttribute('data-embed', '');
+}
+
+// --- Aggressive SW auto-update: check for new SW on every page load ---
 (function() {
-    if (localStorage.getItem('sw_clean_v19')) return;
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-        var promises = regs.map(function(r) { return r.unregister(); });
-        promises.push(caches.keys().then(function(keys) {
-            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-        }));
-        Promise.all(promises).then(function() {
-            localStorage.setItem('sw_clean_v19', '1');
-            location.reload();
-        });
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        // Force check for updated SW on every visit
+        reg.update();
+    });
+    // When a new SW takes over, reload to get fresh assets
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
     });
 })();
+
+// --- Currency System ---
+var CURRENCY_CONFIG = {
+    usd: { symbol: '$', name: 'USD', decimals: 2 },
+    eur: { symbol: '\u20ac', name: 'EUR', decimals: 2 },
+    gbp: { symbol: '\u00a3', name: 'GBP', decimals: 2 },
+    cad: { symbol: 'C$', name: 'CAD', decimals: 2 },
+    aud: { symbol: 'A$', name: 'AUD', decimals: 2 },
+    jpy: { symbol: '\u00a5', name: 'JPY', decimals: 0 }
+};
+window.selectedCurrency = localStorage.getItem('ionMiningCurrency') || 'usd';
+window.liveBtcPrices = {};
+window.onCurrencyChange = null;
+
+function getCurrencySymbol() {
+    var c = CURRENCY_CONFIG[window.selectedCurrency];
+    return c ? c.symbol : '$';
+}
+function getCurrencyDecimals() {
+    var c = CURRENCY_CONFIG[window.selectedCurrency];
+    return (c && c.decimals !== undefined) ? c.decimals : 2;
+}
+function getCurrencyMultiplier() {
+    if (window.selectedCurrency === 'usd' || !window.liveBtcPrices || !window.liveBtcPrices.usd) return 1;
+    var target = window.liveBtcPrices[window.selectedCurrency];
+    return target ? target / window.liveBtcPrices.usd : 1;
+}
+function switchCurrency(code) {
+    if (!CURRENCY_CONFIG[code]) return;
+    window.selectedCurrency = code;
+    localStorage.setItem('ionMiningCurrency', code);
+    if (typeof SyncEngine !== 'undefined') SyncEngine.save('currency', code);
+    if (window.liveBtcPrices[code]) {
+        window.liveBtcPrice = window.liveBtcPrices[code];
+    }
+    if (typeof window.onCurrencyChange === 'function') window.onCurrencyChange();
+}
 
 // --- Nav Renderer ---
 function initNav(activePage) {
     const nav = document.getElementById('ion-nav');
     if (!nav) return;
+    if (window.ION_EMBED) { nav.style.display = 'none'; return; }
     nav.className = 'ion-nav';
+    var mobile = window.innerWidth < 600;
+    var labels = mobile ? ['Data', 'Calc', 'Pay', 'Home', 'Map', 'Acct', 'Wallet'] : ['Data', 'Calculator', 'Payouts', 'Dashboard', 'Map', 'Accounting', 'Wallet'];
     nav.innerHTML =
         '<a class="ion-nav-brand" href="./index.html">' +
-            '<span class="icon">\u26A1</span>' +
+            '<span class="icon"><svg width="24" height="24" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="8" fill="#f7931a"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(60 50 50)"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(120 50 50)"/></svg></span>' +
             '<span class="name">Ion Mining Group</span>' +
         '</a>' +
         '<div class="ion-nav-tabs">' +
-            '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">Calculator</a>' +
-            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">Dashboard</a>' +
-            '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">Charts</a>' +
+            '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">' + labels[0] + '</a>' +
+            '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">' + labels[1] + '</a>' +
+            '<a href="./payouts.html" class="' + (activePage === 'payouts' ? 'active' : '') + '">' + labels[2] + '</a>' +
+            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">' + labels[3] + '</a>' +
+            '<a href="./map.html" class="' + (activePage === 'map' ? 'active' : '') + '">' + labels[4] + '</a>' +
+            '<a href="./accounting.html" class="' + (activePage === 'accounting' ? 'active' : '') + '">' + labels[5] + '</a>' +
+            '<a href="./wallet.html" class="' + (activePage === 'wallet' ? 'active' : '') + '">' + labels[6] + '</a>' +
+        '</div>' +
+        '<div class="ion-nav-actions">' +
+            (!mobile ? '<a href="./workstation.html" class="ion-nav-ws-link" title="Workstation (multi-pane view)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="3" x2="8" y2="17"/><line x1="16" y1="3" x2="16" y2="17"/><line x1="2" y1="21" x2="22" y2="21"/></svg></a>' : '') +
+            '<select class="ion-currency-select" id="currencySelect">' +
+                (function() {
+                    var opts = '';
+                    for (var k in CURRENCY_CONFIG) {
+                        opts += '<option value="' + k + '"' + (k === window.selectedCurrency ? ' selected' : '') + '>' + CURRENCY_CONFIG[k].name + '</option>';
+                    }
+                    return opts;
+                })() +
+            '</select>' +
+            '<button class="ion-theme-toggle" id="themeToggle" title="Toggle light/dark theme">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' +
+            '</button>' +
+            '<button class="ion-nav-bell" onclick="window.toggleAlertSidebar && window.toggleAlertSidebar()">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+                '<span class="ion-nav-bell-badge" id="alertBellBadge" style="display:none">0</span>' +
+            '</button>' +
+            '<button class="ion-nav-sync-btn" id="syncBtn" title="Sign in to sync across devices">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+            '</button>' +
         '</div>';
+    var sel = document.getElementById('currencySelect');
+    if (sel) sel.addEventListener('change', function() { switchCurrency(this.value); });
+
+    // --- Theme Toggle ---
+    var THEME_KEY = 'ionMiningTheme';
+    var sunSVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+    var moonSVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.innerHTML = (theme === 'light') ? moonSVG : sunSVG;
+    }
+
+    var savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    applyTheme(savedTheme);
+
+    var themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+            var current = document.documentElement.dataset.theme || 'dark';
+            var next = (current === 'dark') ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem(THEME_KEY, next);
+            if (typeof SyncEngine !== 'undefined') SyncEngine.save('theme', next);
+        });
+    }
+
+    // Auth button handler
+    var syncBtn = document.getElementById('syncBtn');
+    if (syncBtn && typeof IonAuth !== 'undefined') {
+        IonAuth.onAuthChange(function(user) {
+            if (user) {
+                var initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+                syncBtn.innerHTML = '<span class="ion-nav-avatar">' + initial + '</span>';
+                syncBtn.title = 'Signed in as ' + (user.displayName || user.email) + ' — click to sign out';
+                syncBtn.className = 'ion-nav-sync-btn signed-in';
+                // Start listening for remote changes
+                Object.keys(SyncEngine.SYNC_KEYS).forEach(function(key) {
+                    SyncEngine.listen(key, function() {
+                        // Show a subtle sync toast — no auto-reload
+                        var existing = document.getElementById('syncToast');
+                        if (existing) return; // already showing
+                        var toast = document.createElement('div');
+                        toast.id = 'syncToast';
+                        toast.className = 'sync-toast';
+                        toast.innerHTML = 'Data synced from another device <button onclick="location.reload()">Refresh</button>';
+                        document.body.appendChild(toast);
+                        setTimeout(function() { toast.classList.add('show'); }, 10);
+                        setTimeout(function() {
+                            toast.classList.remove('show');
+                            setTimeout(function() { toast.remove(); }, 300);
+                        }, 8000);
+                    });
+                });
+            } else {
+                syncBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+                syncBtn.title = 'Sign in to sync across devices';
+                syncBtn.className = 'ion-nav-sync-btn';
+                SyncEngine.stopAll();
+            }
+        });
+
+        // Post-auth handler — called after sign-in from any method
+        window.handlePostAuth = function() {
+            SyncEngine.pullAll(function(pulled) {
+                if (pulled > 0) {
+                    location.reload();
+                } else {
+                    SyncEngine.pushAll();
+                }
+            });
+        };
+
+        syncBtn.addEventListener('click', function() {
+            if (IonAuth.isSignedIn()) {
+                if (typeof IonProfile !== 'undefined') {
+                    IonProfile.show();
+                } else {
+                    if (confirm('Sign out of sync? Your data stays on this device.')) {
+                        SyncEngine.stopAll();
+                        IonAuth.signOut();
+                    }
+                }
+            } else {
+                if (typeof IonAuthUI !== 'undefined') {
+                    IonAuthUI.show('signin');
+                } else {
+                    IonAuth.signIn().then(function() {
+                        window.handlePostAuth();
+                    }).catch(function(err) {
+                        if (err.code !== 'auth/popup-closed-by-user') {
+                            console.warn('[Auth] Sign-in failed:', err.message);
+                        }
+                    });
+                }
+            }
+        });
+    }
 }
 
 // --- Swipe / Slide Page Navigation ---
 (function() {
-    var pages = ['calculator.html', 'index.html', 'charts.html'];
+    if (window.ION_EMBED) return;
+    var pages = ['calculator.html', 'charts.html', 'index.html', 'map.html', 'payouts.html', 'accounting.html', 'wallet.html'];
     var current = pages.indexOf(location.pathname.split('/').pop());
     if (current === -1) current = 0;
 
@@ -46,10 +218,22 @@ function initNav(activePage) {
     function shouldIgnore(el) {
         while (el && el !== document.body) {
             if (ignore.indexOf(el.tagName) !== -1) return true;
+            if (el.id === 'fleetMap') return true;
             if (el.classList && el.classList.contains('earnings-chart-container')) return true;
+            if (el.classList && el.classList.contains('combo-chart-container')) return true;
             if (el.classList && el.classList.contains('metric-card')) return true;
             if (el.classList && el.classList.contains('miner-card')) return true;
+            if (el.classList && el.classList.contains('card')) return true;
             if (el.classList && el.classList.contains('slide-panel')) return true;
+            if (el.classList && el.classList.contains('table-scroll')) return true;
+            if (el.classList && el.classList.contains('time-range-selector')) return true;
+            if (el.classList && el.classList.contains('delete-dialog-overlay')) return true;
+            if (el.classList && el.classList.contains('fleet-toggle-row')) return true;
+            if (el.classList && el.classList.contains('reinvest-row')) return true;
+            if (el.classList && el.classList.contains('hodl-row')) return true;
+            if (el.classList && el.classList.contains('inputs-grid')) return true;
+            if (el.classList && el.classList.contains('mock-banner')) return true;
+            if (el.classList && el.classList.contains('halving-progress-bar')) return true;
             if (el.type === 'range') return true;
             el = el.parentElement;
         }
@@ -78,15 +262,17 @@ function initNav(activePage) {
     }, { passive: true });
 })();
 
-// --- Format Helpers ---
+// --- Format Helpers (currency-aware) ---
 function fmtUSD(v) {
     if (!isFinite(v)) return 'N/A';
+    var sym = getCurrencySymbol();
+    var dec = getCurrencyDecimals();
     var neg = v < 0;
     var abs = Math.abs(v);
     var str;
-    if (abs >= 1e6) str = '$' + (abs / 1e6).toFixed(2) + 'M';
-    else if (abs >= 1e4) str = '$' + abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    else str = '$' + abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (abs >= 1e6) str = sym + (abs / 1e6).toFixed(dec > 0 ? 2 : 0) + 'M';
+    else if (abs >= 1e4 || dec === 0) str = sym + abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    else str = sym + abs.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
     return neg ? '-' + str : str;
 }
 
@@ -98,34 +284,47 @@ function fmtBTC(v, decimals) {
 
 function fmtUSDFull(v) {
     if (!isFinite(v)) return 'N/A';
+    var sym = getCurrencySymbol();
+    var dec = getCurrencyDecimals();
     var neg = v < 0;
-    var str = '$' + Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var str = sym + Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
     return neg ? '-' + str : str;
 }
 
-// --- Live Market Data ---
+// --- Live Market Data (multi-currency) ---
 async function fetchLiveMarketData() {
-    var result = { price: null, difficulty: null };
+    var result = { price: null, prices: {}, difficulty: null };
 
-    // Fetch BTC price — try CoinGecko first, fall back to CryptoCompare
+    // Fetch BTC prices in all supported currencies
     try {
-        var priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        var priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur,gbp,cad,aud,jpy');
         if (priceRes.ok) {
             var priceData = await priceRes.json();
-            var price = priceData?.bitcoin?.usd;
-            if (price && price > 0) result.price = Math.round(price);
+            var btc = priceData && priceData.bitcoin;
+            if (btc) {
+                for (var cur in CURRENCY_CONFIG) {
+                    if (btc[cur] && btc[cur] > 0) result.prices[cur] = Math.round(btc[cur]);
+                }
+                result.price = result.prices[window.selectedCurrency] || result.prices.usd || null;
+            }
         }
     } catch (e) {}
 
+    // Fallback: CryptoCompare (USD only)
     if (!result.price) {
         try {
             var fallbackRes = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD');
             if (fallbackRes.ok) {
                 var fallbackData = await fallbackRes.json();
-                if (fallbackData?.USD > 0) result.price = Math.round(fallbackData.USD);
+                if (fallbackData && fallbackData.USD > 0) {
+                    result.prices.usd = Math.round(fallbackData.USD);
+                    result.price = result.prices.usd;
+                }
             }
         } catch (e) {}
     }
+
+    window.liveBtcPrices = result.prices;
 
     // Fetch network difficulty
     try {
@@ -211,7 +410,7 @@ async function fetchLiveMarketData() {
                 visibleRows: rowsNeeded,
                 scrollY: Math.random() * totalRows * HEX_LINE_HEIGHT,
                 speed: 8 + s * 12,
-                opacity: 0.02 + s * 0.012
+                opacity: 0.01 + s * 0.006
             });
         }
 
@@ -228,7 +427,7 @@ async function fetchLiveMarketData() {
                 end: endPct,
                 phase: Math.random() * Math.PI * 2,
                 speed: 0.2 + Math.random() * 0.6,
-                maxOpacity: 0.08 + Math.random() * 0.12,
+                maxOpacity: 0.04 + Math.random() * 0.06,
                 width: Math.random() > 0.7 ? 2 : 1,
                 glow: Math.random() > 0.6
             });
@@ -242,7 +441,7 @@ async function fetchLiveMarketData() {
                 radius: 1.5 + Math.random() * 2.5,
                 phase: Math.random() * Math.PI * 2,
                 speed: 0.3 + Math.random() * 0.8,
-                maxOpacity: 0.1 + Math.random() * 0.2,
+                maxOpacity: 0.05 + Math.random() * 0.1,
                 ring: Math.random() > 0.5
             });
         }
@@ -255,7 +454,7 @@ async function fetchLiveMarketData() {
                 progress: Math.random(),
                 speed: 0.08 + Math.random() * 0.15,
                 size: 3 + Math.random() * 4,
-                maxOpacity: 0.3 + Math.random() * 0.4
+                maxOpacity: 0.15 + Math.random() * 0.2
             });
         }
     }
@@ -423,3 +622,17 @@ async function fetchLiveMarketData() {
     resize();
     animId = requestAnimationFrame(draw);
 })();
+
+// ===== WORKSTATION EMBED: postMessage listener for theme/currency sync =====
+if (window.ION_EMBED) {
+    window.addEventListener('message', function(e) {
+        if (!e.data || !e.data.ionMining) return;
+        if (e.data.type === 'themeChange') {
+            document.documentElement.dataset.theme = e.data.value || 'dark';
+            localStorage.setItem('ionMiningTheme', e.data.value);
+        }
+        if (e.data.type === 'currencyChange' && typeof switchCurrency === 'function') {
+            switchCurrency(e.data.value);
+        }
+    });
+}
