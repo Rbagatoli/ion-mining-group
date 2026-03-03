@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Banking</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=201">
+    <link rel="stylesheet" href="./shared.css?v=202">
     <script>
     // Force full cache clear for v170 — nukes all service workers and caches
     if (!localStorage.getItem('sw_clean_v170') && 'serviceWorker' in navigator) {
@@ -16,7 +16,7 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=201"></script>
+    <script src="./chart.min.js?v=202"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
@@ -815,12 +815,10 @@
     <!-- ===== ASSETS OVERVIEW ===== -->
     <div class="widget-section" data-widget="assets-overview" style="display:none;">
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
             <h3 style="margin: 0;">Assets Overview</h3>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span id="assetsTotalDisplay" class="value" style="font-size: 1.5em; font-weight: 600;">--</span>
-                <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 6px 12px; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-size: 0.9em;">USD</button>
-            </div>
+            <span id="assetsTotalDisplay" class="value" style="font-size: 1.5em; font-weight: 600;">--</span>
+            <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 8px 16px; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: inherit; font-size: 0.85em; font-weight: 600; transition: all 0.2s;">USD</button>
         </div>
         <section class="fleet-grid" id="assetsGrid">
             <!-- Cards rendered by renderAssetsOverview() -->
@@ -1012,15 +1010,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=201"></script>
-<script src="./sync.js?v=201"></script>
-<script src="./auth-ui.js?v=201"></script>
-<script src="./profile-panel.js?v=201"></script>
-<script src="./shared.js?v=201"></script>
-<script src="./fleet-data.js?v=201"></script>
-<script src="./widget-settings.js?v=201"></script>
-<script src="./banking.js?v=201"></script>
-<script src="./alerts.js?v=201"></script>
-<script src="./onboarding.js?v=201"></script>
+<script src="./firebase-config.js?v=202"></script>
+<script src="./sync.js?v=202"></script>
+<script src="./auth-ui.js?v=202"></script>
+<script src="./profile-panel.js?v=202"></script>
+<script src="./shared.js?v=202"></script>
+<script src="./fleet-data.js?v=202"></script>
+<script src="./widget-settings.js?v=202"></script>
+<script src="./banking.js?v=202"></script>
+<script src="./alerts.js?v=202"></script>
+<script src="./onboarding.js?v=202"></script>
 </body>
 </html>
