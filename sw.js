@@ -1,11 +1,9 @@
-const CACHE_NAME = 'ion-mining-v156';
+const CACHE_NAME = 'ion-mining-v201';
 const ASSETS = [
   './index.html',
   './calculator.html',
   './charts.html',
-  './payouts.html',
-  './accounting.html',
-  './wallet.html',
+  './banking.html',
   './map.html',
   './workstation.html',
   './btc-mining-calculator.html',
@@ -16,9 +14,7 @@ const ASSETS = [
   './dashboard.js',
   './calculator.js',
   './charts.js',
-  './payouts.js',
-  './accounting.js',
-  './wallet.js',
+  './banking.js',
   './map.js',
   './miner-db.js',
   './firebase-config.js',
@@ -64,20 +60,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // HTML files: network-first with cache fallback
-  if (url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
-    return;
-  }
-
-  // Other assets: stale-while-revalidate
+  // Network-first for ALL assets — always serve latest, cache as offline fallback
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return fetch(event.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      }).catch(() => cached);
-    })
+    fetch(event.request).then(response => {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then(cache => {
+        cache.put(event.request, clone);
+      });
+      return response;
+    }).catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });
