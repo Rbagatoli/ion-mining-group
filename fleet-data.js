@@ -173,7 +173,8 @@ var FleetData = (function() {
         return {
             _v: 2,
             pools: [],
-            useFleetData: false
+            useFleetData: false,
+            strike: { proxyUrl: '', enabled: false, lastSync: null }
         };
     }
 

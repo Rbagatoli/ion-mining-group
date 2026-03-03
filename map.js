@@ -1,6 +1,8 @@
 // ===== ION MINING GROUP — Fleet Map (Choropleth + Globe) =====
 initNav('map');
 
+// Always start on globe view (no localStorage persistence for default)
+
 // ISO 3166-1 numeric → alpha-2 mapping (world-atlas uses numeric IDs)
 var NUM_TO_A2 = {
     '004':'AF','008':'AL','010':'AQ','012':'DZ','016':'AS','020':'AD','024':'AO',
@@ -491,7 +493,7 @@ var _globeRef = null, _showGlobePopupRef = null;
 (function() {
     var globeInstance = null;
     var globeInitialized = false;
-    var currentView = localStorage.getItem('ion_map_view') || 'globe';
+    var currentView = 'globe';
 
     var btnMap = document.getElementById('btnMapView');
     var btnGlobe = document.getElementById('btnGlobeView');
@@ -500,7 +502,6 @@ var _globeRef = null, _showGlobePopupRef = null;
 
     function setView(view) {
         currentView = view;
-        localStorage.setItem('ion_map_view', view);
         if (view === 'map') {
             mapCard.style.display = '';
             globeCard.style.display = 'none';
@@ -782,7 +783,7 @@ var _globeRef = null, _showGlobePopupRef = null;
         var centroid = GEO_DATA.getCentroid(country, state || undefined);
         if (!centroid) return;
 
-        var currentView = localStorage.getItem('ion_map_view') || 'globe';
+        var currentView = document.getElementById('globeCard').style.display !== 'none' ? 'globe' : 'map';
         var locKey = country + '|' + state;
         var locData = locations[locKey];
 

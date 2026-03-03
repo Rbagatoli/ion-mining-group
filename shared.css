@@ -181,6 +181,34 @@ body > * { position: relative; z-index: 1; }
     color: #f7931a;
 }
 
+/* Nav sparkline — mini BTC price chart */
+.ion-nav-sparkline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+.ion-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
+.ion-nav-sparkline:visited, .ion-nav-sparkline:active { color: inherit; text-decoration: none; }
+.ion-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
+.ion-nav-sparkline-price {
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    min-width: 52px;
+    text-align: right;
+    color: #f7931a;
+}
+
 /* Nav actions (currency + bell) */
 .ion-nav-actions {
     display: flex;
@@ -204,7 +232,7 @@ body > * { position: relative; z-index: 1; }
 .ion-currency-select option { background: #1a1a1a; color: #e8e8e8; }
 
 /* Mobile nav — two-row layout to prevent crowding */
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
     body { overflow-x: hidden; }
     .ion-nav {
         grid-template-columns: auto 1fr;
@@ -212,6 +240,7 @@ body > * { position: relative; z-index: 1; }
         padding: 8px 10px;
         gap: 6px 0;
         max-width: 100vw;
+        overflow-x: auto;
     }
     .ion-nav-brand { grid-column: 1; grid-row: 1; }
     .ion-nav-brand .name { display: none; }
@@ -225,6 +254,10 @@ body > * { position: relative; z-index: 1; }
     }
     .ion-nav-tabs a { padding: 6px 10px; font-size: 11px; }
     .ion-currency-select { font-size: 11px; padding: 3px 4px; }
+    .ion-nav-sparkline { padding: 1px 6px; gap: 4px; }
+    .ion-nav-sparkline canvas { width: 50px; height: 18px; }
+    .ion-nav-sparkline-price { font-size: 10px; min-width: 40px; }
+    .ion-nav-ws-link { display: none; }
 }
 
 /* ===== MAIN LAYOUT ===== */
@@ -1545,6 +1578,8 @@ footer {
 [data-theme="light"] .ion-nav-tabs a.active { background: rgba(247,147,26,0.12); }
 [data-theme="light"] .ion-currency-select { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.12); color: var(--text); }
 [data-theme="light"] .ion-currency-select option { background: #fff; color: #1a1a1a; }
+[data-theme="light"] .ion-nav-sparkline { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .ion-nav-sparkline:hover { background: rgba(0,0,0,0.06); }
 [data-theme="light"] .ion-nav-bell:hover,
 [data-theme="light"] .ion-nav-sync-btn:hover,
 [data-theme="light"] .ion-theme-toggle:hover { background: rgba(0,0,0,0.06); }
@@ -1741,6 +1776,14 @@ main { display: flex; flex-direction: column; }
 [data-theme="light"] .status-due { background: rgba(234,179,8,0.12); color: #ca8a04; }
 [data-theme="light"] .status-overdue { background: rgba(220,38,38,0.12); color: #dc2626; }
 [data-theme="light"] .status-disconnected { background: rgba(100,100,100,0.1); color: #666; }
+
+/* ===== STRIKE INTEGRATION ===== */
+.strike-card { border-left: 3px solid #8b5cf6; }
+.strike-icon { color: #8b5cf6; font-size: 16px; margin-right: 4px; }
+.strike-source-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(139,92,246,0.15); color: #a78bfa; }
+.onchain-source-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(247,147,26,0.15); color: #f7931a; }
+[data-theme="light"] .strike-source-badge { background: rgba(139,92,246,0.1); color: #7c3aed; }
+[data-theme="light"] .onchain-source-badge { background: rgba(247,147,26,0.1); color: #d97706; }
 
 /* ===== MOBILE COMPACT LAYOUT ===== */
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
