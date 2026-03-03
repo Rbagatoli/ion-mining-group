@@ -567,16 +567,32 @@ footer {
 
 /* Modal / Slide-down panels */
 .slide-panel {
-    overflow: hidden;
-    max-height: 0;
+    position: fixed;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(600px, 90vw);
+    max-height: 80vh;
+    overflow-y: auto;
     opacity: 0;
-    transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
-    margin-top: 0;
+    pointer-events: none;
+    transition: top 0.3s ease, opacity 0.3s ease;
+    z-index: 1501;
 }
 .slide-panel.open {
-    max-height: 600px;
+    top: 10vh;
     opacity: 1;
-    margin-top: 16px;
+    pointer-events: auto;
+}
+.slide-panel.open::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
 }
 .slide-panel .panel-inner {
     padding: 20px;
@@ -866,6 +882,65 @@ footer {
     margin-top: 4px;
 }
 .stat-total .stat-value { font-size: 16px; font-weight: 700; }
+
+/* ===== BANKING TAB BAR ===== */
+.banking-tab-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 24px;
+}
+.banking-tab {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    text-align: center;
+}
+.banking-tab:hover {
+    color: #ccc;
+}
+.banking-tab.active {
+    color: #f7931a;
+    border-bottom-color: #f7931a;
+}
+.banking-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.banking-tab-content .widget-section {
+    margin-bottom: 0;
+}
+.banking-tab-content .card {
+    margin-bottom: 0;
+}
+.banking-tab-content section.fleet-grid {
+    gap: 16px;
+}
+.banking-tab-content .miner-cards-grid,
+#tabWallet .miner-cards-grid,
+#addressCardsGrid {
+    gap: 16px !important;
+    grid-gap: 16px !important; /* Fallback for older browsers */
+}
+
+/* Make tab content wrappers flex for widget drag & drop ordering */
+#walletContent,
+#incomeContent,
+#accountingContent {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
 
 /* ===== TIME RANGE SELECTOR ===== */
 .time-range-selector {
@@ -1821,6 +1896,7 @@ main { display: flex; flex-direction: column; }
 
     /* Miner cards */
     .miner-cards-grid { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .banking-tab-content .miner-cards-grid { gap: 16px !important; }
     .miner-card { padding: 10px; border-radius: 8px; }
     .miner-card-header { margin-bottom: 6px; }
     .miner-card-model { font-size: 13px; }

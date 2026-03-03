@@ -132,7 +132,14 @@ async function hashPin(pin) {
 }
 
 async function checkPin(request, env, user, origin) {
-    if (!user.pinHash) return null; // No PIN set, skip
+    if (!user.pinHash) {
+        return jsonResponse({
+            error: 'PIN not configured',
+            message: 'You must set up a send PIN before making transactions.',
+            pinRequired: true,
+            pinNotSet: true
+        }, 403, origin);
+    }
     var pin = (request.headers.get('X-Dashboard-Pin') || '').trim();
     if (!pin) {
         return jsonResponse({
@@ -635,6 +642,55 @@ async function handleUpdateSettings(request, env, origin) {
     }, 200, origin);
 }
 
+// ===== ON-CHAIN DEPOSIT ADDRESS =====
+
+async function handleReceiveOnchain(request, env, origin) {
+    var auth = await checkSession(request, env, origin);
+    if (auth.error) return auth.error;
+    var user = auth.user;
+
+    var userKey = getUserApiKey(user, env);
+    if (!userKey) {
+        return jsonResponse({ error: 'Strike not connected', message: 'Connect your Strike account to get a deposit address.' }, 403, origin);
+    }
+
+    // Check KV cache (7-day TTL)
+    var cacheKey = 'onchain-addr:' + user.id;
+    try {
+        var cached = await env.SETTINGS.get(cacheKey, 'json');
+        if (cached && cached.address) {
+            return jsonResponse({ ok: true, address: cached.address, cached: true }, 200, origin);
+        }
+    } catch(e) {}
+
+    // Create receive request with on-chain address
+    var data = await strikePost('/v1/receive-requests', { onchain: {} }, userKey);
+    if (hasStrikeError(data)) return strikeErrorResponse(data, origin);
+
+    // Extract address — check multiple possible response shapes
+    var onchainAddr = '';
+    if (data.onchainAddress) {
+        onchainAddr = data.onchainAddress;
+    } else if (data.onchain && data.onchain.address) {
+        onchainAddr = data.onchain.address;
+    } else if (data.onchain && data.onchain.uri) {
+        // URI format: bitcoin:ADDRESS?...
+        var match = (data.onchain.uri || '').match(/^bitcoin:([a-zA-Z0-9]+)/);
+        if (match) onchainAddr = match[1];
+    }
+
+    if (!onchainAddr) {
+        return jsonResponse({ error: 'No on-chain address in Strike response', debug: JSON.stringify(data).substring(0, 500) }, 502, origin);
+    }
+
+    // Cache for 7 days
+    try {
+        await env.SETTINGS.put(cacheKey, JSON.stringify({ address: onchainAddr, created: Date.now() }), { expirationTtl: 604800 });
+    } catch(e) {}
+
+    return jsonResponse({ ok: true, address: onchainAddr, cached: false }, 200, origin);
+}
+
 // ===== ROUTE DEFINITIONS =====
 
 // Tier 1: Open — no auth needed (uses owner's key)
@@ -673,6 +729,15 @@ export default {
         var url = new URL(request.url);
         var path = url.pathname;
 
+        // ===== SERVE PAY PAGE (public, no CORS needed) =====
+        if (path === '/pay' && request.method === 'GET') {
+            var payId = url.searchParams.get('id') || '';
+            return new Response(getPayPageHTML(payId), {
+                status: 200,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            });
+        }
+
         try {
             // ===== AUTH ROUTES =====
             if (path === '/auth/firebase-login' && request.method === 'POST') {
@@ -703,6 +768,11 @@ export default {
             }
             if (path === '/auth/settings' && request.method === 'PATCH') {
                 return await handleUpdateSettings(request, env, origin);
+            }
+
+            // ===== ON-CHAIN DEPOSIT ADDRESS =====
+            if (path === '/receive/onchain-address' && request.method === 'POST') {
+                return await handleReceiveOnchain(request, env, origin);
             }
 
             // ===== TIER 1: Open routes (use owner's key) =====
@@ -743,13 +813,128 @@ export default {
                 return jsonResponse(sessData, 200, origin);
             }
 
+            // ===== SHAREABLE INVOICE ROUTES (mixed auth) =====
+            var isSharedStatus = path.match(/^\/invoice\/shared\/([a-z0-9]+)\/status$/);
+            var isSharedInvoice = !isSharedStatus && path.match(/^\/invoice\/shared\/([a-z0-9]+)$/);
+            var isInvoiceShare = path === '/invoice/share' && request.method === 'POST';
+
+            // GET /invoice/shared/{id}/status — PUBLIC
+            if (isSharedStatus && request.method === 'GET') {
+                var statusShareId = isSharedStatus[1];
+                var statusInv = await env.SETTINGS.get('invoice:' + statusShareId, 'json');
+                if (!statusInv) return jsonResponse({ error: 'Invoice not found' }, 404, origin);
+
+                var ownerKey3 = env.STRIKE_API_KEY;
+                if (ownerKey3 && statusInv.invoiceId) {
+                    var strikeInv = await strikeGet('/v1/invoices/' + statusInv.invoiceId, ownerKey3);
+                    if (strikeInv && strikeInv.state === 'PAID' && statusInv.status !== 'PAID') {
+                        statusInv.status = 'PAID';
+                        await env.SETTINGS.put('invoice:' + statusShareId, JSON.stringify(statusInv), { expirationTtl: 86400 * 30 });
+                    } else if (strikeInv && (strikeInv.state === 'CANCELLED')) {
+                        statusInv.status = 'EXPIRED';
+                    }
+                }
+                return jsonResponse({ status: statusInv.status || 'UNPAID' }, 200, origin);
+            }
+
+            // GET /invoice/shared/{id} — PUBLIC
+            if (isSharedInvoice && request.method === 'GET') {
+                var viewShareId = isSharedInvoice[1];
+                var viewInv = await env.SETTINGS.get('invoice:' + viewShareId, 'json');
+                if (!viewInv) return jsonResponse({ error: 'Invoice not found' }, 404, origin);
+
+                // If bolt11 quote expired, try to regenerate
+                var bolt11 = viewInv.bolt11 || '';
+                if (viewInv.invoiceId && viewInv.quoteExpires && new Date(viewInv.quoteExpires).getTime() < Date.now()) {
+                    var ownerKey4 = env.STRIKE_API_KEY;
+                    if (ownerKey4) {
+                        var newQuote = await strikePost('/v1/invoices/' + viewInv.invoiceId + '/quote', {}, ownerKey4);
+                        if (newQuote && newQuote.lnInvoice) {
+                            bolt11 = newQuote.lnInvoice;
+                            viewInv.bolt11 = bolt11;
+                            viewInv.quoteExpires = newQuote.expirationInSec
+                                ? new Date(Date.now() + newQuote.expirationInSec * 1000).toISOString()
+                                : new Date(Date.now() + 3600000).toISOString();
+                            await env.SETTINGS.put('invoice:' + viewShareId, JSON.stringify(viewInv), { expirationTtl: 86400 * 30 });
+                        }
+                    }
+                }
+
+                return jsonResponse({
+                    amount: viewInv.amount,
+                    currency: viewInv.currency,
+                    description: viewInv.description,
+                    bolt11: bolt11,
+                    status: viewInv.status || 'UNPAID',
+                    businessName: viewInv.businessName || '',
+                    created: viewInv.created
+                }, 200, origin);
+            }
+
+            // POST /invoice/share — AUTHENTICATED
+            if (isInvoiceShare) {
+                var auth3 = await checkSession(request, env, origin);
+                if (auth3.error) return auth3.error;
+                var shareUser = auth3.user;
+                var shareKey = getUserApiKey(shareUser, env);
+                if (!shareKey) {
+                    return jsonResponse({ error: 'Strike not connected' }, 403, origin);
+                }
+
+                var shareBody = await request.json().catch(function() { return {}; });
+                var shareAmt = shareBody.amount || '';
+                var shareCur = shareBody.currency || 'USD';
+                var shareDesc = shareBody.description || 'Payment';
+
+                // Create Strike invoice
+                var invoiceBody = {
+                    correlationId: 'share_' + Date.now().toString(36),
+                    description: shareDesc,
+                    amount: { amount: shareAmt, currency: shareCur }
+                };
+                var strikeInvoice = await strikePost('/v1/invoices', invoiceBody, shareKey);
+                if (hasStrikeError(strikeInvoice)) return strikeErrorResponse(strikeInvoice, origin);
+
+                // Generate bolt11 quote
+                var shareQuote = await strikePost('/v1/invoices/' + strikeInvoice.invoiceId + '/quote', {}, shareKey);
+                var shareBolt11 = (shareQuote && shareQuote.lnInvoice) || '';
+
+                // Generate share ID and store in KV
+                var shareId = Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+                var quoteExpires = shareQuote && shareQuote.expirationInSec
+                    ? new Date(Date.now() + shareQuote.expirationInSec * 1000).toISOString()
+                    : new Date(Date.now() + 3600000).toISOString();
+
+                var invoiceRecord = {
+                    invoiceId: strikeInvoice.invoiceId,
+                    bolt11: shareBolt11,
+                    amount: shareAmt,
+                    currency: shareCur,
+                    description: shareDesc,
+                    businessName: shareBody.businessName || '',
+                    created: new Date().toISOString(),
+                    quoteExpires: quoteExpires,
+                    status: 'UNPAID',
+                    userId: shareUser.id
+                };
+                await env.SETTINGS.put('invoice:' + shareId, JSON.stringify(invoiceRecord), { expirationTtl: 86400 * 30 });
+
+                return jsonResponse({
+                    shareId: shareId,
+                    bolt11: shareBolt11,
+                    invoiceId: strikeInvoice.invoiceId
+                }, 200, origin);
+            }
+
             // ===== TIER 3: Gated routes (per-user key) =====
             var isGatedRoute = GATED_ROUTES[path];
             var isExchangeExec = path.match(/^\/exchange\/execute\/(.+)$/);
             var isSendExec = path.match(/^\/send\/execute\/(.+)$/);
             var isSendStatus = path.match(/^\/send\/status\/(.+)$/);
+            var isInvoiceQuote = path.match(/^\/invoice\/(.+)\/quote$/);
+            var isInvoiceGet = !isInvoiceQuote && !path.startsWith('/invoice/shared/') && path.match(/^\/invoice\/(.+)$/);
 
-            if (isGatedRoute || isExchangeExec || isSendExec || isSendStatus) {
+            if (isGatedRoute || isExchangeExec || isSendExec || isSendStatus || isInvoiceGet || isInvoiceQuote) {
                 var auth2 = await checkSession(request, env, origin);
                 if (auth2.error) return auth2.error;
                 var user = auth2.user;
@@ -769,6 +954,23 @@ export default {
                     var statusData = await strikeGet('/v1/payments/' + paymentId, userKey2);
                     if (hasStrikeError(statusData)) return strikeErrorResponse(statusData, origin);
                     return jsonResponse(statusData, 200, origin);
+                }
+
+                // Invoice quote (POST) — generates bolt11
+                if (isInvoiceQuote && request.method === 'POST') {
+                    var iqId = isInvoiceQuote[1];
+                    var quoteBody = await request.json().catch(function() { return {}; });
+                    var quoteData = await strikePost('/v1/invoices/' + iqId + '/quote', quoteBody, userKey2);
+                    if (hasStrikeError(quoteData)) return strikeErrorResponse(quoteData, origin);
+                    return jsonResponse(quoteData, 200, origin);
+                }
+
+                // Invoice details (GET)
+                if (isInvoiceGet && request.method === 'GET') {
+                    var invoiceId = isInvoiceGet[1];
+                    var invoiceData = await strikeGet('/v1/invoices/' + invoiceId, userKey2);
+                    if (hasStrikeError(invoiceData)) return strikeErrorResponse(invoiceData, origin);
+                    return jsonResponse(invoiceData, 200, origin);
                 }
 
                 // All remaining gated routes require POST or PATCH
@@ -831,3 +1033,7 @@ export default {
         }
     }
 };
+
+function getPayPageHTML(invoiceId) {
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Invoice — Payment</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#060606;color:#e8e8e8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.invoice-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;max-width:440px;width:100%;padding:32px 28px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}.biz-name{font-size:20px;font-weight:600;color:#f7931a;text-align:center;margin-bottom:4px}.inv-label{font-size:12px;color:#888;text-align:center;margin-bottom:24px}.details{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px;margin-bottom:24px}.dr{display:flex;justify-content:space-between;padding:6px 0;font-size:14px}.dr .lb{color:#888}.dr .vl{color:#e8e8e8;font-weight:500}.dr .vl.am{color:#f7931a;font-size:18px;font-weight:700}.qr{text-align:center;margin-bottom:20px}.qr img{border-radius:12px;background:#fff;padding:10px;width:220px;height:220px}.b11{position:relative;margin-bottom:20px}.b11t{background:rgba(255,255,255,0.05);padding:10px 50px 10px 14px;border-radius:8px;font-family:monospace;font-size:11px;word-break:break-all;color:#f7931a;max-height:70px;overflow-y:auto;line-height:1.5}.cpb{position:absolute;top:6px;right:6px;padding:5px 12px;font-size:11px;background:rgba(247,147,26,0.15);border:1px solid rgba(247,147,26,0.3);color:#f7931a;border-radius:6px;cursor:pointer;font-family:inherit}.cpb:hover{background:rgba(247,147,26,0.25)}.sb{text-align:center;padding:14px;border-radius:10px;font-size:14px;font-weight:500;margin-bottom:16px}.sw{background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.25);color:#f7931a}.sp{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);color:#4ade80}.se{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444}.ft{text-align:center;font-size:11px;color:#555;margin-top:16px}.es{text-align:center;padding:40px 20px;color:#ef4444;font-size:15px}.ls{text-align:center;padding:40px 20px;color:#888;font-size:15px}.pulse{animation:pulse 2s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}.wbtn{display:inline-block;padding:12px 28px;background:rgba(247,147,26,0.15);border:1px solid rgba(247,147,26,0.3);color:#f7931a;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600}</style></head><body><div class="invoice-card"><div id="ls" class="ls"><div class="pulse">Loading invoice...</div></div><div id="es" class="es" style="display:none"></div><div id="ic" style="display:none"><div class="biz-name" id="bn">Invoice</div><div class="inv-label">Payment Request</div><div class="details"><div class="dr"><span class="lb">Amount</span><span class="vl am" id="ia">--</span></div><div class="dr"><span class="lb">Description</span><span class="vl" id="id">--</span></div><div class="dr"><span class="lb">Created</span><span class="vl" id="it">--</span></div></div><div id="sb" class="sb sw">Waiting for payment...</div><div id="ps"><div class="qr"><img id="qr" alt="Lightning QR"></div><div style="font-size:12px;color:#888;margin-bottom:6px">Lightning Invoice:</div><div class="b11"><div class="b11t" id="bt"></div><button class="cpb" id="cb">Copy</button></div></div><div id="wb" style="display:none;text-align:center;margin-bottom:16px"><a id="wl" href="#" class="wbtn">Open in Wallet</a></div><div class="ft">Secured payment via Lightning Network</div></div></div><script>(function(){var id="' + (invoiceId || '') + '";var base=window.location.origin;if(!id){err("No invoice ID");return}load();async function load(){try{var r=await fetch(base+"/invoice/shared/"+id);if(!r.ok){var e=await r.json().catch(function(){return{}});err(e.error||"Not found ("+r.status+")");return}render(await r.json());poll()}catch(e){err("Could not load: "+e.message)}}function render(d){document.getElementById("ls").style.display="none";document.getElementById("ic").style.display="";if(d.businessName)document.getElementById("bn").textContent=d.businessName;var a=d.amount||"0",c=(d.currency||"USD").toUpperCase();if(c==="USD")a="$"+parseFloat(a).toFixed(2)+" USD";else a=a+" "+c;document.getElementById("ia").textContent=a;document.getElementById("id").textContent=d.description||"-";if(d.created){var dt=new Date(d.created);document.getElementById("it").textContent=(dt.getMonth()+1)+"/"+dt.getDate()+"/"+dt.getFullYear()+" "+String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0")}if(d.status==="PAID"){paid();return}if(d.status==="EXPIRED"){expired();return}var b=d.bolt11||"";if(b){document.getElementById("bt").textContent=b;document.getElementById("qr").src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=M&data="+encodeURIComponent("lightning:"+b);document.getElementById("wl").href="lightning:"+b;document.getElementById("wb").style.display=""}document.title="Invoice — "+a}function paid(){var s=document.getElementById("sb");s.className="sb sp";s.textContent="Payment Received";document.getElementById("ps").style.display="none"}function expired(){var s=document.getElementById("sb");s.className="sb se";s.textContent="Invoice Expired";document.getElementById("ps").style.display="none"}function err(m){document.getElementById("ls").style.display="none";var e=document.getElementById("es");e.style.display="";e.textContent=m}function poll(){setInterval(async function(){try{var r=await fetch(base+"/invoice/shared/"+id+"/status");if(!r.ok)return;var d=await r.json();if(d.status==="PAID")paid();else if(d.status==="EXPIRED")expired()}catch(e){}},5000)}document.getElementById("cb").addEventListener("click",function(){var t=document.getElementById("bt").textContent;var b=this;navigator.clipboard.writeText(t).then(function(){b.textContent="Copied!";setTimeout(function(){b.textContent="Copy"},1500)}).catch(function(){var ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);b.textContent="Copied!";setTimeout(function(){b.textContent="Copy"},1500)})})})()</script></body></html>';
+}

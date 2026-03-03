@@ -5,6 +5,7 @@ var refreshInterval = null;
 var strikeConnected = false;
 var strikeBalances = null;
 var strikeTransactions = [];
+var strikeOnchainAddress = null;
 
 initNav('wallet');
 
@@ -265,7 +266,10 @@ var StrikeAPI = (function() {
                     showConnectStrikePrompt();
                     return { error: 'Strike not connected', strikeNotConnected: true };
                 }
-                return { error: data.error || data.message || 'HTTP ' + res.status, totpRequired: data.totpRequired };
+                var errMsg = data.error || data.message || data.title || '';
+                if (data.data && data.data.validationErrors) errMsg += ' ' + JSON.stringify(data.data.validationErrors);
+                if (!errMsg) errMsg = JSON.stringify(data);
+                return { error: errMsg, totpRequired: data.totpRequired, pinRequired: data.pinRequired };
             }
             return data;
         } catch(e) {
@@ -364,8 +368,14 @@ var StrikeAPI = (function() {
         return await apiPatch('/send/execute/' + quoteId, {}, totpCode, pinCode);
     }
 
+    async function createInvoice(body) { return await apiPost('/invoice/create', body); }
+    async function createInvoiceQuote(invoiceId) { return await apiPost('/invoice/' + invoiceId + '/quote', {}); }
+    async function getInvoice(invoiceId) { return await apiFetch('/invoice/' + invoiceId); }
+    async function shareInvoice(body) { return await apiPost('/invoice/share', body); }
+
     async function setPin(pin) { return await apiPost('/auth/set-pin', { pin: pin }); }
 
+    async function getOnchainAddress() { return await apiPost('/receive/onchain-address', {}); }
     async function getSendStatus(paymentId) { return await apiFetch('/send/status/' + paymentId); }
 
     // Strike connection
@@ -385,7 +395,12 @@ var StrikeAPI = (function() {
         sendQuoteOnchain: sendQuoteOnchain,
         getOnchainTiers: getOnchainTiers,
         executeSend: executeSend,
+        createInvoice: createInvoice,
+        createInvoiceQuote: createInvoiceQuote,
+        getInvoice: getInvoice,
+        shareInvoice: shareInvoice,
         setPin: setPin,
+        getOnchainAddress: getOnchainAddress,
         getSendStatus: getSendStatus,
         firebaseLogin: firebaseLogin,
         logout: logout,
@@ -443,14 +458,8 @@ function showAuthenticatedUI() {
 
 function updateAccountButtons() {
     var settingsBtn = document.getElementById('btnAccountSettings');
-    var connectBtn = document.getElementById('btnConnectStrikeKey');
     var loggedIn = strikeConnected && StrikeAuth.isLoggedIn();
     if (settingsBtn) settingsBtn.style.display = loggedIn ? '' : 'none';
-    if (connectBtn) {
-        var user = StrikeAuth.getUser();
-        // Show connect button only if user doesn't have their own key
-        connectBtn.style.display = (loggedIn && user && !user.hasOwnKey) ? '' : 'none';
-    }
 }
 
 // Clear all wallet state (on sign-out)
@@ -735,6 +744,27 @@ function renderAddressCards(data) {
                 '<div class="miner-card-stat"><div class="stat-label">USD Balance</div><div class="stat-value">' + fmtUSD(strikeUsd) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">BTC in USD</div><div class="stat-value">' + fmtUSD(strikeBtc * liveBtcPrice) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Last Synced</div><div class="stat-value" style="font-size:11px;">' + syncLabel + '</div></div>' +
+                (function() {
+                    var strikeAddr = '';
+                    for (var sd = 0; sd < data.addresses.length; sd++) {
+                        if (data.addresses[sd].label && data.addresses[sd].label.toLowerCase().indexOf('strike') !== -1) {
+                            strikeAddr = data.addresses[sd].address; break;
+                        }
+                    }
+                    if (strikeAddr) {
+                        return '<div class="miner-card-stat" style="grid-column:1/-1;">' +
+                            '<div class="stat-label">Deposit Address</div>' +
+                            '<div style="display:flex; align-items:center; gap:6px;">' +
+                                '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + strikeAddr + '</div>' +
+                                '<button class="copy-addr-btn" data-addr="' + strikeAddr + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                            '</div>' +
+                        '</div>';
+                    }
+                    return '<div class="miner-card-stat" style="grid-column:1/-1;">' +
+                        '<div class="stat-label">Deposit Address</div>' +
+                        '<div class="stat-value" style="font-size:10px; color:#666;">Add via + Add Address (label it &quot;Strike&quot;)</div>' +
+                    '</div>';
+                })() +
             '</div>' +
             '<div class="miner-card-actions">' +
                 '<button onclick="fetchStrikeData().then(function(){renderWallet();})">Sync</button>' +
@@ -750,14 +780,19 @@ function renderAddressCards(data) {
 
     for (var i = 0; i < data.addresses.length; i++) {
         var a = data.addresses[i];
-        var shortAddr = a.address.substring(0, 8) + '...' + a.address.substring(a.address.length - 6);
         html += '<div class="miner-card">' +
             '<div class="miner-card-header">' +
                 '<div class="miner-card-model">' + escapeHtml(a.label) + '</div>' +
                 '<span class="status-badge" style="font-size:10px; padding:2px 8px; background:rgba(247,147,26,0.15); color:#f7931a;">On-chain</span>' +
             '</div>' +
             '<div class="miner-card-stats">' +
-                '<div class="miner-card-stat"><div class="stat-label">Address</div><div class="stat-value" style="font-family:monospace; font-size:11px;">' + shortAddr + '</div></div>' +
+                '<div class="miner-card-stat" style="grid-column:1/-1;">' +
+                    '<div class="stat-label">Address</div>' +
+                    '<div style="display:flex; align-items:center; gap:6px;">' +
+                        '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(a.address) + '</div>' +
+                        '<button class="copy-addr-btn" data-addr="' + a.address + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                    '</div>' +
+                '</div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Balance</div><div class="stat-value" style="color:#f7931a;">' + fmtBTC(a.lastBalance, 8) + ' BTC</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">USD Value</div><div class="stat-value">' + fmtUSD(a.lastBalance * liveBtcPrice) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Transactions</div><div class="stat-value">' + a.lastTxCount + '</div></div>' +
@@ -769,6 +804,15 @@ function renderAddressCards(data) {
         '</div>';
     }
     container.innerHTML = html;
+
+    var copyBtns = container.querySelectorAll('.copy-addr-btn');
+    for (var c = 0; c < copyBtns.length; c++) {
+        (function(btn) {
+            btn.addEventListener('click', function() {
+                copyToClipboard(btn.getAttribute('data-addr'), btn);
+            });
+        })(copyBtns[c]);
+    }
 
     var btns = container.querySelectorAll('.delete[data-id]');
     for (var j = 0; j < btns.length; j++) {
@@ -786,7 +830,7 @@ function renderAddressCards(data) {
 // ===== RENDER TRANSACTION HISTORY =====
 function renderEmptyTxTable() {
     document.getElementById('txHistoryBody').innerHTML =
-        '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No addresses added yet</td></tr>';
+        '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No addresses added yet</td></tr>';
 }
 
 async function renderTransactionHistory() {
@@ -798,7 +842,7 @@ async function renderTransactionHistory() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">Loading transactions...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">Loading transactions...</td></tr>';
 
     var allTxs = [];
 
@@ -825,6 +869,16 @@ async function renderTransactionHistory() {
 
             var change = (voutSum - vinSum) / 100000000;
 
+            var receivingAddr = '';
+            if (change < 0) {
+                for (var ra = 0; ra < (tx.vout || []).length; ra++) {
+                    var voutAddr = tx.vout[ra].scriptpubkey_address;
+                    if (voutAddr && voutAddr !== addr.address) { receivingAddr = voutAddr; break; }
+                }
+            } else {
+                receivingAddr = addr.address;
+            }
+
             allTxs.push({
                 source: 'On-chain',
                 sourceLabel: addr.label,
@@ -832,7 +886,8 @@ async function renderTransactionHistory() {
                 timestamp: (tx.status && tx.status.block_time) || Math.floor(Date.now() / 1000),
                 confirmed: tx.status && tx.status.confirmed,
                 change: change,
-                type: 'on-chain'
+                type: 'on-chain',
+                receivingAddr: receivingAddr
             });
         }
     }
@@ -889,9 +944,20 @@ async function renderTransactionHistory() {
             statusColor = t.confirmed ? '#4ade80' : '#f7931a';
         }
 
+        var toCol;
+        if (t.type === 'on-chain' && t.receivingAddr) {
+            var addrShort = t.receivingAddr.substring(0, 8) + '...' + t.receivingAddr.substring(t.receivingAddr.length - 4);
+            toCol = '<span style="font-family:monospace; font-size:10px; color:#aaa;" title="' + t.receivingAddr + '">' + addrShort + '</span>';
+        } else if (t.type === 'strike') {
+            toCol = '<span style="font-size:11px; color:#888;">' + (t.strikeType || '-') + '</span>';
+        } else {
+            toCol = '<span style="color:#555;">-</span>';
+        }
+
         html += '<tr>' +
             '<td>' + dateStr + '</td>' +
             '<td>' + sourceBadge + '</td>' +
+            '<td>' + toCol + '</td>' +
             '<td style="color:' + changeColor + '; font-weight:500;">' + changePrefix + fmtBTC(Math.abs(t.change), 8) + '</td>' +
             '<td>' + typeCol + '</td>' +
             '<td style="color:' + statusColor + ';">' + statusText + '</td>' +
@@ -899,7 +965,7 @@ async function renderTransactionHistory() {
     }
 
     if (!html) {
-        html = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No transactions found</td></tr>';
+        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No transactions found</td></tr>';
     }
     tbody.innerHTML = html;
 }
@@ -909,6 +975,28 @@ function escapeHtml(str) {
     var div = document.createElement('div');
     div.appendChild(document.createTextNode(str || ''));
     return div.innerHTML;
+}
+
+function copyToClipboard(text, btnEl) {
+    navigator.clipboard.writeText(text).then(function() {
+        var orig = btnEl.textContent;
+        btnEl.textContent = 'Copied!';
+        btnEl.style.color = '#4ade80';
+        setTimeout(function() { btnEl.textContent = orig; btnEl.style.color = ''; }, 1500);
+    }).catch(function() {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        var orig = btnEl.textContent;
+        btnEl.textContent = 'Copied!';
+        btnEl.style.color = '#4ade80';
+        setTimeout(function() { btnEl.textContent = orig; btnEl.style.color = ''; }, 1500);
+    });
 }
 
 function validateBtcAddress(addr) {
@@ -1059,6 +1147,8 @@ function disconnectStrike() {
     strikeConnected = false;
     strikeBalances = null;
     strikeTransactions = [];
+    strikeOnchainAddress = null;
+    try { localStorage.removeItem('ionStrikeOnchainAddr'); } catch(e) {}
     StrikeAuth.clearSession();
     updateStrikeStatus(null);
     updateSendButton();
@@ -1081,7 +1171,10 @@ var pinEnabled = false;
 
 function updateSendButton() {
     var btn = document.getElementById('btnSendBtc');
-    if (btn) btn.style.display = (strikeConnected && StrikeAuth.isLoggedIn()) ? '' : 'none';
+    var rbtn = document.getElementById('btnReceiveBtc');
+    var show = (strikeConnected && StrikeAuth.isLoggedIn()) ? '' : 'none';
+    if (btn) btn.style.display = show;
+    if (rbtn) rbtn.style.display = show;
 }
 
 function updateTotpVisibility() {
@@ -1095,6 +1188,19 @@ function updatePinVisibility() {
 }
 
 document.getElementById('btnSendBtc').addEventListener('click', function() {
+    // Block send if no PIN is set up
+    var user = StrikeAuth.getUser();
+    if (!user || !user.hasPin) {
+        var pinSection = document.getElementById('strikeKeyPinSection');
+        var keyPanel = document.getElementById('strikeApiKeyPanel');
+        if (pinSection && keyPanel) {
+            pinSection.style.display = '';
+            keyPanel.classList.add('open');
+            var resultEl = document.getElementById('strikeKeyResult');
+            if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before you can send BTC.</span>';
+        }
+        return;
+    }
     document.getElementById('sendStep1').style.display = '';
     document.getElementById('sendStep2').style.display = 'none';
     document.getElementById('sendResult').innerHTML = '';
@@ -1104,13 +1210,10 @@ document.getElementById('btnSendBtc').addEventListener('click', function() {
     document.getElementById('sendAmount').value = '';
     activeSendQuote = null;
     // Check if user has 2FA and/or PIN enabled
-    var user = StrikeAuth.getUser();
     if (user && user.has2FA) {
         totpEnabled = true;
     }
-    if (user && user.hasPin) {
-        pinEnabled = true;
-    }
+    pinEnabled = true; // PIN is always required now
     updateSendTypeUI();
     updateTotpVisibility();
     updatePinVisibility();
@@ -1179,6 +1282,21 @@ function updateSendTypeUI() {
     if (currencySelect) currencySelect.addEventListener('change', updateConversion);
 })();
 
+// Auto-load on-chain fee tiers when address + amount are both filled
+(function() {
+    var addrInput = document.getElementById('sendDest');
+    var amtInput = document.getElementById('sendAmount');
+    function tryLoadTiers() {
+        if (document.getElementById('sendType').value !== 'onchain') return;
+        if (addrInput.value.trim() && amtInput.value.trim()) {
+            loadOnchainTiers();
+        }
+    }
+    if (addrInput) addrInput.addEventListener('blur', tryLoadTiers);
+    if (amtInput) amtInput.addEventListener('blur', tryLoadTiers);
+    if (amtInput) amtInput.addEventListener('change', tryLoadTiers);
+})();
+
 async function loadOnchainTiers() {
     var tierSelect = document.getElementById('sendTier');
     tierSelect.innerHTML = '<option value="">Loading tiers...</option>';
@@ -1202,11 +1320,13 @@ async function loadOnchainTiers() {
             var mins = t.estimatedDeliveryDurationInMin || '?';
             var opt = document.createElement('option');
             opt.value = t.id;
+            opt.setAttribute('data-fee', t.estimatedFee ? t.estimatedFee.amount : '0');
             opt.textContent = t.id.replace('tier_', '') + ' (~' + mins + ' min, fee: ' + fee + ')';
             tierSelect.appendChild(opt);
         }
     } else {
-        tierSelect.innerHTML = '<option value="">' + (data && data.error ? data.error : 'Could not load tiers') + '</option>';
+        var tierErr = (data && data.error) ? data.error : (data ? JSON.stringify(data) : 'Could not load tiers');
+        tierSelect.innerHTML = '<option value="">' + tierErr + '</option>';
     }
 }
 
@@ -1237,15 +1357,21 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
             result.innerHTML = '<span style="color:#888;">Loading fee tiers...</span>';
             await loadOnchainTiers();
             tier = tierSelect.value;
-        }
-        if (!tier) {
-            result.innerHTML = '<span style="color:#f55;">Could not load fee tiers</span>';
+            if (tier) {
+                result.innerHTML = '<span style="color:#f90;">Select a fee speed, then tap Get Quote again</span>';
+            } else {
+                result.innerHTML = '<span style="color:#f55;">Could not load fee tiers</span>';
+            }
             return;
         }
+        var selectedOpt = tierSelect.options[tierSelect.selectedIndex];
+        var tierFee = selectedOpt ? parseFloat(selectedOpt.getAttribute('data-fee') || '0') : 0;
+        var amountObj = { amount: amt, currency: cur };
+        if (tierFee > 0) amountObj.feePolicy = 'EXCLUSIVE';
         var body = {
             btcAddress: dest,
             sourceCurrency: cur,
-            amount: { amount: amt, currency: cur, feePolicy: 'EXCLUSIVE' }
+            amount: amountObj
         };
         body.onchainTierId = tier;
         quoteData = await StrikeAPI.sendQuoteOnchain(body);
@@ -1256,7 +1382,8 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
         showQuoteConfirmation(quoteData, type, dest);
         result.innerHTML = '';
     } else {
-        result.innerHTML = '<span style="color:#f55;">' + (quoteData.error || 'Quote failed') + '</span>';
+        var errMsg = quoteData.error || quoteData.message || quoteData.title || JSON.stringify(quoteData);
+        result.innerHTML = '<span style="color:#f55;">' + errMsg + '</span>';
     }
 });
 
@@ -1335,7 +1462,19 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
             totpEnabled = true;
             updateTotpVisibility();
         }
-        if (sendResult.pinRequired) {
+        if (sendResult.pinNotSet) {
+            // No PIN configured — redirect to PIN setup
+            document.getElementById('sendBtcPanel').classList.remove('open');
+            var pinSection = document.getElementById('strikeKeyPinSection');
+            var keyPanel = document.getElementById('strikeApiKeyPanel');
+            if (pinSection && keyPanel) {
+                pinSection.style.display = '';
+                keyPanel.classList.add('open');
+                keyPanel.dataset.pinRequired = 'true';
+                var kr = document.getElementById('strikeKeyResult');
+                if (kr) kr.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before you can send BTC.</span>';
+            }
+        } else if (sendResult.pinRequired) {
             pinEnabled = true;
             updatePinVisibility();
         }
@@ -1425,9 +1564,263 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
     }
 });
 
+// ===== RECEIVE BTC PANEL =====
+document.getElementById('btnReceiveBtc').addEventListener('click', function() {
+    document.getElementById('invoiceResult').style.display = 'none';
+    document.getElementById('receiveAmount').value = '';
+    document.getElementById('receiveDescription').value = '';
+    document.getElementById('receiveResult').innerHTML = '';
+    document.getElementById('receiveConversion').textContent = '';
+    document.getElementById('receiveBtcPanel').classList.toggle('open');
+});
+
+document.getElementById('cancelReceive').addEventListener('click', function() {
+    document.getElementById('receiveBtcPanel').classList.remove('open');
+    if (window._invoicePollInterval) clearInterval(window._invoicePollInterval);
+});
+
+// Receive tab switching
+(function() {
+    var tabs = document.querySelectorAll('#receiveTabs .map-toggle-btn');
+    for (var i = 0; i < tabs.length; i++) {
+        (function(tab) {
+            tab.addEventListener('click', function() {
+                for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+                tab.classList.add('active');
+                var target = tab.getAttribute('data-tab');
+                document.getElementById('receiveTabLightning').style.display = target === 'lightning' ? '' : 'none';
+                document.getElementById('receiveTabOnchain').style.display = target === 'onchain' ? '' : 'none';
+                if (target === 'onchain') renderOnchainReceiveTab();
+            });
+        })(tabs[i]);
+    }
+})();
+
+// Receive amount conversion display
+(function() {
+    var amtInput = document.getElementById('receiveAmount');
+    var curSelect = document.getElementById('receiveCurrency');
+    var convEl = document.getElementById('receiveConversion');
+    function updateConv() {
+        if (!convEl) return;
+        var amt = parseFloat(amtInput.value);
+        if (!amt || !isFinite(amt) || amt <= 0 || !liveBtcPrice || liveBtcPrice <= 0) { convEl.textContent = ''; return; }
+        if (curSelect.value === 'USD') {
+            convEl.textContent = '\u2248 ' + fmtBTC(amt / liveBtcPrice, 8) + ' BTC';
+        } else {
+            convEl.textContent = '\u2248 ' + fmtUSD(amt * liveBtcPrice);
+        }
+    }
+    if (amtInput) amtInput.addEventListener('input', updateConv);
+    if (curSelect) curSelect.addEventListener('change', updateConv);
+})();
+
+// Create Lightning Invoice
+document.getElementById('btnCreateInvoice').addEventListener('click', async function() {
+    var amt = document.getElementById('receiveAmount').value.trim();
+    var cur = document.getElementById('receiveCurrency').value;
+    var desc = document.getElementById('receiveDescription').value.trim();
+    var resultEl = document.getElementById('receiveResult');
+
+    if (!amt || parseFloat(amt) <= 0) {
+        resultEl.innerHTML = '<span style="color:#f55;">Enter an amount</span>';
+        return;
+    }
+
+    resultEl.innerHTML = '<span style="color:#888;">Creating invoice...</span>';
+    this.disabled = true;
+
+    var body = { correlationId: 'inv_' + Date.now().toString(36), description: desc || 'Payment', amount: { amount: amt, currency: cur } };
+    var data = await StrikeAPI.createInvoice(body);
+
+    if (!data || data.error || !data.invoiceId) {
+        this.disabled = false;
+        resultEl.innerHTML = '<span style="color:#f55;">' + (data && data.error || 'Failed to create invoice') + '</span>';
+        return;
+    }
+
+    // Step 2: Generate quote to get the bolt11 payment request
+    resultEl.innerHTML = '<span style="color:#888;">Generating Lightning invoice...</span>';
+    var quote = await StrikeAPI.createInvoiceQuote(data.invoiceId);
+    this.disabled = false;
+
+    var bolt11 = (quote && quote.lnInvoice) || '';
+    if (!bolt11) {
+        resultEl.innerHTML = '<span style="color:#f55;">' + (quote && quote.error || 'Could not generate Lightning invoice') + '</span>';
+        return;
+    }
+
+    resultEl.innerHTML = '';
+    document.getElementById('lnInvoiceText').textContent = bolt11;
+
+    var qrImg = document.getElementById('lnInvoiceQR');
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('lightning:' + bolt11);
+
+    document.getElementById('invoiceResult').style.display = '';
+    startInvoicePoll(data.invoiceId);
+
+    // Create shareable invoice link (served from worker at /pay?id=xxx)
+    var shareLinkEl = document.getElementById('invoiceShareLink');
+    var shareStatusEl = document.getElementById('invoiceStatus');
+    if (shareLinkEl) {
+        shareLinkEl.style.display = 'none';
+        shareStatusEl.innerHTML = '<span style="color:#888;">Generating share link...</span>';
+        try {
+            var shareData = await StrikeAPI.shareInvoice({ amount: amt, currency: cur, description: desc || 'Payment' });
+            if (shareData && shareData.shareId) {
+                var shareUrl = StrikeAPI.getProxyUrl().replace(/\/$/, '') + '/pay?id=' + shareData.shareId;
+                document.getElementById('shareUrlText').textContent = shareUrl;
+                shareLinkEl.style.display = '';
+                shareStatusEl.innerHTML = '<span style="color:#4ade80;">Share link ready!</span>';
+            } else {
+                shareStatusEl.innerHTML = '<span style="color:#f55;">Share failed: ' + (shareData && shareData.error || 'Unknown error') + '</span>';
+            }
+        } catch(e) {
+            shareStatusEl.innerHTML = '<span style="color:#f55;">Share error: ' + e.message + '</span>';
+        }
+    } else {
+    }
+});
+
+// Copy invoice
+document.getElementById('btnCopyInvoice').addEventListener('click', function() {
+    var bolt11 = document.getElementById('lnInvoiceText').textContent;
+    copyToClipboard(bolt11, this);
+});
+
+// Copy share link
+document.getElementById('btnCopyShareLink').addEventListener('click', function() {
+    var url = document.getElementById('shareUrlText').textContent;
+    copyToClipboard(url, this);
+});
+
+// Poll invoice for payment
+function startInvoicePoll(invoiceId) {
+    if (window._invoicePollInterval) clearInterval(window._invoicePollInterval);
+    var statusEl = document.getElementById('invoiceStatus');
+    statusEl.innerHTML = '<span style="color:#f7931a;">Waiting for payment...</span>';
+
+    window._invoicePollInterval = setInterval(async function() {
+        var inv = await StrikeAPI.getInvoice(invoiceId);
+        if (inv && inv.state === 'PAID') {
+            clearInterval(window._invoicePollInterval);
+            statusEl.innerHTML = '<span style="color:#4ade80;">Payment received!</span>';
+            setTimeout(function() { loadAndRefreshWallet(); }, 2000);
+        } else if (inv && (inv.state === 'CANCELLED' || inv.state === 'EXPIRED')) {
+            clearInterval(window._invoicePollInterval);
+            statusEl.innerHTML = '<span style="color:#ef4444;">Invoice expired</span>';
+        }
+    }, 5000);
+}
+
+// Fetch Strike on-chain deposit address with 2-tier caching
+async function fetchStrikeOnchainAddress() {
+    if (strikeOnchainAddress) return strikeOnchainAddress;
+    try {
+        var cached = JSON.parse(localStorage.getItem('ionStrikeOnchainAddr') || 'null');
+        if (cached && cached.address && cached.ts && (Date.now() - cached.ts < 86400000)) {
+            strikeOnchainAddress = cached.address;
+            return cached.address;
+        }
+    } catch(e) {}
+    try {
+        var data = await StrikeAPI.getOnchainAddress();
+        if (data && data.ok && data.address) {
+            strikeOnchainAddress = data.address;
+            try { localStorage.setItem('ionStrikeOnchainAddr', JSON.stringify({ address: data.address, ts: Date.now() })); } catch(e) {}
+            return data.address;
+        }
+    } catch(e) {}
+    return null;
+}
+
+function updateOnchainBadge(type) {
+    var badge = document.getElementById('onchainAddrBadge');
+    if (!badge) return;
+    if (type === 'strike') {
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;">Strike Custodial &mdash; funds appear in your Strike balance</span>';
+    } else {
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); color:#f7931a;">Self-Custody Address</span>';
+    }
+}
+
+// On-chain receive tab
+async function renderOnchainReceiveTab() {
+    var container = document.getElementById('onchainReceiveContent');
+    var data = WalletData.getData();
+    var isStrikeLoggedIn = strikeConnected && StrikeAuth.isLoggedIn();
+
+    // Build unified address list
+    var allAddresses = [];
+    for (var i = 0; i < data.addresses.length; i++) {
+        allAddresses.push({ address: data.addresses[i].address, label: data.addresses[i].label, type: 'manual' });
+    }
+
+    // Fetch Strike on-chain address if connected
+    if (isStrikeLoggedIn) {
+        if (strikeOnchainAddress) {
+            allAddresses.unshift({ address: strikeOnchainAddress, label: 'Strike Wallet', type: 'strike' });
+        } else {
+            container.innerHTML = '<div style="padding:20px; color:#f7931a; font-size:13px;">Fetching Strike deposit address...</div>';
+            var addr = await fetchStrikeOnchainAddress();
+            if (addr) {
+                allAddresses.unshift({ address: addr, label: 'Strike Wallet', type: 'strike' });
+            }
+        }
+    }
+
+    if (allAddresses.length === 0) {
+        container.innerHTML = '<div style="padding:20px; color:#888; font-size:13px;">' +
+            'No on-chain addresses available.<br><br>' +
+            '<button class="btn btn-primary" onclick="document.getElementById(\'btnAddAddress\').click(); document.getElementById(\'receiveBtcPanel\').classList.remove(\'open\');">+ Add Address</button>' +
+            '</div>';
+        return;
+    }
+
+    // Always show selector
+    var html = '<div class="input-group" style="margin-bottom:12px; text-align:left;">' +
+        '<label>Select Address</label><div class="input-wrapper"><select id="receiveAddrSelect">';
+    for (var i = 0; i < allAddresses.length; i++) {
+        var a = allAddresses[i];
+        var lbl = a.type === 'strike' ? '\u26a1 ' + escapeHtml(a.label) : escapeHtml(a.label);
+        html += '<option value="' + a.address + '">' + lbl + '</option>';
+    }
+    html += '</select></div></div>';
+    html += '<div id="onchainAddrBadge" style="margin-bottom:8px; text-align:center;"></div>';
+    html += '<div style="margin:12px 0;"><img id="onchainAddrQR" width="200" height="200" style="border-radius:8px; background:#fff; padding:8px;"></div>';
+    html += '<div style="font-size:12px; color:#aaa; margin-bottom:6px;">Bitcoin Address:</div>';
+    html += '<div style="position:relative;">' +
+        '<div id="onchainAddrText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius:8px; font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
+        '<button class="btn btn-secondary" id="btnCopyOnchainAddr" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>' +
+    '</div>';
+
+    container.innerHTML = html;
+    showOnchainAddress(allAddresses[0].address);
+    updateOnchainBadge(allAddresses[0].type);
+
+    var select = document.getElementById('receiveAddrSelect');
+    if (select) {
+        select.addEventListener('change', function() {
+            showOnchainAddress(this.value);
+            for (var j = 0; j < allAddresses.length; j++) {
+                if (allAddresses[j].address === this.value) { updateOnchainBadge(allAddresses[j].type); break; }
+            }
+        });
+    }
+
+    document.getElementById('btnCopyOnchainAddr').addEventListener('click', function() {
+        copyToClipboard(document.getElementById('onchainAddrText').textContent, this);
+    });
+}
+
+function showOnchainAddress(address) {
+    document.getElementById('onchainAddrText').textContent = address;
+    var qrImg = document.getElementById('onchainAddrQR');
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('bitcoin:' + address);
+}
+
 // ===== STRIKE API KEY PANEL =====
 (function() {
-    var connectBtn = document.getElementById('btnConnectStrikeKey');
     var promptConnectBtn = document.getElementById('btnConnectStrikeFromPrompt');
 
     function openStrikeKeyPanel() {
@@ -1436,13 +1829,18 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
         document.getElementById('strikeApiKeyPanel').classList.add('open');
     }
 
-    if (connectBtn) connectBtn.addEventListener('click', openStrikeKeyPanel);
     if (promptConnectBtn) promptConnectBtn.addEventListener('click', openStrikeKeyPanel);
 
     var cancelBtn = document.getElementById('cancelStrikeKey');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', function() {
-            document.getElementById('strikeApiKeyPanel').classList.remove('open');
+            var panel = document.getElementById('strikeApiKeyPanel');
+            if (panel.dataset.pinRequired === 'true') {
+                var resultEl = document.getElementById('strikeKeyResult');
+                if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before continuing.</span>';
+                return; // Block close
+            }
+            panel.classList.remove('open');
         });
     }
 
@@ -1470,11 +1868,13 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
                 }
                 hideConnectStrikePrompt();
                 updateAccountButtons();
-                // Show PIN creation UI
+                // Show PIN creation UI — PIN is mandatory, cannot skip
                 var pinSection = document.getElementById('strikeKeyPinSection');
                 if (pinSection && !(user && user.hasPin)) {
                     resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
                     pinSection.style.display = '';
+                    // Mark panel as requiring PIN before close
+                    document.getElementById('strikeApiKeyPanel').dataset.pinRequired = 'true';
                 } else {
                     resultEl.innerHTML = '<span style="color:#4ade80;">Strike account connected!</span>';
                     setTimeout(function() {
