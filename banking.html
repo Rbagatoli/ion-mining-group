@@ -7,12 +7,12 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./shared.css?v=221">
     <script>
-    // Force full cache clear for v222 — nukes all service workers and caches
-    if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
+    // Force full cache clear for v223 — nukes all service workers and caches
+    if (!localStorage.getItem('sw_clean_v223') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
             var p = r.map(function(x) { return x.unregister(); });
             p.push(caches.keys().then(function(k) { return Promise.all(k.map(function(n) { return caches.delete(n); })); }));
-            Promise.all(p).then(function() { localStorage.setItem('sw_clean_v222', '1'); location.reload(); });
+            Promise.all(p).then(function() { localStorage.setItem('sw_clean_v223', '1'); location.reload(); });
         });
     }
     </script>
