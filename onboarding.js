@@ -1,13 +1,36 @@
 // ===== ION MINING GROUP — Onboarding Wizard =====
-// 9-step guided tour across all pages. Shows once per device.
-// Progress stored in localStorage so it survives page navigation.
+// 9-step guided tour across all pages. Shows once per user account.
+// Progress stored in Firestore user settings so it syncs across devices.
 
 (function initOnboarding() {
     var ONBOARDED_KEY = 'ionMiningOnboarded';
     var STEP_KEY = 'ionMiningStep';
+    var onboardingStarted = false;
 
-    // Already completed onboarding
-    if (localStorage.getItem(ONBOARDED_KEY)) return;
+    function startOnboarding() {
+        if (onboardingStarted) return;
+        onboardingStarted = true;
+
+        // ===== NEW: Check Firestore for user-based onboarding status =====
+        var currentUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+        if (!currentUser) {
+            console.log('[Onboarding] No user signed in, skipping onboarding');
+            return;
+        }
+
+    // Migrate old localStorage to Firestore for this user
+    var localCompleted = localStorage.getItem(ONBOARDED_KEY);
+    if (localCompleted && typeof FleetData !== 'undefined') {
+        FleetData.setOnboardingCompleted(true);
+        console.log('[Onboarding] Migrated localStorage completion to Firestore');
+    }
+
+    // Check if user already completed onboarding
+    if (typeof FleetData !== 'undefined' && FleetData.hasCompletedOnboarding()) {
+        console.log('[Onboarding] User already completed onboarding');
+        return;
+    }
+    // ================================================================
 
     var steps = [
         {
@@ -169,7 +192,10 @@
     }
 
     function finish() {
-        localStorage.setItem(ONBOARDED_KEY, '1');
+        if (typeof FleetData !== 'undefined') {
+            FleetData.setOnboardingCompleted(true);
+        }
+        localStorage.setItem(ONBOARDED_KEY, '1'); // Keep for backward compatibility
         localStorage.removeItem(STEP_KEY);
         // Remove nav highlight
         var tabs = document.querySelectorAll('.ion-nav-tabs a');
@@ -186,9 +212,21 @@
         }, 300);
     }
 
-    // Small delay to let page render
-    setTimeout(function() {
-        overlay.classList.add('visible');
-        renderStep();
-    }, 500);
+        // Small delay to let page render
+        setTimeout(function() {
+            overlay.classList.add('visible');
+            renderStep();
+        }, 500);
+    }
+
+    // Wait for Firebase auth to initialize before checking onboarding status
+    if (typeof IonAuth !== 'undefined') {
+        IonAuth.onAuthChange(function(user) {
+            if (user) {
+                startOnboarding();
+            }
+        });
+    } else {
+        console.warn('[Onboarding] IonAuth not available');
+    }
 })();
