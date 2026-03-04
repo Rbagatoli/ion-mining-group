@@ -373,11 +373,22 @@ async function autoLoginWithFirebase() {
     if (StrikeAuth.isLoggedIn()) {
         showAuthenticatedUI();
         var user = StrikeAuth.getUser();
-        if (user && user.strikeConnected && user.hasOwnKey) {
+
+        // ===== NEW: Only show API key prompt if proxy URL is configured =====
+        var settings = FleetData.getSettings();
+        var hasProxy = settings.strike && settings.strike.proxyUrl;
+
+        if (!hasProxy) {
+            // No proxy configured - hide API key card completely
+            hideConnectStrikePrompt();
+        } else if (user && user.strikeConnected && user.hasOwnKey) {
+            // User already connected their own API key
             hideConnectStrikePrompt();
         } else {
+            // Proxy configured but user hasn't connected API key yet
             showConnectStrikePrompt();
         }
+        // ====================================================================
         await loadAndRefreshWallet();
         if (acctStrikeConnected) await fetchStrikeAccountingData();
         return;
@@ -423,15 +434,21 @@ async function autoLoginWithFirebase() {
             StrikeAuth.saveSession(data.token, data.user);
             showAuthenticatedUI();
 
-            // Check if Strike is connected with user's own API key
-            if (data.user.strikeConnected && data.user.hasOwnKey) {
+            // ===== NEW: Check proxy URL before showing API key prompt =====
+            var settings = FleetData.getSettings();
+            var hasProxy = settings.strike && settings.strike.proxyUrl;
+
+            if (!hasProxy) {
+                // No proxy configured - hide API key card
                 hideConnectStrikePrompt();
-            } else if (data.user.strikeConnected && !data.user.hasOwnKey) {
-                // User connected via proxy URL but doesn't have own key - show prompt
-                showConnectStrikePrompt();
+            } else if (data.user.strikeConnected && data.user.hasOwnKey) {
+                // User already connected their own API key
+                hideConnectStrikePrompt();
             } else {
+                // Proxy configured but user hasn't connected API key yet
                 showConnectStrikePrompt();
             }
+            // ==============================================================
 
             await loadAndRefreshWallet();
             if (acctStrikeConnected) await fetchStrikeAccountingData();
@@ -757,6 +774,30 @@ function showConnectStrikePrompt() {
 function hideConnectStrikePrompt() {
     var prompt = document.getElementById('connectStrikePrompt');
     if (prompt) prompt.style.display = 'none';
+}
+
+function updateStrikeCardVisibility() {
+    var settings = FleetData.getSettings();
+    var hasProxy = settings.strike && settings.strike.proxyUrl;
+    var user = StrikeAuth.getUser();
+    var hasOwnKey = user && user.hasOwnKey;
+
+    var proxyRequiredMsg = document.getElementById('connectStrikeProxyRequired');
+    var apiKeyPrompt = document.getElementById('connectStrikePrompt');
+
+    if (!hasProxy) {
+        // Show "proxy required" message
+        if (proxyRequiredMsg) proxyRequiredMsg.style.display = '';
+        if (apiKeyPrompt) apiKeyPrompt.style.display = 'none';
+    } else if (hasOwnKey) {
+        // User has API key connected - hide both
+        if (proxyRequiredMsg) proxyRequiredMsg.style.display = 'none';
+        if (apiKeyPrompt) apiKeyPrompt.style.display = 'none';
+    } else {
+        // Proxy configured, no API key yet - show prompt
+        if (proxyRequiredMsg) proxyRequiredMsg.style.display = 'none';
+        if (apiKeyPrompt) apiKeyPrompt.style.display = '';
+    }
 }
 
 // ===== STRIKE SETTINGS =====
