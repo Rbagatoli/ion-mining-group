@@ -3262,9 +3262,19 @@ function updateStrikeAcctStatus(label) {
 }
 
 async function fetchStrikeAccountingData() {
-    if (!acctStrikeConnected) return;
+    console.log('[Accounting] Strike data fetch check:', {
+        acctStrikeConnected: acctStrikeConnected,
+        isLoggedIn: StrikeAuth.isLoggedIn(),
+        hasToken: !!StrikeAuth.getToken(),
+        hasUser: !!StrikeAuth.getUser()
+    });
+
+    if (!acctStrikeConnected) {
+        console.warn('[Accounting] Strike accounting not enabled (proxy URL not configured)');
+        return;
+    }
     if (!StrikeAuth.isLoggedIn()) {
-        console.warn('[Accounting] Strike not authenticated, skipping data fetch');
+        console.warn('[Accounting] Strike not authenticated - need to sign in with Google first');
         return;
     }
     try {
