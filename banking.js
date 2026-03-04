@@ -395,6 +395,7 @@ async function autoLoginWithFirebase() {
         }
         await loadAndRefreshWallet();
         if (acctStrikeConnected) await fetchStrikeAccountingData();
+        await checkQboConnectionStatus();  // Check QB status after Strike auth
         return;
     }
 
@@ -453,6 +454,7 @@ async function autoLoginWithFirebase() {
 
             await loadAndRefreshWallet();
             if (acctStrikeConnected) await fetchStrikeAccountingData();
+            await checkQboConnectionStatus();  // Check QB status after Strike auth
         } else {
             console.warn('[Wallet] Firebase login failed:', data);
             showSignInPrompt(data && data.error ? data.error + (data.message ? ': ' + data.message : '') : 'Login failed');
@@ -4390,7 +4392,7 @@ initNav('banking');
 
     // Accounting init
     setPeriod('month');
-    checkQboConnectionStatus();  // Check QB connection status instead
+    // checkQboConnectionStatus() moved to after Strike auth completes
     loadStrikeAcctSettings();
     await loadAccountingData();
     await fetchStrikeAccountingData();
