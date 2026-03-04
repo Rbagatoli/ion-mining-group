@@ -377,8 +377,10 @@ async function autoLoginWithFirebase() {
         showAuthenticatedUI();
         var user = StrikeAuth.getUser();
 
-        // Proxy is always available (hardcoded), only check API key
+        // Set global Strike connection flag if user has API key
         if (user && user.strikeConnected && user.hasOwnKey) {
+            strikeConnected = true;
+            updateStrikeStatus('Connected');
             hideConnectStrikePrompt();
         } else {
             showConnectStrikePrompt();
@@ -2158,6 +2160,10 @@ function showOnchainAddress(address) {
                 // Get token from current session or response
                 var token = StrikeAuth.getToken() || data.token || '';
                 StrikeAuth.saveSession(token, user);
+
+                // Set global Strike connection flag
+                strikeConnected = true;
+                updateStrikeStatus('Connected');
 
                 hideConnectStrikePrompt();
                 updateAccountButtons();
