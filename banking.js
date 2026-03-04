@@ -854,7 +854,9 @@ async function fetchStrikeData() {
     } else if (balResult && balResult.loginRequired) {
         return;
     } else if (balResult && balResult.strikeNotConnected) {
-        return; // Prompt already shown
+        // User hasn't connected their own API key - show prompt
+        showConnectStrikePrompt();
+        return;
     } else {
         console.warn('[Wallet] Strike balance fetch error:', balResult.error);
     }
