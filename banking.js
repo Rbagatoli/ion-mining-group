@@ -381,6 +381,8 @@ async function autoLoginWithFirebase() {
         if (user && user.strikeConnected && user.hasOwnKey) {
             strikeConnected = true;
             updateStrikeStatus('Connected');
+            updateSendButton();
+            update2FAButton();
             hideConnectStrikePrompt();
         } else {
             showConnectStrikePrompt();
@@ -2164,6 +2166,8 @@ function showOnchainAddress(address) {
                 // Set global Strike connection flag
                 strikeConnected = true;
                 updateStrikeStatus('Connected');
+                updateSendButton();
+                update2FAButton();
 
                 hideConnectStrikePrompt();
                 updateAccountButtons();
