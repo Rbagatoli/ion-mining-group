@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Banking</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=209">
+    <link rel="stylesheet" href="./shared.css?v=221">
     <script>
     // Force full cache clear for v170 — nukes all service workers and caches
     if (!localStorage.getItem('sw_clean_v170') && 'serviceWorker' in navigator) {
@@ -16,16 +16,42 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=209"></script>
+    <script src="./chart.min.js?v=221"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
 
 <nav id="ion-nav"></nav>
 
-<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+<header style="position:relative; text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
     <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;">Banking</h1>
-    <p style="color:#888; font-size:12px;">Wallet, income tracking, and accounting</p>
+    <p style="color:#888; font-size:12px; margin:0;">Wallet, income tracking, and accounting</p>
+
+    <div class="banking-connections" style="position:absolute; right:16px; top:50%; transform:translateY(-50%);">
+        <!-- QuickBooks Connection -->
+        <div class="connection-status" id="qbConnectionStatus">
+            <button class="btn-connect" id="btnConnectQbGlobal">
+                Connect QuickBooks
+            </button>
+            <span class="connected-badge" id="qbConnectedBadge" style="display:none;">
+                <span class="status-indicator connected"></span>
+                <span id="qbConnectedName">QuickBooks</span>
+                <button class="btn-disconnect" id="btnDisconnectQbGlobal">×</button>
+            </span>
+        </div>
+
+        <!-- Strike Connection -->
+        <div class="connection-status" id="strikeConnectionStatus">
+            <button class="btn-connect" id="btnConnectStrikeGlobal">
+                Connect Strike
+            </button>
+            <span class="connected-badge" id="strikeConnectedBadge" style="display:none;">
+                <span class="status-indicator connected"></span>
+                <span>Strike Connected</span>
+                <button class="btn-disconnect" id="btnDisconnectStrikeGlobal">×</button>
+            </span>
+        </div>
+    </div>
 </header>
 
 <!-- TAB BAR -->
@@ -45,19 +71,6 @@
     <!-- Watch-Only Banner -->
     <div class="card" style="background:rgba(74,222,128,0.08); border-color:rgba(74,222,128,0.25); margin-bottom:16px; padding:12px 16px;">
         <p style="font-size:13px; color:#4ade80; margin:0;">Watch-only wallet &mdash; monitors on-chain balances. No private keys stored.</p>
-    </div>
-
-    <!-- ===== STRIKE CONNECTION STATUS ===== -->
-    <div class="dashboard-actions" style="justify-content: space-between; align-items: center;">
-        <div>
-            <span id="strikeStatusBadge" class="status-badge status-disconnected">Strike: Not Connected</span>
-        </div>
-        <div style="display:flex; gap:8px;">
-            <button class="btn btn-secondary" id="btnConnectStrike">Connect Strike</button>
-            <button class="btn btn-secondary" id="btnSetup2FA" style="display:none;">Setup 2FA</button>
-
-            <button class="btn btn-secondary" id="btnAccountSettings" style="display:none;">Settings</button>
-        </div>
     </div>
 
     <!-- ===== USER AUTH BAR (shown when logged in) ===== -->
@@ -271,28 +284,6 @@
                 <button class="btn btn-secondary" id="btnDisconnectStrikeKey" style="width:100%; color:#ef4444; border-color:rgba(239,68,68,0.3);">Disconnect Strike API Key</button>
                 <div style="font-size:11px; color:#666; margin-top:6px; text-align:center;">You can reconnect anytime with a new key.</div>
             </div>
-        </div>
-    </div>
-
-    <!-- ===== WALLET STRIKE CONNECT PANEL (renamed from strikeConnectPanel) ===== -->
-    <div class="slide-panel" id="walletStrikeConnectPanel">
-        <div class="panel-inner">
-            <h4>Connect Strike Proxy</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
-            <div class="panel-form-grid">
-                <div class="input-group">
-                    <label>Strike Proxy URL</label>
-                    <div class="input-wrapper">
-                        <input type="text" id="walletStrikeProxyUrl" placeholder="https://ion-strike-proxy.your-name.workers.dev">
-                    </div>
-                </div>
-            </div>
-            <div class="panel-actions">
-                <button class="btn btn-secondary" id="cancelWalletStrike">Cancel</button>
-                <button class="btn btn-secondary" id="testWalletStrike">Test Connection</button>
-                <button class="btn btn-primary" id="saveWalletStrike">Save</button>
-            </div>
-            <div id="walletStrikeTestResult" style="margin-top:10px; font-size:12px;"></div>
         </div>
     </div>
 
@@ -724,17 +715,6 @@
     <div class="banking-tab-content" id="tabAccounting" style="display:none;">
 
     <!-- ===== QBO + STRIKE STATUS ===== -->
-    <div class="dashboard-actions" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <span id="qboStatusBadge" class="status-badge status-disconnected">QuickBooks: Not Connected</span>
-            <span id="strikeStatusBadgeAcct" class="status-badge status-disconnected">Strike: Not Connected</span>
-        </div>
-        <div style="display:flex; gap:8px;">
-            <button class="btn btn-secondary" id="btnConnectQbo">Connect QuickBooks</button>
-            <button class="btn btn-secondary" id="btnConnectStrikeAcct">Connect Strike</button>
-        </div>
-    </div>
-
     <!-- ===== PERIOD SELECTOR ===== -->
     <div class="card" style="padding: 10px 14px;">
         <div class="time-range-selector" id="periodSelector" style="margin-bottom: 0;">
@@ -910,54 +890,6 @@
 
 
     <!-- ===== Accounting panels ===== -->
-    <div class="slide-panel" id="qboConnectPanel">
-        <div class="panel-inner">
-            <h4>QuickBooks Connection</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 15px;">Connect your QuickBooks company to sync accounting data.</p>
-
-            <div id="qboNotConnected">
-                <button class="btn btn-primary" id="connectQbo" style="width:100%;margin-bottom:10px;">
-                    Connect QuickBooks
-                </button>
-                <p style="color:#888;font-size:11px;margin-top:10px;">
-                    Sign in with Google first (top right) before connecting QuickBooks.
-                </p>
-            </div>
-
-            <div id="qboConnected" style="display:none;">
-                <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:8px;padding:12px;margin-bottom:15px;">
-                    <div style="font-size:14px;color:#4ade80;margin-bottom:5px;">✓ Connected</div>
-                    <div style="font-size:12px;color:#888;" id="qboCompanyName">Company Name</div>
-                </div>
-                <button class="btn btn-secondary" id="disconnectQbo" style="width:100%;">Disconnect</button>
-            </div>
-
-            <div id="qboTestResult" style="margin-top:15px;font-size:12px;"></div>
-        </div>
-    </div>
-
-    <!-- ===== ACCT STRIKE CONNECT PANEL (renamed from accounting's strikeConnectPanel) ===== -->
-    <div class="slide-panel" id="acctStrikeConnectPanel">
-        <div class="panel-inner">
-            <h4>Connect Strike Account</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
-            <div class="panel-form-grid">
-                <div class="input-group">
-                    <label>Strike Proxy URL</label>
-                    <div class="input-wrapper">
-                        <input type="text" id="strikeProxyUrlAcct" placeholder="https://ion-strike-proxy.your-name.workers.dev">
-                    </div>
-                </div>
-            </div>
-            <div class="panel-actions">
-                <button class="btn btn-secondary" id="cancelStrikeAcct">Cancel</button>
-                <button class="btn btn-secondary" id="testStrikeAcct">Test Connection</button>
-                <button class="btn btn-primary" id="saveStrikeAcct">Save</button>
-            </div>
-            <div id="strikeTestResultAcct" style="margin-top:10px; font-size:12px;"></div>
-        </div>
-    </div>
-
     <!-- ===== TAX EXPORT PANEL ===== -->
     <div class="slide-panel" id="taxExportPanel">
         <div class="panel-inner">
@@ -1006,6 +938,54 @@
 
     </div><!-- /tabAccounting -->
 
+    <!-- ===== GLOBAL PANELS (accessible from any tab) ===== -->
+    <div class="slide-panel" id="qboConnectPanel">
+        <div class="panel-inner">
+            <h4>QuickBooks Connection</h4>
+            <p style="font-size:12px; color:#888; margin:0 0 15px;">Connect your QuickBooks company to sync accounting data.</p>
+
+            <div id="qboNotConnected">
+                <button class="btn btn-primary" id="connectQbo" style="width:100%;margin-bottom:10px;">
+                    Connect QuickBooks
+                </button>
+                <p style="color:#888;font-size:11px;margin-top:10px;">
+                    Sign in with Google first (top right) before connecting QuickBooks.
+                </p>
+            </div>
+
+            <div id="qboConnected" style="display:none;">
+                <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:8px;padding:12px;margin-bottom:15px;">
+                    <div style="font-size:14px;color:#4ade80;margin-bottom:5px;">✓ Connected</div>
+                    <div style="font-size:12px;color:#888;" id="qboCompanyName">Company Name</div>
+                </div>
+                <button class="btn btn-secondary" id="disconnectQbo" style="width:100%;">Disconnect</button>
+            </div>
+
+            <div id="qboTestResult" style="margin-top:15px;font-size:12px;"></div>
+        </div>
+    </div>
+
+    <div class="slide-panel" id="strikeConnectPanel">
+        <div class="panel-inner">
+            <h4>Connect Strike Proxy</h4>
+            <p style="font-size:12px; color:#888; margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
+            <div class="panel-form-grid">
+                <div class="input-group">
+                    <label>Strike Proxy URL</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="walletStrikeProxyUrl" placeholder="https://ion-strike-proxy.your-name.workers.dev">
+                    </div>
+                </div>
+            </div>
+            <div class="panel-actions">
+                <button class="btn btn-secondary" id="cancelWalletStrike">Cancel</button>
+                <button class="btn btn-secondary" id="testWalletStrike">Test Connection</button>
+                <button class="btn btn-primary" id="saveWalletStrike">Save</button>
+            </div>
+            <div id="walletStrikeTestResult" style="margin-top:10px; font-size:12px;"></div>
+        </div>
+    </div>
+
 </main>
 
 <footer>
@@ -1016,15 +996,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=209"></script>
-<script src="./sync.js?v=209"></script>
-<script src="./auth-ui.js?v=209"></script>
-<script src="./profile-panel.js?v=209"></script>
-<script src="./shared.js?v=209"></script>
-<script src="./fleet-data.js?v=209"></script>
-<script src="./widget-settings.js?v=209"></script>
-<script src="./banking.js?v=209"></script>
-<script src="./alerts.js?v=209"></script>
-<script src="./onboarding.js?v=209"></script>
+<script src="./firebase-config.js?v=221"></script>
+<script src="./sync.js?v=221"></script>
+<script src="./auth-ui.js?v=221"></script>
+<script src="./profile-panel.js?v=221"></script>
+<script src="./shared.js?v=221"></script>
+<script src="./fleet-data.js?v=221"></script>
+<script src="./widget-settings.js?v=221"></script>
+<script src="./banking.js?v=222"></script>
+<script src="./alerts.js?v=221"></script>
+<script src="./onboarding.js?v=221"></script>
 </body>
 </html>

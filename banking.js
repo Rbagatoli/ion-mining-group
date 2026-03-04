@@ -392,15 +392,38 @@ async function autoLoginWithFirebase() {
     // Exchange Firebase ID token for worker session
     try {
         var idToken = await fbUser.getIdToken(true); // force refresh
-        var data = await StrikeAPI.firebaseLogin(idToken);
+        var data = null;
+
+        // Try QuickBooks worker first (no Strike dependency needed)
+        try {
+            var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
+            var res = await fetch(authUrl + '/auth/firebase-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken: idToken })
+            });
+            data = await res.json();
+        } catch (qbErr) {
+            console.warn('[Wallet] QB worker auth failed, trying Strike fallback:', qbErr);
+        }
+
+        // Fallback to Strike worker if QB worker failed
+        if (!data || !data.ok) {
+            console.log('[Wallet] Falling back to Strike worker for Firebase auth');
+            data = await StrikeAPI.firebaseLogin(idToken);
+        }
+
         if (data && data.ok) {
             StrikeAuth.saveSession(data.token, data.user);
             showAuthenticatedUI();
-            if (data.user.strikeConnected) {
+
+            // Check if Strike is separately connected
+            if (data.user.strikeConnected || StrikeAuth.hasStrike()) {
                 hideConnectStrikePrompt();
             } else {
                 showConnectStrikePrompt();
             }
+
             await loadAndRefreshWallet();
             if (acctStrikeConnected) await fetchStrikeAccountingData();
         } else {
@@ -695,6 +718,15 @@ function clearAllWalletState() {
     activeSendQuote = null;
     totpEnabled = false;
     clearQuoteExpiry();
+
+    // Clear accounting data (QB and Strike)
+    qboConnected = false;
+    qboData = { accounts: [], expenses: [], invoices: [] };
+    acctStrikeConnected = false;
+    strikeAcctData = { deposits: [], payouts: [], receives: [] };
+    acctPeriod = { start: '', end: '' };
+    updateQboStatus(null);  // Clear QB connection UI badge
+
     // Close all open slide panels
     var panels = document.querySelectorAll('.slide-panel.open');
     for (var i = 0; i < panels.length; i++) {
@@ -704,6 +736,7 @@ function clearAllWalletState() {
     showSignInPrompt();
     renderWallet();
     renderTransactionHistory();
+    renderAccounting();  // Clear displayed accounting data
 }
 
 // ===== CONNECT STRIKE PROMPT =====
@@ -733,11 +766,25 @@ function loadStrikeSettings() {
 function updateStrikeStatus(label) {
     var badge = document.getElementById('strikeStatusBadge');
     if (label) {
-        badge.textContent = 'Strike: ' + label;
-        badge.className = 'status-badge status-connected';
+        if (badge) {
+            badge.textContent = 'Strike: ' + label;
+            badge.className = 'status-badge status-connected';
+        }
+        // Update global nav bar
+        var btnConnect = document.getElementById('btnConnectStrikeGlobal');
+        var badgeConnected = document.getElementById('strikeConnectedBadge');
+        if (btnConnect) btnConnect.style.display = 'none';
+        if (badgeConnected) badgeConnected.style.display = 'flex';
     } else {
-        badge.textContent = 'Strike: Not Connected';
-        badge.className = 'status-badge status-disconnected';
+        if (badge) {
+            badge.textContent = 'Strike: Not Connected';
+            badge.className = 'status-badge status-disconnected';
+        }
+        // Update global nav bar
+        var btnConnect = document.getElementById('btnConnectStrikeGlobal');
+        var badgeConnected = document.getElementById('strikeConnectedBadge');
+        if (btnConnect) btnConnect.style.display = 'block';
+        if (badgeConnected) badgeConnected.style.display = 'none';
     }
 }
 
@@ -1270,17 +1317,21 @@ document.getElementById('btnRefreshBalances').addEventListener('click', function
 });
 
 // ===== STRIKE PANEL HANDLERS =====
-document.getElementById('btnConnectStrike').addEventListener('click', function() {
-    var settings = FleetData.getSettings();
-    if (settings.strike && settings.strike.proxyUrl) {
-        document.getElementById('walletStrikeProxyUrl').value = settings.strike.proxyUrl;
-    }
-    document.getElementById('walletStrikeTestResult').innerHTML = '';
-    document.getElementById('walletStrikeConnectPanel').classList.toggle('open');
-});
+// Old button removed - now using btnConnectStrikeGlobal
+var oldStrikeBtn = document.getElementById('btnConnectStrike');
+if (oldStrikeBtn) {
+    oldStrikeBtn.addEventListener('click', function() {
+        var settings = FleetData.getSettings();
+        if (settings.strike && settings.strike.proxyUrl) {
+            document.getElementById('walletStrikeProxyUrl').value = settings.strike.proxyUrl;
+        }
+        document.getElementById('walletStrikeTestResult').innerHTML = '';
+        document.getElementById('strikeConnectPanel').classList.toggle('open');
+    });
+}
 
 document.getElementById('cancelWalletStrike').addEventListener('click', function() {
-    document.getElementById('walletStrikeConnectPanel').classList.remove('open');
+    document.getElementById('strikeConnectPanel').classList.remove('open');
 });
 
 document.getElementById('testWalletStrike').addEventListener('click', async function() {
@@ -1320,21 +1371,27 @@ document.getElementById('saveWalletStrike').addEventListener('click', async func
 
     if (!url) {
         disconnectStrike();
-        document.getElementById('walletStrikeConnectPanel').classList.remove('open');
+        document.getElementById('strikeConnectPanel').classList.remove('open');
         return;
     }
 
     settings.strike = { proxyUrl: url, enabled: true, lastSync: null };
     FleetData.saveSettings(settings);
     strikeConnected = true;
+    acctStrikeConnected = true;  // Enable accounting Strike data
     updateStrikeStatus('Connected');
     updateSendButton();
     update2FAButton();
     updateAccountButtons();
-    document.getElementById('walletStrikeConnectPanel').classList.remove('open');
+    document.getElementById('strikeConnectPanel').classList.remove('open');
 
     // Auto-login with Firebase if signed in
     await autoLoginWithFirebase();
+
+    // Fetch wallet and accounting data
+    await fetchStrikeData();
+    await fetchStrikeAccountingData();  // Has its own auth guard
+    renderAccounting();
 });
 
 function disconnectStrike() {
@@ -1697,15 +1754,21 @@ function update2FAButton() {
     if (btn) btn.style.display = (strikeConnected && StrikeAuth.isLoggedIn()) ? '' : 'none';
 }
 
-document.getElementById('btnSetup2FA').addEventListener('click', function() {
-    document.getElementById('twofa-setup-content').style.display = '';
-    document.getElementById('twofa-setup-result').style.display = 'none';
-    document.getElementById('setup2FAPanel').classList.toggle('open');
-});
+var btn2FA = document.getElementById('btnSetup2FA');
+if (btn2FA) {
+    btn2FA.addEventListener('click', function() {
+        document.getElementById('twofa-setup-content').style.display = '';
+        document.getElementById('twofa-setup-result').style.display = 'none';
+        document.getElementById('setup2FAPanel').classList.toggle('open');
+    });
+}
 
-document.getElementById('cancel2FA').addEventListener('click', function() {
-    document.getElementById('setup2FAPanel').classList.remove('open');
-});
+var cancel2FA = document.getElementById('cancel2FA');
+if (cancel2FA) {
+    cancel2FA.addEventListener('click', function() {
+        document.getElementById('setup2FAPanel').classList.remove('open');
+    });
+}
 
 document.getElementById('btnGenerate2FA').addEventListener('click', function() {
     var secret = generateBase32Secret(16);
@@ -2912,94 +2975,257 @@ document.getElementById('btnApplyCustom').addEventListener('click', function() {
     }
 });
 
-// ===== QBO CONNECTION =====
-function loadQboSettings() {
-    var settings = FleetData.getSettings();
-    if (settings.quickbooks && settings.quickbooks.workerUrl) {
-        document.getElementById('qboWorkerUrl').value = settings.quickbooks.workerUrl;
-        if (settings.quickbooks.enabled) {
-            qboConnected = true;
-            updateQboStatus(settings.quickbooks.companyName || 'Connected');
+// ===== QBO CONNECTION (OAUTH) =====
+function getQboProxyUrl() {
+    return 'https://ion-quickbooks.ion-mining.workers.dev';
+}
+
+async function connectQuickBooks() {
+    var result = document.getElementById('qboTestResult');
+    if (result) result.innerHTML = '<span style="color:#888;">Authenticating...</span>';
+
+    // Check if we have a session token
+    var token = StrikeAuth.getToken();
+    if (!token) {
+        // No session - try to create one using Firebase
+        var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+        if (!fbUser) {
+            alert('Please sign in with Google first (top right corner)');
+            return;
+        }
+
+        try {
+            // Exchange Firebase ID token for session token
+            var idToken = await fbUser.getIdToken(true);
+            var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
+            var authRes = await fetch(authUrl + '/auth/firebase-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken: idToken })
+            });
+            var authData = await authRes.json();
+
+            if (authData && authData.ok) {
+                console.log('[QB] QB worker auth succeeded');
+                StrikeAuth.saveSession(authData.token, authData.user);
+                token = authData.token;
+            } else {
+                console.log('[QB] QB worker auth failed, trying Strike fallback:', authData);
+                // Fallback to Strike worker
+                try {
+                    var strikeData = await StrikeAPI.firebaseLogin(idToken);
+                    console.log('[QB] Strike worker response:', strikeData);
+                    if (strikeData && strikeData.ok) {
+                        StrikeAuth.saveSession(strikeData.token, strikeData.user);
+                        token = strikeData.token;
+                    } else {
+                        console.error('[QB] Strike worker auth failed:', strikeData);
+                        alert('Authentication failed. Please try signing out and back in.');
+                        return;
+                    }
+                } catch (strikeErr) {
+                    console.error('[QB] Strike worker error:', strikeErr);
+                    alert('Authentication failed: ' + strikeErr.message);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Auth error:', err);
+            alert('Authentication failed. Please try signing out and back in.');
+            return;
         }
     }
+
+    var proxyUrl = getQboProxyUrl();
+    if (result) result.innerHTML = '<span style="color:#888;">Starting OAuth...</span>';
+
+    try {
+        var initRes = await fetch(proxyUrl + '/auth/qbo/initiate', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + StrikeAuth.getToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        var initData = await initRes.json();
+        if (!initData.authUrl) throw new Error('No auth URL');
+
+        var width = 600, height = 700;
+        var left = (screen.width - width) / 2;
+        var top = (screen.height - height) / 2;
+        var popup = window.open(initData.authUrl, 'QuickBooks OAuth',
+            'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
+
+        if (!popup) throw new Error('Popup blocked');
+        if (result) result.innerHTML = '<span style="color:#888;">Authorize in popup...</span>';
+
+        var handler = function(event) {
+            if (event.data && event.data.type === 'qbo-oauth-success') {
+                window.removeEventListener('message', handler);
+                onQuickBooksConnected(event.data.companyName);
+            }
+        };
+        window.addEventListener('message', handler);
+
+        var interval = setInterval(function() {
+            if (popup.closed) {
+                clearInterval(interval);
+                window.removeEventListener('message', handler);
+                checkQboConnectionStatus();
+            }
+        }, 500);
+
+    } catch (e) {
+        if (result) result.innerHTML = '<span style="color:#f55;">Error: ' + e.message + '</span>';
+    }
+}
+
+async function disconnectQuickBooks() {
+    if (!confirm('Disconnect QuickBooks?')) return;
+
+    var proxyUrl = getQboProxyUrl();
+    var res = await fetch(proxyUrl + '/auth/qbo/disconnect', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
+    });
+
+    if (res.ok) {
+        qboConnected = false;
+        qboData = { accounts: [], expenses: [], invoices: [] };
+        updateQboStatus(null);
+        renderAccounting();
+    }
+}
+
+async function disconnectStrike() {
+    if (!confirm('Disconnect Strike? You will need to reconnect to view wallet data.')) {
+        return;
+    }
+
+    try {
+        // Clear Strike session
+        StrikeAuth.clearSession();
+
+        // Clear Strike settings
+        var settings = FleetData.getSettings();
+        settings.strike = { proxyUrl: '', enabled: false };
+        FleetData.saveSettings(settings);
+        strikeConnected = false;
+        acctStrikeConnected = false;  // Clear accounting flag
+
+        // Update global UI
+        var btnConnect = document.getElementById('btnConnectStrikeGlobal');
+        var badge = document.getElementById('strikeConnectedBadge');
+        if (btnConnect) btnConnect.style.display = 'block';
+        if (badge) badge.style.display = 'none';
+
+        // Update status
+        updateStrikeStatus(null);
+
+        // Clear Strike wallet data
+        strikeBalances = [];
+        strikes = [];
+        strikeTransactions = [];
+
+        // Clear Strike accounting data
+        strikeAcctData = { deposits: [], payouts: [], receives: [] };
+
+        // Refresh both tabs
+        renderWallet();
+        renderAccounting();
+
+        alert('Strike disconnected successfully');
+    } catch (err) {
+        console.error('Strike disconnect error:', err);
+        alert('Failed to disconnect Strike: ' + err.message);
+    }
+}
+
+async function checkQboConnectionStatus() {
+    if (!StrikeAuth.isLoggedIn()) return;
+
+    var proxyUrl = getQboProxyUrl();
+    var res = await fetch(proxyUrl + '/auth/qbo/status', {
+        headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
+    });
+
+    if (res.ok) {
+        var data = await res.json();
+        if (data.connected) {
+            onQuickBooksConnected(data.companyName);
+        } else {
+            qboConnected = false;
+            updateQboStatus(null);
+        }
+    }
+}
+
+async function onQuickBooksConnected(companyName) {
+    qboConnected = true;
+    updateQboStatus(companyName || 'Connected');
+    var result = document.getElementById('qboTestResult');
+    if (result) result.innerHTML = '<span style="color:#4ade80;">Connected: ' + companyName + '</span>';
+    document.getElementById('qboConnectPanel').classList.remove('open');
+    await loadAccountingData();  // Wait for data to load
+    renderAccounting();  // Then render immediately
 }
 
 function updateQboStatus(companyName) {
     var badge = document.getElementById('qboStatusBadge');
+    var notConnected = document.getElementById('qboNotConnected');
+    var connected = document.getElementById('qboConnected');
+    var companyNameEl = document.getElementById('qboCompanyName');
+
+    // Update global nav bar badges
+    var btnConnectGlobal = document.getElementById('btnConnectQbGlobal');
+    var badgeConnected = document.getElementById('qbConnectedBadge');
+    var badgeName = document.getElementById('qbConnectedName');
+
     if (companyName) {
-        badge.textContent = 'QuickBooks: ' + companyName;
-        badge.className = 'status-badge status-connected';
+        if (badge) {
+            badge.textContent = 'QuickBooks: ' + companyName;
+            badge.className = 'status-badge status-connected';
+        }
+        if (notConnected) notConnected.style.display = 'none';
+        if (connected) connected.style.display = '';
+        if (companyNameEl) companyNameEl.textContent = companyName;
+
+        // Update global nav bar
+        if (btnConnectGlobal) btnConnectGlobal.style.display = 'none';
+        if (badgeConnected) badgeConnected.style.display = 'flex';
+        if (badgeName) badgeName.textContent = companyName;
     } else {
-        badge.textContent = 'QuickBooks: Not Connected';
-        badge.className = 'status-badge status-disconnected';
+        if (badge) {
+            badge.textContent = 'QuickBooks: Not Connected';
+            badge.className = 'status-badge status-disconnected';
+        }
+        if (notConnected) notConnected.style.display = '';
+        if (connected) connected.style.display = 'none';
+
+        // Update global nav bar
+        if (btnConnectGlobal) btnConnectGlobal.style.display = 'block';
+        if (badgeConnected) badgeConnected.style.display = 'none';
     }
 }
 
-document.getElementById('btnConnectQbo').addEventListener('click', function() {
-    document.getElementById('qboConnectPanel').classList.toggle('open');
-});
+// Old button removed - now using btnConnectQbGlobal
+var oldQboBtn = document.getElementById('btnConnectQbo');
+if (oldQboBtn) {
+    oldQboBtn.addEventListener('click', function() {
+        document.getElementById('qboConnectPanel').classList.toggle('open');
+    });
+}
 
-document.getElementById('cancelQbo').addEventListener('click', function() {
-    document.getElementById('qboConnectPanel').classList.remove('open');
-});
+var connectBtn = document.getElementById('connectQbo');
+if (connectBtn) connectBtn.addEventListener('click', connectQuickBooks);
 
-document.getElementById('testQbo').addEventListener('click', async function() {
-    var url = document.getElementById('qboWorkerUrl').value.trim();
-    var result = document.getElementById('qboTestResult');
-    if (!url) { result.innerHTML = '<span style="color:#f55;">Enter a worker URL</span>'; return; }
-    result.innerHTML = '<span style="color:#888;">Testing...</span>';
-    try {
-        var res = await fetch(url.replace(/\/$/, '') + '/ping');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var data = await res.json();
-        if (data.ok) {
-            result.innerHTML = '<span style="color:#4ade80;">Connected: ' + (data.companyName || 'OK') + '</span>';
-        } else {
-            result.innerHTML = '<span style="color:#f55;">Error: ' + (data.error || 'Unknown') + '</span>';
-        }
-    } catch (e) {
-        result.innerHTML = '<span style="color:#f55;">Failed: ' + e.message + '</span>';
-    }
-});
+var disconnectBtn = document.getElementById('disconnectQbo');
+if (disconnectBtn) disconnectBtn.addEventListener('click', disconnectQuickBooks);
 
-document.getElementById('saveQbo').addEventListener('click', async function() {
-    var url = document.getElementById('qboWorkerUrl').value.trim();
-    var settings = FleetData.getSettings();
-    if (!url) {
-        // Disconnect
-        settings.quickbooks = { workerUrl: '', enabled: false, companyName: '' };
-        FleetData.saveSettings(settings);
-        qboConnected = false;
-        qboData = { accounts: [], expenses: [], invoices: [] };
-        updateQboStatus(null);
-        document.getElementById('qboConnectPanel').classList.remove('open');
-        renderAccounting();
-        return;
-    }
-
-    // Try to connect
-    try {
-        var res = await fetch(url.replace(/\/$/, '') + '/ping');
-        var data = await res.json();
-        if (data.ok) {
-            settings.quickbooks = {
-                workerUrl: url.replace(/\/$/, ''),
-                enabled: true,
-                companyName: data.companyName || 'Connected'
-            };
-            FleetData.saveSettings(settings);
-            qboConnected = true;
-            updateQboStatus(data.companyName);
-            document.getElementById('qboConnectPanel').classList.remove('open');
-            await loadAccountingData();
-            renderAccounting();
-        } else {
-            document.getElementById('qboTestResult').innerHTML = '<span style="color:#f55;">Connection failed</span>';
-        }
-    } catch (e) {
-        document.getElementById('qboTestResult').innerHTML = '<span style="color:#f55;">Failed: ' + e.message + '</span>';
-    }
-});
+if (typeof StrikeAuth !== 'undefined' && StrikeAuth.isLoggedIn()) {
+    checkQboConnectionStatus();
+}
 
 // ===== STRIKE CONNECTION =====
 function loadStrikeAcctSettings() {
@@ -3069,78 +3295,103 @@ function strikeItemDate(item) {
     return d.substring(0, 10); // YYYY-MM-DD
 }
 
-// Strike panel handlers
-document.getElementById('btnConnectStrikeAcct').addEventListener('click', function() {
-    var settings = FleetData.getSettings();
-    if (settings.strike && settings.strike.proxyUrl) {
-        document.getElementById('strikeProxyUrlAcct').value = settings.strike.proxyUrl;
-    }
-    document.getElementById('strikeTestResultAcct').innerHTML = '';
-    document.getElementById('acctStrikeConnectPanel').classList.toggle('open');
-});
+// Strike panel handlers (old accounting button removed - now using global)
+var oldStrikeAcctBtn = document.getElementById('btnConnectStrikeAcct');
+if (oldStrikeAcctBtn) {
+    oldStrikeAcctBtn.addEventListener('click', function() {
+        var settings = FleetData.getSettings();
+        if (settings.strike && settings.strike.proxyUrl) {
+            var urlInput = document.getElementById('strikeProxyUrlAcct');
+            if (urlInput) urlInput.value = settings.strike.proxyUrl;
+        }
+        var result = document.getElementById('strikeTestResultAcct');
+        if (result) result.innerHTML = '';
+        var panel = document.getElementById('acctStrikeConnectPanel');
+        if (panel) panel.classList.toggle('open');
+    });
+}
 
-document.getElementById('cancelStrikeAcct').addEventListener('click', function() {
-    document.getElementById('acctStrikeConnectPanel').classList.remove('open');
-});
+// Old accounting Strike buttons (removed)
+var cancelStrikeAcct = document.getElementById('cancelStrikeAcct');
+if (cancelStrikeAcct) {
+    cancelStrikeAcct.addEventListener('click', function() {
+        var panel = document.getElementById('acctStrikeConnectPanel');
+        if (panel) panel.classList.remove('open');
+    });
+}
 
-document.getElementById('testStrikeAcct').addEventListener('click', async function() {
-    var url = document.getElementById('strikeProxyUrlAcct').value.trim();
-    var result = document.getElementById('strikeTestResultAcct');
-    if (!url) { result.innerHTML = '<span style="color:#f55;">Enter a proxy URL</span>'; return; }
-    result.innerHTML = '<span style="color:#888;">Testing...</span>';
-    var settings = FleetData.getSettings();
-    if (!settings.strike) settings.strike = {};
-    var oldUrl = settings.strike.proxyUrl;
-    settings.strike.proxyUrl = url;
-    FleetData.saveSettings(settings);
-    var data = await strikeApiFetch('/ping');
-    settings.strike.proxyUrl = oldUrl;
-    FleetData.saveSettings(settings);
-    if (data && !data.error && data.ok) {
-        var balances = data.balances || data;
-        var balArr = Array.isArray(balances) ? balances : (balances.items || [balances]);
-        var info = [];
-        for (var i = 0; i < balArr.length; i++) info.push(balArr[i].currency + ': ' + (balArr[i].available || balArr[i].total || balArr[i].amount || '0'));
-        result.innerHTML = '<span style="color:#4ade80;">Connected! Balances: ' + info.join(', ') + '</span>';
-    } else {
-        result.innerHTML = '<span style="color:#f55;">Failed: ' + ((data && data.error) || 'Unknown') + '</span>';
-    }
-});
+var testStrikeAcct = document.getElementById('testStrikeAcct');
+if (testStrikeAcct) {
+    testStrikeAcct.addEventListener('click', async function() {
+        var urlInput = document.getElementById('strikeProxyUrlAcct');
+        var result = document.getElementById('strikeTestResultAcct');
+        if (!urlInput || !result) return;
 
-document.getElementById('saveStrikeAcct').addEventListener('click', async function() {
-    var url = document.getElementById('strikeProxyUrlAcct').value.trim();
-    var settings = FleetData.getSettings();
-    if (!url) {
-        settings.strike = { proxyUrl: '', enabled: false, lastSync: null };
+        var url = urlInput.value.trim();
+        if (!url) { result.innerHTML = '<span style="color:#f55;">Enter a proxy URL</span>'; return; }
+        result.innerHTML = '<span style="color:#888;">Testing...</span>';
+        var settings = FleetData.getSettings();
+        if (!settings.strike) settings.strike = {};
+        var oldUrl = settings.strike.proxyUrl;
+        settings.strike.proxyUrl = url;
         FleetData.saveSettings(settings);
-        acctStrikeConnected = false;
-        strikeAcctData = { deposits: [], payouts: [], receives: [] };
-        updateStrikeAcctStatus(null);
-        document.getElementById('acctStrikeConnectPanel').classList.remove('open');
+        var data = await strikeApiFetch('/ping');
+        settings.strike.proxyUrl = oldUrl;
+        FleetData.saveSettings(settings);
+        if (data && !data.error && data.ok) {
+            var balances = data.balances || data;
+            var balArr = Array.isArray(balances) ? balances : (balances.items || [balances]);
+            var info = [];
+            for (var i = 0; i < balArr.length; i++) info.push(balArr[i].currency + ': ' + (balArr[i].available || balArr[i].total || balArr[i].amount || '0'));
+            result.innerHTML = '<span style="color:#4ade80;">Connected! Balances: ' + info.join(', ') + '</span>';
+        } else {
+            result.innerHTML = '<span style="color:#f55;">Failed: ' + ((data && data.error) || 'Unknown') + '</span>';
+        }
+    });
+}
+
+var saveStrikeAcct = document.getElementById('saveStrikeAcct');
+if (saveStrikeAcct) {
+    saveStrikeAcct.addEventListener('click', async function() {
+        var urlInput = document.getElementById('strikeProxyUrlAcct');
+        if (!urlInput) return;
+
+        var url = urlInput.value.trim();
+        var settings = FleetData.getSettings();
+        if (!url) {
+            settings.strike = { proxyUrl: '', enabled: false, lastSync: null };
+            FleetData.saveSettings(settings);
+            acctStrikeConnected = false;
+            strikeAcctData = { deposits: [], payouts: [], receives: [] };
+            updateStrikeAcctStatus(null);
+            var panel = document.getElementById('acctStrikeConnectPanel');
+            if (panel) panel.classList.remove('open');
+            renderAccounting();
+            return;
+        }
+        settings.strike = { proxyUrl: url, enabled: true, lastSync: new Date().toISOString() };
+        FleetData.saveSettings(settings);
+        acctStrikeConnected = true;
+        updateStrikeAcctStatus('Connected');
+        var panel = document.getElementById('acctStrikeConnectPanel');
+        if (panel) panel.classList.remove('open');
+        await fetchStrikeAccountingData();
         renderAccounting();
-        return;
-    }
-    settings.strike = { proxyUrl: url, enabled: true, lastSync: new Date().toISOString() };
-    FleetData.saveSettings(settings);
-    acctStrikeConnected = true;
-    updateStrikeAcctStatus('Connected');
-    document.getElementById('acctStrikeConnectPanel').classList.remove('open');
-    await fetchStrikeAccountingData();
-    renderAccounting();
-});
+    });
+}
 
 // ===== DATA LOADING =====
 async function loadAccountingData() {
-    if (!qboConnected) return;
-    var settings = FleetData.getSettings();
-    var url = settings.quickbooks && settings.quickbooks.workerUrl;
-    if (!url) return;
+    if (!qboConnected || !StrikeAuth.isLoggedIn()) return;
+
+    var proxyUrl = getQboProxyUrl();
+    var headers = { 'Authorization': 'Bearer ' + StrikeAuth.getToken() };
 
     try {
         var [accountsRes, expensesRes, invoicesRes] = await Promise.all([
-            fetch(url + '/accounts').then(function(r) { return r.json(); }).catch(function() { return { accounts: [] }; }),
-            fetch(url + '/expenses?start=' + acctPeriod.start + '&end=' + acctPeriod.end).then(function(r) { return r.json(); }).catch(function() { return { expenses: [] }; }),
-            fetch(url + '/invoices').then(function(r) { return r.json(); }).catch(function() { return { invoices: [] }; })
+            fetch(proxyUrl + '/accounts', { headers: headers }).then(function(r) { return r.json(); }).catch(function() { return { accounts: [] }; }),
+            fetch(proxyUrl + '/expenses?start=' + acctPeriod.start + '&end=' + acctPeriod.end, { headers: headers }).then(function(r) { return r.json(); }).catch(function() { return { expenses: [] }; }),
+            fetch(proxyUrl + '/invoices', { headers: headers }).then(function(r) { return r.json(); }).catch(function() { return { invoices: [] }; })
         ]);
         qboData.accounts = accountsRes.accounts || [];
         qboData.expenses = expensesRes.expenses || [];
@@ -4033,6 +4284,36 @@ initNav('banking');
     await loadAndRefreshWallet();
     startAutoRefresh();
 
+    // Wire up global connection buttons in nav bar
+    var btnConnectQbGlobal = document.getElementById('btnConnectQbGlobal');
+    if (btnConnectQbGlobal) {
+        btnConnectQbGlobal.addEventListener('click', function() {
+            document.getElementById('qboConnectPanel').classList.add('open');
+        });
+    }
+
+    var btnConnectStrikeGlobal = document.getElementById('btnConnectStrikeGlobal');
+    if (btnConnectStrikeGlobal) {
+        btnConnectStrikeGlobal.addEventListener('click', function() {
+            var settings = FleetData.getSettings();
+            if (settings.strike && settings.strike.proxyUrl) {
+                document.getElementById('walletStrikeProxyUrl').value = settings.strike.proxyUrl;
+            }
+            document.getElementById('walletStrikeTestResult').innerHTML = '';
+            document.getElementById('strikeConnectPanel').classList.add('open');
+        });
+    }
+
+    var btnDisconnectQbGlobal = document.getElementById('btnDisconnectQbGlobal');
+    if (btnDisconnectQbGlobal) {
+        btnDisconnectQbGlobal.addEventListener('click', disconnectQuickBooks);
+    }
+
+    var btnDisconnectStrikeGlobal = document.getElementById('btnDisconnectStrikeGlobal');
+    if (btnDisconnectStrikeGlobal) {
+        btnDisconnectStrikeGlobal.addEventListener('click', disconnectStrike);
+    }
+
     // Re-init widget drag handles for Wallet tab after DOM is ready
     if (typeof window.initBankingTabWidgets === 'function') {
         setTimeout(function() {
@@ -4048,7 +4329,7 @@ initNav('banking');
 
     // Accounting init
     setPeriod('month');
-    loadQboSettings();
+    checkQboConnectionStatus();  // Check QB connection status instead
     loadStrikeAcctSettings();
     await loadAccountingData();
     await fetchStrikeAccountingData();
