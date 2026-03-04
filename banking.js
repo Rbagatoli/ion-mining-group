@@ -870,6 +870,18 @@ async function fetchStrikeData() {
             receives: receives ? (receives.items || receives).length : 0
         });
 
+        // Log raw payout API response structure
+        console.log('[Wallet] RAW Payouts API Response:', {
+            hasError: !!payouts.error,
+            errorMsg: payouts.error,
+            isArray: Array.isArray(payouts),
+            hasItems: payouts && !!payouts.items,
+            itemsIsArray: payouts && Array.isArray(payouts.items),
+            responseKeys: payouts ? Object.keys(payouts) : [],
+            firstPayoutKeys: payouts && (payouts.items || payouts)[0] ?
+                Object.keys((payouts.items || payouts)[0]) : []
+        });
+
         if (deposits && !deposits.error && Array.isArray(deposits.items || deposits)) {
             var depItems = deposits.items || deposits;
             for (var d = 0; d < depItems.length; d++) {
@@ -889,19 +901,74 @@ async function fetchStrikeData() {
             var payItems = payouts.items || payouts;
             for (var p = 0; p < payItems.length; p++) {
                 var pay = payItems[p];
-                var payoutAmount = -parseStrikeAmount(pay.amount || pay.amountPaid || pay);
-                console.log('[Wallet] Added payout:', {
-                    id: pay.payoutId || pay.id,
-                    amount: payoutAmount,
-                    timestamp: new Date(pay.created || pay.completedAt || pay.createdAt).getTime() / 1000
+
+                console.log('[Wallet] Processing payout #' + p + ':', {
+                    rawPayout: pay,
+                    payoutKeys: Object.keys(pay),
+                    amountField: pay.amount || pay.amountPaid || pay.amountSent || pay.total,
+                    timestampFields: {
+                        created: pay.created,
+                        completedAt: pay.completedAt,
+                        createdAt: pay.createdAt,
+                        timestamp: pay.timestamp,
+                        date: pay.date
+                    },
+                    statusFields: {
+                        state: pay.state,
+                        status: pay.status
+                    },
+                    idFields: {
+                        payoutId: pay.payoutId,
+                        id: pay.id
+                    }
                 });
+
+                var payoutAmount = -parseStrikeAmount(pay.amount || pay.amountPaid || pay.amountSent || pay.total || pay);
+
+                // Validate amount parsing
+                if (payoutAmount === 0 || isNaN(payoutAmount)) {
+                    console.warn('[Wallet] Payout amount parsing FAILED:', {
+                        rawAmount: pay.amount || pay.amountPaid || pay.amountSent || pay.total,
+                        parsedAmount: payoutAmount,
+                        amountType: typeof (pay.amount || pay.amountPaid)
+                    });
+                }
+
+                var payoutTimestamp = new Date(
+                    pay.created ||
+                    pay.completedAt ||
+                    pay.createdAt ||
+                    pay.timestamp ||
+                    pay.date ||
+                    pay.updatedAt ||
+                    Date.now()
+                ).getTime() / 1000;
+
+                // Validate timestamp parsing
+                if (isNaN(payoutTimestamp)) {
+                    console.warn('[Wallet] Payout timestamp parsing FAILED:', {
+                        dateFields: {
+                            created: pay.created,
+                            completedAt: pay.completedAt,
+                            createdAt: pay.createdAt
+                        },
+                        parsedTimestamp: payoutTimestamp
+                    });
+                }
+
+                console.log('[Wallet] Added payout:', {
+                    id: pay.payoutId || pay.id || pay.paymentId || 'payout-' + p,
+                    amount: payoutAmount,
+                    timestamp: payoutTimestamp
+                });
+
                 strikeTxs.push({
                     source: 'Strike',
                     sourceType: 'Payout',
-                    timestamp: new Date(pay.created || pay.completedAt || pay.createdAt).getTime() / 1000,
+                    timestamp: payoutTimestamp,
                     amount: payoutAmount,
-                    status: pay.state || pay.status || 'completed',
-                    id: pay.payoutId || pay.id || ''
+                    status: (pay.state || pay.status || 'completed').toLowerCase(),
+                    id: pay.payoutId || pay.id || pay.paymentId || 'payout-' + p
                 });
             }
         }
@@ -1321,6 +1388,18 @@ async function renderTransactionHistory() {
 
     console.log('[Wallet] Strike transactions in allTxs:',
         allTxs.filter(function(t) { return t.type === 'strike'; }).length);
+
+    // Detailed breakdown by Strike transaction type
+    var strikeByType = allTxs.filter(function(t) { return t.type === 'strike'; });
+    console.log('[Wallet] Strike transactions breakdown:', {
+        total: strikeByType.length,
+        byType: {
+            deposits: strikeByType.filter(function(t) { return t.strikeType === 'Deposit'; }).length,
+            payouts: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; }).length,
+            receives: strikeByType.filter(function(t) { return t.strikeType === 'Receive'; }).length
+        },
+        payoutTransactions: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; })
+    });
 
     allTxs.sort(function(a, b) { return b.timestamp - a.timestamp; });
 
