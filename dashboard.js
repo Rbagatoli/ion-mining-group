@@ -386,7 +386,7 @@ function buildMinerCard(m, eff, mDailyUSD, isLive, isGroupSummary, isExpanded) {
 
     var totalRow = '';
     if (isGroupSummary) {
-        totalRow = '<div class="miner-card-stat stat-total"><div class="stat-label">Total Daily (' + m.quantity + ' units)</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD * m.quantity) + '</div></div>';
+        totalRow = '<div class="miner-card-stat"><div class="stat-label">Total Daily (x' + m.quantity + ')</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD * m.quantity) + '</div></div>';
     }
 
     var toggleBtn = '';

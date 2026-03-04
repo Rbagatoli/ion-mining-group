@@ -1897,12 +1897,22 @@ main { display: flex; flex-direction: column; }
     /* Miner cards */
     .miner-cards-grid { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
     .banking-tab-content .miner-cards-grid { gap: 16px !important; }
-    .miner-card { padding: 10px; border-radius: 8px; }
+    .miner-card { padding: 8px; border-radius: 8px; }
     .miner-card-header { margin-bottom: 6px; }
     .miner-card-model { font-size: 13px; }
-    .miner-card-stats { gap: 4px; margin-bottom: 6px; }
-    .miner-card-actions { flex-wrap: wrap; }
-    .miner-card-actions button { font-size: 10px; padding: 5px 6px; }
+    .miner-card-stats { gap: 6px; margin-bottom: 6px; grid-template-columns: repeat(2, 1fr); }
+    .miner-card-stat { padding: 6px; }
+    .miner-card-stat .stat-label { font-size: 10px; }
+    .miner-card-stat .stat-value { font-size: 12px; }
+    .miner-card-actions { flex-wrap: wrap; gap: 4px; }
+    .miner-card-actions button { font-size: 10px; padding: 5px 8px; }
+
+    /* Fleet metric cards - more compact on mobile */
+    .fleet-grid { gap: 8px; grid-template-columns: repeat(2, 1fr); }
+    .metric-card { padding: 8px; }
+    .metric-card .label { font-size: 10px; }
+    .metric-card .value { font-size: 14px; }
+    .metric-card .sub { font-size: 10px; }
 
     /* Inputs */
     .inputs-grid { gap: 8px; }
