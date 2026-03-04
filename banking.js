@@ -394,23 +394,28 @@ async function autoLoginWithFirebase() {
         var idToken = await fbUser.getIdToken(true); // force refresh
         var data = null;
 
-        // Try QuickBooks worker first (no Strike dependency needed)
+        // Try Strike worker first (needed for wallet functionality)
         try {
-            var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
-            var res = await fetch(authUrl + '/auth/firebase-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken: idToken })
-            });
-            data = await res.json();
-        } catch (qbErr) {
-            console.warn('[Wallet] QB worker auth failed, trying Strike fallback:', qbErr);
+            data = await StrikeAPI.firebaseLogin(idToken);
+            console.log('[Wallet] Strike worker auth:', data && data.ok ? 'success' : 'failed');
+        } catch (strikeErr) {
+            console.warn('[Wallet] Strike worker auth failed:', strikeErr);
         }
 
-        // Fallback to Strike worker if QB worker failed
-        if (!data || !data.ok) {
-            console.log('[Wallet] Falling back to Strike worker for Firebase auth');
-            data = await StrikeAPI.firebaseLogin(idToken);
+        // Also auth with QB worker (if Strike succeeded, this creates parallel session for QB)
+        if (data && data.ok) {
+            try {
+                var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
+                var qbRes = await fetch(authUrl + '/auth/firebase-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: idToken })
+                });
+                var qbData = await qbRes.json();
+                console.log('[Wallet] QB worker auth:', qbData && qbData.ok ? 'success' : 'failed');
+            } catch (qbErr) {
+                console.warn('[Wallet] QB worker auth failed (non-critical):', qbErr);
+            }
         }
 
         if (data && data.ok) {
