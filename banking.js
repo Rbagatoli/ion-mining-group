@@ -3262,16 +3262,13 @@ if (typeof StrikeAuth !== 'undefined' && StrikeAuth.isLoggedIn()) {
 
 // ===== STRIKE CONNECTION =====
 function loadStrikeAcctSettings() {
-    var settings = FleetData.getSettings();
-    if (settings.strike && settings.strike.proxyUrl && settings.strike.enabled) {
-        var proxyInput = document.getElementById('strikeProxyUrlAcct');
-        if (proxyInput) proxyInput.value = settings.strike.proxyUrl;
-        acctStrikeConnected = true;
-        if (StrikeAuth.isLoggedIn()) {
-            updateStrikeAcctStatus('Connected & Authenticated');
-        } else {
-            updateStrikeAcctStatus('Connected (Not Authenticated)');
-        }
+    // Proxy URL is now hardcoded infrastructure - always available
+    acctStrikeConnected = true;
+    if (StrikeAuth.isLoggedIn()) {
+        updateStrikeAcctStatus('Connected & Authenticated');
+    } else {
+        updateStrikeAcctStatus('Connected (Not Authenticated)');
+    }
     }
 }
 
