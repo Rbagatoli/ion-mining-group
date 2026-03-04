@@ -3269,7 +3269,6 @@ function loadStrikeAcctSettings() {
     } else {
         updateStrikeAcctStatus('Connected (Not Authenticated)');
     }
-    }
 }
 
 function updateStrikeAcctStatus(label) {
