@@ -372,19 +372,25 @@ var StrikeAuth = (function() {
 var _walletAuthResolved = false;
 
 async function autoLoginWithFirebase() {
+    console.log('[Debug] autoLoginWithFirebase called');
     // Already have a valid worker session? Just use it.
     if (StrikeAuth.isLoggedIn()) {
+        console.log('[Debug] Strike session exists, using it');
         showAuthenticatedUI();
         var user = StrikeAuth.getUser();
+        console.log('[Debug] User object:', user);
 
         // Set global Strike connection flag if user has API key
         if (user && user.strikeConnected && user.hasOwnKey) {
+            console.log('[Debug] Setting strikeConnected = true');
             strikeConnected = true;
             updateStrikeStatus('Connected');
             updateSendButton();
             update2FAButton();
             hideConnectStrikePrompt();
+            console.log('[Debug] strikeConnected is now:', strikeConnected);
         } else {
+            console.log('[Debug] User does not have Strike connected, showing prompt');
             showConnectStrikePrompt();
         }
         await loadAndRefreshWallet();
