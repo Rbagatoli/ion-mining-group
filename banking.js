@@ -631,6 +631,7 @@ var StrikeAPI = (function() {
     async function getPayouts() { return await apiFetch('/payouts'); }
     async function getReceives() { return await apiFetch('/receives'); }
     async function getInvoices() { return await apiFetch('/invoices'); }
+    async function getPayments() { return await apiFetch('/payments'); }
 
     async function testConnection() {
         return await apiPublicFetch('/ping');
@@ -666,6 +667,7 @@ var StrikeAPI = (function() {
         getPayouts: getPayouts,
         getReceives: getReceives,
         getInvoices: getInvoices,
+        getPayments: getPayments,
         testConnection: testConnection,
         sendQuoteLightning: sendQuoteLightning,
         sendQuoteOnchain: sendQuoteOnchain,
@@ -858,16 +860,18 @@ async function fetchStrikeData() {
 
     var strikeTxs = [];
     try {
-        var [deposits, payouts, receives] = await Promise.all([
+        var [deposits, payouts, receives, payments] = await Promise.all([
             StrikeAPI.getDeposits(),
             StrikeAPI.getPayouts(),
-            StrikeAPI.getReceives()
+            StrikeAPI.getReceives(),
+            StrikeAPI.getPayments()
         ]);
 
         console.log('[Wallet] Strike data fetched:', {
             deposits: deposits ? (deposits.items || deposits).length : 0,
             payouts: payouts ? (payouts.items || payouts).length : 0,
-            receives: receives ? (receives.items || receives).length : 0
+            receives: receives ? (receives.items || receives).length : 0,
+            payments: payments ? (payments.items || payments).length : 0
         });
 
         // Log raw payout API response structure
@@ -984,6 +988,32 @@ async function fetchStrikeData() {
                     amount: parseStrikeAmount(rec.amountReceived || rec.amountCredited || rec.amount || rec),
                     status: rec.state || rec.status || 'completed',
                     id: rec.receiveId || rec.id || ''
+                });
+            }
+        }
+
+        // Process payments (Bitcoin sends, Lightning sends)
+        if (payments && !payments.error && Array.isArray(payments.items || payments)) {
+            var payItems = payments.items || payments;
+            for (var pm = 0; pm < payItems.length; pm++) {
+                var payment = payItems[pm];
+
+                // Determine payment type and amount
+                var isOutbound = payment.direction === 'out' || payment.amount < 0;
+                var paymentAmount = parseStrikeAmount(payment.amount || payment.total || payment);
+
+                // Make outbound payments negative
+                if (isOutbound && paymentAmount > 0) {
+                    paymentAmount = -paymentAmount;
+                }
+
+                strikeTxs.push({
+                    source: 'Strike',
+                    sourceType: isOutbound ? 'Send' : 'Payment',
+                    timestamp: new Date(payment.created || payment.completedAt || payment.createdAt).getTime() / 1000,
+                    amount: paymentAmount,
+                    status: (payment.state || payment.status || 'completed').toLowerCase(),
+                    id: payment.paymentId || payment.id || ''
                 });
             }
         }
@@ -1396,7 +1426,8 @@ async function renderTransactionHistory() {
         byType: {
             deposits: strikeByType.filter(function(t) { return t.strikeType === 'Deposit'; }).length,
             payouts: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; }).length,
-            receives: strikeByType.filter(function(t) { return t.strikeType === 'Receive'; }).length
+            receives: strikeByType.filter(function(t) { return t.strikeType === 'Receive'; }).length,
+            sends: strikeByType.filter(function(t) { return t.strikeType === 'Send'; }).length
         },
         payoutTransactions: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; })
     });
