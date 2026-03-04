@@ -438,10 +438,16 @@ async function autoLoginWithFirebase() {
             StrikeAuth.saveSession(data.token, data.user);
             showAuthenticatedUI();
 
-            // Proxy is always available (hardcoded), only check API key
+            // Set global Strike connection flag if user has API key
             if (data.user.strikeConnected && data.user.hasOwnKey) {
+                console.log('[Debug] Firebase exchange: User has Strike API key, setting strikeConnected = true');
+                strikeConnected = true;
+                updateStrikeStatus('Connected');
+                updateSendButton();
+                update2FAButton();
                 hideConnectStrikePrompt();
             } else {
+                console.log('[Debug] Firebase exchange: User does not have Strike API key yet');
                 showConnectStrikePrompt();
             }
 
