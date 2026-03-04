@@ -3475,13 +3475,34 @@ function renderRevenueTable(entries) {
     var html = '';
     for (var i = 0; i < entries.length; i++) {
         var e = entries[i];
+
+        // Determine source badge color
+        var sourceLower = e.source.toLowerCase();
+        var sourceBadgeStyle = '';
+        if (sourceLower.indexOf('strike') !== -1) {
+            sourceBadgeStyle = 'background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;';
+        } else {
+            sourceBadgeStyle = 'background:rgba(247,147,26,0.12); border:1px solid rgba(247,147,26,0.3); color:#f7931a;';
+        }
+
+        // Determine category badge color
+        var categoryLower = e.category.toLowerCase();
+        var categoryBadgeStyle = '';
+        if (categoryLower.indexOf('mining') !== -1 || categoryLower.indexOf('payout') !== -1) {
+            categoryBadgeStyle = 'background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); color:#4ade80;';
+        } else if (categoryLower.indexOf('payment') !== -1 || categoryLower.indexOf('receive') !== -1) {
+            categoryBadgeStyle = 'background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;';
+        } else {
+            categoryBadgeStyle = 'background:rgba(156,163,175,0.12); border:1px solid rgba(156,163,175,0.3); color:#9ca3af;';
+        }
+
         html += '<tr>' +
             '<td>' + e.date + '</td>' +
-            '<td>' + escapeHtml(e.source) + '</td>' +
-            '<td>' + fmtBTC(e.btcAmount, 8) + '</td>' +
+            '<td><span style="font-size:11px; padding:3px 8px; border-radius:4px; display:inline-block; ' + sourceBadgeStyle + '">' + escapeHtml(e.source) + '</span></td>' +
+            '<td class="btc-orange">' + fmtBTC(e.btcAmount, 8) + '</td>' +
             '<td>' + fmtUSD(e.btcPrice * mult) + '</td>' +
             '<td class="positive">' + fmtUSD(e.usdValue * mult) + '</td>' +
-            '<td>' + escapeHtml(e.category) + '</td>' +
+            '<td><span style="font-size:11px; padding:3px 8px; border-radius:4px; display:inline-block; ' + categoryBadgeStyle + '">' + escapeHtml(e.category) + '</span></td>' +
         '</tr>';
     }
     tbody.innerHTML = html;
