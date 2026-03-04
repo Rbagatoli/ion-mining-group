@@ -2124,13 +2124,17 @@ function showOnchainAddress(address) {
             saveBtn.disabled = false;
 
             if (data && data.ok) {
-                // Update local user
-                var user = StrikeAuth.getUser();
-                if (user) {
-                    user.strikeConnected = true;
-                    user.hasOwnKey = true;
-                    StrikeAuth.saveSession(StrikeAuth.getToken(), user);
-                }
+                // Update local user - create new if doesn't exist
+                var user = StrikeAuth.getUser() || { email: '', maxSendUsd: 1000, maxSendsPerHour: 5 };
+                user.strikeConnected = true;
+                user.hasOwnKey = true;
+                user.hasPin = user.hasPin || false;
+                user.has2FA = user.has2FA || false;
+
+                // Get token from current session or response
+                var token = StrikeAuth.getToken() || data.token || '';
+                StrikeAuth.saveSession(token, user);
+
                 hideConnectStrikePrompt();
                 updateAccountButtons();
                 // Show PIN creation UI — PIN is mandatory, cannot skip
