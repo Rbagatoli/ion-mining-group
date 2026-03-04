@@ -1173,7 +1173,79 @@ function renderEmptyTxTable() {
         '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No addresses added yet</td></tr>';
 }
 
+// Helper function to find address label by address
+function findAddressLabel(address) {
+    var data = WalletData.getData();
+    for (var i = 0; i < data.addresses.length; i++) {
+        if (data.addresses[i].address === address) {
+            return data.addresses[i].label;
+        }
+    }
+    return '';
+}
+
+// Render transaction filter tabs
+function renderTransactionTabs() {
+    var data = WalletData.getData();
+    var tabs = [];
+
+    // Always add "All" tab
+    tabs.push({ label: 'All', value: 'all' });
+
+    // Add Strike tab if connected
+    if (strikeConnected) {
+        tabs.push({ label: '⚡ Strike', value: 'strike' });
+    }
+
+    // Add tabs for each on-chain address
+    for (var i = 0; i < data.addresses.length; i++) {
+        tabs.push({
+            label: data.addresses[i].label || 'Address ' + (i + 1),
+            value: data.addresses[i].address
+        });
+    }
+
+    // Build tab HTML
+    var html = '<div class="tx-tabs">';
+    for (var t = 0; t < tabs.length; t++) {
+        var tab = tabs[t];
+        var active = selectedTransactionTab === tab.value ? ' active' : '';
+        html += '<button class="tx-tab' + active + '" data-tab-value="' +
+                escapeHtml(tab.value) + '">' + escapeHtml(tab.label) + '</button>';
+    }
+    html += '</div>';
+
+    console.log('[Wallet] Rendered transaction tabs:', tabs.length, 'tabs');
+    return html;
+}
+
 async function renderTransactionHistory() {
+    console.log('[Wallet] renderTransactionHistory() called, selectedTab:', selectedTransactionTab);
+
+    // Render tabs first
+    var tabsHtml = renderTransactionTabs();
+    var tabContainer = document.getElementById('txTabsContainer');
+    console.log('[Wallet] txTabsContainer element:', tabContainer ? 'FOUND' : 'NOT FOUND');
+
+    if (tabContainer) {
+        tabContainer.innerHTML = tabsHtml;
+        console.log('[Wallet] Tabs HTML set, length:', tabsHtml.length);
+
+        // Add click handlers to tabs
+        var tabButtons = tabContainer.querySelectorAll('.tx-tab');
+        console.log('[Wallet] Found', tabButtons.length, 'tab buttons');
+        for (var b = 0; b < tabButtons.length; b++) {
+            (function(btn) {
+                btn.addEventListener('click', function() {
+                    var newTab = btn.getAttribute('data-tab-value');
+                    console.log('[Wallet] Tab clicked:', newTab);
+                    selectedTransactionTab = newTab;
+                    renderTransactionHistory(); // Re-render with new filter
+                });
+            })(tabButtons[b]);
+        }
+    }
+
     var data = WalletData.getData();
     var tbody = document.getElementById('txHistoryBody');
 
