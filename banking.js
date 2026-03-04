@@ -3240,7 +3240,8 @@ if (typeof StrikeAuth !== 'undefined' && StrikeAuth.isLoggedIn()) {
 function loadStrikeAcctSettings() {
     var settings = FleetData.getSettings();
     if (settings.strike && settings.strike.proxyUrl && settings.strike.enabled) {
-        document.getElementById('strikeProxyUrlAcct').value = settings.strike.proxyUrl;
+        var proxyInput = document.getElementById('strikeProxyUrlAcct');
+        if (proxyInput) proxyInput.value = settings.strike.proxyUrl;
         acctStrikeConnected = true;
         if (StrikeAuth.isLoggedIn()) {
             updateStrikeAcctStatus('Connected & Authenticated');
