@@ -11,6 +11,7 @@ var strikeConnected = false;
 var strikeBalances = null;
 var strikeTransactions = [];
 var strikeOnchainAddress = null;
+var selectedTransactionTab = 'all'; // 'all' | 'strike' | address string
 
 // Income tab state
 var payoutChart = null;
@@ -863,6 +864,12 @@ async function fetchStrikeData() {
             StrikeAPI.getReceives()
         ]);
 
+        console.log('[Wallet] Strike data fetched:', {
+            deposits: deposits ? (deposits.items || deposits).length : 0,
+            payouts: payouts ? (payouts.items || payouts).length : 0,
+            receives: receives ? (receives.items || receives).length : 0
+        });
+
         if (deposits && !deposits.error && Array.isArray(deposits.items || deposits)) {
             var depItems = deposits.items || deposits;
             for (var d = 0; d < depItems.length; d++) {
@@ -882,11 +889,17 @@ async function fetchStrikeData() {
             var payItems = payouts.items || payouts;
             for (var p = 0; p < payItems.length; p++) {
                 var pay = payItems[p];
+                var payoutAmount = -parseStrikeAmount(pay.amount || pay.amountPaid || pay);
+                console.log('[Wallet] Added payout:', {
+                    id: pay.payoutId || pay.id,
+                    amount: payoutAmount,
+                    timestamp: new Date(pay.created || pay.completedAt || pay.createdAt).getTime() / 1000
+                });
                 strikeTxs.push({
                     source: 'Strike',
                     sourceType: 'Payout',
                     timestamp: new Date(pay.created || pay.completedAt || pay.createdAt).getTime() / 1000,
-                    amount: -parseStrikeAmount(pay.amount || pay.amountPaid || pay),
+                    amount: payoutAmount,
                     status: pay.state || pay.status || 'completed',
                     id: pay.payoutId || pay.id || ''
                 });
@@ -911,6 +924,7 @@ async function fetchStrikeData() {
         console.warn('[Wallet] Strike transaction fetch error:', e);
     }
 
+    console.log('[Wallet] Total Strike transactions processed:', strikeTxs.length);
     strikeTransactions = strikeTxs;
 
     // Also refresh Accounting tab Strike data if connected
@@ -1233,12 +1247,29 @@ async function renderTransactionHistory() {
         });
     }
 
+    console.log('[Wallet] Strike transactions in allTxs:',
+        allTxs.filter(function(t) { return t.type === 'strike'; }).length);
+
     allTxs.sort(function(a, b) { return b.timestamp - a.timestamp; });
 
+    // Filter transactions based on selectedTransactionTab
+    var filteredTxs = allTxs;
+    if (selectedTransactionTab !== 'all') {
+        filteredTxs = allTxs.filter(function(t) {
+            if (selectedTransactionTab === 'strike') {
+                return t.type === 'strike';
+            } else {
+                return t.type === 'on-chain' &&
+                       (t.receivingAddr === selectedTransactionTab ||
+                        t.sourceLabel === findAddressLabel(selectedTransactionTab));
+            }
+        });
+    }
+
     var html = '';
-    var limit = Math.min(30, allTxs.length);
+    var limit = Math.min(30, filteredTxs.length);
     for (var k = 0; k < limit; k++) {
-        var t = allTxs[k];
+        var t = filteredTxs[k];
         var date = new Date(t.timestamp * 1000);
         var dateStr = (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear() + ' ' +
             String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
@@ -1291,7 +1322,10 @@ async function renderTransactionHistory() {
     }
 
     if (!html) {
-        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No transactions found</td></tr>';
+        var emptyMsg = selectedTransactionTab !== 'all'
+            ? 'No transactions found for this filter'
+            : 'No transactions found';
+        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">' + emptyMsg + '</td></tr>';
     }
     tbody.innerHTML = html;
 }

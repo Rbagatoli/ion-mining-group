@@ -6,6 +6,13 @@
     <title>Ion Mining Group — Banking</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./shared.css?v=221">
+    <style>
+        /* Transaction filter tabs */
+        .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid rgba(255,255,255,0.05); padding-bottom:8px; }
+        .tx-tab { background:transparent; border:none; color:#888; padding:8px 16px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-10px; transition:all 0.2s ease; }
+        .tx-tab:hover { color:#aaa; background:rgba(255,255,255,0.03); }
+        .tx-tab.active { color:#f7931a; border-bottom-color:#f7931a; }
+    </style>
     <script>
     // Force full cache clear for v224 — nukes all service workers and caches
     if (!localStorage.getItem('sw_clean_v224') && 'serviceWorker' in navigator) {
@@ -161,6 +168,7 @@
     <!-- ===== TRANSACTION HISTORY ===== -->
     <div class="widget-section" data-widget="transactions">
     <div class="card">
+        <div id="txTabsContainer" style="margin-bottom: 12px;"></div>
         <h3>Recent Transactions</h3>
         <div class="table-scroll">
             <table>
@@ -1004,7 +1012,7 @@
 <script src="./shared.js?v=221"></script>
 <script src="./fleet-data.js?v=221"></script>
 <script src="./widget-settings.js?v=221"></script>
-<script src="./banking.js?v=241"></script>
+<script src="./banking.js?v=242"></script>
 <script src="./alerts.js?v=221"></script>
 <script src="./onboarding.js?v=229"></script>
 </body>
