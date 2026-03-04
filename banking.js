@@ -1,5 +1,8 @@
 // ===== ION MINING GROUP — Banking (Wallet + Income + Accounting) =====
 
+// Strike proxy URL - hardcoded infrastructure configuration
+var STRIKE_PROXY_URL = 'https://ion-strike-proxy.ion-mining.workers.dev';
+
 // ===== SECTION 0: UNIFIED STATE =====
 var liveBtcPrice = null;
 var acctBtcPrice = null;
@@ -374,21 +377,12 @@ async function autoLoginWithFirebase() {
         showAuthenticatedUI();
         var user = StrikeAuth.getUser();
 
-        // ===== NEW: Only show API key prompt if proxy URL is configured =====
-        var settings = FleetData.getSettings();
-        var hasProxy = settings.strike && settings.strike.proxyUrl;
-
-        if (!hasProxy) {
-            // No proxy configured - hide API key card completely
-            hideConnectStrikePrompt();
-        } else if (user && user.strikeConnected && user.hasOwnKey) {
-            // User already connected their own API key
+        // Proxy is always available (hardcoded), only check API key
+        if (user && user.strikeConnected && user.hasOwnKey) {
             hideConnectStrikePrompt();
         } else {
-            // Proxy configured but user hasn't connected API key yet
             showConnectStrikePrompt();
         }
-        // ====================================================================
         await loadAndRefreshWallet();
         if (acctStrikeConnected) await fetchStrikeAccountingData();
         return;
@@ -434,21 +428,12 @@ async function autoLoginWithFirebase() {
             StrikeAuth.saveSession(data.token, data.user);
             showAuthenticatedUI();
 
-            // ===== NEW: Check proxy URL before showing API key prompt =====
-            var settings = FleetData.getSettings();
-            var hasProxy = settings.strike && settings.strike.proxyUrl;
-
-            if (!hasProxy) {
-                // No proxy configured - hide API key card
-                hideConnectStrikePrompt();
-            } else if (data.user.strikeConnected && data.user.hasOwnKey) {
-                // User already connected their own API key
+            // Proxy is always available (hardcoded), only check API key
+            if (data.user.strikeConnected && data.user.hasOwnKey) {
                 hideConnectStrikePrompt();
             } else {
-                // Proxy configured but user hasn't connected API key yet
                 showConnectStrikePrompt();
             }
-            // ==============================================================
 
             await loadAndRefreshWallet();
             if (acctStrikeConnected) await fetchStrikeAccountingData();
@@ -474,8 +459,8 @@ window.ionWalletSyncRefresh = function() {
 // ===== STRIKE API MODULE (via Cloudflare Worker proxy) =====
 var StrikeAPI = (function() {
     function getProxyUrl() {
-        var settings = FleetData.getSettings();
-        return (settings.strike && settings.strike.proxyUrl) || '';
+        // Use hardcoded proxy URL - users don't need to configure infrastructure
+        return STRIKE_PROXY_URL;
     }
 
     function authHeaders() {
@@ -777,25 +762,16 @@ function hideConnectStrikePrompt() {
 }
 
 function updateStrikeCardVisibility() {
-    var settings = FleetData.getSettings();
-    var hasProxy = settings.strike && settings.strike.proxyUrl;
     var user = StrikeAuth.getUser();
     var hasOwnKey = user && user.hasOwnKey;
-
-    var proxyRequiredMsg = document.getElementById('connectStrikeProxyRequired');
     var apiKeyPrompt = document.getElementById('connectStrikePrompt');
 
-    if (!hasProxy) {
-        // Show "proxy required" message
-        if (proxyRequiredMsg) proxyRequiredMsg.style.display = '';
-        if (apiKeyPrompt) apiKeyPrompt.style.display = 'none';
-    } else if (hasOwnKey) {
-        // User has API key connected - hide both
-        if (proxyRequiredMsg) proxyRequiredMsg.style.display = 'none';
+    // Proxy is always available (hardcoded), only check API key
+    if (hasOwnKey) {
+        // User has API key connected - hide card
         if (apiKeyPrompt) apiKeyPrompt.style.display = 'none';
     } else {
-        // Proxy configured, no API key yet - show prompt
-        if (proxyRequiredMsg) proxyRequiredMsg.style.display = 'none';
+        // No API key yet - show prompt
         if (apiKeyPrompt) apiKeyPrompt.style.display = '';
     }
 }
