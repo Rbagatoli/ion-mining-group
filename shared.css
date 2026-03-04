@@ -1898,18 +1898,20 @@ main { display: flex; flex-direction: column; }
     header p { font-size: 10px !important; }
 
     /* Miner cards */
-    .miner-cards-grid { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .miner-cards-grid { gap: 6px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
     .banking-tab-content .miner-cards-grid { gap: 16px !important; }
-    .miner-card { padding: 6px; border-radius: 8px; }
-    .miner-card-header { margin-bottom: 4px; }
-    .miner-card-model { font-size: 13px; line-height: 1.3; }
-    .miner-card-stats { gap: 4px; margin-bottom: 4px; grid-template-columns: repeat(2, 1fr); }
-    .miner-card-stat { padding: 5px; }
-    .miner-card-stat .stat-label { font-size: 9px; margin-bottom: 2px; line-height: 1.1; }
-    .miner-card-stat .stat-value { font-size: 11px; line-height: 1.2; }
-    .miner-card-actions { flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-    .miner-card-actions button { font-size: 10px; padding: 4px 8px; }
-    .miner-card-group-footer { margin-top: 4px; }
+    .miner-card { padding: 4px; border-radius: 6px; }
+    .miner-card-header { margin-bottom: 3px; }
+    .miner-card-model { font-size: 12px; line-height: 1.2; }
+    .miner-card-stats { gap: 3px; margin-bottom: 3px; grid-template-columns: repeat(2, 1fr); }
+    .miner-card-stat { padding: 4px; }
+    .miner-card-stat .stat-label { font-size: 8px; margin-bottom: 1px; line-height: 1; }
+    .miner-card-stat .stat-value { font-size: 10px; line-height: 1.1; margin-top: 0; }
+    .miner-card-actions { flex-wrap: wrap; gap: 3px; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .miner-card-actions button { font-size: 9px; padding: 3px 6px; }
+    .miner-card-group-footer { margin-top: 3px; padding-top: 3px; }
+    .miner-card-badges { gap: 3px; }
+    .miner-card-qty { padding: 2px 6px; font-size: 9px; }
 
     /* Fleet metric cards - more compact on mobile */
     .fleet-grid { gap: 6px; grid-template-columns: repeat(2, 1fr); }
