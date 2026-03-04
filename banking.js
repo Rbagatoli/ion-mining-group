@@ -4322,7 +4322,7 @@ initNav('banking');
 
     // Wallet init
     loadStrikeSettings();
-    if (strikeConnected && typeof IonAuth !== 'undefined') {
+    if (typeof IonAuth !== 'undefined') {
         IonAuth.onAuthChange(function(fbUser) {
             _walletAuthResolved = true;
             if (fbUser) {
@@ -4335,8 +4335,6 @@ initNav('banking');
                 }
             }
         });
-    } else if (strikeConnected) {
-        showSignInPrompt();
     }
     await loadAndRefreshWallet();
     startAutoRefresh();
