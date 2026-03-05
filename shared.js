@@ -994,6 +994,13 @@ async function fetchLiveMarketData() {
                     var data = await response.json();
 
                     if (data && data.ok) {
+                        // Update user data in localStorage
+                        try {
+                            var user = JSON.parse(localStorage.getItem('ionStrikeUser') || '{}');
+                            user.hasPin = true;
+                            localStorage.setItem('ionStrikeUser', JSON.stringify(user));
+                        } catch(e) {}
+
                         if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">PIN saved! Strike is now connected.</span>';
                         setTimeout(function() {
                             var panel = document.getElementById('strikeApiKeyPanel');
