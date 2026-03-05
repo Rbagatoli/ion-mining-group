@@ -3731,28 +3731,6 @@ function buildUnifiedPnL() {
         }
     }
 
-    // Strike deposits + receives as revenue
-    if (acctStrikeConnected) {
-        var allStrikeIn = strikeAcctData.deposits.concat(strikeAcctData.receives);
-        for (var si = 0; si < allStrikeIn.length; si++) {
-            var sItem = allStrikeIn[si];
-            var sDate = strikeItemDate(sItem);
-            if (sDate >= acctPeriod.start && sDate <= acctPeriod.end) {
-                var sAmt = parseStrikeAmountAcct(sItem.amountReceived || sItem.amountCredited || sItem.amount);
-                totalRevenueBtc += sAmt.btc;
-                totalRevenueUsd += sAmt.usd;
-                revenueEntries.push({
-                    date: sDate,
-                    source: 'Strike ' + (sItem.depositId ? 'Deposit' : 'Receive'),
-                    btcAmount: sAmt.btc,
-                    btcPrice: acctBtcPrice || 0,
-                    usdValue: sAmt.usd,
-                    category: 'Strike Deposit'
-                });
-            }
-        }
-    }
-
     revenueEntries.sort(function(a, b) { return b.date < a.date ? -1 : b.date > a.date ? 1 : 0; });
 
     // Expenses: QBO expenses or local electricity bills
