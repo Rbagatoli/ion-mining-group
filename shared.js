@@ -877,7 +877,13 @@ async function fetchLiveMarketData() {
 
                 try {
                     // Get Firebase ID token for authentication
-                    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+                    var fbUser = null;
+                    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                        fbUser = firebase.auth().currentUser;
+                    } else if (typeof IonAuth !== 'undefined') {
+                        fbUser = IonAuth.getUser();
+                    }
+
                     if (!fbUser) {
                         saveBtn.disabled = false;
                         if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
@@ -936,7 +942,13 @@ async function fetchLiveMarketData() {
 
                 try {
                     // Get Firebase ID token for authentication
-                    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+                    var fbUser = null;
+                    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                        fbUser = firebase.auth().currentUser;
+                    } else if (typeof IonAuth !== 'undefined') {
+                        fbUser = IonAuth.getUser();
+                    }
+
                     if (!fbUser) {
                         if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
                         return;
