@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Banking</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=221">
+    <link rel="stylesheet" href="./shared.css?v=252">
     <style>
         /* Transaction filter tabs */
         .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid rgba(255,255,255,0.05); padding-bottom:8px; }
@@ -23,22 +23,24 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=221"></script>
+    <script src="./chart.min.js?v=252"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
 
 <nav id="ion-nav"></nav>
 
-<header style="position:relative; text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
-    <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;">Banking</h1>
-    <p style="color:#888; font-size:12px; margin:0;">Wallet, income tracking, and accounting</p>
+<header class="banking-header">
+    <div class="banking-header-content">
+        <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;">Banking</h1>
+        <p style="color:#888; font-size:12px; margin:0;">Wallet, income tracking, and accounting</p>
+    </div>
 
-    <div class="banking-connections" style="position:absolute; right:16px; top:50%; transform:translateY(-50%);">
+    <div class="banking-connections">
         <!-- QuickBooks Connection -->
         <div class="connection-status" id="qbConnectionStatus">
             <button class="btn-connect" id="btnConnectQbGlobal">
-                Connect QuickBooks
+                QuickBooks
             </button>
             <span class="connected-badge" id="qbConnectedBadge" style="display:none;">
                 <span class="status-indicator connected"></span>
@@ -50,11 +52,11 @@
         <!-- Strike Connection -->
         <div class="connection-status" id="strikeConnectionStatus">
             <button class="btn-connect" id="btnConnectStrikeGlobal">
-                Connect Strike
+                Strike
             </button>
             <span class="connected-badge" id="strikeConnectedBadge" style="display:none;">
                 <span class="status-indicator connected"></span>
-                <span>Strike Connected</span>
+                <span>Strike</span>
                 <button class="btn-disconnect" id="btnDisconnectStrikeGlobal">×</button>
             </span>
         </div>
@@ -966,15 +968,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=221"></script>
-<script src="./sync.js?v=221"></script>
-<script src="./auth-ui.js?v=221"></script>
-<script src="./profile-panel.js?v=221"></script>
+<script src="./firebase-config.js?v=252"></script>
+<script src="./sync.js?v=252"></script>
+<script src="./auth-ui.js?v=252"></script>
+<script src="./profile-panel.js?v=252"></script>
 <script src="./shared.js?v=252"></script>
-<script src="./fleet-data.js?v=221"></script>
-<script src="./widget-settings.js?v=221"></script>
+<script src="./fleet-data.js?v=252"></script>
+<script src="./widget-settings.js?v=252"></script>
 <script src="./banking.js?v=251"></script>
-<script src="./alerts.js?v=221"></script>
+<script src="./alerts.js?v=252"></script>
 <script src="./onboarding.js?v=229"></script>
 </body>
 </html>

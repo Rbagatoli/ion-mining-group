@@ -936,10 +936,27 @@ footer {
     grid-gap: 16px !important; /* Fallback for older browsers */
 }
 
+/* Banking header */
+.banking-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.banking-header-content {
+    text-align: center;
+    flex: 1;
+}
+
 /* Banking connections (in header) */
 .banking-connections {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     flex-shrink: 0;
 }
@@ -1007,11 +1024,35 @@ footer {
     .banking-header {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
+        padding-bottom: 12px;
+    }
+
+    .banking-header-content {
+        text-align: center;
     }
 
     .banking-connections {
         justify-content: center;
         flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .btn-connect {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .connected-badge {
+        padding: 4px 8px;
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    .btn-disconnect {
+        width: 20px;
+        height: 20px;
+        font-size: 16px;
     }
 }
 
