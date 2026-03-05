@@ -880,17 +880,21 @@ async function fetchLiveMarketData() {
                     var fbUser = null;
                     if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
                         fbUser = firebase.auth().currentUser;
+                        console.log('[Strike] Got user from firebase.auth().currentUser:', fbUser.uid);
                     } else if (typeof IonAuth !== 'undefined') {
                         fbUser = IonAuth.getUser();
+                        console.log('[Strike] Got user from IonAuth.getUser():', fbUser ? fbUser.uid : 'null');
                     }
 
                     if (!fbUser) {
                         saveBtn.disabled = false;
                         if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                        console.error('[Strike] No Firebase user available');
                         return;
                     }
 
                     var idToken = await fbUser.getIdToken(true);
+                    console.log('[Strike] Got ID token, length:', idToken.length);
 
                     var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/connect-strike', {
                         method: 'POST',
