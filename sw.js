@@ -1,5 +1,6 @@
-const CACHE_NAME = 'ion-mining-v224';
+const CACHE_NAME = 'ion-mining-v251';
 const ASSETS = [
+  // HTML pages
   './index.html',
   './calculator.html',
   './charts.html',
@@ -7,7 +8,17 @@ const ASSETS = [
   './map.html',
   './workstation.html',
   './btc-mining-calculator.html',
+  './accounting.html',
+  './legal-eula.html',
+  './legal-privacy.html',
+  './pay.html',
+  './payouts.html',
+  './wallet.html',
+
+  // Stylesheets
   './shared.css',
+
+  // JavaScript
   './shared.js',
   './fleet-data.js',
   './geo-data.js',
@@ -25,6 +36,11 @@ const ASSETS = [
   './onboarding.js',
   './widget-settings.js',
   './chart.min.js',
+  './accounting.js',
+  './payouts.js',
+  './wallet.js',
+
+  // PWA manifest
   './manifest.json'
 ];
 
