@@ -876,9 +876,22 @@ async function fetchLiveMarketData() {
                 saveBtn.disabled = true;
 
                 try {
+                    // Get Firebase ID token for authentication
+                    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+                    if (!fbUser) {
+                        saveBtn.disabled = false;
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                        return;
+                    }
+
+                    var idToken = await fbUser.getIdToken(true);
+
                     var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/connect-strike', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + idToken
+                        },
                         body: JSON.stringify({ apiKey: apiKey })
                     });
 
@@ -922,9 +935,21 @@ async function fetchLiveMarketData() {
                 if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
 
                 try {
+                    // Get Firebase ID token for authentication
+                    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+                    if (!fbUser) {
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                        return;
+                    }
+
+                    var idToken = await fbUser.getIdToken(true);
+
                     var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/set-pin', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + idToken
+                        },
                         body: JSON.stringify({ pin: pin })
                     });
 
