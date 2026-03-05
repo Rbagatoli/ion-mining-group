@@ -876,31 +876,52 @@ async function fetchLiveMarketData() {
                 saveBtn.disabled = true;
 
                 try {
-                    // Get Firebase ID token for authentication
-                    var fbUser = null;
-                    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-                        fbUser = firebase.auth().currentUser;
-                        console.log('[Strike] Got user from firebase.auth().currentUser:', fbUser.uid);
-                    } else if (typeof IonAuth !== 'undefined') {
-                        fbUser = IonAuth.getUser();
-                        console.log('[Strike] Got user from IonAuth.getUser():', fbUser ? fbUser.uid : 'null');
-                    }
+                    // Get or create session token
+                    var sessionToken = localStorage.getItem('ionStrikeSession') || '';
 
-                    if (!fbUser) {
-                        saveBtn.disabled = false;
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
-                        console.error('[Strike] No Firebase user available');
-                        return;
-                    }
+                    if (!sessionToken) {
+                        // Need to exchange Firebase ID token for session token first
+                        var fbUser = null;
+                        if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                            fbUser = firebase.auth().currentUser;
+                        } else if (typeof IonAuth !== 'undefined') {
+                            fbUser = IonAuth.getUser();
+                        }
 
-                    var idToken = await fbUser.getIdToken(true);
-                    console.log('[Strike] Got ID token, length:', idToken.length);
+                        if (!fbUser) {
+                            saveBtn.disabled = false;
+                            if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                            return;
+                        }
+
+                        var idToken = await fbUser.getIdToken(true);
+
+                        // Exchange Firebase token for session token
+                        var loginRes = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/firebase-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ idToken: idToken })
+                        });
+
+                        var loginData = await loginRes.json();
+                        if (!loginData.ok || !loginData.token) {
+                            saveBtn.disabled = false;
+                            if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Authentication failed</span>';
+                            return;
+                        }
+
+                        sessionToken = loginData.token;
+                        localStorage.setItem('ionStrikeSession', sessionToken);
+                        if (loginData.user) {
+                            localStorage.setItem('ionStrikeUser', JSON.stringify(loginData.user));
+                        }
+                    }
 
                     var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/connect-strike', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + idToken
+                            'Authorization': 'Bearer ' + sessionToken
                         },
                         body: JSON.stringify({ apiKey: apiKey })
                     });
@@ -945,26 +966,19 @@ async function fetchLiveMarketData() {
                 if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
 
                 try {
-                    // Get Firebase ID token for authentication
-                    var fbUser = null;
-                    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-                        fbUser = firebase.auth().currentUser;
-                    } else if (typeof IonAuth !== 'undefined') {
-                        fbUser = IonAuth.getUser();
-                    }
+                    // Get session token (should already exist from Strike connection)
+                    var sessionToken = localStorage.getItem('ionStrikeSession') || '';
 
-                    if (!fbUser) {
+                    if (!sessionToken) {
                         if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
                         return;
                     }
-
-                    var idToken = await fbUser.getIdToken(true);
 
                     var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/set-pin', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + idToken
+                            'Authorization': 'Bearer ' + sessionToken
                         },
                         body: JSON.stringify({ pin: pin })
                     });
