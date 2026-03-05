@@ -174,7 +174,7 @@ var FleetData = (function() {
             _v: 2,
             pools: [],
             useFleetData: false,
-            strike: { proxyUrl: '', enabled: false, lastSync: null }
+            strike: { proxyUrl: 'https://ion-strike-proxy.ion-mining.workers.dev', enabled: false, lastSync: null }
         };
     }
 

@@ -4571,17 +4571,7 @@ initNav('banking');
         });
     }
 
-    var btnConnectStrikeGlobal = document.getElementById('btnConnectStrikeGlobal');
-    if (btnConnectStrikeGlobal) {
-        btnConnectStrikeGlobal.addEventListener('click', function() {
-            var settings = FleetData.getSettings();
-            if (settings.strike && settings.strike.proxyUrl) {
-                document.getElementById('walletStrikeProxyUrl').value = settings.strike.proxyUrl;
-            }
-            document.getElementById('walletStrikeTestResult').innerHTML = '';
-            document.getElementById('strikeConnectPanel').classList.add('open');
-        });
-    }
+    // btnConnectStrikeGlobal handler now in shared.js (global)
 
     var btnDisconnectQbGlobal = document.getElementById('btnDisconnectQbGlobal');
     if (btnDisconnectQbGlobal) {

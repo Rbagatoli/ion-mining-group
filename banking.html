@@ -224,46 +224,7 @@
         </div>
     </div>
 
-    <!-- ===== STRIKE API KEY PANEL ===== -->
-    <div class="slide-panel" id="strikeApiKeyPanel">
-        <div class="panel-inner">
-            <h4>Connect Strike API Key</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>
-            <div class="panel-form-grid">
-                <div class="input-group">
-                    <label>API Key</label>
-                    <div class="input-wrapper">
-                        <input type="password" id="strikeApiKeyInput" placeholder="Paste your Strike API key" autocomplete="off">
-                    </div>
-                </div>
-            </div>
-            <div class="panel-actions">
-                <button class="btn btn-secondary" id="cancelStrikeKey">Cancel</button>
-                <button class="btn btn-primary" id="saveStrikeKey">Connect</button>
-            </div>
-            <div id="strikeKeyResult" style="margin-top:10px; font-size:12px;"></div>
-            <!-- PIN Creation (shown after successful Strike connect) -->
-            <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">
-                <div style="font-size:13px; color:#4ade80; margin-bottom:10px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:8px;">
-                    <strong>Create a Send PIN</strong> — This PIN will be required every time you send BTC, adding an extra layer of security.
-                </div>
-                <div class="input-group">
-                    <label>4-Digit PIN</label>
-                    <div class="input-wrapper">
-                        <input type="password" id="newPinInput" placeholder="Enter PIN" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:16px; text-align:center;">
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>Confirm PIN</label>
-                    <div class="input-wrapper">
-                        <input type="password" id="confirmPinInput" placeholder="Confirm PIN" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:16px; text-align:center;">
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="btnSavePin" style="width:100%;">Save PIN</button>
-                <div id="pinSaveResult" style="margin-top:8px; font-size:12px;"></div>
-            </div>
-        </div>
-    </div>
+    <!-- Strike API Key Panel now in shared.js (global) -->
 
     <!-- ===== ACCOUNT SETTINGS PANEL ===== -->
     <div class="slide-panel" id="accountSettingsPanel">

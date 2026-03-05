@@ -792,6 +792,183 @@ async function fetchLiveMarketData() {
 })();
 
 // ===== WORKSTATION EMBED: postMessage listener for theme/currency sync =====
+// ===== STRIKE CONNECTION PANEL (Global - available on all pages) =====
+(function() {
+    // Add Strike API Key Panel HTML
+    var strikePanelHTML = '\
+<div class="slide-panel" id="strikeApiKeyPanel">\
+    <div class="panel-inner">\
+        <h4>Connect Strike API Key</h4>\
+        <p style="font-size:12px; color:#888; margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>\
+        <div class="panel-form-grid">\
+            <div class="input-group">\
+                <label>API Key</label>\
+                <div class="input-wrapper">\
+                    <input type="password" id="strikeApiKeyInput" placeholder="Paste your Strike API key" autocomplete="off">\
+                </div>\
+            </div>\
+        </div>\
+        <div class="panel-actions">\
+            <button class="btn btn-secondary" id="cancelStrikeKey">Cancel</button>\
+            <button class="btn btn-primary" id="saveStrikeKey">Connect</button>\
+        </div>\
+        <div id="strikeKeyResult" style="margin-top:10px; font-size:12px;"></div>\
+        <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">\
+            <div style="font-size:13px; color:#4ade80; margin-bottom:10px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:8px;">\
+                <strong>Create a Send PIN</strong> — This PIN will be required every time you send BTC, adding an extra layer of security.\
+            </div>\
+            <div class="input-group">\
+                <label>4-Digit PIN</label>\
+                <div class="input-wrapper">\
+                    <input type="password" id="newPinInput" placeholder="Enter PIN" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:16px; text-align:center;">\
+                </div>\
+            </div>\
+            <div class="input-group">\
+                <label>Confirm PIN</label>\
+                <div class="input-wrapper">\
+                    <input type="password" id="confirmPinInput" placeholder="Confirm PIN" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:16px; text-align:center;">\
+                </div>\
+            </div>\
+            <button class="btn btn-primary" id="btnSavePin" style="width:100%;">Save PIN</button>\
+            <div id="pinSaveResult" style="margin-top:8px; font-size:12px;"></div>\
+        </div>\
+    </div>\
+</div>';
+
+    // Append panel to body when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.insertAdjacentHTML('beforeend', strikePanelHTML);
+            initStrikeConnection();
+        });
+    } else {
+        document.body.insertAdjacentHTML('beforeend', strikePanelHTML);
+        initStrikeConnection();
+    }
+
+    // Strike API Key Panel Handler
+    function initStrikeConnection() {
+        var cancelBtn = document.getElementById('cancelStrikeKey');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                var panel = document.getElementById('strikeApiKeyPanel');
+                if (panel && panel.dataset.pinRequired === 'true') {
+                    var resultEl = document.getElementById('strikeKeyResult');
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before continuing.</span>';
+                    return;
+                }
+                if (panel) panel.classList.remove('open');
+            });
+        }
+
+        var saveBtn = document.getElementById('saveStrikeKey');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                var apiKey = document.getElementById('strikeApiKeyInput').value.trim();
+                var resultEl = document.getElementById('strikeKeyResult');
+
+                if (!apiKey) {
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Enter your Strike API key</span>';
+                    return;
+                }
+
+                if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Connecting to Strike...</span>';
+                saveBtn.disabled = true;
+
+                try {
+                    var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/connect-strike', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ apiKey: apiKey })
+                    });
+
+                    var data = await response.json();
+                    saveBtn.disabled = false;
+
+                    if (data && data.ok) {
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
+                        var pinSection = document.getElementById('strikeKeyPinSection');
+                        if (pinSection) {
+                            pinSection.style.display = '';
+                            document.getElementById('strikeApiKeyPanel').dataset.pinRequired = 'true';
+                        }
+                    } else {
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to connect') + '</span>';
+                    }
+                } catch (err) {
+                    saveBtn.disabled = false;
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Connection error: ' + err.message + '</span>';
+                }
+            });
+        }
+
+        var pinSaveBtn = document.getElementById('btnSavePin');
+        if (pinSaveBtn) {
+            pinSaveBtn.addEventListener('click', async function() {
+                var pin = document.getElementById('newPinInput').value.trim();
+                var confirmPin = document.getElementById('confirmPinInput').value.trim();
+                var resultEl = document.getElementById('pinSaveResult');
+
+                if (!pin || !confirmPin) {
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Enter and confirm your PIN</span>';
+                    return;
+                }
+
+                if (pin !== confirmPin) {
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">PINs do not match</span>';
+                    return;
+                }
+
+                if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
+
+                try {
+                    var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/set-pin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pin: pin })
+                    });
+
+                    var data = await response.json();
+
+                    if (data && data.ok) {
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">PIN saved! Strike is now connected.</span>';
+                        setTimeout(function() {
+                            var panel = document.getElementById('strikeApiKeyPanel');
+                            if (panel) {
+                                panel.classList.remove('open');
+                                panel.dataset.pinRequired = 'false';
+                            }
+                            if (window.location.pathname.includes('banking.html')) {
+                                window.location.reload();
+                            }
+                        }, 1500);
+                    } else {
+                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to save PIN') + '</span>';
+                    }
+                } catch (err) {
+                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Error: ' + err.message + '</span>';
+                }
+            });
+        }
+
+        // Add "Connect Strike" button click handler
+        setTimeout(function() {
+            var btnConnectStrike = document.getElementById('btnConnectStrikeGlobal');
+            if (btnConnectStrike) {
+                btnConnectStrike.addEventListener('click', function() {
+                    var panel = document.getElementById('strikeApiKeyPanel');
+                    if (panel) {
+                        document.getElementById('strikeApiKeyInput').value = '';
+                        var resultEl = document.getElementById('strikeKeyResult');
+                        if (resultEl) resultEl.innerHTML = '';
+                        panel.classList.add('open');
+                    }
+                });
+            }
+        }, 100);
+    }
+})();
+
 if (window.ION_EMBED) {
     window.addEventListener('message', function(e) {
         if (!e.data || !e.data.ionMining) return;
