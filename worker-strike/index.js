@@ -705,7 +705,8 @@ var SESSION_ROUTES = {
     '/deposits':  { method: 'GET', endpoint: '/v1/deposits' },
     '/payouts':   { method: 'GET', endpoint: '/v1/payouts' },
     '/receives':  { method: 'GET', endpoint: '/v1/receive-requests/receives' },
-    '/invoices':  { method: 'GET', endpoint: '/v1/invoices' }
+    '/invoices':  { method: 'GET', endpoint: '/v1/invoices' },
+    '/payments':  { method: 'GET', endpoint: '/v1/payments' }
 };
 
 // Tier 3: Gated — session + caps/rate limits
