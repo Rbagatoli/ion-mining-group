@@ -930,6 +930,14 @@ async function fetchLiveMarketData() {
                     saveBtn.disabled = false;
 
                     if (data && data.ok) {
+                        // Update user data in localStorage
+                        try {
+                            var user = JSON.parse(localStorage.getItem('ionStrikeUser') || '{}');
+                            user.strikeConnected = true;
+                            user.hasOwnKey = true;
+                            localStorage.setItem('ionStrikeUser', JSON.stringify(user));
+                        } catch(e) {}
+
                         if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
                         var pinSection = document.getElementById('strikeKeyPinSection');
                         if (pinSection) {
