@@ -939,9 +939,7 @@ footer {
 /* Banking header */
 .banking-header {
     position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    text-align: center;
     padding: 14px 16px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     backdrop-filter: blur(10px);
@@ -949,8 +947,15 @@ footer {
 }
 
 .banking-header-content {
-    text-align: center;
-    flex: 1;
+    /* Content is centered by parent */
+}
+
+/* Banking connections positioned on desktop */
+.banking-connections {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 /* Banking connections (in header) */
@@ -1022,17 +1027,17 @@ footer {
 /* Responsive - stack on mobile */
 @media (max-width: 768px) {
     .banking-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
         padding-bottom: 12px;
     }
 
     .banking-header-content {
-        text-align: center;
+        margin-bottom: 12px;
     }
 
     .banking-connections {
+        position: static;
+        transform: none;
+        display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 8px;
