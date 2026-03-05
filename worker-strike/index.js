@@ -322,7 +322,14 @@ async function verifyTOTP(token, secret) {
 
 async function checkTOTP(request, env, user, origin) {
     var secret = user.totpSecret || '';
-    if (!secret) return null; // 2FA not configured
+    if (!secret) {
+        return jsonResponse({
+            error: '2FA required',
+            message: 'You must enable 2FA (Google Authenticator) before sending BTC. Go to Account Settings to set it up.',
+            totpRequired: true,
+            totpNotSet: true
+        }, 403, origin);
+    }
 
     // Per-user brute-force check
     var lockKey = 'totp_fails:' + user.id;
