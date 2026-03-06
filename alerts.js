@@ -688,17 +688,24 @@ async function checkDifficultyAlert() {
 // --- $10k Price Milestone ---
 async function checkPriceMilestone() {
     try {
+        // Fetch price if not already cached by checkPriceAlert()
         var price = alertData.previousState.price;
-        if (!price || price <= 0) return;
+        if (!price || price <= 0) {
+            var res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+            if (!res.ok) return;
+            var data = await res.json();
+            price = data.bitcoin && data.bitcoin.usd;
+            if (!price || price <= 0) return;
+            alertData.previousState.price = price;
+        }
 
         var currentMilestone = Math.floor(price / 10000) * 10000;
         var prevMilestone = alertData.previousState.lastPriceMilestone || 0;
 
         if (prevMilestone > 0 && currentMilestone !== prevMilestone) {
             var direction = currentMilestone > prevMilestone ? 'crossed above' : 'dropped below';
-            var severity = currentMilestone > prevMilestone ? 'medium' : 'medium';
             createAlert(
-                'price_milestone', severity,
+                'price_milestone', 'medium',
                 'Price Milestone',
                 'BTC ' + direction + ' $' + currentMilestone.toLocaleString() + ' (now $' + Math.round(price).toLocaleString() + ')',
                 { price: price, milestone: currentMilestone }
