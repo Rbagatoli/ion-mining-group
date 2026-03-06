@@ -123,7 +123,12 @@ function initNav(activePage) {
         document.documentElement.dataset.theme = theme;
         var btn = document.getElementById('themeToggle');
         if (btn) btn.innerHTML = (theme === 'light') ? moonSVG : sunSVG;
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: theme } }));
     }
+
+    window.isLightMode = function() {
+        return document.documentElement.dataset.theme === 'light';
+    };
 
     var savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
     applyTheme(savedTheme);

@@ -240,8 +240,8 @@ const halvingPlugin = {
     }
 };
 
-const darkGrid = 'rgba(255, 255, 255, 0.06)';
-const muted = '#888';
+const darkGrid = isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)';
+const muted = isLightMode() ? '#6b7280' : '#888';
 
 function createGlossGradient(ctx, chartArea, r, g, b, alpha) {
     const grad = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
@@ -309,12 +309,12 @@ function initChart() {
                     type: 'line',
                     label: 'Miners Owned',
                     data: [],
-                    borderColor: '#ffffff',
-                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    borderColor: isLightMode() ? '#1a1a1a' : '#ffffff',
+                    backgroundColor: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)',
                     borderWidth: 2.5,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#ffffff',
+                    pointHoverBackgroundColor: isLightMode() ? '#1a1a1a' : '#ffffff',
                     stepped: 'after',
                     fill: true,
                     yAxisID: 'yMachines',
@@ -330,14 +330,14 @@ function initChart() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#e8e8e8', font: { size: 12 }, padding: 16, usePointStyle: true, pointStyleWidth: 16 }
+                    labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 12 }, padding: 16, usePointStyle: true, pointStyleWidth: 16 }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(10, 10, 10, 0.92)',
+                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
                     borderWidth: 1,
-                    titleColor: '#e8e8e8',
-                    bodyColor: '#e8e8e8',
+                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     padding: 12,
                     bodySpacing: 6,
                     callbacks: {

@@ -212,8 +212,8 @@ function buildPieChart(currentA2) {
     var pieMobile = window.innerWidth <= 600;
     var pieSize = pieMobile ? 50 : 70;
 
-    return '<div style="padding-top:' + (pieMobile ? '6' : '10') + 'px;margin-top:' + (pieMobile ? '4' : '8') + 'px;border-top:1px solid rgba(255,255,255,0.08);">' +
-        '<div style="font-size:' + (pieMobile ? '9' : '10') + 'px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:' + (pieMobile ? '4' : '6') + 'px;">Fleet Share</div>' +
+    return '<div style="padding-top:' + (pieMobile ? '6' : '10') + 'px;margin-top:' + (pieMobile ? '4' : '8') + 'px;border-top:1px solid ' + (isLightMode() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') + ';">' +
+        '<div style="font-size:' + (pieMobile ? '9' : '10') + 'px;color:' + (isLightMode() ? '#6b7280' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:' + (pieMobile ? '4' : '6') + 'px;">Fleet Share</div>' +
         '<div style="display:flex;align-items:flex-start;gap:' + (pieMobile ? '6' : '10') + 'px;">' +
             '<svg viewBox="0 0 100 100" width="' + pieSize + '" height="' + pieSize + '" style="flex-shrink:0;">' + paths + '</svg>' +
             '<div style="display:flex;flex-direction:column;gap:' + (pieMobile ? '2' : '3') + 'px;min-width:0;flex:1;padding-top:2px;">' + legendHtml + '</div>' +
@@ -232,8 +232,8 @@ function buildPopup(a2, data) {
     var modelKeys = Object.keys(data.models);
     modelKeys.sort(function(a, b) { return data.models[b] - data.models[a]; });
     for (var mk = 0; mk < modelKeys.length; mk++) {
-        modelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;padding:2px 0;">' +
-            '<span>' + modelKeys[mk] + '</span><span style="color:#e8e8e8;">' + data.models[modelKeys[mk]] + '</span></div>';
+        modelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:' + (isLightMode() ? '#6b7280' : '#aaa') + ';padding:2px 0;">' +
+            '<span>' + modelKeys[mk] + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + data.models[modelKeys[mk]] + '</span></div>';
     }
 
     return '<div class="map-popup-container">' +
@@ -247,7 +247,7 @@ function buildPopup(a2, data) {
             '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:#4ade80;">' + data.onlineCount + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:#ef4444;">' + data.offlineCount + '</span></div>' +
         '</div>' +
-        (modelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">Models</div>' + modelHtml + '</div>' : '') +
+        (modelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:' + (isLightMode() ? '#6b7280' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid ' + (isLightMode() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') + ';">Models</div>' + modelHtml + '</div>' : '') +
         buildPieChart(a2) +
     '</div>';
 }
@@ -263,8 +263,8 @@ function buildStatePopup(loc) {
     var smKeys = Object.keys(loc.models);
     smKeys.sort(function(a, b) { return loc.models[b] - loc.models[a]; });
     for (var smk = 0; smk < smKeys.length; smk++) {
-        stateModelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;padding:2px 0;">' +
-            '<span>' + smKeys[smk] + '</span><span style="color:#e8e8e8;">' + loc.models[smKeys[smk]] + '</span></div>';
+        stateModelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:' + (isLightMode() ? '#6b7280' : '#aaa') + ';padding:2px 0;">' +
+            '<span>' + smKeys[smk] + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + loc.models[smKeys[smk]] + '</span></div>';
     }
 
     return '<div class="map-popup-container">' +
@@ -278,7 +278,7 @@ function buildStatePopup(loc) {
             '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:#4ade80;">' + loc.onlineCount + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:#ef4444;">' + loc.offlineCount + '</span></div>' +
         '</div>' +
-        (stateModelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">Models</div>' + stateModelHtml + '</div>' : '') +
+        (stateModelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:' + (isLightMode() ? '#6b7280' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid ' + (isLightMode() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') + ';">Models</div>' + stateModelHtml + '</div>' : '') +
     '</div>';
 }
 

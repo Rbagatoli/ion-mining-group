@@ -46,22 +46,22 @@ var chartOptions = {
     plugins: {
         legend: { display: false },
         tooltip: {
-            backgroundColor: 'rgba(10, 10, 10, 0.92)',
+            backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
             borderColor: 'rgba(255, 255, 255, 0.10)',
             borderWidth: 1,
-            titleColor: '#e8e8e8',
-            bodyColor: '#e8e8e8',
+            titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+            bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
             padding: 10
         }
     },
     scales: {
         x: {
-            ticks: { color: '#888', font: { size: 11 }, maxTicksLimit: 12 },
-            grid: { color: 'rgba(255, 255, 255, 0.06)' }
+            ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12 },
+            grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
         },
         y: {
-            ticks: { color: '#888', font: { size: 11 } },
-            grid: { color: 'rgba(255, 255, 255, 0.06)' }
+            ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
+            grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
         }
     }
 };
@@ -186,7 +186,7 @@ function renderPriceChart(days) {
                             return s + v;
                         }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -264,7 +264,7 @@ function renderDifficultyChart(timeframe) {
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' T'; }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -341,7 +341,7 @@ function renderHashrateChart(timeframe) {
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' EH/s'; }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -1015,11 +1015,11 @@ function renderPoolChart(timeframe, data) {
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(10, 10, 10, 0.92)',
+                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
                     borderWidth: 1,
-                    titleColor: '#e8e8e8',
-                    bodyColor: '#e8e8e8',
+                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     padding: 10,
                     callbacks: {
                         label: function(ctx) {
@@ -1191,11 +1191,11 @@ function renderFeeChart(timeframe, apiData) {
             plugins: {
                 legend: { display: true, position: 'top', labels: { color: '#e8e8e8', font: { size: 11 } } },
                 tooltip: {
-                    backgroundColor: 'rgba(10, 10, 10, 0.92)',
+                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
                     borderWidth: 1,
-                    titleColor: '#e8e8e8',
-                    bodyColor: '#e8e8e8',
+                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     padding: 10,
                     callbacks: {
                         label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' sat/vB'; }
@@ -1204,8 +1204,8 @@ function renderFeeChart(timeframe, apiData) {
             },
             scales: {
                 x: {
-                    ticks: { color: '#888', font: { size: 11 }, maxTicksLimit: 12, maxRotation: 45 },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12, maxRotation: 45 },
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 },
                 y: {
                     beginAtZero: true,
@@ -1214,7 +1214,7 @@ function renderFeeChart(timeframe, apiData) {
                         font: { size: 11 },
                         callback: function(v) { return v + ' sat/vB'; }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 }
             }
         }
