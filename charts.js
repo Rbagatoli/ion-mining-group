@@ -616,7 +616,9 @@ async function loadDifficultyAdjustment() {
         var d = await resp.json();
 
         // Blocks remaining
-        document.getElementById('diffBlocks').textContent = (d.remainingBlocks || 0).toLocaleString();
+        var blocksLeft = (d.remainingBlocks || 0);
+        document.getElementById('diffBlocks').textContent = blocksLeft.toLocaleString();
+        document.getElementById('diffBlocksLeft').textContent = blocksLeft.toLocaleString() + ' blocks';
         document.getElementById('diffProgress').textContent = (d.progressPercent || 0).toFixed(1) + '% complete';
 
         // Time remaining
