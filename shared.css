@@ -1809,12 +1809,12 @@ footer {
 [data-theme="light"] .ion-nav-sync-btn:hover,
 [data-theme="light"] .ion-theme-toggle:hover { background: rgba(0,0,0,0.06); }
 
-[data-theme="light"] .card,
-[data-theme="light"] .metric-card { color: var(--text); }
-[data-theme="light"] .metric-card .label { color: var(--text-muted); }
-[data-theme="light"] .metric-card .value { color: var(--text); }
-[data-theme="light"] .metric-card .sub { color: var(--text-muted); }
-[data-theme="light"] .metric-card:hover { border-color: rgba(0,0,0,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+[data-theme="light"] .card { color: var(--text); }
+[data-theme="light"] .metric-card { background: #f7931a; border-color: rgba(247,147,26,0.3); color: #fff; }
+[data-theme="light"] .metric-card .label { color: rgba(255,255,255,0.85); }
+[data-theme="light"] .metric-card .value { color: #fff; }
+[data-theme="light"] .metric-card .sub { color: rgba(255,255,255,0.7); }
+[data-theme="light"] .metric-card:hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 4px 12px rgba(247,147,26,0.25); }
 [data-theme="light"] .positive { color: #16a34a; }
 [data-theme="light"] .negative { color: #dc2626; }
 [data-theme="light"] .neutral { color: #d97706; }
