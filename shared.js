@@ -6,6 +6,11 @@ if (window.ION_EMBED) {
     document.documentElement.setAttribute('data-embed', '');
 }
 
+// --- Theme helper (available immediately for other scripts) ---
+window.isLightMode = function() {
+    return document.documentElement.dataset.theme === 'light';
+};
+
 // --- Aggressive SW auto-update: check for new SW on every page load ---
 (function() {
     if (!('serviceWorker' in navigator)) return;
