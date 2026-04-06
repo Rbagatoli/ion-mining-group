@@ -578,23 +578,23 @@ function recalculate() {
         const periodBTCMined = dailyBTCNet * daysPerPeriod;
         const periodElecCost = currentPowerKW * 24 * daysPerPeriod * elecCost * uptimePct;
 
+        // Apply mining income tax to ALL mined BTC (taxed at fair market value when mined)
+        const grossMiningRevenue = periodBTCMined * btcPrice;
+        const taxOnMiningIncome = taxAdjustmentEnabled ? (grossMiningRevenue * miningIncomeTaxRate) : 0;
+
         let btcHeld, btcSold, cashFromSales, periodCashFlow;
         if (savingsElec) {
             btcHeld = periodBTCMined * hodlPct;
             btcSold = periodBTCMined * (1 - hodlPct);
-            // Apply mining income tax to sold BTC (ordinary income)
-            const grossCashFromSales = btcSold * btcPrice;
-            const taxOnMiningIncome = taxAdjustmentEnabled ? (grossCashFromSales * miningIncomeTaxRate) : 0;
-            cashFromSales = grossCashFromSales - taxOnMiningIncome;
-            periodCashFlow = cashFromSales;
+            cashFromSales = btcSold * btcPrice;
+            // Tax is paid from sales proceeds (or externally if not enough cash)
+            periodCashFlow = cashFromSales - taxOnMiningIncome;
         } else {
             btcHeld = periodBTCMined * hodlPct;
             btcSold = periodBTCMined * (1 - hodlPct);
-            // Apply mining income tax to sold BTC (ordinary income)
-            const grossCashFromSales = btcSold * btcPrice;
-            const taxOnMiningIncome = taxAdjustmentEnabled ? (grossCashFromSales * miningIncomeTaxRate) : 0;
-            cashFromSales = grossCashFromSales - taxOnMiningIncome;
-            periodCashFlow = cashFromSales - periodElecCost;
+            cashFromSales = btcSold * btcPrice;
+            // Tax is paid from sales proceeds (or externally if not enough cash)
+            periodCashFlow = cashFromSales - taxOnMiningIncome - periodElecCost;
         }
 
         let machinesBoughtThisPeriod = 0;
