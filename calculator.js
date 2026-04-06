@@ -320,6 +320,21 @@ function initChart() {
                     yAxisID: 'yMachines',
                     order: 0,
                     hidden: true
+                },
+                {
+                    type: 'line',
+                    label: 'Buy & Hold Portfolio (USD)',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#10b981',
+                    tension: 0.3,
+                    yAxisID: 'yUSD',
+                    order: 1
                 }
             ]
         },
@@ -472,6 +487,11 @@ function recalculate() {
     let additionAccum = 0;
     let totalScheduledAdded = 0;
 
+    // Buy BTC comparison tracking
+    const buyHoldBtcAmount = totalInitialInvestment > 0 ? (totalInitialInvestment / btcPrice0) : 0;
+    let overtakePeriod = null;
+    const buyHoldValueData = [];
+
     const labels = [];
     const pnlBtcData = [];
     const btcHodlData = [];
@@ -569,6 +589,15 @@ function recalculate() {
         const totalEconomicValue = cumulCashFlow + reinvestPool + (cumulBtcHeld * btcPrice);
         if (breakEvenPeriod === null && totalEconomicValue >= 0) breakEvenPeriod = i + 1;
 
+        // Calculate buy-and-hold value at this period
+        const buyHoldCurrentValue = buyHoldBtcAmount * btcPrice;
+        buyHoldValueData.push(buyHoldCurrentValue);
+
+        // Track when mining overtakes buy-and-hold
+        if (overtakePeriod === null && totalEconomicValue > buyHoldCurrentValue) {
+            overtakePeriod = i + 1;
+        }
+
         labels.push(String(i + 1));
         pnlBtcData.push(periodBTCMined);
         btcHodlData.push(cumulBtcHeld);
@@ -589,6 +618,12 @@ function recalculate() {
     const totalPL = cumulCashFlow + heldBtcValue;
     const totalInitialInvestment = totalCapex + infrastructureCost;
     const roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
+
+    // Buy-and-hold final metrics
+    const buyHoldFinalValue = buyHoldBtcAmount * finalBtcPrice;
+    const buyHoldROI = totalInitialInvestment > 0 ? (((buyHoldFinalValue - totalInitialInvestment) / totalInitialInvestment) * 100) : 0;
+    const miningAdvantage = totalPL - (buyHoldFinalValue - totalInitialInvestment);
+    const isMiningBetter = miningAdvantage > 0;
 
     const initHashrateH = hashrateTH * machineCount * 1e12;
     const initPowerKW = powerKW * machineCount;
@@ -630,6 +665,20 @@ function recalculate() {
     beEl.textContent = breakEvenPeriod !== null ? breakEvenPeriod : 'Never';
     beEl.className = 'value ' + (breakEvenPeriod !== null ? 'positive' : 'negative');
 
+    // Buy & Hold comparison metrics
+    document.getElementById('metBuyHoldValue').textContent = fmtUSD(buyHoldFinalValue);
+    document.getElementById('metBuyHoldSub').textContent =
+        fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice);
+
+    const advEl = document.getElementById('metMiningAdvantage');
+    advEl.textContent = fmtUSD(Math.abs(miningAdvantage));
+    advEl.className = 'value ' + (isMiningBetter ? 'positive' : 'negative');
+
+    const overtakeText = overtakePeriod !== null
+        ? 'Mining overtakes in period ' + overtakePeriod
+        : 'Mining never overtakes';
+    document.getElementById('metOvertakePeriod').textContent = overtakeText;
+
     const machinesCard = document.getElementById('metMachinesCard');
     const hasGrowth = totalMachinesBought > 0 || totalScheduledAdded > 0 || totalMinersRetired > 0;
     if (hasGrowth) {
@@ -651,6 +700,7 @@ function recalculate() {
     comboChart.data.datasets[1].data = btcHodlData;
     comboChart.data.datasets[2].data = usdValueData;
     comboChart.data.datasets[3].data = machinesData;
+    comboChart.data.datasets[4].data = buyHoldValueData;
 
     const showMiners = hasGrowth;
     comboChart.data.datasets[3].hidden = !showMiners;
