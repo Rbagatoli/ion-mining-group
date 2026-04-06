@@ -55,7 +55,7 @@ function getBlockReward(date) {
 // ===== DOM REFS =====
 const inputIds = [
     'btcPrice', 'priceChange', 'difficulty', 'diffChange', 'investPeriod',
-    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'elecCost', 'poolFee', 'uptime', 'hodlRatio'
+    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'poolFee', 'uptime', 'hodlRatio'
 ];
 const el = {};
 inputIds.forEach(id => el[id] = document.getElementById(id));
@@ -416,6 +416,7 @@ function recalculate() {
     const savingsElec = savingsElecToggle.checked;
     const autoReplace = autoReplaceToggle.checked;
     const btcTreasury = parseFloat(el.btcTreasury.value) || 0;
+    const infrastructureCost = parseFloat(el.infrastructureCost.value) || 0;
     const lifespanMonths = Math.max(1, parseInt(el.minerLifespan.value) || 36);
     const salvagePct = (parseFloat(el.salvageValue.value) || 0) / 100;
 
@@ -459,7 +460,7 @@ function recalculate() {
 
     let cumulBtcHeld = btcTreasury;
     let cumulBtcMined = 0;
-    let cumulCashFlow = -totalCapex;
+    let cumulCashFlow = -totalCapex - infrastructureCost;
     let cumulElecCost = 0;
     let breakEvenPeriod = null;
     const minerBatches = [{ period: 0, count: machineCount }];
@@ -586,7 +587,8 @@ function recalculate() {
     const finalBtcPrice = btcPrice0 * Math.pow(1 + priceChangePerPeriod, numPeriods);
     const heldBtcValue = cumulBtcHeld * finalBtcPrice;
     const totalPL = cumulCashFlow + heldBtcValue;
-    const roi = totalCapex > 0 ? ((totalPL / totalCapex) * 100) : 0;
+    const totalInitialInvestment = totalCapex + infrastructureCost;
+    const roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
 
     const initHashrateH = hashrateTH * machineCount * 1e12;
     const initPowerKW = powerKW * machineCount;
@@ -614,15 +616,15 @@ function recalculate() {
     document.getElementById('metTotalMined').textContent = fmtBTC(cumulBtcMined);
     document.getElementById('metFinalBtcPrice').textContent = 'BTC @ ' + fmtUSD(finalBtcPrice);
     const heldValEl = document.getElementById('metHeldValue');
-    const grossValue = totalPL + totalCapex;
+    const grossValue = totalPL + totalInitialInvestment;
     heldValEl.textContent = fmtUSD(grossValue);
     heldValEl.className = 'value btc-orange';
-    document.getElementById('metFinalPrice').textContent = fmtUSD(totalPL) + ' P/L + ' + fmtUSD(totalCapex) + ' cost';
+    document.getElementById('metFinalPrice').textContent = fmtUSD(totalPL) + ' P/L + ' + fmtUSD(totalInitialInvestment) + ' cost';
 
     const plEl = document.getElementById('metTotalPL');
     plEl.textContent = fmtUSD(totalPL);
     plEl.className = 'value ' + (totalPL >= 0 ? 'positive' : 'negative');
-    document.getElementById('metROI').textContent = totalCapex > 0 ? (roi >= 0 ? '+' : '') + roi.toFixed(1) + '% ROI' : '';
+    document.getElementById('metROI').textContent = totalInitialInvestment > 0 ? (roi >= 0 ? '+' : '') + roi.toFixed(1) + '% ROI' : '';
 
     const beEl = document.getElementById('metBreakEven');
     beEl.textContent = breakEvenPeriod !== null ? breakEvenPeriod : 'Never';
