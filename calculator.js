@@ -69,6 +69,11 @@ const savingsElecToggle = document.getElementById('savingsElecToggle');
 const savingsElecRow = document.getElementById('savingsElecRow');
 const autoReplaceToggle = document.getElementById('autoReplaceToggle');
 const autoReplaceRow = document.getElementById('autoReplaceRow');
+const taxAdjustmentToggle = document.getElementById('taxAdjustmentToggle');
+const taxAdjustmentRow = document.getElementById('taxAdjustmentRow');
+const taxRateInputs = document.getElementById('taxRateInputs');
+const miningIncomeTaxRateInput = document.getElementById('miningIncomeTaxRate');
+const capitalGainsTaxRateInput = document.getElementById('capitalGainsTaxRate');
 
 // ===== WALLET BALANCE INTEGRATION =====
 function getWalletTotalBTC() {
@@ -162,6 +167,9 @@ function saveSettings() {
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
     settings.savingsElec = savingsElecToggle.checked;
+    settings.taxAdjustment = taxAdjustmentToggle.checked;
+    settings.miningIncomeTaxRate = miningIncomeTaxRateInput.value;
+    settings.capitalGainsTaxRate = capitalGainsTaxRateInput.value;
     settings._v = 3;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch(e) {}
     if (typeof SyncEngine !== 'undefined') SyncEngine.save('calculator', settings);
@@ -188,6 +196,13 @@ function loadSettings() {
             savingsElecToggle.checked = true;
             savingsElecRow.classList.add('active');
         }
+        if (s.taxAdjustment) {
+            taxAdjustmentToggle.checked = true;
+            taxAdjustmentRow.classList.add('active');
+            taxRateInputs.style.display = '';
+        }
+        if (s.miningIncomeTaxRate !== undefined) miningIncomeTaxRateInput.value = s.miningIncomeTaxRate;
+        if (s.capitalGainsTaxRate !== undefined) capitalGainsTaxRateInput.value = s.capitalGainsTaxRate;
         hodlSlider.value = el.hodlRatio.value;
     } catch(e) {}
 }
@@ -435,6 +450,11 @@ function recalculate() {
     const lifespanMonths = Math.max(1, parseInt(el.minerLifespan.value) || 36);
     const salvagePct = (parseFloat(el.salvageValue.value) || 0) / 100;
 
+    // Tax adjustment inputs
+    const taxAdjustmentEnabled = taxAdjustmentToggle.checked;
+    const miningIncomeTaxRate = taxAdjustmentEnabled ? (parseFloat(miningIncomeTaxRateInput.value) || 0) / 100 : 0;
+    const capitalGainsTaxRate = taxAdjustmentEnabled ? (parseFloat(capitalGainsTaxRateInput.value) || 0) / 100 : 0;
+
     const pLen = periodLengthSel.value;
     const pCfg = PERIOD_CONFIG[pLen];
     const daysPerPeriod = pCfg.days;
@@ -489,7 +509,11 @@ function recalculate() {
     let totalScheduledAdded = 0;
 
     // Buy BTC comparison tracking
-    const buyHoldBtcAmount = totalInitialInvestment > 0 ? (totalInitialInvestment / btcPrice0) : 0;
+    // Apply capital gains tax to buy-and-hold scenario (reduces effective starting capital)
+    const effectiveBuyCapital = taxAdjustmentEnabled
+        ? totalInitialInvestment * (1 - capitalGainsTaxRate)
+        : totalInitialInvestment;
+    const buyHoldBtcAmount = effectiveBuyCapital > 0 ? (effectiveBuyCapital / btcPrice0) : 0;
     let overtakePeriod = null;
     const buyHoldValueData = [];
 
@@ -558,12 +582,18 @@ function recalculate() {
         if (savingsElec) {
             btcHeld = periodBTCMined * hodlPct;
             btcSold = periodBTCMined * (1 - hodlPct);
-            cashFromSales = btcSold * btcPrice;
+            // Apply mining income tax to sold BTC (ordinary income)
+            const grossCashFromSales = btcSold * btcPrice;
+            const taxOnMiningIncome = taxAdjustmentEnabled ? (grossCashFromSales * miningIncomeTaxRate) : 0;
+            cashFromSales = grossCashFromSales - taxOnMiningIncome;
             periodCashFlow = cashFromSales;
         } else {
             btcHeld = periodBTCMined * hodlPct;
             btcSold = periodBTCMined * (1 - hodlPct);
-            cashFromSales = btcSold * btcPrice;
+            // Apply mining income tax to sold BTC (ordinary income)
+            const grossCashFromSales = btcSold * btcPrice;
+            const taxOnMiningIncome = taxAdjustmentEnabled ? (grossCashFromSales * miningIncomeTaxRate) : 0;
+            cashFromSales = grossCashFromSales - taxOnMiningIncome;
             periodCashFlow = cashFromSales - periodElecCost;
         }
 
@@ -632,6 +662,8 @@ function recalculate() {
     const dailyRevenueDay1 = dailyBTCDay1Net * btcPrice0;
     const dailyElecDay1 = initPowerKW * 24 * elecCost * uptimePct;
     const dailyProfitDay1 = dailyRevenueDay1 - dailyElecDay1;
+    const dailyTaxDay1 = taxAdjustmentEnabled ? (dailyRevenueDay1 * miningIncomeTaxRate) : 0;
+    const dailyAfterTaxProfitDay1 = dailyProfitDay1 - dailyTaxDay1;
     const costPerBTC = dailyBTCDay1Net > 0 ? (dailyElecDay1 / dailyBTCDay1Net) : Infinity;
     const efficiency = hashrateTH > 0 ? ((powerKW * 1000) / hashrateTH) : 0;
 
@@ -640,8 +672,9 @@ function recalculate() {
     document.getElementById('metDailyElec').textContent = fmtUSD(dailyElecDay1);
 
     const profitEl = document.getElementById('metDailyProfit');
-    profitEl.textContent = fmtUSD(dailyProfitDay1);
-    profitEl.className = 'value ' + (dailyProfitDay1 >= 0 ? 'positive' : 'negative');
+    const displayProfit = taxAdjustmentEnabled ? dailyAfterTaxProfitDay1 : dailyProfitDay1;
+    profitEl.textContent = fmtUSD(displayProfit);
+    profitEl.className = 'value ' + (displayProfit >= 0 ? 'positive' : 'negative');
 
     const costBTCEl = document.getElementById('metCostPerBTC');
     costBTCEl.textContent = fmtUSD(costPerBTC);
@@ -667,8 +700,9 @@ function recalculate() {
 
     // Buy & Hold comparison metrics
     document.getElementById('metBuyHoldValue').textContent = fmtUSD(buyHoldFinalValue);
-    document.getElementById('metBuyHoldSub').textContent =
-        fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice);
+    document.getElementById('metBuyHoldSub').textContent = taxAdjustmentEnabled
+        ? fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice) + ' (after ' + (capitalGainsTaxRate * 100).toFixed(0) + '% CGT)'
+        : fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice);
 
     const advEl = document.getElementById('metMiningAdvantage');
     advEl.textContent = fmtUSD(Math.abs(miningAdvantage));
@@ -756,6 +790,13 @@ autoReplaceToggle.addEventListener('change', () => {
     autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
     recalculate();
 });
+taxAdjustmentToggle.addEventListener('change', () => {
+    taxAdjustmentRow.classList.toggle('active', taxAdjustmentToggle.checked);
+    taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';
+    recalculate();
+});
+miningIncomeTaxRateInput.addEventListener('input', recalculate);
+capitalGainsTaxRateInput.addEventListener('input', recalculate);
 hodlSlider.addEventListener('input', () => {
     el.hodlRatio.value = hodlSlider.value;
     recalculate();

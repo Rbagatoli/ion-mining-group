@@ -310,6 +310,34 @@
                     <strong>50%</strong> = Sell half, hold half
                 </div>
             </div>
+            <div class="reinvest-row" id="taxAdjustmentRow" style="margin-top:20px">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="taxAdjustmentToggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="reinvest-info">
+                    <strong>Apply Tax Adjustment</strong><br>
+                    <span style="font-size:11px">Compare mining vs buy-and-hold with realistic tax treatment</span>
+                </div>
+            </div>
+            <div id="taxRateInputs" style="display:none; margin-top:16px; padding:16px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                <div class="input-group">
+                    <label>Mining Income Tax Rate</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="miningIncomeTaxRate" value="35" min="0" max="100" step="1">
+                        <span class="suffix">%</span>
+                    </div>
+                    <div style="font-size:11px; color:#888; margin-top:4px;">Applied daily to mined BTC revenue</div>
+                </div>
+                <div class="input-group" style="margin-top:12px;">
+                    <label>Capital Gains Tax Rate</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="capitalGainsTaxRate" value="15" min="0" max="100" step="1">
+                        <span class="suffix">%</span>
+                    </div>
+                    <div style="font-size:11px; color:#888; margin-top:4px;">Reduces effective buy & hold starting capital</div>
+                </div>
+            </div>
             <div class="reinvest-row" id="savingsElecRow" style="margin-top:8px">
                 <label class="toggle-switch">
                     <input type="checkbox" id="savingsElecToggle">
@@ -418,7 +446,7 @@
 <script src="./shared.js?v=257"></script>
 <script src="./fleet-data.js?v=206"></script>
 <script src="./miner-db.js?v=206"></script>
-<script src="./calculator.js?v=258"></script>
+<script src="./calculator.js?v=259"></script>
 <script src="./widget-settings.js?v=206"></script>
 <script src="./alerts.js?v=206"></script>
 <script src="./onboarding.js?v=230"></script>
