@@ -449,6 +449,7 @@ function recalculate() {
     additionCapexRow.style.display = monthlyMinerAdditions > 0 ? '' : 'none';
 
     const totalCapex = capex * machineCount;
+    const totalInitialInvestment = totalCapex + infrastructureCost;
     const reinvestMode = reinvestToggle.checked;
 
     const reinvestHint = document.getElementById('reinvestHint');
@@ -616,7 +617,6 @@ function recalculate() {
     const finalBtcPrice = btcPrice0 * Math.pow(1 + priceChangePerPeriod, numPeriods);
     const heldBtcValue = cumulBtcHeld * finalBtcPrice;
     const totalPL = cumulCashFlow + heldBtcValue;
-    const totalInitialInvestment = totalCapex + infrastructureCost;
     const roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
 
     // Buy-and-hold final metrics
