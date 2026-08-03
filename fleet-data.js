@@ -14,7 +14,17 @@ var FleetData = (function() {
             var raw = localStorage.getItem(FLEET_KEY);
             if (!raw) return defaultFleet();
             var data = JSON.parse(raw);
-            if (!data || !data.miners) return defaultFleet();
+            if (!data || !Array.isArray(data.miners)) return defaultFleet();
+            // A fleet synced from an older build (or hand-edited) can be missing `defaults`.
+            // getFleetSummary() and the calculator dereference it unconditionally, so backfill
+            // it here rather than letting every caller throw.
+            var d = defaultFleet().defaults;
+            if (!data.defaults) data.defaults = d;
+            else {
+                if (typeof data.defaults.elecCost !== 'number') data.defaults.elecCost = d.elecCost;
+                if (typeof data.defaults.poolFee !== 'number') data.defaults.poolFee = d.poolFee;
+                if (typeof data.defaults.uptime !== 'number') data.defaults.uptime = d.uptime;
+            }
             return data;
         } catch(e) { return defaultFleet(); }
     }
@@ -186,9 +196,10 @@ var FleetData = (function() {
     // --- Mock Data ---
     function getMockMiners() {
         return [
-            { id: 'mock_1', model: 'Antminer S21 XP Hyd.', hashrate: 335, power: 5.36, cost: 15000, quantity: 3, status: 'online', dateAdded: new Date().toISOString() },
-            { id: 'mock_2', model: 'Antminer S21', hashrate: 200, power: 3.55, cost: 8000, quantity: 2, status: 'online', dateAdded: new Date().toISOString() },
-            { id: 'mock_3', model: 'WhatsMiner M60S', hashrate: 186, power: 3.44, cost: 6000, quantity: 1, status: 'offline', dateAdded: new Date().toISOString() }
+            // Specs must match MinerDB entries of the same name
+            { id: 'mock_1', model: 'Antminer S21 Hyd.', hashrate: 335, power: 5.360, cost: 9000, quantity: 3, status: 'online', dateAdded: new Date().toISOString() },
+            { id: 'mock_2', model: 'Antminer S21', hashrate: 200, power: 3.500, cost: 3200, quantity: 2, status: 'online', dateAdded: new Date().toISOString() },
+            { id: 'mock_3', model: 'Whatsminer M60S', hashrate: 186, power: 3.441, cost: 5250, quantity: 1, status: 'offline', dateAdded: new Date().toISOString() }
         ];
     }
 

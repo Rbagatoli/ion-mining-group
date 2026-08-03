@@ -18,7 +18,8 @@ var SyncEngine = (function() {
         settings:    { lsKey: 'ionMiningSettings' },
         alerts:      { lsKey: 'ionMiningAlerts' },
         currency:    { lsKey: 'ionMiningCurrency' },
-        theme:       { lsKey: 'ionMiningTheme' }
+        theme:       { lsKey: 'ionMiningTheme' },
+        scenarios:   { lsKey: 'ionMiningScenarios' }
     };
 
     function getDb() {

@@ -1,8 +1,9 @@
-const CACHE_NAME = 'ion-mining-v258';
+const CACHE_NAME = 'ion-mining-v264';
 const ASSETS = [
   // HTML pages
   './index.html',
   './calculator.html',
+  './cycle.html',
   './charts.html',
   './banking.html',
   './map.html',
@@ -24,7 +25,12 @@ const ASSETS = [
   './geo-data.js',
   './dashboard.js',
   './calculator.js',
+  './calc-engine.js',
   './charts.js',
+  './cycle.js',
+  './cycle-indicators.js',
+  './price-history.js',
+  './network-history.js',
   './banking.js',
   './map.js',
   './miner-db.js',

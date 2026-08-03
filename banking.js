@@ -97,8 +97,9 @@ document.getElementById('bankingTabs').addEventListener('click', function(e) {
 
 // ===== SHARED HELPERS =====
 function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (str === null || str === undefined) return '';   // keep 0 / false, don't blank them
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function copyToClipboard(text, btnEl) {
@@ -125,7 +126,10 @@ function copyToClipboard(text, btnEl) {
 
 function validateBtcAddress(addr) {
     if (!addr || addr.length < 26 || addr.length > 62) return false;
-    if (addr.startsWith('1') || addr.startsWith('3') || addr.startsWith('bc1')) return true;
+    // Charset matters as well as the prefix: addresses are interpolated into markup and into
+    // an explorer URL, so anything outside base58/bech32 must be rejected outright.
+    if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,61}$/.test(addr)) return true;   // legacy / P2SH
+    if (/^bc1[02-9ac-hj-np-z]{23,59}$/.test(addr)) return true;        // bech32 / bech32m
     return false;
 }
 
@@ -373,25 +377,19 @@ var StrikeAuth = (function() {
 var _walletAuthResolved = false;
 
 async function autoLoginWithFirebase() {
-    console.log('[Debug] autoLoginWithFirebase called');
     // Already have a valid worker session? Just use it.
     if (StrikeAuth.isLoggedIn()) {
-        console.log('[Debug] Strike session exists, using it');
         showAuthenticatedUI();
         var user = StrikeAuth.getUser();
-        console.log('[Debug] User object:', user);
 
         // Set global Strike connection flag if user has API key
         if (user && user.strikeConnected && user.hasOwnKey) {
-            console.log('[Debug] Setting strikeConnected = true');
             strikeConnected = true;
             updateStrikeStatus('Connected');
             updateSendButton();
             update2FAButton();
             hideConnectStrikePrompt();
-            console.log('[Debug] strikeConnected is now:', strikeConnected);
         } else {
-            console.log('[Debug] User does not have Strike connected, showing prompt');
             showConnectStrikePrompt();
         }
         await loadAndRefreshWallet();
@@ -442,14 +440,12 @@ async function autoLoginWithFirebase() {
 
             // Set global Strike connection flag if user has API key
             if (data.user.strikeConnected && data.user.hasOwnKey) {
-                console.log('[Debug] Firebase exchange: User has Strike API key, setting strikeConnected = true');
                 strikeConnected = true;
                 updateStrikeStatus('Connected');
                 updateSendButton();
                 update2FAButton();
                 hideConnectStrikePrompt();
             } else {
-                console.log('[Debug] Firebase exchange: User does not have Strike API key yet');
                 showConnectStrikePrompt();
             }
 
@@ -867,25 +863,6 @@ async function fetchStrikeData() {
             StrikeAPI.getPayments()
         ]);
 
-        console.log('[Wallet] Strike data fetched:', {
-            deposits: deposits ? (deposits.items || deposits).length : 0,
-            payouts: payouts ? (payouts.items || payouts).length : 0,
-            receives: receives ? (receives.items || receives).length : 0,
-            payments: payments ? (payments.items || payments).length : 0
-        });
-
-        // Log raw payout API response structure
-        console.log('[Wallet] RAW Payouts API Response:', {
-            hasError: !!payouts.error,
-            errorMsg: payouts.error,
-            isArray: Array.isArray(payouts),
-            hasItems: payouts && !!payouts.items,
-            itemsIsArray: payouts && Array.isArray(payouts.items),
-            responseKeys: payouts ? Object.keys(payouts) : [],
-            firstPayoutKeys: payouts && (payouts.items || payouts)[0] ?
-                Object.keys((payouts.items || payouts)[0]) : []
-        });
-
         if (deposits && !deposits.error && Array.isArray(deposits.items || deposits)) {
             var depItems = deposits.items || deposits;
             for (var d = 0; d < depItems.length; d++) {
@@ -906,36 +883,10 @@ async function fetchStrikeData() {
             for (var p = 0; p < payItems.length; p++) {
                 var pay = payItems[p];
 
-                console.log('[Wallet] Processing payout #' + p + ':', {
-                    rawPayout: pay,
-                    payoutKeys: Object.keys(pay),
-                    amountField: pay.amount || pay.amountPaid || pay.amountSent || pay.total,
-                    timestampFields: {
-                        created: pay.created,
-                        completedAt: pay.completedAt,
-                        createdAt: pay.createdAt,
-                        timestamp: pay.timestamp,
-                        date: pay.date
-                    },
-                    statusFields: {
-                        state: pay.state,
-                        status: pay.status
-                    },
-                    idFields: {
-                        payoutId: pay.payoutId,
-                        id: pay.id
-                    }
-                });
-
                 var payoutAmount = -parseStrikeAmount(pay.amount || pay.amountPaid || pay.amountSent || pay.total || pay);
-
-                // Validate amount parsing
-                if (payoutAmount === 0 || isNaN(payoutAmount)) {
-                    console.warn('[Wallet] Payout amount parsing FAILED:', {
-                        rawAmount: pay.amount || pay.amountPaid || pay.amountSent || pay.total,
-                        parsedAmount: payoutAmount,
-                        amountType: typeof (pay.amount || pay.amountPaid)
-                    });
+                if (isNaN(payoutAmount)) {
+                    console.warn('[Wallet] Could not parse payout amount for payout #' + p);
+                    payoutAmount = 0;
                 }
 
                 var payoutTimestamp = new Date(
@@ -948,23 +899,10 @@ async function fetchStrikeData() {
                     Date.now()
                 ).getTime() / 1000;
 
-                // Validate timestamp parsing
                 if (isNaN(payoutTimestamp)) {
-                    console.warn('[Wallet] Payout timestamp parsing FAILED:', {
-                        dateFields: {
-                            created: pay.created,
-                            completedAt: pay.completedAt,
-                            createdAt: pay.createdAt
-                        },
-                        parsedTimestamp: payoutTimestamp
-                    });
+                    console.warn('[Wallet] Could not parse payout timestamp for payout #' + p);
+                    payoutTimestamp = Math.floor(Date.now() / 1000);
                 }
-
-                console.log('[Wallet] Added payout:', {
-                    id: pay.payoutId || pay.id || pay.paymentId || 'payout-' + p,
-                    amount: payoutAmount,
-                    timestamp: payoutTimestamp
-                });
 
                 strikeTxs.push({
                     source: 'Strike',
@@ -1021,7 +959,6 @@ async function fetchStrikeData() {
         console.warn('[Wallet] Strike transaction fetch error:', e);
     }
 
-    console.log('[Wallet] Total Strike transactions processed:', strikeTxs.length);
     strikeTransactions = strikeTxs;
 
     // Also refresh Accounting tab Strike data if connected
@@ -1200,8 +1137,8 @@ function renderAddressCards(data) {
                         return '<div class="miner-card-stat" style="grid-column:1/-1;">' +
                             '<div class="stat-label">Deposit Address</div>' +
                             '<div style="display:flex; align-items:center; gap:6px;">' +
-                                '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + strikeAddr + '</div>' +
-                                '<button class="copy-addr-btn" data-addr="' + strikeAddr + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                                '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(strikeAddr) + '</div>' +
+                                '<button class="copy-addr-btn" data-addr="' + escapeHtml(strikeAddr) + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                             '</div>' +
                         '</div>';
                     }
@@ -1235,7 +1172,7 @@ function renderAddressCards(data) {
                     '<div class="stat-label">Address</div>' +
                     '<div style="display:flex; align-items:center; gap:6px;">' +
                         '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(a.address) + '</div>' +
-                        '<button class="copy-addr-btn" data-addr="' + a.address + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                        '<button class="copy-addr-btn" data-addr="' + escapeHtml(a.address) + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Balance</div><div class="stat-value" style="color:#f7931a;">' + fmtBTC(a.lastBalance, 8) + ' BTC</div></div>' +
@@ -1243,8 +1180,8 @@ function renderAddressCards(data) {
                 '<div class="miner-card-stat"><div class="stat-label">Transactions</div><div class="stat-value">' + a.lastTxCount + '</div></div>' +
             '</div>' +
             '<div class="miner-card-actions">' +
-                '<button onclick="window.open(\'https://mempool.space/address/' + a.address + '\', \'_blank\')">Explorer</button>' +
-                '<button class="delete" data-id="' + a.id + '">Remove</button>' +
+                '<button class="explorer-link" data-addr="' + escapeHtml(a.address) + '">Explorer</button>' +
+                '<button class="delete" data-id="' + escapeHtml(a.id) + '">Remove</button>' +
             '</div>' +
         '</div>';
     }
@@ -1257,6 +1194,17 @@ function renderAddressCards(data) {
                 copyToClipboard(btn.getAttribute('data-addr'), btn);
             });
         })(copyBtns[c]);
+    }
+
+    // Bound as a listener rather than an inline onclick so the address is never spliced
+    // into a JS string literal
+    var explorerBtns = container.querySelectorAll('.explorer-link');
+    for (var x = 0; x < explorerBtns.length; x++) {
+        (function(btn) {
+            btn.addEventListener('click', function() {
+                window.open('https://mempool.space/address/' + encodeURIComponent(btn.getAttribute('data-addr')), '_blank', 'noopener');
+            });
+        })(explorerBtns[x]);
     }
 
     var btns = container.querySelectorAll('.delete[data-id]');
@@ -1319,32 +1267,23 @@ function renderTransactionTabs() {
                 escapeHtml(tab.value) + '">' + escapeHtml(tab.label) + '</button>';
     }
     html += '</div>';
-
-    console.log('[Wallet] Rendered transaction tabs:', tabs.length, 'tabs');
     return html;
 }
 
 async function renderTransactionHistory() {
-    console.log('[Wallet] renderTransactionHistory() called, selectedTab:', selectedTransactionTab);
-
     // Render tabs first
     var tabsHtml = renderTransactionTabs();
     var tabContainer = document.getElementById('txTabsContainer');
-    console.log('[Wallet] txTabsContainer element:', tabContainer ? 'FOUND' : 'NOT FOUND');
 
     if (tabContainer) {
         tabContainer.innerHTML = tabsHtml;
-        console.log('[Wallet] Tabs HTML set, length:', tabsHtml.length);
 
         // Add click handlers to tabs
         var tabButtons = tabContainer.querySelectorAll('.tx-tab');
-        console.log('[Wallet] Found', tabButtons.length, 'tab buttons');
         for (var b = 0; b < tabButtons.length; b++) {
             (function(btn) {
                 btn.addEventListener('click', function() {
-                    var newTab = btn.getAttribute('data-tab-value');
-                    console.log('[Wallet] Tab clicked:', newTab);
-                    selectedTransactionTab = newTab;
+                    selectedTransactionTab = btn.getAttribute('data-tab-value');
                     renderTransactionHistory(); // Re-render with new filter
                 });
             })(tabButtons[b]);
@@ -1423,22 +1362,6 @@ async function renderTransactionHistory() {
             strikeStatus: st.status
         });
     }
-
-    console.log('[Wallet] Strike transactions in allTxs:',
-        allTxs.filter(function(t) { return t.type === 'strike'; }).length);
-
-    // Detailed breakdown by Strike transaction type
-    var strikeByType = allTxs.filter(function(t) { return t.type === 'strike'; });
-    console.log('[Wallet] Strike transactions breakdown:', {
-        total: strikeByType.length,
-        byType: {
-            deposits: strikeByType.filter(function(t) { return t.strikeType === 'Deposit'; }).length,
-            payouts: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; }).length,
-            receives: strikeByType.filter(function(t) { return t.strikeType === 'Receive'; }).length,
-            sends: strikeByType.filter(function(t) { return t.strikeType === 'Send'; }).length
-        },
-        payoutTransactions: strikeByType.filter(function(t) { return t.strikeType === 'Payout'; })
-    });
 
     allTxs.sort(function(a, b) { return b.timestamp - a.timestamp; });
 
@@ -1665,28 +1588,9 @@ document.getElementById('saveWalletStrike').addEventListener('click', async func
     renderAccounting();
 });
 
-function disconnectStrike() {
-    var settings = FleetData.getSettings();
-    settings.strike = { proxyUrl: '', enabled: false, lastSync: null };
-    FleetData.saveSettings(settings);
-    strikeConnected = false;
-    strikeBalances = null;
-    strikeTransactions = [];
-    strikeOnchainAddress = null;
-    try { localStorage.removeItem('ionStrikeOnchainAddr'); } catch(e) {}
-    StrikeAuth.clearSession();
-    updateStrikeStatus(null);
-    updateSendButton();
-    update2FAButton();
-    updateAccountButtons();
-    hideConnectStrikePrompt();
-    hideSignInPrompt();
-    var authBar = document.getElementById('userAuthBar');
-    if (authBar) authBar.style.display = 'none';
-    renderWallet();
-    renderTransactionHistory();
-}
-window.disconnectStrike = disconnectStrike;
+// NOTE: disconnectStrike() lives in the Accounting section below. A second, earlier copy used
+// to be defined here — function hoisting meant the later one always won, so this one was
+// unreachable and its extra cleanup steps never ran. They have been folded into the survivor.
 
 // ===== SEND BTC PANEL =====
 var activeSendQuote = null;
@@ -2314,7 +2218,7 @@ async function renderOnchainReceiveTab() {
     for (var i = 0; i < allAddresses.length; i++) {
         var a = allAddresses[i];
         var lbl = a.type === 'strike' ? '\u26a1 ' + escapeHtml(a.label) : escapeHtml(a.label);
-        html += '<option value="' + a.address + '">' + lbl + '</option>';
+        html += '<option value="' + escapeHtml(a.address) + '">' + lbl + '</option>';
     }
     html += '</select></div></div>';
     html += '<div id="onchainAddrBadge" style="margin-bottom:8px; text-align:center;"></div>';
@@ -2799,12 +2703,12 @@ function renderElectricityTable() {
     for (var i = 0; i < sorted.length; i++) {
         var e = sorted[i];
         html += '<tr>' +
-            '<td>' + e.date + '</td>' +
+            '<td>' + escapeHtml(e.date) + '</td>' +
             '<td>' + e.kwhUsed.toLocaleString() + '</td>' +
             '<td style="color:#ef4444">' + fmtUSD(e.costUSD) + '</td>' +
             '<td>$' + e.effectiveRate.toFixed(4) + '</td>' +
-            '<td>' + (e.notes || '--') + '</td>' +
-            '<td><button class="delete-elec" data-id="' + e.id + '">&times;</button></td>' +
+            '<td>' + escapeHtml(e.notes || '--') + '</td>' +
+            '<td><button class="delete-elec" data-id="' + escapeHtml(e.id) + '">&times;</button></td>' +
         '</tr>';
     }
     tbody.innerHTML = html;
@@ -2840,16 +2744,18 @@ function renderPayoutTable() {
     var html = '';
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
+        // notes and txHash are free-text user input — escape before interpolating
+        var safeHash = encodeURIComponent(p.txHash || '');
         var txDisplay = p.txHash
-            ? '<a href="https://mempool.space/tx/' + p.txHash + '" target="_blank" rel="noopener" style="color:#f7931a; text-decoration:none;" title="' + p.txHash + '">' + p.txHash.substring(0, 12) + '...</a>'
+            ? '<a href="https://mempool.space/tx/' + safeHash + '" target="_blank" rel="noopener" style="color:#f7931a; text-decoration:none;" title="' + escapeHtml(p.txHash) + '">' + escapeHtml(p.txHash.substring(0, 12)) + '...</a>'
             : '--';
         html += '<tr>' +
-            '<td>' + p.date + '</td>' +
+            '<td>' + escapeHtml(p.date) + '</td>' +
             '<td style="color:#f7931a">' + fmtBTC(p.btcAmount, 8) + '</td>' +
             '<td>' + fmtUSD(p.btcPrice) + '</td>' +
             '<td>' + fmtUSD(p.usdValue) + '</td>' +
             '<td style="font-family:monospace; font-size:11px;">' + txDisplay + '</td>' +
-            '<td>' + (p.notes || '--') + '</td>' +
+            '<td>' + escapeHtml(p.notes || '--') + '</td>' +
             '<td><button class="delete-payout" data-id="' + p.id + '">&times;</button></td>' +
         '</tr>';
     }
@@ -3075,7 +2981,10 @@ function updatePayoutChart() {
 }
 
 // ===== REVENUE VS COSTS CHART =====
-var revCostChart = null;
+// NOTE: revCostChart is declared once at the top of the file. A second `var revCostChart = null`
+// used to sit here — because the #income hash handler runs switchBankingTab() near the top of
+// the file, the chart was built and then this line nulled the reference on the way past,
+// so updateRevCostChart() bailed out forever and the chart never refreshed.
 
 function initRevCostChart() {
     var ctx = document.getElementById('revVsCostChart');
@@ -3291,16 +3200,16 @@ async function connectQuickBooks() {
                 StrikeAuth.saveSession(authData.token, authData.user);
                 token = authData.token;
             } else {
-                console.log('[QB] QB worker auth failed, trying Strike fallback:', authData);
+                // Don't log the response body — it carries a session token on success
+                console.log('[QB] QB worker auth failed, trying Strike fallback:', (authData && authData.error) || 'unknown error');
                 // Fallback to Strike worker
                 try {
                     var strikeData = await StrikeAPI.firebaseLogin(idToken);
-                    console.log('[QB] Strike worker response:', strikeData);
                     if (strikeData && strikeData.ok) {
                         StrikeAuth.saveSession(strikeData.token, strikeData.user);
                         token = strikeData.token;
                     } else {
-                        console.error('[QB] Strike worker auth failed:', strikeData);
+                        console.error('[QB] Strike worker auth failed:', (strikeData && strikeData.error) || 'unknown error');
                         alert('Authentication failed. Please try signing out and back in.');
                         return;
                     }
@@ -3365,17 +3274,23 @@ async function connectQuickBooks() {
 async function disconnectQuickBooks() {
     if (!confirm('Disconnect QuickBooks?')) return;
 
-    var proxyUrl = getQboProxyUrl();
-    var res = await fetch(proxyUrl + '/auth/qbo/disconnect', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
-    });
+    try {
+        var proxyUrl = getQboProxyUrl();
+        var res = await fetch(proxyUrl + '/auth/qbo/disconnect', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
+        });
 
-    if (res.ok) {
-        qboConnected = false;
-        qboData = { accounts: [], expenses: [], invoices: [] };
-        updateQboStatus(null);
-        renderAccounting();
+        if (res.ok) {
+            qboConnected = false;
+            qboData = { accounts: [], expenses: [], invoices: [] };
+            updateQboStatus(null);
+            renderAccounting();
+        } else {
+            alert('Failed to disconnect QuickBooks (HTTP ' + res.status + ')');
+        }
+    } catch (e) {
+        alert('Failed to disconnect QuickBooks: ' + e.message);
     }
 }
 
@@ -3390,7 +3305,7 @@ async function disconnectStrike() {
 
         // Clear Strike settings
         var settings = FleetData.getSettings();
-        settings.strike = { proxyUrl: '', enabled: false };
+        settings.strike = { proxyUrl: '', enabled: false, lastSync: null };
         FleetData.saveSettings(settings);
         strikeConnected = false;
         acctStrikeConnected = false;  // Clear accounting flag
@@ -3403,17 +3318,24 @@ async function disconnectStrike() {
 
         // Update status
         updateStrikeStatus(null);
+        updateSendButton();
+        update2FAButton();
+        updateAccountButtons();
+        hideConnectStrikePrompt();
 
         // Clear Strike wallet data
-        strikeBalances = [];
-        strikes = [];
+        strikeBalances = null;
         strikeTransactions = [];
+        strikeOnchainAddress = null;
+        try { localStorage.removeItem('ionStrikeOnchainAddr'); } catch(e) {}
+        try { localStorage.removeItem('ionMiningStrikeBtcBalance'); } catch(e) {}
 
         // Clear Strike accounting data
         strikeAcctData = { deposits: [], payouts: [], receives: [] };
 
         // Refresh both tabs
         renderWallet();
+        renderTransactionHistory();
         renderAccounting();
 
         alert('Strike disconnected successfully');
@@ -3422,23 +3344,30 @@ async function disconnectStrike() {
         alert('Failed to disconnect Strike: ' + err.message);
     }
 }
+window.disconnectStrike = disconnectStrike;
 
 async function checkQboConnectionStatus() {
     if (!StrikeAuth.isLoggedIn()) return;
 
-    var proxyUrl = getQboProxyUrl();
-    var res = await fetch(proxyUrl + '/auth/qbo/status', {
-        headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
-    });
+    // Awaited from autoLoginWithFirebase() — an unguarded network failure here rejected the
+    // whole sign-in chain and left the wallet half-initialised.
+    try {
+        var proxyUrl = getQboProxyUrl();
+        var res = await fetch(proxyUrl + '/auth/qbo/status', {
+            headers: { 'Authorization': 'Bearer ' + StrikeAuth.getToken() }
+        });
 
-    if (res.ok) {
-        var data = await res.json();
-        if (data.connected) {
-            onQuickBooksConnected(data.companyName);
-        } else {
-            qboConnected = false;
-            updateQboStatus(null);
+        if (res.ok) {
+            var data = await res.json();
+            if (data.connected) {
+                await onQuickBooksConnected(data.companyName);
+            } else {
+                qboConnected = false;
+                updateQboStatus(null);
+            }
         }
+    } catch (e) {
+        console.warn('[QB] Status check failed:', e.message);
     }
 }
 
@@ -3532,13 +3461,6 @@ function updateStrikeAcctStatus(label) {
 }
 
 async function fetchStrikeAccountingData() {
-    console.log('[Accounting] Strike data fetch check:', {
-        acctStrikeConnected: acctStrikeConnected,
-        isLoggedIn: StrikeAuth.isLoggedIn(),
-        hasToken: !!StrikeAuth.getToken(),
-        hasUser: !!StrikeAuth.getUser()
-    });
-
     if (!acctStrikeConnected) {
         console.warn('[Accounting] Strike accounting not enabled (proxy URL not configured)');
         return;
@@ -3937,7 +3859,18 @@ function renderAssetsOverview() {
     }
 
     document.getElementById('assetsGrid').innerHTML = html;
-    document.querySelector('[data-widget="assets-overview"]').style.display = '';
+    // Reveal the section, but never override a user who hid it via the widget settings gear —
+    // this used to force it back on every render.
+    var assetsWidget = document.querySelector('[data-widget="assets-overview"]');
+    if (assetsWidget && !isWidgetHidden('assets-overview')) assetsWidget.style.display = '';
+}
+
+// Widget visibility is owned by widget-settings.js (localStorage: ionMiningWidgets_banking)
+function isWidgetHidden(key) {
+    try {
+        var cfg = JSON.parse(localStorage.getItem('ionMiningWidgets_banking') || '{}');
+        return !!(cfg.hidden && cfg.hidden.indexOf(key) >= 0);
+    } catch (e) { return false; }
 }
 
 function toggleAssetsDisplay() {
@@ -4032,14 +3965,16 @@ function renderExpenseTable(entries) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No expenses in this period</td></tr>';
         return;
     }
+    // Entries are stored in USD; the P&L summary above converts, so this table must too
+    var mult = getCurrencyMultiplier();
     var html = '';
     for (var i = 0; i < entries.length; i++) {
         var e = entries[i];
         html += '<tr>' +
-            '<td>' + e.date + '</td>' +
+            '<td>' + escapeHtml(e.date) + '</td>' +
             '<td>' + escapeHtml(e.vendor) + '</td>' +
             '<td>' + escapeHtml(e.category) + '</td>' +
-            '<td class="negative">-' + fmtUSD(e.amount) + '</td>' +
+            '<td class="negative">-' + fmtUSD(e.amount * mult) + '</td>' +
             '<td>' + escapeHtml(e.account) + '</td>' +
         '</tr>';
     }
@@ -4580,7 +4515,12 @@ initNav('banking');
     checkAndLogDailySnapshot();
     await syncAllPoolPayouts();
     renderPayoutPage();
-    // Charts are lazy-inited on first tab switch
+    // Charts are lazy-inited on first tab switch — but when the page is opened directly on
+    // #income they were built by the early hash handler, before liveBtcPrice was known and
+    // before the pool sync above pulled new payouts. Push the fresh data in now.
+    // Both are no-ops if the charts have not been created yet.
+    updatePayoutChart();
+    updateRevCostChart();
 
     // Accounting init
     setPeriod('month');

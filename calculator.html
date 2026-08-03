@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Calculator</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=256">
+    <link rel="stylesheet" href="./shared.css?v=264">
     <script>
     // Force-clear old service workers and caches (runs before any external scripts)
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
@@ -16,7 +16,51 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=206"></script>
+    <script src="./chart.min.js?v=264"></script>
+    <style>
+        /* Trailing-rate presets under the growth-assumption inputs */
+        .rate-preset-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
+        .rate-preset-label { font-size:11px; color:#777; flex-shrink:0; }
+        .time-range-selector.rate-presets { margin:0; gap:4px; }
+        .time-range-selector.rate-presets button { padding:3px 9px; font-size:11px; }
+        .rate-preset-hint { font-size:11px; color:#777; margin-top:5px; line-height:1.45; }
+        /* Reality-check callout under the backtest chart */
+        .bt-reality { margin-top:14px; padding:12px 14px; border-radius:8px; font-size:12px; line-height:1.6;
+            background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.18); color:#bbb; }
+        .bt-reality strong { color:#f7931a; }
+        .bt-reality .bt-warn { color:#fbbf24; }
+        [data-theme="light"] .rate-preset-label,
+        [data-theme="light"] .rate-preset-hint { color:#6b7280; }
+        [data-theme="light"] .bt-reality { color:#444; }
+
+        /* Scenarios */
+        .scenario-save-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+        .scenario-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+        .scenario-chip { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px;
+            background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); flex-wrap:wrap; }
+        .scenario-chip-main { display:flex; align-items:center; gap:8px; flex:1; min-width:150px; cursor:pointer; }
+        .scenario-name { font-size:13px; color:#e8e8e8; font-weight:500; }
+        .scenario-date { font-size:11px; color:#666; }
+        .scenario-btn { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+            color:#aaa; font-size:11px; padding:3px 9px; border-radius:5px; cursor:pointer; transition:all .15s; }
+        .scenario-btn:hover { background:rgba(247,147,26,0.12); color:#f7931a; border-color:rgba(247,147,26,0.3); }
+        .scenario-btn-danger:hover { background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3); }
+        .scenario-empty { font-size:12px; color:#777; padding:12px; text-align:center;
+            border:1px dashed rgba(255,255,255,0.08); border-radius:8px; }
+        .scenario-table { width:100%; font-size:12px; }
+        .scenario-table th { text-align:right; padding:8px 10px; font-size:11px; color:#888;
+            text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; }
+        .scenario-table th:first-child { text-align:left; }
+        .scenario-table th.scn-current { color:#f7931a; }
+        .scenario-table td { text-align:right; padding:7px 10px; white-space:nowrap; }
+        .scenario-table td.scn-metric { text-align:left; color:#888; }
+        .scenario-table tr.scn-divider td { border-top:1px solid rgba(255,255,255,0.08); padding-top:11px; }
+        .scenario-table td.scn-best { background:rgba(74,222,128,0.10); font-weight:600; border-radius:4px; }
+        .scenario-note { font-size:11px; color:#777; margin-top:10px; }
+        [data-theme="light"] .scenario-chip { background:rgba(0,0,0,0.03); border-color:rgba(0,0,0,0.08); }
+        [data-theme="light"] .scenario-name { color:#1a1a1a; }
+        [data-theme="light"] .scenario-empty { border-color:rgba(0,0,0,0.12); color:#6b7280; }
+    </style>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
@@ -111,6 +155,54 @@
     </div>
     </div><!-- /widget charts -->
 
+    <!-- ===== SCENARIOS ===== -->
+    <div class="widget-section" data-widget="scenarios">
+    <div class="section-label">Scenarios</div>
+    <div class="card">
+        <h3>Save &amp; Compare Scenarios</h3>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">
+            Keep a set of inputs under a name, then compare saved scenarios side by side against
+            whatever is currently in the calculator. Every column is run through the same engine
+            as the live projection.
+        </p>
+        <div class="scenario-save-row">
+            <div class="input-wrapper" style="flex:1; min-width:180px;">
+                <input type="text" id="scenarioName" placeholder="Name this scenario (optional)" maxlength="60" autocomplete="off">
+            </div>
+            <button class="btn btn-primary" id="btnSaveScenario">Save Current</button>
+        </div>
+        <div id="scenarioList" class="scenario-list"></div>
+        <div id="scenarioCompare" class="scenario-compare"></div>
+    </div>
+    </div><!-- /widget scenarios -->
+
+    <!-- ===== HISTORICAL BACKTEST ===== -->
+    <div class="widget-section" data-widget="backtest">
+    <div class="section-label">Historical Backtest</div>
+    <div class="card">
+        <div class="chart-title-row">
+            <h3 id="btTitle">What This Rig Would Have Earned (Last 1 Year)</h3>
+            <span id="btHeadline" class="chart-live-value" style="color:#f7931a;">--</span>
+        </div>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">
+            Replays your machine settings day by day against the <strong>real</strong> BTC price and the
+            <strong>real</strong> network difficulty in force on each of those days. No growth assumptions
+            at all &mdash; this is what actually happened, not a projection.
+        </p>
+        <div class="time-range-selector" id="btRange">
+            <button type="button" data-days="180">6M</button>
+            <button type="button" data-days="365" class="active">1Y</button>
+            <button type="button" data-days="730">2Y</button>
+            <button type="button" data-days="1095">3Y</button>
+        </div>
+        <section class="fleet-grid" id="btCards" style="margin-bottom:16px;"></section>
+        <div class="earnings-chart-container">
+            <canvas id="btChart"></canvas>
+        </div>
+        <div id="btReality" class="bt-reality"></div>
+    </div>
+    </div><!-- /widget backtest -->
+
     <!-- ===== INPUT PANEL ===== -->
     <div class="widget-section" data-widget="inputs">
     <div class="section-label">Inputs</div>
@@ -145,6 +237,15 @@
                     <input type="number" id="priceChange" value="2" min="-50" max="100" step="0.1">
                     <span class="suffix">%</span>
                 </div>
+                <div class="rate-preset-row">
+                    <span class="rate-preset-label">Actual:</span>
+                    <div class="time-range-selector rate-presets" id="pricePresets">
+                        <button type="button" data-years="1">1Y</button>
+                        <button type="button" data-years="2">2Y</button>
+                        <button type="button" data-years="3">3Y</button>
+                    </div>
+                </div>
+                <div class="rate-preset-hint" id="pricePresetHint">loading real rates&hellip;</div>
             </div>
             <div class="input-group">
                 <label>Current Network Difficulty</label>
@@ -159,6 +260,15 @@
                     <input type="number" id="diffChange" value="3" min="-50" max="100" step="0.1">
                     <span class="suffix">%</span>
                 </div>
+                <div class="rate-preset-row">
+                    <span class="rate-preset-label">Actual:</span>
+                    <div class="time-range-selector rate-presets" id="diffPresets">
+                        <button type="button" data-years="1">1Y</button>
+                        <button type="button" data-years="2">2Y</button>
+                        <button type="button" data-years="3">3Y</button>
+                    </div>
+                </div>
+                <div class="rate-preset-hint" id="diffPresetHint">loading real rates&hellip;</div>
             </div>
             <div class="input-group">
                 <label>Period Length</label>
@@ -335,7 +445,7 @@
                         <input type="number" id="capitalGainsTaxRate" value="15" min="0" max="100" step="1">
                         <span class="suffix">%</span>
                     </div>
-                    <div style="font-size:11px; color:#888; margin-top:4px;">Reduces effective buy & hold starting capital</div>
+                    <div style="font-size:11px; color:#888; margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
                 </div>
             </div>
             <div class="reinvest-row" id="savingsElecRow" style="margin-top:8px">
@@ -439,16 +549,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=206"></script>
-<script src="./sync.js?v=206"></script>
-<script src="./auth-ui.js?v=206"></script>
-<script src="./profile-panel.js?v=206"></script>
-<script src="./shared.js?v=257"></script>
-<script src="./fleet-data.js?v=206"></script>
-<script src="./miner-db.js?v=206"></script>
-<script src="./calculator.js?v=260"></script>
-<script src="./widget-settings.js?v=206"></script>
-<script src="./alerts.js?v=206"></script>
-<script src="./onboarding.js?v=230"></script>
+<script src="./firebase-config.js?v=264"></script>
+<script src="./sync.js?v=264"></script>
+<script src="./auth-ui.js?v=264"></script>
+<script src="./profile-panel.js?v=264"></script>
+<script src="./shared.js?v=264"></script>
+<script src="./fleet-data.js?v=264"></script>
+<script src="./miner-db.js?v=264"></script>
+<script src="./price-history.js?v=264"></script>
+<script src="./network-history.js?v=264"></script>
+<script src="./calc-engine.js?v=264"></script>
+<script src="./calculator.js?v=264"></script>
+<script src="./widget-settings.js?v=264"></script>
+<script src="./alerts.js?v=264"></script>
+<script src="./onboarding.js?v=264"></script>
 </body>
 </html>

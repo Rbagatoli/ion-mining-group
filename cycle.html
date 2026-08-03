@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ion Mining Group — Cycle</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./shared.css?v=264">
+    <script>
+    // Force-clear old service workers and caches (runs before any external scripts)
+    if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(r) {
+            var p = r.map(function(x) { return x.unregister(); });
+            p.push(caches.keys().then(function(k) { return Promise.all(k.map(function(n) { return caches.delete(n); })); }));
+            Promise.all(p).then(function() { localStorage.setItem('sw_clean_v222', '1'); location.reload(); });
+        });
+    }
+    </script>
+    <script src="./chart.min.js?v=264"></script>
+    <style>
+        /* Reading line under each indicator card — plain-language "what this means" */
+        .cycle-reading { font-size: 11px; line-height: 1.45; margin-top: 6px; color: var(--text-muted, #888); }
+        .cycle-pct { font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; opacity: 0.75; }
+        /* Percentile bar, reusing the halving progress bar look */
+        .cycle-bar { height: 4px; border-radius: 3px; background: rgba(255,255,255,0.07); overflow: hidden; margin-top: 6px; }
+        [data-theme="light"] .cycle-bar { background: rgba(0,0,0,0.07); }
+        .cycle-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+        .cycle-disclaimer { font-size: 11px; color: #777; text-align: center; padding: 0 16px 4px; max-width: 760px; margin: 0 auto; line-height: 1.5; }
+        .dca-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+    </style>
+</head>
+<body>
+<canvas id="techLinesCanvas"></canvas>
+
+<nav id="ion-nav"></nav>
+
+<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+    <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;">Cycle</h1>
+    <p style="color:#888; font-size:12px;">Where today sits relative to Bitcoin&rsquo;s own history</p>
+</header>
+<div class="cycle-disclaimer">
+    These are historical-context measures, not predictions. They show whether current conditions are
+    unusual compared with the past &mdash; nothing here forecasts price.
+</div>
+<div id="cycleStatus" style="font-size:12px; color:#555; text-align:center; padding:4px 0;"></div>
+
+<main>
+
+    <!-- ===== WHERE WE ARE ===== -->
+    <div class="widget-section" data-widget="position">
+    <div class="section-label">Where We Are</div>
+    <section class="fleet-grid" id="positionGrid">
+        <div class="metric-card">
+            <div class="label">Drawdown From ATH</div>
+            <div class="value" id="ciDrawdown">--</div>
+            <div class="sub" id="ciDrawdownSub">--</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciDrawdownBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciDrawdownRead">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Mayer Multiple</div>
+            <div class="value" id="ciMayer">--</div>
+            <div class="sub" id="ciMayerSub">price &divide; 200-day average</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciMayerBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciMayerRead">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Price vs 200-Week MA</div>
+            <div class="value" id="ciMa200w">--</div>
+            <div class="sub" id="ciMa200wSub">--</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciMa200wBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciMa200wRead">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Puell Multiple</div>
+            <div class="value" id="ciPuell">--</div>
+            <div class="sub">miner revenue vs 1-year average</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciPuellBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciPuellRead">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Fear &amp; Greed</div>
+            <div class="value" id="ciFng">--</div>
+            <div class="sub" id="ciFngSub">market sentiment</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciFngBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciFngRead">--</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Volatility (30d)</div>
+            <div class="value" id="ciVol">--</div>
+            <div class="sub">annualised</div>
+            <div class="cycle-bar"><div class="cycle-bar-fill" id="ciVolBar" style="width:0%"></div></div>
+            <div class="cycle-reading" id="ciVolRead">--</div>
+        </div>
+    </section>
+    </div><!-- /widget position -->
+
+    <!-- ===== PRICE VS MOVING AVERAGES ===== -->
+    <div class="widget-section" data-widget="valuation">
+    <div class="section-label">Price vs Moving Averages</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="valuationTitle">Price vs Moving Averages (All Time)</h3>
+            <span id="valuationValue" class="chart-live-value" style="color:#f7931a;">--</span>
+        </div>
+        <div class="time-range-selector" id="valuationRange">
+            <button data-days="365">1Y</button>
+            <button data-days="1095">3Y</button>
+            <button data-days="max" class="active">MAX</button>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="valuationChart"></canvas>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+            Log scale. The 200-week average has historically acted as a cycle floor &mdash; it needs
+            1,400 days of data, so it begins in May 2019.
+        </p>
+    </div>
+    </div><!-- /widget valuation -->
+
+    <!-- ===== MAYER MULTIPLE OVER TIME ===== -->
+    <div class="widget-section" data-widget="mayer">
+    <div class="section-label">Mayer Multiple History</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="mayerTitle">Mayer Multiple (All Time)</h3>
+            <span id="mayerValue" class="chart-live-value" style="color:#4ade80;">--</span>
+        </div>
+        <div class="time-range-selector" id="mayerRange">
+            <button data-days="365">1Y</button>
+            <button data-days="1095">3Y</button>
+            <button data-days="max" class="active">MAX</button>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="mayerChart"></canvas>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+            Price divided by its 200-day average. Readings below 0.8 have historically coincided with
+            deeply discounted periods; above 2.4 with overheated ones.
+        </p>
+    </div>
+    </div><!-- /widget mayer -->
+
+    <!-- ===== DRAWDOWN HISTORY ===== -->
+    <div class="widget-section" data-widget="drawdown">
+    <div class="section-label">Drawdown History</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="drawdownTitle">Drawdown From All-Time High</h3>
+            <span id="drawdownValue" class="chart-live-value" style="color:#ef4444;">--</span>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="drawdownChart"></canvas>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+            How far price sits below its running all-time high. Lets you compare today directly with
+            every previous bear market in the record.
+        </p>
+    </div>
+    </div><!-- /widget drawdown -->
+
+    <!-- ===== HALVING CYCLE COMPARISON ===== -->
+    <div class="widget-section" data-widget="cycles">
+    <div class="section-label">Halving Cycle Comparison</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="cyclesTitle">Price Indexed From Each Halving</h3>
+            <span id="cyclesValue" class="chart-live-value" style="color:#f7931a;">--</span>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="cyclesChart"></canvas>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+            Each line starts at 100 on its halving date. Past cycles are shown for context only &mdash;
+            they are not a template for the current one. Data begins in 2015, so the 2012 halving is absent.
+        </p>
+    </div>
+    </div><!-- /widget cycles -->
+
+    <!-- ===== FEAR & GREED ===== -->
+    <div class="widget-section" data-widget="sentiment">
+    <div class="section-label">Market Sentiment</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="fngTitle">Fear &amp; Greed vs Price</h3>
+            <span id="fngValue" class="chart-live-value" style="color:#a78bfa;">--</span>
+        </div>
+        <div class="time-range-selector" id="fngRange">
+            <button data-days="365" class="active">1Y</button>
+            <button data-days="1095">3Y</button>
+            <button data-days="max">MAX</button>
+        </div>
+        <div class="earnings-chart-container">
+            <canvas id="fngChart"></canvas>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+            Crowd sentiment scored 0 (extreme fear) to 100 (extreme greed), from alternative.me.
+            Extremes in either direction have historically been more interesting than the middle.
+        </p>
+    </div>
+    </div><!-- /widget sentiment -->
+
+    <!-- ===== DCA BACKTESTER ===== -->
+    <div class="widget-section" data-widget="dca">
+    <div class="section-label">Recurring Buy Backtest</div>
+    <div class="card">
+        <h3>What Regular Buying Would Have Done</h3>
+        <p style="font-size:12px; color:#888; margin-bottom:14px;">
+            Backtest a fixed recurring buy against real history. This is a record of what happened,
+            not a projection.
+        </p>
+        <section class="inputs-grid" style="margin-bottom:4px;">
+            <div class="input-group">
+                <label>Amount per buy</label>
+                <div class="input-wrapper">
+                    <span class="prefix">$</span>
+                    <input type="number" id="dcaAmount" value="100" min="1" max="1000000" step="10">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Frequency</label>
+                <div class="input-wrapper">
+                    <select id="dcaFrequency">
+                        <option value="1">Daily</option>
+                        <option value="7" selected>Weekly</option>
+                        <option value="14">Every 2 weeks</option>
+                        <option value="30">Monthly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Start date</label>
+                <div class="input-wrapper">
+                    <input type="date" id="dcaStart" value="2020-01-01">
+                </div>
+            </div>
+        </section>
+        <div class="dca-result-grid" id="dcaResults"></div>
+        <div class="earnings-chart-container" style="margin-top:16px;">
+            <canvas id="dcaChart"></canvas>
+        </div>
+    </div>
+    </div><!-- /widget dca -->
+
+</main>
+
+<footer>
+    Ion Mining Group &mdash; Cycle<br>
+    <span style="font-size:11px; color:#555;">Historical context only. Not financial advice, and not a forecast.</span>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="./firebase-config.js?v=264"></script>
+<script src="./sync.js?v=264"></script>
+<script src="./auth-ui.js?v=264"></script>
+<script src="./profile-panel.js?v=264"></script>
+<script src="./shared.js?v=264"></script>
+<script src="./fleet-data.js?v=264"></script>
+<script src="./price-history.js?v=264"></script>
+<script src="./cycle-indicators.js?v=264"></script>
+<script src="./cycle.js?v=264"></script>
+<script src="./widget-settings.js?v=264"></script>
+<script src="./alerts.js?v=264"></script>
+<script src="./onboarding.js?v=264"></script>
+</body>
+</html>

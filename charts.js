@@ -33,38 +33,64 @@ var currentPoolTimeframe = '1w';
 var currentFeeTimeframe = '24h';
 var CHART_REFRESH_MS = 60000;
 var _chartRefreshInterval = null;
+// Full-history endpoints (allData=true is ~6k daily candles, hashrate/all is the whole chain)
+// only change once a day. Re-pulling them every 60s wasted bandwidth and risked rate limits.
+var HISTORY_REFRESH_MS = 10 * 60 * 1000;
+var _lastHistoryFetch = 0;
 
 window.onCurrencyChange = function() {
     if (allPriceData) renderPriceChart(currentPriceDays);
     if (allPriceData && allMiningData) renderHashPriceChart(currentHashPriceDays);
 };
 
-var chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-        legend: { display: false },
-        tooltip: {
-            backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-            borderColor: 'rgba(255, 255, 255, 0.10)',
-            borderWidth: 1,
-            titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-            bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-            padding: 10
-        }
-    },
-    scales: {
-        x: {
-            ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12 },
-            grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+// Built as a function so the palette can be re-derived when the theme toggles
+function buildChartOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
+                borderColor: 'rgba(255, 255, 255, 0.10)',
+                borderWidth: 1,
+                titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                padding: 10
+            }
         },
-        y: {
-            ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-            grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+        scales: {
+            x: {
+                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12 },
+                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+            },
+            y: {
+                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
+                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+            }
         }
+    };
+}
+var chartOptions = buildChartOptions();
+
+window.addEventListener('themechange', function() {
+    chartOptions = buildChartOptions();
+    if (allPriceData) renderPriceChart(currentPriceDays);
+    if (allMiningData) {
+        renderDifficultyChart(currentDiffTimeframe);
+        renderHashrateChart(currentHashTimeframe);
     }
-};
+    if (allPriceData && allMiningData) renderHashPriceChart(currentHashPriceDays);
+    if (poolDataCache[currentPoolTimeframe]) renderPoolChart(currentPoolTimeframe, poolDataCache[currentPoolTimeframe]);
+    loadFeeRateHistory(currentFeeTimeframe);
+});
+
+// Block explorer renders pool names straight from the mempool.space API
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 // ===== Date formatters =====
 
@@ -77,6 +103,12 @@ function formatMonthYear(ts) {
     var d = new Date(ts * 1000);
     var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return months[d.getMonth()] + ' ' + d.getFullYear().toString().slice(2);
+}
+
+function formatDateTime(ts) {
+    var d = new Date(ts);
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+        String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
 function formatFullDate(ts) {
@@ -118,9 +150,7 @@ function setActiveButton(container, btn) {
 // ===== Filter price data by days =====
 
 function filterPriceData(prices, days) {
-    if (days === 'max') return prices;
-    var cutoff = (Date.now() / 1000) - (days * 24 * 60 * 60);
-    return prices.filter(function(p) { return p.time >= cutoff; });
+    return PriceHistory.filterByDays(prices, days);
 }
 
 // ===== Filter mining data by timeframe =====
@@ -133,23 +163,43 @@ function filterMiningArray(arr, timeKey, tfDays) {
 
 // ===== Render BTC Price Chart =====
 
-function renderPriceChart(days) {
+var _priceRenderSeq = 0;
+
+async function renderPriceChart(days) {
     if (!allPriceData) return;
 
-    var filtered = filterPriceData(allPriceData, days);
+    // Intraday ranges fetch on demand, so a fast click through 7D -> 30D could otherwise let
+    // the slower response land last and draw the wrong range.
+    var seq = ++_priceRenderSeq;
+    var filtered = await PriceHistory.getSeriesForRange(days, allPriceData);
+    if (seq !== _priceRenderSeq) return;
+    if (!filtered || filtered.length === 0) return;
+    var isIntraday = (PriceHistory.RANGE_GRANULARITY[String(days)] || PriceHistory.DAY_SECONDS) < PriceHistory.DAY_SECONDS;
     var priceLabels = [];
     var priceValues = [];
 
-    var maxPoints = 120;
+    // Was 120, which threw away most of the intraday detail we now fetch.
+    var maxPoints = isIntraday ? 800 : 400;
     var step = Math.max(1, Math.floor(filtered.length / maxPoints));
-    for (var i = 0; i < filtered.length; i += step) {
-        var tsMs = filtered[i].time * 1000;
+    // Stepping by `step` rarely lands exactly on the final candle, so the headline price read
+    // stale on the downsampled ranges (1Y was a day behind, All Time ~33 days behind).
+    // Always pin the most recent point.
+    var idxs = [];
+    for (var i = 0; i < filtered.length; i += step) idxs.push(i);
+    if (idxs[idxs.length - 1] !== filtered.length - 1) idxs.push(filtered.length - 1);
+
+    for (var k = 0; k < idxs.length; k++) {
+        var pt = filtered[idxs[k]];
+        var tsMs = pt.time * 1000;
         if (days === 'max' || days >= 365) {
             priceLabels.push(formatFullDate(tsMs));
+        } else if (isIntraday && days <= 7) {
+            priceLabels.push(formatDateTime(tsMs));   // intraday points need the time of day
         } else {
             priceLabels.push(formatDate(tsMs));
         }
-        priceValues.push(Math.round(filtered[i].close * getCurrencyMultiplier()));
+        // Sub-dollar rounding matters at 15-minute resolution
+        priceValues.push(Math.round(pt.close * getCurrencyMultiplier() * 100) / 100);
     }
 
     // Set latest value
@@ -168,9 +218,11 @@ function renderPriceChart(days) {
                 borderColor: '#f7931a',
                 backgroundColor: 'rgba(247, 147, 26, 0.10)',
                 fill: true,
-                borderWidth: 2,
+                borderWidth: isIntraday ? 1.4 : 2,
                 pointRadius: 0,
-                tension: 0.3
+                // Was 0.3. Bezier smoothing rounded real moves into gentle waves — at this
+                // point density the line should follow the data exactly.
+                tension: 0
             }]
         },
         options: Object.assign({}, chartOptions, {
@@ -181,9 +233,10 @@ function renderPriceChart(days) {
                         font: { size: 11 },
                         callback: function(v) {
                             var s = getCurrencySymbol();
-                            if (v >= 1e6) return s + (v / 1e6).toFixed(1) + 'M';
-                            if (v >= 1e3) return s + (v / 1e3).toFixed(0) + 'k';
-                            return s + v;
+                            if (v >= 1e6) return s + (v / 1e6).toFixed(2) + 'M';
+                            // Rounding to whole thousands made adjacent ticks collide, so the
+                            // axis read "$67k, $67k, $66k, $66k…". Show the real number.
+                            return s + Math.round(v).toLocaleString();
                         }
                     },
                     grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
@@ -330,7 +383,7 @@ function renderHashrateChart(timeframe) {
                 fill: true,
                 borderWidth: 2,
                 pointRadius: 0,
-                tension: 0.3
+                tension: 0
             }]
         },
         options: Object.assign({}, chartOptions, {
@@ -431,55 +484,90 @@ document.getElementById('poolRange').addEventListener('click', function(e) {
     loadPoolDominance(currentPoolTimeframe);
 });
 
+// ===== BTC PRICE HISTORY =====
+// Lives in price-history.js so charts.js and cycle.js share one backfill and one cache.
+// Series contract: ascending [{ time: <unix seconds>, close: <USD> }].
+
 // ===== Data load — fetch and render all charts =====
 
 async function refreshAllCharts() {
     statusEl.textContent = 'Loading chart data...';
     statusEl.style.color = '';
-    var _cb = '&_t=' + Date.now();
 
-    var priceOk = false;
-    var miningOk = false;
+    var havePrice = !!(allPriceData && allPriceData.length > 0);
+    var haveMining = !!allMiningData;
+    var historyStale = (Date.now() - _lastHistoryFetch) >= HISTORY_REFRESH_MS;
 
-    // Fetch price data (CryptoCompare — free, full history)
-    try {
-        var priceRes = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true' + _cb);
-        if (priceRes.ok) {
-            var priceJson = await priceRes.json();
-            allPriceData = (priceJson.Data && priceJson.Data.Data) || [];
-            if (allPriceData.length > 0) {
+    var priceOk = havePrice;
+    var miningOk = haveMining;
+    // Whether this tick actually goes to the network for history. Must be captured up front:
+    // priceOk/miningOk are seeded from data already in memory, so on a throttled tick they
+    // stay true and cannot be used to tell "refreshed" from "skipped".
+    var attemptedHistory = historyStale || !havePrice || !haveMining;
+
+    // Fetch price data (Coinbase daily candles, cached; CoinGecko fallback)
+    if (historyStale || !havePrice) {
+        priceOk = false;
+        try {
+            var series = await PriceHistory.fetchPriceHistory(function(page) {
+                statusEl.textContent = 'Loading price history… (' + page + ')';
+            });
+            if (series && series.length > 0) {
+                allPriceData = series;
                 renderPriceChart(currentPriceDays);
                 priceOk = true;
+            } else {
+                statusEl.textContent = 'Price history unavailable';
+                statusEl.style.color = '#f55';
             }
-        } else {
-            statusEl.textContent = 'Price API error ' + priceRes.status;
+        } catch (e) {
+            statusEl.textContent = 'Price load failed: ' + e.message;
             statusEl.style.color = '#f55';
         }
-    } catch (e) {
-        statusEl.textContent = 'Price load failed: ' + e.message;
-        statusEl.style.color = '#f55';
     }
 
     // Fetch mining data
-    try {
-        var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all?_t=' + Date.now());
-        if (miningRes.ok) {
-            allMiningData = await miningRes.json();
-            renderDifficultyChart(currentDiffTimeframe);
-            renderHashrateChart(currentHashTimeframe);
-            miningOk = true;
-        } else {
-            statusEl.textContent = 'Mining API error ' + miningRes.status;
+    if (historyStale || !haveMining) {
+        miningOk = false;
+        try {
+            var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all?_t=' + Date.now());
+            if (miningRes.ok) {
+                allMiningData = await miningRes.json();
+                renderDifficultyChart(currentDiffTimeframe);
+                renderHashrateChart(currentHashTimeframe);
+                miningOk = true;
+            } else {
+                statusEl.textContent = 'Mining API error ' + miningRes.status;
+                statusEl.style.color = '#f55';
+            }
+        } catch (e) {
+            statusEl.textContent = 'Mining load failed: ' + e.message;
             statusEl.style.color = '#f55';
         }
-    } catch (e) {
-        statusEl.textContent = 'Mining load failed: ' + e.message;
-        statusEl.style.color = '#f55';
     }
 
+    // Stamp the ATTEMPT, not priceOk/miningOk. Those are seeded from in-memory data, so a
+    // throttled tick (which fetched nothing) still had them true and re-armed the timer —
+    // with a 60s tick against a 600s interval the history then never refreshed again.
+    // A failed attempt leaves allPriceData/allMiningData unset, so the !have* guards above
+    // retry on the next tick instead of waiting out the full interval.
+    if (attemptedHistory) _lastHistoryFetch = Date.now();
+
     if (priceOk && miningOk) {
-        statusEl.textContent = 'Live \u00b7 Updated ' + new Date().toLocaleTimeString();
-        statusEl.style.color = '#4ade80';
+        if (PriceHistory.isStale()) {
+            // Served from cache because the price API was unreachable \u2014 do not claim "Live".
+            var newest = allPriceData[allPriceData.length - 1];
+            statusEl.textContent = 'Cached \u00b7 price data from ' +
+                new Date(newest.time * 1000).toLocaleDateString();
+            statusEl.style.color = '#f7931a';
+        } else {
+            // Timestamp the last actual history pull, not this render. The 60s tick re-renders
+            // far more often than the 10-minute history refresh, so stamping "now" overstated
+            // how fresh the price series was.
+            statusEl.textContent = 'Live \u00b7 Updated ' +
+                new Date(_lastHistoryFetch || Date.now()).toLocaleTimeString();
+            statusEl.style.color = '#4ade80';
+        }
         renderHashPriceChart(currentHashPriceDays);
     } else if (priceOk || miningOk) {
         statusEl.textContent = 'Partial update ' + new Date().toLocaleTimeString();
@@ -490,8 +578,8 @@ async function refreshAllCharts() {
     loadNetworkStats();
     loadDifficultyAdjustment();
 
-    // Clear pool cache so it re-fetches fresh data
-    poolDataCache = {};
+    // Pool dominance moves over hours, not seconds — only bust the cache with the history pull
+    if (historyStale) poolDataCache = {};
     loadPoolDominance(currentPoolTimeframe);
 
     // Refresh fee rate history
@@ -738,7 +826,7 @@ function renderBlockExplorer(blocks) {
         html += '<tr>' +
             '<td><span class="btc-orange" style="font-weight:600;">' + b.height.toLocaleString() + '</span></td>' +
             '<td><span class="block-time-ago">' + ago + '</span></td>' +
-            '<td><span class="block-pool-badge">' + poolName + '</span></td>' +
+            '<td><span class="block-pool-badge">' + escapeHtml(poolName) + '</span></td>' +
             '<td>' + b.tx_count.toLocaleString() + '</td>' +
             '<td>' + sizeMB + ' MB</td>' +
             '<td>' + feesBTC.toFixed(4) + ' BTC</td>' +
@@ -815,14 +903,7 @@ function renderSupplyTracker() {
 
 // ===== HASH PRICE ($/TH/day) =====
 
-var GENESIS_TS = 1231006505;
-
-function getBlockReward(ts) {
-    var daysSinceGenesis = (ts - GENESIS_TS) / 86400;
-    var approxHeight = daysSinceGenesis * 144;
-    var epoch = Math.floor(approxHeight / 210000);
-    return 50 / Math.pow(2, epoch);
-}
+// Halving dates and getBlockReward() live in price-history.js (shared with cycle.js).
 
 function computeHashPriceData() {
     if (!allPriceData || !allMiningData || !allMiningData.hashrates) return null;
@@ -852,7 +933,7 @@ function computeHashPriceData() {
         var hr = getHashrateForDay(dayTs);
         if (hr === null || hr <= 0) continue;
 
-        var reward = getBlockReward(allPriceData[p].time);
+        var reward = PriceHistory.getBlockReward(allPriceData[p].time);
         var hashPrice = (144 * reward * allPriceData[p].close) / hr;
 
         result.push({ time: allPriceData[p].time, hashPrice: hashPrice });
@@ -868,19 +949,26 @@ function renderHashPriceChart(days) {
         return d.time >= (Date.now() / 1000) - (days * 86400);
     });
 
+    if (filtered.length === 0) return;
     var labels = [];
     var values = [];
-    var maxPoints = 120;
+    var maxPoints = 400;
     var step = Math.max(1, Math.floor(filtered.length / maxPoints));
 
-    for (var i = 0; i < filtered.length; i += step) {
-        var tsMs = filtered[i].time * 1000;
+    // Same downsampling fix as renderPriceChart — pin the most recent point
+    var idxs = [];
+    for (var i = 0; i < filtered.length; i += step) idxs.push(i);
+    if (idxs[idxs.length - 1] !== filtered.length - 1) idxs.push(filtered.length - 1);
+
+    for (var k = 0; k < idxs.length; k++) {
+        var pt = filtered[idxs[k]];
+        var tsMs = pt.time * 1000;
         if (days === 'max' || days >= 365) {
             labels.push(formatFullDate(tsMs));
         } else {
             labels.push(formatDate(tsMs));
         }
-        values.push(parseFloat((filtered[i].hashPrice * getCurrencyMultiplier()).toFixed(4)));
+        values.push(parseFloat((pt.hashPrice * getCurrencyMultiplier()).toFixed(4)));
     }
 
     latestHashPrice = values[values.length - 1];
@@ -903,7 +991,7 @@ function renderHashPriceChart(days) {
                 fill: true,
                 borderWidth: 2,
                 pointRadius: 0,
-                tension: 0.3
+                tension: 0
             }]
         },
         options: hpOptions,
@@ -1007,7 +1095,7 @@ function renderPoolChart(timeframe, data) {
                     display: true,
                     position: legendPos,
                     labels: {
-                        color: '#e8e8e8',
+                        color: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                         font: { size: 11 },
                         padding: 12,
                         usePointStyle: true,
@@ -1083,8 +1171,9 @@ function logFeeSnapshot(fees) {
         });
         saveFeeHistory(history);
     }
-    // Load chart from API on page load
-    loadFeeRateHistory('24h');
+    // Do NOT reload the fee chart here. refreshAllCharts() already calls
+    // loadFeeRateHistory(currentFeeTimeframe), and this ran on every 60s refresh with a
+    // hardcoded '24h', snapping the chart back whenever the user picked another range.
 }
 
 function renderFeeChart(timeframe, apiData) {
@@ -1095,7 +1184,7 @@ function renderFeeChart(timeframe, apiData) {
 
     if (apiData && apiData.length > 0) {
         // Use API data — downsample if too many points
-        var maxPoints = 150;
+        var maxPoints = 400;
         var step = Math.max(1, Math.floor(apiData.length / maxPoints));
         for (var i = 0; i < apiData.length; i += step) {
             var entry = apiData[i];
@@ -1160,7 +1249,7 @@ function renderFeeChart(timeframe, apiData) {
                     fill: '+1',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.2
+                    tension: 0
                 },
                 {
                     label: 'Medium (p50)',
@@ -1170,7 +1259,7 @@ function renderFeeChart(timeframe, apiData) {
                     fill: '+1',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.2
+                    tension: 0
                 },
                 {
                     label: 'Low Priority (p10)',
@@ -1180,7 +1269,7 @@ function renderFeeChart(timeframe, apiData) {
                     fill: 'origin',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.2
+                    tension: 0
                 }
             ]
         },
@@ -1189,7 +1278,7 @@ function renderFeeChart(timeframe, apiData) {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true, position: 'top', labels: { color: '#e8e8e8', font: { size: 11 } } },
+                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 } } },
                 tooltip: {
                     backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
@@ -1210,7 +1299,7 @@ function renderFeeChart(timeframe, apiData) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: '#888',
+                        color: isLightMode() ? '#6b7280' : '#888',
                         font: { size: 11 },
                         callback: function(v) { return v + ' sat/vB'; }
                     },

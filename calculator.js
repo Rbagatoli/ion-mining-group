@@ -22,34 +22,11 @@ const PERIOD_CONFIG = {
     monthly: { days: 30.44, perMonth: 1,     label: 'months', labelSingular: 'month' }
 };
 
-const HALVINGS = [
-    { date: new Date('2028-04-17'), reward: 1.5625 },
-    { date: new Date('2032-04-17'), reward: 0.78125 },
-    { date: new Date('2036-04-17'), reward: 0.390625 },
-    { date: new Date('2040-04-17'), reward: 0.1953125 },
-    { date: new Date('2044-04-17'), reward: 0.09765625 },
-    { date: new Date('2048-04-17'), reward: 0.048828125 },
-    { date: new Date('2052-04-17'), reward: 0.0244140625 },
-    { date: new Date('2056-04-17'), reward: 0.01220703125 },
-    { date: new Date('2060-04-17'), reward: 0.006103515625 },
-    { date: new Date('2064-04-17'), reward: 0.0030517578125 },
-    { date: new Date('2068-04-17'), reward: 0.00152587890625 },
-    { date: new Date('2072-04-17'), reward: 0.000762939453125 },
-    { date: new Date('2076-04-17'), reward: 0.0003814697265625 },
-    { date: new Date('2080-04-17'), reward: 0.00019073486328125 },
-    { date: new Date('2084-04-17'), reward: 0.000095367431640625 },
-    { date: new Date('2088-04-17'), reward: 0.0000476837158203125 },
-    { date: new Date('2092-04-17'), reward: 0.00002384185791015625 },
-    { date: new Date('2096-04-17'), reward: 0.000011920928955078125 },
-    { date: new Date('2100-04-17'), reward: 0.0000059604644775390625 },
-];
-
+// Halving schedule and the projection math live in calc-engine.js — a single source of
+// truth shared by the live projection and by scenario comparison. Delegating rather than
+// keeping a second copy here so the two can never drift apart.
 function getBlockReward(date) {
-    let reward = CURRENT_BLOCK_REWARD;
-    for (const h of HALVINGS) {
-        if (date >= h.date) reward = h.reward;
-    }
-    return reward;
+    return CalcEngine.getBlockReward(date);
 }
 
 // ===== DOM REFS =====
@@ -167,6 +144,7 @@ function saveSettings() {
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
     settings.savingsElec = savingsElecToggle.checked;
+    settings.autoReplace = autoReplaceToggle.checked;
     settings.taxAdjustment = taxAdjustmentToggle.checked;
     settings.miningIncomeTaxRate = miningIncomeTaxRateInput.value;
     settings.capitalGainsTaxRate = capitalGainsTaxRateInput.value;
@@ -195,6 +173,14 @@ function loadSettings() {
         if (s.savingsElec) {
             savingsElecToggle.checked = true;
             savingsElecRow.classList.add('active');
+        }
+        // Defaults to on (matches the checked attribute in the markup)
+        if (s.autoReplace === false) {
+            autoReplaceToggle.checked = false;
+            autoReplaceRow.classList.remove('active');
+        } else {
+            autoReplaceToggle.checked = true;
+            autoReplaceRow.classList.add('active');
         }
         if (s.taxAdjustment) {
             taxAdjustmentToggle.checked = true;
@@ -226,6 +212,7 @@ async function fetchLiveData() {
 // ===== CHART =====
 let comboChart;
 let halvingPeriodIdxs = [];
+let lastResult = null;   // most recent CalcEngine result, reused by scenario comparison
 
 const halvingPlugin = {
     id: 'halvingLine',
@@ -255,8 +242,11 @@ const halvingPlugin = {
     }
 };
 
-const darkGrid = isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)';
-const muted = isLightMode() ? '#6b7280' : '#888';
+// NOTE: these must be read lazily. This module is evaluated before initNav() applies the
+// saved theme, so resolving them at load time always yielded the dark palette — which made
+// the grid lines invisible against a light background.
+function gridColor() { return isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)'; }
+function mutedColor() { return isLightMode() ? '#6b7280' : '#888'; }
 
 function createGlossGradient(ctx, chartArea, r, g, b, alpha) {
     const grad = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
@@ -285,8 +275,11 @@ function initChart() {
             labels: [],
             datasets: [
                 {
+                    // Was per-period BTC mined, plotted against a CUMULATIVE HODL series on the
+                    // same axis — so it was squashed to invisibility. Both are cumulative now,
+                    // which also makes the pair meaningful: total mined vs the part you kept.
                     type: 'bar',
-                    label: 'PnL BTC',
+                    label: 'BTC Mined (cumulative)',
                     data: [],
                     backgroundColor: 'rgba(247, 147, 26, 0.60)',
                     borderColor: '#f7931a',
@@ -297,7 +290,7 @@ function initChart() {
                 },
                 {
                     type: 'bar',
-                    label: 'BTC HODL',
+                    label: 'BTC Held (cumulative)',
                     data: [],
                     backgroundColor: 'rgba(140, 140, 140, 0.45)',
                     borderColor: '#999',
@@ -308,7 +301,7 @@ function initChart() {
                 },
                 {
                     type: 'line',
-                    label: 'Total Economic Value (USD)',
+                    label: 'Mining Net Value (USD)',
                     data: [],
                     borderColor: '#f7931a',
                     backgroundColor: 'transparent',
@@ -338,7 +331,7 @@ function initChart() {
                 },
                 {
                     type: 'line',
-                    label: 'Buy & Hold Portfolio (USD)',
+                    label: 'Buy & Hold Net Value (USD)',
                     data: [],
                     borderColor: '#10b981',
                     backgroundColor: 'transparent',
@@ -383,25 +376,25 @@ function initChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: muted, maxRotation: 0, autoSkipPadding: 8, font: { size: 11 } },
-                    grid: { color: darkGrid }
+                    ticks: { color: mutedColor(), maxRotation: 0, autoSkipPadding: 8, font: { size: 11 } },
+                    grid: { color: gridColor() }
                 },
                 yBTC: {
                     type: 'linear', position: 'left', beginAtZero: true,
-                    title: { display: true, text: 'BTC (PnL, BTC HODL)', color: muted, font: { size: 12 } },
+                    title: { display: true, text: 'BTC (cumulative)', color: mutedColor(), font: { size: 12 } },
                     ticks: {
-                        color: muted, font: { size: 11 },
+                        color: mutedColor(), font: { size: 11 },
                         callback: function(v) {
                             if (v >= 1) return v.toFixed(2);
                             if (v >= 0.01) return v.toFixed(3);
                             return v.toFixed(4);
                         }
                     },
-                    grid: { color: darkGrid }
+                    grid: { color: gridColor() }
                 },
                 yUSD: {
                     type: 'linear', position: 'right', beginAtZero: true,
-                    title: { display: true, text: 'Total Economic Value (USD)', color: muted, font: { size: 12 } },
+                    title: { display: true, text: 'Net Value vs. Buy & Hold (USD)', color: mutedColor(), font: { size: 12 } },
                     ticks: {
                         color: '#f7931a', font: { size: 11 },
                         callback: function(v) {
@@ -428,347 +421,145 @@ function initChart() {
 }
 
 // ===== MAIN CALCULATION =====
+// Snapshot the current inputs in the same shape saveSettings() persists, so a scenario
+// saved from here round-trips straight back into the engine.
+function currentSettings() {
+    const s = {};
+    inputIds.forEach(id => { s[id] = el[id].value; });
+    s.periodLength = periodLengthSel.value;
+    s.reinvest = reinvestToggle.checked;
+    s.additionCapex = additionCapexToggle.checked;
+    s.savingsElec = savingsElecToggle.checked;
+    s.autoReplace = autoReplaceToggle.checked;
+    s.taxAdjustment = taxAdjustmentToggle.checked;
+    s.miningIncomeTaxRate = miningIncomeTaxRateInput.value;
+    s.capitalGainsTaxRate = capitalGainsTaxRateInput.value;
+    s._v = 3;
+    return s;
+}
+
 function recalculate() {
-    const btcPrice0 = parseFloat(el.btcPrice.value) || 96000;
-    const monthlyPriceChangePct = (parseFloat(el.priceChange.value) || 0) / 100;
-    const difficultyT = parseFloat(el.difficulty.value) || 125.86;
-    const difficulty0 = difficultyT * 1e12;
-    const monthlyDiffChangePct = (parseFloat(el.diffChange.value) || 0) / 100;
-    const numPeriods = Math.max(1, parseInt(el.investPeriod.value) || 24);
-    const hashrateTH = parseFloat(el.hashrate.value) || 335;
-    const powerKW = parseFloat(el.power.value) || 5.36;
-    const capex = parseFloat(el.capex.value) || 0;
-    const machineCount = Math.max(1, parseInt(el.machineCount.value) || 1);
-    const elecCost = parseFloat(el.elecCost.value) || 0;
-    const poolFeePct = (parseFloat(el.poolFee.value) || 0) / 100;
-    const uptimePct = (parseFloat(el.uptime.value) || 100) / 100;
-    const hodlPct = (parseFloat(el.hodlRatio.value) || 0) / 100;
-    const savingsElec = savingsElecToggle.checked;
-    const autoReplace = autoReplaceToggle.checked;
-    const btcTreasury = parseFloat(el.btcTreasury.value) || 0;
-    const infrastructureCost = parseFloat(el.infrastructureCost.value) || 0;
-    const lifespanMonths = Math.max(1, parseInt(el.minerLifespan.value) || 36);
-    const salvagePct = (parseFloat(el.salvageValue.value) || 0) / 100;
+    const settings = currentSettings();
+    const r = CalcEngine.computeProjection(settings);
+    lastResult = r;
+    halvingPeriodIdxs = r.halvingPeriodIdxs;   // read by the chart's halving-line plugin
 
-    // Tax adjustment inputs
-    const taxAdjustmentEnabled = taxAdjustmentToggle.checked;
-    const miningIncomeTaxRate = taxAdjustmentEnabled ? (parseFloat(miningIncomeTaxRateInput.value) || 0) / 100 : 0;
-    const capitalGainsTaxRate = taxAdjustmentEnabled ? (parseFloat(capitalGainsTaxRateInput.value) || 0) / 100 : 0;
+    renderProjection(r);
 
-    const pLen = periodLengthSel.value;
-    const pCfg = PERIOD_CONFIG[pLen];
-    const daysPerPeriod = pCfg.days;
-
-    const priceChangePerPeriod = Math.pow(1 + monthlyPriceChangePct, daysPerPeriod / 30.44) - 1;
-    const diffChangePerPeriod = Math.pow(1 + monthlyDiffChangePct, daysPerPeriod / 30.44) - 1;
-    const lifespanPeriods = Math.max(1, Math.round(lifespanMonths * (30.44 / daysPerPeriod)));
-
-    const monthlyMinerAdditions = Math.max(0, parseInt(el.minerAdditions.value) || 0);
-    const deductAdditionCapex = additionCapexToggle.checked;
-    const additionsPerPeriod = monthlyMinerAdditions * (daysPerPeriod / 30.44);
-    additionCapexRow.style.display = monthlyMinerAdditions > 0 ? '' : 'none';
-
-    const totalCapex = capex * machineCount;
-    const totalInitialInvestment = totalCapex + infrastructureCost;
-    const reinvestMode = reinvestToggle.checked;
-
+    // Contextual input hints
+    additionCapexRow.style.display = r.params.monthlyMinerAdditions > 0 ? '' : 'none';
     const reinvestHint = document.getElementById('reinvestHint');
-    if (reinvestMode && hodlPct >= 1) reinvestHint.textContent = 'HODL is 100% — no fiat to reinvest';
-    else if (reinvestMode && capex <= 0) reinvestHint.textContent = 'Set Machine CAPEX > $0 for reinvest';
+    if (r.params.reinvestMode && r.params.hodlPct >= 1) reinvestHint.textContent = 'HODL is 100% \u2014 no fiat to reinvest';
+    else if (r.params.reinvestMode && r.params.capex <= 0) reinvestHint.textContent = 'Set Machine CAPEX > $0 for reinvest';
     else reinvestHint.textContent = '';
 
-    document.getElementById('periodLabel').textContent = numPeriods + ' ' + pCfg.label;
+    renderHeatmap(r.params.btcPrice0, r.params.elecCost, r.params.hashrateTH, r.params.powerKW,
+                  r.params.machineCount, r.params.poolFeePct, r.params.uptimePct, r.params.difficultyT * 1e12);
+    renderComparison();
+    scheduleBacktest();          // machine params feed the backtest too
+    renderScenarioComparison();  // keep any open comparison in sync with "Current"
+
+    // Persist (only if not using fleet data for locked fields)
+    if (!useFleetToggle.checked) saveSettings();
+}
+
+function renderProjection(r) {
+    const pCfg = r.periodConfig;
+    document.getElementById('periodLabel').textContent = r.params.numPeriods + ' ' + pCfg.label;
     document.getElementById('periodSuffix').textContent = pCfg.label;
     document.getElementById('metBreakEvenUnit').textContent = pCfg.labelSingular;
 
-    const startDate = new Date();
-
-    halvingPeriodIdxs = [];
-    for (let i = 0; i < numPeriods; i++) {
-        const daysElapsed = i * daysPerPeriod;
-        const pDate = new Date(startDate.getTime() + daysElapsed * 86400000);
-        const prevDays = Math.max(0, (i - 1)) * daysPerPeriod;
-        const prevDate = new Date(startDate.getTime() + prevDays * 86400000);
-        const rewNow = getBlockReward(pDate);
-        const rewPrev = i === 0 ? CURRENT_BLOCK_REWARD : getBlockReward(prevDate);
-        if (rewNow < rewPrev) halvingPeriodIdxs.push({ idx: i, reward: rewNow });
-    }
-
-    let cumulBtcHeld = btcTreasury;
-    let cumulBtcMined = 0;
-    let cumulCashFlow = -totalCapex - infrastructureCost;
-    let cumulElecCost = 0;
-    let breakEvenPeriod = null;
-    const minerBatches = [{ period: 0, count: machineCount }];
-    let activeMachines = machineCount;
-    let reinvestPool = 0;
-    let totalMachinesBought = 0;
-    let totalMinersRetired = 0;
-    let cumulSalvageValue = 0;
-    let additionAccum = 0;
-    let totalScheduledAdded = 0;
-
-    // Buy BTC comparison tracking
-    // Apply capital gains tax to buy-and-hold scenario (reduces effective starting capital)
-    const effectiveBuyCapital = taxAdjustmentEnabled
-        ? totalInitialInvestment * (1 - capitalGainsTaxRate)
-        : totalInitialInvestment;
-    const buyHoldBtcAmount = effectiveBuyCapital > 0 ? (effectiveBuyCapital / btcPrice0) : 0;
-    let overtakePeriod = null;
-    const buyHoldValueData = [];
-
-    const labels = [];
-    const pnlBtcData = [];
-    const btcHodlData = [];
-    const usdValueData = [];
-    const machinesData = [];
-    const tableRows = [];
-
-    for (let i = 0; i < numPeriods; i++) {
-        const daysElapsed = i * daysPerPeriod;
-        const periodDate = new Date(startDate.getTime() + daysElapsed * 86400000);
-        const btcPrice = btcPrice0 * Math.pow(1 + priceChangePerPeriod, i);
-        const difficulty = difficulty0 * Math.pow(1 + diffChangePerPeriod, i);
-        const blockReward = getBlockReward(periodDate);
-
-        let retiredThisPeriod = 0;
-        let salvageThisPeriod = 0;
-        for (const batch of minerBatches) {
-            if (batch.count > 0 && (i - batch.period) >= lifespanPeriods) {
-                retiredThisPeriod += batch.count;
-                salvageThisPeriod += batch.count * capex * salvagePct;
-                activeMachines -= batch.count;
-                batch.count = 0;
-            }
-        }
-        totalMinersRetired += retiredThisPeriod;
-        cumulSalvageValue += salvageThisPeriod;
-
-        let replacedThisPeriod = 0;
-        if (autoReplace && retiredThisPeriod > 0) {
-            replacedThisPeriod = retiredThisPeriod;
-            activeMachines += replacedThisPeriod;
-            minerBatches.push({ period: i, count: replacedThisPeriod });
-            const replacementCost = replacedThisPeriod * capex * (1 - salvagePct);
-            cumulCashFlow -= replacementCost;
-        }
-
-        if (!autoReplace && salvageThisPeriod > 0) {
-            if (reinvestMode) reinvestPool += salvageThisPeriod;
-            else cumulCashFlow += salvageThisPeriod;
-        }
-
-        let scheduledThisPeriod = 0;
-        if (monthlyMinerAdditions > 0 && i > 0) {
-            additionAccum += additionsPerPeriod;
-            scheduledThisPeriod = Math.floor(additionAccum);
-            additionAccum -= scheduledThisPeriod;
-            if (scheduledThisPeriod > 0) {
-                activeMachines += scheduledThisPeriod;
-                totalScheduledAdded += scheduledThisPeriod;
-                minerBatches.push({ period: i, count: scheduledThisPeriod });
-                if (deductAdditionCapex) cumulCashFlow -= scheduledThisPeriod * capex;
-            }
-        }
-
-        const currentHashrateH = hashrateTH * activeMachines * 1e12;
-        const currentPowerKW = powerKW * activeMachines;
-        const dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward) / (difficulty * TWO_POW_32);
-        const dailyBTCNet = dailyBTCGross * (1 - poolFeePct) * uptimePct;
-        const periodBTCMined = dailyBTCNet * daysPerPeriod;
-        const periodElecCost = currentPowerKW * 24 * daysPerPeriod * elecCost * uptimePct;
-
-        // Apply mining income tax to ALL mined BTC (taxed at fair market value when mined)
-        const grossMiningRevenue = periodBTCMined * btcPrice;
-        const taxOnMiningIncome = taxAdjustmentEnabled ? (grossMiningRevenue * miningIncomeTaxRate) : 0;
-
-        let btcHeld, btcSold, cashFromSales, periodCashFlow;
-        if (savingsElec) {
-            btcHeld = periodBTCMined * hodlPct;
-            btcSold = periodBTCMined * (1 - hodlPct);
-            cashFromSales = btcSold * btcPrice;
-            // Tax is paid from sales proceeds (or externally if not enough cash)
-            periodCashFlow = cashFromSales - taxOnMiningIncome;
-        } else {
-            btcHeld = periodBTCMined * hodlPct;
-            btcSold = periodBTCMined * (1 - hodlPct);
-            cashFromSales = btcSold * btcPrice;
-            // Tax is paid from sales proceeds (or externally if not enough cash)
-            periodCashFlow = cashFromSales - taxOnMiningIncome - periodElecCost;
-        }
-
-        let machinesBoughtThisPeriod = 0;
-        let reinvestSpent = 0;
-        if (reinvestMode && capex > 0 && periodCashFlow > 0) {
-            reinvestPool += periodCashFlow;
-            while (reinvestPool >= capex) {
-                reinvestPool -= capex;
-                activeMachines++;
-                totalMachinesBought++;
-                machinesBoughtThisPeriod++;
-                reinvestSpent += capex;
-            }
-            if (machinesBoughtThisPeriod > 0) minerBatches.push({ period: i, count: machinesBoughtThisPeriod });
-        }
-
-        cumulBtcMined += periodBTCMined;
-        cumulBtcHeld += btcHeld;
-        cumulElecCost += periodElecCost;
-        if (reinvestMode && capex > 0 && periodCashFlow > 0) cumulCashFlow += periodCashFlow - reinvestSpent;
-        else cumulCashFlow += periodCashFlow;
-
-        const totalEconomicValue = cumulCashFlow + reinvestPool + (cumulBtcHeld * btcPrice);
-        if (breakEvenPeriod === null && totalEconomicValue >= 0) breakEvenPeriod = i + 1;
-
-        // Calculate buy-and-hold value at this period
-        const buyHoldCurrentValue = buyHoldBtcAmount * btcPrice;
-        buyHoldValueData.push(buyHoldCurrentValue);
-
-        // Track when mining overtakes buy-and-hold
-        if (overtakePeriod === null && totalEconomicValue > buyHoldCurrentValue) {
-            overtakePeriod = i + 1;
-        }
-
-        labels.push(String(i + 1));
-        pnlBtcData.push(periodBTCMined);
-        btcHodlData.push(cumulBtcHeld);
-        usdValueData.push(totalEconomicValue);
-        machinesData.push(activeMachines);
-
-        tableRows.push({
-            period: i + 1, btcPrice, diffT: difficulty / 1e12, blockReward, machines: activeMachines,
-            machinesBought: machinesBoughtThisPeriod, scheduledAdded: scheduledThisPeriod,
-            retiredThisPeriod, replacedThisPeriod, pnlBtc: periodBTCMined, btcHodlCumul: cumulBtcHeld,
-            usdValue: cumulBtcHeld * btcPrice, elecCost: periodElecCost, netCashFlow: periodCashFlow,
-            cumulPL: totalEconomicValue, isHalving: halvingPeriodIdxs.some(h => h.idx === i)
-        });
-    }
-
-    const finalBtcPrice = btcPrice0 * Math.pow(1 + priceChangePerPeriod, numPeriods);
-    const heldBtcValue = cumulBtcHeld * finalBtcPrice;
-    const totalPL = cumulCashFlow + heldBtcValue;
-    const roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
-
-    // Buy-and-hold final metrics
-    const buyHoldFinalValue = buyHoldBtcAmount * finalBtcPrice;
-    const buyHoldROI = totalInitialInvestment > 0 ? (((buyHoldFinalValue - totalInitialInvestment) / totalInitialInvestment) * 100) : 0;
-    const miningAdvantage = totalPL - (buyHoldFinalValue - totalInitialInvestment);
-    const isMiningBetter = miningAdvantage > 0;
-
-    const initHashrateH = hashrateTH * machineCount * 1e12;
-    const initPowerKW = powerKW * machineCount;
-    const dailyBTCDay1 = (initHashrateH * SECONDS_PER_DAY * getBlockReward(startDate)) / (difficulty0 * TWO_POW_32);
-    const dailyBTCDay1Net = dailyBTCDay1 * (1 - poolFeePct) * uptimePct;
-    const dailyRevenueDay1 = dailyBTCDay1Net * btcPrice0;
-    const dailyElecDay1 = initPowerKW * 24 * elecCost * uptimePct;
-    const dailyProfitDay1 = dailyRevenueDay1 - dailyElecDay1;
-    const dailyTaxDay1 = taxAdjustmentEnabled ? (dailyRevenueDay1 * miningIncomeTaxRate) : 0;
-    const dailyAfterTaxProfitDay1 = dailyProfitDay1 - dailyTaxDay1;
-    const costPerBTC = dailyBTCDay1Net > 0 ? (dailyElecDay1 / dailyBTCDay1Net) : Infinity;
-    const efficiency = hashrateTH > 0 ? ((powerKW * 1000) / hashrateTH) : 0;
-
-    // ===== UPDATE DOM =====
-    document.getElementById('metDailyRev').textContent = fmtUSD(dailyRevenueDay1);
-    document.getElementById('metDailyElec').textContent = fmtUSD(dailyElecDay1);
+    document.getElementById('metDailyRev').textContent = fmtUSD(r.dailyRevenueDay1);
+    document.getElementById('metDailyElec').textContent = fmtUSD(r.dailyElecDay1);
 
     const profitEl = document.getElementById('metDailyProfit');
-    const displayProfit = taxAdjustmentEnabled ? dailyAfterTaxProfitDay1 : dailyProfitDay1;
+    const displayProfit = r.params.taxAdjustmentEnabled ? r.dailyAfterTaxProfitDay1 : r.dailyProfitDay1;
     profitEl.textContent = fmtUSD(displayProfit);
     profitEl.className = 'value ' + (displayProfit >= 0 ? 'positive' : 'negative');
 
     const costBTCEl = document.getElementById('metCostPerBTC');
-    costBTCEl.textContent = fmtUSD(costPerBTC);
-    costBTCEl.className = 'value ' + (costPerBTC <= btcPrice0 ? 'positive' : 'negative');
+    costBTCEl.textContent = fmtUSD(r.costPerBTC);
+    costBTCEl.className = 'value ' + (r.costPerBTC <= r.params.btcPrice0 ? 'positive' : 'negative');
 
-    document.getElementById('metEfficiency').textContent = efficiency.toFixed(1);
-    document.getElementById('metTotalMined').textContent = fmtBTC(cumulBtcMined);
-    document.getElementById('metFinalBtcPrice').textContent = 'BTC @ ' + fmtUSD(finalBtcPrice);
+    document.getElementById('metEfficiency').textContent = r.efficiency.toFixed(1);
+    document.getElementById('metTotalMined').textContent = fmtBTC(r.cumulBtcMined);
+    document.getElementById('metFinalBtcPrice').textContent = 'BTC @ ' + fmtUSD(r.finalBtcPrice);
+
     const heldValEl = document.getElementById('metHeldValue');
-    const grossValue = totalPL + totalInitialInvestment;
-    heldValEl.textContent = fmtUSD(grossValue);
+    heldValEl.textContent = fmtUSD(r.grossValue);
     heldValEl.className = 'value btc-orange';
-    document.getElementById('metFinalPrice').textContent = fmtUSD(totalPL) + ' P/L + ' + fmtUSD(totalInitialInvestment) + ' cost';
+    document.getElementById('metFinalPrice').textContent =
+        fmtUSD(r.totalPL) + ' P/L + ' + fmtUSD(r.totalInitialInvestment) + ' cost';
 
     const plEl = document.getElementById('metTotalPL');
-    plEl.textContent = fmtUSD(totalPL);
-    plEl.className = 'value ' + (totalPL >= 0 ? 'positive' : 'negative');
-    document.getElementById('metROI').textContent = totalInitialInvestment > 0 ? (roi >= 0 ? '+' : '') + roi.toFixed(1) + '% ROI' : '';
+    plEl.textContent = fmtUSD(r.totalPL);
+    plEl.className = 'value ' + (r.totalPL >= 0 ? 'positive' : 'negative');
+    document.getElementById('metROI').textContent =
+        r.totalInitialInvestment > 0 ? (r.roi >= 0 ? '+' : '') + r.roi.toFixed(1) + '% ROI' : '';
 
     const beEl = document.getElementById('metBreakEven');
-    beEl.textContent = breakEvenPeriod !== null ? breakEvenPeriod : 'Never';
-    beEl.className = 'value ' + (breakEvenPeriod !== null ? 'positive' : 'negative');
+    beEl.textContent = r.breakEvenPeriod !== null ? r.breakEvenPeriod : 'Never';
+    beEl.className = 'value ' + (r.breakEvenPeriod !== null ? 'positive' : 'negative');
 
-    // Buy & Hold comparison metrics
-    document.getElementById('metBuyHoldValue').textContent = fmtUSD(buyHoldFinalValue);
-    document.getElementById('metBuyHoldSub').textContent = taxAdjustmentEnabled
-        ? fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice) + ' (after ' + (capitalGainsTaxRate * 100).toFixed(0) + '% CGT)'
-        : fmtBTC(buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(finalBtcPrice);
+    document.getElementById('metBuyHoldValue').textContent = fmtUSD(r.buyHoldFinalValue);
+    document.getElementById('metBuyHoldSub').textContent = r.params.taxAdjustmentEnabled
+        ? fmtBTC(r.buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(r.finalBtcPrice) + ' (after ' + (r.params.capitalGainsTaxRate * 100).toFixed(0) + '% CGT on gains)'
+        : fmtBTC(r.buyHoldBtcAmount, 8) + ' BTC @ ' + fmtUSD(r.finalBtcPrice);
 
     const advEl = document.getElementById('metMiningAdvantage');
-    advEl.textContent = fmtUSD(Math.abs(miningAdvantage));
-    advEl.className = 'value ' + (isMiningBetter ? 'positive' : 'negative');
-
-    const overtakeText = overtakePeriod !== null
-        ? 'Mining overtakes in period ' + overtakePeriod
+    advEl.textContent = fmtUSD(Math.abs(r.miningAdvantage));
+    advEl.className = 'value ' + (r.isMiningBetter ? 'positive' : 'negative');
+    document.getElementById('metOvertakePeriod').textContent = r.overtakePeriod !== null
+        ? 'Mining overtakes in period ' + r.overtakePeriod
         : 'Mining never overtakes';
-    document.getElementById('metOvertakePeriod').textContent = overtakeText;
 
     const machinesCard = document.getElementById('metMachinesCard');
-    const hasGrowth = totalMachinesBought > 0 || totalScheduledAdded > 0 || totalMinersRetired > 0;
-    if (hasGrowth) {
+    if (r.hasGrowth) {
         machinesCard.style.display = '';
-        document.getElementById('metTotalMachines').textContent = activeMachines;
+        document.getElementById('metTotalMachines').textContent = r.activeMachines;
         const parts = [];
-        if (totalMachinesBought > 0) parts.push('+' + totalMachinesBought + ' reinvest');
-        if (totalScheduledAdded > 0) parts.push('+' + totalScheduledAdded + ' scheduled');
-        if (totalMinersRetired > 0 && autoReplace) parts.push(totalMinersRetired + ' replaced');
-        else if (totalMinersRetired > 0) parts.push('-' + totalMinersRetired + ' retired');
+        if (r.totalMachinesBought > 0) parts.push('+' + r.totalMachinesBought + ' reinvest');
+        if (r.totalScheduledAdded > 0) parts.push('+' + r.totalScheduledAdded + ' scheduled');
+        if (r.totalMinersRetired > 0 && r.params.autoReplace) parts.push(r.totalMinersRetired + ' replaced');
+        else if (r.totalMinersRetired > 0) parts.push('-' + r.totalMinersRetired + ' retired');
         document.getElementById('metMachinesSub').textContent = parts.join(', ');
     } else {
         machinesCard.style.display = 'none';
     }
 
-    // ===== UPDATE CHART =====
-    comboChart.data.labels = labels;
-    comboChart.data.datasets[0].data = pnlBtcData;
-    comboChart.data.datasets[1].data = btcHodlData;
-    comboChart.data.datasets[2].data = usdValueData;
-    comboChart.data.datasets[3].data = machinesData;
-    comboChart.data.datasets[4].data = buyHoldValueData;
-
-    const showMiners = hasGrowth;
-    comboChart.data.datasets[3].hidden = !showMiners;
-    comboChart.options.scales.yMachines.display = showMiners;
+    // ===== CHART =====
+    comboChart.data.labels = r.series.labels;
+    comboChart.data.datasets[0].data = r.series.cumulMined;
+    comboChart.data.datasets[1].data = r.series.btcHodl;
+    comboChart.data.datasets[2].data = r.series.usdValue;
+    comboChart.data.datasets[3].data = r.series.machines;
+    comboChart.data.datasets[4].data = r.series.buyHold;
+    comboChart.data.datasets[3].hidden = !r.hasGrowth;
+    comboChart.options.scales.yMachines.display = r.hasGrowth;
     comboChart.update();
 
-    // ===== UPDATE TABLE =====
+    // ===== TABLE =====
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
-    for (const r of tableRows) {
+    for (const row of r.tableRows) {
         const tr = document.createElement('tr');
-        if (r.isHalving) tr.classList.add('halving-row');
+        if (row.isHalving) tr.classList.add('halving-row');
         tr.innerHTML =
-            '<td>' + r.period + (r.isHalving ? ' <span style="color:#f7931a">&#x26A0; Halving</span>' : '') + '</td>' +
-            '<td>' + fmtUSDFull(r.btcPrice) + '</td>' +
-            '<td>' + r.diffT.toFixed(2) + '</td>' +
-            '<td>' + r.blockReward + ' BTC</td>' +
-            '<td>' + r.machines + (r.retiredThisPeriod > 0 && r.replacedThisPeriod > 0 ? ' <span style="color:#fb923c">(' + r.retiredThisPeriod + ' replaced)</span>' : r.retiredThisPeriod > 0 ? ' <span style="color:#ef4444">(-' + r.retiredThisPeriod + ' retired)</span>' : '') + (r.machinesBought > 0 ? ' <span style="color:#4ade80">(+' + r.machinesBought + ')</span>' : '') + (r.scheduledAdded > 0 ? ' <span style="color:#f59e0b">(+' + r.scheduledAdded + ' sched)</span>' : '') + '</td>' +
-            '<td>' + r.pnlBtc.toFixed(8) + '</td>' +
-            '<td>' + r.btcHodlCumul.toFixed(6) + '</td>' +
-            '<td>' + fmtUSDFull(r.usdValue) + '</td>' +
-            '<td style="color:#ef4444">' + fmtUSDFull(r.elecCost) + '</td>' +
-            '<td style="color:' + (r.netCashFlow >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(r.netCashFlow) + '</td>' +
-            '<td style="color:' + (r.cumulPL >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(r.cumulPL) + '</td>';
+            '<td>' + row.period + (row.isHalving ? ' <span style="color:#f7931a">&#x26A0; Halving</span>' : '') + '</td>' +
+            '<td>' + fmtUSDFull(row.btcPrice) + '</td>' +
+            '<td>' + row.diffT.toFixed(2) + '</td>' +
+            '<td>' + row.blockReward + ' BTC</td>' +
+            '<td>' + row.machines + (row.retiredThisPeriod > 0 && row.replacedThisPeriod > 0 ? ' <span style="color:#fb923c">(' + row.retiredThisPeriod + ' replaced)</span>' : row.retiredThisPeriod > 0 ? ' <span style="color:#ef4444">(-' + row.retiredThisPeriod + ' retired)</span>' : '') + (row.machinesBought > 0 ? ' <span style="color:#4ade80">(+' + row.machinesBought + ')</span>' : '') + (row.scheduledAdded > 0 ? ' <span style="color:#f59e0b">(+' + row.scheduledAdded + ' sched)</span>' : '') + '</td>' +
+            '<td>' + row.pnlBtc.toFixed(8) + '</td>' +
+            '<td>' + row.btcHodlCumul.toFixed(6) + '</td>' +
+            '<td>' + fmtUSDFull(row.usdValue) + '</td>' +
+            '<td style="color:#ef4444">' + fmtUSDFull(row.elecCost) + '</td>' +
+            '<td style="color:' + (row.netCashFlow >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(row.netCashFlow) + '</td>' +
+            '<td style="color:' + (row.cumulPL >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(row.cumulPL) + '</td>';
         tbody.appendChild(tr);
     }
-
-    // Render heatmap with current values
-    renderHeatmap(btcPrice0, elecCost, hashrateTH, powerKW, machineCount, poolFeePct, uptimePct, difficulty0);
-    renderComparison();
-
-    // Persist (only if not using fleet data for locked fields)
-    if (!useFleetToggle.checked) saveSettings();
 }
+
 
 // ===== EVENT LISTENERS =====
 inputIds.forEach(id => { document.getElementById(id).addEventListener('input', recalculate); });
@@ -909,7 +700,10 @@ function renderComparison() {
     var btcPrice = parseFloat(el.btcPrice.value) || 96000;
     var elecCost = parseFloat(el.elecCost.value) || 0.07;
     var poolFee = (parseFloat(el.poolFee.value) || 0) / 100;
-    var uptime = (parseFloat(el.uptime.value) || 100) / 100;
+    // Read through the engine's normaliser so a 0 uptime means 0 here too. `|| 100` treated a
+    // legitimate 0 as "missing" and silently ran this panel at full uptime while the projection
+    // above correctly showed zero production.
+    var uptime = CalcEngine.normalise(currentSettings()).uptimePct;
     var diff = (parseFloat(el.difficulty.value) || 125.86) * 1e12;
     var blockReward = getBlockReward(new Date());
 
@@ -967,13 +761,557 @@ function renderComparison() {
         '</tbody></table></div>';
     container.innerHTML = html;
 }
+// ===== SCENARIOS =====
+// Save a full set of inputs under a name and compare saved scenarios side by side against
+// the live one. Comparison runs each scenario through CalcEngine without touching the DOM,
+// which is why the projection math had to be extracted from recalculate() first.
+
+var ScenarioData = (function() {
+    var KEY = 'ionMiningScenarios';
+
+    function defaultData() { return { _v: 1, scenarios: [] }; }
+
+    function getData() {
+        try {
+            var raw = localStorage.getItem(KEY);
+            if (!raw) return defaultData();
+            var parsed = JSON.parse(raw);
+            if (!parsed || !Array.isArray(parsed.scenarios)) return defaultData();
+            return parsed;
+        } catch (e) { return defaultData(); }
+    }
+
+    function saveData(data) {
+        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+        if (typeof SyncEngine !== 'undefined') SyncEngine.save('scenarios', data);
+    }
+
+    function add(name, settings) {
+        var data = getData();
+        var entry = {
+            id: 'scn_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            name: String(name || 'Untitled').slice(0, 60),
+            created: new Date().toISOString(),
+            settings: JSON.parse(JSON.stringify(settings))
+        };
+        data.scenarios.push(entry);
+        saveData(data);
+        return entry;
+    }
+
+    function remove(id) {
+        var data = getData();
+        data.scenarios = data.scenarios.filter(function(s) { return s.id !== id; });
+        saveData(data);
+    }
+
+    function rename(id, name) {
+        var data = getData();
+        for (var i = 0; i < data.scenarios.length; i++) {
+            if (data.scenarios[i].id === id) { data.scenarios[i].name = String(name).slice(0, 60); break; }
+        }
+        saveData(data);
+    }
+
+    function get(id) {
+        var data = getData();
+        for (var i = 0; i < data.scenarios.length; i++) if (data.scenarios[i].id === id) return data.scenarios[i];
+        return null;
+    }
+
+    return { getData: getData, add: add, remove: remove, rename: rename, get: get };
+})();
+
+var selectedScenarioIds = [];   // ids currently ticked for comparison
+
+function escapeHtmlCalc(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderScenarioList() {
+    var listEl = document.getElementById('scenarioList');
+    if (!listEl) return;
+    var data = ScenarioData.getData();
+
+    if (!data.scenarios.length) {
+        listEl.innerHTML = '<div class="scenario-empty">No saved scenarios yet. Set up your inputs, ' +
+            'then use <strong>Save Current</strong> above to keep them for comparison.</div>';
+        renderScenarioComparison();
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < data.scenarios.length; i++) {
+        var s = data.scenarios[i];
+        var checked = selectedScenarioIds.indexOf(s.id) >= 0 ? ' checked' : '';
+        var when = String(s.created || '').slice(0, 10);
+        html += '<div class="scenario-chip">' +
+            '<label class="scenario-chip-main">' +
+                '<input type="checkbox" data-scn-compare="' + escapeHtmlCalc(s.id) + '"' + checked + '>' +
+                '<span class="scenario-name">' + escapeHtmlCalc(s.name) + '</span>' +
+                '<span class="scenario-date">' + escapeHtmlCalc(when) + '</span>' +
+            '</label>' +
+            '<button class="scenario-btn" data-scn-load="' + escapeHtmlCalc(s.id) + '" title="Load into the calculator">Load</button>' +
+            '<button class="scenario-btn" data-scn-rename="' + escapeHtmlCalc(s.id) + '" title="Rename">Rename</button>' +
+            '<button class="scenario-btn scenario-btn-danger" data-scn-delete="' + escapeHtmlCalc(s.id) + '" title="Delete">&times;</button>' +
+        '</div>';
+    }
+    listEl.innerHTML = html;
+    renderScenarioComparison();
+}
+
+// Break-even expressed in months, so scenarios on different period lengths are comparable
+function breakEvenMonths(r) {
+    if (r.breakEvenPeriod === null) return Infinity;
+    return r.breakEvenPeriod * (r.periodConfig.days / 30.44);
+}
+
+// Rows shown in the comparison table. `fmt` receives the CalcEngine result.
+var SCENARIO_ROWS = [
+    { label: 'BTC price', fmt: function(r) { return fmtUSD(r.params.btcPrice0); } },
+    { label: 'Price change / mo', fmt: function(r) { return (r.params.monthlyPriceChangePct * 100).toFixed(2) + '%'; } },
+    { label: 'Difficulty change / mo', fmt: function(r) { return (r.params.monthlyDiffChangePct * 100).toFixed(2) + '%'; } },
+    { label: 'Machines', fmt: function(r) { return String(r.params.machineCount); } },
+    { label: 'Hashrate each', fmt: function(r) { return r.params.hashrateTH + ' TH/s'; } },
+    { label: 'Electricity', fmt: function(r) { return getCurrencySymbol() + r.params.elecCost.toFixed(4) + '/kWh'; } },
+    { label: 'HODL ratio', fmt: function(r) { return (r.params.hodlPct * 100).toFixed(0) + '%'; } },
+    { label: 'Horizon', fmt: function(r) { return r.params.numPeriods + ' ' + r.periodConfig.label; } },
+    { label: 'Up-front cost', fmt: function(r) { return fmtUSD(r.totalInitialInvestment); }, divider: true },
+    { label: 'Daily profit (day 1)', fmt: function(r) { return fmtUSD(r.params.taxAdjustmentEnabled ? r.dailyAfterTaxProfitDay1 : r.dailyProfitDay1); }, sign: function(r) { return (r.params.taxAdjustmentEnabled ? r.dailyAfterTaxProfitDay1 : r.dailyProfitDay1); } },
+    { label: 'Cost / 1 BTC', fmt: function(r) { return fmtUSD(r.costPerBTC); }, best: 'low', val: function(r) { return r.costPerBTC; } },
+    { label: 'Total BTC mined', fmt: function(r) { return fmtBTC(r.cumulBtcMined, 6); }, best: 'high', val: function(r) { return r.cumulBtcMined; } },
+    { label: 'Total P/L', fmt: function(r) { return fmtUSD(r.totalPL); }, best: 'high', val: function(r) { return r.totalPL; }, sign: function(r) { return r.totalPL; } },
+    { label: 'ROI', fmt: function(r) { return r.totalInitialInvestment > 0 ? (r.roi >= 0 ? '+' : '') + r.roi.toFixed(1) + '%' : '—'; }, best: 'high', val: function(r) { return r.roi; }, sign: function(r) { return r.roi; } },
+    // Break-even is a raw period index, and two scenarios can use different period lengths —
+    // ranking 359 "days" against 13 "months" would pick the wrong winner. Normalise to months
+    // for both the ranking and the display.
+    { label: 'Break-even', best: 'low',
+      val: function(r) { return r.breakEvenPeriod === null ? Infinity : breakEvenMonths(r); },
+      fmt: function(r) {
+          if (r.breakEvenPeriod === null) return 'Never';
+          var m = breakEvenMonths(r);
+          var native = r.breakEvenPeriod + ' ' + r.periodConfig.label;
+          // Only add the months translation when the scenario is not already in months
+          return r.periodConfig.label === 'months' ? native : native + ' (' + m.toFixed(1) + ' mo)';
+      } },
+    { label: 'vs Buy & Hold', fmt: function(r) { return (r.isMiningBetter ? '+' : '') + fmtUSD(r.miningAdvantage); }, best: 'high', val: function(r) { return r.miningAdvantage; }, sign: function(r) { return r.miningAdvantage; } }
+];
+
+function renderScenarioComparison() {
+    var box = document.getElementById('scenarioCompare');
+    if (!box) return;
+
+    var cols = [];
+    if (lastResult) cols.push({ name: 'Current', result: lastResult, isCurrent: true });
+    for (var i = 0; i < selectedScenarioIds.length; i++) {
+        var s = ScenarioData.get(selectedScenarioIds[i]);
+        if (!s) continue;
+        try {
+            cols.push({ name: s.name, result: CalcEngine.computeProjection(s.settings) });
+        } catch (e) { /* a corrupt scenario must not take the page down */ }
+    }
+
+    if (cols.length < 2) {
+        box.innerHTML = '<div class="scenario-empty">Tick two or more saved scenarios to compare them ' +
+            'against your current inputs.</div>';
+        return;
+    }
+
+    var html = '<div class="table-scroll"><table class="scenario-table"><thead><tr><th>Metric</th>';
+    for (var c = 0; c < cols.length; c++) {
+        html += '<th' + (cols[c].isCurrent ? ' class="scn-current"' : '') + '>' + escapeHtmlCalc(cols[c].name) + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    for (var rI = 0; rI < SCENARIO_ROWS.length; rI++) {
+        var row = SCENARIO_ROWS[rI];
+        // Which column wins this row (only for rows that declare a direction)
+        var bestIdx = -1;
+        if (row.best && row.val) {
+            var bestVal = null;
+            for (var k = 0; k < cols.length; k++) {
+                var v = row.val(cols[k].result);
+                if (!isFinite(v)) continue;
+                if (bestVal === null || (row.best === 'high' ? v > bestVal : v < bestVal)) { bestVal = v; bestIdx = k; }
+            }
+        }
+        html += '<tr' + (row.divider ? ' class="scn-divider"' : '') + '><td class="scn-metric">' + row.label + '</td>';
+        for (var j = 0; j < cols.length; j++) {
+            var cls = [];
+            if (j === bestIdx) cls.push('scn-best');
+            if (row.sign) cls.push(row.sign(cols[j].result) >= 0 ? 'positive' : 'negative');
+            html += '<td class="' + cls.join(' ') + '">' + row.fmt(cols[j].result) + '</td>';
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>' +
+        '<div class="scenario-note">Highlighted cells are the best value in that row. ' +
+        'Every column is computed with the same engine as the live projection.</div>';
+    box.innerHTML = html;
+}
+
+(function wireScenarios() {
+    var saveBtn = document.getElementById('btnSaveScenario');
+    var nameInput = document.getElementById('scenarioName');
+    if (saveBtn && nameInput) {
+        saveBtn.addEventListener('click', function() {
+            var name = nameInput.value.trim();
+            if (!name) {
+                var pCfg = CalcEngine.PERIOD_CONFIG[periodLengthSel.value] || CalcEngine.PERIOD_CONFIG.monthly;
+                name = el.machineCount.value + '× ' + el.hashrate.value + 'TH @ ' +
+                       getCurrencySymbol() + el.elecCost.value + ' · ' + el.investPeriod.value + ' ' + pCfg.label;
+            }
+            var entry = ScenarioData.add(name, currentSettings());
+            nameInput.value = '';
+            if (selectedScenarioIds.length < 3) selectedScenarioIds.push(entry.id);
+            renderScenarioList();
+        });
+        nameInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') saveBtn.click(); });
+    }
+
+    var listEl = document.getElementById('scenarioList');
+    if (listEl) {
+        listEl.addEventListener('click', function(e) {
+            var btn = e.target.closest('button');
+            if (!btn) return;
+            var loadId = btn.getAttribute('data-scn-load');
+            var delId = btn.getAttribute('data-scn-delete');
+            var renId = btn.getAttribute('data-scn-rename');
+            if (loadId) { loadScenario(loadId); return; }
+            if (delId) {
+                var s = ScenarioData.get(delId);
+                if (s && confirm('Delete scenario "' + s.name + '"?')) {
+                    ScenarioData.remove(delId);
+                    selectedScenarioIds = selectedScenarioIds.filter(function(x) { return x !== delId; });
+                    renderScenarioList();
+                }
+                return;
+            }
+            if (renId) {
+                var cur = ScenarioData.get(renId);
+                var next = prompt('Rename scenario', cur ? cur.name : '');
+                if (next && next.trim()) { ScenarioData.rename(renId, next.trim()); renderScenarioList(); }
+            }
+        });
+        listEl.addEventListener('change', function(e) {
+            var cb = e.target.closest('[data-scn-compare]');
+            if (!cb) return;
+            var id = cb.getAttribute('data-scn-compare');
+            if (cb.checked) {
+                if (selectedScenarioIds.indexOf(id) < 0) selectedScenarioIds.push(id);
+            } else {
+                selectedScenarioIds = selectedScenarioIds.filter(function(x) { return x !== id; });
+            }
+            renderScenarioComparison();
+        });
+    }
+})();
+
+// Push a saved scenario back into the inputs, then recalculate
+function loadScenario(id) {
+    var s = ScenarioData.get(id);
+    if (!s) return;
+    var v = s.settings || {};
+    inputIds.forEach(function(k) { if (v[k] !== undefined) el[k].value = v[k]; });
+    if (v.periodLength) periodLengthSel.value = v.periodLength;
+    reinvestToggle.checked = !!v.reinvest;
+    additionCapexToggle.checked = v.additionCapex !== false;
+    savingsElecToggle.checked = !!v.savingsElec;
+    autoReplaceToggle.checked = v.autoReplace !== false;
+    taxAdjustmentToggle.checked = !!v.taxAdjustment;
+    if (v.miningIncomeTaxRate !== undefined) miningIncomeTaxRateInput.value = v.miningIncomeTaxRate;
+    if (v.capitalGainsTaxRate !== undefined) capitalGainsTaxRateInput.value = v.capitalGainsTaxRate;
+
+    // Keep the toggle rows' visual state in step with the restored values
+    reinvestRow.classList.toggle('active', reinvestToggle.checked);
+    additionCapexRow.classList.toggle('active', additionCapexToggle.checked);
+    savingsElecRow.classList.toggle('active', savingsElecToggle.checked);
+    autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
+    taxAdjustmentRow.classList.toggle('active', taxAdjustmentToggle.checked);
+    taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';
+    hodlSlider.value = el.hodlRatio.value;
+
+    recalculate();
+}
+
+// ===== HISTORICAL GROUNDING =====
+// Two features that replace guesses with what actually happened:
+//   1. Trailing-rate presets for the price/difficulty growth assumptions.
+//   2. A backtest that replays the rig against real daily price and real difficulty.
+// Both read from the same cached history the Data and Cycle pages already use.
+
+var histPrice = null;        // [{ time, close }] daily
+var histDifficulty = null;   // [{ time, difficulty }] per retarget
+var btChart = null;
+var currentBtDays = 365;
+
+// recalculate() runs on every keystroke; a full replay + chart rebuild there would feel laggy,
+// so the backtest is debounced behind it.
+var _btTimer = null;
+function scheduleBacktest() {
+    if (_btTimer) clearTimeout(_btTimer);
+    _btTimer = setTimeout(renderBacktest, 250);
+}
+
+function ratePct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+// --- Trailing-rate presets ---
+function renderRatePresets() {
+    var pairs = [
+        { hint: 'pricePresetHint', presets: 'pricePresets',
+          pts: histPrice ? histPrice.map(function(p) { return { time: p.time, value: p.close }; }) : null,
+          noun: 'BTC price' },
+        { hint: 'diffPresetHint', presets: 'diffPresets',
+          pts: histDifficulty ? NetworkHistory.toPoints(histDifficulty, 'difficulty') : null,
+          noun: 'difficulty' }
+    ];
+
+    pairs.forEach(function(p) {
+        var hintEl = document.getElementById(p.hint);
+        var box = document.getElementById(p.presets);
+        if (!hintEl || !box) return;
+        if (!p.pts) {
+            hintEl.textContent = 'Real rates unavailable (offline)';
+            box.style.display = 'none';
+            return;
+        }
+        var parts = [];
+        var btns = box.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+            var yrs = parseInt(btns[i].dataset.years, 10);
+            var r = NetworkHistory.trailingMonthlyRate(p.pts, yrs);
+            if (r === null) {
+                btns[i].disabled = true;
+                btns[i].title = 'Not enough history';
+                continue;
+            }
+            btns[i].dataset.rate = r.toFixed(2);
+            btns[i].title = 'Set to the actual trailing ' + yrs + '-year ' + p.noun + ' rate (' + ratePct(r) + '/mo)';
+            parts.push(yrs + 'Y ' + ratePct(r));
+        }
+        hintEl.textContent = parts.length ? parts.join('  ·  ') + ' per month' : '';
+    });
+}
+
+function wireRatePresets(boxId, inputEl) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    box.addEventListener('click', function(e) {
+        var btn = e.target.closest('button');
+        if (!btn || btn.disabled || !btn.dataset.rate) return;
+        var btns = box.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        btn.classList.add('active');
+        inputEl.value = btn.dataset.rate;
+        recalculate();
+    });
+}
+
+// Clear the "actual" highlight as soon as the user types their own number
+function clearPresetActive(boxId) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    var btns = box.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+}
+
+// --- Backtest ---
+function renderBacktest() {
+    var cardsEl = document.getElementById('btCards');
+    var realityEl = document.getElementById('btReality');
+    if (!cardsEl) return;
+
+    if (!histPrice || !histDifficulty) {
+        cardsEl.innerHTML = '<div class="empty-state" style="padding:16px;"><p>Historical data unavailable</p>' +
+            '<div class="hint">Needs the price and difficulty history APIs</div></div>';
+        if (realityEl) realityEl.textContent = '';
+        return;
+    }
+
+    var machines = Math.max(1, parseInt(el.machineCount.value) || 1);
+    var bt = NetworkHistory.runBacktest({
+        priceSeries: histPrice,
+        difficultySeries: histDifficulty,
+        getBlockReward: PriceHistory.getBlockReward,
+        days: currentBtDays,
+        hashrateTH: parseFloat(el.hashrate.value) || 0,
+        powerKW: parseFloat(el.power.value) || 0,
+        machineCount: machines,
+        elecCost: parseFloat(el.elecCost.value) || 0,
+        poolFeePct: (parseFloat(el.poolFee.value) || 0) / 100,
+        uptimePct: CalcEngine.normalise(currentSettings()).uptimePct,   // honours a 0 uptime
+        capex: parseFloat(el.capex.value) || 0,
+        infrastructureCost: parseFloat(el.infrastructureCost.value) || 0
+    });
+    if (!bt) { cardsEl.innerHTML = ''; return; }
+
+    var mult = getCurrencyMultiplier();
+    var profitCls = bt.profitUSD >= 0 ? 'positive' : 'negative';
+    var netCls = bt.netAfterCapex >= 0 ? 'positive' : 'negative';
+
+    function c(label, value, sub, cls) {
+        return '<div class="metric-card"><div class="label">' + label + '</div>' +
+            '<div class="value ' + cls + '">' + value + '</div>' +
+            '<div class="sub">' + sub + '</div></div>';
+    }
+    var months = bt.days / 30.44;
+    cardsEl.innerHTML =
+        c('BTC Mined', fmtBTC(bt.btcMined, 6), 'over ' + bt.days + ' days', 'btc-orange') +
+        c('Revenue', fmtUSD(bt.revenueUSD * mult), 'at each day’s real price', 'btc-orange') +
+        // fmtUSD rounds to 2dp, which turns a 0.055 rate into "$0.06" — show 4dp like the
+        // electricity figures on the Banking page do.
+        c('Electricity', fmtUSD(bt.elecUSD * mult),
+          'at ' + getCurrencySymbol() + ((parseFloat(el.elecCost.value) || 0) * mult).toFixed(4) + '/kWh', 'negative') +
+        c('Gross Profit', fmtUSD(bt.profitUSD * mult), 'revenue − power', profitCls) +
+        c('After Hardware', fmtUSD(bt.netAfterCapex * mult), 'incl. ' + fmtUSD(bt.capexUSD * mult) + ' capex', netCls) +
+        c('If Held To Today', fmtUSD(bt.heldValueUSD * mult), 'all mined BTC, unsold', 'neutral');
+
+    var headline = document.getElementById('btHeadline');
+    if (headline) headline.textContent = fmtBTC(bt.btcMined, 6) + ' BTC';
+    var title = document.getElementById('btTitle');
+    if (title) {
+        var lbl = currentBtDays === 180 ? '6 Months' : currentBtDays === 365 ? '1 Year'
+            : currentBtDays === 730 ? '2 Years' : '3 Years';
+        title.textContent = 'What This Rig Would Have Earned (Last ' + lbl + ')';
+    }
+
+    // Reality check: compare the user's forward assumptions against what this window actually did
+    if (realityEl) {
+        var assumedDiff = parseFloat(el.diffChange.value) || 0;
+        var assumedPrice = parseFloat(el.priceChange.value) || 0;
+        var actualDiff = bt.difficultyRatePctPerMonth;
+        var actualPrice = bt.priceRatePctPerMonth;
+        var msg = 'Over this window difficulty actually moved <strong>' + ratePct(actualDiff) +
+            '/mo</strong> and price <strong>' + ratePct(actualPrice) + '/mo</strong>. ' +
+            'Your projection assumes ' + ratePct(assumedDiff) + '/mo and ' + ratePct(assumedPrice) + '/mo.';
+        var warns = [];
+        if (assumedDiff < actualDiff - 0.5) warns.push('your difficulty assumption is gentler than this window');
+        if (assumedPrice > actualPrice + 0.5) warns.push('your price assumption is more optimistic than this window');
+        if (warns.length) msg += ' <span class="bt-warn">Note: ' + warns.join(', ') + '.</span>';
+        realityEl.innerHTML = msg;
+    }
+
+    renderBacktestChart(bt, mult);
+}
+
+function renderBacktestChart(bt, mult) {
+    var canvas = document.getElementById('btChart');
+    if (!canvas) return;
+
+    // Downsample but always keep the final point
+    var n = bt.series.length;
+    var step = Math.max(1, Math.floor(n / 400));
+    var idxs = [];
+    for (var i = 0; i < n; i += step) idxs.push(i);
+    if (idxs[idxs.length - 1] !== n - 1) idxs.push(n - 1);
+
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var labels = [], profit = [], revenue = [], elec = [];
+    for (var k = 0; k < idxs.length; k++) {
+        var s = bt.series[idxs[k]];
+        var d = new Date(s.time * 1000);
+        labels.push(months[d.getUTCMonth()] + ' ' + d.getUTCFullYear().toString().slice(2));
+        revenue.push(+(s.cumulRevenue * mult).toFixed(2));
+        elec.push(+(s.cumulElec * mult).toFixed(2));
+        profit.push(+(s.cumulProfit * mult).toFixed(2));
+    }
+
+    if (btChart) btChart.destroy();
+    btChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Cumulative revenue', data: revenue, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.10)', fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
+                { label: 'Cumulative power cost', data: elec, borderColor: '#ef4444', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0 },
+                { label: 'Cumulative profit', data: profit, borderColor: '#4ade80', backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } },
+                tooltip: {
+                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
+                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    borderColor: 'rgba(255,255,255,0.10)', borderWidth: 1, padding: 10,
+                    callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmtUSD(ctx.parsed.y); } }
+                }
+            },
+            scales: {
+                x: { ticks: { color: mutedColor(), font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: gridColor() } },
+                y: {
+                    ticks: {
+                        color: mutedColor(), font: { size: 11 },
+                        callback: function(v) {
+                            var s = getCurrencySymbol();
+                            // Rounding to whole thousands collides on a narrow range and the
+                            // axis reads "$5k, $5k, $4k, $4k…" — show the real number instead.
+                            if (Math.abs(v) >= 1e6) return s + (v / 1e6).toFixed(2) + 'M';
+                            return s + Math.round(v).toLocaleString();
+                        }
+                    },
+                    grid: { color: gridColor() }
+                }
+            }
+        }
+    });
+}
+
+(function wireBacktestRange() {
+    var box = document.getElementById('btRange');
+    if (!box) return;
+    box.addEventListener('click', function(e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        var btns = box.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        btn.classList.add('active');
+        currentBtDays = parseInt(btn.dataset.days, 10) || 365;
+        renderBacktest();
+    });
+})();
+
+async function loadHistoricalData() {
+    // Independent so one failing source does not blank the other feature
+    try { histPrice = await PriceHistory.fetchPriceHistory(); } catch (e) { histPrice = null; }
+    try { histDifficulty = await NetworkHistory.fetchDifficultyHistory(); } catch (e) { histDifficulty = null; }
+    renderRatePresets();
+    renderBacktest();
+}
+
 // ===== INIT =====
 initNav('calculator');
 initChart();
 loadSettings();
-el.minerAdditions.value = 0;
 initMinerComparison();
-window.onCurrencyChange = function() { recalculate(); };
+
+wireRatePresets('pricePresets', el.priceChange);
+wireRatePresets('diffPresets', el.diffChange);
+el.priceChange.addEventListener('input', function() { clearPresetActive('pricePresets'); });
+el.diffChange.addEventListener('input', function() { clearPresetActive('diffPresets'); });
+
+window.onCurrencyChange = function() {
+    // fmtUSD() switches symbol immediately, so the BTC price input has to be re-denominated
+    // too — otherwise the page renders USD figures labelled with the new currency's symbol.
+    var newPrice = window.liveBtcPrices && window.liveBtcPrices[window.selectedCurrency];
+    if (newPrice) el.btcPrice.value = newPrice;
+    recalculate();
+    renderBacktest();
+};
+
+// Chart colours are baked in at construction time, so rebuild on theme change.
+window.addEventListener('themechange', function() {
+    if (comboChart) comboChart.destroy();
+    initChart();
+    recalculate();
+    renderBacktest();
+});
 
 // Restore fleet toggle state
 var ionSettings = FleetData.getSettings();
@@ -982,5 +1320,14 @@ if (ionSettings.useFleetData) {
     applyFleetData();
 }
 
+// Paint any previously saved scenarios. Without this the list only ever rendered as a side
+// effect of save/delete/rename, so scenarios saved in an earlier session were invisible after
+// a reload — present in localStorage but with no UI to load, rename, delete or compare them.
+renderScenarioList();
+
 recalculate();
 fetchLiveData().then(() => recalculate());
+
+// Historical grounding loads after the page is already usable — the projection does not
+// depend on it, and a slow/failed fetch must not block the calculator.
+loadHistoricalData();

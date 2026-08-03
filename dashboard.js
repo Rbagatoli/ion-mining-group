@@ -137,13 +137,20 @@ function renderDashboard() {
     // Fleet ROI
     var fleetROIEl = document.getElementById('fleetROI');
     var fleetROISubEl = document.getElementById('fleetROISub');
-    if (fleetROIEl && totalCost > 0) {
-        var fleetEstEarnings = dailyUSD * 30; // rough 30-day projection
-        var fleetROI = ((fleetEstEarnings * 12 - totalCost) / totalCost) * 100; // annualized
-        var roiSign = fleetROI >= 0 ? '+' : '';
-        fleetROIEl.textContent = roiSign + fleetROI.toFixed(1) + '%';
-        fleetROIEl.className = 'value ' + (fleetROI >= 0 ? 'positive' : 'negative');
-        fleetROISubEl.textContent = 'annualized est.';
+    if (fleetROIEl) {
+        if (totalCost > 0) {
+            var fleetEstEarnings = dailyUSD * 30; // rough 30-day projection
+            var fleetROI = ((fleetEstEarnings * 12 - totalCost) / totalCost) * 100; // annualized
+            var roiSign = fleetROI >= 0 ? '+' : '';
+            fleetROIEl.textContent = roiSign + fleetROI.toFixed(1) + '%';
+            fleetROIEl.className = 'value ' + (fleetROI >= 0 ? 'positive' : 'negative');
+            fleetROISubEl.textContent = 'annualized est.';
+        } else {
+            // Reset instead of leaving the previous fleet's number on screen
+            fleetROIEl.textContent = '--';
+            fleetROIEl.className = 'value';
+            fleetROISubEl.textContent = 'add miner cost to estimate';
+        }
     }
 
     // Render profitability summary
@@ -194,12 +201,15 @@ function renderProfitability(fleetCapex, totalPowerKW, dailyBTC) {
     // Net P&L = Revenue - Electricity - CAPEX
     var netPnL = totalRevenue - totalElec - fleetCapex;
 
-    // Daily Profit = (daily BTC × price) - daily electricity cost
-    // Daily elec cost = totalPowerKW × 24h × elec rate
+    // Daily Profit = (daily BTC × price) - daily electricity cost.
+    // `price` is already in the selected currency but the electricity rate is stored in USD,
+    // so revenue is converted back to USD first and the whole figure scaled once at render
+    // time — mixing the two and then applying `mult` double-converted the revenue side.
     var fleetSummary = FleetData.getFleetSummary();
     var elecRate = fleetSummary.avgElecCost || 0.07;
-    var dailyElecCost = totalPowerKW * 24 * elecRate;
-    var dailyProfit = (dailyBTC * price) - dailyElecCost;
+    var dailyElecCost = totalPowerKW * 24 * elecRate;           // USD
+    var dailyRevenueUSD = (dailyBTC * price) / (mult || 1);      // USD
+    var dailyProfit = dailyRevenueUSD - dailyElecCost;           // USD
 
     // Update DOM
     document.getElementById('profRevenue').textContent = fmtUSD(totalRevenue * mult);
@@ -579,6 +589,9 @@ var addMinerPanel = document.getElementById('addMinerPanel');
 var apiPanel = document.getElementById('apiPanel');
 
 document.getElementById('btnAddMiner').addEventListener('click', function() {
+    // If the panel is currently open in Edit mode, this click should switch it to a blank
+    // Add form — not toggle the freshly-reset form shut.
+    var wasEditing = editingMinerId !== null;
     editingMinerId = null;
     document.getElementById('minerFormTitle').textContent = 'Add Miner';
     document.getElementById('fmModel').value = '';
@@ -592,7 +605,8 @@ document.getElementById('btnAddMiner').addEventListener('click', function() {
     document.getElementById('fmCountry').value = '';
     document.getElementById('fmCountry').dispatchEvent(new Event('change'));
     apiPanel.classList.remove('open');
-    addMinerPanel.classList.toggle('open');
+    if (wasEditing) addMinerPanel.classList.add('open');
+    else addMinerPanel.classList.toggle('open');
 });
 
 document.getElementById('cancelMiner').addEventListener('click', function() {
@@ -679,8 +693,9 @@ function deleteMiner(id) {
         return;
     }
 
+    // textContent already escapes — running escapeHtml() first showed raw entities like &amp;
     document.getElementById('deleteDialogText').textContent =
-        'This group has ' + miner.quantity + ' ' + escapeHtml(miner.model) + ' miners.';
+        'This group has ' + miner.quantity + ' ' + miner.model + ' miners.';
     deleteDialog.style.display = '';
 }
 
@@ -1022,11 +1037,11 @@ function initEarningsChart() {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(10, 10, 10, 0.92)',
+                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
                     borderWidth: 1,
-                    titleColor: '#e8e8e8',
-                    bodyColor: '#e8e8e8',
+                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
+                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     padding: 10,
                     callbacks: {
                         label: function(ctx) {
@@ -1037,8 +1052,8 @@ function initEarningsChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: '#888', font: { size: 11 } },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 },
                 y: {
                     beginAtZero: true,
@@ -1051,16 +1066,29 @@ function initEarningsChart() {
                             return s + v.toFixed(0);
                         }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
                 }
             }
         }
     });
 }
 
+// Deterministic 0..1 hash of a string. The simulated variance used Math.random(), so every
+// re-render (adding a miner, deleting a unit, switching currency) reshuffled all 14 bars —
+// seeding off the date keeps a given day's bar stable within the session.
+function seededUnit(seed) {
+    var h = 2166136261;
+    for (var i = 0; i < seed.length; i++) {
+        h ^= seed.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return ((h >>> 0) % 10000) / 10000;
+}
+
 function generateEarningsData() {
     var fleet = FleetData.getFleet();
-    var miners = fleet.miners;
+    // Match renderDashboard(): the fleet cards include live pool workers, so the chart must too
+    var miners = fleet.miners.concat(livePoolMiners || []);
 
     var totalHashrate = 0;
     for (var i = 0; i < miners.length; i++) {
@@ -1084,8 +1112,8 @@ function generateEarningsData() {
         var label = (date.getMonth() + 1) + '/' + date.getDate();
         labels.push(label);
 
-        // Add small random variance (+/- 8%) for realistic look
-        var variance = 1 + (Math.random() * 0.16 - 0.08);
+        // Small simulated variance (+/- 8%), stable per calendar day
+        var variance = 1 + (seededUnit(date.toDateString()) * 0.16 - 0.08);
         values.push(baseDailyUSD * variance);
     }
 
@@ -1099,3 +1127,11 @@ function updateEarningsChart() {
     earningsChart.data.datasets[0].data = chartData.values;
     earningsChart.update();
 }
+
+// Chart palette is fixed at construction time, so rebuild it when the theme toggles
+window.addEventListener('themechange', function() {
+    if (!earningsChart) return;
+    earningsChart.destroy();
+    earningsChart = null;
+    initEarningsChart();
+});

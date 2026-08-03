@@ -352,11 +352,11 @@ function renderAlertList() {
             '<div class="alert-card severity-' + a.severity + '">' +
                 '<div class="alert-card-header">' +
                     '<span class="alert-card-icon">' + icon + '</span>' +
-                    '<span class="alert-card-title">' + a.title + '</span>' +
+                    '<span class="alert-card-title">' + escapeHtml(a.title) + '</span>' +
                     '<span class="alert-card-time">' + timeAgo + '</span>' +
-                    '<button class="alert-dismiss-btn" data-id="' + a.id + '">&times;</button>' +
+                    '<button class="alert-dismiss-btn" data-id="' + escapeHtml(a.id) + '">&times;</button>' +
                 '</div>' +
-                '<div class="alert-card-body">' + a.message + '</div>' +
+                '<div class="alert-card-body">' + escapeHtml(a.message) + '</div>' +
             '</div>';
     }
     container.innerHTML = html;
@@ -368,6 +368,12 @@ function renderAlertList() {
             dismissAlert(this.dataset.id);
         });
     }
+}
+
+// Alert titles/messages embed pool worker names, which come from a third-party pool API
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function formatTimeAgo(ts) {
@@ -481,15 +487,17 @@ function sendBrowserNotification(alert) {
 }
 
 // ===== POLLING ENGINE =====
-function startAlertPolling() {
+function startAlertPolling(runImmediateCheck) {
     if (!alertData.settings.enabled) return;
     stopAlertPolling();
 
     var interval = document.hidden ? POLL_BG : POLL_ACTIVE;
     alertPoller = setInterval(runAlertChecks, interval);
 
-    // Run first check after a short delay (let page finish loading)
-    setTimeout(runAlertChecks, 5000);
+    // Run first check after a short delay (let page finish loading).
+    // Only on initial start — visibilitychange also calls this, and firing a full round of
+    // pool/price/difficulty requests on every tab focus hammered the APIs.
+    if (runImmediateCheck) setTimeout(runAlertChecks, 5000);
 }
 
 function stopAlertPolling() {
@@ -767,16 +775,16 @@ async function checkWalletAlerts() {
         for (var i = 0; i < walletData.addresses.length; i++) {
             var addr = walletData.addresses[i];
             var address = addr.address;
-            var satoshis = addr.balance || 0;
-            var btc = satoshis / 1e8;
-            currentBalances[address] = satoshis;
+            // The wallet stores `lastBalance`, already denominated in BTC. Reading `.balance`
+            // and dividing by 1e8 always yielded 0, so payout/threshold alerts never fired.
+            var btc = addr.lastBalance || 0;
+            currentBalances[address] = btc;
             totalBTC += btc;
 
             // Payout received detection
             if (alertData.settings.payoutAlertEnabled && prevBalances[address] !== undefined) {
-                var diff = satoshis - prevBalances[address];
-                if (diff > 0) {
-                    var receivedBTC = diff / 1e8;
+                var receivedBTC = btc - prevBalances[address];
+                if (receivedBTC > 0) {
                     createAlert(
                         'payout_received', 'medium',
                         'Payout Received',
@@ -907,5 +915,5 @@ function updateMonitorStatus() {
     injectAlertSidebar();
     updateBadge();
     updateMonitorStatus();
-    startAlertPolling();
+    startAlertPolling(true);
 })();

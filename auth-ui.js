@@ -237,6 +237,9 @@
 
         setLoading('authSignInBtn', true);
         IonAuth.signInWithEmail(email, password).then(function() {
+            // Reset before hiding — otherwise re-opening the modal (e.g. after signing out
+            // without a reload) shows a permanently disabled "Please wait…" button.
+            setLoading('authSignInBtn', false);
             hideModal();
             if (typeof window.handlePostAuth === 'function') window.handlePostAuth();
         }).catch(function(err) {
@@ -268,6 +271,7 @@
 
         setLoading('authSignUpBtn', true);
         IonAuth.signUpWithEmail(email, password, name).then(function() {
+            setLoading('authSignUpBtn', false);
             hideModal();
             if (typeof window.handlePostAuth === 'function') window.handlePostAuth();
         }).catch(function(err) {

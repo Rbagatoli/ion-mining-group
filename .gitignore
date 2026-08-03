@@ -1,0 +1,21 @@
+# Wrangler build cache — contains the Cloudflare account id and account name (an email).
+# This repo is published via GitHub Pages, so it must not be tracked.
+.wrangler/
+worker/.wrangler/
+worker-strike/.wrangler/
+
+# Local wrangler secrets
+.dev.vars
+.env
+.env.*
+
+# Dependencies (none checked in today, but keeps future installs out)
+node_modules/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Backups
+*.bak

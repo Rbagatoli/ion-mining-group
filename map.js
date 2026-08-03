@@ -124,6 +124,13 @@ for (var ck = 0; ck < countryKeys.length; ck++) {
     globalTotalHashrate += ckHash;
 }
 
+// Miner model names, country codes and free-text state names all come from user input
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ===== SHARED POPUP BUILDERS =====
 function buildPieChart(currentA2) {
     if (globalTotalHashrate <= 0) return '';
@@ -200,6 +207,7 @@ function buildPieChart(currentA2) {
 
         var displayLabel = slice.label === 'Other' ? 'Other' : (GEO_DATA.getCountryName(slice.label) || slice.label);
         if (displayLabel.length > 12) displayLabel = slice.label;
+        displayLabel = escapeHtml(displayLabel);
         var pctText = (pct * 100).toFixed(1) + '%';
         var labelColor = slice.isCurrent ? '#f7931a' : '#999';
         legendHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:' + labelColor + ';">' +
@@ -233,11 +241,11 @@ function buildPopup(a2, data) {
     modelKeys.sort(function(a, b) { return data.models[b] - data.models[a]; });
     for (var mk = 0; mk < modelKeys.length; mk++) {
         modelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:' + (isLightMode() ? '#6b7280' : '#aaa') + ';padding:2px 0;">' +
-            '<span>' + modelKeys[mk] + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + data.models[modelKeys[mk]] + '</span></div>';
+            '<span>' + escapeHtml(modelKeys[mk]) + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + data.models[modelKeys[mk]] + '</span></div>';
     }
 
     return '<div class="map-popup-container">' +
-        '<div class="map-popup-title">' + countryName + '</div>' +
+        '<div class="map-popup-title">' + escapeHtml(countryName) + '</div>' +
         '<div class="map-popup-stats">' +
             '<div class="map-popup-stat"><span class="map-popup-label">Miners</span><span class="map-popup-value">' + totalMiners + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Hashrate</span><span class="map-popup-value">' + data.totalHashrate.toLocaleString() + ' TH/s</span></div>' +
@@ -264,11 +272,11 @@ function buildStatePopup(loc) {
     smKeys.sort(function(a, b) { return loc.models[b] - loc.models[a]; });
     for (var smk = 0; smk < smKeys.length; smk++) {
         stateModelHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:' + (isLightMode() ? '#6b7280' : '#aaa') + ';padding:2px 0;">' +
-            '<span>' + smKeys[smk] + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + loc.models[smKeys[smk]] + '</span></div>';
+            '<span>' + escapeHtml(smKeys[smk]) + '</span><span style="color:' + (isLightMode() ? '#1a1a1a' : '#e8e8e8') + ';">' + loc.models[smKeys[smk]] + '</span></div>';
     }
 
     return '<div class="map-popup-container">' +
-        '<div class="map-popup-title">' + stateName + '</div>' +
+        '<div class="map-popup-title">' + escapeHtml(stateName) + '</div>' +
         '<div class="map-popup-stats">' +
             '<div class="map-popup-stat"><span class="map-popup-label">Miners</span><span class="map-popup-value">' + stateMiners + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Hashrate</span><span class="map-popup-value">' + loc.totalHashrate.toLocaleString() + ' TH/s</span></div>' +
@@ -360,7 +368,7 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
 
                     var countryName = GEO_DATA.getCountryName(a2) || a2;
                     var totalMiners = data.onlineCount + data.offlineCount;
-                    layer.bindTooltip(countryName + ' (' + totalMiners + ' miners)', {
+                    layer.bindTooltip(escapeHtml(countryName) + ' (' + totalMiners + ' miners)', {
                         className: 'map-tooltip-leaflet',
                         direction: 'top',
                         sticky: true
@@ -406,7 +414,7 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
 
                 var countryName = GEO_DATA.getCountryName(loc.country) || loc.country;
                 var stateName = loc.state + ', ' + countryName;
-                stateMarker.bindTooltip(stateName + ' (' + stateMiners + ' miners)', {
+                stateMarker.bindTooltip(escapeHtml(stateName) + ' (' + stateMiners + ' miners)', {
                     className: 'map-tooltip-leaflet',
                     direction: 'top',
                     offset: [0, -stateRadius]
@@ -475,8 +483,8 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
             var eff = loc.totalHashrate > 0 ? ((loc.totalPower * 1000) / loc.totalHashrate).toFixed(1) + ' J/TH' : '--';
             var onlinePct = minerCount > 0 ? ((loc.onlineCount / minerCount) * 100).toFixed(0) + '%' : '--';
 
-            html += '<tr data-country="' + loc.country + '" data-state="' + (loc.state || '') + '">' +
-                '<td style="text-align:left">' + locName + '</td>' +
+            html += '<tr data-country="' + escapeHtml(loc.country) + '" data-state="' + escapeHtml(loc.state || '') + '">' +
+                '<td style="text-align:left">' + escapeHtml(locName) + '</td>' +
                 '<td style="text-align:right">' + minerCount + '</td>' +
                 '<td style="text-align:right">' + loc.totalHashrate.toLocaleString() + ' TH/s</td>' +
                 '<td style="text-align:right">' + loc.totalPower.toLocaleString() + ' kW</td>' +
@@ -651,7 +659,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                         if (!data) return '';
                         var name = GEO_DATA.getCountryName(a2) || a2;
                         var total = data.onlineCount + data.offlineCount;
-                        return '<div class="globe-tooltip">' + name + ' (' + total + ' miners)</div>';
+                        return '<div class="globe-tooltip">' + escapeHtml(name) + ' (' + total + ' miners)</div>';
                     })
                     .onPolygonClick(function(feat, evt) {
                         var a2 = NUM_TO_A2[String(feat.id)];
@@ -704,7 +712,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                     .pointRadius('size')
                     .pointColor('color')
                     .pointLabel(function(d) {
-                        return '<div class="globe-tooltip">' + d.label + ' (' + d.miners + ' miners)</div>';
+                        return '<div class="globe-tooltip">' + escapeHtml(d.label) + ' (' + d.miners + ' miners)</div>';
                     })
                     .onPointClick(function(point, evt) {
                         showGlobePopup(buildStatePopup(point.locData), point.lat, point.lng, evt);

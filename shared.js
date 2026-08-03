@@ -14,13 +14,21 @@ window.isLightMode = function() {
 // --- Aggressive SW auto-update: check for new SW on every page load ---
 (function() {
     if (!('serviceWorker' in navigator)) return;
+    // On a first-ever visit the page starts uncontrolled; clients.claim() then fires
+    // controllerchange. That is an install, not an update — reloading there would make
+    // every fresh session flash a spurious reload.
+    var hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
-        // Force check for updated SW on every visit
-        reg.update();
-    });
-    // When a new SW takes over, reload to get fresh assets
+        // Force check for updated SW on every visit.
+        // The sw_clean bootstrap can unregister this registration while the update is in
+        // flight, which rejects with "Not found" — harmless, but it surfaced as an uncaught
+        // exception in the console on every first load.
+        return reg.update().catch(function() {});
+    }).catch(function() {});
+    // When a *new* SW replaces an existing one, reload to get fresh assets
     var refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (!hadController) { hadController = true; return; }
         if (refreshing) return;
         refreshing = true;
         location.reload();
@@ -80,7 +88,7 @@ function initNav(activePage) {
     if (window.ION_EMBED) { nav.style.display = 'none'; return; }
     nav.className = 'ion-nav';
     var mobile = window.innerWidth < 600;
-    var labels = mobile ? ['Data', 'Calc', 'Home', 'Map', 'Bank'] : ['Data', 'Calculator', 'Dashboard', 'Map', 'Banking'];
+    var labels = mobile ? ['Data', 'Cycle', 'Calc', 'Home', 'Map', 'Bank'] : ['Data', 'Cycle', 'Calculator', 'Dashboard', 'Map', 'Banking'];
     nav.innerHTML =
         '<a class="ion-nav-brand" href="./index.html">' +
             '<span class="icon"><svg width="24" height="24" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="8" fill="#f7931a"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(60 50 50)"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(120 50 50)"/></svg></span>' +
@@ -88,10 +96,11 @@ function initNav(activePage) {
         '</a>' +
         '<div class="ion-nav-tabs">' +
             '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">' + labels[0] + '</a>' +
-            '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">' + labels[1] + '</a>' +
-            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">' + labels[2] + '</a>' +
-            '<a href="./map.html" class="' + (activePage === 'map' ? 'active' : '') + '">' + labels[3] + '</a>' +
-            '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[4] + '</a>' +
+            '<a href="./cycle.html" class="' + (activePage === 'cycle' ? 'active' : '') + '">' + labels[1] + '</a>' +
+            '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">' + labels[2] + '</a>' +
+            '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">' + labels[3] + '</a>' +
+            '<a href="./map.html" class="' + (activePage === 'map' ? 'active' : '') + '">' + labels[4] + '</a>' +
+            '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[5] + '</a>' +
         '</div>' +
         '<div class="ion-nav-actions">' +
             '<a href="./charts.html" class="ion-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="ion-nav-sparkline-price" id="navSparklinePrice">--</span></a>' +
@@ -190,7 +199,9 @@ function initNav(activePage) {
                 SyncEngine.stopAll();
                 if (_wasSignedIn) {
                     _wasSignedIn = false;
-                    var preserve = ['sw_clean_v134'];  // Removed onboarding keys - now tracked per user in Firestore
+                    // Must match the sw_clean key used by the inline bootstrap in every page —
+                    // if it is cleared, the next load re-runs the SW/cache purge and reloads again.
+                    var preserve = ['sw_clean_v222'];  // Onboarding keys are tracked per user in Firestore
                     var saved = {};
                     for (var i = 0; i < preserve.length; i++) {
                         var val = localStorage.getItem(preserve[i]);
@@ -385,7 +396,8 @@ function startNavSparkline() {
 // --- Swipe / Slide Page Navigation ---
 (function() {
     if (window.ION_EMBED) return;
-    var pages = ['charts.html', 'calculator.html', 'index.html', 'map.html', 'banking.html'];
+    // Must stay in the same order as the nav tabs above
+    var pages = ['charts.html', 'cycle.html', 'calculator.html', 'index.html', 'map.html', 'banking.html'];
     var current = pages.indexOf(location.pathname.split('/').pop());
     if (current === -1) current = 0;
 
@@ -488,21 +500,25 @@ async function fetchLiveMarketData() {
         }
     } catch (e) {}
 
-    // Fallback: CryptoCompare (USD only)
+    // Fallback: Coinbase spot (USD only, keyless).
+    // Was CryptoCompare, but their keyless min-api now answers 401 so this path was dead.
     if (!result.price) {
         try {
-            var fallbackRes = await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD');
+            var fallbackRes = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
             if (fallbackRes.ok) {
                 var fallbackData = await fallbackRes.json();
-                if (fallbackData && fallbackData.USD > 0) {
-                    result.prices.usd = Math.round(fallbackData.USD);
+                var amount = fallbackData && fallbackData.data && parseFloat(fallbackData.data.amount);
+                if (amount > 0) {
+                    result.prices.usd = Math.round(amount);
                     result.price = result.prices.usd;
                 }
             }
         } catch (e) {}
     }
 
-    window.liveBtcPrices = result.prices;
+    // Merge rather than replace — the CryptoCompare fallback only returns USD, and
+    // overwriting would drop rates the nav sparkline already fetched for other currencies.
+    for (var pc in result.prices) window.liveBtcPrices[pc] = result.prices[pc];
 
     // Fetch network difficulty
     try {
@@ -638,10 +654,13 @@ async function fetchLiveMarketData() {
     }
 
     function draw(timestamp) {
+        // Fully stop the loop while hidden; the visibilitychange handler restarts it.
+        // (Previously the rAF was re-queued unconditionally, so animId was never null
+        // and the restart handler below could never fire.)
+        if (document.hidden) { animId = null; return; }
         animId = requestAnimationFrame(draw);
         if (timestamp - lastFrame < FRAME_INTERVAL) return;
         lastFrame = timestamp;
-        if (document.hidden) return;
 
         var w = window.innerWidth;
         var h = window.innerHeight;
