@@ -1057,66 +1057,6 @@ function scheduleBacktest() {
 
 function ratePct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
 
-// --- Trailing-rate presets ---
-function renderRatePresets() {
-    var pairs = [
-        { hint: 'pricePresetHint', presets: 'pricePresets',
-          pts: histPrice ? histPrice.map(function(p) { return { time: p.time, value: p.close }; }) : null,
-          noun: 'BTC price' },
-        { hint: 'diffPresetHint', presets: 'diffPresets',
-          pts: histDifficulty ? NetworkHistory.toPoints(histDifficulty, 'difficulty') : null,
-          noun: 'difficulty' }
-    ];
-
-    pairs.forEach(function(p) {
-        var hintEl = document.getElementById(p.hint);
-        var box = document.getElementById(p.presets);
-        if (!hintEl || !box) return;
-        if (!p.pts) {
-            hintEl.textContent = 'Real rates unavailable (offline)';
-            box.style.display = 'none';
-            return;
-        }
-        var parts = [];
-        var btns = box.querySelectorAll('button');
-        for (var i = 0; i < btns.length; i++) {
-            var yrs = parseInt(btns[i].dataset.years, 10);
-            var r = NetworkHistory.trailingMonthlyRate(p.pts, yrs);
-            if (r === null) {
-                btns[i].disabled = true;
-                btns[i].title = 'Not enough history';
-                continue;
-            }
-            btns[i].dataset.rate = r.toFixed(2);
-            btns[i].title = 'Set to the actual trailing ' + yrs + '-year ' + p.noun + ' rate (' + ratePct(r) + '/mo)';
-            parts.push(yrs + 'Y ' + ratePct(r));
-        }
-        hintEl.textContent = parts.length ? parts.join('  ·  ') + ' per month' : '';
-    });
-}
-
-function wireRatePresets(boxId, inputEl) {
-    var box = document.getElementById(boxId);
-    if (!box) return;
-    box.addEventListener('click', function(e) {
-        var btn = e.target.closest('button');
-        if (!btn || btn.disabled || !btn.dataset.rate) return;
-        var btns = box.querySelectorAll('button');
-        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
-        btn.classList.add('active');
-        inputEl.value = btn.dataset.rate;
-        recalculate();
-    });
-}
-
-// Clear the "actual" highlight as soon as the user types their own number
-function clearPresetActive(boxId) {
-    var box = document.getElementById(boxId);
-    if (!box) return;
-    var btns = box.querySelectorAll('button');
-    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
-}
-
 // --- Backtest ---
 function renderBacktest() {
     var cardsEl = document.getElementById('btCards');
@@ -1281,7 +1221,6 @@ async function loadHistoricalData() {
     // Independent so one failing source does not blank the other feature
     try { histPrice = await PriceHistory.fetchPriceHistory(); } catch (e) { histPrice = null; }
     try { histDifficulty = await NetworkHistory.fetchDifficultyHistory(); } catch (e) { histDifficulty = null; }
-    renderRatePresets();
     renderBacktest();
 }
 
@@ -1290,11 +1229,6 @@ initNav('calculator');
 initChart();
 loadSettings();
 initMinerComparison();
-
-wireRatePresets('pricePresets', el.priceChange);
-wireRatePresets('diffPresets', el.diffChange);
-el.priceChange.addEventListener('input', function() { clearPresetActive('pricePresets'); });
-el.diffChange.addEventListener('input', function() { clearPresetActive('diffPresets'); });
 
 window.onCurrencyChange = function() {
     // fmtUSD() switches symbol immediately, so the BTC price input has to be re-denominated

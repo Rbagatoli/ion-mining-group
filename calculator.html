@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Calculator</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=264">
+    <link rel="stylesheet" href="./shared.css?v=265">
     <script>
     // Force-clear old service workers and caches (runs before any external scripts)
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
@@ -16,21 +16,13 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=264"></script>
+    <script src="./chart.min.js?v=265"></script>
     <style>
-        /* Trailing-rate presets under the growth-assumption inputs */
-        .rate-preset-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
-        .rate-preset-label { font-size:11px; color:#777; flex-shrink:0; }
-        .time-range-selector.rate-presets { margin:0; gap:4px; }
-        .time-range-selector.rate-presets button { padding:3px 9px; font-size:11px; }
-        .rate-preset-hint { font-size:11px; color:#777; margin-top:5px; line-height:1.45; }
         /* Reality-check callout under the backtest chart */
         .bt-reality { margin-top:14px; padding:12px 14px; border-radius:8px; font-size:12px; line-height:1.6;
             background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.18); color:#bbb; }
         .bt-reality strong { color:#f7931a; }
         .bt-reality .bt-warn { color:#fbbf24; }
-        [data-theme="light"] .rate-preset-label,
-        [data-theme="light"] .rate-preset-hint { color:#6b7280; }
         [data-theme="light"] .bt-reality { color:#444; }
 
         /* Scenarios */
@@ -237,15 +229,6 @@
                     <input type="number" id="priceChange" value="2" min="-50" max="100" step="0.1">
                     <span class="suffix">%</span>
                 </div>
-                <div class="rate-preset-row">
-                    <span class="rate-preset-label">Actual:</span>
-                    <div class="time-range-selector rate-presets" id="pricePresets">
-                        <button type="button" data-years="1">1Y</button>
-                        <button type="button" data-years="2">2Y</button>
-                        <button type="button" data-years="3">3Y</button>
-                    </div>
-                </div>
-                <div class="rate-preset-hint" id="pricePresetHint">loading real rates&hellip;</div>
             </div>
             <div class="input-group">
                 <label>Current Network Difficulty</label>
@@ -260,15 +243,6 @@
                     <input type="number" id="diffChange" value="3" min="-50" max="100" step="0.1">
                     <span class="suffix">%</span>
                 </div>
-                <div class="rate-preset-row">
-                    <span class="rate-preset-label">Actual:</span>
-                    <div class="time-range-selector rate-presets" id="diffPresets">
-                        <button type="button" data-years="1">1Y</button>
-                        <button type="button" data-years="2">2Y</button>
-                        <button type="button" data-years="3">3Y</button>
-                    </div>
-                </div>
-                <div class="rate-preset-hint" id="diffPresetHint">loading real rates&hellip;</div>
             </div>
             <div class="input-group">
                 <label>Period Length</label>
@@ -549,19 +523,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=264"></script>
-<script src="./sync.js?v=264"></script>
-<script src="./auth-ui.js?v=264"></script>
-<script src="./profile-panel.js?v=264"></script>
-<script src="./shared.js?v=264"></script>
-<script src="./fleet-data.js?v=264"></script>
-<script src="./miner-db.js?v=264"></script>
-<script src="./price-history.js?v=264"></script>
-<script src="./network-history.js?v=264"></script>
-<script src="./calc-engine.js?v=264"></script>
-<script src="./calculator.js?v=264"></script>
-<script src="./widget-settings.js?v=264"></script>
-<script src="./alerts.js?v=264"></script>
-<script src="./onboarding.js?v=264"></script>
+<script src="./firebase-config.js?v=265"></script>
+<script src="./sync.js?v=265"></script>
+<script src="./auth-ui.js?v=265"></script>
+<script src="./profile-panel.js?v=265"></script>
+<script src="./shared.js?v=265"></script>
+<script src="./fleet-data.js?v=265"></script>
+<script src="./miner-db.js?v=265"></script>
+<script src="./price-history.js?v=265"></script>
+<script src="./network-history.js?v=265"></script>
+<script src="./calc-engine.js?v=265"></script>
+<script src="./calculator.js?v=265"></script>
+<script src="./widget-settings.js?v=265"></script>
+<script src="./alerts.js?v=265"></script>
+<script src="./onboarding.js?v=265"></script>
 </body>
 </html>
