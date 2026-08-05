@@ -67,7 +67,21 @@ function sharedStrings(xml) {
     });
 }
 
-var CELL_RE = /<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/g;
+// The SELF-CLOSING alternative must come FIRST.
+//
+// The previous order was `<c ...>body</c>` first, and its attribute group `([^>]*)` happily
+// swallowed the trailing slash of an empty cell like `<c r="Y2" s="8"/>`. The pattern then ran
+// lazily forward to the NEXT cell's `</c>`, merging two cells into one: attributes came from the
+// empty cell, the value came from its neighbour, and because the neighbour's `t="s"` was left
+// behind in the discarded text, shared-string INDICES were emitted as raw numbers.
+//
+// Observed in the LMOP export: `<c r="Y2" s="8"/><c r="Z2" s="6" t="s"><v>79</v></c>` produced
+// the number 79 in Y's column instead of an empty Y and the string "Direct" in Z. Every later
+// column in such a row shifted, silently.
+//
+// With self-closing tried first, `[^>]*` cannot reach past the slash, so an empty cell matches as
+// an empty cell. Capture groups: 1 = self-closing attrs, 2 = open-tag attrs, 3 = body.
+var CELL_RE = /<c\b([^>]*)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
 
 function parseSheet(xml, strings) {
     var rows = [];
@@ -77,8 +91,8 @@ function parseSheet(xml, strings) {
         CELL_RE.lastIndex = 0;
         var m;
         while ((m = CELL_RE.exec(rowMatches[r])) !== null) {
-            var attrs = m[1] !== undefined ? m[1] : m[3];
-            var body = m[2] === undefined ? '' : m[2];
+            var attrs = m[1] !== undefined ? m[1] : m[2];
+            var body = m[3] === undefined ? '' : m[3];
 
             // Honour the column reference so a sparse row keeps its alignment. Without this a
             // blank cell shifts every later column left by one and the whole row is garbage.
@@ -233,8 +247,8 @@ function parseRowCells(rowXml, strings) {
     CELL_RE.lastIndex = 0;
     var m;
     while ((m = CELL_RE.exec(rowXml)) !== null) {
-        var attrs = m[1] !== undefined ? m[1] : m[3];
-        var body = m[2] === undefined ? '' : m[2];
+        var attrs = m[1] !== undefined ? m[1] : m[2];
+        var body = m[3] === undefined ? '' : m[3];
         var ref = /r="([A-Z]+)\d+"/.exec(attrs);
         if (ref) {
             var col = 0, letters = ref[1];
