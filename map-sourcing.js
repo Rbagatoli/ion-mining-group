@@ -337,6 +337,12 @@ var MapSourcing = (function() {
         applyFilters();
     }
 
+    function saveFiltersSources() {
+        try {
+            localStorage.setItem(SRC_FILTER_KEY, JSON.stringify({ _v: 1, ids: Object.keys(_srcFilter) }));
+        } catch (e) {}
+    }
+
     function saveScenario() {
         // Every scenario change alters pricing, so the memoised evaluations and scores must go.
         // This is the single choke point for scenario edits, which is why the invalidation lives
@@ -433,6 +439,7 @@ var MapSourcing = (function() {
     // and having it jump on another device would be its own bug.
     var FILTER_KEY = 'ionMiningProspectFilters';
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
+    var SRC_FILTER_KEY = 'ionMiningProspectSources';
     var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning'];
 
     function saveFilters() {
@@ -477,6 +484,58 @@ var MapSourcing = (function() {
     }
 
     // ---- filters --------------------------------------------------------------------
+    // Which sources are selected. An EMPTY set means all of them, so the default behaviour is
+    // unchanged for anyone who never touches this control, and a newly registered adapter is
+    // included rather than silently excluded.
+    var _srcFilter = {};
+
+    function renderSourceFilter() {
+        var el = document.getElementById('fSources');
+        if (!el || typeof ProspectStore === 'undefined' || !ProspectStore.loaded()) return;
+        var srcs = ProspectStore.sources().filter(function(s) { return s.count > 0; });
+        // With only one source the control is noise.
+        if (srcs.length < 2) { el.innerHTML = ''; return; }
+        var any = Object.keys(_srcFilter).length > 0;
+        var h = '';
+        for (var i = 0; i < srcs.length; i++) {
+            var on = !any || _srcFilter[srcs[i].id];
+            h += '<button type="button" class="src-srcbtn' + (on ? ' on' : '') +
+                 '" data-src="' + esc(srcs[i].id) + '">' + esc(srcs[i].label) +
+                 '<span class="n">' + fmtInt(srcs[i].count) + '</span></button>';
+        }
+        el.innerHTML = h;
+    }
+
+    function wireSourceFilter() {
+        var el = document.getElementById('fSources');
+        if (!el) return;
+        el.addEventListener('click', function(e) {
+            var b = e.target.closest('.src-srcbtn');
+            if (!b) return;
+            var id = b.getAttribute('data-src');
+            var srcs = ProspectStore.sources().filter(function(s) { return s.count > 0; });
+            // First click on an "all selected" state isolates the one clicked, which is what
+            // someone reaching for this control almost always wants.
+            if (!Object.keys(_srcFilter).length) {
+                _srcFilter = {};
+                _srcFilter[id] = true;
+            } else if (_srcFilter[id]) {
+                delete _srcFilter[id];
+                // Deselecting the last one returns to showing everything rather than nothing —
+                // an empty list here would read as a bug.
+                if (!Object.keys(_srcFilter).length) _srcFilter = {};
+            } else {
+                _srcFilter[id] = true;
+                // All selected is the same as none selected; normalise so the state is
+                // unambiguous.
+                if (Object.keys(_srcFilter).length === srcs.length) _srcFilter = {};
+            }
+            renderSourceFilter();
+            saveFiltersSources();
+            applyFilters();
+        });
+    }
+
     function currentFilters() {
         var meta = SiteCatalog.meta();
         var size = sizeBounds();
@@ -489,6 +548,7 @@ var MapSourcing = (function() {
             onshoreOnly: document.getElementById('fOnshore').checked,
             activeThrough: document.getElementById('fActive').checked && meta ? meta.dataThrough : null,
             tiers: document.getElementById('fWorkable').checked ? ['preferred', 'workable'] : null,
+            sources: Object.keys(_srcFilter).length ? Object.keys(_srcFilter) : null,
             hasOperator: document.getElementById('fOperator').checked,
             confirmedBurning: (function() {
                 var el = document.getElementById('fBurning');
@@ -2050,6 +2110,14 @@ var MapSourcing = (function() {
         wireTable();
         wireViews();
         wireWorklist();
+        wireSourceFilter();
+        try {
+            var savedSrc = JSON.parse(localStorage.getItem(SRC_FILTER_KEY) || 'null');
+            if (savedSrc && savedSrc.ids && savedSrc.ids.length) {
+                for (var si = 0; si < savedSrc.ids.length; si++) _srcFilter[savedSrc.ids[si]] = true;
+            }
+        } catch (e) {}
+        renderSourceFilter();
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();
