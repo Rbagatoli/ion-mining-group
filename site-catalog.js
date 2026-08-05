@@ -72,7 +72,24 @@ var SiteCatalog = (function() {
             _meta = data;
             if (onProgress) onProgress(data.sites.length);
             _all = new Array(data.sites.length);
-            for (var i = 0; i < data.sites.length; i++) _all[i] = rowToCandidate(data.sites[i], i, data);
+            // EOG occasionally publishes two records at byte-identical coordinates — separate
+            // flares at one facility, or a double-count. They are NOT merged: they overlap in
+            // years with different volumes, so collapsing them would corrupt both. But they must
+            // not share an id either, because get(), operatorFor() and livenessFor() all key off
+            // it and would silently conflate two sites into one. Collisions get a stable ordinal
+            // suffix; row order in the artifact is deterministic, so the suffix is too.
+            var idSeen = {};
+            for (var i = 0; i < data.sites.length; i++) {
+                var cand = rowToCandidate(data.sites[i], i, data);
+                if (idSeen[cand.id] === undefined) {
+                    idSeen[cand.id] = 1;
+                } else {
+                    idSeen[cand.id] += 1;
+                    cand.id = cand.id + '_' + idSeen[cand.id];
+                    cand.idCollision = true;    // surfaced in the detail view rather than hidden
+                }
+                _all[i] = cand;
+            }
             return { meta: _meta, candidates: _all };
         }).catch(function(e) {
             _loading = null;                    // allow a retry rather than caching the failure
