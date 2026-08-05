@@ -19,7 +19,8 @@ var SyncEngine = (function() {
         alerts:      { lsKey: 'ionMiningAlerts' },
         currency:    { lsKey: 'ionMiningCurrency' },
         theme:       { lsKey: 'ionMiningTheme' },
-        scenarios:   { lsKey: 'ionMiningScenarios' }
+        scenarios:   { lsKey: 'ionMiningScenarios' },
+        sites:       { lsKey: 'ionMiningSites' }
     };
 
     function getDb() {

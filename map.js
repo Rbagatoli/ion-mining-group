@@ -292,6 +292,73 @@ function buildStatePopup(loc) {
 
 // ===== LEAFLET FLAT MAP =====
 var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
+
+// ===== MapBridge =====
+// The seam between this file (fleet view, unchanged behaviour) and map-sourcing.js (flare
+// prospects). Everything the sourcing layer needs goes through here so map.js keeps ownership
+// of the map objects and there is one obvious place to look when the two interact.
+//
+// Fleet mode must behave EXACTLY as it did before this existed; the mode flag defaults to
+// 'fleet' and nothing below runs until something explicitly switches it.
+var MapBridge = (function() {
+    var _mode = 'fleet';
+    var _fleetPoints = [];              // globe points owned by the fleet view
+    var _restyle = null;                // set once the Leaflet geo layer exists
+    var _onModeChange = [];
+
+    return {
+        mode: function() { return _mode; },
+        setMode: function(m) {
+            if (m !== 'fleet' && m !== 'prospects') return;
+            _mode = m;
+            if (_restyle) _restyle();               // Leaflet choropleth
+            this.refreshGlobePolygons();            // globe country fill
+            this.setFleetMarkersVisible(m === 'fleet');
+            for (var i = 0; i < _onModeChange.length; i++) _onModeChange[i](m);
+        },
+        onModeChange: function(fn) { _onModeChange.push(fn); },
+
+        // globe.gl caches accessor output, so a mode change is invisible until the accessors are
+        // re-assigned. Handing each one back to itself is the documented way to force a redraw
+        // without duplicating the colour logic here.
+        refreshGlobePolygons: function() {
+            var g = this.globe();
+            if (!g) return;
+            try {
+                g.polygonCapColor(g.polygonCapColor())
+                 .polygonStrokeColor(g.polygonStrokeColor())
+                 .polygonAltitude(g.polygonAltitude());
+            } catch (e) { /* globe not ready yet; it will pick the mode up on first render */ }
+        },
+
+        // The flat map's per-state fleet circles are added straight to the map and are not part
+        // of the choropleth, so dimming the polygons left them floating over the prospects.
+        setFleetMarkersVisible: function(on) {
+            if (!leafletMap) return;
+            for (var k in leafletStateMarkers) {
+                if (!Object.prototype.hasOwnProperty.call(leafletStateMarkers, k)) continue;
+                var mk = leafletStateMarkers[k];
+                if (!mk) continue;
+                if (on) { if (!leafletMap.hasLayer(mk)) mk.addTo(leafletMap); }
+                else if (leafletMap.hasLayer(mk)) leafletMap.removeLayer(mk);
+            }
+        },
+
+        // Called by map.js once the choropleth exists. Restyling re-invokes the style function,
+        // which is what makes the mode switch visible.
+        _registerRestyle: function(fn) { _restyle = fn; },
+
+        setFleetPoints: function(pts) { _fleetPoints = pts || []; },
+        fleetPoints: function() { return _fleetPoints; },
+
+        globe: function() { return typeof _globeRef === 'function' ? _globeRef() : null; },
+        leaflet: function() { return leafletMap || null; },
+        geoLayer: function() { return leafletGeoLayer || null; },
+        showGlobePopup: function(html, lat, lng, evt) {
+            if (typeof _showGlobePopupRef === 'function') _showGlobePopupRef(html, lat, lng, evt);
+        }
+    };
+})();
 (function() {
     var map = L.map('fleetMap', {
         center: [20, 0],
@@ -319,30 +386,49 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
         .then(function(world) {
             var countriesGeo = topojson.feature(world, world.objects.countries);
 
-            var geoLayer = L.geoJSON(countriesGeo, {
-                style: function(feature) {
-                    var a2 = NUM_TO_A2[String(feature.id)];
-                    var data = a2 ? countryData[a2] : null;
+            // Extracted from the L.geoJSON options so Prospects mode can dim the choropleth by
+            // changing what this RETURNS. It must not be done with setStyle(): resetStyle()
+            // fires on every country mouseout below and would wipe an imperative override on
+            // the first hover.
+            function countryStyle(feature) {
+                var a2 = NUM_TO_A2[String(feature.id)];
+                var data = a2 ? countryData[a2] : null;
 
-                    if (data && maxCountryHash > 0) {
-                        var ratio = data.totalHashrate / maxCountryHash;
-                        var opacity = 0.15 + ratio * 0.60;
-                        return {
-                            fillColor: '#f7931a',
-                            fillOpacity: opacity,
-                            weight: 1.5,
-                            color: 'rgba(247,147,26,0.5)',
-                            opacity: 0.7
-                        };
-                    }
+                // Prospects mode: outline only. The fleet layer dims rather than disappearing,
+                // so thousands of flare points stay legible while the user keeps country
+                // context — filled polygons under dense points are unreadable.
+                if (MapBridge.mode() === 'prospects') {
                     return {
                         fillColor: '#f7931a',
-                        fillOpacity: 0.02,
-                        weight: 0.5,
-                        color: '#333',
-                        opacity: 0.3
+                        fillOpacity: 0,
+                        weight: data ? 1 : 0.5,
+                        color: data ? 'rgba(247,147,26,0.55)' : '#333',
+                        opacity: data ? 0.6 : 0.25
                     };
-                },
+                }
+
+                if (data && maxCountryHash > 0) {
+                    var ratio = data.totalHashrate / maxCountryHash;
+                    var opacity = 0.15 + ratio * 0.60;
+                    return {
+                        fillColor: '#f7931a',
+                        fillOpacity: opacity,
+                        weight: 1.5,
+                        color: 'rgba(247,147,26,0.5)',
+                        opacity: 0.7
+                    };
+                }
+                return {
+                    fillColor: '#f7931a',
+                    fillOpacity: 0.02,
+                    weight: 0.5,
+                    color: '#333',
+                    opacity: 0.3
+                };
+            }
+
+            var geoLayer = L.geoJSON(countriesGeo, {
+                style: countryStyle,
                 onEachFeature: function(feature, layer) {
                     var a2 = NUM_TO_A2[String(feature.id)];
                     var data = a2 ? countryData[a2] : null;
@@ -352,6 +438,10 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
                     var baseOpacity = 0.15 + ratio * 0.60;
 
                     layer.on('mouseover', function() {
+                        // In Prospects mode the fill is deliberately off; re-introducing it on
+                        // hover would undo the dimming and bringToFront() would lift the polygon
+                        // above the flare markers.
+                        if (MapBridge.mode() === 'prospects') return;
                         layer.setStyle({
                             fillOpacity: Math.min(baseOpacity + 0.15, 0.9),
                             weight: 2,
@@ -383,6 +473,9 @@ var leafletMap, leafletGeoLayer, leafletStateMarkers = {};
                 }
             }).addTo(map);
             leafletGeoLayer = geoLayer;
+            // Restyling re-invokes countryStyle for every feature, which is how a mode switch
+            // becomes visible without ever calling setStyle imperatively.
+            MapBridge._registerRestyle(function() { geoLayer.setStyle(countryStyle); });
 
             // State-level circle markers
             for (var si = 0; si < locKeys.length; si++) {
@@ -630,7 +723,11 @@ var _globeRef = null, _showGlobePopupRef = null;
 
                 globeInstance
                     .polygonsData(countriesGeo.features)
+                    // Mode-aware, exactly like the Leaflet choropleth. Dimming only the flat map
+                    // left the GLOBE still painting every country with fleet hashrate, which is
+                    // what the fleet layer looked like bleeding through Prospects mode.
                     .polygonCapColor(function(feat) {
+                        if (MapBridge.mode() === 'prospects') return 'rgba(247, 147, 26, 0.02)';
                         var a2 = NUM_TO_A2[String(feat.id)];
                         var data = a2 ? countryData[a2] : null;
                         if (data && maxCountryHash > 0) {
@@ -642,10 +739,14 @@ var _globeRef = null, _showGlobePopupRef = null;
                     })
                     .polygonSideColor(function() { return 'rgba(247, 147, 26, 0.05)'; })
                     .polygonStrokeColor(function(feat) {
+                        if (MapBridge.mode() === 'prospects') return '#333';
                         var a2 = NUM_TO_A2[String(feat.id)];
                         return countryData[a2] ? 'rgba(247, 147, 26, 0.4)' : '#222';
                     })
                     .polygonAltitude(function(feat) {
+                        // Flat backdrop in Prospects mode: raised countries would occlude the
+                        // flare columns rising out of them.
+                        if (MapBridge.mode() === 'prospects') return 0.001;
                         var a2 = NUM_TO_A2[String(feat.id)];
                         var data = a2 ? countryData[a2] : null;
                         if (data && maxCountryHash > 0) {
@@ -671,6 +772,14 @@ var _globeRef = null, _showGlobePopupRef = null;
                         showGlobePopup(buildPopup(a2, data), pLat, pLng, evt);
                     })
                     .onPolygonHover(function(hoverFeat) {
+                        // This reassigns polygonAltitude on EVERY hover event, so it silently
+                        // owns that accessor. In Prospects mode the countries are flattened
+                        // backdrop and raising one under the cursor fights the flare markers,
+                        // so the fleet hover effect stands down rather than competing.
+                        if (MapBridge.mode() === 'prospects') {
+                            globeContainer.style.cursor = 'default';
+                            return;
+                        }
                         globeInstance.polygonAltitude(function(feat) {
                             var a2 = NUM_TO_A2[String(feat.id)];
                             var data = a2 ? countryData[a2] : null;
@@ -694,6 +803,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                     var stateMiners = loc.onlineCount + loc.offlineCount;
                     var stateRatio = maxCountryHash > 0 ? loc.totalHashrate / maxCountryHash : 0.3;
                     statePoints.push({
+                        kind: 'fleet',        // discriminator — see onPointClick below
                         lat: centroid.lat,
                         lng: centroid.lng,
                         size: 0.15 + stateRatio * 0.5,
@@ -703,6 +813,9 @@ var _globeRef = null, _showGlobePopupRef = null;
                         locData: loc
                     });
                 }
+                // Handed to MapBridge so Prospects mode can swap the point layer out and put
+                // these back untouched on the way home.
+                MapBridge.setFleetPoints(statePoints);
 
                 globeInstance
                     .pointsData(statePoints)
@@ -715,6 +828,15 @@ var _globeRef = null, _showGlobePopupRef = null;
                         return '<div class="globe-tooltip">' + escapeHtml(d.label) + ' (' + d.miners + ' miners)</div>';
                     })
                     .onPointClick(function(point, evt) {
+                        // Guard added when the globe gained a second kind of point. This handler
+                        // used to call buildStatePopup(point.locData) unconditionally, which
+                        // throws on any point without locData — so a flare marker in the shared
+                        // layer would have taken the globe down.
+                        if (!point || point.kind === 'flare') {
+                            if (typeof MapSourcing !== 'undefined' && point) MapSourcing.selectFromMap(point.id);
+                            return;
+                        }
+                        if (!point.locData) return;
                         showGlobePopup(buildStatePopup(point.locData), point.lat, point.lng, evt);
                     })
                     .onGlobeClick(function() {

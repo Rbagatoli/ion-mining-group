@@ -19,3 +19,9 @@ Thumbs.db
 
 # Backups
 *.bak
+
+# NASA FIRMS API key — never commit
+tools/.firms-key
+
+# FIRMS raw response cache — 374 MB of API responses, regenerable
+tools/.cache/

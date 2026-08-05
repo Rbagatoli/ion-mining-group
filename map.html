@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Fleet Map</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=265">
+    <link rel="stylesheet" href="./shared.css?v=280">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <script src="./chart.min.js?v=280"></script>
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -16,6 +17,195 @@
         });
     }
     </script>
+    <style>
+        /* Mode visibility is driven by a body attribute rather than inline display, because
+           widget-settings.js writes inline styles onto every .widget-section AFTER this page's
+           script runs and would otherwise reveal the hidden mode. An !important rule in an
+           author stylesheet outranks a normal inline style, so this stays authoritative. */
+        body[data-map-mode="fleet"] .prospects-only { display:none !important; }
+        body[data-map-mode="prospects"] .fleet-only { display:none !important; }
+
+        .map-mode-row { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+        .map-mode-toggle { display:flex; gap:6px; }
+        .src-status { font-size:11px; color:#777; margin:0 0 8px; min-height:14px; }
+
+        .src-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; align-items:end; }
+        .src-field label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#888; margin-bottom:4px; }
+        /* Matches .input-wrapper in shared.css — this page previously had no form controls, so
+           bare inputs fell back to the browser default (white on a dark page). */
+        .src-field select, .src-field input, .src-field textarea {
+            width:100%; background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.08);
+            border-radius:6px; color:#e8e8e8; font-size:13px; padding:6px 8px;
+            font-family:inherit; outline:none; transition:border-color .2s, box-shadow .2s;
+        }
+        .src-field select:focus, .src-field input:focus, .src-field textarea:focus {
+            border-color:#f7931a; box-shadow:0 0 0 2px rgba(247,147,26,.20);
+        }
+        .src-field select option { background:#1a1a1a; color:#e8e8e8; }
+        .src-field textarea { resize:vertical; }
+        .src-sizehint { font-size:11px; color:#8ac; margin-top:8px; min-height:15px; }
+
+        /* Dual-thumb range. There is no native two-handle slider, so two <input type=range>
+           are stacked and only their thumbs are interactive; the bar itself is the divs below.
+           pointer-events:none on the input with :auto on the thumb is what lets the lower
+           thumb stay grabbable when the two overlap. */
+        .src-field-wide { grid-column:1 / -1; }
+        .range-dual { position:relative; height:30px; margin-top:6px; }
+        .range-track, .range-fill {
+            position:absolute; top:13px; height:4px; border-radius:2px; pointer-events:none;
+        }
+        .range-track { left:0; right:0; background:rgba(255,255,255,.10); }
+        .range-fill  { background:#f7931a; }
+        .range-dual input[type=range] {
+            position:absolute; left:0; top:0; width:100%; height:30px; margin:0;
+            background:none; pointer-events:none; -webkit-appearance:none; appearance:none;
+        }
+        .range-dual input[type=range]:focus { outline:none; }
+        .range-dual input[type=range]::-webkit-slider-runnable-track { background:none; border:none; }
+        .range-dual input[type=range]::-moz-range-track { background:none; border:none; }
+        .range-dual input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance:none; appearance:none; pointer-events:auto; cursor:grab;
+            width:16px; height:16px; border-radius:50%; margin-top:7px;
+            background:#f7931a; border:2px solid #1a1a1a; box-shadow:0 0 0 1px rgba(247,147,26,.6);
+        }
+        .range-dual input[type=range]::-webkit-slider-thumb:active { cursor:grabbing; }
+        .range-dual input[type=range]::-moz-range-thumb {
+            pointer-events:auto; cursor:grab; width:16px; height:16px; border-radius:50%;
+            background:#f7931a; border:2px solid #1a1a1a; box-shadow:0 0 0 1px rgba(247,147,26,.6);
+        }
+        .range-ends { display:flex; justify-content:space-between; font-size:11px; color:#f7931a;
+                      font-weight:600; margin-top:-2px; }
+        .src-checks { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:12px; color:#bbb; }
+        .src-checks label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+
+        /* Fleet mode: map full width. Prospects mode: map left, ranked list right. */
+        .map-with-list { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+        body[data-map-mode="prospects"] .map-with-list { grid-template-columns:minmax(0,1fr) 340px; }
+        @media (max-width:900px){
+            body[data-map-mode="prospects"] .map-with-list { grid-template-columns:1fr; }
+        }
+        .map-pane { min-width:0; }
+        .src-listcard { align-self:stretch; display:flex; flex-direction:column; }
+        /* Track the map's height so the list scrolls beside it rather than past it. */
+        .src-list { overflow-y:auto; flex:1; min-height:280px; max-height:540px; }
+        .src-count { font-size:11px; color:#888; padding:7px 10px; border-bottom:1px solid rgba(255,255,255,.06);
+                     display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .src-unfocus { background:rgba(247,147,26,.15); border:1px solid rgba(247,147,26,.5); color:#f7931a;
+                       border-radius:6px; padding:3px 9px; font-size:11px; cursor:pointer; }
+        .src-unfocus:hover { background:rgba(247,147,26,.28); }
+        .src-row { display:grid; grid-template-columns:1fr auto; gap:8px; padding:9px 10px;
+                   border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; font-size:12px; }
+        .src-row:hover { background:rgba(247,147,26,.07); }
+        .src-row.sel { background:rgba(247,147,26,.14); }
+        .src-row .t { font-weight:600; color:#eee; }
+        .src-row .s { color:#888; font-size:11px; margin-top:2px; }
+        .src-row .kw { color:#f7931a; font-weight:600; text-align:right; white-space:nowrap; }
+        .src-row .yr { color:#7a7; font-size:10px; text-align:right; }
+        .src-op { color:#8ac; }
+        .src-burning { color:#3ecf8e; font-weight:600; }
+        .src-sub2 { color:#777; font-weight:400; }
+
+        .src-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; letter-spacing:.04em;
+                     text-transform:uppercase; margin-left:5px; vertical-align:middle; }
+        .src-badge.t-preferred  { background:rgba(60,200,120,.18); color:#5c9; }
+        .src-badge.t-workable   { background:rgba(120,170,255,.15); color:#8ac; }
+        .src-badge.t-restricted { background:rgba(255,180,60,.15);  color:#db2; }
+        .src-badge.t-prohibited { background:rgba(255,80,80,.15);   color:#e66; }
+        .src-badge.t-unknown    { background:rgba(160,160,160,.15); color:#999; }
+
+        .src-detailgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:18px; }
+        .src-detail dl { margin:0; }
+        .src-detail dt { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#888; margin-top:9px; }
+        .src-detail dd { margin:1px 0 0; font-size:13px; color:#eee; font-weight:600; }
+        .src-detail .section-label { margin:0 0 4px; }
+        .src-assume { color:#c85; font-weight:400; font-size:11px; }
+        .src-assumerow { margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+        .src-note { font-size:11px; color:#777; line-height:1.55; }
+        .src-note a { color:#f7931a; }
+        .src-gap { color:#c85; font-style:italic; font-weight:400; }
+        .src-empty { padding:26px 12px; text-align:center; color:#777; font-size:12px; }
+
+        .src-contact { margin-top:20px; padding-top:14px; border-top:1px solid rgba(255,255,255,.07); }
+        .src-op-big { font-size:19px; font-weight:600; color:#3ecf8e; margin:2px 0 4px; }
+        .src-crm { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
+        .src-crm-wide { display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-top:10px; }
+        .src-saverow { margin-top:12px; display:flex; align-items:center; gap:10px; }
+        .src-savebtn { background:rgba(247,147,26,.16); border:1px solid rgba(247,147,26,.55); color:#f7931a;
+                       border-radius:7px; padding:7px 15px; font-size:12px; font-weight:600; cursor:pointer; }
+        .src-savebtn:hover { background:rgba(247,147,26,.3); }
+        .src-ticker { display:inline-block; margin-left:8px; padding:2px 7px; border-radius:5px;
+                      font-size:11px; font-weight:600; letter-spacing:.04em;
+                      background:rgba(120,170,255,.15); color:#8ac; vertical-align:middle; }
+        .src-ticker.priv { background:rgba(160,160,160,.15); color:#999; }
+        .src-registry { margin-top:10px; border:1px solid rgba(255,255,255,.07); border-radius:8px;
+                        background:rgba(0,0,0,.25); padding:10px 12px; }
+        .src-reg-row { display:grid; grid-template-columns:130px 1fr; gap:8px; padding:4px 0; font-size:12px; }
+        .src-reg-k { color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding-top:2px; }
+        .src-reg-v { color:#e8e8e8; }
+        a.src-reg-v { color:#3ecf8e; text-decoration:none; }
+        a.src-reg-v:hover { text-decoration:underline; }
+        .src-portfolio { margin-top:10px; font-size:12px; color:#bbb; line-height:1.6;
+                         border-left:2px solid rgba(247,147,26,.5); padding-left:10px; }
+        .src-linkbtn { background:none; border:none; color:#f7931a; cursor:pointer; font-size:12px;
+                       padding:0; font-family:inherit; text-decoration:underline; }
+        @media (max-width:600px){ .src-reg-row { grid-template-columns:1fr; gap:2px; } }
+        /* Inline explanation panels. These sit INSIDE their widget and push content down,
+           rather than floating. A fixed-position popover is one transformed ancestor away from
+           landing in the wrong place, and it cannot be scrolled through with the widget it
+           describes; anchoring the text to the thing it explains removes both problems. */
+        .info-panel {
+            display:none; margin:8px 0 14px; padding:14px 16px; border-radius:10px;
+            border:1px solid rgba(247,147,26,.28); background:rgba(247,147,26,.05);
+            border-left:3px solid #f7931a;
+        }
+        .info-panel.open { display:block; }
+        .info-panel h4 { color:#f7931a; font-size:13px; margin:0 0 8px; }
+        .info-panel p { font-size:12px; line-height:1.65; color:#bdbdbd; margin:0 0 9px; }
+        .info-panel p:last-child { margin-bottom:0; }
+        .info-panel strong { color:#eee; }
+        .info-panel .k { color:#3ecf8e; font-weight:600; }
+        .info-panel ol { margin:0 0 9px; padding-left:18px; }
+        .info-panel li { font-size:12px; line-height:1.6; color:#bdbdbd; margin-bottom:6px; }
+        .info-panel .cav { border-top:1px solid rgba(255,255,255,.09); margin-top:10px; padding-top:9px; }
+        .sec-head { display:flex; align-items:center; gap:8px; }
+        .info-btn {
+            width:17px; height:17px; flex:0 0 17px; border-radius:50%; cursor:pointer;
+            border:1px solid rgba(247,147,26,.55); background:rgba(247,147,26,.12); color:#f7931a;
+            font-size:11px; font-weight:700; line-height:1; font-family:Georgia, serif;
+            display:inline-flex; align-items:center; justify-content:center; padding:0;
+            transition:background .15s, transform .15s;
+        }
+        .info-btn:hover { background:rgba(247,147,26,.3); transform:scale(1.12); }
+        .info-btn[aria-expanded="true"] { background:#f7931a; color:#131313; }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        .scn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; align-items:end; }
+        .scn-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+        .scn-dirty { color:#c85; }
+
+        .pf-headline { border:1px solid rgba(247,147,26,.35); border-radius:10px; padding:14px 16px;
+                       background:linear-gradient(180deg, rgba(247,147,26,.10), rgba(247,147,26,.03)); }
+        .pf-hl-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:#c99; }
+        .pf-hl-value { font-size:30px; font-weight:700; color:#f7931a; line-height:1.15; margin-top:2px; }
+        .pf-hl-sub { font-size:11px; color:#888; margin-top:2px; }
+
+        .src-row { grid-template-columns:auto 1fr auto; }
+        .pf-check { display:flex; align-items:flex-start; padding-top:2px; }
+        .pf-check input { cursor:pointer; }
+        .src-missing, .src-trendwrap { margin-top:18px; }
+        @media (max-width:600px){ .src-crm-wide { grid-template-columns:1fr; } }
+    </style>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
@@ -23,14 +213,14 @@
 <nav id="ion-nav"></nav>
 
 <header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
-    <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;">Fleet Map</h1>
-    <p style="color:#888; font-size:12px;">Geographic distribution of mining operations</p>
+    <h1 style="font-size:22px; font-weight:600; color:#f7931a; margin-bottom:2px;" id="mapPageTitle">Fleet Map</h1>
+    <p style="color:#888; font-size:12px;" id="mapPageSub">Geographic distribution of mining operations</p>
 </header>
 
 <main>
 
     <!-- ===== MAP SUMMARY METRICS ===== -->
-    <div class="widget-section" data-widget="map-summary">
+    <div class="widget-section fleet-only" data-widget="map-summary">
     <div class="section-label">Fleet Map</div>
     <section class="fleet-grid">
         <div class="metric-card">
@@ -61,26 +251,287 @@
     </section>
     </div>
 
+    <!-- ===== PROSPECT SUMMARY (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-summary" style="display:none;">
+    <div class="section-label">Catalog</div>
+    <section class="fleet-grid">
+        <div class="metric-card">
+            <div class="label">Sites Matching</div>
+            <div class="value btc-orange" id="sumMatching">--</div>
+            <div class="sub" id="sumMatchingSub">of -- in catalog</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Combined Potential</div>
+            <div class="value" id="sumPower">--</div>
+            <div class="sub">MW available</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Miners Supported</div>
+            <div class="value positive" id="sumMiners">--</div>
+            <div class="sub">at 3,510 W each</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Burning Every Year</div>
+            <div class="value" id="sumPersistent">--</div>
+            <div class="sub" id="sumPersistentSub">seen in all years</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Operator Known</div>
+            <div class="value neutral" id="sumOperator">--</div>
+            <div class="sub" id="sumOperatorSub">company identified</div>
+        </div>
+    </section>
+    </div>
+
     <!-- ===== FLEET MAP ===== -->
     <div class="widget-section" data-widget="fleet-map">
-    <div class="map-view-toggle">
-        <button class="map-toggle-btn" id="btnGlobeView" data-view="globe">Globe</button>
-        <button class="map-toggle-btn" id="btnMapView" data-view="map">Map</button>
+    <div class="sec-head"><div class="section-label">Map</div><button class="info-btn prospects-only" type="button" data-info="globe" aria-label="What is this?" aria-expanded="false">i</button></div>
+    <div class="info-panel" id="infoPanel-globe">
+<h4>How these sites were found — from orbit</h4>
+<p>Nobody surveyed these on the ground. Every site here was spotted by satellite, and the size figures are
+derived from what the sensor actually measured.</p>
+<ol>
+<li><strong>The satellite sees the fire.</strong> NASA’s VIIRS instrument passes overhead each night
+reading infrared. A gas flare burns at roughly <span class="k">1,500–1,900 K</span>, far hotter than
+anything else on the landscape, so it stands out unmistakably against cold ground.</li>
+<li><strong>Location comes from the pixel.</strong> Each detection is fixed to about
+<span class="k">375 m</span> — the sensor’s resolution. That is the coordinate you see: accurate to
+about a wellpad, not to a particular stack.</li>
+<li><strong>Size comes from the heat.</strong> Temperature and the glowing area together give radiant heat
+output, which converts to gas volume in billions of cubic metres per year using a calibration fitted
+against reported production figures.</li>
+<li><strong>Gas becomes power.</strong> Volume converts to megawatts through two constants: pipeline gas
+carries about <span class="k">1,000 BTU per cubic foot</span>, and a reciprocating generator burns roughly
+<span class="k">10,000 BTU per kWh</span>. That works out to <strong>1 MMcf/day ≈ 4 MW</strong> — so a
+site burning 250 Mcf/day supports about 1 MW, or roughly 285 miners.</li>
+<li><strong>Six years, cross-checked.</strong> Annual surveys from 2017 to 2022 are matched against each
+other: detections within <span class="k">500 m</span> in different years are treated as the same site. How
+many years a site appears in is its persistence — the strongest signal that it is a real ongoing
+operation rather than a short well test.</li>
+</ol>
+<p><strong>Reading the globe:</strong> column height is power potential on a log scale, so an 11 MW site
+towers over a 150 kW one. Colour is persistence — <span class="k">green</span> means it burned in every
+one of the six survey years. Markers shrink as you zoom in, so dense basins pull apart into individual
+sites instead of staying a blob.</p>
+<p><strong>Two different satellites, two different jobs.</strong> The size figures above come from the
+annual EOG survey, which ends in 2022 — that is where the open data stops, so every MW number is dated.
+A second free NASA feed (FIRMS) updates every few hours and is used only to answer whether a flare is
+<em>still burning</em>. It cannot measure volume, so it never changes a site’s size.</p>
+<p>Three VIIRS satellites are queried (SNPP, NOAA-20, NOAA-21), which between them pass overhead several times a night. Because FIRMS reports every fire on earth, a detection only counts when it recurs at the same point on
+<span class="k">three or more separate nights</span> <em>and</em> lands on a flare the survey already knew
+about. A wildfire moves and will not do both. Where a site shows no confirmation that means the satellite
+did not see it — cloud, a flare below the detection floor, or genuinely dark. Those are different
+things, so the panel says <em>not confirmed</em> rather than <em>not burning</em>.</p>
+<p class="cav"><strong>What the satellite cannot tell you:</strong> the exact wellhead, gas composition,
+H₂S content, road or winter access, or whether anyone will sell it to you. Volumes are dated 2022 — a
+site burning through 2022 is very likely still burning, but this cannot confirm today. Those gaps stay
+blank on each site rather than being guessed.</p>
     </div>
-    <div class="card map-card" id="mapCard">
-        <div id="fleetMap"></div>
+    <div class="map-mode-row">
+        <div class="map-mode-toggle" id="mapModeToggle">
+            <button class="map-toggle-btn active" data-mode="fleet">My Fleet</button>
+            <button class="map-toggle-btn" data-mode="prospects">Prospects</button>
+        </div>
+        <div class="map-view-toggle">
+            <button class="map-toggle-btn" id="btnGlobeView" data-view="globe">Globe</button>
+            <button class="map-toggle-btn" id="btnMapView" data-view="map">Map</button>
+        </div>
     </div>
-    <div class="card map-card" id="globeCard" style="display:none;">
-        <div id="fleetGlobe"></div>
+    <div id="srcStatus" class="src-status"></div>
+    <!-- In Prospects mode this becomes a two-column grid: map left, ranked list right.
+         In Fleet mode the list is hidden and the map spans the full width, exactly as before. -->
+    <div class="map-with-list" id="mapWithList">
+      <div class="map-pane">
+        <div class="card map-card" id="mapCard">
+            <div id="fleetMap"></div>
+        </div>
+        <div class="card map-card" id="globeCard" style="display:none;">
+            <div id="fleetGlobe"></div>
+        </div>
+        <p class="src-note prospects-only" id="srcMapNote"></p>
+      </div>
+
+      <div class="card src-listcard prospects-only" style="padding:0;">
+        <div class="src-count" id="srcCount">--</div>
+        <div class="src-list" id="srcList"></div>
+      </div>
     </div>
+
     <div id="globePopup" class="globe-popup" style="display:none;">
         <button class="globe-popup-close" id="globePopupClose">&times;</button>
         <div id="globePopupContent"></div>
     </div>
     </div>
 
+    <!-- ===== PROSPECT FILTERS (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-filters" style="display:none;">
+    <div class="section-label">Prospect Filters</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="src-filters">
+            <div class="src-field">
+                <label for="fCountry">Country</label>
+                <select id="fCountry"><option value="">All countries</option></select>
+            </div>
+            <div class="src-field src-field-wide">
+                <label>Site size</label>
+                <div class="range-dual" id="sizeRange">
+                    <div class="range-track"></div>
+                    <div class="range-fill" id="sizeFill"></div>
+                    <!-- Two overlaid sliders: the track is drawn by the divs above, the inputs
+                         contribute only their thumbs. 5 MW on the upper thumb means NO MAXIMUM,
+                         so the top of the scale is open rather than a hard ceiling. -->
+                    <input type="range" id="fMinKw" min="0" max="5000" step="25" value="0" aria-label="Minimum site size">
+                    <input type="range" id="fMaxKw" min="0" max="5000" step="25" value="5000" aria-label="Maximum site size">
+                </div>
+                <div class="range-ends"><span id="sizeMinLabel">0</span><span id="sizeMaxLabel">5 MW+</span></div>
+            </div>
+            <div class="src-field">
+                <label for="fYears">Persistence</label>
+                <select id="fYears">
+                    <option value="0">Any</option>
+                    <option value="3">Seen 3+ years</option>
+                    <option value="5">Seen 5+ years</option>
+                    <option value="6">Seen every year</option>
+                </select>
+            </div>
+            <div class="src-field">
+                <label for="fSort">Rank by</label>
+                <select id="fSort">
+                    <option value="persistence" selected>Persistence</option>
+                    <option value="score">Overall score</option>
+                    <option value="power_potential">Size</option>
+                    <option value="jurisdiction">Jurisdiction</option>
+                </select>
+            </div>
+        </div>
+        <div class="src-sizehint" id="srcSizeHint"></div>
+        <div class="src-checks">
+            <label><input type="checkbox" id="fOnshore" checked> Onshore only</label>
+            <label><input type="checkbox" id="fWorkable" checked> Workable jurisdictions only</label>
+            <label><input type="checkbox" id="fOperator"> Only sites with a named operator</label>
+            <label><input type="checkbox" id="fActive"> Still burning in final survey year</label>
+            <label><input type="checkbox" id="fBurning"> Confirmed burning recently (satellite)</label>
+        </div>
+    </div>
+    </div>
+
+    <!-- ===== SCENARIO BAR (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-scenario">
+    <div class="sec-head"><div class="section-label">Scenario</div><button class="info-btn" type="button" data-info="scenario" aria-label="What is this?" aria-expanded="false">i</button></div>
+    <div class="info-panel" id="infoPanel-scenario">
+<h4>Scenario — the numbers everything is priced against</h4>
+<p>Every figure on this page — cash cost, payback, break-even, the portfolio totals — is calculated
+from these five inputs. They start at <strong>today’s real market</strong>.</p>
+<p><strong>Change one and the whole page re-prices instantly.</strong> Drop BTC to $40,000 and every site
+recalculates, so you can see which ones still work and which stop working. Switch <em>Colour sites by</em>
+to <span class="k">Margin</span> and the map turns red as sites fall below their cash cost.</p>
+<p>Three of them are your assumptions, not quotes:<br>
+<strong>Power rate</strong> — what you expect to pay the producer per kWh.<br>
+<strong>Build cost</strong> — your all-in buildout per kW of capacity.<br>
+<strong>Take-or-pay</strong> — the share of capacity you must pay for whether you use it or not.</p>
+<p class="cav">Nothing here is saved onto a site or sent anywhere — it is a what-if.
+<strong>Reset to live</strong> puts the real market numbers back, and the bar always states whether you
+are looking at live or hypothetical values.</p>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="scn-grid">
+            <div class="src-field"><label for="scnBtc">BTC price (USD)</label>
+                <input type="text" id="scnBtc" inputmode="decimal" autocomplete="off"></div>
+            <div class="src-field"><label for="scnHash">Network hashrate (EH/s)</label>
+                <input type="text" id="scnHash" inputmode="decimal" autocomplete="off"></div>
+            <div class="src-field"><label for="scnRate">Power rate ($/kWh)</label>
+                <input type="text" id="scnRate" inputmode="decimal" autocomplete="off"></div>
+            <div class="src-field"><label for="scnCapex">Build cost ($/kW)</label>
+                <input type="text" id="scnCapex" inputmode="decimal" autocomplete="off"></div>
+            <div class="src-field"><label for="scnTop">Take-or-pay (%)</label>
+                <input type="text" id="scnTop" inputmode="decimal" autocomplete="off"></div>
+            <div class="src-field"><label for="scnColour">Colour sites by</label>
+                <select id="scnColour">
+                    <option value="persistence" selected>Persistence</option>
+                    <option value="margin">Margin at this scenario</option>
+                </select></div>
+        </div>
+        <div class="scn-foot">
+            <span class="src-note" id="scnState"></span>
+            <button class="src-savebtn" id="scnReset">Reset to live</button>
+        </div>
+    </div>
+    </div>
+
+    <!-- ===== PORTFOLIO (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-portfolio">
+    <div class="sec-head"><div class="section-label">Portfolio</div><button class="info-btn" type="button" data-info="portfolio" aria-label="What is this?" aria-expanded="false">i</button></div>
+    <div class="info-panel" id="infoPanel-portfolio">
+<h4>Portfolio — what if you built all of these?</h4>
+<p>Tick sites in the list and this treats them as a single operation: their combined hashrate, monthly
+bitcoin, total capital, and blended cost to mine one coin.</p>
+<p>The big number at the top is the one that matters most. <strong>The combined take-or-pay floor is what
+you owe every month even with every miner switched off.</strong> Revenue stops in a downturn; that bill
+does not. It is the number that ends operations, and nothing else in this app surfaces it.</p>
+<p><span class="k">Portfolio break-even</span> is the BTC price at which the whole selection stops covering
+its power bill. Above it you are making money; below it every site in the group is losing.</p>
+<p class="cav">All of it re-prices live from the Scenario bar above — so you can select five sites, drag
+BTC down, and watch exactly where the group stops working. None of these sites has been quoted, so the
+commercial terms are your assumptions.</p>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+        <div id="pfEmpty" class="src-empty">
+            Tick sites in the list to model them together. The combined take-or-pay floor is the
+            monthly obligation you owe whether or not a single miner runs.
+        </div>
+        <div id="pfBody" style="display:none;">
+            <div class="pf-headline">
+                <div class="pf-hl-label">Combined take-or-pay floor</div>
+                <div class="pf-hl-value" id="pfTakeOrPay">--</div>
+                <div class="pf-hl-sub" id="pfTakeOrPaySub">owed at zero utilization</div>
+            </div>
+            <section class="fleet-grid" style="margin-top:14px;">
+                <div class="metric-card"><div class="label">Sites</div>
+                    <div class="value btc-orange" id="pfSites">--</div><div class="sub" id="pfSitesSub">selected</div></div>
+                <div class="metric-card"><div class="label">Combined Hashrate</div>
+                    <div class="value" id="pfHash">--</div><div class="sub">PH/s</div></div>
+                <div class="metric-card"><div class="label">Monthly BTC</div>
+                    <div class="value positive" id="pfBtc">--</div><div class="sub">at this scenario</div></div>
+                <div class="metric-card"><div class="label">Total Capital</div>
+                    <div class="value" id="pfCapital">--</div><div class="sub" id="pfCapitalSub">site + miners</div></div>
+                <div class="metric-card"><div class="label">Blended Cash Cost</div>
+                    <div class="value neutral" id="pfCashCost">--</div><div class="sub">per BTC</div></div>
+                <div class="metric-card"><div class="label">Portfolio Break-even</div>
+                    <div class="value" id="pfBreakeven">--</div><div class="sub">BTC price</div></div>
+            </section>
+            <p class="src-note" style="margin-top:12px;" id="pfNote"></p>
+            <div class="src-saverow">
+                <button class="src-savebtn" id="pfClear">Clear selection</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ===== PROSPECT DETAIL (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-detail" style="display:none;">
+    <div class="section-label">Site Detail</div>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="dTitle">Select a prospect</h3>
+            <span class="chart-live-value btc-orange" id="dScore"></span>
+        </div>
+        <div id="dBody">
+            <p class="src-empty">Pick a prospect from the list or the map to see satellite evidence,
+            derived capacity, economics and who operates the well.</p>
+        </div>
+    </div>
+    </div>
+
+    <!-- ===== PROVENANCE (prospects mode) ===== -->
+    <div class="widget-section prospects-only" data-widget="prospect-about" style="display:none;">
+    <div class="section-label">Where this comes from</div>
+    <div class="card" style="margin-bottom:20px;">
+        <p class="src-note" id="srcAbout"></p>
+    </div>
+    </div>
+
     <!-- ===== LOCATION BREAKDOWN ===== -->
-    <div class="widget-section" data-widget="location-breakdown">
+    <div class="widget-section fleet-only" data-widget="location-breakdown">
     <div class="card">
         <h3>Location Breakdown</h3>
         <div class="table-scroll">
@@ -113,20 +564,117 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=265"></script>
-<script src="./sync.js?v=265"></script>
-<script src="./auth-ui.js?v=265"></script>
-<script src="./profile-panel.js?v=265"></script>
-<script src="./shared.js?v=265"></script>
-<script src="./fleet-data.js?v=265"></script>
-<script src="./geo-data.js?v=265"></script>
+<script src="./firebase-config.js?v=280"></script>
+<script src="./sync.js?v=280"></script>
+<script src="./auth-ui.js?v=280"></script>
+<script src="./profile-panel.js?v=280"></script>
+<script src="./shared.js?v=280"></script>
+<script src="./fleet-data.js?v=280"></script>
+<script src="./geo-data.js?v=280"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.41.3/dist/globe.gl.min.js"></script>
-<script src="./map.js?v=265"></script>
-<script src="./widget-settings.js?v=265"></script>
-<script src="./alerts.js?v=265"></script>
-<script src="./onboarding.js?v=265"></script>
+<script src="./price-history.js?v=280"></script>
+<script src="./network-history.js?v=280"></script>
+<script src="./calc-engine.js?v=280"></script>
+<script src="./jurisdictions.js?v=280"></script>
+<script src="./site-engine.js?v=280"></script>
+<script src="./site-flags.js?v=280"></script>
+<script src="./site-scoring.js?v=280"></script>
+<script src="./site-sources.js?v=280"></script>
+<script src="./site-model.js?v=280"></script>
+<script src="./site-catalog.js?v=280"></script>
+<script src="./map.js?v=280"></script>
+<script src="./map-sourcing.js?v=280"></script>
+<script>
+// ===== Mode switch =====
+// Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
+// sections, dims the choropleth (via the style function, never setStyle) and swaps the globe's
+// point layer. The flare catalog loads ONCE on first switch and is never unmounted after that —
+// toggling changes visibility only, so there is no refetch and no stall on thousands of points.
+(function() {
+    var toggle = document.getElementById('mapModeToggle');
+    if (!toggle) return;
+
+    var TITLES = {
+        fleet:     ['Fleet Map', 'Geographic distribution of mining operations'],
+        prospects: ['Site Sourcing', 'Gas flares observed from orbit, scored as mining sites']
+    };
+
+    function setMode(mode) {
+        document.body.setAttribute('data-map-mode', mode);
+        MapBridge.setMode(mode);
+        var btns = toggle.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.mode === mode);
+
+        document.getElementById('mapPageTitle').textContent = TITLES[mode][0];
+        document.getElementById('mapPageSub').textContent = TITLES[mode][1];
+        document.title = 'Ion Mining Group — ' + TITLES[mode][0];
+
+        if (mode === 'prospects') {
+            MapSourcing.boot().then(function() { MapSourcing.renderMapLayer(); });
+        } else {
+            MapSourcing.clearMapLayer();
+        }
+        // Leaflet measures its container on creation; a pane revealed after that needs a nudge.
+        var lm = MapBridge.leaflet();
+        if (lm) setTimeout(function() { lm.invalidateSize(); }, 60);
+    }
+
+    toggle.addEventListener('click', function(e) {
+        var b = e.target.closest('button');
+        if (!b || !b.dataset.mode) return;
+        setMode(b.dataset.mode);
+        // Remember the mode across reloads. shared.js reloads the page whenever the service
+        // worker activates a new build, which used to drop you back on Fleet mid-search.
+        try { localStorage.setItem('ionMiningMapMode', b.dataset.mode); } catch (err) {}
+    });
+
+    // Switching to the flat map reveals a container that was 0x0 until now. Leaflet cannot
+    // place markers in a zero-size container, so the prospect layer is (re)drawn only once it
+    // has real dimensions.
+    var viewToggle = document.querySelector('.map-view-toggle');
+    if (viewToggle) {
+        viewToggle.addEventListener('click', function() {
+            setTimeout(function() {
+                var lm = MapBridge.leaflet();
+                if (lm) lm.invalidateSize();
+                if (MapBridge.mode() === 'prospects') MapSourcing.renderMapLayer();
+            }, 120);
+        });
+    }
+
+    var saved = null;
+    try { saved = localStorage.getItem('ionMiningMapMode'); } catch (e) {}
+    if (saved === 'prospects') {
+        // Paint the mode immediately so the fleet layout never flashes on the way to prospects.
+        document.body.setAttribute('data-map-mode', 'prospects');
+        setMode('prospects');
+    } else {
+        document.body.setAttribute('data-map-mode', 'fleet');
+    }
+})();
+</script>
+<script>
+// Info panels: each description lives inside the widget it explains and expands in place.
+(function() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest && e.target.closest('.info-btn');
+        if (!btn) return;
+        // Claim the click: the prospects view has a document-level handler that clears the
+        // focused site, and reading an explanation should not disturb what you were looking at.
+        e.preventDefault();
+        e.stopPropagation();
+        var panel = document.getElementById('infoPanel-' + btn.dataset.info);
+        if (!panel) return;
+        var open = panel.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }, true);
+})();
+</script>
+<script src="./widget-settings.js?v=280"></script>
+<script src="./alerts.js?v=280"></script>
+<script src="./onboarding.js?v=280"></script>
 </body>
 </html>

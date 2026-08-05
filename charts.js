@@ -530,16 +530,12 @@ async function refreshAllCharts() {
     if (historyStale || !haveMining) {
         miningOk = false;
         try {
-            var miningRes = await fetch('https://mempool.space/api/v1/mining/hashrate/all?_t=' + Date.now());
-            if (miningRes.ok) {
-                allMiningData = await miningRes.json();
-                renderDifficultyChart(currentDiffTimeframe);
-                renderHashrateChart(currentHashTimeframe);
-                miningOk = true;
-            } else {
-                statusEl.textContent = 'Mining API error ' + miningRes.status;
-                statusEl.style.color = '#f55';
-            }
+            // Shared with the Sourcing surface via network-history.js, which owns the fetch and
+            // the cache. Returns the same payload shape this file has always used.
+            allMiningData = await NetworkHistory.fetchNetworkHistory();
+            renderDifficultyChart(currentDiffTimeframe);
+            renderHashrateChart(currentHashTimeframe);
+            miningOk = true;
         } catch (e) {
             statusEl.textContent = 'Mining load failed: ' + e.message;
             statusEl.style.color = '#f55';
@@ -907,38 +903,8 @@ function renderSupplyTracker() {
 
 function computeHashPriceData() {
     if (!allPriceData || !allMiningData || !allMiningData.hashrates) return null;
-
-    var hashrates = allMiningData.hashrates;
-
-    // Build sorted hashrate lookup (day -> TH/s)
-    var hashByDay = {};
-    for (var h = 0; h < hashrates.length; h++) {
-        var dayKey = Math.floor(hashrates[h].timestamp / 86400) * 86400;
-        hashByDay[dayKey] = hashrates[h].avgHashrate / 1e12;
-    }
-    var hashDays = Object.keys(hashByDay).map(Number).sort(function(a, b) { return a - b; });
-
-    function getHashrateForDay(dayTs) {
-        var result = null;
-        for (var i = 0; i < hashDays.length; i++) {
-            if (hashDays[i] <= dayTs) result = hashByDay[hashDays[i]];
-            else break;
-        }
-        return result;
-    }
-
-    var result = [];
-    for (var p = 0; p < allPriceData.length; p++) {
-        var dayTs = Math.floor(allPriceData[p].time / 86400) * 86400;
-        var hr = getHashrateForDay(dayTs);
-        if (hr === null || hr <= 0) continue;
-
-        var reward = PriceHistory.getBlockReward(allPriceData[p].time);
-        var hashPrice = (144 * reward * allPriceData[p].close) / hr;
-
-        result.push({ time: allPriceData[p].time, hashPrice: hashPrice });
-    }
-    return result;
+    // Moved to network-history.js so the Sourcing surface computes hash price identically.
+    return NetworkHistory.computeHashPrice(allPriceData, allMiningData.hashrates, PriceHistory.getBlockReward);
 }
 
 function renderHashPriceChart(days) {

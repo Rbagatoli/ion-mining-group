@@ -5,15 +5,22 @@
 // Difficulty only changes at a retarget (~every 2016 blocks / ~14 days), so storing the
 // retarget points and stepping between them is EXACT — not an interpolation.
 //
-// The full mempool.space hashrate/all payload is ~415 KB; we keep only the difficulty
-// series (~14 KB) since that is all this module needs.
+// One fetch of mempool.space/mining/hashrate/all serves BOTH the difficulty series and the
+// network hashrate series. It used to be fetched twice — once here (keeping only difficulty
+// and discarding hashrates) and again in charts.js (keeping only hashrates) — so callers now
+// go through fetchNetworkHistory() and the payload is fetched once and cached once.
+//
+// The raw payload is ~415 KB. The cache stores difficulty as-is (~14 KB) and hashrate
+// downsampled to integer TH/s, which is lossless at the precision anything here uses.
 
 var NetworkHistory = (function() {
 
     var DAY = 86400;
     var CACHE_KEY = 'ionMiningDifficultyHistory';
-    var CACHE_VERSION = 1;
+    var CACHE_VERSION = 2;                   // v2 added the hashrate series
     var CACHE_TTL_MS = 6 * 60 * 60 * 1000;   // retargets are ~2 weeks apart; 6h is ample
+
+    var _memory = null;                      // within a page load, never refetch
 
     function loadCache() {
         try {
@@ -22,34 +29,119 @@ var NetworkHistory = (function() {
             var c = JSON.parse(raw);
             if (!c || c.v !== CACHE_VERSION || !Array.isArray(c.d) || !c.d.length) return null;
             if (Date.now() - (c.t || 0) > CACHE_TTL_MS) return null;
-            return c.d.map(function(p) { return { time: p[0], difficulty: p[1] }; });
+            return {
+                difficulty: c.d.map(function(p) { return { time: p[0], difficulty: p[1] }; }),
+                // Rehydrated to the exact field names and units the mempool payload uses, so
+                // callers cannot tell a cache hit from a live fetch.
+                hashrates: (c.h || []).map(function(p) { return { timestamp: p[0], avgHashrate: p[1] * 1e12 }; }),
+                currentDifficulty: c.cd === undefined ? null : c.cd,
+                currentHashrate: c.ch === undefined ? null : c.ch
+            };
         } catch (e) { return null; }
     }
 
-    function saveCache(series) {
+    function saveCache(payload) {
         try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({
                 v: CACHE_VERSION,
                 t: Date.now(),
-                d: series.map(function(p) { return [p.time, p.difficulty]; })
+                d: payload.difficulty.map(function(p) { return [p.time, p.difficulty]; }),
+                h: payload.hashrates.map(function(p) { return [p.timestamp, Math.round(p.avgHashrate / 1e12)]; }),
+                cd: payload.currentDifficulty,
+                ch: payload.currentHashrate
             }));
         } catch (e) { /* quota — cache is an optimisation */ }
     }
 
-    async function fetchDifficultyHistory() {
+    // Returns the mempool payload shape verbatim:
+    //   { difficulty: [{time, difficulty}], hashrates: [{timestamp, avgHashrate}],
+    //     currentDifficulty, currentHashrate }
+    // Both series ascending by time.
+    async function fetchNetworkHistory() {
+        if (_memory) return _memory;
         var cached = loadCache();
-        if (cached) return cached;
+        if (cached) { _memory = cached; return cached; }
+
         var res = await fetch('https://mempool.space/api/v1/mining/hashrate/all');
         if (!res.ok) throw new Error('mempool HTTP ' + res.status);
         var data = await res.json();
         if (!data || !Array.isArray(data.difficulty)) throw new Error('unexpected payload');
-        var series = data.difficulty
+
+        var difficulty = data.difficulty
             .map(function(d) { return { time: d.time, difficulty: d.difficulty }; })
             .filter(function(d) { return isFinite(d.time) && isFinite(d.difficulty) && d.difficulty > 0; })
             .sort(function(a, b) { return a.time - b.time; });
-        if (!series.length) throw new Error('no difficulty points');
-        saveCache(series);
-        return series;
+        if (!difficulty.length) throw new Error('no difficulty points');
+
+        var hashrates = (Array.isArray(data.hashrates) ? data.hashrates : [])
+            .map(function(h) { return { timestamp: h.timestamp, avgHashrate: h.avgHashrate }; })
+            .filter(function(h) { return isFinite(h.timestamp) && isFinite(h.avgHashrate) && h.avgHashrate > 0; })
+            .sort(function(a, b) { return a.timestamp - b.timestamp; });
+
+        var payload = {
+            difficulty: difficulty,
+            hashrates: hashrates,
+            currentDifficulty: isFinite(data.currentDifficulty) ? data.currentDifficulty : null,
+            currentHashrate: isFinite(data.currentHashrate) ? data.currentHashrate
+                : (hashrates.length ? hashrates[hashrates.length - 1].avgHashrate : null)
+        };
+        saveCache(payload);
+        _memory = payload;
+        return payload;
+    }
+
+    async function fetchDifficultyHistory() {
+        return (await fetchNetworkHistory()).difficulty;
+    }
+
+    async function fetchHashrateHistory() {
+        return (await fetchNetworkHistory()).hashrates;
+    }
+
+    // Current network hashrate in PH/s — the unit SiteEngine wants for monthly_btc.
+    // mempool reports H/s; 1 PH/s = 1e15 H/s.
+    async function currentHashratePh() {
+        var p = await fetchNetworkHistory();
+        return p.currentHashrate === null ? null : p.currentHashrate / 1e15;
+    }
+
+    // Hash price in USD per TH per day, extracted from charts.js so the Sourcing surface and
+    // the Data page cannot drift apart.
+    //
+    //   hashPrice = (blocks/day x block subsidy BTC x BTC/USD) / network TH/s
+    //
+    // Subsidy only — no transaction fees — matching what the Data page has always shown.
+    // `priceSeries` is PriceHistory's [{time, close}] (USD, ascending); the result is USD and
+    // callers convert for display, as charts.js:971 already does.
+    //
+    // Both inputs are ascending, so this walks them with a single moving pointer instead of the
+    // per-point linear scan the original used. Same forward-fill semantics (the most recent
+    // hashrate day at or before the price day), O(n+m) rather than O(n*m) — and this is
+    // recomputed on every range click, theme change and currency change.
+    function computeHashPrice(priceSeries, hashrates, getBlockReward, blocksPerDay) {
+        if (!priceSeries || !priceSeries.length || !hashrates || !hashrates.length) return null;
+        var blocks = blocksPerDay || 144;
+
+        // Collapse hashrate samples to one per UTC day (later sample wins), as before.
+        var days = [], ths = [], lastDay = null;
+        for (var h = 0; h < hashrates.length; h++) {
+            var dayKey = Math.floor(hashrates[h].timestamp / DAY) * DAY;
+            var v = hashrates[h].avgHashrate / 1e12;
+            if (dayKey === lastDay) { ths[ths.length - 1] = v; }
+            else { days.push(dayKey); ths.push(v); lastDay = dayKey; }
+        }
+
+        var out = [], ptr = 0;
+        for (var p = 0; p < priceSeries.length; p++) {
+            var dayTs = Math.floor(priceSeries[p].time / DAY) * DAY;
+            while (ptr + 1 < days.length && days[ptr + 1] <= dayTs) ptr++;
+            if (days[ptr] > dayTs) continue;              // price point predates all hashrate data
+            var hr = ths[ptr];
+            if (!hr || hr <= 0) continue;
+            var reward = getBlockReward(priceSeries[p].time);
+            out.push({ time: priceSeries[p].time, hashPrice: (blocks * reward * priceSeries[p].close) / hr });
+        }
+        return out;
     }
 
     // Difficulty in force at `ts`: the most recent retarget at or before it. Binary search
@@ -173,7 +265,11 @@ var NetworkHistory = (function() {
     }
 
     return {
+        fetchNetworkHistory: fetchNetworkHistory,
         fetchDifficultyHistory: fetchDifficultyHistory,
+        fetchHashrateHistory: fetchHashrateHistory,
+        currentHashratePh: currentHashratePh,
+        computeHashPrice: computeHashPrice,
         difficultyAt: difficultyAt,
         trailingMonthlyRate: trailingMonthlyRate,
         toPoints: toPoints,
