@@ -46,7 +46,13 @@ var ProspectStore = (function() {
 
         _loading = Promise.all([
             SiteSources.discover(ids, opts || {}),
-            loadGrid()
+            loadGrid(),
+            // Cross-dataset identity. Optional in exactly the same way: a missing artifact means
+            // the same asset keeps showing up as two prospects, which is today's behaviour, not
+            // a broken page.
+            (typeof SiteLinks !== 'undefined')
+                ? SiteLinks.load().catch(function() { return null; })
+                : Promise.resolve(null)
         ]).then(function(both) {
             var r = both[0];
             _all = (r && r.candidates) || [];

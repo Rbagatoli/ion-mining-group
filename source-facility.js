@@ -88,6 +88,22 @@ var FacilitySource = (function() {
         return null;    // unknown, NOT assumed to be 100
     }
 
+    // Which of the three branches above produced the number. Stamped explicitly rather than
+    // re-derived downstream: site-sources.js normalize() coerces a null duty to 100, so by the
+    // time a consumer sees the candidate, "unmeasured" and "runs continuously" are the same
+    // value. SiteAvailability reads this to decide whether the duty may carry a dollar figure.
+    //
+    // Measured against data/facilities.json: 8,398 measured, 1,027 typical, 340 unknown.
+    function dutyBasisFor(f) {
+        var cf = f.cfCurrent;
+        if (cf === null || cf === undefined) cf = f.cfBaseline;
+        if (cf !== null && cf !== undefined && cf > 0) return 'measured';
+        if (f.technology && Object.prototype.hasOwnProperty.call(TYPICAL_DUTY, f.technology)) {
+            return 'typical';
+        }
+        return 'unknown';
+    }
+
     // Counterparty from the EIA sector. Who you would actually be negotiating with, and how long
     // that is likely to take.
     function counterpartyFor(f) {
@@ -218,6 +234,8 @@ var FacilitySource = (function() {
                 epaRegistryId: permit ? permit.echoRegistryId : null,
                 capacityFactorCurrent: f.cfCurrent,
                 capacityFactorBaseline: f.cfBaseline,
+                // Read by SiteAvailability to decide whether this duty may be priced.
+                dutyBasis: dutyBasisFor(f),
                 declinePct: f.declinePct,
                 isDecline: f.isDecline,
                 trendNote: f.trendNote,

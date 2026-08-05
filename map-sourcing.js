@@ -272,8 +272,18 @@ var MapSourcing = (function() {
                 ? saved.usable_kw : c.powerPotentialKw,
             take_or_pay_pct: top
         });
-        var m = SiteEngine.evaluate(site, scenarioMarket(), null, capex);
+        // How many hours this asset actually runs, and whether that is solid enough to price.
+        // A measured capacity factor derates both the power bill and the hashing; a duty read off
+        // a technology lookup, or none at all, leaves the engine at its 100% default so no dollar
+        // figure inherits confidence the evidence does not support.
+        var avail = (typeof SiteAvailability !== 'undefined')
+            ? SiteAvailability.evaluate(c) : null;
+        var cfg = (avail && avail.priceable && avail.uptimePct !== 100)
+            ? { uptimePct: avail.uptimePct } : null;
+
+        var m = SiteEngine.evaluate(site, scenarioMarket(), cfg, capex);
         m.capex = capex;
+        m.availability = avail;
         return m;
     }
 
@@ -1139,17 +1149,49 @@ var MapSourcing = (function() {
             return;
         }
 
+        // Duty, showing what it rests on. A measured percentage is plain; one inferred from a
+        // technology table is dimmed and marked; an unmeasured one is a gap, not a 100.
+        function dutyCell(c) {
+            if (typeof SiteAvailability === 'undefined') {
+                return c.dutyCyclePct === null ? '--' : c.dutyCyclePct + '%';
+            }
+            var a = SiteAvailability.evaluate(c);
+            if (a.dutyPct === null) return '<span class="src-gap">--</span>';
+            if (a.basis === 'typical') {
+                return '<span class="src-gap" title="assumed from technology class, not measured ' +
+                       'at this site">' + a.dutyPct + '%*</span>';
+            }
+            return a.dutyPct + '%';
+        }
+
+        // A quiet marker that this row is also present in another dataset, so a duplicate is
+        // visible without opening every prospect. An amber dot means the two records disagree
+        // about whether the asset is running, which is the interesting case.
+        function linkChip(c) {
+            if (typeof SiteLinks === 'undefined' || !SiteLinks.ready()) return '';
+            var l = SiteLinks.forProspect(c);
+            if (!l) return '';
+            var disagrees = l.disagreements && l.disagreements.length;
+            return ' <span class="src-linkchip' + (disagrees ? ' warn' : '') + '" title="' +
+                   (disagrees ? 'EIA and LMOP disagree about whether this is running'
+                              : 'Also appears in the other dataset — same physical asset') +
+                   '">&#8646;</span>';
+        }
+
         var html = '';
         for (var i = 0; i < shown.length; i++) {
             var c = shown[i].candidate;
             var op = operatorRecord(c);
             var opp = opportunityFor(c);
             html += '<tr' + (c.id === _selectedId ? ' class="sel"' : '') + ' data-id="' + esc(c.id) + '">' +
-                '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + '</td>' +
+                '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + linkChip(c) + '</td>' +
                 '<td><span class="src-srcchip">' + esc(energyLabel(c)) + '</span></td>' +
                 '<td>' + esc(c.iso3 || '--') + '</td>' +
                 '<td class="num kw">' + fmtKw(c.powerPotentialKw) + '</td>' +
-                '<td class="num">' + (c.dutyCyclePct === null ? '--' : c.dutyCyclePct + '%') + '</td>' +
+                // Via SiteAvailability rather than the raw field: normalize() turns an unmeasured
+                // duty into 100, so reading cand.dutyCyclePct here printed a confident "100%" for
+                // 340 plants that have never reported a single month of generation.
+                '<td class="num">' + dutyCell(c) + '</td>' +
                 '<td class="num">' + (c.yearsSeen === null ? '--' : c.yearsSeen + '/' + (c.yearsTotal || '?')) + '</td>' +
                 '<td>' + stageCell(c) + '</td>' +
                 '<td class="num">' + (opp.score === null
@@ -1936,6 +1978,75 @@ var MapSourcing = (function() {
             html += '</dl></div>';
         }
 
+        // The same physical asset seen by another dataset. Placed high because it changes what
+        // the rest of the panel means: if EIA calls this plant retired while the landfill it sits
+        // on still has live gas collection, that is the whole thesis in one row.
+        if (typeof SiteLinks !== 'undefined' && SiteLinks.ready()) {
+            var link = SiteLinks.forProspect(c);
+            var dis = SiteLinks.disagreements(c);
+            var sibs = SiteLinks.siblings(c);
+            var spanRec = SiteLinks.span(c);
+            if (link || sibs || spanRec) {
+                html += '<div class="src-detail"><div class="section-label">Same physical asset</div><dl>';
+                if (link) {
+                    var isFac = link.facilityId === c.id;
+                    html += row(isFac ? 'Also in EPA LMOP' : 'Also in EIA-860',
+                        isFac
+                            ? link.landfills.map(function(g) {
+                                  return esc(g.name) + ' <span class="src-sub2">' + g.distanceM + ' m' +
+                                         (g.capacityKw ? ' · ' + fmtInt(g.capacityKw) + ' kW' : '') + '</span>';
+                              }).join('<br>')
+                            : esc(link.facilityName) + ' <span class="src-sub2">' +
+                              (link.facilityMw === null ? '' : link.facilityMw + ' MW · ') +
+                              esc(String(link.facilityStatus || '')) + '</span>');
+                    // Both figures, never one silently overwriting the other.
+                    html += row('Matched on', 'Coordinates only, within ' +
+                        fmtInt(SiteLinks.meta().radiusM) + ' m' +
+                        '<div class="src-sub2">No name matching — the two records are linked, ' +
+                        'not merged, so neither dataset\'s numbers are overwritten</div>');
+                }
+                if (spanRec) {
+                    html += row('Shared project', esc(spanRec.projectName || spanRec.projectId) +
+                        '<div class="src-sub2">Covers ' + spanRec.members.length + ' landfills up to ' +
+                        fmtInt(spanRec.maxSeparationM) + ' m apart. The ' +
+                        (spanRec.capacityKw ? fmtInt(spanRec.capacityKw) + ' kW' : 'capacity') +
+                        ' belongs to the project as a whole — counting it once per landfill ' +
+                        'over-states the fleet.</div>');
+                }
+                if (sibs) {
+                    html += row('Other projects here', sibs.projectIds.length + ' at this landfill' +
+                        (sibs.statuses.length ? '<div class="src-sub2">' +
+                            esc(sibs.statuses.join(', ')) + '</div>' : ''));
+                }
+                for (var di = 0; di < dis.length; di++) {
+                    html += row('Records disagree',
+                        '<span class="src-disagree">' + esc(dis[di].text) + '</span>');
+                }
+                html += '</dl></div>';
+            }
+        }
+
+        // Availability. Stated BEFORE the economics that depend on it, because "runs 20% of the
+        // time" changes how every figure below should be read, and because the capped/dispatch
+        // distinction is the difference between a reason to walk away and a reason to call.
+        var av = m.availability;
+        if (av && av.dutyPct !== null) {
+            var capLabel = av.capacityType === 'physically_capped' ? 'Physical ceiling'
+                         : av.capacityType === 'dispatch_limited' ? 'Dispatch limited'
+                         : null;
+            html += '<div class="src-detail"><div class="section-label">Availability</div><dl>' +
+                row('Runs', av.dutyPct + '% of hours' +
+                    '<div class="src-sub2">' + esc(av.note) + '</div>') +
+                (capLabel ? row('Type', esc(capLabel)) : '') +
+                row('Hours / month', av.hoursPerMonth === null ? gap('unmeasured')
+                                                               : fmtInt(av.hoursPerMonth) + ' of 720') +
+                (av.priceable
+                    ? ''
+                    : row('Used in pricing', gap('no — evidence too thin, figures below assume ' +
+                                                 'continuous running'))) +
+                '</dl></div>';
+        }
+
         html += '<div class="src-detail"><div class="section-label">Economics <span class="src-assume">(your assumptions)</span></div><dl>' +
             row('Cash cost / BTC', m.cash_cost_per_btc === null ? gap('needs market data') : fmtUSD(m.cash_cost_per_btc)) +
             row('Break-even BTC', m.breakeven_btc_price === null ? gap('needs market data') : fmtUSD(m.breakeven_btc_price)) +
@@ -2419,6 +2530,10 @@ var MapSourcing = (function() {
         worklistCsv: worklistCsv,
         solidityFor: solidityFor,
         renderWorklist: renderWorklist,
+        // Same reasoning as worklistCsv: a test that reimplements the scenario plumbing proves
+        // only that two copies agree. This is the memoised evaluation the panel itself reads.
+        evaluateAt: evaluateAt,
+        select: select,
         filtered: function() { return _filtered; }
     };
 })();

@@ -291,6 +291,13 @@ function round(v, dp) {
 
         out.push({
             id: id,
+            // LMOP's landfill id, which is NOT what `id` above encodes. `id` is the PROJECT id,
+            // and a Combination Project covers several landfills — so one id legitimately appears
+            // on multiple rows sitting kilometres apart, each a real separate location sharing
+            // one project's capacity. Without this field the only way to tell those apart is to
+            // string-split the id, which cannot distinguish "same landfill twice" from "one
+            // project, two landfills". Consumed by tools/build-site-links.js.
+            lfid: str(r[c.lfid]),
             name: name,
             projectName: str(r[c.projectName]),
             lat: round(lat, 5),

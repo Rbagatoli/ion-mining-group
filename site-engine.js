@@ -206,13 +206,32 @@ var SiteEngine = (function() {
             ? null
             : mul(usableKw, takeOrPayPct / 100, c.hoursPerMonth, powerRateUsd);
 
-        // O&M, when a model is supplied. om_hourly_rate is a $/hour site charge.
+        // Power actually consumed. uptimePct derates production below, and billing the full 720
+        // hours against derated output was a real asymmetry: CalcEngine applies uptime to BOTH
+        // sides (calc-engine.js:213 and :215) and the header of this file says the two engines
+        // must not diverge. It stayed invisible only because uptimePct defaults to 100 and
+        // nothing set it — the moment a measured duty cycle arrives, a 20%-duty plant would be
+        // charged 720 hours of power against 144 hours of hashing, driving monthly_net negative
+        // across most of the catalog and nulling payback by the rule below.
+        //
+        // The semantics this encodes: you own the plant, so you burn fuel only when generating.
+        var monthlyPowerUsed = mul(monthlyPowerFull, c.uptimePct / 100);
+
+        // ...but never less than a contracted minimum. take_or_pay_pct is the obligation you owe
+        // whether or not you run, so it is a FLOOR on the bill rather than a separate downside
+        // case. It is null on every prospect today, which leaves this inert until a real contract
+        // is entered — at which point a low-duty site correctly stops paying back.
+        var monthlyPowerUsd = monthlyPowerUsed;
+        if (monthlyPowerUsd !== null && takeOrPayFloor !== null && takeOrPayFloor > monthlyPowerUsd) {
+            monthlyPowerUsd = takeOrPayFloor;
+        }
+
+        // O&M, when a model is supplied. om_hourly_rate is a $/hour site charge, billed on
+        // wall-clock hours: a site under contract is staffed and maintained whether or not the
+        // miners are hashing.
         var monthlyOmUsd = omHourlyRate === null ? null : omHourlyRate * c.hoursPerMonth;
 
-        // Cash opex at full utilization. The take-or-pay floor is a fraction of the full bill,
-        // so it cannot bind here — it is the *zero-utilization* obligation and is reported
-        // separately as the downside case.
-        var monthlyCashUsd = monthlyPowerFull;
+        var monthlyCashUsd = monthlyPowerUsd;
         if (monthlyCashUsd !== null && monthlyOmUsd !== null) monthlyCashUsd += monthlyOmUsd;
 
         // --- Production -------------------------------------------------------------
@@ -290,6 +309,10 @@ var SiteEngine = (function() {
             power_rate_usd: powerRateUsd,
             power_rate_fx: rateFx.rate,
             monthly_power_full: monthlyPowerFull,
+            // What is actually billed: the full figure derated by uptime, floored by any
+            // take-or-pay obligation. Equal to monthly_power_full at the default 100% uptime,
+            // which is why every existing assertion still holds.
+            monthly_power_usd: monthlyPowerUsd,
             monthly_om_usd: monthlyOmUsd,
             monthly_cash_usd: monthlyCashUsd,
             take_or_pay_floor: takeOrPayFloor,
