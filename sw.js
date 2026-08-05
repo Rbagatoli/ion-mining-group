@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v283';
+const CACHE_NAME = 'ion-mining-v284';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -38,6 +38,7 @@ const ASSETS = [
   './site-acquirability.js',
   './site-sources.js',
   './source-flare-gas.js',
+  './source-facility.js',
   './prospect-store.js',
   './site-model.js',
   './jurisdictions.js',
