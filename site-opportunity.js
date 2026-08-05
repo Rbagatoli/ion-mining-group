@@ -267,9 +267,16 @@ var SiteOpportunity = (function() {
         var t = cand.counterpartyType;
         if (!t) return { value: null, detail: 'counterparty not identified' };
         var tbl = settings().counterpartyScores;
-        var v = tbl[t];
+        // hasOwnProperty, NOT `tbl[t] !== undefined`. A counterpartyType of 'toString',
+        // 'constructor' or 'valueOf' resolves up Object.prototype to a FUNCTION, which is neither
+        // null nor undefined, survives clamp100 (a function is neither < 0 nor > 100), and then
+        // NaNs `sum += value * weight` — taking the entire opportunity score down with it.
+        var v = Object.prototype.hasOwnProperty.call(tbl, t) ? tbl[t] : undefined;
         if (v === null || v === undefined) return { value: null, detail: String(t).replace(/_/g, ' ') + ' — unscored' };
-        return { value: clamp100(v), detail: String(t).replace(/_/g, ' ') };
+        // Belt and braces: a table edited at runtime could still hold a non-number.
+        var n = Number(v);
+        if (!isFinite(n)) return { value: null, detail: String(t).replace(/_/g, ' ') + ' — unscored' };
+        return { value: clamp100(n), detail: String(t).replace(/_/g, ' ') };
     }
 
     function haversineKm(lat1, lon1, lat2, lon2) {

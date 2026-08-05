@@ -141,6 +141,14 @@ ok('a private landfill outranks a municipal one',
 eq('an unidentified counterparty is null, not zero', comp(SO.score(site({ counterpartyType: null })), 'counterparty'), null);
 eq('an unrecognised counterparty type is null, not zero', comp(SO.score(site({ counterpartyType: 'utility' })), 'counterparty'), 30);
 
+// Prototype-chain keys. 'toString' and friends resolve up Object.prototype to a function, which
+// is neither null nor undefined and survives a naive clamp — it used to NaN the entire score.
+['toString', 'constructor', 'valueOf', 'hasOwnProperty', 'isPrototypeOf'].forEach(function(k) {
+    var r = SO.score(site({ counterpartyType: k }));
+    eq('counterpartyType "' + k + '" scores the component null', comp(r, 'counterparty'), null);
+    ok('counterpartyType "' + k + '" leaves the total finite', r.score !== null && isFinite(r.score), r.score);
+});
+
 // ---- Weights are settings, not constants ----------------------------------------------
 SO.reset();
 // Scored on Russia, not Canada: Canada's 85 sits so close to the other components' average
