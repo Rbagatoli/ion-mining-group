@@ -62,7 +62,12 @@ var MapSourcing = (function() {
         }
         return iso3 || '—';
     }
-    function placeLabel(c) { return countryName(c.iso3) + ' · ' + c.lat.toFixed(3) + ', ' + c.lng.toFixed(3); }
+    // Prefer the source's own name. A flare has none — a VIIRS detection is identified purely by
+    // position — so it falls back to country and coordinates, which is what it has always shown.
+    function placeLabel(c) {
+        if (c.name) return c.name;
+        return countryName(c.iso3) + ' · ' + c.lat.toFixed(3) + ', ' + c.lng.toFixed(3);
+    }
     function tierBadge(iso3) {
         var j = Jurisdictions.get(iso3);
         return '<span class="src-badge t-' + j.tier + '">' + j.tier + '</span>';
@@ -318,7 +323,7 @@ var MapSourcing = (function() {
         var sites = 0, hashPh = 0, btc = 0, capital = 0, cash = 0, floor = 0;
         var missingFloor = 0;
         for (var i = 0; i < ids.length; i++) {
-            var c = SiteCatalog.get(ids[i]);
+            var c = ProspectStore.get(ids[i]);
             if (!c) continue;
             var m = evaluateAt(c);
             sites++;
@@ -455,7 +460,7 @@ var MapSourcing = (function() {
 
     function applyFilters() {
         var f = currentFilters();
-        var matches = stampLiveness(SiteCatalog.filter(f));
+        var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
             matches = matches.filter(function(c) { return !!SiteCatalog.operatorFor(c.id); });
         }
@@ -488,7 +493,7 @@ var MapSourcing = (function() {
         if (f.minKw === null && f.maxKw === null) {
             el.textContent = 'Any size — catalog floor is ' +
                 Math.round(SiteEngine.gasMcfDayToKw(SiteCatalog.meta().floorMcfd)) + ' kW, largest is ' +
-                fmtKw(Math.max.apply(null, SiteCatalog.all().map(function(c){ return c.powerPotentialKw || 0; }))) + '.';
+                fmtKw(Math.max.apply(null, ProspectStore.all().map(function(c){ return c.powerPotentialKw || 0; }))) + '.';
         } else if (f.minKw !== null && f.maxKw !== null) {
             el.textContent = fmtKw(f.minKw) + ' to ' + fmtKw(f.maxKw) +
                 '  ·  ' + miners(f.minKw) + '–' + miners(f.maxKw) + ' miners per site';
@@ -510,7 +515,7 @@ var MapSourcing = (function() {
             if (SiteCatalog.operatorFor(matches[i].id)) withOperator++;
         }
         document.getElementById('sumMatching').textContent = fmtInt(matches.length);
-        document.getElementById('sumMatchingSub').textContent = 'of ' + fmtInt(SiteCatalog.all().length) + ' in catalog';
+        document.getElementById('sumMatchingSub').textContent = 'of ' + fmtInt(ProspectStore.all().length) + ' in catalog';
         document.getElementById('sumPower').textContent = (totalKw / 1000).toFixed(totalKw >= 100000 ? 0 : 1);
         document.getElementById('sumMiners').textContent = fmtInt(Math.floor(totalKw * 1000 / MINER_WATTS));
         document.getElementById('sumPersistent').textContent = fmtInt(persistent);
@@ -741,7 +746,7 @@ var MapSourcing = (function() {
                 });
             // A ring marks the focused prospect. ringsData is a free layer, so it never
             // competes with pointsData for the same accessor.
-            var focusCand = focusId ? SiteCatalog.get(focusId) : null;
+            var focusCand = focusId ? ProspectStore.get(focusId) : null;
             globe.ringsData(focusCand ? [{ lat: focusCand.lat, lng: focusCand.lng }] : [])
                 .ringLat('lat').ringLng('lng')
                 .ringColor(function() { return function(t) { return 'rgba(62,207,142,' + (1 - t) + ')'; }; })
@@ -820,7 +825,7 @@ var MapSourcing = (function() {
     }
 
     function select(id, fromMap) {
-        var c = SiteCatalog.get(id);
+        var c = ProspectStore.get(id);
         if (!c) return;
         _selectedId = id;
         // The click that caused this selection is still travelling up to document, where the
@@ -868,8 +873,19 @@ var MapSourcing = (function() {
         return out;
     }
 
+    // Human label for where a prospect came from, taken from the adapter registry so a new
+    // source names itself rather than needing a case added here.
+    function sourceLabel(c) {
+        if (!c) return 'Source';
+        if (typeof SiteSources !== 'undefined' && SiteSources.list) {
+            var l = SiteSources.list();
+            for (var i = 0; i < l.length; i++) if (l[i].id === c.source) return l[i].label;
+        }
+        return c.energyType ? String(c.energyType).replace(/_/g, ' ') : 'Source';
+    }
+
     function renderDetail() {
-        var c = SiteCatalog.get(_selectedId);
+        var c = ProspectStore.get(_selectedId);
         var body = document.getElementById('dBody');
         if (!c || !body) return;
         var meta = SiteCatalog.meta();
@@ -921,13 +937,24 @@ var MapSourcing = (function() {
         }
         html += '</dl></div>';
 
-        html += '<div class="src-detail"><div class="section-label">Satellite</div><dl>' +
+        // Source-specific evidence. `sourceDetail` is the only place source-specific data is
+        // allowed to live on the shared candidate shape, so this section reads from there and
+        // renders whatever the adapter chose to publish. A non-flare prospect gets the shared
+        // observation rows and simply omits the flare-only ones.
+        var sd = c.sourceDetail || {};
+        var obs = (sd.firstYear !== undefined && sd.firstYear !== null)
+            ? sd.firstYear + ' – ' + sd.lastYear
+            : (c.firstSeen && c.lastSeen ? esc(c.firstSeen) + ' – ' + esc(c.lastSeen) : gap('not recorded'));
+
+        html += '<div class="src-detail"><div class="section-label">' + esc(sourceLabel(c)) + '</div><dl>' +
             row('Coordinates', c.lat.toFixed(4) + ', ' + c.lng.toFixed(4)) +
-            row('Observed', c.firstYear + ' – ' + c.lastYear) +
-            row('Years detected', c.yearsSeen + ' of ' + meta.years.length) +
-            row('Est. gas volume', mcfd === null ? '--' : Math.round(mcfd).toLocaleString('en-US') + ' Mcf/day') +
+            row('Observed', obs) +
+            row('Years detected', c.yearsSeen === null ? gap('no survey history')
+                                 : c.yearsSeen + ' of ' + (c.yearsTotal || meta.years.length)) +
+            (mcfd === null ? '' : row('Est. gas volume', Math.round(mcfd).toLocaleString('en-US') + ' Mcf/day')) +
             row('Detection frequency', c.persistencePct === null ? gap('not published') : c.persistencePct + '%') +
-            row('Flare temperature', c.tempK === null ? gap('not published') : c.tempK + ' K') +
+            (sd.flareTempK === undefined ? ''
+                : row('Flare temperature', sd.flareTempK === null ? gap('not published') : sd.flareTempK + ' K')) +
             row('Volume trend', c.trend ? esc(c.trend) : gap('too few years')) +
             row('Still burning?', liveRow(c)) +
             '</dl></div>';
@@ -1131,13 +1158,18 @@ var MapSourcing = (function() {
         if (!el || typeof Chart === 'undefined') return;
         if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
         var meta = SiteCatalog.meta();
+        // Per-year capacity history is source-specific, so it comes from sourceDetail. A source
+        // that publishes none gets no chart rather than an empty axis implying zero output.
+        var series = (c.sourceDetail && c.sourceDetail.kwByYear) || null;
+        if (!series) { el.style.display = 'none'; return; }
+        el.style.display = '';
         var light = isLightMode();
         _trendChart = new Chart(el, {
             type: 'bar',
             data: {
                 labels: meta.years,
                 datasets: [{
-                    label: 'kW potential', data: c.kwByYear,
+                    label: 'kW potential', data: series,
                     backgroundColor: 'rgba(247,147,26,0.5)', borderColor: '#f7931a', borderWidth: 1
                 }]
             },
@@ -1192,20 +1224,32 @@ var MapSourcing = (function() {
         _booted = true;
         status('loading satellite catalog…');
         try {
-            await SiteCatalog.load();
+            // Enrichment artifacts load first: the flare adapter's normalize() reads the operator
+            // and liveness joins while building each candidate, so they must be in memory before
+            // discovery runs or every candidate comes back unenriched.
             await SiteCatalog.loadOperators();
             await SiteCatalog.loadLiveness();
+            // Discovery now goes through the adapter registry rather than straight to the flare
+            // artifact, so every registered source contributes prospects to the same store.
+            await ProspectStore.load();
             await loadMarket();
         } catch (e) {
-            status('Could not load catalog: ' + e.message, '#f55');
+            status('Could not load prospects: ' + e.message, '#f55');
             var l = document.getElementById('srcList');
-            if (l) l.innerHTML = '<div class="src-empty">Catalog unavailable.<br>Run <code>node tools/build-flare-catalog.js</code>.</div>';
+            if (l) l.innerHTML = '<div class="src-empty">Prospects unavailable.<br>Run <code>node tools/build-flare-catalog.js</code>.</div>';
             return;
         }
         var meta = SiteCatalog.meta();
 
+        // A source that failed or dropped rows is reported, not swallowed.
+        var errs = ProspectStore.errors();
+        if (errs.length) {
+            status(errs.length + ' source' + (errs.length > 1 ? 's' : '') + ' failed: ' +
+                   errs.map(function(e) { return e.source; }).join(', '), '#f55');
+        }
+
         var sel = document.getElementById('fCountry');
-        var list = SiteCatalog.countries();
+        var list = ProspectStore.countries();
         for (var i = 0; i < list.length; i++) {
             var o = document.createElement('option');
             o.value = list[i].iso3;
@@ -1309,9 +1353,9 @@ var MapSourcing = (function() {
             // Say so explicitly: a restored search otherwise looks like the app ignored its own
             // defaults, and you cannot tell whether the filters are yours or stale.
             status('Restored your last search — ' + fmtInt(_filtered.length) + ' prospects of ' +
-                   fmtInt(SiteCatalog.all().length) + ' in catalog', '#8ac');
+                   fmtInt(ProspectStore.all().length) + ' in catalog', '#8ac');
         } else {
-            status(fmtInt(SiteCatalog.all().length) + ' flare sites · survey ' + meta.years[0] + '–' + meta.dataThrough +
+            status(fmtInt(ProspectStore.all().length) + ' flare sites · survey ' + meta.years[0] + '–' + meta.dataThrough +
                    ' · ' + fmtInt(SiteCatalog.operatorCount()) + ' with a named operator', '#3ecf8e');
         }
     }

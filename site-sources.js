@@ -176,6 +176,11 @@ var SiteSources = (function() {
             id: raw.id,
             source: raw.source || sourceId || null,
             energyType: raw.energyType || 'unknown',
+            // A human name where the source publishes one. Flares have none — a VIIRS detection
+            // is identified only by position — so this is null for them and the UI falls back to
+            // coordinates. Facilities, landfills and plants all have real names, and without
+            // this field the whitelist silently dropped them.
+            name: raw.name || null,
             lat: num(raw.lat),
             lng: num(raw.lng),
             country: raw.country || null,
@@ -248,6 +253,15 @@ var SiteSources = (function() {
     // is then identical, which is what makes "a flare prospect" and "a vendor offer" the same
     // object to the rest of the system.
     //
+    // Maps a candidate onto site-model.js's SOURCES enum. Anything not manual and not a flare is
+    // 'discovery' — the generic "an adapter found this" bucket. Flares keep their own value so
+    // records saved before multi-source support are unchanged.
+    function siteSourceFor(cand) {
+        if (!cand || cand.source === 'manual') return 'manual';
+        if (cand.energyType === 'flare_gas' || cand.source === 'flare-viirs') return 'flare_detection';
+        return 'discovery';
+    }
+
     // overrides carries the commercial terms a candidate cannot know (price, rate, contract).
     function toSite(cand, overrides) {
         cand = cand || {};
@@ -255,7 +269,12 @@ var SiteSources = (function() {
             id: cand.id,
             name: cand.name || (cand.source ? cand.source + ':' + cand.id : cand.id),
             status: 'prospect',
-            source: cand.source === 'manual' ? 'manual' : 'flare_detection',
+            // Derived from what the candidate actually is. This used to be a flat
+            // 'flare_detection' for every non-manual candidate, which would have stamped a
+            // landfill or a curtailed wind farm as a flare the moment it was promoted to a site
+            // record — a source-type branch inside the one function that is supposed to make
+            // every source look the same.
+            source: siteSourceFor(cand),
             energy_type: cand.energyType || 'unknown',
             latitude: cand.lat,
             longitude: cand.lng,

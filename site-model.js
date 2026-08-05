@@ -13,7 +13,10 @@ var SiteData = (function() {
     var VERSION = 1;
 
     var STATUSES = ['prospect', 'evaluating', 'owned', 'rejected'];
-    var SOURCES = ['flare_detection', 'vendor_offer', 'manual'];
+    // 'discovery' is the generic bucket for anything found by an automated source adapter that
+    // is not a flare. 'flare_detection' is kept as its own value rather than folded in, so
+    // records created before multi-source support keep the label they were saved with.
+    var SOURCES = ['flare_detection', 'discovery', 'vendor_offer', 'manual'];
     // The CRM pipeline from the spec. Editable and persisted — this is a working pipeline,
     // not a read-only view.
     var STAGES = ['unreviewed', 'researching', 'contacted', 'negotiating', 'dead', 'acquired'];

@@ -37,6 +37,7 @@ const ASSETS = [
   './site-opportunity.js',
   './site-sources.js',
   './source-flare-gas.js',
+  './prospect-store.js',
   './site-model.js',
   './jurisdictions.js',
   './price-history.js',
