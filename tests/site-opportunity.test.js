@@ -123,6 +123,31 @@ var after = SO.score(site(), { operator: { operator: 'Lynx Energy ULC' },
 ok('adding a contact raises the opportunity score', after.score > before.score, { before: before.score, after: after.score });
 eq('and the derived tier moves to 1', after.contactTier, 1);
 
+// ---- Site quality: measured grid distance and implied road access -----------------------
+(function () {
+    SO.reset();
+    var far = SO.score(site({ gridDistanceKm: 60 }));
+    var near = SO.score(site({ gridDistanceKm: 1 }));
+    ok('a measured grid distance is scored', comp(near, 'site_quality') !== null, comp(near, 'site_quality'));
+    ok('closer to the grid scores better', comp(near, 'site_quality') > comp(far, 'site_quality'),
+       { near: comp(near, 'site_quality'), far: comp(far, 'site_quality') });
+    eq('no measurement and no built asset stays unmeasured',
+       comp(SO.score(site({ gridDistanceKm: null })), 'site_quality'), null);
+
+    // A hand survey always beats a national dataset.
+    var surveyed = SO.score(site({ gridDistanceKm: 60 }), { manual: { grid_distance_km: 1 } });
+    ok('a manual survey overrides the measured value',
+       comp(surveyed, 'site_quality') > comp(far, 'site_quality'),
+       { surveyed: comp(surveyed, 'site_quality'), measured: comp(far, 'site_quality') });
+
+    // Road access is inferred from the asset existing, not from a distance.
+    var built = SO.score({ id: 'x', development_stage: 'operating' });
+    ok('a built asset scores road access without any survey', comp(built, 'site_quality') !== null,
+       comp(built, 'site_quality'));
+    eq('a raw flare gets no such inference',
+       comp(SO.score({ id: 'x', development_stage: 'raw_resource' }), 'site_quality'), null);
+})();
+
 // ---- Jurisdiction ---------------------------------------------------------------------
 eq('the US scores 100', global.Jurisdictions.score('USA'), 100);
 eq('Canada scores 85', global.Jurisdictions.score('CAN'), 85);
@@ -206,8 +231,14 @@ var stageScores = STAGES.map(function(st) { return SO.score(site({ development_s
 ok('stage ordering is strictly increasing', stageScores.every(function(v, i) { return i === 0 || v > stageScores[i - 1]; }), stageScores);
 eq('raw_resource scores 20 on the component', comp(SO.score(site({ development_stage: 'raw_resource' })), 'development_stage'), 20);
 eq('operating scores 100 on the component', comp(SO.score(site({ development_stage: 'operating' })), 'development_stage'), 100);
-ok('an operating site outranks a raw one by roughly 20 points',
-   Math.abs((stageScores[4] - stageScores[0]) - 20) <= 4, stageScores[4] - stageScores[0]);
+// The gap is wider than the 20 points development_stage alone contributes, because stage now
+// influences site_quality too: a constructed, energized or operating asset necessarily has
+// vehicle access, since you cannot build or run a plant without it. That is a real correlation
+// rather than double-counting a single fact — road access is genuinely better at a built site —
+// but it is worth naming, and it is why site_quality sits at 8% rather than its original 15%.
+ok('an operating site outranks a raw one by 20-30 points',
+   (stageScores[4] - stageScores[0]) >= 18 && (stageScores[4] - stageScores[0]) <= 30,
+   stageScores[4] - stageScores[0]);
 
 // Absent or unusable stages must score null, never 0. At 25% weight a typo scored as zero
 // would bury a prospect on a data-entry error.

@@ -199,6 +199,10 @@ var SiteSources = (function() {
             // 1,908 landfills rendered "operator not identified" while their owner sat unused in
             // the artifact, and the "has an operator" filter silently discarded all of them.
             operator: raw.operator || null,
+            // Kilometres to the nearest electrical substation, measured offline. null means not
+            // measured — either outside the covered countries or nothing within the search
+            // radius — and the scorer treats that as unmeasured rather than as "far".
+            gridDistanceKm: raw.gridDistanceKm === undefined ? null : raw.gridDistanceKm,
             operatorSource: raw.operatorSource || null,
             lat: num(raw.lat),
             lng: num(raw.lng),

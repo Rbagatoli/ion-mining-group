@@ -12,6 +12,25 @@ var ProspectStore = (function() {
     'use strict';
 
     var _all = null, _byId = null, _loading = null, _rejected = [], _errors = [];
+    var _grid = null;   // id -> km to the nearest substation, from data/site-quality.json
+
+    // Optional enrichment, exactly like the permit index: a missing artifact means site quality
+    // stays unmeasured rather than breaking the page or being guessed.
+    function loadGrid() {
+        return fetch('./data/site-quality.json').then(function(res) {
+            return res.ok ? res.json() : null;
+        }).then(function(d) {
+            _grid = (d && d.gridDistanceKm) ? d.gridDistanceKm : null;
+            _gridMeta = d || null;
+            return _grid;
+        }).catch(function() { _grid = null; return null; });
+    }
+    var _gridMeta = null;
+    function gridMeta() { return _gridMeta; }
+    function gridDistanceFor(id) {
+        if (!_grid || !Object.prototype.hasOwnProperty.call(_grid, id)) return null;
+        return _grid[id];
+    }
 
     // ---- Loading ------------------------------------------------------------------------
     // Runs every adapter registered with SiteSources. Rejects and errors are RETAINED rather
@@ -25,8 +44,20 @@ var ProspectStore = (function() {
             return Promise.reject(new Error('SiteSources is not available'));
         }
 
-        _loading = SiteSources.discover(ids, opts || {}).then(function(r) {
+        _loading = Promise.all([
+            SiteSources.discover(ids, opts || {}),
+            loadGrid()
+        ]).then(function(both) {
+            var r = both[0];
             _all = (r && r.candidates) || [];
+            // Stamp measured grid distance onto every candidate that has one. Prospects outside
+            // the covered countries keep null, which the scorer reads as unmeasured.
+            if (_grid) {
+                for (var g = 0; g < _all.length; g++) {
+                    var km = gridDistanceFor(_all[g].id);
+                    if (km !== null) _all[g].gridDistanceKm = km;
+                }
+            }
             _rejected = (r && r.rejected) || [];
             _errors = (r && r.errors) || [];
             reindex();
@@ -153,6 +184,8 @@ var ProspectStore = (function() {
         filter: filter,
         countries: countries,
         sources: sources,
+        gridMeta: gridMeta,
+        gridDistanceFor: gridDistanceFor,
         rejected: rejected,
         errors: errors,
         reset: reset

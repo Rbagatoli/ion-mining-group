@@ -251,6 +251,26 @@ var SiteOpportunity = (function() {
             band(num(m.fiber_distance_km), 5, 60, 'fiber');
             band(num(m.grid_distance_km), 2, 40, 'grid');
         }
+        // Measured grid distance, where no hand survey overrides it. A site visit always wins:
+        // the pipeline measures straight-line distance to a substation, which is a proxy for
+        // "how developed is this area", not for what it would cost to interconnect.
+        if (!(m && num(m.grid_distance_km) !== null)) {
+            band(num(cand && cand.gridDistanceKm), 2, 40, 'grid (measured)');
+        }
+
+        // Road access, derived rather than measured. A plant that is operating, energized or
+        // built necessarily has vehicle access — you cannot construct or run one without it,
+        // and containers arrive by truck. This is an inference from a recorded fact, not a
+        // guess, so it carries its reasoning. Raw resource gets nothing: a flare in a field may
+        // be miles from a passable road and we genuinely do not know.
+        if (!(m && num(m.road_distance_km) !== null)) {
+            var st = stageOf(cand);
+            if (st === 'operating' || st === 'energized' || st === 'constructed') {
+                vals.push(100);
+                parts.push('road access implied by a built asset');
+            }
+        }
+
         if (!vals.length) return { value: null, detail: 'road, fiber and grid distances not surveyed' };
         var avg = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
         return { value: clamp100(avg), detail: parts.join(', ') };
