@@ -161,6 +161,10 @@ var FacilitySource = (function() {
             lat: f.lat,
             lng: f.lon,
             iso3: 'USA',
+            // EIA-860 names the utility for all 9,765 plants. normalize() used to drop it, so
+            // every facility displayed as "operator not identified".
+            operator: f.operator || null,
+            operatorSource: f.operator ? 'EIA-860 utility of record' : null,
             // Nameplate in kW. Effective capacity is nameplate x duty cycle, applied downstream
             // by site-opportunity.js, so this stays the honest nameplate figure.
             powerPotentialKw: f.nameplateMw === null ? null : Math.round(f.nameplateMw * 1000),

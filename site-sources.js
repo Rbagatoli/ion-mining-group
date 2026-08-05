@@ -193,6 +193,13 @@ var SiteSources = (function() {
             // coordinates. Facilities, landfills and plants all have real names, and without
             // this field the whitelist silently dropped them.
             name: raw.name || null,
+            // Who holds/owns the asset, as published by whatever registry the adapter read.
+            // This belongs on the SHARED shape, not in a per-source side table: it previously
+            // existed only as a flare-specific lookup keyed by flare id, so 9,765 facilities and
+            // 1,908 landfills rendered "operator not identified" while their owner sat unused in
+            // the artifact, and the "has an operator" filter silently discarded all of them.
+            operator: raw.operator || null,
+            operatorSource: raw.operatorSource || null,
             lat: num(raw.lat),
             lng: num(raw.lng),
             country: raw.country || null,
@@ -296,6 +303,8 @@ var SiteSources = (function() {
             // every source look the same.
             source: siteSourceFor(cand),
             energy_type: cand.energyType || 'unknown',
+            operator: cand.operator || null,
+            operator_source: cand.operatorSource || null,
             development_stage: cand.developmentStage || null,
             offtake_state: cand.offtakeState || null,
             permit_state: cand.permitState || null,

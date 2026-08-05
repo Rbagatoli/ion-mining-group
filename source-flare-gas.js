@@ -52,6 +52,11 @@ var FlareGasSource = (function() {
         // Whoever holds the licence is who you would actually negotiate with. Where the regulator
         // publishes no licensee we say so rather than guessing at a counterparty.
         c.counterpartyType = op ? 'oil_gas_operator' : null;
+        // Mirrored onto the shared field so all three sources populate operator identity the
+        // same way. The richer per-company record (phone, address, ticker) still comes from
+        // SiteCatalog.companyFor, which is flare-specific enrichment.
+        c.operator = op ? op.operator : null;
+        c.operatorSource = op ? (op.source || 'regulator filing') : null;
 
         // Liveness is a separate satellite signal and may legitimately be absent. Absent means
         // not checked, never "confirmed dark" — the distinction is load-bearing in the UI.

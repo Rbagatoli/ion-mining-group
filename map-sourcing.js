@@ -462,14 +462,14 @@ var MapSourcing = (function() {
         var f = currentFilters();
         var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
-            matches = matches.filter(function(c) { return !!SiteCatalog.operatorFor(c.id); });
+            matches = matches.filter(function(c) { return !!operatorName(c); });
         }
         if (f.confirmedBurning) {
             matches = matches.filter(function(c) { return c.daysSinceActive !== null; });
         }
         if (_companyFilter) {
             matches = matches.filter(function(c) {
-                var o = SiteCatalog.operatorFor(c.id);
+                var o = operatorRecord(c);
                 return o && o.operator === _companyFilter;
             });
         }
@@ -513,7 +513,7 @@ var MapSourcing = (function() {
         for (var i = 0; i < matches.length; i++) {
             totalKw += matches[i].powerPotentialKw || 0;
             if (matches[i].yearsSeen === years) persistent++;
-            if (SiteCatalog.operatorFor(matches[i].id)) withOperator++;
+            if (operatorName(matches[i])) withOperator++;
         }
         document.getElementById('sumMatching').textContent = fmtInt(matches.length);
         document.getElementById('sumMatchingSub').textContent = 'of ' + fmtInt(ProspectStore.all().length) + ' in catalog';
@@ -547,7 +547,7 @@ var MapSourcing = (function() {
         var html = '';
         for (var i = 0; i < shown.length; i++) {
             var c = shown[i].candidate;
-            var op = SiteCatalog.operatorFor(c.id);
+            var op = operatorRecord(c);
             html += '<div class="src-row' + (c.id === _selectedId ? ' sel' : '') + '" data-id="' + esc(c.id) + '">' +
                 '<label class="pf-check" title="Include in portfolio"><input type="checkbox" data-pf="' + esc(c.id) + '"' +
                 (_portfolio[c.id] ? ' checked' : '') + '></label>' +
@@ -595,7 +595,7 @@ var MapSourcing = (function() {
         var r = SiteOpportunity.score(c, {
             jurisdictions: ctx.jurisdictions,
             fleet: ctx.fleet,
-            operator: SiteCatalog.operatorFor(c.id),
+            operator: operatorRecord(c),
             manual: (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null
         });
         _oppCache[c.id] = r;
@@ -635,7 +635,7 @@ var MapSourcing = (function() {
             case 'kw':          return c.powerPotentialKw === null ? -1 : c.powerPotentialKw;
             case 'duty':        return c.dutyCyclePct === null ? -1 : c.dutyCyclePct;
             case 'years':       return c.yearsSeen === null ? -1 : c.yearsSeen;
-            case 'operator':    var op = SiteCatalog.operatorFor(c.id);
+            case 'operator':    var op = operatorRecord(c);
                                 return op && op.operator ? op.operator.toLowerCase() : '￿';
             case 'acquirability': var a = acquirabilityFor(c).scoreRaw; return a === null ? null : a;
             case 'combined':      return combinedFor(c);
@@ -715,7 +715,7 @@ var MapSourcing = (function() {
         var html = '';
         for (var i = 0; i < shown.length; i++) {
             var c = shown[i].candidate;
-            var op = SiteCatalog.operatorFor(c.id);
+            var op = operatorRecord(c);
             var opp = opportunityFor(c);
             html += '<tr' + (c.id === _selectedId ? ' class="sel"' : '') + ' data-id="' + esc(c.id) + '">' +
                 '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + '</td>' +
@@ -999,7 +999,7 @@ var MapSourcing = (function() {
                 .pointRadius(function(d) { return d.size * _zoomScale; })
                 .pointColor('color')
                 .pointLabel(function(d) {
-                    var op = SiteCatalog.operatorFor(d.id);
+                    var op = operatorRecord(d);
                     return '<div class="globe-tooltip">' + esc(d.label) + '<br>' + fmtKw(d.kw) +
                         (op ? '<br>' + esc(op.operator) : '') + '</div>';
                 });
@@ -1029,7 +1029,7 @@ var MapSourcing = (function() {
                     fillColor: colorFor(c),
                     fillOpacity: isFocus ? 0.85 : (dimmed ? 0.10 : 0.45)
                 });
-                var opx = SiteCatalog.operatorFor(c.id);
+                var opx = operatorRecord(c);
                 m.bindTooltip(placeLabel(c) + ' — ' + fmtKw(c.powerPotentialKw) + (opx ? ' — ' + opx.operator : ''));
                 (function(id) { m.on('click', function() { select(id, true); }); })(c.id);
                 m.addTo(_leafletLayer);
@@ -1134,6 +1134,25 @@ var MapSourcing = (function() {
         return out;
     }
 
+    // Operator identity for ANY source.
+    //
+    // Reads the candidate's own field first, then falls back to the flare operator index, which
+    // carries the richer per-company record (licence, distance, and via companyFor a phone and
+    // address). Every consumer goes through this, so a source that publishes an owner can never
+    // again be reported as unidentified because it is not a flare.
+    function operatorRecord(c) {
+        if (!c) return null;
+        var flare = (typeof SiteCatalog !== 'undefined' && SiteCatalog.operatorFor)
+            ? SiteCatalog.operatorFor(c.id) : null;
+        if (flare) return flare;
+        if (c.operator) return { operator: c.operator, source: c.operatorSource || null, licence: null };
+        return null;
+    }
+    function operatorName(c) {
+        var r = operatorRecord(c);
+        return r && r.operator ? r.operator : null;
+    }
+
     // Human label for where a prospect came from, taken from the adapter registry so a new
     // source names itself rather than needing a case added here.
     function sourceLabel(c) {
@@ -1152,7 +1171,7 @@ var MapSourcing = (function() {
         var meta = SiteCatalog.meta();
 
         var j = Jurisdictions.get(c.iso3);
-        var op = SiteCatalog.operatorFor(c.id);
+        var op = operatorRecord(c);
         var scored = SiteScoring.score(c, { jurisdictions: Jurisdictions });
 
         // The unified 0-100 opportunity score. Ranks across every energy source, so this is what
@@ -1365,7 +1384,35 @@ var MapSourcing = (function() {
 
         // ---- Who to contact -----------------------------------------------------
         html += '<div class="src-contact"><div class="section-label">Who to contact</div>';
-        if (op) {
+        // Non-flare sources: the owner is published directly by EIA-860 or LMOP, with a postal
+        // address in the landfill case. Their record has no distance_m, because there is no
+        // nearby well licence involved — the operator IS the site's owner.
+        if (op && op.distance_m === undefined) {
+            var sdc = c.sourceDetail || {};
+            // Require a STREET address. Facilities publish only state and county, and
+            // [state] alone passed a naive truthy filter and rendered as "Site address: AK" —
+            // a state is not somewhere you can send a letter or identify a site from.
+            var addrParts = sdc.address
+                ? [sdc.address, sdc.city, sdc.state, sdc.zip].filter(Boolean) : [];
+            var oq = encodeURIComponent(op.operator + ' contact');
+            html += '<div class="src-op-big">' + esc(op.operator) + '</div>';
+            html += '<p class="src-note">Owner of record' +
+                (op.source ? ', per ' + esc(op.source) : '') + '.' +
+                (sdc.ownershipType ? ' ' + esc(sdc.ownershipType) + ' ownership.' : '') + '</p>';
+            if (addrParts.length) {
+                var addr = addrParts.join(', ');
+                html += '<div class="src-registry"><div class="src-reg-row">' +
+                    '<span class="src-reg-k">Site address</span>' +
+                    '<a class="src-reg-v" target="_blank" rel="noopener" ' +
+                    'href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) + '">' +
+                    esc(addr) + '</a></div></div>' +
+                    '<p class="src-note">The site\'s own postal address, not the owner\'s head office. ' +
+                    'Useful for identifying the operating company and the local contact.</p>';
+            }
+            html += '<p class="src-note">No phone or named individual is published for this owner. ' +
+                '<a href="https://duckduckgo.com/?q=' + oq + '" target="_blank" rel="noopener">' +
+                'Search the web for ' + esc(op.operator) + ' →</a></p>';
+        } else if (op) {
             var co = SiteCatalog.companyFor(op.operator);
             var q = encodeURIComponent(op.operator + (co && co.ticker ? '' : ' oil gas company') + ' contact');
             html += '<div class="src-op-big">' + esc(op.operator) +
@@ -1407,6 +1454,9 @@ var MapSourcing = (function() {
                 'Who to ask for, an email or a mobile are not published anywhere — record them below as you learn them. ' +
                 '<a href="https://duckduckgo.com/?q=' + q + '" target="_blank" rel="noopener">Search the web for ' + esc(op.operator) + ' →</a></p>';
         } else {
+            if (c.source !== 'flare-viirs') {
+                html += '<p class="src-note src-gap">No owner is published for this record.</p>';
+            } else
             html += '<p class="src-note src-gap">No licensed operator matched within ' +
                 (SiteCatalog.operatorsMeta() ? SiteCatalog.operatorsMeta().maxMatchM : 2000) + ' m.</p>' +
                 '<p class="src-note">Operator matching currently covers <strong>Alberta</strong> (AER well licences) and the ' +

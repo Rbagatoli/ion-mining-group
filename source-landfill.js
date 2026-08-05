@@ -97,6 +97,8 @@ var LandfillSource = (function() {
             lat: p.lat,
             lng: p.lon,
             iso3: 'USA',
+            operator: p.owner || null,
+            operatorSource: p.owner ? 'EPA LMOP landfill owner' : null,
             powerPotentialKw: p.powerPotentialKw,
             dutyCyclePct: DUTY_CYCLE_PCT,
             firstSeen: p.projectStartDate || (p.landfillOpenedYear ? String(p.landfillOpenedYear) : null),
