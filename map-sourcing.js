@@ -481,6 +481,7 @@ var MapSourcing = (function() {
         renderSizeHint();
         renderSummary(matches);
         renderList();
+        renderTable();
         if (_focused) exitFocus(true);
         else renderMapLayer();
     }
@@ -560,6 +561,160 @@ var MapSourcing = (function() {
                 '</div>';
         }
         listEl.innerHTML = html;
+    }
+
+    // ---- Ranked table --------------------------------------------------------------------
+    // The primary view. Reads the SAME _filtered result the map and the side list read, so the
+    // three can never disagree about what matched.
+    var TABLE_CAP = 250;
+    var _tableSort = { key: 'opportunity', dir: -1 };
+    var _oppCache = {};
+    var _oppCtx = null;
+
+    // Scoring context is built ONCE per render pass. existingOperations() reads localStorage and
+    // JSON.parses it, so calling it per candidate would do that 16,125 times and freeze the page.
+    function opportunityCtx() {
+        if (!_oppCtx) {
+            _oppCtx = { jurisdictions: Jurisdictions, fleet: existingOperations() };
+        }
+        return _oppCtx;
+    }
+    function invalidateOpportunity() { _oppCache = {}; _oppCtx = null; }
+
+    // Memoised per candidate. Scoring every row on every sort click would otherwise redo the
+    // full seven-component calculation across the whole filtered set.
+    function opportunityFor(c) {
+        if (Object.prototype.hasOwnProperty.call(_oppCache, c.id)) return _oppCache[c.id];
+        var ctx = opportunityCtx();
+        var r = SiteOpportunity.score(c, {
+            jurisdictions: ctx.jurisdictions,
+            fleet: ctx.fleet,
+            operator: SiteCatalog.operatorFor(c.id),
+            manual: (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null
+        });
+        _oppCache[c.id] = r;
+        return r;
+    }
+
+    function tableSortValue(row, key) {
+        var c = row.candidate;
+        switch (key) {
+            case 'name':        return placeLabel(c).toLowerCase();
+            case 'source':      return (c.source || '').toLowerCase();
+            case 'iso3':        return (c.iso3 || '').toLowerCase();
+            case 'kw':          return c.powerPotentialKw === null ? -1 : c.powerPotentialKw;
+            case 'duty':        return c.dutyCyclePct === null ? -1 : c.dutyCyclePct;
+            case 'years':       return c.yearsSeen === null ? -1 : c.yearsSeen;
+            case 'operator':    var op = SiteCatalog.operatorFor(c.id);
+                                return op && op.operator ? op.operator.toLowerCase() : '￿';
+            case 'opportunity':
+            default:
+                var s = opportunityFor(c).score;
+                // Unscoreable prospects sort LAST in either direction rather than as a zero they
+                // did not earn. -Infinity would put them top on an ascending sort.
+                return s === null ? null : s;
+        }
+    }
+
+    function renderTable() {
+        var body = document.getElementById('srcTableBody');
+        if (!body) return;
+        var countEl = document.getElementById('tblCount');
+        var capEl = document.getElementById('tblCap');
+
+        var rows = _filtered.slice();
+        var key = _tableSort.key, dir = _tableSort.dir;
+        rows.sort(function(a, b) {
+            var va = tableSortValue(a, key), vb = tableSortValue(b, key);
+            if (va === null && vb === null) return 0;
+            if (va === null) return 1;              // nulls last, always
+            if (vb === null) return -1;
+            if (va < vb) return -dir;
+            if (va > vb) return dir;
+            return 0;
+        });
+
+        var shown = rows.slice(0, TABLE_CAP);
+        if (countEl) {
+            countEl.textContent = fmtInt(rows.length) + ' prospect' + (rows.length === 1 ? '' : 's');
+        }
+        // Never truncate silently — a capped list that says nothing reads as "this is all of it".
+        if (capEl) {
+            capEl.textContent = rows.length > shown.length
+                ? 'showing the top ' + shown.length + ' by ' + key + ' — narrow the filters to see further down'
+                : '';
+        }
+
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="8" class="src-gap" style="padding:14px;">' +
+                'No prospects match these filters.</td></tr>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < shown.length; i++) {
+            var c = shown[i].candidate;
+            var op = SiteCatalog.operatorFor(c.id);
+            var opp = opportunityFor(c);
+            html += '<tr' + (c.id === _selectedId ? ' class="sel"' : '') + ' data-id="' + esc(c.id) + '">' +
+                '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + '</td>' +
+                '<td><span class="src-srcchip">' + esc(energyLabel(c)) + '</span></td>' +
+                '<td>' + esc(c.iso3 || '--') + '</td>' +
+                '<td class="num kw">' + fmtKw(c.powerPotentialKw) + '</td>' +
+                '<td class="num">' + (c.dutyCyclePct === null ? '--' : c.dutyCyclePct + '%') + '</td>' +
+                '<td class="num">' + (c.yearsSeen === null ? '--' : c.yearsSeen + '/' + (c.yearsTotal || '?')) + '</td>' +
+                '<td class="num">' + (opp.score === null
+                    ? '<span class="src-gap">--</span>'
+                    : '<span class="src-oppcell">' + opp.score + '</span>' +
+                      (opp.coverage < 100 ? ' <span class="src-covwarn">' + opp.coverage + '%</span>' : '')) + '</td>' +
+                '<td>' + (op && op.operator ? esc(op.operator)
+                                            : '<span class="src-gap">not identified</span>') + '</td>' +
+                '</tr>';
+        }
+        body.innerHTML = html;
+    }
+
+    function wireTable() {
+        var head = document.getElementById('srcTableHead');
+        if (head) {
+            head.addEventListener('click', function(e) {
+                var th = e.target.closest('th[data-sort]');
+                if (!th) return;
+                var k = th.getAttribute('data-sort');
+                // Re-clicking the active column flips direction; a new column starts descending,
+                // except the text columns where A-Z is the natural first read.
+                if (_tableSort.key === k) _tableSort.dir = -_tableSort.dir;
+                else _tableSort = { key: k, dir: (k === 'name' || k === 'source' || k === 'iso3' || k === 'operator') ? 1 : -1 };
+                paintTableHead();
+                renderTable();
+            });
+        }
+        var body = document.getElementById('srcTableBody');
+        if (body) {
+            body.addEventListener('click', function(e) {
+                var tr = e.target.closest('tr[data-id]');
+                if (!tr) return;
+                select(tr.getAttribute('data-id'));
+            });
+        }
+        paintTableHead();
+    }
+
+    function paintTableHead() {
+        var head = document.getElementById('srcTableHead');
+        if (!head) return;
+        var ths = head.querySelectorAll('th[data-sort]');
+        for (var i = 0; i < ths.length; i++) {
+            var k = ths[i].getAttribute('data-sort');
+            ths[i].classList.toggle('sorted', k === _tableSort.key);
+            ths[i].classList.toggle('asc', k === _tableSort.key && _tableSort.dir === 1);
+        }
+    }
+
+    // Energy type reads better than an adapter id in a narrow column.
+    function energyLabel(c) {
+        if (c.energyType && c.energyType !== 'unknown') return String(c.energyType).replace(/_/g, ' ');
+        return c.source || 'unknown';
     }
 
     // A confirmation is only shown when one exists. Nothing is rendered for unconfirmed sites in
@@ -794,6 +949,7 @@ var MapSourcing = (function() {
         _focused = true;
         renderMapLayer();
         renderList();
+        renderTable();
 
         if (globe) {
             // Stop the idle spin, otherwise the globe drifts straight back off the target.
@@ -814,6 +970,7 @@ var MapSourcing = (function() {
         _focused = false;
         renderMapLayer();
         renderList();
+        renderTable();
         var globe = MapBridge.globe();
         if (globe && !skipCamera) {
             if (_prevPOV) globe.pointOfView(_prevPOV, 900);
@@ -1149,7 +1306,12 @@ var MapSourcing = (function() {
             }
             var msg = document.getElementById('srcSaveMsg');
             if (msg) { msg.textContent = 'Saved — syncs across your devices.'; msg.style.color = '#3ecf8e'; }
+            // Contact fields feed the actionability component, so a saved phone number changes
+            // the opportunity score. Drop the memoised scores or the table would keep showing
+            // the pre-edit ranking.
+            invalidateOpportunity();
             renderList();
+            renderTable();
         });
     }
 
@@ -1333,11 +1495,13 @@ var MapSourcing = (function() {
             _portfolio = {};
             saveScenario();
             renderList();
+            renderTable();
             renderPortfolio();
         });
 
         renderAbout();
         installDismiss();
+        wireTable();
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();
@@ -1355,7 +1519,11 @@ var MapSourcing = (function() {
             status('Restored your last search — ' + fmtInt(_filtered.length) + ' prospects of ' +
                    fmtInt(ProspectStore.all().length) + ' in catalog', '#8ac');
         } else {
-            status(fmtInt(ProspectStore.all().length) + ' flare sites · survey ' + meta.years[0] + '–' + meta.dataThrough +
+            // Sourced from the store, not the flare artifact — with a second adapter registered
+            // this line would otherwise under-report the catalog and still call it "flare sites".
+            var srcs = ProspectStore.sources().filter(function(s) { return s.count > 0; });
+            status(fmtInt(ProspectStore.all().length) + ' prospects from ' + srcs.length + ' source' +
+                   (srcs.length === 1 ? '' : 's') + ' · survey ' + meta.years[0] + '–' + meta.dataThrough +
                    ' · ' + fmtInt(SiteCatalog.operatorCount()) + ' with a named operator', '#3ecf8e');
         }
     }

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Fleet Map</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=282">
+    <link rel="stylesheet" href="./shared.css?v=283">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="./chart.min.js?v=282"></script>
+    <script src="./chart.min.js?v=283"></script>
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -104,6 +104,33 @@
         .src-op { color:#8ac; }
         .src-burning { color:#3ecf8e; font-weight:600; }
         .src-sub2 { color:#777; font-weight:400; }
+
+        /* Ranked table. Wide content scrolls inside its own container so the page body never
+           scrolls sideways on a narrow screen. */
+        .src-tablewrap { overflow-x:auto; max-height:520px; overflow-y:auto; }
+        .src-table { width:100%; border-collapse:collapse; font-size:12px; }
+        .src-table th, .src-table td { padding:7px 10px; text-align:left; white-space:nowrap; }
+        .src-table thead th {
+            position:sticky; top:0; z-index:1; background:#141414;
+            font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#888;
+            border-bottom:1px solid rgba(255,255,255,.10); cursor:pointer; user-select:none;
+        }
+        body.light-mode .src-table thead th { background:#f2f2f2; }
+        .src-table thead th:hover { color:#f7931a; }
+        .src-table thead th.sorted { color:#f7931a; }
+        .src-table thead th.sorted::after { content:' \25BC'; font-size:8px; }
+        .src-table thead th.sorted.asc::after { content:' \25B2'; }
+        .src-table th.num, .src-table td.num { text-align:right; }
+        .src-table tbody tr { border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; }
+        .src-table tbody tr:hover { background:rgba(247,147,26,.07); }
+        .src-table tbody tr.sel { background:rgba(247,147,26,.14); }
+        .src-table td.name { font-weight:600; color:#eee; white-space:normal; min-width:170px; }
+        .src-table td.kw { color:#f7931a; font-weight:600; }
+        .src-srcchip { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px;
+                       text-transform:uppercase; letter-spacing:.04em;
+                       background:rgba(120,170,255,.15); color:#8ac; }
+        .src-oppcell { color:#eee; font-weight:600; }
+        .src-covwarn { color:#777; font-weight:400; font-size:10px; }
 
         .src-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; letter-spacing:.04em;
                      text-transform:uppercase; margin-left:5px; vertical-align:middle; }
@@ -415,6 +442,36 @@ blank on each site rather than being guessed.</p>
     </div>
     </div>
 
+    <!-- ===== RANKED TABLE (prospects mode) =====
+         Shares filter state with the map and the side list — all three read the same
+         MapSourcing.filtered() result, so they can never disagree about what matched. -->
+    <div class="widget-section prospects-only" data-widget="prospect-table" style="display:none;">
+    <div class="sec-head"><div class="section-label">Ranked prospects</div></div>
+    <div class="card" style="padding:0;">
+        <div class="src-count">
+            <span id="tblCount">--</span>
+            <span id="tblCap" class="src-sub2"></span>
+        </div>
+        <div class="src-tablewrap">
+            <table class="src-table" id="srcTable">
+                <thead>
+                    <tr id="srcTableHead">
+                        <th data-sort="name">Prospect</th>
+                        <th data-sort="source">Source</th>
+                        <th data-sort="iso3">Country</th>
+                        <th data-sort="kw" class="num">Capacity</th>
+                        <th data-sort="duty" class="num">Duty</th>
+                        <th data-sort="years" class="num">Years</th>
+                        <th data-sort="opportunity" class="num">Opportunity</th>
+                        <th data-sort="operator">Counterparty</th>
+                    </tr>
+                </thead>
+                <tbody id="srcTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+
     <!-- ===== SCENARIO BAR (prospects mode) ===== -->
     <div class="widget-section prospects-only" data-widget="prospect-scenario">
     <div class="sec-head"><div class="section-label">Scenario</div><button class="info-btn" type="button" data-info="scenario" aria-label="What is this?" aria-expanded="false">i</button></div>
@@ -564,32 +621,32 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=282"></script>
-<script src="./sync.js?v=282"></script>
-<script src="./auth-ui.js?v=282"></script>
-<script src="./profile-panel.js?v=282"></script>
-<script src="./shared.js?v=282"></script>
-<script src="./fleet-data.js?v=282"></script>
-<script src="./geo-data.js?v=282"></script>
+<script src="./firebase-config.js?v=283"></script>
+<script src="./sync.js?v=283"></script>
+<script src="./auth-ui.js?v=283"></script>
+<script src="./profile-panel.js?v=283"></script>
+<script src="./shared.js?v=283"></script>
+<script src="./fleet-data.js?v=283"></script>
+<script src="./geo-data.js?v=283"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.41.3/dist/globe.gl.min.js"></script>
-<script src="./price-history.js?v=282"></script>
-<script src="./network-history.js?v=282"></script>
-<script src="./calc-engine.js?v=282"></script>
-<script src="./jurisdictions.js?v=282"></script>
-<script src="./site-engine.js?v=282"></script>
-<script src="./site-flags.js?v=282"></script>
-<script src="./site-scoring.js?v=282"></script>
-<script src="./site-opportunity.js?v=282"></script>
-<script src="./site-sources.js?v=282"></script>
-<script src="./site-model.js?v=282"></script>
-<script src="./site-catalog.js?v=282"></script>
-<script src="./source-flare-gas.js?v=282"></script>
-<script src="./prospect-store.js?v=282"></script>
-<script src="./map.js?v=282"></script>
-<script src="./map-sourcing.js?v=282"></script>
+<script src="./price-history.js?v=283"></script>
+<script src="./network-history.js?v=283"></script>
+<script src="./calc-engine.js?v=283"></script>
+<script src="./jurisdictions.js?v=283"></script>
+<script src="./site-engine.js?v=283"></script>
+<script src="./site-flags.js?v=283"></script>
+<script src="./site-scoring.js?v=283"></script>
+<script src="./site-opportunity.js?v=283"></script>
+<script src="./site-sources.js?v=283"></script>
+<script src="./site-model.js?v=283"></script>
+<script src="./site-catalog.js?v=283"></script>
+<script src="./source-flare-gas.js?v=283"></script>
+<script src="./prospect-store.js?v=283"></script>
+<script src="./map.js?v=283"></script>
+<script src="./map-sourcing.js?v=283"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
@@ -676,8 +733,8 @@ commercial terms are your assumptions.</p>
     }, true);
 })();
 </script>
-<script src="./widget-settings.js?v=282"></script>
-<script src="./alerts.js?v=282"></script>
-<script src="./onboarding.js?v=282"></script>
+<script src="./widget-settings.js?v=283"></script>
+<script src="./alerts.js?v=283"></script>
+<script src="./onboarding.js?v=283"></script>
 </body>
 </html>
