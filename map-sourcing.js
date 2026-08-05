@@ -674,6 +674,135 @@ var MapSourcing = (function() {
         listEl.innerHTML = html;
     }
 
+    // ---- Data provenance ---------------------------------------------------------------
+    // Each artifact already carries its own generated date and its own caveats, written when the
+    // pipeline was built. They were invisible inside JSON. A capacity factor a year old and one
+    // from last month look identical in the UI unless something says otherwise.
+    //
+    // Age bands are about DECISION RISK, not tidiness: a satellite survey published annually is
+    // fine at eight months old, while a compliance record is not.
+    function ageBand(dateStr, staleAfterDays) {
+        if (!dateStr) return { cls: '', label: 'date unknown', days: null };
+        var t = Date.parse(dateStr);
+        if (isNaN(t)) return { cls: '', label: 'date unknown', days: null };
+        var days = Math.floor((Date.now() - t) / 86400000);
+        var stale = staleAfterDays || 400;
+        var cls = days <= stale * 0.35 ? 'fresh' : (days <= stale ? 'aging' : 'stale');
+        var label = days < 1 ? 'today'
+                  : days < 60 ? days + ' days old'
+                  : days < 730 ? Math.round(days / 30) + ' months old'
+                  : (days / 365).toFixed(1) + ' years old';
+        return { cls: cls, label: label, days: days };
+    }
+
+    function renderProvenance() {
+        var el = document.getElementById('provBody');
+        if (!el) return;
+        var items = [];
+
+        function add(name, meta, opts) {
+            if (!meta) return;
+            opts = opts || {};
+            var band = ageBand(opts.date || meta.generated, opts.staleAfterDays);
+            var caveats = [];
+            // Ordered by DECISION RISK, not alphabetically. Only the first is shown, so the
+            // order decides what the user actually reads. "This figure is a year old" changes a
+            // decision; "plants under 1 MW are absent" changes what you go looking for, which
+            // matters less at the moment you are reading one prospect's number.
+            ['lagNote', 'staleness', 'matchNote', 'coverageNote', 'unitTrap', 'capacityNote',
+             'declineMethod', 'method', 'stageNote', 'joinNote', 'permitNote', 'note']
+                .forEach(function(k) { if (meta[k]) caveats.push(meta[k]); });
+            items.push({
+                name: name,
+                cls: band.cls,
+                age: band.label,
+                meta: opts.detail || '',
+                // The FIRST caveat only. All of them is a wall of text nobody reads; the one the
+                // pipeline author put first is the one that matters most.
+                caveat: caveats.length ? caveats[0] : null
+            });
+        }
+
+        var cm = (typeof SiteCatalog !== 'undefined' && SiteCatalog.meta) ? SiteCatalog.meta() : null;
+        if (cm) {
+            add('Flare survey (VIIRS)', cm, {
+                // The survey YEAR matters far more than when the file was downloaded.
+                date: cm.dataThrough ? (cm.dataThrough + '-12-31') : cm.generated,
+                staleAfterDays: 900,
+                detail: (cm.counts ? fmtInt(cm.counts.sites) + ' sites · ' : '') +
+                        'survey years ' + (cm.years ? cm.years[0] + '–' + cm.dataThrough : '?')
+            });
+        }
+        var om = (typeof SiteCatalog !== 'undefined' && SiteCatalog.operatorsMeta) ? SiteCatalog.operatorsMeta() : null;
+        if (om) add('Operator index (AER + US)', om, { detail: 'matched within ' + (om.maxMatchM || '?') + ' m of a licensed well' });
+
+        var lm = (typeof SiteCatalog !== 'undefined' && SiteCatalog.livenessMeta) ? SiteCatalog.livenessMeta() : null;
+        if (lm) {
+            add('Satellite liveness (FIRMS)', lm, {
+                staleAfterDays: 120,
+                detail: (lm.windowDays ? lm.windowDays + '-day window · ' : '') +
+                        (lm.confirmed !== undefined ? fmtInt(lm.confirmed) + ' confirmed burning' : '')
+            });
+        }
+        var fm = (typeof FacilitySource !== 'undefined' && FacilitySource.meta) ? FacilitySource.meta() : null;
+        if (fm) {
+            add('US facilities (EIA-860/923)', fm, {
+                staleAfterDays: 500,
+                detail: (fm.counts ? fmtInt(fm.counts.facilities) + ' plants · ' : '') +
+                        'EIA-860 ' + (fm.eia860Year || '?') +
+                        (fm.generationYears ? ' · generation ' + fm.generationYears[0] + '–' +
+                            fm.generationYears[fm.generationYears.length - 1] : '')
+            });
+        }
+        var lfm = (typeof LandfillSource !== 'undefined' && LandfillSource.meta) ? LandfillSource.meta() : null;
+        if (lfm) {
+            add('Landfill gas (EPA LMOP)', lfm, {
+                staleAfterDays: 260,
+                detail: lfm.counts ? fmtInt(lfm.counts.projects) + ' projects · ' +
+                                     fmtInt(lfm.counts.shutdown) + ' shut down' : ''
+            });
+        }
+        var pm = (typeof PermitIndex !== 'undefined' && PermitIndex.meta) ? PermitIndex.meta() : null;
+        if (pm) {
+            add('Air permits (EPA ECHO)', pm, {
+                staleAfterDays: 200,
+                detail: pm.counts ? fmtInt(pm.counts.joined) + ' verified of ' +
+                                    fmtInt(pm.counts.facilitiesConsidered) + ' plants' : ''
+            });
+        } else {
+            items.push({
+                name: 'Air permits (EPA ECHO)', cls: '', age: 'not built',
+                meta: 'permit status shows as unverified everywhere',
+                caveat: 'Run tools/build-permit-index.js to populate it. Unverified means not ' +
+                        'checked, never that a site is unpermitted.'
+            });
+        }
+        var gm = (typeof ProspectStore !== 'undefined' && ProspectStore.gridMeta) ? ProspectStore.gridMeta() : null;
+        if (gm) {
+            var us = gm.gridSources && gm.gridSources.usa ? gm.gridSources.usa : null;
+            add('Grid distance (substations)', gm, {
+                // Dated to the underlying SURVEY, not to when this file was written — the whole
+                // point is that the source data is old even though the artifact is new.
+                date: us && us.dataLastEdit ? us.dataLastEdit : gm.generated,
+                staleAfterDays: 1100,
+                detail: gm.counts ? fmtInt(gm.counts.withGridDistance) + ' prospects measured' : ''
+            });
+        }
+
+        if (!items.length) { el.innerHTML = '<span class="src-gap">No dataset metadata available.</span>'; return; }
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            html += '<div class="prov-item ' + it.cls + '">' +
+                '<div><span class="prov-name">' + esc(it.name) + '</span>' +
+                '<span class="prov-age">' + esc(it.age) + '</span></div>' +
+                (it.meta ? '<div class="prov-meta">' + esc(it.meta) + '</div>' : '') +
+                (it.caveat ? '<div class="prov-caveat">' + esc(it.caveat) + '</div>' : '') +
+                '</div>';
+        }
+        el.innerHTML = html;
+    }
+
     // ---- Outreach worklist -----------------------------------------------------------------
     // The saved-sites view the CRM never had. Reads SiteData directly rather than the prospect
     // store, because a saved site is a decision the user made and must persist even if the
@@ -2111,6 +2240,7 @@ var MapSourcing = (function() {
         wireViews();
         wireWorklist();
         wireSourceFilter();
+        renderProvenance();
         try {
             var savedSrc = JSON.parse(localStorage.getItem(SRC_FILTER_KEY) || 'null');
             if (savedSrc && savedSrc.ids && savedSrc.ids.length) {

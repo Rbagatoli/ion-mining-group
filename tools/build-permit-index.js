@@ -89,6 +89,14 @@ var PACE_MS = parseInt(arg('pace', '300'), 10);     // politeness delay between 
 // well under any reasonable threshold and takes about an hour for the full run. It caches every
 // response, so a re-run costs nothing.
 var MAX_RETRIES = 3;
+// ECHO's real budget is 300 requests/hour and 1,500/day. It is published nowhere in the response
+// headers — see getJson — so the only safe approach is to stay well inside it by pacing. At 500
+// rows per page and roughly 2,000 air facilities per state, a national run is about 250 requests,
+// so 13 seconds between them fits the whole run inside one hour's allowance.
+var ECHO_PACE_MS = parseInt(arg('echo-pace', '13000'), 10);
+// A throttle needs minutes, not milliseconds. Retrying after 800ms just burns what is left of
+// the allowance faster.
+var THROTTLE_WAIT_MS = 12 * 60 * 1000;
 
 function log(s) { console.log(s); }
 function progress(s) { if (process.stdout.isTTY) process.stdout.write('\r  ' + s + '          '); }
@@ -108,8 +116,20 @@ function getJson(url, attempt) {
                 if (t.charAt(0) !== '{' && t.charAt(0) !== '[') {
                     return resolve({ ok: false, status: 200, body: 'not JSON: ' + t.slice(0, 120) });
                 }
-                try { resolve({ ok: true, status: 200, json: JSON.parse(t) }); }
-                catch (e) { resolve({ ok: false, status: 200, body: 'bad JSON: ' + e.message }); }
+                var parsed;
+                try { parsed = JSON.parse(t); }
+                catch (e) { return resolve({ ok: false, status: 200, body: 'bad JSON: ' + e.message }); }
+                // ECHO enforces 300 requests/hour and reports it in the BODY of a 200 response,
+                // with no Retry-After and no X-RateLimit header. A probe that inspects status
+                // codes and headers sees a perfectly healthy service. A first national run lost
+                // 42 of 51 states to this while every request "succeeded".
+                var errMsg = (parsed && parsed.Results && parsed.Results.Error)
+                    ? String(parsed.Results.Error.ErrorMessage || '') : '';
+                if (/throttle|exceed .*per hour|too many request/i.test(errMsg)) {
+                    return resolve({ ok: false, status: 429, throttled: true, body: errMsg.slice(0, 200) });
+                }
+                if (errMsg) return resolve({ ok: false, status: 200, body: errMsg.slice(0, 200) });
+                resolve({ ok: true, status: 200, json: parsed });
             });
         });
         req.on('error', function (e) { resolve({ ok: false, status: 0, body: e.code || e.message }); });
@@ -118,7 +138,9 @@ function getJson(url, attempt) {
         if (r.ok || attempt >= MAX_RETRIES) return r;
         // Transient failures get a backoff. A definitive 404 does not.
         if (r.status === 404) return r;
-        return sleep(800 * attempt).then(function () { return getJson(url, attempt + 1); });
+        var wait = r.throttled ? THROTTLE_WAIT_MS * attempt : 800 * attempt;
+        if (r.throttled) log('\n  ECHO throttled — waiting ' + Math.round(wait / 60000) + ' min');
+        return sleep(wait).then(function () { return getJson(url, attempt + 1); });
     });
 }
 
@@ -213,9 +235,10 @@ async function fetchStateFacilities(state) {
 
     var q = await getJson(echoQueryUrl(state));
     if (!q.ok) {
-        var bad = { ok: false, error: q.body || ('HTTP ' + q.status), facilities: [] };
-        writeCache(ECHO_CACHE, state, bad);
-        return bad;
+        // Deliberately NOT cached. A cached failure is permanent, because the cache is checked
+        // before the request is made — which is exactly how 42 throttled states would have
+        // stayed broken across every future run.
+        return { ok: false, error: q.body || ('HTTP ' + q.status), facilities: [] };
     }
     var res = (q.json && (q.json.Results || q.json.results)) || {};
     var qid = res.QueryID || res.queryID || null;
@@ -228,14 +251,15 @@ async function fetchStateFacilities(state) {
 
     var out = [], pages = Math.ceil(total / 500);
     for (var p = 1; p <= pages; p++) {
-        await sleep(PACE_MS);
+        await sleep(ECHO_PACE_MS);
         var pr = await getJson(echoPageUrl(qid, p));
         if (!pr.ok) break;
         var rows = (pr.json && pr.json.Results && (pr.json.Results.Facilities || pr.json.Results.facilities)) || [];
         for (var i = 0; i < rows.length; i++) out.push(rows[i]);
     }
     var result = { ok: true, facilities: out, total: total };
-    writeCache(ECHO_CACHE, state, result);
+    // Only cache a state that actually returned rows.
+    if (out.length) writeCache(ECHO_CACHE, state, result);
     return result;
 }
 
@@ -374,7 +398,7 @@ function sortKeys(v) {
             var rid = String(ef.RegistryID || ef.RegistryId || '').trim();
             if (rid) byRegistry[rid] = ef;
         }
-        await sleep(PACE_MS);
+        await sleep(ECHO_PACE_MS);
     }
     if (process.stdout.isTTY) process.stdout.write('\r');
     log('  ' + Object.keys(byRegistry).length.toLocaleString() + ' ECHO air facilities across ' +
