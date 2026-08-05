@@ -191,76 +191,167 @@ async function resolveRegistryId(plantCode) {
     return out;
 }
 
-// ---- ECHO: permits and violations, queried by state ---------------------------------------
-// All air facilities per state, paged 500 at a time, rather than ~10,000 per-facility calls.
-// Roughly 2,000 facilities per state, so about 250 requests for the whole country.
+// ---- ECHO: the national bulk export -------------------------------------------------------
+// The per-state REST API cannot complete a national run. ECHO allows 300 requests/hour and
+// 1,500/day, reports the throttle in the BODY of a 200 response, and a national pass needs ~255
+// requests. Two attempts got 9 of 51 states and then 24 of 51 before exhausting the DAILY
+// budget. EPA's own throttle message points at the answer: "ECHO has exports of bulk data
+// available for download."
 //
-// The obvious optimisation — restricting to NAICS 2211, electric power generation — is
-// DELIBERATELY NOT USED. Measured on a 60-plant sample it dropped 5 of 14 combustion plants,
-// because a generator can be classified under the NAICS of its host site: a landfill genset under
-// waste management, a campus plant under education. The join itself is on RegistryID and is
-// therefore exact, so casting a wider net costs bandwidth and cannot introduce a false match.
-// Filtering the query would have silently lost real permits.
-// Column ids from air_rest_services.metadata. The DEFAULT column set contains none of the
-// permit or violation fields — a query without qcolumns returns names and addresses and looks
-// perfectly successful while carrying nothing this pipeline needs.
-//   1 AIRName · 8 RegistryID · 22 AIRNAICS · 25 AIRPrograms · 27 AIRStatus
-//   29 AIRClassification · 35 AIRIDs · 44 AIRComplStatus · 45 AIRHpvStatus
-//   48 AIRQtrsWithViol · 50 AIRRecentViolCnt · 51 AIRLastViolDate · 108 ViolFlag
-// 23 FacLat and 24 FacLong are REQUIRED for the spatial fallback. Omitting them does not fail —
-// ECHO returned FacLat anyway as part of its default set but not FacLong, so every distance
-// computed to NaN and the fallback silently matched nothing. The self-check is what exposed it:
-// 11 of 11 known-correct plants came back "no candidate".
-var ECHO_COLUMNS = '1,8,22,23,24,25,27,29,35,44,45,48,50,51,108';
+// ICIS-AIR_downloads.zip is 68 MB and carries every field the API was being asked for -
+// REGISTRY_ID (the exact key EIA plant codes already resolve to), air pollutant class, operating
+// status and current HPV - for the whole country, with no rate limit at all. One download
+// replaces 255 throttled calls and covers 51 states instead of 24.
+var ICIS_AIR_URL = 'https://echo.epa.gov/files/echodownloads/ICIS-AIR_downloads.zip';
 
-// responseset must be set on the INITIAL get_facilities call: it fixes the page size for the
-// whole QueryID, and passing it only to get_qid silently returns ONE row per page. That is how
-// a first run reported 8 facilities across 8 states while ECHO held 259 for California alone.
-var ECHO_PAGE = 500;
-
-function echoQueryUrl(state) {
-    return 'https://echodata.epa.gov/echo/air_rest_services.get_facilities?output=JSON' +
-           '&p_st=' + encodeURIComponent(state) +
-           '&responseset=' + ECHO_PAGE + '&qcolumns=' + ECHO_COLUMNS;
-}
-function echoPageUrl(qid, pageno) {
-    return 'https://echodata.epa.gov/echo/air_rest_services.get_qid?output=JSON&qid=' +
-           encodeURIComponent(qid) + '&pageno=' + pageno +
-           '&responseset=' + ECHO_PAGE + '&qcolumns=' + ECHO_COLUMNS;
+function zipMember(buf, name) {
+    var i = buf.length - 22;
+    while (i >= 0 && buf.readUInt32LE(i) !== 0x06054b50) i--;
+    if (i < 0) return null;
+    var n = buf.readUInt16LE(i + 10), p = buf.readUInt32LE(i + 16);
+    for (var k = 0; k < n; k++) {
+        if (buf.readUInt32LE(p) !== 0x02014b50) break;
+        var nl = buf.readUInt16LE(p + 28), el = buf.readUInt16LE(p + 30), cl = buf.readUInt16LE(p + 32);
+        var nm = buf.slice(p + 46, p + 46 + nl).toString();
+        if (nm === name) {
+            var lho = buf.readUInt32LE(p + 42), meth = buf.readUInt16LE(p + 10), cs = buf.readUInt32LE(p + 20);
+            var lnl = buf.readUInt16LE(lho + 26), lel = buf.readUInt16LE(lho + 28);
+            var raw = buf.slice(lho + 30 + lnl + lel, lho + 30 + lnl + lel + cs);
+            return meth === 0 ? raw : zlib.inflateRawSync(raw);
+        }
+        p += 46 + nl + el + cl;
+    }
+    return null;
 }
 
-async function fetchStateFacilities(state) {
-    var cached = readCache(ECHO_CACHE, state);
-    if (cached) return cached;
+// Streaming CSV reader. These members reach 200 MB inflated, so rows are yielded one at a time
+// rather than the whole file being split into an array of strings.
+function eachCsvRow(buf, onRow) {
+    var text = buf.toString('utf8');
+    var i = 0, n = text.length, field = '', row = [], inQ = false, first = true, header = null;
+    while (i <= n) {
+        var ch = i < n ? text[i] : '\n';
+        if (inQ) {
+            if (ch === '"') {
+                if (text[i + 1] === '"') { field += '"'; i++; }
+                else inQ = false;
+            } else field += ch;
+        } else if (ch === '"') { inQ = true; }
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(field); field = '';
+            if (row.length > 1 || row[0] !== '') {
+                if (first) { header = row; first = false; }
+                else if (onRow(row, header) === false) return;
+            }
+            row = [];
+        } else field += ch;
+        i++;
+    }
+}
 
-    var q = await getJson(echoQueryUrl(state));
-    if (!q.ok) {
-        // Deliberately NOT cached. A cached failure is permanent, because the cache is checked
-        // before the request is made — which is exactly how 42 throttled states would have
-        // stayed broken across every future run.
-        return { ok: false, error: q.body || ('HTTP ' + q.status), facilities: [] };
-    }
-    var res = (q.json && (q.json.Results || q.json.results)) || {};
-    var qid = res.QueryID || res.queryID || null;
-    var total = Number(res.QueryRows || res.queryRows || 0);
-    if (!qid || !total) {
-        var empty = { ok: true, facilities: [], total: 0 };
-        writeCache(ECHO_CACHE, state, empty);
-        return empty;
-    }
+function downloadBinary(url, dest) {
+    return new Promise(function (resolve, reject) {
+        if (fs.existsSync(dest) && fs.statSync(dest).size > 1000000) return resolve(dest);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        var tmp = dest + '.part', file = fs.createWriteStream(tmp);
+        https.get(url, { headers: { 'User-Agent': 'ion-mining-group/permit-index' } }, function (res) {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                file.close(); try { fs.unlinkSync(tmp); } catch (e) {}
+                return resolve(downloadBinary(new URL(res.headers.location, url).href, dest));
+            }
+            if (res.statusCode !== 200) {
+                file.close(); try { fs.unlinkSync(tmp); } catch (e) {}
+                return reject(new Error('HTTP ' + res.statusCode));
+            }
+            var total = parseInt(res.headers['content-length'] || '0', 10), got = 0;
+            res.on('data', function (c) {
+                got += c.length;
+                if (total) progress('ICIS-AIR bulk ' + Math.round(100 * got / total) + '%');
+            });
+            res.pipe(file);
+            file.on('finish', function () { file.close(function () { fs.renameSync(tmp, dest); resolve(dest); }); });
+        }).on('error', function (e) { try { fs.unlinkSync(tmp); } catch (e2) {} reject(e); });
+    });
+}
 
-    var out = [], pages = Math.ceil(total / 500);
-    for (var p = 1; p <= pages; p++) {
-        await sleep(ECHO_PACE_MS);
-        var pr = await getJson(echoPageUrl(qid, p));
-        if (!pr.ok) break;
-        var rows = (pr.json && pr.json.Results && (pr.json.Results.Facilities || pr.json.Results.facilities)) || [];
-        for (var i = 0; i < rows.length; i++) out.push(rows[i]);
+// Returns { registryId -> facility } for the whole country.
+async function loadEchoBulk() {
+    var dest = path.join(__dirname, '.cache', 'ICIS-AIR_downloads.zip');
+    await downloadBinary(ICIS_AIR_URL, dest);
+    if (process.stdout.isTTY) process.stdout.write('\r');
+    var buf = fs.readFileSync(dest);
+    if (buf[0] !== 0x50 || buf[1] !== 0x4B) throw new Error('ICIS-AIR download is not a zip');
+
+    var facBuf = zipMember(buf, 'ICIS-AIR_FACILITIES.csv');
+    if (!facBuf) throw new Error('ICIS-AIR_FACILITIES.csv not found in the archive');
+
+    var byRegistry = {}, rows = 0;
+    eachCsvRow(facBuf, function (r, h) {
+        rows++;
+        if (!h) return;
+        // Resolve columns by NAME. Positions in EPA exports move between releases.
+        if (!eachCsvRow.idx) {
+            eachCsvRow.idx = {};
+            for (var c = 0; c < h.length; c++) eachCsvRow.idx[h[c].replace(/"/g, '').trim().toUpperCase()] = c;
+        }
+        var I = eachCsvRow.idx;
+        var rid = String(r[I.REGISTRY_ID] || '').trim();
+        if (!rid) return;
+        // A registry id can appear more than once (multiple air permits at one site). Keep the
+        // record with an operating status over one without, so a live permit is not shadowed by
+        // a stale row for the same place.
+        var existing = byRegistry[rid];
+        var status = String(r[I.AIR_OPERATING_STATUS_DESC] || '').trim();
+        if (existing && existing.AIRStatus && !status) return;
+        byRegistry[rid] = {
+            AIRName: r[I.FACILITY_NAME] || null,
+            RegistryID: rid,
+            AIRIDs: r[I.PGM_SYS_ID] || null,
+            AIRClassification: r[I.AIR_POLLUTANT_CLASS_DESC] || null,
+            AIRStatus: status || null,
+            AIRHpvStatus: r[I.CURRENT_HPV] || null,
+            AIRNAICS: r[I.NAICS_CODES] || null,
+            // The bulk facilities table carries no program list, so Title V is filled from the
+            // programs member below rather than being guessed from the class.
+            AIRPrograms: null,
+            AIRComplStatus: r[I.CURRENT_HPV] || null,
+            AIRQtrsWithViol: null,
+            AIRRecentViolCnt: null,
+            AIRLastViolDate: null
+        };
+    });
+    eachCsvRow.idx = null;
+
+    // Title V status, which is what separates 'active' from 'active_long_dated'.
+    var progBuf = zipMember(buf, 'ICIS-AIR_PROGRAMS.csv');
+    var titleV = 0;
+    if (progBuf) {
+        var pidx = null;
+        eachCsvRow(progBuf, function (r, h) {
+            if (!pidx) {
+                pidx = {};
+                for (var c = 0; c < h.length; c++) pidx[h[c].replace(/"/g, '').trim().toUpperCase()] = c;
+            }
+            var pid = String(r[pidx.PGM_SYS_ID] || '').trim();
+            var code = String(r[pidx.PROGRAM_CODE] || r[pidx.AIR_PROGRAM_CODE] || '').trim().toUpperCase();
+            if (!pid || !code) return;
+            // Programs key on PGM_SYS_ID, so build a lookup from that back to the registry row.
+            if (!loadEchoBulk.byPgm) {
+                loadEchoBulk.byPgm = {};
+                for (var k in byRegistry) {
+                    if (byRegistry[k].AIRIDs) loadEchoBulk.byPgm[byRegistry[k].AIRIDs] = byRegistry[k];
+                }
+            }
+            var f = loadEchoBulk.byPgm[pid];
+            if (!f) return;
+            f.AIRPrograms = f.AIRPrograms ? (f.AIRPrograms + ', ' + code) : code;
+            if (code === 'TVP' || code === 'TV') titleV++;
+        });
     }
-    var result = { ok: true, facilities: out, total: total };
-    // Only cache a state that actually returned rows.
-    if (out.length) writeCache(ECHO_CACHE, state, result);
-    return result;
+    loadEchoBulk.byPgm = null;
+    return { byRegistry: byRegistry, rows: rows, titleV: titleV };
 }
 
 // ---- Interpreting ECHO's air fields -------------------------------------------------------
@@ -384,25 +475,12 @@ function sortKeys(v) {
     log('  matched ' + frsHit.toLocaleString() + '  missed ' + frsMiss.toLocaleString() +
         '  errors ' + frsErr.toLocaleString() + '  multiple-record ' + frsMulti);
 
-    log('[2/3] pulling ECHO air permits and violations by state');
-    var states = {};
-    facilities.forEach(function (f) { if (f.state) states[f.state] = 1; });
-    var stateList = Object.keys(states).sort();
-    var byRegistry = {}, echoErrors = [];
-    for (var s = 0; s < stateList.length; s++) {
-        progress('state ' + (s + 1) + '/' + stateList.length + '  ' + stateList[s]);
-        var r2 = await fetchStateFacilities(stateList[s]);
-        if (!r2.ok) { echoErrors.push({ state: stateList[s], error: r2.error }); continue; }
-        for (var k = 0; k < r2.facilities.length; k++) {
-            var ef = r2.facilities[k];
-            var rid = String(ef.RegistryID || ef.RegistryId || '').trim();
-            if (rid) byRegistry[rid] = ef;
-        }
-        await sleep(ECHO_PACE_MS);
-    }
-    if (process.stdout.isTTY) process.stdout.write('\r');
-    log('  ' + Object.keys(byRegistry).length.toLocaleString() + ' ECHO air facilities across ' +
-        stateList.length + ' states' + (echoErrors.length ? '  (' + echoErrors.length + ' states failed)' : ''));
+    log('[2/3] loading the ECHO national air bulk export');
+    var bulk = await loadEchoBulk();
+    var byRegistry = bulk.byRegistry, echoErrors = [];
+    log('  ' + Object.keys(byRegistry).length.toLocaleString() + ' air facilities nationwide from ' +
+        bulk.rows.toLocaleString() + ' rows' +
+        (bulk.titleV ? '  (' + bulk.titleV.toLocaleString() + ' Title V programs)' : ''));
 
 
     log('[3/3] joining and deriving permit state');
@@ -451,7 +529,8 @@ function sortKeys(v) {
     var payload = sortKeys({
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
-        source: 'EPA Facility Registry Service (EIA-860 cross-reference) joined to EPA ECHO air services',
+        source: 'EPA Facility Registry Service (EIA-860 cross-reference) joined to the EPA ECHO ' +
+                'ICIS-AIR national bulk export',
         joinNote: 'EIA plant codes are resolved to EPA registry ids through FRS, which indexes ' +
                   'facilities by the identifiers other programs use for them. This is an ' +
                   'authoritative lookup published by EPA, NOT a name or distance match. Measured ' +

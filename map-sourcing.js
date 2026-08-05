@@ -1700,7 +1700,11 @@ var MapSourcing = (function() {
             // Verified and unverified permit state are visually distinct on purpose. An exact
             // EPA registry match reaches only a minority of plants, and "we could not check" must
             // never read like "there is no permit".
-            if (c.permitState) {
+            // ECHO verification is claimed ONLY where the permit index actually matched this
+            // plant. A flare adapter declares permitState 'none_required' for all 16,125 flares
+            // — true, and nothing to do with ECHO. Citing an evidence source for a value that
+            // source never supplied is the same class of error as inventing the value itself.
+            if (c.permitState && fsd.permitVerified) {
                 html += row('Permit status',
                     '<span class="src-verified">' + esc(String(c.permitState).replace(/_/g, ' ')) + '</span>' +
                     (fsd.airPermitClass && fsd.airPermitClass !== 'unknown'
@@ -1712,6 +1716,11 @@ var MapSourcing = (function() {
                     html += row('Permit ids', esc(fsd.permitIds.slice(0, 4).join(', ')));
                 }
                 if (fsd.airOperatingStatus) html += row('EPA facility status', esc(String(fsd.airOperatingStatus)));
+            } else if (c.permitState) {
+                // Declared by the source rather than checked against a permit register.
+                html += row('Permit status', esc(String(c.permitState).replace(/_/g, ' ')) +
+                    '<div class="src-sub2">stated by the source, not checked against a permit ' +
+                    'register</div>');
             } else {
                 html += row('Permit status', gap('not verified') +
                     '<div class="src-sub2">The air permit is the 3-9 month item an acquisition ' +
@@ -1857,10 +1866,18 @@ var MapSourcing = (function() {
             row('Cash cost / BTC', m.cash_cost_per_btc === null ? gap('needs market data') : fmtUSD(m.cash_cost_per_btc)) +
             row('Break-even BTC', m.breakeven_btc_price === null ? gap('needs market data') : fmtUSD(m.breakeven_btc_price)) +
             row('Monthly net', m.monthly_net === null ? gap('needs market data') : fmtUSD(m.monthly_net)) +
-            row('Total capital', m.total_capital === null ? '--' : fmtUSD(m.total_capital)) +
-            row('Payback', m.payback_months === null ? gap('does not pay back') : m.payback_months.toFixed(1) + ' months') +
+            // Capital and payback deliberately live in the Capital block above, which prices the
+            // full stack. Repeating a narrower total here produced two different capital figures
+            // and two different paybacks on one panel.
+            row('Payback once running', m.payback_months === null
+                ? gap('does not pay back')
+                : m.payback_months.toFixed(1) + ' months' +
+                  '<div class="src-sub2">on mining capital alone — see Capital above for payback ' +
+                  'from close, which includes the wait to switch on</div>') +
             '</dl><div class="src-assumerow">' +
-            '<div class="src-field"><label for="aKw">Build $/kW</label><input type="number" id="aKw" value="' + _assume.costPerKw + '" step="25"></div>' +
+            // "Build $/kW" was removed rather than relabelled: SiteCapex now supplies the
+            // acquisition price per stage, so that input only fed a fallback that fires when
+            // SiteCapex is absent. An input that silently does nothing is worse than no input.
             '<div class="src-field"><label for="aRate">Power $/kWh</label><input type="number" id="aRate" value="' + _assume.powerRate + '" step="0.005"></div>' +
             '</div></div>';
 
@@ -1958,6 +1975,10 @@ var MapSourcing = (function() {
             '<div class="src-crm-wide">' +
             '<div class="src-field"><label for="crm_contact_notes">Notes</label>' +
             '<textarea id="crm_contact_notes" rows="2">' + esc(saved.contact_notes || '') + '</textarea></div>' +
+            '<div class="src-field"><label for="crm_acq">Acquisition price (USD)</label>' +
+            '<input type="number" id="crm_acq" step="25000" placeholder="assumed from stage" value="' +
+            (saved.estimated_acquisition_cost === null || saved.estimated_acquisition_cost === undefined
+                ? '' : esc(saved.estimated_acquisition_cost)) + '"></div>' +
             '<div class="src-field"><label for="crm_stage">Pipeline stage</label><select id="crm_stage">' +
             SiteData.STAGES.map(function(s) {
                 return '<option value="' + s + '"' + ((saved.stage || 'unreviewed') === s ? ' selected' : '') + '>' + s + '</option>';
@@ -2014,13 +2035,9 @@ var MapSourcing = (function() {
     }
 
     function wireDetail(c, op) {
-        var kw = document.getElementById('aKw'), rate = document.getElementById('aRate');
+        var rate = document.getElementById('aRate');
         // These edit the same values as the scenario bar; keeping one source of truth stops the
         // detail panel and the map colouring drifting apart.
-        if (kw) kw.addEventListener('change', function() {
-            var v = parseFloat(this.value);
-            if (isFinite(v) && v >= 0) { _scn.costPerKw = v; saveScenario(); syncScenarioInputs(); applyFilters(); renderDetail(); }
-        });
         if (rate) rate.addEventListener('change', function() {
             var v = parseFloat(this.value);
             if (isFinite(v) && v >= 0) { _scn.powerRate = v; saveScenario(); syncScenarioInputs(); applyFilters(); renderDetail(); }
@@ -2050,8 +2067,14 @@ var MapSourcing = (function() {
                 operator: op ? op.operator : null,
                 operator_licence: op ? (op.licence || null) : null,
                 operator_source: op ? op.source : null,
-                operator_distance_m: op ? op.distance_m : null
-            };
+                operator_distance_m: op ? op.distance_m : null,
+                // A real figure always beats the stage assumption in SiteCapex.
+                estimated_acquisition_cost: (function() {
+                    var el = document.getElementById('crm_acq');
+                    if (!el || el.value === '') return null;
+                    var v = parseFloat(el.value);
+                    return isFinite(v) && v >= 0 ? v : null;
+                })()};
             var existing = findSavedSite(c.id);
             if (existing) {
                 SiteData.update(existing.id, changes);
