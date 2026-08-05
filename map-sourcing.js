@@ -25,6 +25,12 @@ var MapSourcing = (function() {
     // come from Ion's own Alberta deals ($450/kW usable, ~$0.035/kWh).
     var _assume = { costPerKw: 450, powerRate: 0.035 };
 
+    function fmtUsd(v) {
+        if (v === null || v === undefined || !isFinite(v)) return '--';
+        var n = Math.round(v);
+        return '$' + n.toLocaleString('en-US');
+    }
+
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -210,14 +216,53 @@ var MapSourcing = (function() {
     // assumed terms revenue and cash cost both scale linearly with site size, so every prospect
     // has an IDENTICAL margin and the map can only ever go all-green or all-red together. It is
     // the moment real quotes start landing that margin colouring begins separating sites.
+    // evaluateAt now runs the engine twice (once to learn the miner count, once with the capex
+    // stack) plus a SiteCapex.stack. The two new table columns call it per row per render, and
+    // sorting calls it again for every row, so an unmemoised version would do thousands of
+    // passes on every header click. Invalidated with the opportunity cache, since both depend on
+    // the same scenario assumptions and saved records.
+    var _evalCache = {};
     function evaluateAt(c) {
+        if (Object.prototype.hasOwnProperty.call(_evalCache, c.id)) return _evalCache[c.id];
+        var r = evaluateAtUncached(c);
+        _evalCache[c.id] = r;
+        return r;
+    }
+    function evaluateAtUncached(c) {
         var saved = findSavedSite(c.id) || {};
         var rate = (saved.power_rate !== null && saved.power_rate !== undefined && saved.power_rate !== '')
             ? saved.power_rate : scnVal('powerRate');
-        var price = (saved.purchase_price_usd !== null && saved.purchase_price_usd !== undefined && saved.purchase_price_usd !== '')
-            ? saved.purchase_price_usd : Math.round((c.powerPotentialKw || 0) * scnVal('costPerKw'));
+        // The acquisition price. A saved quote always wins; otherwise SiteCapex derives a
+        // stage-appropriate default, which for a raw flare is $0 because buying flared gas is a
+        // gas purchase agreement rather than an asset purchase. The old code applied a flat
+        // "Build $/kW" here identically to a flare and to a running plant.
+        var savedPrice = (saved.purchase_price_usd !== null && saved.purchase_price_usd !== undefined && saved.purchase_price_usd !== '')
+            ? Number(saved.purchase_price_usd) : null;
+        if (savedPrice === null && saved.estimated_acquisition_cost) savedPrice = Number(saved.estimated_acquisition_cost);
         var top = (saved.take_or_pay_pct !== null && saved.take_or_pay_pct !== undefined && saved.take_or_pay_pct !== '')
             ? saved.take_or_pay_pct : (scnVal('takeOrPayPct') > 0 ? scnVal('takeOrPayPct') : null);
+
+        // Miner capex has to be known before the stack can price it, and the engine derives the
+        // miner count from usable kW — so the engine runs once without a stack to learn the
+        // count, then again with one. Cheap: evaluate() is pure arithmetic.
+        var usable = (saved.usable_kw !== null && saved.usable_kw !== undefined && saved.usable_kw !== '')
+            ? saved.usable_kw : c.powerPotentialKw;
+        var probe = SiteEngine.evaluate(SiteSources.toSite(c, {
+            purchase_price_usd: 0, power_rate: rate, usable_kw: usable
+        }), scenarioMarket());
+
+        var capex = (typeof SiteCapex !== 'undefined')
+            ? SiteCapex.stack(Object.assign({}, c, saved), {
+                capacityKw: usable,
+                minerCapexUsd: probe.miner_capex_usd,
+                acquisitionUsd: savedPrice,
+                asOf: null
+            })
+            : null;
+        var price = savedPrice !== null ? savedPrice
+                  : (capex && capex.acquisition_usd !== null && capex.acquisition_usd !== undefined
+                     ? capex.acquisition_usd
+                     : Math.round((c.powerPotentialKw || 0) * scnVal('costPerKw')));
 
         var site = SiteSources.toSite(c, {
             purchase_price_usd: price,
@@ -227,7 +272,9 @@ var MapSourcing = (function() {
                 ? saved.usable_kw : c.powerPotentialKw,
             take_or_pay_pct: top
         });
-        return SiteEngine.evaluate(site, scenarioMarket());
+        var m = SiteEngine.evaluate(site, scenarioMarket(), null, capex);
+        m.capex = capex;
+        return m;
     }
 
     // True when nothing in view carries real quoted terms, i.e. every site is being priced off
@@ -291,6 +338,10 @@ var MapSourcing = (function() {
     }
 
     function saveScenario() {
+        // Every scenario change alters pricing, so the memoised evaluations and scores must go.
+        // This is the single choke point for scenario edits, which is why the invalidation lives
+        // here rather than in each of the handlers that can trigger one.
+        invalidateOpportunity();
         try {
             localStorage.setItem(SCN_KEY, JSON.stringify({ _v: 1, scn: _scn }));
             localStorage.setItem(PF_KEY, JSON.stringify({ _v: 1, ids: Object.keys(_portfolio) }));
@@ -585,7 +636,7 @@ var MapSourcing = (function() {
         }
         return _oppCtx;
     }
-    function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _oppCtx = null; }
+    function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _evalCache = {}; _oppCtx = null; }
 
     // Memoised per candidate. Scoring every row on every sort click would otherwise redo the
     // full seven-component calculation across the whole filtered set.
@@ -637,6 +688,13 @@ var MapSourcing = (function() {
             case 'years':       return c.yearsSeen === null ? -1 : c.yearsSeen;
             case 'operator':    var op = operatorRecord(c);
                                 return op && op.operator ? op.operator.toLowerCase() : '￿';
+            case 'allinkw':
+                var mm = evaluateAt(c);
+                return mm && mm.all_in_cost_per_usable_kw !== null && mm.all_in_cost_per_usable_kw !== undefined
+                    ? mm.all_in_cost_per_usable_kw : null;
+            case 'torevenue':
+                var mt = evaluateAt(c);
+                return mt && mt.months_to_revenue ? mt.months_to_revenue.min : null;
             case 'acquirability': var a = acquirabilityFor(c).scoreRaw; return a === null ? null : a;
             case 'combined':      return combinedFor(c);
             case 'stage':
@@ -703,7 +761,7 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="11" class="src-gap" style="padding:14px;">' +
+            body.innerHTML = '<tr><td colspan="13" class="src-gap" style="padding:14px;">' +
                 (_tableView === 'acquisition'
                     ? 'No built assets match these filters. The acquisition view shows only ' +
                       'prospects at the constructed stage or later — try widening the country ' +
@@ -731,6 +789,8 @@ var MapSourcing = (function() {
                       (opp.coverage < 100 ? ' <span class="src-covwarn">' + opp.coverage + '%</span>' : '')) + '</td>' +
                 '<td class="num">' + acqCell(c) + '</td>' +
                 '<td class="num">' + combinedCell(c) + '</td>' +
+                '<td class="num">' + allInCell(c) + '</td>' +
+                '<td class="num">' + toRevenueCell(c) + '</td>' +
                 '<td>' + (op && op.operator ? esc(op.operator)
                                             : '<span class="src-gap">not identified</span>') + '</td>' +
                 '</tr>';
@@ -809,6 +869,19 @@ var MapSourcing = (function() {
         return '<span class="src-oppcell">' + a.score + '</span>' +
                (a.signalCount ? ' <span class="src-signals">' + a.signalCount + '⚠</span>' : '');
     }
+    function allInCell(c) {
+        var mm = evaluateAt(c);
+        if (!mm || mm.all_in_cost_per_usable_kw === null || mm.all_in_cost_per_usable_kw === undefined) {
+            return '<span class="src-gap">--</span>';
+        }
+        return '<span class="src-oppcell">$' + Math.round(mm.all_in_cost_per_usable_kw).toLocaleString('en-US') + '</span>';
+    }
+    function toRevenueCell(c) {
+        var mm = evaluateAt(c);
+        if (!mm || !mm.months_to_revenue) return '<span class="src-gap">--</span>';
+        return mm.months_to_revenue.min + '\u2013' + mm.months_to_revenue.max + ' mo';
+    }
+
     function combinedCell(c) {
         var v = combinedFor(c);
         return v === null ? '<span class="src-gap">--</span>'
@@ -1368,6 +1441,64 @@ var MapSourcing = (function() {
             row('Location', c.offshore === true ? '<span style="color:#e66;">offshore — not viable</span>' : 'onshore') +
             row('Jurisdiction', esc(j.label || countryName(c.iso3)) + ' ' + tierBadge(c.iso3)) +
             '</dl></div>';
+
+        // ---- Capital ---------------------------------------------------------------
+        var cx = m.capex;
+        if (cx && cx.incurred_usd !== null) {
+            html += '<div class="src-detail src-detail-wide"><div class="section-label">Capital</div>' +
+                '<div class="src-sub2" style="margin:-4px 0 8px;">your assumed rates · priced on ' +
+                cx.coverage + '% of components</div><dl>';
+            for (var ci = 0; ci < cx.components.length; ci++) {
+                var cc = cx.components[ci];
+                var val;
+                if (cc.state === 'unknown') {
+                    val = gap('--');
+                } else if (cc.state === 'avoided') {
+                    // The rate that WOULD have applied, struck through, next to the $0.
+                    val = '<span class="src-verified">$0</span>' +
+                          (cc.avoided_usd ? ' <span class="src-struck">' + fmtUsd(cc.avoided_usd) + '</span>' : '');
+                } else {
+                    val = fmtUsd(cc.usd) + (cc.assumed ? ' <span class="src-assume">assumed</span>' : '');
+                }
+                html += row(esc(cc.label), val +
+                    '<div class="src-sub2">' + esc(cc.reason || cc.basis || '') + '</div>');
+            }
+            html += '</dl><dl class="src-capsum">';
+            html += row('<strong>All-in capital</strong>',
+                '<strong>' + fmtUsd(m.all_in_capital_usd === null ? cx.incurred_usd : m.all_in_capital_usd) + '</strong>' +
+                (m.all_in_cost_per_usable_kw ? ' <span class="src-sub2">$' +
+                    Math.round(m.all_in_cost_per_usable_kw) + '/kW</span>' : ''));
+            if (cx.avoided_usd > 0) {
+                // "Avoided by acquiring" is only true when the asset itself carries the saving.
+                // On a raw flare the saving comes from the PRODUCER owning the generation, not
+                // from acquiring anything, and calling that an acquisition benefit would credit
+                // the wrong thing.
+                var inherited = cx.avoided_components.indexOf('permitting_development') >= 0;
+                html += row(inherited ? 'Avoided by acquiring' : 'Avoided',
+                    '<span class="src-verified">' + fmtUsd(cx.avoided_usd) + '</span>' +
+                    '<div class="src-sub2">' +
+                    (inherited
+                        ? 'what building this yourself would have cost at your rates'
+                        : 'the counterparty owns the generation, so its cost sits in the $/kWh rather than in your capital') +
+                    ' — not a valuation of anyone\'s asset</div>');
+            }
+            if (m.months_to_revenue) {
+                html += row('Months to first revenue',
+                    m.months_to_revenue.min + ' – ' + m.months_to_revenue.max +
+                    '<div class="src-sub2">from close, for a ' + esc(m.months_to_revenue.basis) + ' asset</div>');
+            }
+            if (m.months_to_payback_from_close) {
+                html += row('Payback from close',
+                    Math.round(m.months_to_payback_from_close.min) + ' – ' +
+                    Math.round(m.months_to_payback_from_close.max) + ' mo' +
+                    '<div class="src-sub2">' + (m.payback_months_all_in ? Math.round(m.payback_months_all_in) +
+                    ' mo of mining plus the wait to switch on' : '') + '</div>');
+            }
+            if (cx.unknown_ids.length) {
+                html += row('Not priced', gap(esc(cx.unknown_ids.join(', ').replace(/_/g, ' '))));
+            }
+            html += '</dl></div>';
+        }
 
         html += '<div class="src-detail"><div class="section-label">Economics <span class="src-assume">(your assumptions)</span></div><dl>' +
             row('Cash cost / BTC', m.cash_cost_per_btc === null ? gap('needs market data') : fmtUSD(m.cash_cost_per_btc)) +

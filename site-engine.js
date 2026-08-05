@@ -154,7 +154,12 @@ var SiteEngine = (function() {
     //
     // Returns every metric the spec names PLUS the intermediates each was built from, so any
     // figure can be reproduced by hand.
-    function evaluate(site, market, config) {
+    // `capex` is an OPTIONAL fourth argument: a pre-computed capital stack from the caller.
+    // The engine does not know or care what its components mean — it adds up whatever it is
+    // handed. All domain knowledge about which stage inherits what lives outside this file,
+    // which is what keeps the assertions that this engine mentions no energy source at all true.
+    // Omitting it leaves every derived field null and every existing field byte-identical.
+    function evaluate(site, market, config, capex) {
         site = site || {};
         market = market || {};
         var c = resolveConfig(config);
@@ -246,6 +251,27 @@ var SiteEngine = (function() {
         var paybackMonths = (monthlyNet !== null && monthlyNet > 0)
             ? div(totalCapital, monthlyNet) : null;
 
+        // --- All-in capital, when a capex stack was supplied -------------------------
+        // Deliberately NOT folded into total_capital: that field, cost_per_usable_kw and the
+        // flag rule that reads it are all pinned by existing assertions, and site-flags.js rule 5
+        // would stop firing SILENTLY if cost_per_usable_kw changed meaning. New facts get new
+        // names.
+        var developmentCapexUsd = (capex && typeof capex.additional_usd === 'number')
+            ? capex.additional_usd : null;
+        var allInCapitalUsd = (totalCapital === null || developmentCapexUsd === null)
+            ? null : totalCapital + developmentCapexUsd;
+        var allInCostPerUsableKw = div(allInCapitalUsd, usableKw);
+        var paybackMonthsAllIn = (monthlyNet !== null && monthlyNet > 0)
+            ? div(allInCapitalUsd, monthlyNet) : null;
+        var monthsToRevenue = (capex && capex.months_to_revenue) ? capex.months_to_revenue : null;
+        // Payback measured from CLOSING rather than from first power. On these numbers the wait
+        // is the same order of magnitude as the payback itself, so a static snapshot that omits
+        // it is not merely incomplete — it is wrong by roughly a factor of two on the decision
+        // it is being used to make.
+        var monthsToPaybackFromClose = (paybackMonthsAllIn === null || monthsToRevenue === null)
+            ? null
+            : { min: monthsToRevenue.min + paybackMonthsAllIn, max: monthsToRevenue.max + paybackMonthsAllIn };
+
         // Downside: the obligation that survives at zero utilization.
         var takeOrPayShareOfRevenue = div(takeOrPayFloor, monthlyRevenue);
 
@@ -282,6 +308,15 @@ var SiteEngine = (function() {
             // capital
             miner_capex_usd: minerCapexUsd,
             total_capital: totalCapital,
+            // All null unless a capex stack was supplied.
+            development_capex_usd: developmentCapexUsd,
+            all_in_capital_usd: allInCapitalUsd,
+            all_in_cost_per_usable_kw: allInCostPerUsableKw,
+            payback_months_all_in: paybackMonthsAllIn,
+            months_to_revenue: monthsToRevenue,
+            months_to_payback_from_close: monthsToPaybackFromClose,
+            avoided_capex_usd: (capex && typeof capex.avoided_usd === 'number') ? capex.avoided_usd : null,
+            capex_coverage: (capex && typeof capex.coverage === 'number') ? capex.coverage : null,
             payback_months: paybackMonths,
 
             // contract passthrough (flags read these)

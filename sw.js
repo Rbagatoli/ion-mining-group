@@ -36,6 +36,7 @@ const ASSETS = [
   './site-scoring.js',
   './site-opportunity.js',
   './site-acquirability.js',
+  './site-capex.js',
   './site-sources.js',
   './source-flare-gas.js',
   './permit-index.js',

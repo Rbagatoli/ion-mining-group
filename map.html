@@ -142,6 +142,13 @@
         .src-signals { color:#e66; font-weight:600; font-size:10px; }
         /* A verified fact and an unverified one must not look the same. */
         .src-verified { color:#3ecf8e; font-weight:600; }
+        /* The rate that WOULD have applied, shown struck through next to a $0. Without it,
+           "inherited" is just a smaller total; with it, the avoided cost is a line you can
+           argue with. */
+        .src-struck { color:#777; text-decoration:line-through; font-size:11px; }
+        .src-assume { color:#db2; font-size:9px; text-transform:uppercase; letter-spacing:.04em;
+                      border:1px solid rgba(221,187,34,.4); border-radius:6px; padding:0 4px; }
+        .src-capsum { margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,.10); }
 
         /* Distress timeline. Severity is a left border rather than text colour so the shape of a
            facility's trouble reads at a glance down the list. */
@@ -504,6 +511,8 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="opportunity" class="num">Opportunity</th>
                         <th data-sort="acquirability" class="num">Acquirable</th>
                         <th data-sort="combined" class="num">Combined</th>
+                        <th data-sort="allinkw" class="num">All-in $/kW</th>
+                        <th data-sort="torevenue" class="num">To revenue</th>
                         <th data-sort="operator">Counterparty</th>
                     </tr>
                 </thead>
@@ -682,6 +691,7 @@ commercial terms are your assumptions.</p>
 <script src="./site-scoring.js?v=287"></script>
 <script src="./site-opportunity.js?v=287"></script>
 <script src="./site-acquirability.js?v=287"></script>
+<script src="./site-capex.js?v=287"></script>
 <script src="./site-sources.js?v=287"></script>
 <script src="./site-model.js?v=287"></script>
 <script src="./site-catalog.js?v=287"></script>
