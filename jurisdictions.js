@@ -26,6 +26,58 @@ var Jurisdictions = (function() {
         return i / (TIERS.length - 1);
     }
 
+    // ---- Jurisdiction scoring, 0..100 -------------------------------------------------
+    // Separate from tiers because they answer different questions. The tier says whether we
+    // could operate somewhere at all and drives the badge in the UI. This says how much we
+    // PREFER it, and feeds the opportunity score.
+    //
+    // The US premium is a tax position, not a guess about politics: a US person siting assets
+    // in the US can take 100% bonus depreciation under §168(k), while assets used predominantly
+    // outside the US are pushed onto the Alternative Depreciation System under §168(g) —
+    // straight-line, longer recovery, no bonus and no §179.
+    //
+    // The US-Canada gap is deliberately 15 points, not 40. Jurisdiction carries 10% weight, so
+    // 15 points here moves a final score by 1.5 of 100: identical sites tip US, and the tax
+    // advantage can never override a materially better Canadian site. Editable — and the
+    // jurisdiction weight can be zeroed outright to judge Alberta on its own merits.
+    var DEFAULT_SCORES = { USA: 100, CAN: 85 };
+
+    // Everywhere not named above derives from its tier, so Norway does not score the same as
+    // Russia just because neither is a home market.
+    var TIER_SCORES = { preferred: 85, workable: 45, unknown: 25, restricted: 12, prohibited: 0 };
+
+    var _scores = null;
+    function scoreTable() {
+        if (!_scores) { _scores = {}; for (var k in DEFAULT_SCORES) _scores[k] = DEFAULT_SCORES[k]; }
+        return _scores;
+    }
+
+    // 0..100, or null when we genuinely cannot place the country — null means unscored, and the
+    // opportunity score drops the component rather than substituting a number nobody measured.
+    function score(code) {
+        var c = key(code);
+        if (!c) return null;
+        var tbl = scoreTable();
+        if (tbl[c] !== undefined) return tbl[c];
+        // get() is a hoisted function declaration defined below; it owns tier resolution
+        // including the sub-national parent fallback, so scoring reuses it rather than
+        // reimplementing the lookup.
+        var info = get(c);
+        if (!info || !info.known) return null;
+        return TIER_SCORES[info.tier] === undefined ? null : TIER_SCORES[info.tier];
+    }
+
+    function setScore(code, value) {
+        var c = key(code);
+        if (!c) return false;
+        var n = Number(value);
+        if (!isFinite(n) || n < 0 || n > 100) return false;
+        scoreTable()[c] = n;
+        return true;
+    }
+
+    function resetScores() { _scores = null; }
+
     // iso3 -> tier. Covers the countries that actually appear in the global flare catalog.
     var DEFAULT_TIERS = {
         // Home markets and close analogues
@@ -145,8 +197,13 @@ var Jurisdictions = (function() {
         get: get,
         benchmark: benchmark,
         tierScore: tierScore,
+        score: score,
+        setScore: setScore,
+        resetScores: resetScores,
         TIERS: TIERS,
-        DEFAULT_TIERS: DEFAULT_TIERS
+        TIER_SCORES: TIER_SCORES,
+        DEFAULT_TIERS: DEFAULT_TIERS,
+        DEFAULT_SCORES: DEFAULT_SCORES
     };
 })();
 

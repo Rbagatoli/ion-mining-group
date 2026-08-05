@@ -849,17 +849,48 @@ var MapSourcing = (function() {
     }
 
     // ---- detail ---------------------------------------------------------------------
+    // Sites already owned or under evaluation, used as the reference points for the proximity
+    // component. Deliberately NOT the miner fleet: miners are recorded by country and state with
+    // no coordinates, so distances from them would be invented. Tracked sites carry real lat/lng.
+    // With nothing tracked yet this returns [], and proximity scores null rather than penalising
+    // every prospect identically.
+    function existingOperations() {
+        if (typeof SiteData === 'undefined' || !SiteData.list) return [];
+        var out = [];
+        var all = SiteData.list() || [];
+        for (var i = 0; i < all.length; i++) {
+            var s = all[i];
+            if (s.status !== 'owned' && s.status !== 'evaluating') continue;
+            var lat = Number(s.latitude), lng = Number(s.longitude);
+            if (!isFinite(lat) || !isFinite(lng)) continue;
+            out.push({ lat: lat, lng: lng });
+        }
+        return out;
+    }
+
     function renderDetail() {
         var c = SiteCatalog.get(_selectedId);
         var body = document.getElementById('dBody');
         if (!c || !body) return;
         var meta = SiteCatalog.meta();
+
         var j = Jurisdictions.get(c.iso3);
         var op = SiteCatalog.operatorFor(c.id);
         var scored = SiteScoring.score(c, { jurisdictions: Jurisdictions });
 
+        // The unified 0-100 opportunity score. Ranks across every energy source, so this is what
+        // the ranked table sorts on; SiteScoring stays as the flare-specific criteria breakdown.
+        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var opp = SiteOpportunity.score(c, {
+            jurisdictions: Jurisdictions,
+            operator: op,
+            manual: manual,
+            fleet: existingOperations()
+        });
+
         document.getElementById('dTitle').textContent = placeLabel(c);
-        document.getElementById('dScore').textContent = scored.score === null ? '' : 'score ' + Math.round(scored.score * 100);
+        document.getElementById('dScore').textContent = opp.score === null ? ''
+            : 'opportunity ' + opp.score + '/100';
 
         // Priced at the CURRENT SCENARIO so the panel and the map can never disagree.
         var m = evaluateAt(c);
@@ -869,6 +900,26 @@ var MapSourcing = (function() {
         function gap(t) { return '<span class="src-gap">' + t + '</span>'; }
 
         var html = '<div class="src-detailgrid">';
+
+        // Opportunity breakdown. Shown component by component so the headline number can be
+        // argued with rather than taken on faith, and so an unmeasured component reads as
+        // "not surveyed" instead of silently dragging the score down.
+        html += '<div class="src-detail"><div class="section-label">Opportunity</div><dl>';
+        if (opp.score === null) {
+            html += row('Score', gap('nothing measurable for this prospect'));
+        } else {
+            html += row('Score', '<strong>' + opp.score + ' / 100</strong>');
+            html += row('Based on', opp.coverage + '% of the model' +
+                (opp.coverage < 100 ? ' ' + gap('the rest is unmeasured') : ''));
+            for (var bi = 0; bi < opp.breakdown.length; bi++) {
+                var b = opp.breakdown[bi];
+                if (!b.weight) continue;
+                html += row(b.label + ' <span class="src-sub2">' + b.weight + '%</span>',
+                    (b.value === null ? gap('not measured') : Math.round(b.value) + '/100') +
+                    '<div class="src-sub2">' + escapeHtml(b.detail) + '</div>');
+            }
+        }
+        html += '</dl></div>';
 
         html += '<div class="src-detail"><div class="section-label">Satellite</div><dl>' +
             row('Coordinates', c.lat.toFixed(4) + ', ' + c.lng.toFixed(4)) +

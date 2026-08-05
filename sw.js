@@ -34,6 +34,7 @@ const ASSETS = [
   './site-engine.js',
   './site-flags.js',
   './site-scoring.js',
+  './site-opportunity.js',
   './site-sources.js',
   './source-flare-gas.js',
   './site-model.js',
