@@ -568,6 +568,11 @@ var MapSourcing = (function() {
     // three can never disagree about what matched.
     var TABLE_CAP = 250;
     var _tableSort = { key: 'opportunity', dir: -1 };
+    // 'all' shows every match. 'acquisition' narrows to assets that physically EXIST — anything
+    // constructed or beyond — and ranks on the two axes combined, which is the view for deciding
+    // who to contact rather than for exploring the resource base.
+    var _tableView = 'all';
+    var STAGE_ORDER = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
     var _oppCache = {};
     var _acqCache = {};
     var _oppCtx = null;
@@ -646,13 +651,35 @@ var MapSourcing = (function() {
         }
     }
 
+    // A prospect qualifies as an acquisition target when the physical asset exists. Deliberately
+    // excludes anything with NO recorded stage: an unrecorded stage is missing data, and letting
+    // it through would fill the view with prospects nobody has established anything about.
+    function isAcquisitionTarget(row) {
+        var st = SiteOpportunity.stageOf(row.candidate);
+        if (st === null) return false;
+        return STAGE_ORDER.indexOf(st) >= STAGE_ORDER.indexOf('constructed');
+    }
+
     function renderTable() {
         var body = document.getElementById('srcTableBody');
         if (!body) return;
         var countEl = document.getElementById('tblCount');
         var capEl = document.getElementById('tblCap');
+        var noteEl = document.getElementById('viewNote');
 
         var rows = _filtered.slice();
+        var suppressed = 0;
+        if (_tableView === 'acquisition') {
+            var before = rows.length;
+            rows = rows.filter(isAcquisitionTarget);
+            suppressed = before - rows.length;
+        }
+        if (noteEl) {
+            noteEl.textContent = _tableView === 'acquisition'
+                ? 'constructed or later, ranked on opportunity x acquirability — ' +
+                  fmtInt(suppressed) + ' raw-resource or unrecorded prospects hidden'
+                : '';
+        }
         var key = _tableSort.key, dir = _tableSort.dir;
         rows.sort(function(a, b) {
             var va = tableSortValue(a, key), vb = tableSortValue(b, key);
@@ -677,7 +704,11 @@ var MapSourcing = (function() {
 
         if (!rows.length) {
             body.innerHTML = '<tr><td colspan="11" class="src-gap" style="padding:14px;">' +
-                'No prospects match these filters.</td></tr>';
+                (_tableView === 'acquisition'
+                    ? 'No built assets match these filters. The acquisition view shows only ' +
+                      'prospects at the constructed stage or later — try widening the country ' +
+                      'or size filters, or switch back to all prospects.'
+                    : 'No prospects match these filters.') + '</td></tr>';
             return;
         }
 
@@ -705,6 +736,27 @@ var MapSourcing = (function() {
                 '</tr>';
         }
         body.innerHTML = html;
+    }
+
+    function wireViews() {
+        var bar = document.querySelector('.src-views');
+        if (!bar) return;
+        bar.addEventListener('click', function(e) {
+            var btn = e.target.closest('.src-view');
+            if (!btn) return;
+            var v = btn.getAttribute('data-view');
+            if (v === _tableView) return;
+            _tableView = v;
+            var all = bar.querySelectorAll('.src-view');
+            for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn);
+            // The acquisition view exists to rank on both axes, so it brings its own default
+            // sort. Switching back restores opportunity, which is the honest default while
+            // acquirability is still thin.
+            _tableSort = v === 'acquisition' ? { key: 'combined', dir: -1 }
+                                             : { key: 'opportunity', dir: -1 };
+            paintTableHead();
+            renderTable();
+        });
     }
 
     function wireTable() {
@@ -1177,6 +1229,78 @@ var MapSourcing = (function() {
         }
         html += '</dl></div>';
 
+        // ---- Facility -------------------------------------------------------------------
+        // What an acquisition would actually inherit. Rendered only for prospects that ARE a
+        // facility — a raw flare has no generator, no permit and no interconnection, so an empty
+        // Facility panel on one would imply those things are merely unrecorded.
+        var fsd = c.sourceDetail || {};
+        var stageNow = SiteOpportunity.stageOf(c);
+        var isFacility = stageNow && stageNow !== 'raw_resource';
+        if (isFacility) {
+            html += '<div class="src-detail"><div class="section-label">Facility</div><dl>';
+            html += row('Development stage', stageCell(c));
+            if (fsd.technology || fsd.projectType) {
+                html += row('Technology', esc(String(fsd.technology || fsd.projectType)));
+            }
+            if (fsd.primeMover) html += row('Prime mover', esc(String(fsd.primeMover)));
+            var installedMw = fsd.ratedMw !== undefined && fsd.ratedMw !== null ? fsd.ratedMw
+                            : (c.powerPotentialKw === null ? null : c.powerPotentialKw / 1000);
+            html += row('Installed capacity', installedMw === null ? gap('not published')
+                : (Math.round(installedMw * 100) / 100) + ' MW');
+            if (fsd.capacityBasis) html += row('Capacity basis', '<span class="src-sub2">' + esc(fsd.capacityBasis) + '</span>');
+            var inSvc = fsd.inServiceYear || fsd.landfillOpenedYear || null;
+            html += row('In service', inSvc ? esc(String(inSvc)) : gap('not published'));
+            if (fsd.projectShutdownDate) html += row('Shut down', esc(fsd.projectShutdownDate));
+            if (fsd.plannedRetirementYear) html += row('Planned retirement', esc(String(fsd.plannedRetirementYear)));
+            html += row('Permit status', c.permitState
+                ? esc(String(c.permitState).replace(/_/g, ' '))
+                : gap('not verified — the air permit is the 3-9 month item an acquisition inherits'));
+            html += row('Offtake', c.offtakeState
+                ? esc(String(c.offtakeState).replace(/_/g, ' '))
+                : gap('not published'));
+            if (fsd.sector) html += row('Sector', esc(String(fsd.sector)));
+            if (fsd.ownershipType) html += row('Ownership', esc(String(fsd.ownershipType)));
+            if (fsd.owner) html += row('Owner', esc(String(fsd.owner)));
+            if (fsd.fercSmallPowerProducer) html += row('FERC status', 'Small Power Producer (qualifying facility)');
+            if (fsd.capacityFactorCurrent !== undefined && fsd.capacityFactorCurrent !== null) {
+                html += row('Capacity factor',
+                    Math.round(fsd.capacityFactorCurrent * 100) + '%' +
+                    (fsd.capacityFactorBaseline ? ' <span class="src-sub2">against a ' +
+                        Math.round(fsd.capacityFactorBaseline * 100) + '% 3-year normal</span>' : '') +
+                    (fsd.lastDataMonth ? '<div class="src-sub2">as of ' + esc(fsd.lastDataMonth) +
+                        ' — most small plants report annually, so this lags</div>' : ''));
+            }
+            if (fsd.requiresGasTreatment) {
+                html += row('Gas treatment', '<span class="src-signals">required</span>' +
+                    '<div class="src-sub2">siloxanes destroy engine components; treatment capex is mandatory</div>');
+            }
+            html += '</dl></div>';
+        }
+
+        // ---- Distress timeline ----------------------------------------------------------
+        // Chronological, newest first, with the dataset each claim came from. This is the section
+        // read before deciding whether to make contact, so it has to read as a narrative: what
+        // changed, when, and how confident the signal is.
+        var signals = (c.distressSignals || []).slice().filter(function(s) { return s && s.type; });
+        if (signals.length) {
+            signals.sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+            html += '<div class="src-detail src-detail-wide"><div class="section-label">Distress timeline</div>';
+            html += '<ul class="src-timeline">';
+            for (var si = 0; si < signals.length; si++) {
+                var sg = signals[si];
+                var w = SiteAcquirability.signals()[sg.type];
+                var sev = w === undefined ? 'unscored' : (w >= 75 ? 'high' : (w >= 50 ? 'medium' : 'low'));
+                var age = sg.date ? ' <span class="src-sub2">' + esc(sg.date) + '</span>'
+                                  : ' <span class="src-gap">date not published</span>';
+                html += '<li class="sev-' + sev + '">' +
+                    '<span class="src-sigtype">' + esc(String(sg.type).replace(/_/g, ' ')) + '</span>' + age +
+                    (w === undefined ? '' : ' <span class="src-sub2">weight ' + w + '</span>') +
+                    '<div class="src-sub2">' + esc(sg.detail || '') +
+                    (sg.source ? ' <em>— ' + esc(sg.source) + '</em>' : '') + '</div></li>';
+            }
+            html += '</ul></div>';
+        }
+
         // Source-specific evidence. `sourceDetail` is the only place source-specific data is
         // allowed to live on the shared candidate shape, so this section reads from there and
         // renders whatever the adapter chose to publish. A non-flare prospect gets the shared
@@ -1585,6 +1709,7 @@ var MapSourcing = (function() {
         renderAbout();
         installDismiss();
         wireTable();
+        wireViews();
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();

@@ -140,6 +140,27 @@
         .src-stage.s-energized    { background:rgba(60,200,120,.28); color:#7e9; }
         .src-stage.s-operating    { background:rgba(60,200,120,.55); color:#dfe; }
         .src-signals { color:#e66; font-weight:600; font-size:10px; }
+
+        /* Distress timeline. Severity is a left border rather than text colour so the shape of a
+           facility's trouble reads at a glance down the list. */
+        .src-views { display:flex; align-items:center; gap:8px; padding:8px 10px;
+                     border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
+        .src-view { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
+                    color:#bbb; border-radius:6px; padding:4px 11px; font-size:11px; cursor:pointer; }
+        .src-view:hover { border-color:rgba(247,147,26,.5); color:#eee; }
+        .src-view.active { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.6); color:#f7931a; }
+        .src-viewnote { font-size:11px; color:#777; margin-left:4px; }
+
+        .src-detail-wide { grid-column:1 / -1; }
+        .src-timeline { list-style:none; margin:0; padding:0; }
+        .src-timeline li { padding:7px 0 7px 11px; border-left:3px solid rgba(160,160,160,.35);
+                           margin-bottom:7px; font-size:12px; }
+        .src-timeline li.sev-high    { border-left-color:#e66; }
+        .src-timeline li.sev-medium  { border-left-color:#db2; }
+        .src-timeline li.sev-low     { border-left-color:#8ac; }
+        .src-timeline li.sev-unscored{ border-left-color:rgba(160,160,160,.35); }
+        .src-sigtype { font-weight:600; color:#eee; text-transform:capitalize; }
+        .src-timeline em { color:#777; font-style:normal; }
         .src-covwarn { color:#777; font-weight:400; font-size:10px; }
 
         .src-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; letter-spacing:.04em;
@@ -458,6 +479,11 @@ blank on each site rather than being guessed.</p>
     <div class="widget-section prospects-only" data-widget="prospect-table" style="display:none;">
     <div class="sec-head"><div class="section-label">Ranked prospects</div></div>
     <div class="card" style="padding:0;">
+        <div class="src-views">
+            <button type="button" class="src-view active" data-view="all">All prospects</button>
+            <button type="button" class="src-view" data-view="acquisition">Acquisition targets</button>
+            <span class="src-viewnote" id="viewNote"></span>
+        </div>
         <div class="src-count">
             <span id="tblCount">--</span>
             <span id="tblCap" class="src-sub2"></span>
