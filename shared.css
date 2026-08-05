@@ -1206,6 +1206,12 @@ footer {
     background: #f7931a; color: #000; border: none; padding: 4px 12px;
     border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
 }
+.sync-toast button:disabled { opacity: .6; cursor: default; }
+/* "Later" must not read as the primary action — the update can always wait. */
+.sync-toast button.sync-toast-dismiss {
+    background: transparent; color: #999; font-weight: 500; padding: 4px 6px;
+}
+.sync-toast button.sync-toast-dismiss:hover { color: #ddd; }
 .ion-nav-bell-badge {
     position: absolute;
     top: 2px; right: 2px;

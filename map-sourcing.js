@@ -441,6 +441,18 @@ var MapSourcing = (function() {
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
     var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning'];
+    // Filters survived a reload but the rest of the view did not, so a refresh still landed you
+    // on a differently-sorted table with the open site closed. Same reasoning as the filters:
+    // local only, never synced.
+    var VIEW_KEY = 'ionMiningProspectView';
+
+    function saveView() {
+        try {
+            localStorage.setItem(VIEW_KEY, JSON.stringify({
+                _v: 1, view: _tableView, sort: _tableSort, sel: _selectedId
+            }));
+        } catch (e) { /* private mode / quota */ }
+    }
 
     function saveFilters() {
         try {
@@ -801,6 +813,37 @@ var MapSourcing = (function() {
                 '</div>';
         }
         el.innerHTML = html;
+
+        // Summarise what is inside while it is shut. Collapsing the panel must not quietly hide
+        // that a dataset is out of date — that was the whole reason it was built.
+        var hint = document.getElementById('provHint');
+        if (hint) {
+            var stale = items.filter(function(i) { return i.cls === 'stale'; }).length;
+            var aging = items.filter(function(i) { return i.cls === 'aging'; }).length;
+            hint.textContent = items.length + ' dataset' + (items.length === 1 ? '' : 's') +
+                (stale ? ' · ' + stale + ' out of date' : (aging ? ' · ' + aging + ' ageing' : ''));
+            hint.style.color = stale ? '#e66' : (aging ? '#db2' : '#777');
+        }
+    }
+
+    // Collapsed by default: it is reference material at the foot of the page, and expanding it
+    // is one click. The choice is remembered so it does not have to be made twice.
+    var PROV_KEY = 'ionMiningProvOpen';
+    function wireProvenance() {
+        var btn = document.getElementById('provToggle'), card = document.getElementById('provCard');
+        if (!btn || !card) return;
+        function apply(open) {
+            card.hidden = !open;
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        var open = false;
+        try { open = localStorage.getItem(PROV_KEY) === '1'; } catch (e) {}
+        apply(open);
+        btn.addEventListener('click', function() {
+            open = !open;
+            apply(open);
+            try { localStorage.setItem(PROV_KEY, open ? '1' : '0'); } catch (e) {}
+        });
     }
 
     // ---- Outreach worklist -----------------------------------------------------------------
@@ -1144,6 +1187,7 @@ var MapSourcing = (function() {
                                              : { key: 'opportunity', dir: -1 };
             paintTableHead();
             renderTable();
+            saveView();
         });
     }
 
@@ -1160,6 +1204,7 @@ var MapSourcing = (function() {
                 else _tableSort = { key: k, dir: (k === 'name' || k === 'source' || k === 'iso3' || k === 'operator') ? 1 : -1 };
                 paintTableHead();
                 renderTable();
+                saveView();
             });
         }
         var body = document.getElementById('srcTableBody');
@@ -1524,6 +1569,35 @@ var MapSourcing = (function() {
             var row = document.querySelector('.src-row.sel');
             if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
         }
+        saveView();
+    }
+
+    // Restores what was on screen before the last reload. Deliberately does NOT re-enter focus
+    // mode: focus narrows the map to a single point, and a map that opens showing one dot reads
+    // as broken data rather than as a restored selection. The site you were reading comes back
+    // in the detail panel and stays highlighted in the table; the map opens whole.
+    function restoreView() {
+        var saved;
+        try { saved = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) { return; }
+        if (!saved || saved._v !== 1) return;
+        if (saved.view === 'all' || saved.view === 'acquisition') _tableView = saved.view;
+        if (saved.sort && typeof saved.sort.key === 'string' &&
+            (saved.sort.dir === 1 || saved.sort.dir === -1)) _tableSort = saved.sort;
+        // Only restore a selection that still exists. Prospect ids change when a catalog is
+        // rebuilt, and a stale id would leave an empty panel claiming a site is open.
+        if (saved.sel && ProspectStore.get(saved.sel)) _selectedId = saved.sel;
+
+        // The view toggle is markup, so it has to be told which button is active.
+        var bar = document.getElementById('tblViews');
+        if (bar) {
+            var btns = bar.querySelectorAll('.src-view');
+            for (var i = 0; i < btns.length; i++) {
+                btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === _tableView);
+            }
+        }
+        // The acquisition view carries a different column set, so the head has to be rebuilt
+        // before the first paint, not just re-arrowed.
+        paintTableHead();
     }
 
     // Click anywhere outside the prospect list to bring every prospect back. The detail panel
@@ -2289,6 +2363,7 @@ var MapSourcing = (function() {
         wireWorklist();
         wireSourceFilter();
         renderProvenance();
+        wireProvenance();
         try {
             var savedSrc = JSON.parse(localStorage.getItem(SRC_FILTER_KEY) || 'null');
             if (savedSrc && savedSrc.ids && savedSrc.ids.length) {
@@ -2299,7 +2374,13 @@ var MapSourcing = (function() {
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();
+        // Before applyFilters, which does the first renderTable — otherwise the table paints in
+        // the default view and sort and then visibly rewrites itself.
+        restoreView();
         applyFilters();
+        // The detail panel is painted from the restored selection. applyFilters had to run first
+        // so the table exists for the row to be highlighted in.
+        if (_selectedId) renderDetail();
 
         var warn = [];
         if (!_market || !_market.btcPriceUsd) warn.push('BTC price');

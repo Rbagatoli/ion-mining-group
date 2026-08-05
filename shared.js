@@ -18,18 +18,73 @@ window.isLightMode = function() {
     // controllerchange. That is an install, not an update — reloading there would make
     // every fresh session flash a spurious reload.
     var hadController = !!navigator.serviceWorker.controller;
+
+    // A new build no longer reloads the page by itself. It used to: sw.js called skipWaiting()
+    // on install, the new worker claimed every open tab, controllerchange fired and this handler
+    // reloaded immediately. Any work on screen — a selected prospect, a scroll position, a
+    // half-filled form — went with it, with no warning. Updates now wait for a click.
+    var offered = false;
+    function offerUpdate(worker) {
+        if (offered || !worker) return;
+        offered = true;
+        var toast = document.createElement('div');
+        toast.id = 'swUpdateToast';
+        toast.className = 'sync-toast';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'Reload';
+        var dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'sync-toast-dismiss';
+        dismiss.textContent = 'Later';
+        dismiss.setAttribute('aria-label', 'Dismiss update notice');
+        toast.appendChild(document.createTextNode('A new version is ready'));
+        toast.appendChild(btn);
+        toast.appendChild(dismiss);
+        btn.addEventListener('click', function() {
+            // Reload is expected from here on, so the controllerchange guard below lets it through.
+            accepted = true;
+            btn.disabled = true;
+            btn.textContent = 'Updating…';
+            worker.postMessage({ type: 'SKIP_WAITING' });
+            // If the worker never takes over (it was already redundant, or the message was
+            // dropped), reload anyway rather than leaving a dead button on screen.
+            setTimeout(function() { location.reload(); }, 3000);
+        });
+        dismiss.addEventListener('click', function() {
+            toast.classList.remove('show');
+            setTimeout(function() { toast.remove(); }, 300);
+        });
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.classList.add('show'); }, 10);
+    }
+
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        // A worker can already be parked in `waiting` from an earlier visit — updatefound will
+        // never fire again for it, so it has to be checked directly or the offer never appears.
+        if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+        reg.addEventListener('updatefound', function() {
+            var w = reg.installing;
+            if (!w) return;
+            w.addEventListener('statechange', function() {
+                // `installed` with a controller present means an update. Without one it is a
+                // first install, which should not prompt anybody to reload.
+                if (w.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(w);
+            });
+        });
         // Force check for updated SW on every visit.
         // The sw_clean bootstrap can unregister this registration while the update is in
         // flight, which rejects with "Not found" — harmless, but it surfaced as an uncaught
         // exception in the console on every first load.
         return reg.update().catch(function() {});
     }).catch(function() {});
-    // When a *new* SW replaces an existing one, reload to get fresh assets
-    var refreshing = false;
+
+    // Only reloads on controllerchange when the user asked for it. An unaccepted takeover — a
+    // worker claiming the tab from another window's update, say — leaves the page alone.
+    var refreshing = false, accepted = false;
     navigator.serviceWorker.addEventListener('controllerchange', function() {
         if (!hadController) { hadController = true; return; }
-        if (refreshing) return;
+        if (refreshing || !accepted) return;
         refreshing = true;
         location.reload();
     });

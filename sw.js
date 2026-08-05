@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v294';
+const CACHE_NAME = 'ion-mining-v295';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -70,7 +70,17 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
+  // Deliberately NOT skipWaiting() here. Installing a new worker used to take control of every
+  // open tab the moment a build landed, which fired controllerchange, which made shared.js
+  // hard-reload the page out from under whatever was on screen. On the prospects view that
+  // meant losing a selected site and a scroll position mid-search, with no warning and no way
+  // to decline. The new worker now waits; shared.js offers the update and skips only when the
+  // user accepts it below.
+});
+
+// The page asks for the update when the user clicks Reload on the toast.
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {

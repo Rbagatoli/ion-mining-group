@@ -9,7 +9,10 @@
     var page = path.replace('.html', '') || 'index';
     var WIDGET_KEY = 'ionMiningWidgets_' + page;
     var WIDGET_VERSION_KEY = WIDGET_KEY + '_v';
-    var WIDGET_VERSION = 6; // Bump to reset saved order when HTML order changes
+    // 7: prospect-filters stopped being a widget (it moved inside the map), and the table and
+    //    detail panels were promoted above the worklist. A saved order from 6 would keep the old
+    //    layout and strand a widget id that no longer exists.
+    var WIDGET_VERSION = 7; // Bump to reset saved order when HTML order changes
 
     // Migrate old dashboard key (one-time backward compat)
     if (page === 'index') {
