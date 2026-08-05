@@ -614,6 +614,143 @@ var MapSourcing = (function() {
         listEl.innerHTML = html;
     }
 
+    // ---- Outreach worklist -----------------------------------------------------------------
+    // The saved-sites view the CRM never had. Reads SiteData directly rather than the prospect
+    // store, because a saved site is a decision the user made and must persist even if the
+    // underlying prospect drops out of the current filter — or out of the catalog entirely on a
+    // re-ingest.
+    var _wlStage = 'all';
+
+    function worklistRows() {
+        if (typeof SiteData === 'undefined' || !SiteData.list) return [];
+        var all = SiteData.list() || [];
+        return _wlStage === 'all' ? all : all.filter(function(r) { return r.stage === _wlStage; });
+    }
+
+    function renderWorklist() {
+        var body = document.getElementById('wlBody');
+        if (!body) return;
+        var all = (typeof SiteData !== 'undefined' && SiteData.list) ? (SiteData.list() || []) : [];
+
+        // Stage chips carry their counts, so the shape of the pipeline reads at a glance.
+        var bar = document.getElementById('wlStages');
+        if (bar) {
+            var counts = { all: all.length };
+            for (var i = 0; i < all.length; i++) counts[all[i].stage] = (counts[all[i].stage] || 0) + 1;
+            var chips = ['all'].concat(SiteData.STAGES);
+            var h = '';
+            for (var s2 = 0; s2 < chips.length; s2++) {
+                var k = chips[s2], n = counts[k] || 0;
+                h += '<button type="button" class="wl-stage' + (k === _wlStage ? ' active' : '') +
+                     '" data-stage="' + esc(k) + '">' + esc(k === 'all' ? 'All' : k) +
+                     '<span class="n">' + n + '</span></button>';
+            }
+            bar.innerHTML = h;
+        }
+
+        var rows = worklistRows();
+        var countEl = document.getElementById('wlCount');
+        if (countEl) {
+            countEl.textContent = all.length
+                ? fmtInt(rows.length) + ' of ' + fmtInt(all.length) + ' saved'
+                : 'nothing saved yet';
+        }
+
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="6" class="wl-empty">' +
+                (all.length
+                    ? 'Nothing at this stage.'
+                    : 'No sites saved yet. Open a prospect and use <strong>Save to my sites</strong> ' +
+                      'to start working it — this is where it will appear, with whatever contact ' +
+                      'details you record.') +
+                '</td></tr>';
+            return;
+        }
+
+        // Most recently touched first: a worklist is about what to do next, not about ranking.
+        rows = rows.slice().sort(function(a, b) {
+            return String(b.updated || b.created || '').localeCompare(String(a.updated || a.created || ''));
+        });
+
+        var html = '';
+        for (var r = 0; r < rows.length; r++) {
+            var w = rows[r];
+            var contact = w.contact_name || w.contact_email || w.contact_phone;
+            html += '<tr data-id="' + esc(w.id) + '">' +
+                '<td class="name">' + esc(w.name || w.id) + '</td>' +
+                '<td><span class="wl-pill s-' + esc(w.stage || 'unreviewed') + '">' +
+                    esc(w.stage || 'unreviewed') + '</span></td>' +
+                '<td>' + (w.operator ? esc(w.operator) : '<span class="src-gap">--</span>') + '</td>' +
+                '<td>' + (contact ? esc(contact) : '<span class="src-gap">none recorded</span>') + '</td>' +
+                '<td class="num kw">' + (w.usable_kw ? fmtKw(w.usable_kw) : '--') + '</td>' +
+                '<td>' + esc(String(w.updated || w.created || '').slice(0, 10)) + '</td>' +
+                '</tr>';
+        }
+        body.innerHTML = html;
+    }
+
+    // CSV of whatever the worklist is currently showing. Outreach happens in a spreadsheet, a
+    // phone and an inbox — not in this app — so the export carries the fields someone actually
+    // needs to make contact, not the scoring internals.
+    function worklistCsv() {
+        var rows = worklistRows();
+        var cols = ['name', 'stage', 'status', 'operator', 'contact_name', 'contact_role',
+                    'contact_email', 'contact_phone', 'jurisdiction', 'usable_kw',
+                    'development_stage', 'latitude', 'longitude', 'notes', 'updated'];
+        function cell(v) {
+            if (v === null || v === undefined) return '';
+            var t = String(v);
+            // Quote anything that could break a CSV, and double any embedded quote.
+            return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+        }
+        var out = [cols.join(',')];
+        for (var i = 0; i < rows.length; i++) {
+            var line = [];
+            for (var c = 0; c < cols.length; c++) line.push(cell(rows[i][cols[c]]));
+            out.push(line.join(','));
+        }
+        return out.join('\r\n');
+    }
+
+    function wireWorklist() {
+        var bar = document.getElementById('wlStages');
+        if (bar) {
+            bar.addEventListener('click', function(e) {
+                var b = e.target.closest('.wl-stage');
+                if (!b) return;
+                _wlStage = b.getAttribute('data-stage');
+                renderWorklist();
+            });
+        }
+        var body = document.getElementById('wlBody');
+        if (body) {
+            body.addEventListener('click', function(e) {
+                var tr = e.target.closest('tr[data-id]');
+                if (!tr) return;
+                // Saved sites keep the prospect id, so this reopens the full prospect view.
+                select(tr.getAttribute('data-id'));
+            });
+        }
+        var ex = document.getElementById('wlExport');
+        if (ex) {
+            ex.addEventListener('click', function() {
+                var rows = worklistRows();
+                if (!rows.length) { status('Nothing to export at this stage.', '#c85'); return; }
+                var blob = new Blob([worklistCsv()], { type: 'text/csv;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'ion-prospects-' + (_wlStage === 'all' ? 'all' : _wlStage) + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                status('Exported ' + rows.length + ' site' + (rows.length === 1 ? '' : 's') + ' to CSV.', '#3ecf8e');
+            });
+        }
+        renderWorklist();
+    }
+
     // ---- Ranked table --------------------------------------------------------------------
     // The primary view. Reads the SAME _filtered result the map and the side list read, so the
     // three can never disagree about what matched.
@@ -799,7 +936,9 @@ var MapSourcing = (function() {
     }
 
     function wireViews() {
-        var bar = document.querySelector('.src-views');
+        // By id, not by class. The worklist reuses .src-views for its stage chips, and a class
+        // selector silently bound this handler to whichever bar sits first in the DOM.
+        var bar = document.getElementById('tblViews');
         if (!bar) return;
         bar.addEventListener('click', function(e) {
             var btn = e.target.closest('.src-view');
@@ -1716,6 +1855,7 @@ var MapSourcing = (function() {
             // the opportunity score. Drop the memoised scores or the table would keep showing
             // the pre-edit ranking.
             invalidateOpportunity();
+            renderWorklist();
             renderList();
             renderTable();
         });
@@ -1909,6 +2049,7 @@ var MapSourcing = (function() {
         installDismiss();
         wireTable();
         wireViews();
+        wireWorklist();
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();
@@ -1946,6 +2087,10 @@ var MapSourcing = (function() {
         clearMapLayer: clearMapLayer,
         renderMapLayer: renderMapLayer,
         isFocused: function() { return _focused; },
+        // Exposed so tests exercise the real generator rather than a reimplementation of it —
+        // a test that rebuilds the logic it is checking proves only that two copies agree.
+        worklistCsv: worklistCsv,
+        renderWorklist: renderWorklist,
         filtered: function() { return _filtered; }
     };
 })();

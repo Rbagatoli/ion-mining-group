@@ -9,7 +9,7 @@
     var page = path.replace('.html', '') || 'index';
     var WIDGET_KEY = 'ionMiningWidgets_' + page;
     var WIDGET_VERSION_KEY = WIDGET_KEY + '_v';
-    var WIDGET_VERSION = 4; // Bump to reset saved order when HTML order changes
+    var WIDGET_VERSION = 5; // Bump to reset saved order when HTML order changes
 
     // Migrate old dashboard key (one-time backward compat)
     if (page === 'index') {
