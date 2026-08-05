@@ -1252,9 +1252,27 @@ var MapSourcing = (function() {
             html += row('In service', inSvc ? esc(String(inSvc)) : gap('not published'));
             if (fsd.projectShutdownDate) html += row('Shut down', esc(fsd.projectShutdownDate));
             if (fsd.plannedRetirementYear) html += row('Planned retirement', esc(String(fsd.plannedRetirementYear)));
-            html += row('Permit status', c.permitState
-                ? esc(String(c.permitState).replace(/_/g, ' '))
-                : gap('not verified — the air permit is the 3-9 month item an acquisition inherits'));
+            // Verified and unverified permit state are visually distinct on purpose. An exact
+            // EPA registry match reaches only a minority of plants, and "we could not check" must
+            // never read like "there is no permit".
+            if (c.permitState) {
+                html += row('Permit status',
+                    '<span class="src-verified">' + esc(String(c.permitState).replace(/_/g, ' ')) + '</span>' +
+                    (fsd.airPermitClass && fsd.airPermitClass !== 'unknown'
+                        ? ' <span class="src-sub2">' + esc(String(fsd.airPermitClass).replace(/_/g, ' ')) + ' source</span>' : '') +
+                    '<div class="src-sub2">verified against the EPA ECHO air permit record' +
+                    (fsd.epaRegistryId ? ', registry ' + esc(fsd.epaRegistryId) : '') + '</div>');
+                if (fsd.airPrograms) html += row('Air programs', esc(String(fsd.airPrograms)));
+                if (fsd.permitIds && fsd.permitIds.length) {
+                    html += row('Permit ids', esc(fsd.permitIds.slice(0, 4).join(', ')));
+                }
+                if (fsd.airOperatingStatus) html += row('EPA facility status', esc(String(fsd.airOperatingStatus)));
+            } else {
+                html += row('Permit status', gap('not verified') +
+                    '<div class="src-sub2">The air permit is the 3-9 month item an acquisition ' +
+                    'inherits. EPA holds more than one registry id for many sites, so this could ' +
+                    'not be matched exactly — it does NOT mean the site is unpermitted.</div>');
+            }
             html += row('Offtake', c.offtakeState
                 ? esc(String(c.offtakeState).replace(/_/g, ' '))
                 : gap('not published'));

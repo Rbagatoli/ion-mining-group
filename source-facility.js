@@ -63,7 +63,12 @@ var FacilitySource = (function() {
     }
 
     function fetchAll() {
-        return load().then(function(d) { return d.facilities; });
+        // The permit index is loaded alongside, not before: it is optional enrichment and a
+        // missing or failed load must leave permit state unknown rather than block discovery.
+        var permits = (typeof PermitIndex !== 'undefined' && PermitIndex.load)
+            ? PermitIndex.load().catch(function() { return null; })
+            : Promise.resolve(null);
+        return Promise.all([load(), permits]).then(function(r) { return r[0].facilities; });
     }
 
     function meta() { return _data; }
@@ -144,6 +149,8 @@ var FacilitySource = (function() {
 
     function normalize(f) {
         var duty = dutyFor(f);
+        var permit = (typeof PermitIndex !== 'undefined' && PermitIndex.forPlant)
+            ? PermitIndex.forPlant(f.plantCode) : null;
         var stage = (f.status && Object.prototype.hasOwnProperty.call(STAGE_BY_STATUS, f.status))
             ? STAGE_BY_STATUS[f.status] : null;
 
@@ -167,10 +174,13 @@ var FacilitySource = (function() {
             counterpartyType: counterpartyFor(f),
             developmentStage: stage,
             offtakeState: offtakeFor(f),
-            // EIA does not publish permit state. Left null so it scores as unknown rather than
-            // being invented; the ECHO adapter fills it in from the actual air permit record.
-            permitState: null,
-            distressSignals: distressFor(f),
+            // From the ECHO air permit record where an EXACT registry-id match exists, and null
+            // otherwise. Null means NOT VERIFIED, not unpermitted — EPA holds more than one
+            // registry id for many sites, so the exact join reaches a minority of plants.
+            permitState: permit ? permit.permitState : null,
+            distressSignals: distressFor(f).concat(
+                (typeof PermitIndex !== 'undefined' && PermitIndex.distressFor)
+                    ? PermitIndex.distressFor(f.plantCode) : []),
             regulatoryNotes: null,
             evidence: [{
                 dataset: 'EIA-860 / EIA-923',
@@ -192,6 +202,16 @@ var FacilitySource = (function() {
                 retiredMw: f.retiredMw,
                 fercSmallPowerProducer: f.fercSmallPowerProducer,
                 fercCogen: f.fercCogen,
+                // Permit detail, present only where the join was exact.
+                permitVerified: !!permit,
+                airPermitClass: permit ? permit.airPermitClass : null,
+                airPrograms: permit ? permit.airPrograms : null,
+                permitIds: permit ? permit.permitIds : null,
+                airOperatingStatus: permit ? permit.operatingStatus : null,
+                complianceStatus: permit ? permit.complianceStatus : null,
+                quartersWithViolations: permit ? permit.quartersWithViolations : null,
+                lastViolationDate: permit ? permit.lastViolationDate : null,
+                epaRegistryId: permit ? permit.echoRegistryId : null,
                 capacityFactorCurrent: f.cfCurrent,
                 capacityFactorBaseline: f.cfBaseline,
                 declinePct: f.declinePct,
