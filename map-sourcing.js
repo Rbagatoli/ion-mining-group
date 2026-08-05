@@ -569,6 +569,7 @@ var MapSourcing = (function() {
     var TABLE_CAP = 250;
     var _tableSort = { key: 'opportunity', dir: -1 };
     var _oppCache = {};
+    var _acqCache = {};
     var _oppCtx = null;
 
     // Scoring context is built ONCE per render pass. existingOperations() reads localStorage and
@@ -579,7 +580,7 @@ var MapSourcing = (function() {
         }
         return _oppCtx;
     }
-    function invalidateOpportunity() { _oppCache = {}; _oppCtx = null; }
+    function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _oppCtx = null; }
 
     // Memoised per candidate. Scoring every row on every sort click would otherwise redo the
     // full seven-component calculation across the whole filtered set.
@@ -596,6 +597,30 @@ var MapSourcing = (function() {
         return r;
     }
 
+    // Acquirability reads the candidate's structural state plus anything recorded by hand, so a
+    // manually logged bankruptcy on a saved record counts alongside adapter-supplied state.
+    function acquirabilityFor(c) {
+        if (Object.prototype.hasOwnProperty.call(_acqCache, c.id)) return _acqCache[c.id];
+        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var merged = {
+            development_stage: (manual && manual.development_stage) || c.developmentStage || null,
+            offtake_state: (manual && manual.offtake_state) || c.offtakeState || null,
+            permit_state: (manual && manual.permit_state) || c.permitState || null,
+            distress_signals: (manual && Array.isArray(manual.distress_signals) && manual.distress_signals.length)
+                ? manual.distress_signals
+                : (Array.isArray(c.distressSignals) ? c.distressSignals : [])
+        };
+        var r = SiteAcquirability.score(merged);
+        _acqCache[c.id] = r;
+        return r;
+    }
+
+    // Combined rank, on unrounded inputs so the sort key is not quantised into false ties.
+    function combinedFor(c) {
+        var o = opportunityFor(c), a = acquirabilityFor(c);
+        return SiteAcquirability.combine(o.scoreRaw, a.scoreRaw);
+    }
+
     function tableSortValue(row, key) {
         var c = row.candidate;
         switch (key) {
@@ -607,6 +632,11 @@ var MapSourcing = (function() {
             case 'years':       return c.yearsSeen === null ? -1 : c.yearsSeen;
             case 'operator':    var op = SiteCatalog.operatorFor(c.id);
                                 return op && op.operator ? op.operator.toLowerCase() : '￿';
+            case 'acquirability': var a = acquirabilityFor(c).scoreRaw; return a === null ? null : a;
+            case 'combined':      return combinedFor(c);
+            case 'stage':
+                var st = SiteOpportunity.stageOf(c);
+                return st === null ? null : SiteOpportunity.STAGE_SCORES[st];
             case 'opportunity':
             default:
                 var s = opportunityFor(c).score;
@@ -646,7 +676,7 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="8" class="src-gap" style="padding:14px;">' +
+            body.innerHTML = '<tr><td colspan="11" class="src-gap" style="padding:14px;">' +
                 'No prospects match these filters.</td></tr>';
             return;
         }
@@ -663,10 +693,13 @@ var MapSourcing = (function() {
                 '<td class="num kw">' + fmtKw(c.powerPotentialKw) + '</td>' +
                 '<td class="num">' + (c.dutyCyclePct === null ? '--' : c.dutyCyclePct + '%') + '</td>' +
                 '<td class="num">' + (c.yearsSeen === null ? '--' : c.yearsSeen + '/' + (c.yearsTotal || '?')) + '</td>' +
+                '<td>' + stageCell(c) + '</td>' +
                 '<td class="num">' + (opp.score === null
                     ? '<span class="src-gap">--</span>'
                     : '<span class="src-oppcell">' + opp.score + '</span>' +
                       (opp.coverage < 100 ? ' <span class="src-covwarn">' + opp.coverage + '%</span>' : '')) + '</td>' +
+                '<td class="num">' + acqCell(c) + '</td>' +
+                '<td class="num">' + combinedCell(c) + '</td>' +
                 '<td>' + (op && op.operator ? esc(op.operator)
                                             : '<span class="src-gap">not identified</span>') + '</td>' +
                 '</tr>';
@@ -709,6 +742,25 @@ var MapSourcing = (function() {
             ths[i].classList.toggle('sorted', k === _tableSort.key);
             ths[i].classList.toggle('asc', k === _tableSort.key && _tableSort.dir === 1);
         }
+    }
+
+    function stageCell(c) {
+        var st = SiteOpportunity.stageOf(c);
+        if (st === null) return '<span class="src-gap">--</span>';
+        return '<span class="src-stage s-' + st + '">' + st.replace(/_/g, ' ') + '</span>';
+    }
+    function acqCell(c) {
+        var a = acquirabilityFor(c);
+        if (a.score === null) return '<span class="src-gap">--</span>';
+        // A count of zero is shown deliberately: it is the difference between "structurally
+        // available" and "something has actually gone wrong here".
+        return '<span class="src-oppcell">' + a.score + '</span>' +
+               (a.signalCount ? ' <span class="src-signals">' + a.signalCount + '⚠</span>' : '');
+    }
+    function combinedCell(c) {
+        var v = combinedFor(c);
+        return v === null ? '<span class="src-gap">--</span>'
+                          : '<span class="src-oppcell">' + Math.round(v) + '</span>';
     }
 
     // Energy type reads better than an adapter id in a narrow column.
@@ -1061,9 +1113,13 @@ var MapSourcing = (function() {
             fleet: existingOperations()
         });
 
+        var acq = acquirabilityFor(c);
+        var combined = SiteAcquirability.combine(opp.scoreRaw, acq.scoreRaw);
+
         document.getElementById('dTitle').textContent = placeLabel(c);
         document.getElementById('dScore').textContent = opp.score === null ? ''
-            : 'opportunity ' + opp.score + '/100';
+            : 'opportunity ' + opp.score + '/100' +
+              (acq.score === null ? '' : ' · acquirable ' + acq.score + '/100');
 
         // Priced at the CURRENT SCENARIO so the panel and the map can never disagree.
         var m = evaluateAt(c);
@@ -1090,6 +1146,33 @@ var MapSourcing = (function() {
                 html += row(b.label + ' <span class="src-sub2">' + b.weight + '%</span>',
                     (b.value === null ? gap('not measured') : Math.round(b.value) + '/100') +
                     '<div class="src-sub2">' + escapeHtml(b.detail) + '</div>');
+            }
+        }
+        html += '</dl></div>';
+
+        // Acquirability — the second axis. Kept visually separate from opportunity because the
+        // whole point is that they are independent: a high score here on a low-opportunity site
+        // is a cheap asset nobody wants, and the reverse is a good asset that is not for sale.
+        html += '<div class="src-detail"><div class="section-label">Acquirability</div><dl>';
+        if (acq.score === null) {
+            html += row('Score', gap('nothing recorded about contract, permit or distress'));
+        } else {
+            html += row('Score', '<strong>' + acq.score + ' / 100</strong>');
+            html += row('Combined rank', combined === null ? gap('needs both axes')
+                : '<strong>' + Math.round(combined) + '</strong> <span class="src-sub2">' +
+                  'opportunity x acquirability</span>');
+            html += row('Distress signals', acq.signalCount === 0
+                ? gap('none detected — this is the normal state, not a clean bill of health')
+                : '<span class="src-signals">' + acq.signalCount + ' active</span>');
+            for (var ai = 0; ai < acq.breakdown.length; ai++) {
+                var ab = acq.breakdown[ai];
+                var alabel = String(ab.type).replace(/_/g, ' ');
+                html += row(alabel.charAt(0).toUpperCase() + alabel.slice(1),
+                    (ab.value === null ? gap('not recorded') : ab.value + '/100') +
+                    '<div class="src-sub2">' + esc(ab.detail) + '</div>');
+            }
+            if (acq.unknownSignals.length) {
+                html += row('Unrecognised', gap(esc(acq.unknownSignals.join(', '))));
             }
         }
         html += '</dl></div>';

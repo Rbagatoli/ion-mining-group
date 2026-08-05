@@ -130,6 +130,16 @@
                        text-transform:uppercase; letter-spacing:.04em;
                        background:rgba(120,170,255,.15); color:#8ac; }
         .src-oppcell { color:#eee; font-weight:600; }
+        /* Development stage: hollow for raw resource through solid for operating, so how far
+           along an asset is reads at a glance down the column. */
+        .src-stage { display:inline-block; padding:1px 7px; border-radius:8px; font-size:9px;
+                     text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+        .src-stage.s-raw_resource { background:transparent; border:1px solid rgba(160,160,160,.45); color:#999; }
+        .src-stage.s-permitted    { background:rgba(120,170,255,.12); border:1px solid rgba(120,170,255,.4); color:#8ac; }
+        .src-stage.s-constructed  { background:rgba(120,170,255,.28); color:#adf; }
+        .src-stage.s-energized    { background:rgba(60,200,120,.28); color:#7e9; }
+        .src-stage.s-operating    { background:rgba(60,200,120,.55); color:#dfe; }
+        .src-signals { color:#e66; font-weight:600; font-size:10px; }
         .src-covwarn { color:#777; font-weight:400; font-size:10px; }
 
         .src-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; letter-spacing:.04em;
@@ -462,7 +472,10 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="kw" class="num">Capacity</th>
                         <th data-sort="duty" class="num">Duty</th>
                         <th data-sort="years" class="num">Years</th>
+                        <th data-sort="stage">Stage</th>
                         <th data-sort="opportunity" class="num">Opportunity</th>
+                        <th data-sort="acquirability" class="num">Acquirable</th>
+                        <th data-sort="combined" class="num">Combined</th>
                         <th data-sort="operator">Counterparty</th>
                     </tr>
                 </thead>
@@ -640,6 +653,7 @@ commercial terms are your assumptions.</p>
 <script src="./site-flags.js?v=283"></script>
 <script src="./site-scoring.js?v=283"></script>
 <script src="./site-opportunity.js?v=283"></script>
+<script src="./site-acquirability.js?v=283"></script>
 <script src="./site-sources.js?v=283"></script>
 <script src="./site-model.js?v=283"></script>
 <script src="./site-catalog.js?v=283"></script>

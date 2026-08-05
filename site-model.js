@@ -20,6 +20,17 @@ var SiteData = (function() {
     // The CRM pipeline from the spec. Editable and persisted — this is a working pipeline,
     // not a read-only view.
     var STAGES = ['unreviewed', 'researching', 'contacted', 'negotiating', 'dead', 'acquired'];
+
+    // How far along the physical asset is — distinct from STAGES, which tracks OUR conversation
+    // with the counterparty. Ordered worst-to-best; site-opportunity.js scores against this order.
+    var DEVELOPMENT_STAGES = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
+    // What the output is committed to. A long contract is what usually makes a healthy,
+    // attractive asset unbuyable.
+    var OFFTAKE_STATES = ['expired', 'none_merchant', 'short_lt_3yr', 'medium_3_to_10yr',
+                          'long_gt_10yr', 'regulated_ratebase'];
+    // Deliberately has no 'lapsed' member: a lapsed permit is a distress SIGNAL with its own
+    // weight, and having it here too would count the same fact twice.
+    var PERMIT_STATES = ['in_renewal', 'none_required', 'active', 'active_long_dated'];
     var GENERATOR_OWNERSHIP = ['client', 'producer', 'operator'];
 
     // Fields the satellite cannot know. Blank by default and NEVER inferred — the spec is
@@ -89,6 +100,36 @@ var SiteData = (function() {
         s.operator_licence = null;
         s.operator_source = null;
         s.operator_distance_m = null;
+
+        // ---- Acquisition axis ----------------------------------------------------------
+        // How far along the asset already is. This is the single biggest difference between
+        // two prospects: an energized, permitted 2 MW plant inherits permits, interconnection
+        // and commissioning, where a raw flare is 12-24 months of development away.
+        //
+        // null means NOT RECORDED, which is not the same as raw_resource. An unrecognised value
+        // must never fall back to raw_resource — missing data would then masquerade as a fact.
+        s.development_stage = null;
+        // Structural availability. What makes a healthy asset unbuyable is usually a contract,
+        // not distress, so these carry the acquirability baseline.
+        s.offtake_state = null;
+        s.permit_state = null;
+        // [{ type, date, source, detail }] — appended by adapters and by hand. Array, not null,
+        // so callers can push without a guard.
+        s.distress_signals = [];
+
+        // Facility attributes. All null for raw_resource prospects, by definition.
+        s.installed_capacity_mw = null;
+        s.prime_mover_type = null;
+        s.fuel_type = null;
+        s.in_service_year = null;
+        s.permit_ids = [];
+        s.air_permit_class = null;
+        s.interconnection_status = null;
+        s.offtake_expiry_date = null;
+        s.capacity_factor_current = null;
+        s.capacity_factor_3yr_avg = null;
+        s.prior_use = null;
+        s.estimated_acquisition_cost = null;
         return s;
     }
 
@@ -128,6 +169,19 @@ var SiteData = (function() {
         if (s.generator_ownership !== null && GENERATOR_OWNERSHIP.indexOf(s.generator_ownership) < 0) {
             s.generator_ownership = null;
         }
+        // Acquisition enums fall back to NULL rather than to a default member. raw_resource must
+        // never be a fallback: an unrecognised value is missing data, and treating it as "this is
+        // raw gas" would turn a typo into an assertion about the asset.
+        if (s.development_stage !== null && DEVELOPMENT_STAGES.indexOf(s.development_stage) < 0) {
+            s.development_stage = null;
+        }
+        if (s.offtake_state !== null && OFFTAKE_STATES.indexOf(s.offtake_state) < 0) s.offtake_state = null;
+        if (s.permit_state !== null && PERMIT_STATES.indexOf(s.permit_state) < 0) s.permit_state = null;
+        // Arrays must stay arrays. A signal with no type cannot be scored or displayed, so it is
+        // dropped rather than carried as a blank row in the distress timeline.
+        if (!Array.isArray(s.distress_signals)) s.distress_signals = [];
+        s.distress_signals = s.distress_signals.filter(function(d) { return d && d.type; });
+        if (!Array.isArray(s.permit_ids)) s.permit_ids = [];
         s.name = String(s.name == null ? '' : s.name).slice(0, 120);
         return s;
     }
@@ -203,6 +257,9 @@ var SiteData = (function() {
         STATUSES: STATUSES,
         SOURCES: SOURCES,
         STAGES: STAGES,
+        DEVELOPMENT_STAGES: DEVELOPMENT_STAGES,
+        OFFTAKE_STATES: OFFTAKE_STATES,
+        PERMIT_STATES: PERMIT_STATES,
         GENERATOR_OWNERSHIP: GENERATOR_OWNERSHIP,
         MANUAL_FIELDS: MANUAL_FIELDS,
         CONTACT_FIELDS: CONTACT_FIELDS,

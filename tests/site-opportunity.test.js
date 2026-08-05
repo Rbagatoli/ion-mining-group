@@ -35,7 +35,8 @@ function site(over) {
         lat: 53.5, lng: -113.5, iso3: 'CAN',
         powerPotentialKw: 2000, dutyCyclePct: 100,
         yearsSeen: 6, yearsTotal: 6, daysSinceActive: null,
-        counterpartyType: 'oil_gas_operator'
+        counterpartyType: 'oil_gas_operator',
+        development_stage: 'raw_resource'
     };
     for (var k in (over || {})) s[k] = over[k];
     return s;
@@ -159,7 +160,7 @@ SO.setWeight('jurisdiction', 0);
 var zeroed = SO.score(site({ iso3: 'RUS' })).score;
 ok('zeroing the jurisdiction weight changes the score', zeroed > beforeW, { beforeW: beforeW, zeroed: zeroed });
 SO.reset();
-eq('reset restores the default weight', SO.weights().jurisdiction, 25 - 15);
+eq('reset restores the default weight', SO.weights().jurisdiction, SO.DEFAULT_WEIGHTS.jurisdiction);
 ok('rejects a negative weight', SO.setWeight('jurisdiction', -1) === false);
 ok('rejects an unknown component', SO.setWeight('not_a_component', 10) === false);
 
@@ -190,13 +191,82 @@ eq('identical prospects score the same regardless of source type', flare.score, 
 
 // ---- Structure -------------------------------------------------------------------------
 var r = SO.score(site());
-eq('seven components are reported', r.breakdown.length, 7);
+eq('every registered component is reported', r.breakdown.length, Object.keys(SO.DEFAULT_WEIGHTS).length);
 ok('every component carries a human-readable detail',
    r.breakdown.every(function(b) { return typeof b.detail === 'string' && b.detail.length > 0; }));
 ok('the default weights sum to 100',
    Object.keys(SO.DEFAULT_WEIGHTS).reduce(function(a, k) { return a + SO.DEFAULT_WEIGHTS[k]; }, 0) === 100);
 ok('a null candidate does not throw', SO.score(null).score === null);
 ok('a garbage candidate does not throw', SO.score('nonsense').score === null);
+
+// ---- development_stage -----------------------------------------------------------------
+SO.reset();
+var STAGES = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
+var stageScores = STAGES.map(function(st) { return SO.score(site({ development_stage: st })).score; });
+ok('stage ordering is strictly increasing', stageScores.every(function(v, i) { return i === 0 || v > stageScores[i - 1]; }), stageScores);
+eq('raw_resource scores 20 on the component', comp(SO.score(site({ development_stage: 'raw_resource' })), 'development_stage'), 20);
+eq('operating scores 100 on the component', comp(SO.score(site({ development_stage: 'operating' })), 'development_stage'), 100);
+ok('an operating site outranks a raw one by roughly 20 points',
+   Math.abs((stageScores[4] - stageScores[0]) - 20) <= 4, stageScores[4] - stageScores[0]);
+
+// Absent or unusable stages must score null, never 0. At 25% weight a typo scored as zero
+// would bury a prospect on a data-entry error.
+[undefined, null, '', 'not_a_stage', 'undefined', 'null'].forEach(function(v) {
+    eq('stage ' + JSON.stringify(v) + ' -> component null', comp(SO.score(site({ development_stage: v })), 'development_stage'), null);
+});
+// Prototype-chain keys, same hazard as counterpartyType.
+['toString', 'constructor', 'valueOf'].forEach(function(v) {
+    var r = SO.score(site({ development_stage: v }));
+    eq('stage ' + JSON.stringify(v) + ' -> component null', comp(r, 'development_stage'), null);
+    ok('stage ' + JSON.stringify(v) + ' leaves the total finite', r.score !== null && isFinite(r.score), r.score);
+});
+eq('case and whitespace are normalised', comp(SO.score(site({ development_stage: '  Operating ' })), 'development_stage'), 100);
+eq('the camelCase adapter spelling also works', comp(SO.score({ id: 'x', developmentStage: 'energized' }), 'development_stage'), 90);
+ok('the persisted snake_case spelling wins when both are present',
+   comp(SO.score({ id: 'x', development_stage: 'operating', developmentStage: 'raw_resource' }), 'development_stage') === 100);
+ok('setWeight accepts the new component', SO.setWeight('development_stage', 30) === true);
+SO.reset();
+
+// Adding a CONSTANT component is rank-preserving: it is affine in the old score with positive
+// slope. Every flare is raw_resource, so the catalog's internal order must be untouched.
+var A = SO.score(site({ powerPotentialKw: 2000, yearsSeen: 6 }));
+var B = SO.score(site({ powerPotentialKw: 900, yearsSeen: 3 }));
+ok('rank order survives the eighth component', A.score > B.score, { A: A.score, B: B.score });
+
+// The precise claim, because the loose version is false. Order is preserved only within a
+// coverage class: for fixed used-weight W the new score is affine in the old one. Prospects with
+// DIFFERENT coverage are pulled toward 20 by different amounts and genuinely can reorder.
+(function() {
+    function scoreWith(stage, over) {
+        var c = site(over);
+        if (stage === null) delete c.development_stage; else c.development_stage = stage;
+        return SO.score(c);
+    }
+    // Same coverage class (both lack an operator-derived counterparty, both lack site quality).
+    var pairs = [[2000, 6], [1500, 5], [900, 3], [400, 2]];
+    var beforeOrder = pairs.map(function(p, i) { return { i: i, s: scoreWith(null, { powerPotentialKw: p[0], yearsSeen: p[1] }).scoreRaw }; })
+                           .sort(function(a, b) { return b.s - a.s; }).map(function(x) { return x.i; });
+    var afterOrder = pairs.map(function(p, i) { return { i: i, s: scoreWith('raw_resource', { powerPotentialKw: p[0], yearsSeen: p[1] }).scoreRaw }; })
+                          .sort(function(a, b) { return b.s - a.s; }).map(function(x) { return x.i; });
+    ok('within one coverage class the order is EXACTLY preserved',
+       beforeOrder.join(',') === afterOrder.join(','), { before: beforeOrder, after: afterOrder });
+
+    // And the direction of the cross-class effect: a sparser prospect is pulled harder toward 20.
+    var denseBefore = SO.score(site({ counterpartyType: 'oil_gas_operator' })).scoreRaw;
+    var sparseBefore = SO.score(site({ counterpartyType: null })).scoreRaw;
+    var denseAfter = SO.score(site({ counterpartyType: 'oil_gas_operator', development_stage: 'raw_resource' })).scoreRaw;
+    var sparseAfter = SO.score(site({ counterpartyType: null, development_stage: 'raw_resource' })).scoreRaw;
+    ok('a sparser prospect is pulled toward the stage score harder',
+       Math.abs(sparseAfter - sparseBefore) > Math.abs(denseAfter - denseBefore) ||
+       Math.abs((sparseAfter - sparseBefore) - (denseAfter - denseBefore)) < 0.001,
+       { dense: denseAfter - denseBefore, sparse: sparseAfter - sparseBefore });
+})();
+
+// scoreRaw exists and is unrounded, so the two-axis product is not quantised into false ties.
+var raw = SO.score(site());
+ok('scoreRaw is exposed', typeof raw.scoreRaw === 'number', raw.scoreRaw);
+ok('scoreRaw is unrounded', Math.abs(raw.scoreRaw - raw.score) < 1, { raw: raw.scoreRaw, rounded: raw.score });
+eq('scoreRaw is null when score is null', SO.score(null).scoreRaw, null);
 
 console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions' : pass + ' passed, ' + fail + ' FAILED');
 process.exit(fail === 0 ? 0 : 1);

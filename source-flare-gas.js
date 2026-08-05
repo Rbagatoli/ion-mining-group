@@ -119,6 +119,14 @@ var FlareGasSource = (function() {
         label: 'Flare gas (VIIRS)',
         energyType: 'flare_gas',
         dutyCyclePct: DUTY_CYCLE_PCT,
+        // A VIIRS flare detection is, by definition, gas with no generator, no interconnection
+        // and no permit. That is a fact about what the source detects, not a guess, so it is
+        // declared here rather than inferred from missing fields.
+        developmentStage: 'raw_resource',
+        // Flared gas is being burned for nothing: it is committed to no one, and buying it is a
+        // gas purchase agreement rather than an asset acquisition.
+        offtakeState: 'none_merchant',
+        permitState: 'none_required',
         // Deliberately NOT declaring a blanket counterpartyType here. register() uses the
         // adapter-level value to fill in any candidate that left the field null, which would
         // stamp 'oil_gas_operator' onto the 10,883 sites where no regulator publishes a licensee

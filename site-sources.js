@@ -74,6 +74,9 @@ var SiteSources = (function() {
             energyType: adapter.energyType || 'unknown',
             dutyCyclePct: adapter.dutyCyclePct === undefined ? 100 : adapter.dutyCyclePct,
             counterpartyType: adapter.counterpartyType || null,
+            developmentStage: adapter.developmentStage || null,
+            offtakeState: adapter.offtakeState || null,
+            permitState: adapter.permitState || null,
             fetch: adapter.fetch || null,
             normalize: adapter.normalize || null,
             computePersistence: adapter.computePersistence || null,
@@ -105,6 +108,15 @@ var SiteSources = (function() {
                 if (cand.dutyCyclePct === null || cand.dutyCyclePct === undefined) {
                     cand.dutyCyclePct = entry.dutyCyclePct;
                 }
+                // Same pattern as dutyCyclePct: declared once on the adapter, stamped on every
+                // candidate, so it can never be forgotten per-row. Unlike counterpartyType this
+                // IS safe as a blanket default — every prospect from one source is at the same
+                // development stage by construction.
+                if (!cand.developmentStage && entry.developmentStage) {
+                    cand.developmentStage = entry.developmentStage;
+                }
+                if (!cand.offtakeState && entry.offtakeState) cand.offtakeState = entry.offtakeState;
+                if (!cand.permitState && entry.permitState) cand.permitState = entry.permitState;
                 if (!cand.counterpartyType && entry.counterpartyType) cand.counterpartyType = entry.counterpartyType;
                 out.push(cand);
             }
@@ -205,6 +217,14 @@ var SiteSources = (function() {
             dutyCyclePct: raw.dutyCyclePct === undefined || raw.dutyCyclePct === null ? 100 : num(raw.dutyCyclePct),
             counterpartyType: raw.counterpartyType || null,
             regulatoryNotes: raw.regulatoryNotes || null,
+            // ---- Acquisition axis. How far along the physical asset is, and what its output is
+            // already committed to. A raw flare declares raw_resource as a FACT about the source,
+            // not an inference from missing data — so the scorer never has to guess.
+            developmentStage: raw.developmentStage || raw.development_stage || null,
+            offtakeState: raw.offtakeState || raw.offtake_state || null,
+            permitState: raw.permitState || raw.permit_state || null,
+            distressSignals: Array.isArray(raw.distressSignals) ? raw.distressSignals
+                           : (Array.isArray(raw.distress_signals) ? raw.distress_signals : []),
             // Source-specific payload. The ONLY place source-specific data is allowed to live,
             // and it is rendered in exactly one section of the detail view.
             sourceDetail: raw.sourceDetail || null,
@@ -276,6 +296,10 @@ var SiteSources = (function() {
             // every source look the same.
             source: siteSourceFor(cand),
             energy_type: cand.energyType || 'unknown',
+            development_stage: cand.developmentStage || null,
+            offtake_state: cand.offtakeState || null,
+            permit_state: cand.permitState || null,
+            distress_signals: Array.isArray(cand.distressSignals) ? cand.distressSignals.slice() : [],
             latitude: cand.lat,
             longitude: cand.lng,
             jurisdiction: cand.iso3 || cand.country || null,
