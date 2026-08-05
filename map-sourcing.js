@@ -1344,6 +1344,31 @@ var MapSourcing = (function() {
 
     // '#rrggbb' -> 'rgba(r,g,b,a)'. Used to fade the unselected prospects rather than deleting
     // them: keeping them on screen preserves the shape of the basin around the one in focus.
+    // How solid a marker is drawn, by how far along the asset is. Colour already carries score
+    // and column height carries capacity, so opacity is the one channel left — and it maps
+    // naturally onto how REAL the thing is: a satellite detection of a flame is faint, a running
+    // plant is solid. globe.gl points have no stroke, so a hollow-to-filled treatment is not
+    // available; opacity is its analogue.
+    // The floor is deliberately high. A first pass used 0.45 for raw resource, which reads fine
+    // beside a solid plant but washes out the whole globe when the 16,125 flares are the only
+    // thing on screen — and they are the majority of the catalog. 0.62 still reads as clearly
+    // less solid side by side without dimming the primary dataset.
+    var STAGE_SOLIDITY = {
+        raw_resource: 0.62,
+        permitted:    0.72,
+        constructed:  0.82,
+        energized:    0.91,
+        operating:    1.00
+    };
+    function solidityFor(c) {
+        var st = (typeof SiteOpportunity !== 'undefined' && SiteOpportunity.stageOf)
+            ? SiteOpportunity.stageOf(c) : null;
+        // An unrecorded stage draws at full solidity rather than faint. Fading it would read as
+        // "this is barely a prospect" when the truth is only that nobody has recorded its stage.
+        if (st === null) return 1;
+        return Object.prototype.hasOwnProperty.call(STAGE_SOLIDITY, st) ? STAGE_SOLIDITY[st] : 1;
+    }
+
     function fade(hex, alpha) {
         var h = String(hex).replace('#', '');
         if (h.length !== 6) return hex;
@@ -1363,7 +1388,7 @@ var MapSourcing = (function() {
                 // on it without the surrounding field disappearing.
                 size: sizeFor(c) * (isFocus ? 0.62 : 0.42),
                 alt: altFor(c) * (dim ? 0.35 : 1),
-                color: dim ? fade(colorFor(c), 0.18) : colorFor(c),
+                color: dim ? fade(colorFor(c), 0.18) : fade(colorFor(c), solidityFor(c)),
                 label: placeLabel(c),
                 kw: c.powerPotentialKw,
                 dim: !!dim,
@@ -1428,7 +1453,7 @@ var MapSourcing = (function() {
                     weight: isFocus ? 3 : 1,
                     opacity: dimmed ? 0.22 : 1,
                     fillColor: colorFor(c),
-                    fillOpacity: isFocus ? 0.85 : (dimmed ? 0.10 : 0.45)
+                    fillOpacity: isFocus ? 0.85 : (dimmed ? 0.10 : 0.45 * solidityFor(c))
                 });
                 var opx = operatorRecord(c);
                 m.bindTooltip(placeLabel(c) + ' — ' + fmtKw(c.powerPotentialKw) + (opx ? ' — ' + opx.operator : ''));
@@ -2288,6 +2313,7 @@ var MapSourcing = (function() {
         // Exposed so tests exercise the real generator rather than a reimplementation of it —
         // a test that rebuilds the logic it is checking proves only that two copies agree.
         worklistCsv: worklistCsv,
+        solidityFor: solidityFor,
         renderWorklist: renderWorklist,
         filtered: function() { return _filtered; }
     };
