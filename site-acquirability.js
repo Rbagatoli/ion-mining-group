@@ -29,6 +29,20 @@ var SiteAcquirability = (function() {
     // Distress signals, 0-100. A weight is "how much this one fact tells me the asset is
     // gettable", not a probability.
     var DEFAULT_SIGNALS = {
+        // FIRST-HAND CONTACT. Weighted above every inferred signal because it is the only one
+        // that is not an inference: somebody at the company said this, on a date, to the user.
+        // Everything else in this table is a public record being read as a hint.
+        //
+        // This is also the only signal a competitor cannot reproduce from public data, and the
+        // only one that compounds — every call made makes the next ranking better.
+        owner_confirmed_available:    100,
+        // ZERO, deliberately. Silence is not evidence in either direction — it means the message
+        // did not land, or landed with someone who had no reason to reply. Any positive weight
+        // makes a prospect look MORE gettable for the sole reason that nobody answered, which is
+        // absurd; a negative one would treat an unread email as a refusal. It is recorded because
+        // knowing you already tried is worth something to you, and scored at nothing because it
+        // is worth nothing to the model.
+        owner_unresponsive:             0,
         bankruptcy:                   100,
         ucc_foreclosure:               85,
         lmop_shutdown:                 80,
@@ -46,6 +60,11 @@ var SiteAcquirability = (function() {
     // half-life models confidence that the record is still current, not that the fact expired,
     // which is why they are long.
     var DEFAULT_HALF_LIVES = {
+        // A conversation ages like an event, not a condition. "They were interested" is worth a
+        // lot this quarter and progressively less after that — people leave, budgets move, and a
+        // two-year-old yes is a lead to re-open rather than a fact to rely on.
+        owner_confirmed_available:     1.5,
+        owner_unresponsive:            1,
         bankruptcy:                    3,    // Ch.11 resolves in 1-3 years; then it is off the table
         ucc_foreclosure:               3,
         lmop_shutdown:                 4,    // a shut landfill stays shut
@@ -231,6 +250,38 @@ var SiteAcquirability = (function() {
         // --- Distress signals.
         var list = rec.distress_signals || rec.distressSignals || [];
         if (!Array.isArray(list)) list = [];
+
+        // --- The user was TOLD it is taken. -----------------------------------------------
+        //
+        // This cannot be a weighted signal, because every other entry in this model adds
+        // evidence that an asset is gettable and this is evidence that it is not. Adding a
+        // negative weight would let three inferred distress signals outvote a person saying
+        // "that gas is already sold", which is exactly backwards: an inference must never
+        // outrank a fact obtained first-hand.
+        //
+        // So it short-circuits. Score 0, not null — "confirmed unavailable" is a finding, and
+        // combine() already treats a zero on either axis as zero overall while sorting a null
+        // last. The two must stay distinguishable.
+        var takenAt = null;
+        for (var ti = 0; ti < list.length; ti++) {
+            var t = list[ti];
+            if (t && String(t.type || '').trim().toLowerCase() === 'owner_confirmed_taken') {
+                takenAt = t; break;
+            }
+        }
+        if (takenAt) {
+            return {
+                score: 0, scoreRaw: 0, evidence: 0, signalCount: 1, unknownSignals: [],
+                confirmedTaken: true,
+                breakdown: [{
+                    type: 'owner_confirmed_taken', kind: 'override', value: 0, evidence: 0,
+                    detail: 'the owner told you this is already committed' +
+                            (takenAt.date ? ', ' + takenAt.date : '') +
+                            '. First-hand, so it overrides every inferred signal.',
+                    source: takenAt.source || 'user'
+                }]
+            };
+        }
 
         // Dedupe by type, most recent wins. Two bankruptcy filings are not twice the evidence,
         // and without this a refiling — or ten violation notices from a single inspection —

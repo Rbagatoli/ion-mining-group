@@ -226,7 +226,61 @@ ok('scores land in 0-100', r.score >= 0 && r.score <= 100, r.score);
 ok('scoreRaw is unrounded', Math.abs(r.scoreRaw - r.score) < 1);
 ok('permit_state has no "lapsed" member (it would double-count the signal)',
    SA.PERMIT_EVIDENCE.lapsed === undefined);
-eq('an unknown offtake state is unscored, not zero', SA.OFFTAKE_EVIDENCE.unknown, null);
 
-console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions' : pass + ' passed, ' + fail + ' FAILED');
+// ---- First-hand contact outcomes -------------------------------------------------------------
+// The feedback loop. These are the only signals in the model that are not inferences from a
+// public record, so the arithmetic has to put them above everything that is.
+
+console.log('\n=== what the owner actually told you ===');
+(function() {
+    var base = { offtake_state: 'merchant', permit_state: 'active' };
+    function withSignals(sigs) {
+        var r = {}; for (var k in base) r[k] = base[k];
+        r.distress_signals = sigs; return r;
+    }
+
+    var quiet = SA.score(withSignals([]));
+    var avail = SA.score(withSignals([{ type: 'owner_confirmed_available', date: '2026-07-01' }]));
+    ok('a confirmed-available owner raises acquirability', avail.score > quiet.score);
+
+    // The override. Every inferred signal at once must still lose to being told no.
+    var everything = withSignals([
+        { type: 'bankruptcy', date: '2026-07-01' },
+        { type: 'ucc_foreclosure', date: '2026-07-01' },
+        { type: 'lmop_shutdown', date: '2026-07-01' },
+        { type: 'listed_for_sale', date: '2026-07-01' }
+    ]);
+    var loud = SA.score(everything);
+    ok('a pile of distress signals scores high', loud.score > 70);
+
+    var taken = withSignals(everything.distress_signals.concat(
+        [{ type: 'owner_confirmed_taken', date: '2026-07-15' }]));
+    var t = SA.score(taken);
+    eq('being told it is taken overrides all of them', t.score, 0);
+    eq('and it is ZERO, not null — confirmed unavailable is a finding', t.scoreRaw, 0);
+    ok('the override is flagged', t.confirmedTaken === true);
+    eq('the breakdown explains why', t.breakdown.length, 1);
+    ok('and says it came from the owner', /owner told you/.test(t.breakdown[0].detail));
+
+    // Zero must still be distinguishable from unknown when the two axes combine.
+    eq('a zero axis makes the combined score zero', SA.combine(90, 0), 0);
+    eq('an unknown axis stays null', SA.combine(90, null), null);
+
+    // Silence scores NOTHING. Recorded so you know you already tried; weighted at zero because
+    // 'nobody replied' is not evidence the asset is available, and a positive weight would have
+    // raised the score for the sole reason that a call went unanswered.
+    var quietOwner = SA.score(withSignals([{ type: 'owner_unresponsive', date: '2026-07-01' }]));
+    eq('no response does not move the score at all', quietOwner.score, quiet.score);
+    ok('but it is still recorded in the breakdown',
+       quietOwner.breakdown.some(function(b) { return b.type === 'owner_unresponsive'; }));
+    ok('and never outranks being told yes', quietOwner.score < avail.score);
+
+    // A conversation ages.
+    var old = SA.score(withSignals([{ type: 'owner_confirmed_available', date: '2021-01-01' }]));
+    ok('a five-year-old yes is worth less than a recent one', old.score < avail.score);
+})();
+
+console.log('');
+console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions'
+                       : pass + ' passed, ' + fail + ' FAILED');
 process.exit(fail === 0 ? 0 : 1);

@@ -448,7 +448,7 @@ var MapSourcing = (function() {
     // restored. Local only, never synced: this is where YOU are looking right now, not data,
     // and having it jump on another device would be its own bug.
     var FILTER_KEY = 'ionMiningProspectFilters';
-    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
+    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fRegion', 'fRadius'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
     var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
@@ -576,6 +576,7 @@ var MapSourcing = (function() {
                 var el = document.getElementById('fSmallOp');
                 return !!(el && el.checked);
             })(),
+            anchor: currentAnchor(),
             confirmedBurning: (function() {
                 var el = document.getElementById('fBurning');
                 return !!(el && el.checked);
@@ -612,6 +613,18 @@ var MapSourcing = (function() {
             matches = matches.filter(function(c) {
                 var sc = operatorSizeClass(c);
                 return sc === 'micro' || sc === 'small';
+            });
+        }
+        // Geographic anchor: everything within N km of a state or province centroid.
+        //
+        // A circle from a centroid is NOT the region's boundary. Texas is 1,200 km across, so a
+        // 250 km circle centred on it reaches neither the Permian nor the Eagle Ford. The control
+        // is labelled "within N km of" for that reason, and the anchor is reported alongside the
+        // result count so the shape of what was searched is never implied to be a border.
+        if (f.anchor) {
+            matches = matches.filter(function(c) {
+                if (c.lat === null || c.lng === null) return false;
+                return SiteCatalog.haversineKm(f.anchor.lat, f.anchor.lng, c.lat, c.lng) <= f.anchor.km;
             });
         }
         if (f.confirmedBurning) {
@@ -1147,7 +1160,11 @@ var MapSourcing = (function() {
 
         var shown = rows.slice(0, TABLE_CAP);
         if (countEl) {
-            countEl.textContent = fmtInt(rows.length) + ' prospect' + (rows.length === 1 ? '' : 's');
+            // Say what was actually searched. A centroid-and-radius circle is not the region's
+            // border, and a count presented beside a province name would imply it was.
+            var anch = currentAnchor();
+            countEl.textContent = fmtInt(rows.length) + ' prospect' + (rows.length === 1 ? '' : 's') +
+                (anch ? ' within ' + fmtInt(anch.km) + ' km of the centre of ' + anch.name : '');
         }
         // Never truncate silently — a capped list that says nothing reads as "this is all of it".
         if (capEl) {
@@ -1699,6 +1716,83 @@ var MapSourcing = (function() {
     // carries the richer per-company record (licence, distance, and via companyFor a phone and
     // address). Every consumer goes through this, so a source that publishes an owner can never
     // again be reported as unidentified because it is not a flare.
+    // ---- Contact outcome -----------------------------------------------------------------
+    // The three first-hand answers, kept in one place so the save handler, the form and the
+    // dedupe all agree on what counts as a contact outcome rather than an inferred signal.
+    var CONTACT_OUTCOMES = {
+        owner_confirmed_available: 1,
+        owner_confirmed_taken: 1,
+        owner_unresponsive: 1
+    };
+    function contactOutcomeEntry(saved) {
+        var list = (saved && saved.distress_signals) || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && CONTACT_OUTCOMES[String(list[i].type || '').toLowerCase()]) return list[i];
+        }
+        return null;
+    }
+    function contactOutcomeOf(saved) {
+        var e = contactOutcomeEntry(saved);
+        return e ? e.type : '';
+    }
+    function contactOutcomeDateOf(saved) {
+        var e = contactOutcomeEntry(saved);
+        return e && e.date ? e.date : '';
+    }
+
+    // ---- Geographic anchor -------------------------------------------------------------
+    // Region centroids come from GEO_DATA.states, which already carries 51 US states and 13
+    // Canadian provinces with coordinates. Nothing is geocoded and nothing is fetched.
+    var ANCHOR_ISO = { US: 'USA', CA: 'CAN' };
+
+    function anchorOptions() {
+        var out = [];
+        if (typeof GEO_DATA === 'undefined' || !GEO_DATA.states) return out;
+        ['CA', 'US'].forEach(function(cc) {
+            (GEO_DATA.states[cc] || []).forEach(function(s) {
+                out.push({ cc: cc, iso3: ANCHOR_ISO[cc], name: s.name, lat: s.lat, lng: s.lng });
+            });
+        });
+        return out;
+    }
+
+    function currentAnchor() {
+        var sel = document.getElementById('fRegion');
+        var rad = document.getElementById('fRadius');
+        if (!sel || !sel.value) return null;
+        var parts = sel.value.split('|');           // "CA|Alberta"
+        var list = anchorOptions();
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].cc === parts[0] && list[i].name === parts[1]) {
+                var km = rad ? parseFloat(rad.value) : NaN;
+                if (!isFinite(km) || km <= 0) km = 250;
+                return { lat: list[i].lat, lng: list[i].lng, km: km,
+                         name: list[i].name, iso3: list[i].iso3 };
+            }
+        }
+        return null;
+    }
+
+    function renderAnchorOptions() {
+        var sel = document.getElementById('fRegion');
+        if (!sel || sel.options.length > 1) return;
+        var list = anchorOptions();
+        var groups = { CA: 'Canada', US: 'United States' };
+        ['CA', 'US'].forEach(function(cc) {
+            var members = list.filter(function(x) { return x.cc === cc; });
+            if (!members.length) return;
+            var og = document.createElement('optgroup');
+            og.label = groups[cc];
+            members.forEach(function(x) {
+                var o = document.createElement('option');
+                o.value = cc + '|' + x.name;
+                o.textContent = x.name;
+                og.appendChild(o);
+            });
+            sel.appendChild(og);
+        });
+    }
+
     // The licensee's company record, where one exists. Carries the ST104 address and phone and,
     // for Alberta, the well counts behind the size class.
     function operatorCompany(c) {
@@ -2233,6 +2327,22 @@ var MapSourcing = (function() {
             SiteData.STAGES.map(function(s) {
                 return '<option value="' + s + '"' + ((saved.stage || 'unreviewed') === s ? ' selected' : '') + '>' + s + '</option>';
             }).join('') + '</select></div>' +
+            // What you were actually told. This is the only input in the app that beats a public
+            // record: everything else on the acquirability axis is an inference from a filing,
+            // and this is a person answering the phone. It is also the only thing here a
+            // competitor cannot rebuild from open data.
+            '<div class="src-field"><label for="crm_outcome">What the owner said</label>' +
+            '<select id="crm_outcome">' +
+            [['', 'Not asked yet'],
+             ['owner_confirmed_available', 'Available — they would deal'],
+             ['owner_confirmed_taken', 'Taken — already committed'],
+             ['owner_unresponsive', 'No response yet']].map(function(o) {
+                return '<option value="' + o[0] + '"' +
+                       (contactOutcomeOf(saved) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('') + '</select></div>' +
+            '<div class="src-field"><label for="crm_outcome_date">Date told</label>' +
+            '<input type="date" id="crm_outcome_date" value="' +
+            esc(contactOutcomeDateOf(saved) || '') + '"></div>' +
             '</div>' +
             '<div class="src-saverow"><button id="srcSave" class="src-savebtn">Save to my sites</button>' +
             '<span id="srcSaveMsg" class="src-note"></span></div>';
@@ -2324,6 +2434,25 @@ var MapSourcing = (function() {
                     if (!el || el.value === '') return null;
                     var v = parseFloat(el.value);
                     return isFinite(v) && v >= 0 ? v : null;
+                })(),
+                // The contact outcome lives in distress_signals alongside the inferred ones, so
+                // one formula scores everything and the evidence panel explains it the same way.
+                // Replaces any previous outcome rather than appending: asking twice and getting
+                // a different answer is a correction, not two pieces of evidence.
+                distress_signals: (function() {
+                    var prev = (findSavedSite(c.id) || {}).distress_signals || [];
+                    var kept = prev.filter(function(d) {
+                        return d && !CONTACT_OUTCOMES[String(d.type || '').toLowerCase()];
+                    });
+                    var sel = document.getElementById('crm_outcome');
+                    if (!sel || !sel.value) return kept;
+                    var dEl = document.getElementById('crm_outcome_date');
+                    kept.push({
+                        type: sel.value,
+                        date: (dEl && dEl.value) ? dEl.value : null,
+                        source: 'told directly by the owner'
+                    });
+                    return kept;
                 })()};
             var existing = findSavedSite(c.id);
             if (existing) {
@@ -2453,7 +2582,7 @@ var MapSourcing = (function() {
         }
         sel.value = 'CAN';                     // home market unless a previous search is restored
 
-        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'].forEach(function(id) {
+        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('change', applyFilters);
         });
@@ -2547,6 +2676,10 @@ var MapSourcing = (function() {
             }
         } catch (e) {}
         renderSourceFilter();
+        // Must run BEFORE restoreFilters: a <select> silently rejects a value that has no
+        // matching option, so restoring "CA|Alberta" into an unpopulated list would leave the
+        // control empty and the saved anchor would vanish on every reload.
+        renderAnchorOptions();
         // Restore the previous search AFTER the country list is populated, so a saved country
         // can actually be matched against real options.
         var restored = restoreFilters();
