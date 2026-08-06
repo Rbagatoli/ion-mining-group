@@ -43,6 +43,12 @@ var MapSourcing = (function() {
         return (kw / 1000).toFixed(kw >= 10000 ? 0 : 1).replace(/\.0$/, '') + ' MW';
     }
     function fmtInt(n) { return n === null || n === undefined ? '--' : Math.round(n).toLocaleString('en-US'); }
+    // Power prices need four decimals — the difference between $0.035 and $0.0347 is the whole
+    // negotiation, and two decimals would render both as $0.03.
+    function fmtRate(n) {
+        if (n === null || n === undefined || !isFinite(n)) return '--';
+        return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(4) + '/kWh';
+    }
     function status(msg, color) {
         var el = document.getElementById('srcStatus');
         if (!el) return;
@@ -289,10 +295,18 @@ var MapSourcing = (function() {
 
     // True when nothing in view carries real quoted terms, i.e. every site is being priced off
     // the same assumptions and therefore shares one margin.
+    // True while nothing on screen is priced off a real, recorded term.
+    //
+    // This used to test only power_rate and purchase_price_usd — neither of which anything in
+    // the app could write — so it returned true unconditionally and the scenario bar permanently
+    // told the user to record terms through a UI that did not permit it. estimated_acquisition_cost
+    // WAS writable the whole time and was not checked.
     function allTermsAssumed() {
         for (var i = 0; i < _filtered.length && i < 400; i++) {
             var s = findSavedSite(_filtered[i].candidate.id);
-            if (s && (s.power_rate || s.purchase_price_usd)) return false;
+            if (!s) continue;
+            if (s.power_rate || s.purchase_price_usd || s.estimated_acquisition_cost ||
+                s.quoted_rate || s.generator_ownership) return false;
         }
         return true;
     }
@@ -1953,6 +1967,38 @@ var MapSourcing = (function() {
     // carries the richer per-company record (licence, distance, and via companyFor a phone and
     // address). Every consumer goes through this, so a source that publishes an owner can never
     // again be reported as unidentified because it is not a flare.
+    // ---- Quoted terms --------------------------------------------------------------------
+    //
+    // Conversion to the $/kWh the engine prices in. The constants are the engine's own, so the
+    // two can never drift: 1,000 BTU per cubic foot and 10,000 BTU per kWh, i.e. 1 Mcf ~ 100 kWh.
+    //
+    // A GJ or Mcf quote is FUEL ONLY. site-capex.js:219 is explicit that power_rate is an ALL-IN
+    // power price, so converting a fuel quote straight across understates the bill by the whole
+    // genset lease — which is exactly why the generator-ownership select ships beside this rather
+    // than later. The UI says "fuel only" on those two options for the same reason.
+    var GJ_PER_KWH = 0.0036;              // 1 kWh = 3.6 MJ = 0.0036 GJ
+    var KWH_PER_MCF = 1000000 / 10000;    // 1 Mcf = 1e6 BTU / 10,000 BTU per kWh = 100 kWh
+
+    function quotedRateInput() {
+        var el = document.getElementById('crm_rate');
+        if (!el || el.value === '') return null;
+        var v = parseFloat(el.value);
+        return isFinite(v) && v >= 0 ? v : null;
+    }
+
+    // The quote expressed in $/kWh, or null when nothing was quoted. Deliberately NOT clamped or
+    // rounded — a conversion that quietly tidies the number would make the derived figure look
+    // more authoritative than the quote it came from.
+    function derivedPowerRate() {
+        var v = quotedRateInput();
+        if (v === null) return null;
+        var el = document.getElementById('crm_rate_units');
+        var units = el ? el.value : 'usd_kwh';
+        if (units === 'usd_gj') return v * GJ_PER_KWH;
+        if (units === 'usd_mcf') return v / KWH_PER_MCF;
+        return v;
+    }
+
     // ---- Contact outcome -----------------------------------------------------------------
     // The three first-hand answers, kept in one place so the save handler, the form and the
     // dedupe all agree on what counts as a contact outcome rather than an inferred signal.
@@ -2422,9 +2468,54 @@ var MapSourcing = (function() {
                 '</dl></div>';
         }
 
+        // ---- What you can pay -------------------------------------------------------
+        // The negotiating numbers, above the rest of the economics because this is the block a
+        // person reads with a producer on the phone. Everything else in this panel answers
+        // "what must bitcoin do"; these answer "what can I agree to".
+        // Read here rather than relying on the `saved` further down this function: that one is
+        // declared ~165 lines below, and `var` hoists the declaration without the assignment, so
+        // touching it here throws and silently kills the rest of the panel.
+        var savedTerms = findSavedSite(c.id) || {};
+        var quoted = (savedTerms.power_rate !== null && savedTerms.power_rate !== undefined)
+            ? Number(savedTerms.power_rate) : null;
+        if (m.max_power_rate_cash_usd !== null && m.max_power_rate_cash_usd !== undefined) {
+            var cashR = m.max_power_rate_cash_usd, capR = m.max_power_rate_capital_usd;
+            html += '<div class="src-detail"><div class="section-label">What you can pay for power</div><dl>' +
+                row('Ceiling before losses', fmtRate(cashR) +
+                    '<div class="src-sub2">below this the site still loses money every month. ' +
+                    'Ignores capital entirely, so it flatters.</div>') +
+                row('To return capital', (capR === null || capR === undefined) ? gap('capital not priced')
+                    : (capR <= 0
+                        ? '<span class="src-disagree">' + fmtRate(capR) + '</span>' +
+                          '<div class="src-sub2">negative — this cannot return its capital in ' +
+                          fmtInt(m.target_payback_months) + ' months even if the gas were free</div>'
+                        : fmtRate(capR) +
+                          '<div class="src-sub2">all-in capital back within ' +
+                          fmtInt(m.target_payback_months) + ' months. This is the number to ' +
+                          'negotiate against.</div>')) +
+                (quoted !== null
+                    ? row('They are asking', fmtRate(quoted) +
+                        '<div class="src-sub2">' +
+                        (capR !== null && capR > 0 && quoted <= capR
+                            ? 'inside your capital line — ' + (capR / quoted).toFixed(1) + 'x headroom'
+                            : quoted < cashR
+                                ? 'above the capital line but below the cash ceiling: it pays its ' +
+                                  'own power bill, not its capital'
+                                : 'ABOVE the cash ceiling — this loses money monthly') +
+                        '</div>')
+                    : row('They are asking', gap('no quote recorded — enter it under Terms below'))) +
+                '</dl></div>';
+        }
+
         html += '<div class="src-detail"><div class="section-label">Economics <span class="src-assume">(your assumptions)</span></div><dl>' +
             row('Cash cost / BTC', m.cash_cost_per_btc === null ? gap('needs market data') : fmtUSD(m.cash_cost_per_btc)) +
-            row('Break-even BTC', m.breakeven_btc_price === null ? gap('needs market data') : fmtUSD(m.breakeven_btc_price)) +
+            row('Break-even BTC', m.breakeven_btc_price === null ? gap('needs market data')
+                : fmtUSD(m.breakeven_btc_price) +
+                  // It reads as a safety margin sitting under "Runs 20% of hours". It is not:
+                  // it is a cash ratio that ignores capital, and it is identical at every duty
+                  // cycle because both sides of it scale with uptime.
+                  '<div class="src-sub2">cash only — ignores capital, and does not move with the ' +
+                  'duty cycle</div>') +
             row('Monthly net', m.monthly_net === null ? gap('needs market data') : fmtUSD(m.monthly_net)) +
             // Capital and payback deliberately live in the Capital block above, which prices the
             // full stack. Repeating a narrower total here produced two different capital figures
@@ -2434,12 +2525,16 @@ var MapSourcing = (function() {
                 : m.payback_months.toFixed(1) + ' months' +
                   '<div class="src-sub2">on mining capital alone — see Capital above for payback ' +
                   'from close, which includes the wait to switch on</div>') +
-            '</dl><div class="src-assumerow">' +
-            // "Build $/kW" was removed rather than relabelled: SiteCapex now supplies the
-            // acquisition price per stage, so that input only fed a fallback that fires when
-            // SiteCapex is absent. An input that silently does nothing is worse than no input.
-            '<div class="src-field"><label for="aRate">Power $/kWh</label><input type="number" id="aRate" value="' + _assume.powerRate + '" step="0.005"></div>' +
-            '</div></div>';
+            '</dl></div>';
+            // The "Power $/kWh" input that used to sit here has been REMOVED, not relabelled.
+            // It looked like a per-site control and was not: its handler wrote _scn.powerRate,
+            // the global scenario, so typing the rate a producer had just quoted you re-priced
+            // every prospect in the catalog and then discarded the number when the panel
+            // re-rendered from the global value. Measured: a quote entered on one Alberta site
+            // moved an unrelated site's monthly net from $277,894 to $386,052.
+            //
+            // Global assumptions belong to the scenario bar, which already owns them. The quoted
+            // rate for THIS deal belongs in the Terms block, which now stores it.
 
         html += '</div>';
 
@@ -2560,6 +2655,44 @@ var MapSourcing = (function() {
             '<input type="number" id="crm_acq" step="25000" placeholder="assumed from stage" value="' +
             (saved.estimated_acquisition_cost === null || saved.estimated_acquisition_cost === undefined
                 ? '' : esc(saved.estimated_acquisition_cost)) + '"></div>' +
+            // ---- Terms, as quoted -------------------------------------------------------
+            // What the producer actually said, on THIS site. Until now there was nowhere to put
+            // it: the panel's old "Power $/kWh" box wrote the GLOBAL scenario, so a quoted rate
+            // silently re-priced all 18,688 prospects and was then discarded.
+            //
+            // The as-quoted figure and its units are both stored. A derived $/kWh sits beside
+            // them and never replaces them, because the conversion runs through the engine's
+            // heat rate, which varies materially by genset and altitude.
+            '<div class="src-field"><label for="crm_rate">Quoted gas / power price</label>' +
+            '<input type="number" id="crm_rate" step="0.001" placeholder="what they asked for" value="' +
+            (saved.quoted_rate === null || saved.quoted_rate === undefined ? '' : esc(saved.quoted_rate)) +
+            '"></div>' +
+            '<div class="src-field"><label for="crm_rate_units">Priced in</label>' +
+            '<select id="crm_rate_units">' +
+            [['usd_kwh', '$/kWh (all-in power)'], ['usd_gj', '$/GJ (fuel only)'],
+             ['usd_mcf', '$/Mcf (fuel only)']].map(function(u) {
+                return '<option value="' + u[0] + '"' +
+                       ((saved.quoted_rate_units || 'usd_kwh') === u[0] ? ' selected' : '') +
+                       '>' + u[1] + '</option>';
+            }).join('') + '</select></div>' +
+            '<div class="src-field"><label for="crm_rate_ccy">Currency</label>' +
+            '<select id="crm_rate_ccy">' +
+            ['USD', 'CAD'].map(function(cc) {
+                return '<option value="' + cc + '"' +
+                       ((saved.power_rate_currency || 'USD') === cc ? ' selected' : '') +
+                       '>' + cc + '</option>';
+            }).join('') + '</select></div>' +
+            // Who owns the genset decides whether generation, interconnection and commissioning
+            // are your capital or already in their price. Worth $1.11M on a 1 MW raw flare, and
+            // until now it was silently assumed to be the producer.
+            '<div class="src-field"><label for="crm_gen_own">Generator owned by</label>' +
+            '<select id="crm_gen_own">' +
+            [['', 'not established'], ['producer', 'the producer'], ['client', 'us'],
+             ['operator', 'a third-party operator']].map(function(g) {
+                return '<option value="' + g[0] + '"' +
+                       ((saved.generator_ownership || '') === g[0] ? ' selected' : '') +
+                       '>' + g[1] + '</option>';
+            }).join('') + '</select></div>' +
             '<div class="src-field"><label for="crm_stage">Pipeline stage</label><select id="crm_stage">' +
             SiteData.STAGES.map(function(s) {
                 return '<option value="' + s + '"' + ((saved.stage || 'unreviewed') === s ? ' selected' : '') + '>' + s + '</option>';
@@ -2632,13 +2765,8 @@ var MapSourcing = (function() {
     }
 
     function wireDetail(c, op) {
-        var rate = document.getElementById('aRate');
-        // These edit the same values as the scenario bar; keeping one source of truth stops the
-        // detail panel and the map colouring drifting apart.
-        if (rate) rate.addEventListener('change', function() {
-            var v = parseFloat(this.value);
-            if (isFinite(v) && v >= 0) { _scn.powerRate = v; saveScenario(); syncScenarioInputs(); applyFilters(); renderDetail(); }
-        });
+        // The aRate handler is gone with its input — see the comment where it was rendered. It
+        // wrote the global scenario from a control that appeared to belong to one site.
 
         var showCo = document.getElementById('srcShowCompany');
         if (showCo) showCo.addEventListener('click', function() {
@@ -2671,6 +2799,23 @@ var MapSourcing = (function() {
                     if (!el || el.value === '') return null;
                     var v = parseFloat(el.value);
                     return isFinite(v) && v >= 0 ? v : null;
+                })(),
+                quoted_rate: quotedRateInput(),
+                quoted_rate_units: (function() {
+                    var el = document.getElementById('crm_rate_units');
+                    return (el && quotedRateInput() !== null) ? el.value : null;
+                })(),
+                // The engine prices in $/kWh, so the quote is converted once here rather than at
+                // every read. The as-quoted pair above survives alongside it — the derived figure
+                // is an estimate and must never be mistaken for what was said.
+                power_rate: derivedPowerRate(),
+                power_rate_currency: (function() {
+                    var el = document.getElementById('crm_rate_ccy');
+                    return (el && derivedPowerRate() !== null) ? el.value : null;
+                })(),
+                generator_ownership: (function() {
+                    var el = document.getElementById('crm_gen_own');
+                    return (el && el.value) ? el.value : null;
                 })(),
                 // The contact outcome lives in distress_signals alongside the inferred ones, so
                 // one formula scores everything and the evidence panel explains it the same way.

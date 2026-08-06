@@ -59,6 +59,11 @@ var SiteEngine = (function() {
         uptimePct: 100,
         poolFeePct: 0,
 
+        // The window the walk-away rate has to return capital inside. A negotiating stance
+        // rather than a fact, which is why it is configurable and is stated in the label
+        // wherever the derived rate is shown.
+        targetPaybackMonths: 36,
+
         // Rule 7: anything claiming to beat this is claiming better-than-best-in-class silicon.
         bestInClassJoulesPerTh: 13,
         maxPlausibleUpliftPct: 15,
@@ -260,6 +265,36 @@ var SiteEngine = (function() {
             totalTh
         );
 
+        // --- The walk-away rate -------------------------------------------------------
+        //
+        // Every break-even above answers "what must BITCOIN do". In a gas negotiation nobody is
+        // negotiating the bitcoin price — they are negotiating the power price, and the engine
+        // never said what the most you can pay is. This does.
+        //
+        // TWO numbers, deliberately, because they are 3-4x apart and mean different things:
+        //
+        //   cash    — the rate where monthly_net reaches zero. Below it you are still losing
+        //             money every month. This is the true walk-away, and it flatters: it ignores
+        //             the capital entirely.
+        //   capital — the rate that still returns the invested capital inside the target payback
+        //             window. This is the number to actually negotiate against.
+        //
+        // Both are closed form from values already computed above; there is no solver.
+        //
+        // NOTE the hours are UNDERATED on purpose. Revenue already carries the uptime derate via
+        // monthlyBtc, and the power bill carries it too, so the factor cancels out of the ratio —
+        // the walk-away rate is genuinely identical at 100%, 50% and 20% duty. That is the same
+        // property that makes cash_cost_per_btc duty-invariant, and it is asserted in the tests
+        // because if the derate ever gets applied to one side only, this is where it shows.
+        var billedKwh = (usableKw === null) ? null : usableKw * c.hoursPerMonth * (c.uptimePct / 100);
+        var maxPowerRateCash = div(monthlyRevenue, billedKwh);
+
+        // Capital recovered over the target window. Uses all-in capital where a capex stack was
+        // supplied and the narrower total otherwise, so the answer is never more optimistic than
+        // the capital figure the panel is showing beside it.
+        var targetMonths = c.targetPaybackMonths;
+        var maxPowerRateCapital = null;
+
         // --- Capital & payback ------------------------------------------------------
         var minerCapexUsd = maxMiners === null ? null : maxMiners * c.minerUnitCostUsd;
         var totalCapital  = (purchaseUsd === null || minerCapexUsd === null)
@@ -282,6 +317,22 @@ var SiteEngine = (function() {
         var allInCostPerUsableKw = div(allInCapitalUsd, usableKw);
         var paybackMonthsAllIn = (monthlyNet !== null && monthlyNet > 0)
             ? div(allInCapitalUsd, monthlyNet) : null;
+
+        // The rate that still returns the capital inside the target window (declared above,
+        // assigned here because the capital figures do not exist until now).
+        //
+        //   revenue - capital/N = usableKw x hours x rate     ->   rate = (revenue - capital/N) / kWh
+        //
+        // Prefers all-in capital when a capex stack was supplied, so this can never be more
+        // optimistic than the capital number rendered beside it. Goes NEGATIVE, not null, when
+        // the capital cannot be recovered at any price — a negative ceiling is the honest way to
+        // say "this does not work even if the gas is free", and clamping it to zero would hide
+        // exactly that.
+        var recoverCapital = allInCapitalUsd !== null ? allInCapitalUsd : totalCapital;
+        if (monthlyRevenue !== null && billedKwh !== null && billedKwh > 0 &&
+            recoverCapital !== null && targetMonths > 0) {
+            maxPowerRateCapital = (monthlyRevenue - recoverCapital / targetMonths) / billedKwh;
+        }
         var monthsToRevenue = (capex && capex.months_to_revenue) ? capex.months_to_revenue : null;
         // Payback measured from CLOSING rather than from first power. On these numbers the wait
         // is the same order of magnitude as the payback itself, so a static snapshot that omits
@@ -327,6 +378,13 @@ var SiteEngine = (function() {
             cash_cost_per_btc: cashCostPerBtc,
             breakeven_btc_price: breakevenBtcPrice,
             breakeven_hashprice: breakevenHashprice,
+            // The most you can pay for power — the only figure actually on the table in a gas
+            // negotiation, and the one the engine never produced. cash = monthly net reaches
+            // zero; capital = still returns the invested capital inside target_payback_months.
+            // Both null without market data, and neither moves any pre-existing output.
+            max_power_rate_cash_usd: maxPowerRateCash,
+            max_power_rate_capital_usd: maxPowerRateCapital,
+            target_payback_months: targetMonths,
 
             // capital
             miner_capex_usd: minerCapexUsd,

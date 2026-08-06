@@ -32,6 +32,9 @@ var SiteData = (function() {
     // weight, and having it here too would count the same fact twice.
     var PERMIT_STATES = ['in_renewal', 'none_required', 'active', 'active_long_dated'];
     var GENERATOR_OWNERSHIP = ['client', 'producer', 'operator'];
+    // How a gas quote was expressed. usd_kwh is an ALL-IN power price; the other two are fuel
+    // only, which is why generator ownership has to be recorded alongside them.
+    var RATE_UNITS = ['usd_kwh', 'usd_gj', 'usd_mcf'];
 
     // Fields the satellite cannot know. Blank by default and NEVER inferred — the spec is
     // explicit about this, and a guessed H2S reading is a safety claim we have no basis for.
@@ -68,6 +71,15 @@ var SiteData = (function() {
             power_rate: null,
             power_rate_currency: null,
             quoted_rates: null,
+
+            // What the producer actually said, kept alongside the $/kWh the engine prices in.
+            // A gas quote arrives as $/GJ or $/Mcf far more often than $/kWh, and converting
+            // through the engine's heat rate is an ESTIMATE — so the original figure and its
+            // units survive next to the derived one and are what gets shown back to the user.
+            // normalize() copies only keys that exist here, so a field missing from this
+            // template is silently discarded on save.
+            quoted_rate: null,
+            quoted_rate_units: null,
 
             take_or_pay_pct: null,
             contract_term_years: null,
@@ -168,6 +180,11 @@ var SiteData = (function() {
         if (STAGES.indexOf(s.stage) < 0) s.stage = 'unreviewed';
         if (s.generator_ownership !== null && GENERATOR_OWNERSHIP.indexOf(s.generator_ownership) < 0) {
             s.generator_ownership = null;
+        }
+        // Units fall back to null, never to a default member: a quote whose units were not
+        // recorded must not silently become $/kWh, which would understate a $/GJ quote by ~280x.
+        if (s.quoted_rate_units !== null && RATE_UNITS.indexOf(s.quoted_rate_units) < 0) {
+            s.quoted_rate_units = null;
         }
         // Acquisition enums fall back to NULL rather than to a default member. raw_resource must
         // never be a fallback: an unrecognised value is missing data, and treating it as "this is

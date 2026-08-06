@@ -408,6 +408,75 @@ SiteSources.register({
     eq('wrong-shape localStorage returns the default', SiteData.list().length, 0);
 
     // ================================================================================
+    // THE WALK-AWAY RATE
+    // The only number actually on the table in a gas negotiation. Every other break-even in
+    // this engine answers "what must bitcoin do".
+    // ================================================================================
+    console.log('\n--- walk-away power rate ---');
+    (function() {
+        function s(over) {
+            var b = { nameplate_kw: 2000, usable_kw: 2000, purchase_price_usd: 500000,
+                      power_rate: 0.035, power_rate_currency: 'USD' };
+            for (var k in over || {}) b[k] = over[k];
+            return b;
+        }
+        var base = SiteEngine.evaluate(s(), MARKET);
+
+        ok('a cash walk-away rate is produced', base.max_power_rate_cash_usd > 0);
+        ok('a capital walk-away rate is produced', typeof base.max_power_rate_capital_usd === 'number');
+        eq('the target window is reported', base.target_payback_months, 36);
+
+        // The cash ceiling is where monthly_net reaches zero. Verified by feeding it back in.
+        var atCeiling = SiteEngine.evaluate(s({ power_rate: base.max_power_rate_cash_usd }), MARKET);
+        ok('at the cash ceiling, monthly net is ~zero', Math.abs(atCeiling.monthly_net) < 1);
+        var justUnder = SiteEngine.evaluate(s({ power_rate: base.max_power_rate_cash_usd * 0.99 }), MARKET);
+        ok('just under it the site is profitable', justUnder.monthly_net > 0);
+        var justOver = SiteEngine.evaluate(s({ power_rate: base.max_power_rate_cash_usd * 1.01 }), MARKET);
+        ok('just over it the site loses money', justOver.monthly_net < 0);
+
+        // Capital recovery is stricter than merely covering the power bill, always.
+        ok('the capital rate is below the cash rate',
+           base.max_power_rate_capital_usd < base.max_power_rate_cash_usd);
+
+        // At the capital rate, the site pays its capital back in the target window.
+        var atCap = SiteEngine.evaluate(s({ power_rate: base.max_power_rate_capital_usd }), MARKET);
+        ok('at the capital rate, payback lands on the target',
+           Math.abs(atCap.payback_months - 36) < 0.5);
+
+        // THE INVARIANT THAT CATCHES A ONE-SIDED DERATE. Revenue and the power bill both scale
+        // with uptime, so the RATIO cannot move. If this ever fails, the uptime factor has been
+        // applied to production but not to the bill (or vice versa) — the exact asymmetry that
+        // was fixed when duty cycle was introduced.
+        var d100 = SiteEngine.evaluate(s(), MARKET, { uptimePct: 100 });
+        var d50  = SiteEngine.evaluate(s(), MARKET, { uptimePct: 50 });
+        var d20  = SiteEngine.evaluate(s(), MARKET, { uptimePct: 20 });
+        ok('the cash ceiling is duty-invariant (100 vs 50)',
+           Math.abs(d100.max_power_rate_cash_usd - d50.max_power_rate_cash_usd) < 1e-9);
+        ok('the cash ceiling is duty-invariant (100 vs 20)',
+           Math.abs(d100.max_power_rate_cash_usd - d20.max_power_rate_cash_usd) < 1e-9);
+
+        // The capital rate SHOULD move with duty — capital is fixed while revenue is not.
+        ok('the capital rate falls as duty falls',
+           d20.max_power_rate_capital_usd < d50.max_power_rate_capital_usd &&
+           d50.max_power_rate_capital_usd < d100.max_power_rate_capital_usd);
+        // And goes negative rather than null when capital cannot be recovered at ANY price.
+        // Clamping to zero would hide "this does not work even if the gas is free".
+        ok('an unrecoverable capital rate is negative, not null or zero',
+           d20.max_power_rate_capital_usd < 0);
+
+        // A shorter window is a harder test.
+        var tight = SiteEngine.evaluate(s(), MARKET, { targetPaybackMonths: 12 });
+        ok('a shorter payback window lowers the capital rate',
+           tight.max_power_rate_capital_usd < base.max_power_rate_capital_usd);
+        eq('and reports the window it used', tight.target_payback_months, 12);
+
+        // Null, never a guess, without market data.
+        var noMkt = SiteEngine.evaluate(s(), {});
+        eq('no market data -> null cash rate', noMkt.max_power_rate_cash_usd, null);
+        eq('no market data -> null capital rate', noMkt.max_power_rate_capital_usd, null);
+    })();
+
+    // ================================================================================
     console.log('\n' + (fail === 0
         ? 'ALL PASS — ' + pass + ' assertions'
         : pass + ' passed, ' + fail + ' FAILED'));
