@@ -618,9 +618,9 @@ var MapSourcing = (function() {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
         fSort: 'Ranked by', fRadius: 'Search radius',
         fOnshore: 'Onshore only', fWorkable: 'Workable jurisdictions only',
-        fActive: 'Still burning in the final survey year',
+        fActive: 'Flare seen in the latest survey',
         fOperator: 'Only sites with a named operator',
-        fBurning: 'Confirmed burning recently (satellite)',
+        fBurning: 'Flare confirmed burning recently',
         fSmallOp: 'Small operators only (Alberta)'
     };
 
@@ -736,9 +736,35 @@ var MapSourcing = (function() {
 
     // Shared by the list and the table so the two can never disagree about why the screen is
     // empty. Buttons carry the filter key; one delegated handler wires them where they render.
-    function emptyStateHtml(lead) {
+    // A combination that CANNOT match, as opposed to one that merely did not. Worth separating:
+    // "no results" invites you to widen the search, whereas this needs one specific filter
+    // dropped and no amount of widening will help.
+    //
+    // Both burning filters are flare-gas only — nothing else publishes a survey year or gets
+    // checked against FIRMS — and every flare is a raw resource. So either of them combined with
+    // a view or source selection that excludes flares is empty by construction, every time.
+    function impossibleCombination(inAcquisitionView) {
+        var a = document.getElementById('fActive'), b = document.getElementById('fBurning');
+        var which = (a && a.checked) ? 'Flare seen in the latest survey'
+                  : (b && b.checked) ? 'Flare confirmed burning recently' : null;
+        if (!which) return null;
+        if (inAcquisitionView) {
+            return which + ' only ever matches flare gas, and the acquisition view shows only ' +
+                   'assets already built. Nothing can satisfy both.';
+        }
+        var ids = Object.keys(_srcFilter);
+        if (ids.length && ids.indexOf('flare-viirs') < 0) {
+            return which + ' only ever matches flare gas, which the source filter is currently ' +
+                   'excluding. Nothing can satisfy both.';
+        }
+        return null;
+    }
+
+    function emptyStateHtml(lead, inAcquisitionView) {
         var act = activeFilters();
+        var clash = impossibleCombination(inAcquisitionView);
         var h = '<div class="src-emptybox"><div class="src-emptylead">' + esc(lead) + '</div>';
+        if (clash) h += '<div class="src-clash">' + esc(clash) + '</div>';
         if (!act.length) {
             h += '<div class="src-note">No filters are active — this source returned nothing.</div>';
         } else {
@@ -1390,7 +1416,7 @@ var MapSourcing = (function() {
                 emptyStateHtml(_tableView === 'acquisition'
                     ? 'No built assets match. The acquisition view shows only prospects at the ' +
                       'constructed stage or later — switching back to all prospects may be enough.'
-                    : 'No prospects match.') + '</td></tr>';
+                    : 'No prospects match.', _tableView === 'acquisition') + '</td></tr>';
             return;
         }
 
@@ -2889,6 +2915,12 @@ var MapSourcing = (function() {
                 for (var si = 0; si < savedSrc.ids.length; si++) _srcFilter[savedSrc.ids[si]] = true;
             }
         } catch (e) {}
+        // The survey year, from the catalog rather than the markup. It moved from 2022 to 2024
+        // with the refresh, which quietly changed what this filter means — a hardcoded label
+        // would have kept saying the old thing.
+        var yEl = document.getElementById('fActiveYear');
+        if (yEl && meta && meta.dataThrough) yEl.textContent = ' (' + meta.dataThrough + ')';
+
         renderSourceFilter();
         // Must run BEFORE restoreFilters: a <select> silently rejects a value that has no
         // matching option, so restoring "CA|Alberta" into an unpopulated list would leave the
