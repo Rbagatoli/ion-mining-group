@@ -448,7 +448,13 @@ var MapSourcing = (function() {
     // restored. Local only, never synced: this is where YOU are looking right now, not data,
     // and having it jump on another device would be its own bug.
     var FILTER_KEY = 'ionMiningProspectFilters';
-    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fRegion', 'fRadius'];
+    // fRegion and fRadius are deliberately ABSENT. "I need power near Y" is a search you perform,
+    // not a standing preference like your home country — and persisting it did real damage: a
+    // region saved in one session overrode the country on the next load, the reconcile then saved
+    // that country back, and the user's actual choice was silently overwritten for good. The
+    // anchor starts at "Anywhere" every session, which makes that failure impossible rather than
+    // merely unlikely.
+    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
     var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
@@ -710,6 +716,24 @@ var MapSourcing = (function() {
         applyFilters();
     }
 
+    // The always-on bar under the filters. Renders whether or not anything matched, because the
+    // question "why am I not seeing what I expect" is asked far more often than the page is
+    // literally empty — a 250 km circle around Texas and a country of USA both look like a
+    // working app right up until you wonder where Alberta went.
+    function renderActiveBar() {
+        var el = document.getElementById('srcActiveBar');
+        if (!el) return;
+        var act = activeFilters();
+        if (!act.length) { el.innerHTML = ''; return; }
+        var h = '<span class="src-activelabel">Filtering by</span>';
+        for (var i = 0; i < act.length; i++) {
+            h += '<button type="button" class="src-fchip" data-fkey="' + esc(act[i].key) + '">' +
+                 esc(act[i].label) + '<span class="x">&times;</span></button>';
+        }
+        h += '<button type="button" class="src-resetall" data-fkey="__all__">Clear all</button>';
+        el.innerHTML = h;
+    }
+
     // Shared by the list and the table so the two can never disagree about why the screen is
     // empty. Buttons carry the filter key; one delegated handler wires them where they render.
     function emptyStateHtml(lead) {
@@ -763,9 +787,12 @@ var MapSourcing = (function() {
         if (!anchor || !anchor.iso3) return false;
         if (countryEl.value === anchor.iso3) return false;
 
-        if (changed === 'fCountry') {
-            // The user just moved the country somewhere the region does not exist. The country
-            // is the more deliberate choice, so the anchor yields.
+        if (changed !== 'fRegion') {
+            // Anything other than the user actively picking a region: the country wins and the
+            // anchor yields. This includes BOOT, where `changed` is null — nobody chose anything
+            // on a page load, so a leftover region must never drag the country with it. Getting
+            // this backwards is what overwrote a saved country with the region's country and
+            // pinned the app to the wrong place permanently.
             regionEl.value = '';
         } else {
             // A region was picked. It implies its country, and selecting it while the country
@@ -827,6 +854,7 @@ var MapSourcing = (function() {
         renderPortfolio();
         paintSizeRange();
         renderSizeHint();
+        renderActiveBar();
         renderSummary(matches);
         renderList();
         renderTable();
