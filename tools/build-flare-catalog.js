@@ -55,7 +55,15 @@ var YEARS = [
     { year: 2019, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2019_web_v20201114.xlsx' },
     { year: 2020, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2020_web_v1.xlsx' },
     { year: 2021, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2021_web.xlsx' },
-    { year: 2022, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2022_web.xlsx' }
+    { year: 2022, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2022_web.xlsx' },
+    // The catalog sat at dataThrough 2022 for two years while these were published on the same
+    // open path. Both verified live and keyless: 2023 is 1,266,299 bytes, 2024 is 985,053.
+    //
+    // These editions carry an "_IDmatch" suffix because EOG now publishes its own cross-year flare
+    // ID. That ID is used as a CHECK against the 500 m spatial merge below, never as a substitute
+    // for it — see mergeYears().
+    { year: 2023, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2023_v20230614_web_IDmatch.xlsx' },
+    { year: 2024, file: 'VIIRS_Global_flaring_d.7_slope_0.029353_2024_v20240730_web_IDmatch.xlsx' }
 ];
 var EOG_BASE = 'https://eogdata.mines.edu/global_flare_data/';
 var LAND_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
@@ -163,11 +171,40 @@ function parseYear(buf, year) {
 
     var iLat = picked.lat, iLon = picked.lon;
     var iBcm  = findCol(hdr, 'bcm');
-    var iFreq = findCol(hdr, 'detection', 'frequency');
+    // 'freq', NOT 'frequency'. findCol requires EVERY term to appear, and the editions disagree
+    // on the header: 2017/2020/2021/2022 publish "Detection frequency" but 2019, 2023 and 2024
+    // publish "Detection freq." — which lowercases to "detection freq " and does not contain
+    // "frequency". Asking for the shorter stem matches both.
+    //
+    // This was already failing silently on live data: exactly 217 of the 16,125 published sites
+    // carried persistPct: null, and every one of them was a 2019-only site. The build printed
+    // success on every run.
+    var iFreq = findCol(hdr, 'detection', 'freq');
     var iIso  = findCol(hdr, 'iso');
     var iCty  = findCol(hdr, 'country');
     var iTemp = findCol(hdr, 'temp');
+
+    // EOG's own per-year flare ids, present from the 2023 edition ("ID 2024", "ID2023"). They are
+    // read as a CHECK on the spatial merge, never as a replacement for it: the ids only exist for
+    // the last two editions, so switching to them would mean two different identity rules across
+    // one catalog. Collected as year -> column so the current and previous year resolve without
+    // caring whether the header has a space in it.
+    var idCols = {};
+    for (var hc = 0; hc < hdr.length; hc++) {
+        var m = String(hdr[hc]).toLowerCase().replace(/[_.,]/g, ' ').trim().match(/^id\s*(20\d\d)$/);
+        if (m) idCols[parseInt(m[1], 10)] = hc;
+    }
+    var iId = idCols[year] === undefined ? -1 : idCols[year];
+    var iPrevId = idCols[year - 1] === undefined ? -1 : idCols[year - 1];
     if (iBcm < 0) throw new Error(year + ': no BCM column in "' + picked.name + '"');
+    // Not fatal — persistence falls back to yearsSeen/yearsTotal, so a missing column degrades
+    // rather than breaks. But it must be SAID. A survey year that silently contributes no
+    // detection frequency is exactly how the 2019 defect survived every rebuild.
+    if (iFreq < 0) {
+        log('  !! ' + year + ': no detection-frequency column in "' + picked.name + '"');
+        log('     headers: ' + hdr.map(function (h) { return String(h); }).join(' | '));
+        log('     persistence for this year will fall back to years-seen only');
+    }
 
     var out = [];
     for (var r = 1; r < rows.length; r++) {
@@ -176,9 +213,16 @@ function parseYear(buf, year) {
         if (!isFinite(lat) || !isFinite(lon) || !isFinite(bcm)) continue;
         if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
         var freq = iFreq >= 0 ? parseFloat(row[iFreq]) : NaN;
+        // '0' and '' are both no-match sentinels, not ids. Treating '0' as an id would link every
+        // unmatched flare in a year to every other unmatched flare, which is a false crosswalk
+        // rather than a missing one. 2024 uses blank; guard both, since the editions differ.
+        var idv = iId >= 0 ? String(row[iId] || '').trim() : '';
+        var pidv = iPrevId >= 0 ? String(row[iPrevId] || '').trim() : '';
         out.push({
             lat: lat, lon: lon, bcm: bcm,
             freq: isFinite(freq) ? freq : null,
+            id: (idv === '' || idv === '0') ? null : idv,
+            prevId: (pidv === '' || pidv === '0') ? null : pidv,
             iso: iIso >= 0 ? String(row[iIso] || '').trim() : '',
             country: iCty >= 0 ? String(row[iCty] || '').trim() : '',
             tempK: iTemp >= 0 && isFinite(parseFloat(row[iTemp])) ? parseFloat(row[iTemp]) : null
@@ -284,6 +328,8 @@ function mergeYears(perYear, epsilonM) {
     var CELL = Math.max(epsilonM / 111320, 0.002);
     var grid = {};
     var sites = [];
+    // EOG's published cross-year ids, kept alongside the spatial merge so the two can be compared.
+    var idIndex = {}, crossLinks = [];
 
     function cellKey(lat, lon) { return Math.floor(lat / CELL) + ',' + Math.floor(lon / CELL); }
 
@@ -309,24 +355,74 @@ function mergeYears(perYear, epsilonM) {
                     }
                 }
             }
+            var landedOn;
             if (best) {
                 best.obs[yr] = { bcm: f.bcm, freqPct: f.freqPct, tempK: f.tempK };
                 if (!best.iso && f.iso) best.iso = f.iso;
                 if (!best.country && f.country) best.country = f.country;
+                landedOn = best.idx;
             } else {
                 var site = {
                     lat: f.lat, lon: f.lon, iso: f.iso, country: f.country,
-                    obs: {}
+                    obs: {}, idx: sites.length
                 };
                 site.obs[yr] = { bcm: f.bcm, freqPct: f.freqPct, tempK: f.tempK };
                 sites.push(site);
                 var key = cellKey(f.lat, f.lon);
                 (grid[key] || (grid[key] = [])).push(sites.length - 1);
+                landedOn = site.idx;
             }
+            // Where EOG's own id for this row ended up, so the crosswalk can be checked against
+            // the spatial merge once every year is in.
+            if (f.id !== null) idIndex[yr + ':' + f.id] = landedOn;
+            if (f.prevId !== null) crossLinks.push({ year: yr, id: f.id, prevId: f.prevId, site: landedOn });
         }
         progress('merged ' + yr + ' — ' + sites.length + ' distinct sites so far');
     }
     if (process.stdout.isTTY) process.stdout.write('\n');
+
+    // ---- Crosswalk check ------------------------------------------------------------------
+    // EOG publishes its own year-to-year flare id from the 2023 edition. Where it says two rows
+    // are the same flare and the 500 m spatial merge put them on different sites, one of the two
+    // is wrong. This REPORTS that rather than resolving it: the ids cover only the last two
+    // editions, so deferring to them would apply one identity rule to 2023-24 and another to
+    // 2017-22, and a silent re-link would be exactly the kind of invisible identity change that
+    // makes a catalog untrustworthy. Nothing here mutates a site.
+    var checked = 0, agree = 0, disagree = 0, unresolved = 0, maxDisagreeM = 0;
+    for (var c = 0; c < crossLinks.length; c++) {
+        var link = crossLinks[c];
+        var prevSite = idIndex[(link.year - 1) + ':' + link.prevId];
+        if (prevSite === undefined) { unresolved++; continue; }
+        checked++;
+        if (prevSite === link.site) { agree++; continue; }
+        disagree++;
+        var a = sites[link.site], b = sites[prevSite];
+        var d = haversine(a.lat, a.lon, b.lat, b.lon);
+        if (d > maxDisagreeM) maxDisagreeM = d;
+    }
+    mergeYears.crosswalk = {
+        linksPublished: crossLinks.length,
+        checked: checked,
+        agree: agree,
+        disagree: disagree,
+        // A published id whose partner year is not in this catalog. Not an error.
+        unresolvable: unresolved,
+        agreementPct: checked ? Math.round(1000 * agree / checked) / 10 : null,
+        maxDisagreementM: Math.round(maxDisagreeM),
+        note: 'EOG publishes a cross-year flare id from the 2023 edition. It is compared against ' +
+              'the ' + epsilonM + ' m spatial merge and REPORTED, never used to re-link a site: ' +
+              'the ids do not exist before 2023, so adopting them would mean two different ' +
+              'identity rules inside one catalog.'
+    };
+    if (checked) {
+        log('  crosswalk check       ' + agree.toLocaleString() + ' of ' + checked.toLocaleString() +
+            ' EOG id links agree with the ' + epsilonM + ' m merge (' +
+            mergeYears.crosswalk.agreementPct + '%)');
+        if (disagree) {
+            log('    ' + disagree.toLocaleString() + ' disagree, furthest ' +
+                Math.round(maxDisagreeM).toLocaleString() + ' m apart — reported, not resolved');
+        }
+    }
     return sites;
 }
 
@@ -439,6 +535,27 @@ function trendLabel(pctPerYear) {
             if (ob.tempK) { tempSum += ob.tempK; tempN++; }
         }
 
+        // Size RANGE across the last three observed years.
+        //
+        // `kw` above is a single figure taken from the most recent observation, and it drives
+        // miner count, capex and every economics number downstream.
+        //
+        // Measured on this rebuild by a 500 m spatial join of the 2022-basis catalog against the
+        // 2024-basis one: of 14,830 sites present in both, 4,216 (28%) moved by more than half —
+        // 2,014 up, 2,202 down. Independently, 6,597 sites (35%) have a three-year spread wider
+        // than 2x. So the point estimate is materially more confident than the measurement behind
+        // it. This does not replace it; it makes the spread visible, so a 3 MW site that has read
+        // 1 MW and 5 MW cannot be mistaken for a steady one. It is the OBSERVED spread, not an
+        // invented confidence interval.
+        var recent = obsYears.slice(-3);
+        var kwLo = null, kwHi = null;
+        for (var rk = 0; rk < recent.length; rk++) {
+            var rv = Math.round(site.obs[recent[rk]].bcm * MCFD_PER_BCM * 1000 *
+                                GAS_BTU_PER_CF / HEAT_RATE_BTU_PER_KWH / 24);
+            if (kwLo === null || rv < kwLo) kwLo = rv;
+            if (kwHi === null || rv > kwHi) kwHi = rv;
+        }
+
         kept.push([
             Math.round(site.lat * 10000) / 10000,
             Math.round(site.lon * 10000) / 10000,
@@ -451,7 +568,9 @@ function trendLabel(pctPerYear) {
             lastYear,
             trendLabel(slope),
             series,
-            tempN ? Math.round(tempSum / tempN) : null
+            tempN ? Math.round(tempSum / tempN) : null,
+            kwLo,
+            kwHi
         ]);
     }
 
@@ -474,14 +593,28 @@ function trendLabel(pctPerYear) {
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
         source: 'Earth Observation Group, Colorado School of Mines — Global Gas Flaring Observed from Space',
-        sourceUrl: 'https://eogdata.mines.edu/download_global_flare.html',
+        // The old value pointed at download_global_flare.html, an abandoned page that still
+        // returns HTTP 200 while listing data only through 2020. That dead end is the likeliest
+        // reason this catalog sat at 2022 for two years while 2023 and 2024 were published.
+        sourceUrl: 'https://eogdata.mines.edu/products/vnf/global_gas_flare.html',
         years: allYears,
         dataThrough: allYears[allYears.length - 1],
         floorMcfd: FLOOR_MCFD,
         epsilonM: EPSILON_M,
+        // Which calibration produced every volume here, and its known bias. The d.7 exponent is
+        // in EOG's own filenames; their peer-reviewed work finds radiant-heat calibration
+        // OVERSTATES small flares, and 96% of this catalog is small. Not switchable, because the
+        // free annual workbooks still ship only d.7 — a switch would have one position.
+        calibration: 'd.7_slope_0.029353 (radiant heat)',
+        calibrationNote: 'Volumes come from EOG\'s radiant-heat calibration, which EOG reports ' +
+            'overestimates SMALL flares — where almost all of this catalog sits. Treat every kW ' +
+            'figure as an upper-leaning estimate, not a measurement.',
+        idCrosswalk: mergeYears.crosswalk || null,
         heatRateBtuPerKwh: HEAT_RATE_BTU_PER_KWH,
         gasBtuPerCf: GAS_BTU_PER_CF,
-        fields: ['lat', 'lon', 'iso3', 'kw', 'persistPct', 'onshore', 'yearsSeen', 'firstYear', 'lastYear', 'trend', 'kwByYear', 'tempK'],
+        // kwLo/kwHi are APPENDED, never inserted: every consumer reads this tuple by
+        // positional index, so inserting mid-array would silently shift each one.
+        fields: ['lat', 'lon', 'iso3', 'kw', 'persistPct', 'onshore', 'yearsSeen', 'firstYear', 'lastYear', 'trend', 'kwByYear', 'tempK', 'kwLo', 'kwHi'],
         counts: {
             sites: kept.length,
             onshore: kept.length - offshore,

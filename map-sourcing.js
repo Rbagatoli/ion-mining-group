@@ -450,7 +450,7 @@ var MapSourcing = (function() {
     var FILTER_KEY = 'ionMiningProspectFilters';
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
-    var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning'];
+    var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
     // on a differently-sorted table with the open site closed. Same reasoning as the filters:
     // local only, never synced.
@@ -572,6 +572,10 @@ var MapSourcing = (function() {
             tiers: document.getElementById('fWorkable').checked ? ['preferred', 'workable'] : null,
             sources: Object.keys(_srcFilter).length ? Object.keys(_srcFilter) : null,
             hasOperator: document.getElementById('fOperator').checked,
+            smallOperatorsOnly: (function() {
+                var el = document.getElementById('fSmallOp');
+                return !!(el && el.checked);
+            })(),
             confirmedBurning: (function() {
                 var el = document.getElementById('fBurning');
                 return !!(el && el.checked);
@@ -596,6 +600,19 @@ var MapSourcing = (function() {
         var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
             matches = matches.filter(function(c) { return !!operatorName(c); });
+        }
+        // Small operators only. Flaring is a real annoyance to a company with a few dozen wells
+        // and nobody whose job is to field proposals; at a major it is a rounding error and you
+        // do not get past the switchboard.
+        //
+        // Filters OUT prospects with no size class rather than keeping them: the class only
+        // exists for Alberta, so keeping unknowns would leave the control looking broken
+        // everywhere else. The label says Alberta explicitly for the same reason.
+        if (f.smallOperatorsOnly) {
+            matches = matches.filter(function(c) {
+                var sc = operatorSizeClass(c);
+                return sc === 'micro' || sc === 'small';
+            });
         }
         if (f.confirmedBurning) {
             matches = matches.filter(function(c) { return c.daysSinceActive !== null; });
@@ -1682,6 +1699,19 @@ var MapSourcing = (function() {
     // carries the richer per-company record (licence, distance, and via companyFor a phone and
     // address). Every consumer goes through this, so a source that publishes an owner can never
     // again be reported as unidentified because it is not a flare.
+    // The licensee's company record, where one exists. Carries the ST104 address and phone and,
+    // for Alberta, the well counts behind the size class.
+    function operatorCompany(c) {
+        var rec = operatorRecord(c);
+        if (!rec || !rec.operator) return null;
+        return (typeof SiteCatalog !== 'undefined' && SiteCatalog.companyFor)
+            ? SiteCatalog.companyFor(rec.operator) : null;
+    }
+    function operatorSizeClass(c) {
+        var co = operatorCompany(c);
+        return co && co.sizeClass ? co.sizeClass : null;
+    }
+
     function operatorRecord(c) {
         if (!c) return null;
         var flare = (typeof SiteCatalog !== 'undefined' && SiteCatalog.operatorFor)
@@ -1911,8 +1941,22 @@ var MapSourcing = (function() {
             row('Still burning?', liveRow(c)) +
             '</dl></div>';
 
+        // The headline figure is one survey year's reading. Where the source publishes enough
+        // history to show a spread, say so beside it — 28% of flare sites moved by more than half
+        // between the 2022 and 2024 editions, so a bare number reads as far more settled than the
+        // measurement behind it.
+        var rangeNote = '';
+        if (c.powerLoKw !== null && c.powerLoKw !== undefined &&
+            c.powerHiKw !== null && c.powerHiKw !== undefined && c.powerHiKw > c.powerLoKw) {
+            var spread = c.powerLoKw > 0 ? c.powerHiKw / c.powerLoKw : null;
+            rangeNote = '<div class="src-sub2">Last three surveys read ' + fmtKw(c.powerLoKw) +
+                ' to ' + fmtKw(c.powerHiKw) +
+                (spread && spread >= 2 ? ' — a ' + spread.toFixed(1) + 'x spread, so treat the ' +
+                                         'figure above as an estimate rather than a rating' : '') +
+                '</div>';
+        }
         html += '<div class="src-detail"><div class="section-label">Derived capacity</div><dl>' +
-            row('Power potential', fmtKw(c.powerPotentialKw)) +
+            row('Power potential', fmtKw(c.powerPotentialKw) + rangeNote) +
             row('Miners supported', fmtInt(m.max_miners)) +
             row('Hashrate', m.total_hashrate_ph === null ? '--' : m.total_hashrate_ph.toFixed(1) + ' PH/s') +
             row('Monthly BTC', m.monthly_btc === null ? gap('needs network data') : m.monthly_btc.toFixed(4)) +
@@ -2108,6 +2152,27 @@ var MapSourcing = (function() {
                 '<p class="src-note">Licensed operator of the nearest well, <strong>' + op.distance_m + ' m</strong> from the flare' +
                 (op.licence ? ', licence <strong>' + esc(op.licence) + '</strong>' : '') +
                 '. Source: ' + esc(op.source) + (op.as_of ? ', as of ' + esc(op.as_of) : '') + '.</p>';
+
+            // How big this operator is in Alberta, which decides how the call goes. Stated as an
+            // ALBERTA footprint, never as company size: BP Canada holds 19 active Alberta
+            // licences and is obviously not a small company. What the number predicts is whether
+            // there is a development team between you and somebody who cares about a flare.
+            if (co && co.sizeClass) {
+                var szLabel = { micro: 'Micro operator', small: 'Small operator',
+                                mid: 'Mid-size operator', major: 'Major operator' }[co.sizeClass];
+                var szHint = (co.sizeClass === 'micro' || co.sizeClass === 'small')
+                    ? 'Worth a direct call — an operator this size has no development team fielding proposals.'
+                    : 'Expect a switchboard and a process. Flaring at this scale is a rounding error.';
+                html += '<div class="src-registry"><div class="src-reg-row">' +
+                    '<span class="src-reg-k">Alberta footprint</span>' +
+                    '<span class="src-reg-v">' + esc(szLabel) + ' · ' + fmtInt(co.wellsActive) +
+                    ' active well licences' +
+                    (co.wellsLicensed && co.wellsLicensed > co.wellsActive
+                        ? ' of ' + fmtInt(co.wellsLicensed) + ' ever issued' : '') +
+                    '</span></div></div>' +
+                    '<p class="src-note">' + esc(szHint) + ' Counted from the AER ST37 licence ' +
+                    'list; this is their Alberta position, not their company size.</p>';
+            }
 
             // Registry contact details, where the regulator publishes them.
             if (co && (co.phone || co.address)) {
@@ -2388,7 +2453,7 @@ var MapSourcing = (function() {
         }
         sel.value = 'CAN';                     // home market unless a previous search is restored
 
-        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning'].forEach(function(id) {
+        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('change', applyFilters);
         });

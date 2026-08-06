@@ -22,9 +22,11 @@ var SiteCatalog = (function() {
     var _livenessMeta = null;
     var _livenessLoading = null;
 
-    // Field order must match `fields` in the artifact.
+    // Field order must match `fields` in the artifact. KW_LO/KW_HI were APPENDED rather than
+    // inserted, so every index below is unchanged from before they existed.
     var LAT = 0, LON = 1, ISO = 2, KW = 3, PERSIST = 4, ONSHORE = 5,
-        YEARS_SEEN = 6, FIRST_YEAR = 7, LAST_YEAR = 8, TREND = 9, KW_BY_YEAR = 10, TEMP_K = 11;
+        YEARS_SEEN = 6, FIRST_YEAR = 7, LAST_YEAR = 8, TREND = 9, KW_BY_YEAR = 10, TEMP_K = 11,
+        KW_LO = 12, KW_HI = 13;
 
     function rowToCandidate(row, i, meta) {
         var kwByYear = row[KW_BY_YEAR] || [];
@@ -50,6 +52,12 @@ var SiteCatalog = (function() {
             offshore: row[ONSHORE] === 1 ? false : true,
             tempK: row[TEMP_K],
             kwByYear: kwByYear,
+            // Observed spread across the last three surveyed years. powerPotentialKw is a single
+            // year's reading; 28% of sites moved by more than half between the 2022 and 2024
+            // editions, so the range is what the measurement actually supports. Null on an older
+            // artifact that predates these fields.
+            powerLoKw: row[KW_LO] === undefined ? null : row[KW_LO],
+            powerHiKw: row[KW_HI] === undefined ? null : row[KW_HI],
             confidence: null,
             evidence: [{
                 dataset: 'EOG VIIRS global gas flare survey',

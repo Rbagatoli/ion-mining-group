@@ -40,6 +40,14 @@ var OUT = path.join(ROOT, 'data', 'operators.json');
 // without being credulous. Beyond it the answer is null, never a nearest-anything guess.
 var MAX_MATCH_M = 2000;
 
+// ST37 licence statuses that mean the well is finished with. Everything else — Issued,
+// Suspension, Amended, Re-Entered — is a licence the company still holds. Measured across the
+// full 539,006-row file: Issued 26%, RecCertified 21%, Abandoned 18%, Suspension 12%,
+// Cancelled 10%, RecExempt 7%, Amended 6%, Re-Entered 1%.
+var TERMINAL_STATUS = {
+    'Abandoned': 1, 'RecCertified': 1, 'RecExempt': 1, 'Cancelled': 1
+};
+
 var AER_ZIP = 'https://static.aer.ca/prd/documents/sts/st37/ST_37_Excel.zip';
 var AER_MEMBER = 'ST37_SH.xlsx';
 // ST104 Business Associate list — the licensee registry. Carries the registered ADDRESS and
@@ -190,8 +198,9 @@ async function joinAlberta(flares, grid, matches) {
         fs.writeFileSync(cached, buf);
     }
 
-    var iLic = -1, iName = -1, iLat = -1, iLon = -1, iStatus = -1;
+    var iLic = -1, iName = -1, iLat = -1, iLon = -1, iStatus = -1, iStatusDate = -1;
     var wells = 0, hits = 0;
+    var wellsByLicensee = {};
 
     XLSX.eachRow(buf, null, function(c, i) {
         if (i === 0) {
@@ -199,7 +208,12 @@ async function joinAlberta(flares, grid, matches) {
                 var h = String(c[k]).toLowerCase();
                 if (h.indexOf('licence_number') >= 0) iLic = k;
                 else if (h === 'licensee') iName = k;
-                else if (h.indexOf('licence_status') === 0) iStatus = k;
+                // EXACT match. ST37 carries both Licence_Status and Licence_Status_Date, and
+                // 'licence_status_date'.indexOf('licence_status') === 0 is true — so a prefix
+                // test matched the status column and was then overwritten by the date column.
+                // Every operator record shipped a date in its `status` field as a result.
+                else if (h === 'licence_status') iStatus = k;
+                else if (h === 'licence_status_date') iStatusDate = k;
                 else if (h.indexOf('latitude') >= 0) iLat = k;
                 else if (h.indexOf('longitude') >= 0) iLon = k;
             }
@@ -209,6 +223,29 @@ async function joinAlberta(flares, grid, matches) {
         var lat = parseFloat(c[iLat]), lon = parseFloat(c[iLon]);
         if (!isFinite(lat) || !isFinite(lon) || lat === 0) return;
         wells++;
+
+        // Well count per licensee, counted in the pass that is already happening. This is the
+        // only size signal available anywhere in this project, and it is what separates a major
+        // from the small producer actually worth calling: flaring is a genuine annoyance to an
+        // operator with a dozen wells and no corporate development team, and a rounding error to
+        // one with fifteen thousand.
+        //
+        // The join is EXACT on the licensee string, deliberately: both this count and the flare
+        // match read the same ST37 column, so there is nothing to fuzzy-match. Name matching is
+        // banned in this project for good reason — it produced 4 wrong matches out of 5.
+        //
+        // Counted TWICE. ST37 is a licence history, not a current asset list: across 539,006
+        // rows only 26% are Issued, while 21% are RecCertified, 18% Abandoned and 10% Cancelled.
+        // Lifetime count answers "how big has this company ever been", active count answers "how
+        // big is it now" — and the second is what decides whether flaring is somebody's annoyance
+        // or their rounding error. Both are emitted so the basis is never in doubt.
+        var lic = iName >= 0 ? String(c[iName] || '').trim() : '';
+        if (lic) {
+            var e = wellsByLicensee[lic] || (wellsByLicensee[lic] = { total: 0, active: 0 });
+            e.total++;
+            var st = iStatus >= 0 ? String(c[iStatus] || '').trim() : '';
+            if (!TERMINAL_STATUS[st]) e.active++;
+        }
         if (wells % 50000 === 0) progress('scanned ' + wells.toLocaleString() + ' wells, ' + hits + ' flares matched');
 
         var near = grid.near(lat, lon);
@@ -231,6 +268,11 @@ async function joinAlberta(flares, grid, matches) {
     });
     if (process.stdout.isTTY) process.stdout.write('\n');
     log('  ' + wells.toLocaleString() + ' wells scanned, ' + hits.toLocaleString() + ' flares matched to a licensee');
+    var licensees = Object.keys(wellsByLicensee).length;
+    log('  ' + licensees.toLocaleString() + ' distinct licensees, well counts recorded for size class');
+    // Hung off the function rather than returned, because the caller already ignores the return
+    // value and threading a new one through would touch every call site for one number.
+    joinAlberta.wellsByLicensee = wellsByLicensee;
     return hits;
 }
 
@@ -424,6 +466,27 @@ async function joinUS(flares, grid, matches) {
         var name = mt.operator;
         if (!companies[name]) {
             companies[name] = { name: name, sites: 0, totalKw: 0, regions: {} };
+            // Well count and size class, Alberta only.
+            //
+            // Deliberately NOT extended to the US. The only size-adjacent signal available there
+            // is flaringmonitor's "(Private)" suffix, and the data refutes it as a proxy: the
+            // largest private US producers by flare count are among the largest producers in the
+            // country, full stop. Applying the small-operator rule to that field would top-rank
+            // exactly the counterparties it exists to avoid. A null size class outside Alberta
+            // is the honest answer, and it is why this is a FILTER rather than a scored
+            // component — a component would score one country and abstain everywhere else.
+            var wc = (joinAlberta.wellsByLicensee || {})[name];
+            if (wc !== undefined) {
+                companies[name].wellsLicensed = wc.total;
+                companies[name].wellsActive = wc.active;
+                // Classified on ACTIVE licences — what the company runs today, not what it has
+                // ever run. The bands are about who answers the phone: an operator with a few
+                // dozen wells has no corporate development team to route you through.
+                companies[name].sizeClass = wc.active <= 25 ? 'micro'
+                                          : wc.active <= 150 ? 'small'
+                                          : wc.active <= 1000 ? 'mid' : 'major';
+                companies[name].sizeBasis = 'AER ST37 active well licences';
+            }
             var rec = ba[name.toLowerCase()];
             if (rec) {
                 baHits++;

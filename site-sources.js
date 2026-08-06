@@ -209,6 +209,10 @@ var SiteSources = (function() {
             country: raw.country || null,
             iso3: raw.iso3 || null,
             powerPotentialKw: num(raw.powerPotentialKw),
+            // The observed spread behind powerPotentialKw, where a source can supply one. Null
+            // means the source publishes a single figure, NOT that the figure is precise.
+            powerLoKw: num(raw.powerLoKw),
+            powerHiKw: num(raw.powerHiKw),
             confidence: num(raw.confidence),
             firstSeen: raw.firstSeen || null,
             lastSeen: raw.lastSeen || null,
