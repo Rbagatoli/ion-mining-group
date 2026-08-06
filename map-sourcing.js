@@ -2837,18 +2837,32 @@ var MapSourcing = (function() {
                     return kept;
                 })()};
             var existing = findSavedSite(c.id);
+            var written;
             if (existing) {
-                SiteData.update(existing.id, changes);
+                written = SiteData.update(existing.id, changes);
             } else {
                 var site = SiteSources.toSite(c, changes);
                 site.id = c.id;                       // keep the flare id so it is re-findable
                 site.name = placeLabel(c);
                 site.discovery = site.discovery || {};
                 site.discovery.flareId = c.id;
-                SiteData.add(site);
+                written = SiteData.add(site);
             }
+            // Report what actually happened. This printed "Saved" unconditionally, including
+            // when localStorage was full and the record had been silently dropped — the one
+            // failure that loses a deal record was also the one the user could never see.
             var msg = document.getElementById('srcSaveMsg');
-            if (msg) { msg.textContent = 'Saved — syncs across your devices.'; msg.style.color = '#3ecf8e'; }
+            var result = written && written._save;
+            if (msg) {
+                if (result && result.ok === false) {
+                    msg.textContent = result.err || 'Not saved.';
+                    msg.style.color = '#e66';
+                } else {
+                    msg.textContent = 'Saved — syncs across your devices.';
+                    msg.style.color = '#3ecf8e';
+                }
+            }
+            if (result && result.ok === false) return;   // nothing was stored; do not re-render as if it were
             // Contact fields feed the actionability component, so a saved phone number changes
             // the opportunity score. Drop the memoised scores or the table would keep showing
             // the pre-edit ranking.

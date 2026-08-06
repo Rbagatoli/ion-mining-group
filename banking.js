@@ -249,6 +249,43 @@ var PayoutData = (function() {
         saveData(data);
     }
 
+    // One-off repair for rows written before payouts were priced from their own date.
+    //
+    // Those rows carry the spot price at SYNC time. The date and the BTC amount are correct, so
+    // re-pricing is deterministic wherever price history reaches — and where it does not reach,
+    // the row is marked unpriced rather than left wearing a wrong number.
+    //
+    // Rows already carrying priceBasis are left alone: they were written by the corrected path.
+    // Hand-entered rows (notes without 'auto-sync') are also left alone — a figure somebody typed
+    // deliberately is not ours to overwrite.
+    function repriceFromHistory() {
+        var report = { examined: 0, repriced: 0, unpriced: 0, skipped: 0, changedUsd: 0 };
+        if (typeof PriceHistory === 'undefined' || !PriceHistory.priceOnDate) return report;
+        var data = getData();
+        for (var i = 0; i < data.payouts.length; i++) {
+            var p = data.payouts[i];
+            report.examined++;
+            if (p.priceBasis) { report.skipped++; continue; }
+            if (!/auto-sync/.test(String(p.notes || ''))) { report.skipped++; continue; }
+            var correct = PriceHistory.priceOnDate(p.date);
+            var wasUsd = (typeof p.usdValue === 'number') ? p.usdValue : 0;
+            if (correct === null) {
+                p.btcPrice = null;
+                p.usdValue = null;
+                p.priceBasis = 'unpriced';
+                report.unpriced++;
+            } else {
+                p.btcPrice = correct;
+                p.usdValue = (typeof p.btcAmount === 'number') ? p.btcAmount * correct : null;
+                p.priceBasis = 'close_on_payout_date';
+                report.repriced++;
+                if (typeof p.usdValue === 'number') report.changedUsd += (p.usdValue - wasUsd);
+            }
+        }
+        if (report.repriced || report.unpriced) saveData(data);
+        return report;
+    }
+
     function hasPayoutWithTxHash(txHash) {
         if (!txHash) return false;
         var data = getData();
@@ -264,6 +301,7 @@ var PayoutData = (function() {
         addSnapshot: addSnapshot,
         addPayout: addPayout,
         removePayout: removePayout,
+        repriceFromHistory: repriceFromHistory,
         hasPayoutWithTxHash: hasPayoutWithTxHash
     };
 })();
@@ -2546,11 +2584,26 @@ async function syncAllPoolPayouts() {
                     var btcAmount = parseFloat(extra.value) || Math.abs(parseFloat(tx.changed_balance)) || 0;
                     if (btcAmount <= 0) continue;
 
+                    // Price the payout from ITS OWN DATE, not from now.
+                    //
+                    // This used to write `btcPrice: liveBtcPrice` — the spot price at sync time —
+                    // beside a date it had just correctly derived from the pool's paid_time. A
+                    // first sync back-fills the pool's whole history at once, so every one of
+                    // those payouts got a single day's price. It is the cost-basis record that
+                    // reaches the tax export, and nothing about it looked wrong: the date and the
+                    // BTC amount were right.
+                    //
+                    // Where history does not cover the date the price is NULL and the row is
+                    // marked unpriced. A payout priced from the wrong day is worse than one
+                    // visibly missing a price.
+                    var histPrice = (typeof PriceHistory !== 'undefined' && PriceHistory.priceOnDate)
+                        ? PriceHistory.priceOnDate(dateStr) : null;
                     PayoutData.addPayout({
                         date: dateStr,
                         btcAmount: btcAmount,
-                        btcPrice: liveBtcPrice,
-                        usdValue: btcAmount * liveBtcPrice,
+                        btcPrice: histPrice,
+                        usdValue: histPrice === null ? null : btcAmount * histPrice,
+                        priceBasis: histPrice === null ? 'unpriced' : 'close_on_payout_date',
                         txHash: extra.tx_id,
                         notes: pool.name + ' auto-sync'
                     });
@@ -4454,8 +4507,43 @@ initNav('banking');
 
 (async function() {
     var data = await fetchLiveMarketData();
-    liveBtcPrice = data.price || 96000;
+    // NO FALLBACK PRICE. This read `data.price || 96000`, so a failed fetch invented a
+    // price — and in the payout path that invented number was persisted into the cost-basis
+    // record. A hardcoded constant is stale the day it is written and wrong forever after.
+    // null means unknown; every consumer must handle it rather than be handed a plausible lie.
+    liveBtcPrice = (data && isFinite(data.price)) ? data.price : null;
     acctBtcPrice = liveBtcPrice;
+
+    // ---- One-off payout repair --------------------------------------------------------
+    // Rows written before this fix carry the spot price at SYNC time rather than the price on
+    // the day they were paid. Runs once, after price history has been fetched, and reports what
+    // it did rather than repairing silently — this edits your cost-basis record, so the count of
+    // rows it could NOT price matters as much as the count it fixed.
+    var REPRICE_FLAG = 'ionMiningPayoutRepriceV1';
+    try {
+        if (!localStorage.getItem(REPRICE_FLAG) && typeof PriceHistory !== 'undefined') {
+            await PriceHistory.fetchPriceHistory();
+            var rep = PayoutData.repriceFromHistory();
+            localStorage.setItem(REPRICE_FLAG, new Date().toISOString());
+            if (rep.repriced || rep.unpriced) {
+                console.info('[Payouts] re-priced ' + rep.repriced + ' from their own dates, ' +
+                             rep.unpriced + ' left unpriced (no history), ' + rep.skipped + ' skipped');
+                var banner = document.createElement('div');
+                banner.className = 'sync-toast';
+                banner.textContent = rep.repriced + ' payout' + (rep.repriced === 1 ? '' : 's') +
+                    ' re-priced from the date paid' +
+                    (rep.unpriced ? ', ' + rep.unpriced + ' could not be priced and are marked unpriced' : '') + '.';
+                document.body.appendChild(banner);
+                setTimeout(function() { banner.classList.add('show'); }, 10);
+                setTimeout(function() { banner.classList.remove('show');
+                    setTimeout(function() { banner.remove(); }, 300); }, 12000);
+            }
+        }
+    } catch (e) {
+        // A failed repair must not stop the page loading. It stays un-flagged so the next visit
+        // retries rather than skipping the correction permanently.
+        console.warn('[Payouts] re-pricing did not run:', e && e.message);
+    }
 
     window.onCurrencyChange = function() {
         liveBtcPrice = window.liveBtcPrice || liveBtcPrice;

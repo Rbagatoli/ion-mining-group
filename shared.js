@@ -220,6 +220,25 @@ function initNav(activePage) {
         IonAuth.onAuthChange(function(user) {
             if (user) {
                 _wasSignedIn = true;
+                // The account-switch guard that replaces the sign-out wipe. Clearing here is
+                // safe in a way that clearing on sign-out never was: this device's data belongs
+                // to the previous account, the new account is about to pull its own from the
+                // cloud, and the previous owner can retrieve theirs by signing back in. On the
+                // same-uid path — the overwhelmingly common one — nothing is touched.
+                try {
+                    var lastUid = localStorage.getItem('ionMiningLastUid');
+                    if (lastUid && user.uid && lastUid !== user.uid) {
+                        var keepKeys = ['sw_clean_v222'];
+                        var keep = {};
+                        for (var kk = 0; kk < keepKeys.length; kk++) {
+                            var kv = localStorage.getItem(keepKeys[kk]);
+                            if (kv !== null) keep[keepKeys[kk]] = kv;
+                        }
+                        localStorage.clear();
+                        for (var rk in keep) localStorage.setItem(rk, keep[rk]);
+                    }
+                    if (user.uid) localStorage.setItem('ionMiningLastUid', user.uid);
+                } catch (e) { /* private mode — the guard degrades, nothing is destroyed */ }
                 var initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
                 syncBtn.innerHTML = '<span class="ion-nav-avatar">' + initial + '</span>';
                 syncBtn.title = 'Signed in as ' + (user.displayName || user.email) + ' — click to sign out';
@@ -254,18 +273,25 @@ function initNav(activePage) {
                 SyncEngine.stopAll();
                 if (_wasSignedIn) {
                     _wasSignedIn = false;
-                    // Must match the sw_clean key used by the inline bootstrap in every page —
-                    // if it is cleared, the next load re-runs the SW/cache purge and reloads again.
-                    var preserve = ['sw_clean_v222'];  // Onboarding keys are tracked per user in Firestore
-                    var saved = {};
-                    for (var i = 0; i < preserve.length; i++) {
-                        var val = localStorage.getItem(preserve[i]);
-                        if (val !== null) saved[preserve[i]] = val;
-                    }
-                    localStorage.clear();
-                    for (var key in saved) {
-                        localStorage.setItem(key, saved[key]);
-                    }
+                    // SIGNING OUT NO LONGER WIPES THE DEVICE.
+                    //
+                    // This used to run localStorage.clear() preserving a single key, then reload.
+                    // Measured: the app uses 28 localStorage keys and SYNC_KEYS covers 11, so 16
+                    // were destroyed with no copy anywhere — the prospect portfolio, saved
+                    // scenarios, widget layouts, the Strike balance. exportAllData iterates the
+                    // same 11, so the one backup affordance in the product omitted exactly what
+                    // the cloud omitted. And handleSignOut has no confirmation, while
+                    // handleDeleteAccount directly above it has two.
+                    //
+                    // It also fires without anyone pressing anything: Firebase emits
+                    // onAuthStateChanged(null) when a token is revoked — a password change
+                    // elsewhere, an expired session — so a tab left open could wipe itself.
+                    //
+                    // The clear existed to stop account A leaking into account B on a shared
+                    // browser. That is a REAL concern, and it is handled on the way IN instead:
+                    // the signed-in uid is remembered below, and a DIFFERENT uid signing in
+                    // clears before it loads its own data. Signing out is not the dangerous
+                    // direction; signing in as someone else is.
                     location.reload();
                 }
             }

@@ -20,7 +20,14 @@ var SyncEngine = (function() {
         currency:    { lsKey: 'ionMiningCurrency' },
         theme:       { lsKey: 'ionMiningTheme' },
         scenarios:   { lsKey: 'ionMiningScenarios' },
-        sites:       { lsKey: 'ionMiningSites' }
+        sites:       { lsKey: 'ionMiningSites' },
+        // Deal state, not view state — a shortlisted portfolio and a saved pricing scenario are
+        // work, and work belongs on every device. Deliberately NOT added: the filter selection,
+        // table view and panel open/closed state. Where you happen to be looking should not
+        // follow you between machines. Those are still covered by the export, which now walks
+        // every ionMining* key rather than this list.
+        prospectPortfolio: { lsKey: 'ionMiningProspectPortfolio' },
+        prospectScenario:  { lsKey: 'ionMiningProspectScenario' }
     };
 
     function getDb() {

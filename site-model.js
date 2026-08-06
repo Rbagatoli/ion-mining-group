@@ -157,9 +157,30 @@ var SiteData = (function() {
         } catch (e) { return defaultData(); }
     }
 
+    // Returns { ok, err } — it used to return nothing and swallow the failure in an EMPTY catch,
+    // then call SyncEngine.save regardless, while the UI printed "Saved" unconditionally. So the
+    // one way this app could lose a deal record — a full localStorage — was also the one way it
+    // could never tell you.
+    //
+    // Two distinct failures, reported separately because they mean different things: a local
+    // write that fails means the record is GONE, while a sync that fails means it is safe here
+    // but not yet elsewhere.
     function saveData(data) {
-        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* quota / no storage */ }
+        var res = { ok: true, err: null };
+        try {
+            localStorage.setItem(KEY, JSON.stringify(data));
+        } catch (e) {
+            res.ok = false;
+            // QuotaExceededError is the one that matters and the one with a real remedy, so it
+            // is named rather than folded into a generic message.
+            res.err = (e && (e.name === 'QuotaExceededError' || e.code === 22))
+                ? 'Local storage is full — this was NOT saved. Export your data and remove ' +
+                  'something before trying again.'
+                : 'Could not save to this device' + (e && e.message ? ': ' + e.message : '') + '.';
+            return res;   // do not sync what was never stored
+        }
         if (typeof SyncEngine !== 'undefined') SyncEngine.save('sites', data);
+        return res;
     }
 
     function newId() {
@@ -218,7 +239,9 @@ var SiteData = (function() {
         site.created = new Date().toISOString();
         site.updated = site.created;
         data.sites.push(site);
-        saveData(data);
+        // _save rides along on the returned record so every existing caller keeps working
+        // unchanged, while one that cares can check whether the write actually landed.
+        site._save = saveData(data);
         return site;
     }
 
@@ -233,7 +256,7 @@ var SiteData = (function() {
             merged.id = id;                       // id is not editable through this path
             data.sites[i] = normalize(merged);
             data.sites[i].updated = new Date().toISOString();
-            saveData(data);
+            data.sites[i]._save = saveData(data);
             return data.sites[i];
         }
         return null;

@@ -18,7 +18,11 @@ initNav('dashboard');
 // Load live data, then render
 (async function() {
     var data = await fetchLiveMarketData();
-    liveBtcPrice = data.price || 96000;
+    // NO FALLBACK PRICE. This read `data.price || 96000`, so a failed fetch invented a
+    // price — and in the payout path that invented number was persisted into the cost-basis
+    // record. A hardcoded constant is stale the day it is written and wrong forever after.
+    // null means unknown; every consumer must handle it rather than be handed a plausible lie.
+    liveBtcPrice = (data && isFinite(data.price)) ? data.price : null;
     window.onCurrencyChange = function() { liveBtcPrice = window.liveBtcPrice || liveBtcPrice; renderDashboard(); updateEarningsChart(); };
     if (data.difficulty) liveDifficulty = data.difficulty;
     else liveDifficulty = 125.86;

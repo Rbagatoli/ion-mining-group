@@ -156,14 +156,38 @@
         return div.innerHTML;
     }
 
+    // Everything this app stores, not just what it syncs.
+    //
+    // This used to iterate SyncEngine.SYNC_KEYS — 11 keys of the 28 the app actually writes — so
+    // the single backup affordance in the product omitted exactly the same things the cloud
+    // omitted: the prospect portfolio, saved scenarios, the source selection, widget layouts,
+    // the Strike balance. A user doing the responsible thing before a risky operation got a file
+    // that silently left out more than half their state.
+    //
+    // Prefix-driven rather than a list, so a key added later is covered without anyone
+    // remembering to add it here. The export is keyed by the REAL localStorage key so a restore
+    // needs no translation table.
+    var EXPORT_PREFIXES = ['ionMining', 'btcMinerCalc'];
+
+    function exportableKeys() {
+        var out = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (!k) continue;
+            for (var p = 0; p < EXPORT_PREFIXES.length; p++) {
+                if (k.indexOf(EXPORT_PREFIXES[p]) === 0) { out.push(k); break; }
+            }
+        }
+        return out.sort();
+    }
+
     function exportAllData() {
         var data = {};
-        var keys = typeof SyncEngine !== 'undefined' ? SyncEngine.SYNC_KEYS : {};
-        for (var key in keys) {
-            var raw = localStorage.getItem(keys[key].lsKey);
-            if (raw) {
-                try { data[key] = JSON.parse(raw); } catch(e) { data[key] = raw; }
-            }
+        var ks = exportableKeys();
+        for (var i = 0; i < ks.length; i++) {
+            var raw = localStorage.getItem(ks[i]);
+            if (raw === null) continue;
+            try { data[ks[i]] = JSON.parse(raw); } catch (e) { data[ks[i]] = raw; }
         }
 
         var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -198,6 +222,12 @@
     }
 
     function handleSignOut() {
+        // Signing out no longer wipes the device (see shared.js), so this confirmation is no
+        // longer guarding against destruction — it guards against losing the SYNC. Worth asking
+        // anyway: the button sits directly below "Delete Cloud Data", and pressing the two in
+        // sequence used to be total, irreversible loss behind a message that said the opposite.
+        if (!confirm('Sign out of sync?\n\nYour data stays on this device. Changes made while ' +
+                     'signed out will not reach your other devices until you sign back in.')) return;
         SyncEngine.stopAll();
         IonAuth.signOut();
         hidePanel();

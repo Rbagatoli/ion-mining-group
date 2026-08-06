@@ -205,6 +205,35 @@ var PriceHistory = (function() {
         }
     }
 
+    // The closing price on a given YYYY-MM-DD, or NULL when history does not cover it.
+    //
+    // Written for the payout ledger, which was stamping every payout with the price at SYNC time
+    // rather than on the payout's own date — so a batch of back-filled payouts all got one day's
+    // price, and that figure is the cost basis that reaches the tax export.
+    //
+    // Returns null rather than the nearest candle or a default. A payout priced from the wrong
+    // day is worse than one marked unpriced, because only the second one is visibly wrong.
+    function priceOnDate(dateStr) {
+        if (!dateStr) return null;
+        var parts = String(dateStr).slice(0, 10).split('-');
+        if (parts.length !== 3) return null;
+        var target = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]) / 1000;
+        if (!isFinite(target)) return null;
+        var series = loadPriceCache();
+        if (!series || !series.length) return null;
+        // Candles are daily and ascending. Accept one within the same day only.
+        var lo = 0, hi = series.length - 1;
+        while (lo <= hi) {
+            var mid = (lo + hi) >> 1;
+            var t = series[mid].time;
+            if (Math.abs(t - target) < DAY_SECONDS) {
+                return isFinite(series[mid].close) ? series[mid].close : null;
+            }
+            if (t < target) lo = mid + 1; else hi = mid - 1;
+        }
+        return null;
+    }
+
     return {
         DAY_SECONDS: DAY_SECONDS,
         RANGE_GRANULARITY: RANGE_GRANULARITY,
@@ -213,6 +242,16 @@ var PriceHistory = (function() {
         fetchPriceHistory: fetchPriceHistory,
         getSeriesForRange: getSeriesForRange,
         filterByDays: filterByDays,
+        priceOnDate: priceOnDate,
+        coverage: function() {
+            var s = loadPriceCache();
+            if (!s || !s.length) return null;
+            return { from: s[0].time, to: s[s.length - 1].time, days: s.length };
+        },
         isStale: function() { return _priceDataStale; }
     };
 })();
+
+// Node-loadable so priceOnDate can be regression-tested. The module is otherwise a browser
+// global exactly as before; this line is inert in a browser.
+if (typeof module !== 'undefined' && module.exports) module.exports = PriceHistory;
