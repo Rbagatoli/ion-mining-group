@@ -596,7 +596,192 @@ var MapSourcing = (function() {
         return list;
     }
 
-    function applyFilters() {
+    // ---- What is actually switched on ----------------------------------------------------
+    //
+    // An empty result used to print a fixed guess — "try a lower minimum size, or turn off the
+    // jurisdiction / operator filters" — which named filters that were often not responsible and
+    // never mentioned the ones that were. This enumerates the real state instead, so a screen
+    // showing nothing can always be read.
+    var FILTER_DEFAULTS = {
+        fMinKw: '0', fMaxKw: '5000', fYears: '0', fSort: 'persistence',
+        fRegion: '', fRadius: '250',
+        fOnshore: true, fWorkable: true,
+        fActive: false, fOperator: false, fBurning: false, fSmallOp: false
+    };
+    var FILTER_LABELS = {
+        fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
+        fSort: 'Ranked by', fRadius: 'Search radius',
+        fOnshore: 'Onshore only', fWorkable: 'Workable jurisdictions only',
+        fActive: 'Still burning in the final survey year',
+        fOperator: 'Only sites with a named operator',
+        fBurning: 'Confirmed burning recently (satellite)',
+        fSmallOp: 'Small operators only (Alberta)'
+    };
+
+    // [{ key, label, clear }] for every filter not at its default.
+    function activeFilters() {
+        var out = [];
+        function el(id) { return document.getElementById(id); }
+
+        // Country is listed whenever it is set, even though CAN is the default: it is the most
+        // consequential filter on the page and the one most likely to be hiding what is sought.
+        var c = el('fCountry');
+        if (c && c.value) {
+            out.push({ key: 'fCountry', label: 'Country: ' + countryName(c.value),
+                       clear: function() { c.value = ''; } });
+        }
+
+        var r = el('fRegion');
+        if (r && r.value) {
+            var a = currentAnchor();
+            out.push({ key: 'fRegion',
+                       label: 'Near: ' + (a ? a.name + ', within ' + fmtInt(a.km) + ' km' : r.value),
+                       clear: function() { r.value = ''; } });
+        }
+
+        var sizeMin = el('fMinKw'), sizeMax = el('fMaxKw');
+        if (sizeMin && sizeMin.value !== FILTER_DEFAULTS.fMinKw) {
+            out.push({ key: 'fMinKw', label: 'Minimum size: ' + fmtKw(parseFloat(sizeMin.value)),
+                       clear: function() { sizeMin.value = FILTER_DEFAULTS.fMinKw; paintSizeRange(); renderSizeHint(); } });
+        }
+        if (sizeMax && sizeMax.value !== FILTER_DEFAULTS.fMaxKw) {
+            out.push({ key: 'fMaxKw', label: 'Maximum size: ' + fmtKw(parseFloat(sizeMax.value)),
+                       clear: function() { sizeMax.value = FILTER_DEFAULTS.fMaxKw; paintSizeRange(); renderSizeHint(); } });
+        }
+
+        // fSort is deliberately absent: a sort order hides nothing, so offering to clear it on an
+        // empty screen would send the user after a control that cannot be the cause.
+        // fRadius is absent too when no region is set — without an anchor it filters nothing.
+        ['fYears', 'fRadius'].forEach(function(id) {
+            var e = el(id);
+            if (!e || String(e.value) === FILTER_DEFAULTS[id]) return;
+            if (id === 'fRadius') return;        // already described inside the fRegion chip
+            var shown = e.options && e.selectedIndex >= 0
+                ? e.options[e.selectedIndex].text : e.value;
+            out.push({ key: id, label: FILTER_LABELS[id] + ': ' + shown,
+                       clear: function() { e.value = FILTER_DEFAULTS[id]; } });
+        });
+
+        // Listed when CHECKED, not when different from the default — every one of these six
+        // excludes prospects when it is on and excludes nothing when it is off.
+        //
+        // Onshore and Workable are ON by default, so a "non-default" rule got this exactly
+        // backwards: it stayed silent about the two filters most likely to be responsible and
+        // instead offered to re-enable them. Measured on the real catalog, Russia returns zero
+        // with nothing but the defaults set, purely because it is not a workable jurisdiction —
+        // and the old empty state could not say so.
+        ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'].forEach(function(id) {
+            var e = el(id);
+            if (!e || !e.checked) return;
+            out.push({ key: id, label: FILTER_LABELS[id],
+                       clear: function() { e.checked = false; } });
+        });
+
+        // These two live outside the form and were never mentioned by the old message at all.
+        var srcIds = Object.keys(_srcFilter);
+        if (srcIds.length) {
+            out.push({ key: 'sources', label: 'Sources: ' + srcIds.length + ' of ' +
+                           ProspectStore.sources().length + ' selected',
+                       clear: function() { _srcFilter = {}; renderSourceFilter(); saveFiltersSources(); } });
+        }
+        if (_companyFilter) {
+            out.push({ key: 'company', label: 'Operator: ' + _companyFilter,
+                       clear: function() { _companyFilter = null; } });
+        }
+        return out;
+    }
+
+    function resetAllFilters() {
+        var c = document.getElementById('fCountry');
+        if (c) c.value = '';
+        for (var id in FILTER_DEFAULTS) {
+            var e = document.getElementById(id);
+            if (!e) continue;
+            if (typeof FILTER_DEFAULTS[id] === 'boolean') e.checked = FILTER_DEFAULTS[id];
+            else e.value = FILTER_DEFAULTS[id];
+        }
+        _srcFilter = {};
+        _companyFilter = null;
+        renderSourceFilter();
+        paintSizeRange();
+        renderSizeHint();
+        saveFilters();
+        saveFiltersSources();
+        applyFilters();
+    }
+
+    // Shared by the list and the table so the two can never disagree about why the screen is
+    // empty. Buttons carry the filter key; one delegated handler wires them where they render.
+    function emptyStateHtml(lead) {
+        var act = activeFilters();
+        var h = '<div class="src-emptybox"><div class="src-emptylead">' + esc(lead) + '</div>';
+        if (!act.length) {
+            h += '<div class="src-note">No filters are active — this source returned nothing.</div>';
+        } else {
+            h += '<div class="src-note">Active filters:</div><div class="src-activefilters">';
+            for (var i = 0; i < act.length; i++) {
+                h += '<button type="button" class="src-fchip" data-fkey="' + esc(act[i].key) + '">' +
+                     esc(act[i].label) + '<span class="x">&times;</span></button>';
+            }
+            h += '</div><button type="button" class="src-resetall" data-fkey="__all__">Reset all filters</button>';
+        }
+        return h + '</div>';
+    }
+
+    // One delegated listener on document handles every chip rendered by either empty state.
+    function wireEmptyState() {
+        document.addEventListener('click', function(e) {
+            var b = e.target.closest ? e.target.closest('.src-fchip, .src-resetall') : null;
+            if (!b) return;
+            _ignoreNextDocClick = true;
+            var key = b.getAttribute('data-fkey');
+            if (key === '__all__') { resetAllFilters(); return; }
+            var act = activeFilters();
+            for (var i = 0; i < act.length; i++) {
+                if (act[i].key === key) { act[i].clear(); break; }
+            }
+            saveFilters();
+            applyFilters();
+        });
+    }
+
+    // Country and the "Near" region anchor are two ways of saying WHERE, and left independent
+    // they contradict silently: the app opens on Canada as the home market, so a US region left
+    // in the anchor makes the whole page look empty on every load with nothing on screen naming
+    // the cause. Every region belongs to exactly one country, so the two are reconciled here in
+    // both directions and can never disagree.
+    //
+    // Called at the top of applyFilters rather than from the control listeners, because the
+    // generic change -> applyFilters loop would otherwise paint one frame of the contradiction
+    // before any dedicated handler ran.
+    function reconcileGeo(changed) {
+        var regionEl = document.getElementById('fRegion');
+        var countryEl = document.getElementById('fCountry');
+        if (!regionEl || !countryEl || !regionEl.value) return false;
+
+        var anchor = currentAnchor();
+        if (!anchor || !anchor.iso3) return false;
+        if (countryEl.value === anchor.iso3) return false;
+
+        if (changed === 'fCountry') {
+            // The user just moved the country somewhere the region does not exist. The country
+            // is the more deliberate choice, so the anchor yields.
+            regionEl.value = '';
+        } else {
+            // A region was picked. It implies its country, and selecting it while the country
+            // says otherwise is never what anyone means.
+            var ok = false;
+            for (var i = 0; i < countryEl.options.length; i++) {
+                if (countryEl.options[i].value === anchor.iso3) { ok = true; break; }
+            }
+            if (ok) countryEl.value = anchor.iso3;
+            else regionEl.value = '';    // no prospects in that country at all
+        }
+        return true;
+    }
+
+    function applyFilters(changed) {
+        if (reconcileGeo(typeof changed === 'string' ? changed : null)) saveFilters();
         var f = currentFilters();
         var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
@@ -702,8 +887,7 @@ var MapSourcing = (function() {
             (_focused ? ' <button class="src-unfocus" id="srcUnfocus">← All prospects</button>' : '');
 
         if (!_filtered.length) {
-            listEl.innerHTML = '<div class="src-empty">No sites match these filters.<br>' +
-                'Try a lower minimum size, or turn off the jurisdiction / operator filters.</div>';
+            listEl.innerHTML = emptyStateHtml('No sites match.');
             return;
         }
 
@@ -1174,12 +1358,11 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="13" class="src-gap" style="padding:14px;">' +
-                (_tableView === 'acquisition'
-                    ? 'No built assets match these filters. The acquisition view shows only ' +
-                      'prospects at the constructed stage or later — try widening the country ' +
-                      'or size filters, or switch back to all prospects.'
-                    : 'No prospects match these filters.') + '</td></tr>';
+            body.innerHTML = '<tr><td colspan="13" style="padding:6px 10px 14px;">' +
+                emptyStateHtml(_tableView === 'acquisition'
+                    ? 'No built assets match. The acquisition view shows only prospects at the ' +
+                      'constructed stage or later — switching back to all prospects may be enough.'
+                    : 'No prospects match.') + '</td></tr>';
             return;
         }
 
@@ -2584,7 +2767,9 @@ var MapSourcing = (function() {
 
         ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
-            if (el) el.addEventListener('change', applyFilters);
+            // The id, not the Event — reconcileGeo has to know WHICH of the two geographic
+            // controls the user just moved to decide which one yields.
+            if (el) el.addEventListener('change', function() { applyFilters(id); });
         });
         // Dragging fires continuously, so the track repaints every frame for responsiveness
         // while the expensive re-rank is debounced.
@@ -2667,6 +2852,7 @@ var MapSourcing = (function() {
         wireViews();
         wireWorklist();
         wireSourceFilter();
+        wireEmptyState();
         renderProvenance();
         wireProvenance();
         try {
