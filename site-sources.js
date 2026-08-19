@@ -203,6 +203,14 @@ var SiteSources = (function() {
             // measured — either outside the covered countries or nothing within the search
             // radius — and the scorer treats that as unmeasured rather than as "far".
             gridDistanceKm: raw.gridDistanceKm === undefined ? null : raw.gridDistanceKm,
+            // The source's own stable key for the counterparty, where the source has one. Null
+            // for flares and landfills, the EIA Utility ID for US plants, and treated as
+            // unmeasured when null -- exactly how gridDistanceKm behaves.
+            //
+            // It exists because grouping counterparties by NAME is this project's own banned
+            // pattern turned inward: 4,084 distinct Utility IDs hide behind 4,080 names, so
+            // "show all their sites" on the Rahway Merck plant also returned the Elkton one.
+            operatorId: raw.operatorId || null,
             operatorSource: raw.operatorSource || null,
             lat: num(raw.lat),
             lng: num(raw.lng),
@@ -312,6 +320,7 @@ var SiteSources = (function() {
             source: siteSourceFor(cand),
             energy_type: cand.energyType || 'unknown',
             operator: cand.operator || null,
+            operator_id: cand.operatorId || null,
             operator_source: cand.operatorSource || null,
             development_stage: cand.developmentStage || null,
             offtake_state: cand.offtakeState || null,

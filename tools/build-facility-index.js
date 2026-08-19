@@ -175,6 +175,143 @@ function str(v) {
     var s = String(v).trim();
     return s === '' || s === '.' ? null : s;
 }
+// Excel stored the ZIP column numerically, so 969 of 6,643 utility ZIPs (14.6%) arrive with the
+// leading zero eaten — Rahway NJ reads 7065, Boston MA reads 2210. Left unpadded they are not
+// merely ugly: a maps link to "Rahway, NJ 7065" does not resolve, and the number reads as data
+// rather than as damage. Some rows carry ZIP+4, so the first five digits are what survives.
+function zip5(v) {
+    var s = str(v);
+    if (s === null) return null;
+    var d = s.replace(/[^0-9]/g, '');
+    if (!d) return null;
+    while (d.length < 5) d = '0' + d;
+    return d.slice(0, 5);
+}
+// A column that must exist. An unresolved index makes str(r[-1]) return null for every row, so a
+// renamed column would silently empty a field that the artifact then claims 100% coverage on.
+function need(idx, what) {
+    if (idx < 0) throw new Error('EIA-860: column "' + what + '" not found — the layout moved');
+    return idx;
+}
+
+// ---- EIA-860 Schedule 1: who the operator IS, and where to write to them ------------------
+//
+// READ THIS BEFORE ASSUMING THIS IS THE BANNED NAME MATCHING.
+//
+// This project bans name-based joins, and rightly: build-permit-index.js records a spatial+name
+// fallback that matched 4 of 5 wrong, every failure on a shared TOWN name (SAND POINT -> Trident
+// Seafoods). Nothing here does that. Every join below is an EXACT INTEGER KEY join on the primary
+// key of a SINGLE form — Plant Code across Schedules 2/3/4, Utility ID across Schedules 1/2. The
+// SAND POINT failure was matching a LABEL across two agencies that never agreed on a key. There is
+// no fuzziness available here and no threshold to tune.
+//
+// It is keyed by Utility ID and not by name for a measured reason: among the 9,765 catalogued
+// plants there are 4,084 distinct Utility IDs behind only 4,080 names. Merck & Co (12311 Rahway NJ
+// / 12320 Elkton VA), Boise White Paper, State Farm and Cascade Solar each appear twice with
+// DIFFERENT addresses. A name key gives those plants a coin flip on the mailing address, and both
+// answers look right.
+//
+// EIA-860 publishes no telephone number. That is a fact about the form, and the UI says so rather
+// than filling the gap.
+var ENTITY_TYPE_LABEL = {
+    C: 'Cooperative', I: 'Investor-owned utility', M: 'Municipally owned',
+    P: 'Political subdivision', F: 'Federally owned', S: 'State owned',
+    // NOT "qualifying facility" — that is a different EIA field entirely, and it is already read
+    // as fercSmallPowerProducer / fercCogen. Mislabelling this would put the wrong word on 6,391
+    // of the 9,765 plants.
+    Q: 'Independent power producer', IND: 'Industrial', COM: 'Commercial'
+};
+
+function loadUtilities(zipPath) {
+    var rows = xlsx.read(memberBuf(zipPath, '1___utility')).sheet('Utility') || [];
+    var hi = headerIndex(rows), col = colFinder(rows[hi] || []);
+    var cId = need(col('utility id'), 'utility id'),
+        cName = need(col('utility name'), 'utility name'),
+        cAddr = need(col('street address'), 'street address'),
+        cCity = need(col('city'), 'city'),
+        cState = need(col('state'), 'state'),
+        cZip = need(col('zip'), 'zip'),
+        cType = col('entity type');
+    var out = {};
+    for (var i = hi + 1; i < rows.length; i++) {
+        var r = rows[i], id = num(r[cId]);
+        if (id === null) continue;
+        var t = str(r[cType]);
+        out[String(id)] = {
+            utilityId: String(id),
+            name: str(r[cName]),
+            address: str(r[cAddr]),
+            city: str(r[cCity]),
+            state: str(r[cState]),
+            zip: zip5(r[cZip]),
+            entityType: t,
+            entityTypeLabel: t ? (ENTITY_TYPE_LABEL[t] || t) : null
+        };
+    }
+    return out;
+}
+
+// ---- EIA-860 Schedule 4: who actually OWNS it ---------------------------------------------
+// The acquisition-critical sheet, and the one nothing has ever read. The operator is not the
+// seller: 1,294 of the catalogued plants are owned by a third party, and of the plants with a
+// single owner filed, 1,307 of 1,313 name someone OTHER than the operator. New York Power
+// Authority operates Neversink; the City of New York owns it.
+//
+// Owners repeat once per generator, so rows are deduplicated by Ownership ID and the generator
+// ids they cover are kept — 18 plants have generators whose owner sets differ, and collapsing
+// them would assert a single ownership structure that the filing does not.
+function loadOwners(zipPath) {
+    var rows = xlsx.read(memberBuf(zipPath, '4___owner')).sheet('Ownership') || [];
+    var hi = headerIndex(rows), col = colFinder(rows[hi] || []);
+    // FULL fragments throughout: colFinder is a PREFIX matcher, and this sheet carries both
+    // "State"/"Zip" (the plant's) and "Owner State"/"Owner Zip". Asking for 'state' here would
+    // silently bind the owner's address to the plant's state.
+    var cCode = need(col('plant code'), 'plant code'),
+        cGen = col('generator id'),
+        cOwnName = need(col('owner name'), 'owner name'),
+        cOwnAddr = need(col('owner street address'), 'owner street address'),
+        cOwnCity = need(col('owner city'), 'owner city'),
+        cOwnState = need(col('owner state'), 'owner state'),
+        cOwnZip = need(col('owner zip'), 'owner zip'),
+        cOwnId = need(col('ownership id'), 'ownership id'),
+        cPct = need(col('percent owned'), 'percent owned');
+
+    var byPlant = {};
+    for (var i = hi + 1; i < rows.length; i++) {
+        var r = rows[i], code = num(r[cCode]);
+        if (code === null) continue;
+        var ownId = str(r[cOwnId]), name = str(r[cOwnName]);
+        if (!ownId || !name) continue;
+        var p = byPlant[code] || (byPlant[code] = { owners: {}, order: [] });
+        var o = p.owners[ownId];
+        if (!o) {
+            // "Percent Owned" is a FRACTION: plant 51's four owners read 0.5 / 0.0586 / 0.039 /
+            // 0.4024 and sum to 1.0. Rendered raw it says "1% owned" for a 100% owner — a 100x
+            // error on the one number that decides who has to sign. Converted once, here, with
+            // the unit in the field name so a caller cannot repeat the mistake.
+            var pct = num(r[cPct]);
+            o = p.owners[ownId] = {
+                ownershipId: ownId,
+                name: name,
+                address: str(r[cOwnAddr]),
+                city: str(r[cOwnCity]),
+                state: str(r[cOwnState]),
+                zip: zip5(r[cOwnZip]),
+                sharePct: pct === null ? null : round(pct * 100, 4),
+                generators: []
+            };
+            p.order.push(ownId);
+        }
+        var g = cGen >= 0 ? str(r[cGen]) : null;
+        if (g && o.generators.indexOf(g) < 0) o.generators.push(g);
+    }
+    var out = {};
+    Object.keys(byPlant).forEach(function (code) {
+        var p = byPlant[code];
+        out[code] = p.order.map(function (id) { return p.owners[id]; });
+    });
+    return out;
+}
 
 // ---- EIA-860: the universe ---------------------------------------------------------------
 function loadPlants(zipPath) {
@@ -185,20 +322,59 @@ function loadPlants(zipPath) {
         cCounty = col('county'), cSector = col('sector name'),
         cSPP = col('ferc small power producer status'), cCogen = col('ferc cogeneration status');
     if (cCode < 0 || cLat < 0) throw new Error('EIA-860 Plant: expected columns not found');
+    // The counterparty columns. Required where coverage is ~100%, so a layout change fails loudly
+    // instead of emptying a field the artifact still claims full coverage on.
+    var cUtilId = need(col('utility id'), 'utility id'),
+        cAddr = need(col('street address'), 'street address'),
+        cCity = need(col('city'), 'city'),
+        cZip = need(col('zip'), 'zip'),
+        cKv = need(col('grid voltage (kv)'), 'grid voltage (kv)'),
+        cTdo = need(col('transmission or distribution system owner'),
+                    'transmission or distribution system owner');
+    // Partial coverage — resolved but not required. Full fragments so the prefix matcher cannot
+    // alias "...status" onto "...docket number".
+    var cBaCode = col('balancing authority code'), cBaName = col('balancing authority name'),
+        cReg = col('regulatory status'),
+        cSppDkt = col('ferc small power producer docket number'),
+        cCogenDkt = col('ferc cogeneration docket number'),
+        cEwgDkt = col('ferc exempt wholesale generator docket number'),
+        cLdc = col('natural gas ldc name'), cPipe = col('natural gas pipeline name 1');
 
     var out = {};
     for (var i = hi + 1; i < rows.length; i++) {
         var r = rows[i], code = num(r[cCode]);
         if (code === null) continue;
+        var uid = num(r[cUtilId]);
         out[code] = {
             code: code,
             name: str(r[cName]),
             utility: str(r[cUtil]),
+            utilityId: uid === null ? null : String(uid),
+            address: str(r[cAddr]),
+            city: str(r[cCity]),
+            zip: zip5(r[cZip]),
             lat: num(r[cLat]),
             lon: num(r[cLon]),
             state: str(r[cState]),
             county: str(r[cCounty]),
             sector: str(r[cSector]),
+            // The voltage the plant actually sits on, and whose wires those are. Both are
+            // counterparty facts: only 1,144 plants are on their own operator's system, so for
+            // the rest the grid connection is a second conversation with a named third party.
+            gridVoltageKv: num(r[cKv]),
+            transmissionOwner: str(r[cTdo]),
+            balancingAuthority: cBaCode >= 0 ? str(r[cBaCode]) : null,
+            balancingAuthorityName: cBaName >= 0 ? str(r[cBaName]) : null,
+            regulatoryStatus: cReg >= 0 ? str(r[cReg]) : null,
+            // Kept verbatim. Observed formats in one column include 98-53-000, 04-78-000. (with a
+            // trailing period), 16-1155 and QF16-134-000, so no URL template is right for a large
+            // minority of them. The identifier is given and the lookup stays manual — the same
+            // treatment PACER and the state UCC registries got.
+            qfDocket: cSppDkt >= 0 ? str(r[cSppDkt]) : null,
+            cogenDocket: cCogenDkt >= 0 ? str(r[cCogenDkt]) : null,
+            ewgDocket: cEwgDkt >= 0 ? str(r[cEwgDkt]) : null,
+            gasLdc: cLdc >= 0 ? str(r[cLdc]) : null,
+            gasPipeline: cPipe >= 0 ? str(r[cPipe]) : null,
             // The QF signal EIA-860 recovers without a FERC key.
             fercSmallPowerProducer: str(r[cSPP]) === 'Y',
             fercCogen: str(r[cCogen]) === 'Y'
@@ -223,7 +399,11 @@ function loadGenerators(zipPath) {
         var hi = headerIndex(rows), col = colFinder(rows[hi] || []);
         var cCode = col('plant code'), cMW = col('nameplate capacity'),
             cTech = col('technology'), cPM = col('prime mover'), cStatus = col('status'),
-            cOpYear = col('operating year'), cRetYear = col('planned retirement year');
+            cOpYear = col('operating year'), cRetYear = col('planned retirement year'),
+            // Reference Table 3 of the layout sheet: S = single ownership by the respondent,
+            // J = jointly owned with another entity, W = wholly owned by an entity OTHER than the
+            // respondent. Present on all 9,765 catalogued plants.
+            cOwn = col('ownership');
         if (cCode < 0 || cMW < 0) return;
         for (var i = hi + 1; i < rows.length; i++) {
             var r = rows[i], code = num(r[cCode]);
@@ -233,7 +413,8 @@ function loadGenerators(zipPath) {
             var a = acc[code];
             if (!a) {
                 a = acc[code] = { mw: 0, retiredMw: 0, units: 0, tech: {}, primeMover: {},
-                                  status: {}, opYear: null, plannedRetirementYear: null };
+                                  status: {}, opYear: null, plannedRetirementYear: null,
+                                  ownership: {} };
             }
             var st = str(r[cStatus]);
             if (retired) {
@@ -242,6 +423,10 @@ function loadGenerators(zipPath) {
             } else {
                 a.mw += mw;
                 a.units++;
+                // Operable generators ONLY. A retired unit's ownership code must not decide what
+                // a live plant's ownership is.
+                var oc = cOwn >= 0 ? str(r[cOwn]) : null;
+                if (oc) a.ownership[oc] = (a.ownership[oc] || 0) + 1;
                 if (st) a.status[st] = (a.status[st] || 0) + 1;
                 if (cTech >= 0 && str(r[cTech])) a.tech[str(r[cTech])] = (a.tech[str(r[cTech])] || 0) + mw;
                 if (cPM >= 0 && str(r[cPM])) a.primeMover[str(r[cPM])] = (a.primeMover[str(r[cPM])] || 0) + mw;
@@ -257,6 +442,23 @@ function loadGenerators(zipPath) {
     ingest('Operable', false);
     ingest('Retired and Canceled', true);
     return acc;
+}
+
+// What the FILING says about who owns the plant, from the Schedule 3 ownership codes.
+//
+// The evidence for sole ownership is the S code — a positive assertion by the filer — NOT the
+// absence of a Schedule 4 row. Those nearly coincide (8,253 of 8,264) and they are not the same
+// claim: reasoning from an absent row would keep asserting sole ownership if EIA ever dropped the
+// column, with nothing to signal that the basis had disappeared.
+function ownershipStateOf(codes) {
+    var ks = Object.keys(codes || {});
+    if (!ks.length) return null;                       // no code filed: unknown, not sole
+    var hasS = ks.indexOf('S') >= 0, hasJ = ks.indexOf('J') >= 0, hasW = ks.indexOf('W') >= 0;
+    if (hasJ) return 'joint';                          // any jointly-held generator makes the deal joint
+    if (hasS && hasW) return 'mixed';                  // never collapsed to whichever is commoner
+    if (hasW) return 'third_party';
+    if (hasS) return 'sole_operator';
+    return null;
 }
 
 // ---- EIA-923: monthly net generation -----------------------------------------------------
@@ -463,8 +665,12 @@ function round(v, dp) {
     log('[3/5] reading the generator inventory');
     var plants = loadPlants(eia860);
     var gens = loadGenerators(eia860);
+    var utilities = loadUtilities(eia860);
+    var owners = loadOwners(eia860);
     log('  ' + Object.keys(plants).length.toLocaleString() + ' plants, ' +
         Object.keys(gens).length.toLocaleString() + ' with generators');
+    log('  ' + Object.keys(utilities).length.toLocaleString() + ' utilities, ' +
+        Object.keys(owners).length.toLocaleString() + ' plants with a filed owner');
 
     log('[4/5] reading monthly generation');
     var series = {};
@@ -478,6 +684,17 @@ function round(v, dp) {
     log('[5/5] computing capacity factors and trends');
     var out = [], dropped = { tooBig: 0, noCapacity: 0, noLocation: 0, noGeneration: 0 };
     var declines = 0, standby = 0, plannedRetire = 0;
+    // Counterparty tallies. Every one of these is asserted in tests/facility-contact.test.js
+    // against the artifact itself, so a silent coverage regression fails a build rather than
+    // quietly emptying a field the metadata still claims 100% on.
+    var cp = {
+        companies: 0, operatorAddress: 0, siteAddress: 0, ownerRows: 0, multiOwner: 0,
+        sole: 0, thirdParty: 0, joint: 0, mixed: 0, ownershipUnknown: 0,
+        soleButOwnerRowExists: 0, generatorsDisagreeOnOwners: 0, thirdPartyOwnerIsOperator: 0,
+        operatorOutOfState: 0, operatorPoBox: 0, gridVoltage: 0, qfDocket: 0,
+        offtakeDisagreesWithRegulatoryStatus: 0
+    };
+    var usedUtilities = {};
 
     Object.keys(gens).forEach(function (code) {
         var g = gens[code], p = plants[code];
@@ -527,16 +744,86 @@ function round(v, dp) {
         if (statusCode === 'SB') standby++;
         if (g.plannedRetirementYear !== null) plannedRetire++;
 
+        // ---- Counterparty -------------------------------------------------------------
+        var u = p.utilityId ? utilities[p.utilityId] : null;
+        if (u) usedUtilities[p.utilityId] = true;
+        if (u && u.address) {
+            cp.operatorAddress++;
+            // Two caveats worth counting rather than asserting: half of these addresses are
+            // nowhere near the plant, and one in fourteen is a post box. Both change what the
+            // address is good for, and both go on screen.
+            if (u.state && p.state && u.state !== p.state) cp.operatorOutOfState++;
+            if (/^\s*p\.?\s*o\.?\s*box/i.test(u.address)) cp.operatorPoBox++;
+        }
+        if (p.address) cp.siteAddress++;
+        if (p.gridVoltageKv !== null) cp.gridVoltage++;
+        if (p.qfDocket || p.cogenDocket) cp.qfDocket++;
+
+        var ownState = ownershipStateOf(g.ownership);
+        var ownRows = owners[code] || null;
+        if (ownState === 'sole_operator') cp.sole++;
+        else if (ownState === 'third_party') cp.thirdParty++;
+        else if (ownState === 'joint') cp.joint++;
+        else if (ownState === 'mixed') cp.mixed++;
+        else cp.ownershipUnknown++;
+        if (ownRows && ownRows.length) {
+            cp.ownerRows++;
+            var names = {};
+            ownRows.forEach(function (o) { names[o.name] = true; });
+            if (Object.keys(names).length > 1) cp.multiOwner++;
+            // Counted, never resolved by picking a winner. The filing disagrees with itself and
+            // saying so is more useful than choosing.
+            if (ownState === 'sole_operator') cp.soleButOwnerRowExists++;
+            // The mirror contradiction: coded as wholly owned by ANOTHER entity, then naming the
+            // operator as that entity. Bradford Solar is operated by Bradford Solar, LLC and owned
+            // by Bradford Solar, LLC. Reported for the same reason.
+            if (ownState === 'third_party' &&
+                ownRows.some(function(o) { return o.name === p.utility; })) {
+                cp.thirdPartyOwnerIsOperator++;
+            }
+            var gsets = {};
+            ownRows.forEach(function (o) { gsets[o.generators.slice().sort().join(',')] = true; });
+            if (Object.keys(gsets).length > 1) cp.generatorsDisagreeOnOwners++;
+        }
+        // Cross-check, not a field. EIA states the regulatory status outright; the adapter infers
+        // an offtake state from the sector. Where the two disagree the inference is the weaker
+        // claim, and the count belongs in the metadata so nobody has to re-measure it.
+        if (p.regulatoryStatus && p.sector) {
+            var regSaysRegulated = String(p.regulatoryStatus).toUpperCase().indexOf('RE') === 0;
+            var sectorSaysRegulated = /electric utility/i.test(p.sector);
+            if (regSaysRegulated !== sectorSaysRegulated) cp.offtakeDisagreesWithRegulatoryStatus++;
+        }
+
         out.push({
             id: 'eia_' + code,
             plantCode: code,
             name: p.name,
             operator: p.utility,
+            // The stable key for the counterparty. Grouping by the NAME mis-groups the four
+            // duplicated names; see the note on loadUtilities.
+            utilityId: p.utilityId,
             lat: round(p.lat, 5),
             lon: round(p.lon, 5),
             state: p.state,
             county: p.county,
             sector: p.sector,
+            address: p.address,
+            city: p.city,
+            zip: p.zip,
+            gridVoltageKv: p.gridVoltageKv,
+            transmissionOwner: p.transmissionOwner,
+            // Deliberately NOT shipped, though all four are read above: balancingAuthority,
+            // regulatoryStatus, gasPipeline and gasLdc. Nothing renders them, and this artifact
+            // is fetched before the prospects tab can draw anything -- 46 KB gzipped to carry
+            // four fields on the chance they are wanted later is a cost paid on every load.
+            // regulatoryStatus still earns its keep at build time as the cross-check below.
+            qfDocket: p.qfDocket,
+            cogenDocket: p.cogenDocket,
+            ownership: ownState,
+            // Emitted ONLY where the filing has rows. An empty array on the other 8,253 records
+            // would cost real bytes on an artifact that loads before anything can be drawn, and
+            // would read as "we looked and there are no owners" rather than "none was filed".
+            owners: (ownRows && ownRows.length) ? ownRows : undefined,
             nameplateMw: round(g.mw, 3),
             retiredMw: g.retiredMw > 0 ? round(g.retiredMw, 3) : null,
             units: g.units,
@@ -567,6 +854,40 @@ function round(v, dp) {
     // Deterministic order: by plant code, which is stable across releases.
     out.sort(function (a, b) { return a.plantCode - b.plantCode; });
 
+    // ---- The companies map ---------------------------------------------------------------
+    // One entry per utility that operates at least one KEPT facility — 4,084, not all 6,643.
+    // Keyed by Utility ID as a string.
+    //
+    // The rollup is the commercial point of keying this separately rather than inlining six
+    // fields on every facility: 3,408 of these operate exactly one catalogued plant, but one call
+    // to the largest puts nearly 200 on the table. Inlining also measured 1,351 KB against 833 KB
+    // for the map.
+    var companies = {};
+    Object.keys(usedUtilities).forEach(function (uid) {
+        var u = utilities[uid];
+        if (!u) return;
+        companies[uid] = {
+            utilityId: uid, name: u.name, address: u.address, city: u.city,
+            state: u.state, zip: u.zip,
+            entityType: u.entityType, entityTypeLabel: u.entityTypeLabel,
+            plants: 0, totalKw: 0, states: {},
+            // Deliberately NOT called sizeClass. That name already means "AER active well
+            // licences" on the Alberta companies, and the Alberta-only "small operators" filter
+            // reads it. Reusing the name would silently change what that control matches.
+            portfolioBasis: 'EIA-860 plants under ' + MAX_MW + ' MW in this catalog — a ' +
+                            'catalogued footprint, not company size',
+            contactRegistry: 'US EIA Form 860 Schedule 1 (utility registry)'
+        };
+    });
+    out.forEach(function (f) {
+        var c = f.utilityId ? companies[f.utilityId] : null;
+        if (!c) return;
+        c.plants++;
+        c.totalKw += Math.round((f.nameplateMw || 0) * 1000);
+        if (f.state) c.states[f.state] = (c.states[f.state] || 0) + 1;
+    });
+    cp.companies = Object.keys(companies).length;
+
     var payload = sortKeys({
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
@@ -589,6 +910,36 @@ function round(v, dp) {
         lagNote: 'EIA-923 has monthly and annual respondents. Most small plants file annually, so ' +
                  'their most recent figures lag the monthly filers by about a year. Every facility ' +
                  'carries lastDataMonth; a capacity factor should not be read as current without it.',
+        ownerSource: 'US EIA Form 860 Schedule 1 (utility registry), Schedule 3 (generator ' +
+                     'ownership code) and Schedule 4 (ownership). Joined on Utility ID and Plant ' +
+                     'Code — the primary keys of the form itself, never on a name.',
+        // Every one of these carries its own number, so a caveat cannot drift away from the data
+        // it describes without a test noticing.
+        ownershipNote: 'Who owns the plant comes from the Schedule 3 ownership code, present on ' +
+                       'every facility here: ' + cp.sole + ' report single ownership by the ' +
+                       'operator, ' + cp.thirdParty + ' are wholly owned by someone else, ' +
+                       cp.joint + ' are jointly owned and ' + cp.mixed + ' are mixed across their ' +
+                       'generators. An ABSENT Schedule 4 row is not the evidence for sole ' +
+                       'ownership — the S code is. ' + cp.soleButOwnerRowExists + ' plants are ' +
+                       'coded as solely owned yet carry an ownership row, and ' +
+                       cp.thirdPartyOwnerIsOperator + ' are coded as owned by another entity ' +
+                       'which then turns out to be the operator. Both contradictions are ' +
+                       'reported, not resolved. Note that shares are filed PER GENERATOR, so a ' +
+                       'plant with two wholly-owned generators legitimately sums to 200% and ' +
+                       'must never be averaged into a single plant-level figure.',
+        unitTrap: 'EIA Schedule 4 publishes "Percent Owned" as a FRACTION, not a percentage — ' +
+                  'plant 51\'s four owners read 0.5, 0.0586, 0.039 and 0.4024, summing to 1.0. ' +
+                  'This artifact emits sharePct already multiplied by 100. Rendering the raw ' +
+                  'column would report a 100% owner as owning 1%.',
+        contactNote: 'EIA-860 publishes a MAILING ADDRESS and an entity type. It publishes no ' +
+                     'telephone number and no named individual, so unlike the Alberta operators ' +
+                     'there is no number to call. ' + cp.operatorOutOfState + ' of ' +
+                     cp.operatorAddress + ' operator addresses are in a different state from the ' +
+                     'plant and ' + cp.operatorPoBox + ' are post boxes: this is the company\'s ' +
+                     'filing address, not the site office.',
+        addressNote: 'Plant street addresses are as filed. Some carry no house number ' +
+                     '("Unnamed Road", a creek, a township), which is what the operator reported ' +
+                     'rather than a gap in this artifact.',
         counts: {
             facilities: out.length,
             declining: declines,
@@ -597,8 +948,27 @@ function round(v, dp) {
             droppedTooBig: dropped.tooBig,
             droppedNoCapacity: dropped.noCapacity,
             droppedNoLocation: dropped.noLocation,
-            droppedNoGeneration: dropped.noGeneration
+            droppedNoGeneration: dropped.noGeneration,
+            companies: cp.companies,
+            operatorsWithMailingAddress: cp.operatorAddress,
+            operatorAddressOutOfState: cp.operatorOutOfState,
+            operatorAddressPoBox: cp.operatorPoBox,
+            plantsWithSiteAddress: cp.siteAddress,
+            plantsWithGridVoltage: cp.gridVoltage,
+            plantsWithQfDocket: cp.qfDocket,
+            ownershipSole: cp.sole,
+            ownershipThirdParty: cp.thirdParty,
+            ownershipJoint: cp.joint,
+            ownershipMixed: cp.mixed,
+            ownershipUnknown: cp.ownershipUnknown,
+            plantsWithOwnerRows: cp.ownerRows,
+            plantsWithMoreThanOneOwner: cp.multiOwner,
+            ownershipCodeSaysSoleButSchedule4RowExists: cp.soleButOwnerRowExists,
+            ownershipThirdPartyButOwnerIsOperator: cp.thirdPartyOwnerIsOperator,
+            plantsWhereGeneratorsDisagreeOnOwners: cp.generatorsDisagreeOnOwners,
+            offtakeDisagreesWithRegulatoryStatus: cp.offtakeDisagreesWithRegulatoryStatus
         },
+        companies: companies,
         facilities: out
     });
 

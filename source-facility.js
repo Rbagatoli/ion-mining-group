@@ -181,6 +181,11 @@ var FacilitySource = (function() {
             // every facility displayed as "operator not identified".
             operator: f.operator || null,
             operatorSource: f.operator ? 'EIA-860 utility of record' : null,
+            // The utility's own id, which is what the counterparty is actually keyed by. Among
+            // the 9,765 plants here there are 4,084 distinct Utility IDs behind only 4,080
+            // names -- Merck & Co Inc is 12311 in Rahway NJ and 12320 in Elkton VA, with
+            // different addresses. Grouping on the name merges them.
+            operatorId: f.utilityId || null,
             // Nameplate in kW. Effective capacity is nameplate x duty cycle, applied downstream
             // by site-opportunity.js, so this stays the honest nameplate figure.
             powerPotentialKw: f.nameplateMw === null ? null : Math.round(f.nameplateMw * 1000),
@@ -211,6 +216,25 @@ var FacilitySource = (function() {
             }],
             sourceDetail: {
                 plantCode: f.plantCode,
+                // ---- Counterparty. EIA-860 Schedules 1-4, joined on Utility ID and Plant Code.
+                utilityId: f.utilityId,
+                address: f.address,
+                city: f.city,
+                zip: f.zip,
+                // Who owns it, which is not who runs it: 1,294 of these plants are wholly owned
+                // by a third party, and of the 1,313 with a single owner filed, 1,307 name
+                // someone other than the operator. The seller signs, not the operator.
+                ownership: f.ownership || null,
+                owners: f.owners || null,
+                // The connection, and whose wires it is. Only 1,144 plants sit on their own
+                // operator's system, so for the rest this is a second counterparty.
+                gridVoltageKv: f.gridVoltageKv === undefined ? null : f.gridVoltageKv,
+                transmissionOwner: f.transmissionOwner || null,
+                // Verbatim. Formats in this one column include 98-53-000, 04-78-000. and
+                // QF16-134-000, so no URL template is right for a large minority -- the
+                // identifier is given and the lookup stays manual.
+                qfDocket: f.qfDocket || null,
+                cogenDocket: f.cogenDocket || null,
                 technology: f.technology,
                 primeMover: f.primeMover,
                 sector: f.sector,
@@ -246,6 +270,17 @@ var FacilitySource = (function() {
             },
             raw: null
         };
+    }
+
+    // The operator's registry record, by Utility ID. Deliberately a DIFFERENT function from
+    // SiteCatalog.companyFor(name): that one is name-keyed because the AER exposes no id in the
+    // flare join, and this one has a real integer key. Validating the shape means a name passed
+    // here by mistake fails visibly instead of returning a silent null forever.
+    function companyFor(utilityId) {
+        if (!_data || !_data.companies) return null;
+        var k = String(utilityId === null || utilityId === undefined ? '' : utilityId).trim();
+        if (!/^[0-9]+$/.test(k)) return null;
+        return Object.prototype.hasOwnProperty.call(_data.companies, k) ? _data.companies[k] : null;
     }
 
     function computeCapacity(f) {
@@ -287,6 +322,7 @@ var FacilitySource = (function() {
         load: load,
         meta: meta,
         dutyFor: dutyFor,
+        companyFor: companyFor,
         counterpartyFor: counterpartyFor,
         offtakeFor: offtakeFor,
         distressFor: distressFor,

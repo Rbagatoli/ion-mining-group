@@ -110,6 +110,9 @@ var SiteData = (function() {
         // data/operators.json, never typed by hand — that is what CONTACT_FIELDS are for.
         s.operator = null;
         s.operator_licence = null;
+        // The registry's own key for that company, where the registry has one. Sourced, never
+        // typed -- like operator itself.
+        s.operator_id = null;
         s.operator_source = null;
         s.operator_distance_m = null;
 

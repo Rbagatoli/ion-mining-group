@@ -17,6 +17,11 @@ var MapSourcing = (function() {
     var _prevPOV = null;             // camera to restore when leaving focus
     var _ignoreNextDocClick = false; // set by select(); see installDismiss()
     var _companyFilter = null;       // when set, show only this operator's sites
+    // The same drill-down, by the registry's own key where one exists. Matching on the NAME
+    // alone merges the four US utility names that belong to two different companies -- the
+    // Rahway Merck plant used to drag in the Elkton one -- which is this project's own banned
+    // name-matching pattern turned inward.
+    var _companyFilterId = null;
 
     var MINER_WATTS = SiteEngine.DEFAULT_CONFIG.minerWatts;
 
@@ -734,7 +739,7 @@ var MapSourcing = (function() {
         }
         if (_companyFilter) {
             out.push({ key: 'company', label: 'Operator: ' + _companyFilter,
-                       clear: function() { _companyFilter = null; } });
+                       clear: function() { _companyFilter = null; _companyFilterId = null; } });
         }
         return out;
     }
@@ -750,6 +755,7 @@ var MapSourcing = (function() {
         }
         _srcFilter = {};
         _companyFilter = null;
+        _companyFilterId = null;
         renderSourceFilter();
         paintSizeRange();
         renderSizeHint();
@@ -904,6 +910,7 @@ var MapSourcing = (function() {
         keep.forEach(function(id) { _srcFilter[id] = true; });
 
         _companyFilter = null;
+        _companyFilterId = null;
         renderSourceFilter();
         paintSizeRange();
         renderSizeHint();
@@ -1183,6 +1190,10 @@ var MapSourcing = (function() {
         }
         if (_companyFilter) {
             matches = matches.filter(function(c) {
+                // Prefer the id on both sides. A candidate without one is not excluded by that
+                // alone -- flares and landfills have no registry key at all -- so it falls back
+                // to the name, exactly as an unmeasured field is treated everywhere else.
+                if (_companyFilterId && c.operatorId) return c.operatorId === _companyFilterId;
                 var o = operatorRecord(c);
                 return o && o.operator === _companyFilter;
             });
@@ -1546,11 +1557,46 @@ var MapSourcing = (function() {
     // CSV of whatever the worklist is currently showing. Outreach happens in a spreadsheet, a
     // phone and an inbox — not in this app — so the export carries the fields someone actually
     // needs to make contact, not the scoring internals.
+    // Outreach happens in a spreadsheet, and a mail merge needs somewhere to send the letter.
+    // Until now this exported a counterparty name with no way to reach them, which is the same
+    // gap the whole EIA Schedule 1/4 join exists to close.
+    //
+    // The address is resolved at export time from the companies map rather than copied onto the
+    // saved record: it is SOURCED data with its own rebuild cadence, and a copy on the record
+    // would silently go stale against the registry while looking authoritative.
     function worklistCsv() {
-        var rows = worklistRows();
+        var rows = worklistRows().map(function(r) {
+            var out = {}, k;
+            for (k in r) if (Object.prototype.hasOwnProperty.call(r, k)) out[k] = r[k];
+            var co = (r.operator_id && typeof FacilitySource !== 'undefined' && FacilitySource.companyFor)
+                ? FacilitySource.companyFor(r.operator_id) : null;
+            if (!co && r.operator && typeof SiteCatalog !== 'undefined' && SiteCatalog.companyFor) {
+                co = SiteCatalog.companyFor(r.operator);
+            }
+            out.operator_address = co ? (co.address || '') : '';
+            out.operator_city    = co ? (co.city || '') : '';
+            out.operator_state   = co ? (co.state || '') : '';
+            out.operator_zip     = co ? (co.zip || '') : '';
+            out.operator_phone   = co ? (co.phone || '') : '';
+            // The counterparty who actually signs, where the filing distinguishes them from the
+            // operator. Blank is not "the operator owns it" -- it is "no separate owner filed".
+            var cand = (typeof ProspectStore !== 'undefined' && ProspectStore.get)
+                ? ProspectStore.get(r.id) : null;
+            var sd = (cand && cand.sourceDetail) || {};
+            out.owner_name = (Array.isArray(sd.owners) && sd.owners.length)
+                ? sd.owners.map(function(o) { return o.name; }).join(' | ') : '';
+            out.ownership  = sd.ownership || '';
+            out.site_address = [sd.address, sd.city, sd.state, sd.zip].filter(Boolean).join(', ');
+            return out;
+        });
+        // `notes` was in this list and nothing anywhere writes site.notes, so the column shipped
+        // empty on every row of every export. contact_notes is the one that is actually editable.
         var cols = ['name', 'stage', 'status', 'operator', 'contact_name', 'contact_role',
-                    'contact_email', 'contact_phone', 'jurisdiction', 'usable_kw',
-                    'development_stage', 'latitude', 'longitude', 'notes', 'updated'];
+                    'contact_email', 'contact_phone', 'contact_notes',
+                    'operator_address', 'operator_city', 'operator_state', 'operator_zip',
+                    'operator_phone', 'owner_name', 'ownership', 'site_address',
+                    'jurisdiction', 'usable_kw',
+                    'development_stage', 'latitude', 'longitude', 'updated'];
         function cell(v) {
             if (v === null || v === undefined) return '';
             var t = String(v);
@@ -1590,7 +1636,9 @@ var MapSourcing = (function() {
             ex.addEventListener('click', function() {
                 var rows = worklistRows();
                 if (!rows.length) { status('Nothing to export at this stage.', '#c85'); return; }
-                var blob = new Blob([worklistCsv()], { type: 'text/csv;charset=utf-8;' });
+                // The BOM is what makes Excel read this as UTF-8 rather than the system
+                // codepage; without it every accented company name arrives mangled.
+                var blob = new Blob(['﻿' + worklistCsv()], { type: 'text/csv;charset=utf-8;' });
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
@@ -2619,13 +2667,69 @@ var MapSourcing = (function() {
         });
     }
 
-    // The licensee's company record, where one exists. Carries the ST104 address and phone and,
-    // for Alberta, the well counts behind the size class.
+    // The counterparty's company record, whichever registry published it. One function, so the
+    // call sheet, the size class and the contact block can never read different records for the
+    // same company.
+    //
+    // Keyed by ID where the source has one and by name only where it does not. That is not a
+    // stylistic preference: among the 9,765 US plants there are 4,084 distinct Utility IDs behind
+    // 4,080 names, so a name lookup hands eight plants a coin flip between two real addresses.
+    // The AER publishes no id in the flare join, so Alberta stays name-keyed and says so.
     function operatorCompany(c) {
+        if (c && c.operatorId && typeof FacilitySource !== 'undefined' && FacilitySource.companyFor) {
+            var byId = FacilitySource.companyFor(c.operatorId);
+            if (byId) return byId;
+        }
         var rec = operatorRecord(c);
         if (!rec || !rec.operator) return null;
         return (typeof SiteCatalog !== 'undefined' && SiteCatalog.companyFor)
             ? SiteCatalog.companyFor(rec.operator) : null;
+    }
+
+    // Ownership, as the filing states it. Rendered as a separate ROLE from the operator, never
+    // merged with it: 1,294 US plants are wholly owned by a third party and 1,307 of the 1,313
+    // with a single owner filed name someone other than the operator. Buying from the operator is
+    // buying from the wrong company.
+    //
+    // The evidence for sole ownership is the Schedule 3 code, not the absence of a Schedule 4
+    // row. Those nearly coincide and are different claims -- reasoning from an absent row would
+    // go on asserting sole ownership if the column ever disappeared.
+    function ownershipHtml(sdc) {
+        if (!sdc || !sdc.ownership) return '';
+        var owners = Array.isArray(sdc.owners) ? sdc.owners : [];
+        function line(o) {
+            var where = [o.address, o.city, o.state, o.zip].filter(Boolean).join(', ');
+            return '<div class="src-reg-row"><span class="src-reg-k">' +
+                (o.sharePct === null || o.sharePct === undefined
+                    ? '<span class="src-gap">share not filed</span>'
+                    : esc(String(o.sharePct)) + '%') + '</span>' +
+                '<span class="src-reg-v"><strong>' + esc(o.name) + '</strong>' +
+                (where ? '<br><a target="_blank" rel="noopener" ' +
+                    'href="https://www.google.com/maps/search/?api=1&query=' +
+                    encodeURIComponent(where) + '">' + esc(where) + '</a>' : '') +
+                '</span></div>';
+        }
+        if (sdc.ownership === 'sole_operator') {
+            return '<p class="src-note">The operator reports <strong>single ownership</strong> of ' +
+                   'this plant (EIA-860 Schedule 3). No separate owner is filed.' +
+                   (owners.length ? ' <span class="src-disagree">Though an ownership row exists ' +
+                        'for it, which contradicts that code — both are shown as filed.</span>' +
+                        '<div class="src-registry">' + owners.map(line).join('') + '</div>' : '') +
+                   '</p>';
+        }
+        var lead = sdc.ownership === 'third_party'
+                ? (owners.length === 1
+                    ? 'Owned by <strong>' + esc(owners[0].name) + '</strong> — the operator is not the owner.'
+                    : 'Wholly owned by an entity other than the operator.')
+              : sdc.ownership === 'joint'
+                ? 'Jointly owned by <strong>' + fmtInt(owners.length) + '</strong> ' +
+                  'part' + (owners.length === 1 ? 'y' : 'ies') + '. A sale needs all of them.'
+              : 'Ownership is <strong>mixed</strong> across the generators of this plant — ' +
+                'some are owned by the operator and some are not.';
+        return '<p class="src-note src-disagree">' + lead + '</p>' +
+               (owners.length ? '<div class="src-registry">' + owners.map(line).join('') + '</div>' : '') +
+               '<p class="src-note">Owner of record, from EIA-860 Schedule 4. The signature on a ' +
+               'sale belongs to the owner, not to the operator.</p>';
     }
     function operatorSizeClass(c) {
         var co = operatorCompany(c);
@@ -3121,10 +3225,27 @@ var MapSourcing = (function() {
             var addrParts = sdc.address
                 ? [sdc.address, sdc.city, sdc.state, sdc.zip].filter(Boolean) : [];
             var oq = encodeURIComponent(op.operator + ' contact');
+            var coF = operatorCompany(c);
             html += '<div class="src-op-big">' + esc(op.operator) + '</div>';
-            html += '<p class="src-note">Owner of record' +
+            // "Operator of record" where the source distinguishes the two roles, "owner" only
+            // where it genuinely publishes the owner. LMOP names the landfill owner; EIA-860
+            // names the OPERATOR, and calling that the owner was wrong on 1,294 plants.
+            html += '<p class="src-note">' +
+                (sdc.ownership ? 'Operator of record' : 'Owner of record') +
                 (op.source ? ', per ' + esc(op.source) : '') + '.' +
+                (coF && coF.entityTypeLabel ? ' ' + esc(coF.entityTypeLabel) + '.' : '') +
                 (sdc.ownershipType ? ' ' + esc(sdc.ownershipType) + ' ownership.' : '') + '</p>';
+
+            // The operator's own filing address. This is the deliverable: before it, the app
+            // could identify 9,765 US plants and 4,080 companies and reach none of them.
+            if (coF && coF.address) {
+                var mail = [coF.address, coF.city, coF.state, coF.zip].filter(Boolean).join(', ');
+                html += '<div class="src-registry"><div class="src-reg-row">' +
+                    '<span class="src-reg-k">Mailing address</span>' +
+                    '<a class="src-reg-v" target="_blank" rel="noopener" ' +
+                    'href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mail) + '">' +
+                    esc(mail) + '</a></div></div>';
+            }
             if (addrParts.length) {
                 var addr = addrParts.join(', ');
                 html += '<div class="src-registry"><div class="src-reg-row">' +
@@ -3135,9 +3256,57 @@ var MapSourcing = (function() {
                     '<p class="src-note">The site\'s own postal address, not the owner\'s head office. ' +
                     'Useful for identifying the operating company and the local contact.</p>';
             }
-            html += '<p class="src-note">No phone or named individual is published for this owner. ' +
+            // Who actually owns it, as a separate role.
+            html += ownershipHtml(sdc);
+
+            // Whose wires. Only 1,144 of the 9,765 plants sit on their own operator's
+            // system, so for the rest this names a SECOND counterparty you have to deal
+            // with -- which is why it sits in the contact block and not among the
+            // technical figures.
+            if (sdc.gridVoltageKv !== null && sdc.gridVoltageKv !== undefined) {
+                html += '<div class="src-registry"><div class="src-reg-row">' +
+                    '<span class="src-reg-k">Grid connection</span><span class="src-reg-v">' +
+                    esc(String(sdc.gridVoltageKv)) + ' kV' +
+                    (sdc.transmissionOwner
+                        ? ' &middot; wires owned by <strong>' + esc(sdc.transmissionOwner) + '</strong>'
+                        : '') + '</span></div></div>';
+            }
+
+            // The QF docket, verbatim. Formats in this one column include 98-53-000,
+            // 04-78-000. and QF16-134-000, so every URL template is wrong for a large
+            // minority -- the identifier is given and the lookup stays manual, the same
+            // treatment PACER and the state UCC registries got.
+            var dkt = sdc.qfDocket || sdc.cogenDocket || null;
+            if (dkt) {
+                html += '<div class="src-registry"><div class="src-reg-row">' +
+                    '<span class="src-reg-k">FERC QF docket</span><span class="src-reg-v">' +
+                    esc(dkt) + '</span></div></div>' +
+                    '<p class="src-note">Their qualifying-facility self-certification. Look ' +
+                    'it up by hand in FERC eLibrary → the docket format varies too much ' +
+                    'to link reliably.</p>';
+            }
+
+            html += '<p class="src-note">' +
+                (coF && coF.address
+                    ? 'That is the company filing address, not the site office, and no ' +
+                      'phone or named individual is published. '
+                    : 'No phone or named individual is published for this counterparty. ') +
                 '<a href="https://duckduckgo.com/?q=' + oq + '" target="_blank" rel="noopener">' +
                 'Search the web for ' + esc(op.operator) + ' →</a></p>';
+
+            // One call can put several sites on the table. 3,408 of the 4,084 US operators
+            // run exactly one plant in this catalog, which is what makes the ones that do
+            // not worth surfacing.
+            if (coF && coF.plants > 1) {
+                html += '<div class="src-portfolio">' +
+                    '<strong>' + esc(op.operator) + '</strong> operates <strong>' +
+                    fmtInt(coF.plants) + '</strong> catalogued plants totalling <strong>' +
+                    fmtKw(coF.totalKw) + '</strong>' +
+                    (coF.states ? ' across ' + Object.keys(coF.states).sort().join(', ') : '') + '.' +
+                    ' <button class="src-linkbtn" id="srcShowCompany" data-company="' +
+                    esc(op.operator) + '" data-company-id="' + esc(coF.utilityId || '') + '">' +
+                    'Show all their sites →</button></div>';
+            }
         } else if (op) {
             var co = SiteCatalog.companyFor(op.operator);
             var q = encodeURIComponent(op.operator + (co && co.ticker ? '' : ' oil gas company') + ' contact');
@@ -3166,8 +3335,12 @@ var MapSourcing = (function() {
                     (co.wellsLicensed && co.wellsLicensed > co.wellsActive
                         ? ' of ' + fmtInt(co.wellsLicensed) + ' ever issued' : '') +
                     '</span></div></div>' +
-                    '<p class="src-note">' + esc(szHint) + ' Counted from the AER ST37 licence ' +
-                    'list; this is their Alberta position, not their company size.</p>';
+                    // The basis comes off the record, not out of this file. A second registry
+                    // with a different well-count basis would otherwise be described as the
+                    // AER's, and the fix for that must never be an iso3 === 'CAN' branch.
+                    '<p class="src-note">' + esc(szHint) +
+                    (co.sizeBasis ? ' Counted from ' + esc(co.sizeBasis) + ';' : ' This is') +
+                    ' their position in that registry, not their company size.</p>';
             }
 
             // Registry contact details, where the regulator publishes them.
@@ -3181,7 +3354,10 @@ var MapSourcing = (function() {
                     (co.baCode ? '<div class="src-reg-row"><span class="src-reg-k">AER BA code</span><span class="src-reg-v">' +
                         esc(co.baCode) + (co.eligibility ? ' · ' + esc(co.eligibility) + ' licence eligibility' : '') + '</span></div>' : '') +
                     '</div>' +
-                    '<p class="src-note">Published in the AER ST104 business associate registry. This is the company\'s ' +
+                    '<p class="src-note">Published in ' +
+                    // Named by the record, so a second registry cannot be described as the AER's.
+                    esc(co.contactRegistry || 'the AER ST104 business associate registry') +
+                    '. This is the company\'s ' +
                     'switchboard and registered office — not a named individual, and not a direct line.</p>';
             }
 
@@ -3329,10 +3505,37 @@ var MapSourcing = (function() {
                 bits.push(esc({ micro: 'Micro', small: 'Small', mid: 'Mid-size', major: 'Major' }[co.sizeClass]) +
                           ' · ' + fmtInt(co.wellsActive) + ' active AB wells');
             }
+            // Where no phone is published, the filing address is the contact route, so it belongs
+            // on the sheet rather than two clicks away inside Terms & contact. Town and state is
+            // what identifies the company on a call; the full address stays in the group.
+            if (!(co && co.phone) && co && co.address) {
+                bits.push(esc([co.city, co.state].filter(Boolean).join(', ')));
+            }
             callLine = '<div class="src-callop"><span class="src-op-big">' + esc(op.operator) + '</span>' +
                 (bits.length ? '<span class="src-callmeta">' + bits.join(' · ') + '</span>' : '') +
-                (co && co.phone ? '' : '<span class="src-gap">no published phone</span>') +
+                (co && co.phone ? '' : '<span class="src-gap">' +
+                    (co && co.address ? 'no published phone — postal address only'
+                                      : 'no published phone') + '</span>') +
                 '</div>';
+            // The one fact that decides whether this call is even with the right company. 1,294
+            // US plants are owned by somebody other than the operator named above, and finding
+            // that out two clicks into a collapsed panel is finding it out too late.
+            var sdCall = c.sourceDetail || {};
+            if (sdCall.ownership && sdCall.ownership !== 'sole_operator') {
+                var ownNames = (Array.isArray(sdCall.owners) ? sdCall.owners : [])
+                    .map(function(o) { return o.name; });
+                callLine += '<div class="src-callown src-disagree">' +
+                    (sdCall.ownership === 'joint'
+                        ? 'Jointly owned — ' + (ownNames.length
+                            ? esc(ownNames.join(', ')) : fmtInt(ownNames.length) + ' parties') +
+                          '. A sale needs all of them.'
+                        : sdCall.ownership === 'mixed'
+                        ? 'Ownership is mixed across the generators — the operator owns some ' +
+                          'of this plant and not the rest.'
+                        : 'Owned by ' + (ownNames.length ? '<strong>' + esc(ownNames.join(', ')) +
+                            '</strong>' : 'another entity') + ', not by the operator.') +
+                    '</div>';
+            }
         } else {
             callLine = '<div class="src-callop">' + gap('operator not identified') + '</div>';
         }
@@ -3413,6 +3616,7 @@ var MapSourcing = (function() {
         var showCo = document.getElementById('srcShowCompany');
         if (showCo) showCo.addEventListener('click', function() {
             _companyFilter = this.dataset.company;
+            _companyFilterId = this.dataset.companyId || null;
             _ignoreNextDocClick = true;
             exitFocus(true);
             applyFilters();
