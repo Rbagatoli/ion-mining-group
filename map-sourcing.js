@@ -724,6 +724,11 @@ var MapSourcing = (function() {
         _companyFilter = null;
         renderSourceFilter();
         paintSizeRange();
+        // Exit focus from the ranked table's count row. Delegated on document because the button
+        // is re-rendered on every table paint.
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'tblUnfocus') { _ignoreNextDocClick = true; exitFocus(); }
+        });
         renderSizeHint();
         saveFilters();
         saveFiltersSources();
@@ -895,8 +900,8 @@ var MapSourcing = (function() {
         paintSizeRange();
         renderSizeHint();
         renderActiveBar();
+        renderMoreFiltersCount();
         renderSummary(matches);
-        renderList();
         renderTable();
         if (_focused) exitFocus(true);
         else renderMapLayer();
@@ -943,40 +948,14 @@ var MapSourcing = (function() {
     }
 
     // ---- list -----------------------------------------------------------------------
-    function renderList() {
-        var listEl = document.getElementById('srcList');
-        var countEl = document.getElementById('srcCount');
-        var meta = SiteCatalog.meta();
-        var shown = _filtered.slice(0, 300);
-
-        countEl.innerHTML = fmtInt(_filtered.length) + ' prospect' + (_filtered.length === 1 ? '' : 's') +
-            (_filtered.length > shown.length ? ' — top ' + shown.length + ' shown' : '') +
-            (_companyFilter ? ' <button class="src-unfocus" id="srcClearCompany">× ' + esc(_companyFilter) + '</button>' : '') +
-            (_focused ? ' <button class="src-unfocus" id="srcUnfocus">← All prospects</button>' : '');
-
-        if (!_filtered.length) {
-            listEl.innerHTML = emptyStateHtml('No sites match.');
-            return;
-        }
-
-        var html = '';
-        for (var i = 0; i < shown.length; i++) {
-            var c = shown[i].candidate;
-            var op = operatorRecord(c);
-            html += '<div class="src-row' + (c.id === _selectedId ? ' sel' : '') + '" data-id="' + esc(c.id) + '">' +
-                '<label class="pf-check" title="Include in portfolio"><input type="checkbox" data-pf="' + esc(c.id) + '"' +
-                (_portfolio[c.id] ? ' checked' : '') + '></label>' +
-                '<div><div class="t">' + esc(placeLabel(c)) + tierBadge(c.iso3) + '</div>' +
-                '<div class="s">' + (op ? '<span class="src-op">' + esc(op.operator) + '</span>'
-                                        : '<span class="src-gap">operator not identified</span>') + '</div>' +
-                '<div class="s">seen ' + c.yearsSeen + '/' + (meta ? meta.years.length : '?') + ' yr' +
-                (c.trend ? ' · ' + esc(c.trend) : '') + burningBadge(c) + '</div></div>' +
-                '<div><div class="kw">' + fmtKw(c.powerPotentialKw) + '</div>' +
-                '<div class="yr">' + fmtInt(Math.floor(c.powerPotentialKw * 1000 / MINER_WATTS)) + ' miners</div></div>' +
-                '</div>';
-        }
-        listEl.innerHTML = html;
-    }
+    // The side list that used to sit beside the map has been REMOVED. It mirrored the ranked
+    // table below it — same prospects, same order, fewer columns — so the page showed one list
+    // twice and the two could disagree about what was selected. The table is strictly richer
+    // (sorting, the acquisition view, the cross-dataset link chips), so the list was the one to
+    // go, and the map gained its 340 px.
+    //
+    // Its one unique control, the portfolio tick, moved into the table as a column rather than
+    // being lost with it.
 
     // ---- Data provenance ---------------------------------------------------------------
     // Each artifact already carries its own generated date and its own caveats, written when the
@@ -1121,21 +1100,74 @@ var MapSourcing = (function() {
     // Collapsed by default: it is reference material at the foot of the page, and expanding it
     // is one click. The choice is remembered so it does not have to be made twice.
     var PROV_KEY = 'ionMiningProvOpen';
-    function wireProvenance() {
-        var btn = document.getElementById('provToggle'), card = document.getElementById('provCard');
-        if (!btn || !card) return;
-        function apply(open) {
-            card.hidden = !open;
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    // ---- Disclosure --------------------------------------------------------------------
+    //
+    // One implementation for every collapsible section on this page: the provenance panel, the
+    // secondary filters, and the four groups in the site detail. Generalised from the provenance
+    // panel rather than reinvented, so the accessibility contract and the persistence behave the
+    // same everywhere.
+    //
+    // `hidden` on the panel, NOT a class. Together with the [hidden]{display:none} pin in the
+    // stylesheet that means a closed panel genuinely does not render — a real trap caught
+    // earlier, when a test asserted `.hidden` (the attribute) and would have passed even while
+    // the panel was still painted.
+    //
+    // Each disclosure remembers its own state, so the sections a person actually uses stay open
+    // and the ones they do not stay shut.
+    // onChange fires after every toggle. Needed because a canvas cannot be measured inside a
+    // display:none container — Chart.js sizes it to 0 and draws nothing — so the trend chart has
+    // to be (re)drawn at the moment its group is opened.
+    function disclosure(btnId, panelId, storageKey, defaultOpen, onChange) {
+        var btn = document.getElementById(btnId), panel = document.getElementById(panelId);
+        if (!btn || !panel) return null;
+        var open = !!defaultOpen;
+        try {
+            var saved = localStorage.getItem(storageKey);
+            if (saved !== null) open = saved === '1';
+        } catch (e) { /* private mode — the default stands */ }
+
+        function apply(v) {
+            open = v;
+            panel.hidden = !v;
+            btn.setAttribute('aria-expanded', v ? 'true' : 'false');
         }
-        var open = false;
-        try { open = localStorage.getItem(PROV_KEY) === '1'; } catch (e) {}
         apply(open);
+        if (open && typeof onChange === 'function') onChange(true);
         btn.addEventListener('click', function() {
-            open = !open;
-            apply(open);
-            try { localStorage.setItem(PROV_KEY, open ? '1' : '0'); } catch (e) {}
+            apply(!open);
+            try { localStorage.setItem(storageKey, open ? '1' : '0'); } catch (e) {}
+            if (typeof onChange === 'function') onChange(open);
         });
+        return { isOpen: function() { return open; }, set: apply };
+    }
+
+    function wireProvenance() {
+        disclosure('provToggle', 'provCard', PROV_KEY, false);
+    }
+
+    // The secondary filter drawer. Its heading carries a count of how many hidden controls are
+    // actually doing something, so a filter that is off-screen is never also out of mind. The
+    // "Filtering by" bar underneath names them individually — this is the second of two
+    // statements, not the only one.
+    var MOREF_KEY = 'ionMiningProspectMoreFilters';
+    function wireMoreFilters() {
+        disclosure('moreFiltersToggle', 'moreFilters', MOREF_KEY, false);
+        renderMoreFiltersCount();
+    }
+    var HIDDEN_FILTER_IDS = ['fSources', 'fRegion', 'fRadius', 'fYears',
+                             'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
+    function renderMoreFiltersCount() {
+        var el = document.getElementById('moreFiltersCount');
+        if (!el) return;
+        // Counted from activeFilters() rather than re-derived, so the drawer's count and the bar
+        // below can never disagree about what is on.
+        var act = activeFilters();
+        var n = 0;
+        for (var i = 0; i < act.length; i++) {
+            if (HIDDEN_FILTER_IDS.indexOf(act[i].key) >= 0 || act[i].key === 'sources') n++;
+        }
+        el.textContent = n ? n + ' active' : '';
+        el.style.color = n ? '#f7931a' : '#777';
     }
 
     // ---- Outreach worklist -----------------------------------------------------------------
@@ -1418,6 +1450,15 @@ var MapSourcing = (function() {
             countEl.textContent = fmtInt(rows.length) + ' prospect' + (rows.length === 1 ? '' : 's') +
                 (anch ? ' within ' + fmtInt(anch.km) + ' km of the centre of ' + anch.name : '');
         }
+        // The way back out of focus mode. It used to live in the side list's count row; with that
+        // list gone this is the only exit besides clicking the page background, which is not
+        // discoverable.
+        var focusEl = document.getElementById('tblFocusOut');
+        if (focusEl) {
+            focusEl.innerHTML = _focused
+                ? '<button type="button" class="src-unfocus" id="tblUnfocus">&larr; All prospects</button>'
+                : '';
+        }
         // Never truncate silently — a capped list that says nothing reads as "this is all of it".
         if (capEl) {
             capEl.textContent = rows.length > shown.length
@@ -1426,7 +1467,7 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="13" style="padding:6px 10px 14px;">' +
+            body.innerHTML = '<tr><td colspan="14" style="padding:6px 10px 14px;">' +
                 emptyStateHtml(_tableView === 'acquisition'
                     ? 'No built assets match. The acquisition view shows only prospects at the ' +
                       'constructed stage or later — switching back to all prospects may be enough.'
@@ -1469,6 +1510,9 @@ var MapSourcing = (function() {
             var op = operatorRecord(c);
             var opp = opportunityFor(c);
             html += '<tr' + (c.id === _selectedId ? ' class="sel"' : '') + ' data-id="' + esc(c.id) + '">' +
+                '<td class="pf-col"><label class="pf-check" title="Include in portfolio">' +
+                    '<input type="checkbox" data-pf="' + esc(c.id) + '"' +
+                    (_portfolio[c.id] ? ' checked' : '') + '></label></td>' +
                 '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + linkChip(c) + '</td>' +
                 '<td><span class="src-srcchip">' + esc(energyLabel(c)) + '</span></td>' +
                 '<td>' + esc(c.iso3 || '--') + '</td>' +
@@ -1537,6 +1581,15 @@ var MapSourcing = (function() {
         var body = document.getElementById('srcTableBody');
         if (body) {
             body.addEventListener('click', function(e) {
+                // The portfolio tick is its own control. Moved here with the column when the
+                // duplicate side list was removed; without this the click bubbles on and opens
+                // the site instead of ticking the box.
+                if (e.target && e.target.dataset && e.target.dataset.pf) {
+                    _ignoreNextDocClick = true;
+                    togglePortfolio(e.target.dataset.pf, e.target.checked);
+                    return;
+                }
+                if (e.target.closest && e.target.closest('.pf-check')) return;
                 var tr = e.target.closest('tr[data-id]');
                 if (!tr) return;
                 select(tr.getAttribute('data-id'));
@@ -1850,7 +1903,6 @@ var MapSourcing = (function() {
         }
         _focused = true;
         renderMapLayer();
-        renderList();
         renderTable();
 
         if (globe) {
@@ -1871,7 +1923,6 @@ var MapSourcing = (function() {
     function exitFocus(skipCamera) {
         _focused = false;
         renderMapLayer();
-        renderList();
         renderTable();
         var globe = MapBridge.globe();
         if (globe && !skipCamera) {
@@ -1934,7 +1985,7 @@ var MapSourcing = (function() {
         document.addEventListener('click', function(e) {
             if (!_focused) return;
             if (_ignoreNextDocClick) { _ignoreNextDocClick = false; return; }
-            if (e.target.closest('#srcList')) return;            // selecting another prospect
+            if (e.target.closest('#srcTableBody')) return;       // selecting another prospect
             if (e.target.closest('#dBody')) return;               // reading / filling the detail
             if (e.target.closest('.src-filters, .src-checks')) return;
             exitFocus();
@@ -2148,11 +2199,26 @@ var MapSourcing = (function() {
         function row(dt, dd) { return '<dt>' + dt + '</dt><dd>' + dd + '</dd>'; }
         function gap(t) { return '<span class="src-gap">' + t + '</span>'; }
 
-        var html = '<div class="src-detailgrid">';
+        // ---- Grouping -------------------------------------------------------------------
+        //
+        // This panel reached 14 stacked sections, all expanded, every time — you had to read
+        // everything to find the one thing you opened it for. It is now a call sheet plus four
+        // disclosures.
+        //
+        // Sections are not moved. Each one writes a boundary marker naming the group it belongs
+        // to, and the assembler at the bottom splits on those markers and reassembles. That means
+        // the ~550 lines of section code below are untouched, so nothing can be lost in a
+        // reshuffle — and a section can change group later by editing one word.
+        var GROUP_MARK = String.fromCharCode(60) + '!--G:';
+        function mark(name) { html += GROUP_MARK + name + '-->'; }
+
+        var html = '';
+        mark('scores');
 
         // Opportunity breakdown. Shown component by component so the headline number can be
         // argued with rather than taken on faith, and so an unmeasured component reads as
         // "not surveyed" instead of silently dragging the score down.
+        mark('scores');
         html += '<div class="src-detail"><div class="section-label">Opportunity</div><dl>';
         if (opp.score === null) {
             html += row('Score', gap('nothing measurable for this prospect'));
@@ -2205,6 +2271,7 @@ var MapSourcing = (function() {
         var stageNow = SiteOpportunity.stageOf(c);
         var isFacility = stageNow && stageNow !== 'raw_resource';
         if (isFacility) {
+            mark('evidence');
             html += '<div class="src-detail"><div class="section-label">Facility</div><dl>';
             html += row('Development stage', stageCell(c));
             if (fsd.technology || fsd.projectType) {
@@ -2279,6 +2346,7 @@ var MapSourcing = (function() {
         var signals = (c.distressSignals || []).slice().filter(function(s) { return s && s.type; });
         if (signals.length) {
             signals.sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+            mark('evidence');
             html += '<div class="src-detail src-detail-wide"><div class="section-label">Distress timeline</div>';
             html += '<ul class="src-timeline">';
             for (var si = 0; si < signals.length; si++) {
@@ -2305,6 +2373,7 @@ var MapSourcing = (function() {
             ? sd.firstYear + ' – ' + sd.lastYear
             : (c.firstSeen && c.lastSeen ? esc(c.firstSeen) + ' – ' + esc(c.lastSeen) : gap('not recorded'));
 
+        mark('evidence');
         html += '<div class="src-detail"><div class="section-label">' + esc(sourceLabel(c)) + '</div><dl>' +
             row('Coordinates', c.lat.toFixed(4) + ', ' + c.lng.toFixed(4)) +
             row('Observed', obs) +
@@ -2332,6 +2401,7 @@ var MapSourcing = (function() {
                                          'figure above as an estimate rather than a rating' : '') +
                 '</div>';
         }
+        mark('capacity');
         html += '<div class="src-detail"><div class="section-label">Derived capacity</div><dl>' +
             row('Power potential', fmtKw(c.powerPotentialKw) + rangeNote) +
             row('Miners supported', fmtInt(m.max_miners)) +
@@ -2408,6 +2478,7 @@ var MapSourcing = (function() {
             var sibs = SiteLinks.siblings(c);
             var spanRec = SiteLinks.span(c);
             if (link || sibs || spanRec) {
+                mark('evidence');
                 html += '<div class="src-detail"><div class="section-label">Same physical asset</div><dl>';
                 if (link) {
                     var isFac = link.facilityId === c.id;
@@ -2455,6 +2526,7 @@ var MapSourcing = (function() {
             var capLabel = av.capacityType === 'physically_capped' ? 'Physical ceiling'
                          : av.capacityType === 'dispatch_limited' ? 'Dispatch limited'
                          : null;
+            mark('econ');
             html += '<div class="src-detail"><div class="section-label">Availability</div><dl>' +
                 row('Runs', av.dutyPct + '% of hours' +
                     '<div class="src-sub2">' + esc(av.note) + '</div>') +
@@ -2476,6 +2548,7 @@ var MapSourcing = (function() {
         // declared ~165 lines below, and `var` hoists the declaration without the assignment, so
         // touching it here throws and silently kills the rest of the panel.
         var savedTerms = findSavedSite(c.id) || {};
+        mark('pay');
         var quoted = (savedTerms.power_rate !== null && savedTerms.power_rate !== undefined)
             ? Number(savedTerms.power_rate) : null;
         if (m.max_power_rate_cash_usd !== null && m.max_power_rate_cash_usd !== undefined) {
@@ -2507,6 +2580,7 @@ var MapSourcing = (function() {
                 '</dl></div>';
         }
 
+        mark('econ');
         html += '<div class="src-detail"><div class="section-label">Economics <span class="src-assume">(your assumptions)</span></div><dl>' +
             row('Cash cost / BTC', m.cash_cost_per_btc === null ? gap('needs market data') : fmtUSD(m.cash_cost_per_btc)) +
             row('Break-even BTC', m.breakeven_btc_price === null ? gap('needs market data')
@@ -2536,9 +2610,13 @@ var MapSourcing = (function() {
             // Global assumptions belong to the scenario bar, which already owns them. The quoted
             // rate for THIS deal belongs in the Terms block, which now stores it.
 
-        html += '</div>';
+        // The `</div>` that used to sit here closed the single .src-detailgrid wrapper this
+        // function opened at the top. Each group now provides its own wrapper, so leaving this
+        // behind produced an unbalanced close: the browser reparented everything after it and the
+        // panel silently rendered five lines instead of a hundred and eighty.
 
         // ---- Who to contact -----------------------------------------------------
+        mark('contact');
         html += '<div class="src-contact"><div class="section-label">Who to contact</div>';
         // Non-flare sources: the owner is published directly by EIA-860 or LMOP, with a postal
         // address in the landfill case. Their record has no distance_m, because there is no
@@ -2718,16 +2796,88 @@ var MapSourcing = (function() {
             '<span id="srcSaveMsg" class="src-note"></span></div>';
         html += '</div>';
 
+        mark('evidence');
         html += '<div class="src-missing"><div class="section-label">Not knowable from orbit</div>' +
             '<p class="src-note">The satellite cannot supply these; they stay blank until someone establishes them on the ground:<br>' +
             '<span class="src-gap">' + SiteData.MANUAL_FIELDS.join(', ').replace(/_/g, ' ') + '</span></p></div>';
 
+        mark('econ');
         html += '<div class="src-trendwrap"><div class="section-label">Power potential by survey year</div>' +
             '<div class="earnings-chart-container" style="height:150px;"><canvas id="dTrend"></canvas></div></div>';
 
-        body.innerHTML = html;
+        // ---- Assemble: call sheet, then four disclosures --------------------------------
+        //
+        // Split on the boundary markers and bucket the sections. Sections keep their order within
+        // a group; groups are emitted in the order below regardless of where their sections
+        // appeared in the code above.
+        var buckets = { scores: '', capacity: '', econ: '', evidence: '', contact: '', pay: '' };
+        var parts = html.split(GROUP_MARK);
+        for (var pi = 1; pi < parts.length; pi++) {           // [0] is empty, before the first mark
+            var close = parts[pi].indexOf('-->');
+            if (close < 0) continue;                          // not a marker we wrote
+            var gname = parts[pi].slice(0, close);
+            if (buckets[gname] === undefined) buckets[gname] = '';
+            buckets[gname] += parts[pi].slice(close + 3);
+        }
+
+        // The call sheet: what you need with somebody on the phone, and nothing else. Built from
+        // the group buffers rather than re-rendered, so these blocks cannot drift from the
+        // versions inside the disclosures — there is only one of each.
+        // Who to ring, on the sheet itself. The full contact block with its provenance and the
+        // editable form stays in Terms & contact — this is the one line you need in hand.
+        var co = operatorCompany(c);
+        var callLine = '';
+        if (op && op.operator) {
+            var bits = [];
+            if (co && co.phone) {
+                bits.push('<a class="src-reg-v" href="tel:' +
+                    esc(String(co.phone).replace(/[^0-9+]/g, '')) + '">' + esc(co.phone) + '</a>');
+            }
+            if (co && co.sizeClass) {
+                bits.push(esc({ micro: 'Micro', small: 'Small', mid: 'Mid-size', major: 'Major' }[co.sizeClass]) +
+                          ' · ' + fmtInt(co.wellsActive) + ' active AB wells');
+            }
+            callLine = '<div class="src-callop"><span class="src-op-big">' + esc(op.operator) + '</span>' +
+                (bits.length ? '<span class="src-callmeta">' + bits.join(' · ') + '</span>' : '') +
+                (co && co.phone ? '' : '<span class="src-gap">no published phone</span>') +
+                '</div>';
+        } else {
+            callLine = '<div class="src-callop">' + gap('operator not identified') + '</div>';
+        }
+
+        var out = '<div class="src-callsheet">' + buckets.pay + callLine + '</div>';
+        buckets.pay = '';
+
+        function grp(id, key, label, open) {
+            if (!buckets[key]) return '';
+            return '<div class="dgroup">' +
+                '<button type="button" class="prov-toggle" id="dg_' + id + '_btn" ' +
+                    'aria-expanded="false" aria-controls="dg_' + id + '">' +
+                    '<span class="prov-caret" aria-hidden="true">&#9656;</span>' +
+                    '<span class="section-label">' + esc(label) + '</span>' +
+                '</button>' +
+                '<div class="dgroup-body" id="dg_' + id + '" hidden>' +
+                    '<div class="src-detailgrid">' + buckets[key] + '</div>' +
+                '</div></div>';
+        }
+
+        out += grp('terms',    'contact',  'Terms & contact');
+        out += grp('scores',   'scores',   'Opportunity & acquirability');
+        out += grp('capacity', 'capacity', 'Capacity & capital');
+        out += grp('econ',     'econ',     'Availability & economics');
+        out += grp('evidence', 'evidence', 'Evidence & provenance');
+
+        body.innerHTML = out;
+
+        // Each group remembers its own state, so the ones actually used stay open.
+        ['terms', 'scores', 'capacity', 'econ', 'evidence'].forEach(function(g) {
+            disclosure('dg_' + g + '_btn', 'dg_' + g, 'ionMiningDetailGroup_' + g, false,
+                // The survey-year chart lives in the economics group. Chart.js measures its
+                // container, so drawing it while that group is collapsed produces a 0x0 canvas.
+                g === 'econ' ? function(isOpen) { if (isOpen) renderTrend(c); } : null);
+        });
+
         wireDetail(c, op);
-        renderTrend(c);
     }
 
     // The three states are genuinely different and the panel says which one applies:
@@ -2868,7 +3018,6 @@ var MapSourcing = (function() {
             // the pre-edit ranking.
             invalidateOpportunity();
             renderWorklist();
-            renderList();
             renderTable();
         });
     }
@@ -2955,8 +3104,9 @@ var MapSourcing = (function() {
             await loadMarket();
         } catch (e) {
             status('Could not load prospects: ' + e.message, '#f55');
-            var l = document.getElementById('srcList');
-            if (l) l.innerHTML = '<div class="src-empty">Prospects unavailable.<br>Run <code>node tools/build-flare-catalog.js</code>.</div>';
+            var l = document.getElementById('srcTableBody');
+            if (l) l.innerHTML = '<tr><td colspan="14" class="src-gap" style="padding:14px;">' +
+                'Prospects unavailable. Run <code>node tools/build-flare-catalog.js</code>.</td></tr>';
             return;
         }
         var meta = SiteCatalog.meta();
@@ -2998,24 +3148,6 @@ var MapSourcing = (function() {
             });
         });
         paintSizeRange();
-        document.getElementById('srcList').addEventListener('click', function(e) {
-            // The portfolio tick is inside the row; treat it as its own control rather than
-            // letting the click bubble on and focus the site.
-            if (e.target && e.target.dataset && e.target.dataset.pf) {
-                _ignoreNextDocClick = true;
-                togglePortfolio(e.target.dataset.pf, e.target.checked);
-                return;
-            }
-            if (e.target.closest('.pf-check')) return;
-            var row = e.target.closest('.src-row');
-            if (row) select(row.dataset.id);
-        });
-        document.getElementById('srcCount').addEventListener('click', function(e) {
-            if (!e.target) return;
-            if (e.target.id === 'srcUnfocus') exitFocus();
-            if (e.target.id === 'srcClearCompany') { _companyFilter = null; applyFilters(); }
-        });
-
         loadScenario();
         syncScenarioInputs();
 
@@ -3054,7 +3186,6 @@ var MapSourcing = (function() {
             _ignoreNextDocClick = true;
             _portfolio = {};
             saveScenario();
-            renderList();
             renderTable();
             renderPortfolio();
         });
@@ -3066,6 +3197,7 @@ var MapSourcing = (function() {
         wireWorklist();
         wireSourceFilter();
         wireEmptyState();
+        wireMoreFilters();
         renderProvenance();
         wireProvenance();
         try {
