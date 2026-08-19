@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Fleet Map</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./shared.css?v=314">
+    <link rel="stylesheet" href="./shared.css?v=315">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="./chart.min.js?v=314"></script>
+    <script src="./chart.min.js?v=315"></script>
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -95,12 +95,57 @@
         .src-checks { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:12px; color:#bbb; }
         .src-checks label { display:flex; align-items:center; gap:6px; cursor:pointer; }
 
-        /* Fleet mode: map full width. Prospects mode: map left, ranked list right. */
+        /* Fleet mode: map full width. Prospects mode: map left, scan list right — but only in the
+           List view. In the Table view the list is gone and the map takes the width back, so the
+           two result surfaces are never on screen together. */
         .map-with-list { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
-        /* One column. The 340 px second column held a prospect list that duplicated the ranked
-           table below, so removing it gave the map its width back. */
-        body[data-map-mode="prospects"] .map-with-list { grid-template-columns:1fr; }
+        body[data-map-mode="prospects"][data-res-view="list"] .map-with-list {
+            grid-template-columns:minmax(0,1fr) 340px; }
+        body[data-map-mode="prospects"][data-res-view="table"] .map-with-list { grid-template-columns:1fr; }
+        /* The list card and the table widget are mutually exclusive, driven off one body
+           attribute. NOT inline styles: widget-settings.js writes style.display on every
+           .widget-section after load, so anything set inline here would be wiped on the next
+           reorder. A widget the user has hidden in widget settings stays hidden either way —
+           that is their choice, and this rule only ever hides, never reveals. */
+        body[data-res-view="table"] #srcListCard { display:none; }
+        body[data-map-mode="prospects"][data-res-view="list"] [data-widget="prospect-table"] { display:none; }
+        /* Below 900 px there is no room for a 340 px column beside a map, so the list drops under
+           it and gets its own scroll height rather than running the length of the page. */
+        @media (max-width:900px) {
+            body[data-map-mode="prospects"][data-res-view="list"] .map-with-list { grid-template-columns:1fr; }
+            .src-list { max-height:340px; }
+        }
         .map-pane { min-width:0; }
+
+        /* Results view switch. Reuses .src-views/.src-view from the ranked table's own toggle so
+           the two read as the same kind of control. */
+        .src-resultsbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:10px 0 8px; }
+        .src-resultsbar .src-viewnote { margin-left:auto; }
+        .src-acqtoggle { display:flex; align-items:center; gap:6px; font-size:12px; color:#bbb; cursor:pointer; }
+
+        /* Saved searches. Chips rather than a dropdown: a dropdown hides how many you have and
+           needs a second click to reveal the one you want, and these sit directly above the
+           "Filtering by" bar that reports the state they set. */
+        .src-saved { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+                     margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.07); }
+        .src-savedlabel { font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+                          color:#888; margin-right:2px; }
+        .src-savedchip { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.05);
+                         border:1px solid rgba(255,255,255,.12); color:#ccc; border-radius:999px;
+                         padding:3px 5px 3px 10px; font-size:11px; cursor:pointer; }
+        .src-savedchip:hover { background:rgba(247,147,26,.12); border-color:rgba(247,147,26,.4); }
+        /* The chip matching the filters currently in force. Without this you cannot tell whether
+           what is on screen is the saved search or something you have since changed. */
+        .src-savedchip.on { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.55); color:#f7931a; }
+        .src-savedchip .x { color:#777; font-size:13px; line-height:1; padding:0 4px; border-radius:999px; }
+        .src-savedchip .x:hover { color:#e06c6c; background:rgba(224,108,108,.15); }
+        .src-savedadd { background:rgba(247,147,26,.12); border:1px solid rgba(247,147,26,.45);
+                        color:#f7931a; border-radius:999px; padding:3px 11px; font-size:11px; cursor:pointer; }
+        .src-savedadd:hover { background:rgba(247,147,26,.25); }
+        .src-savedadd[disabled] { opacity:.4; cursor:default; }
+        .src-savedhint { font-size:11px; color:#777; }
+        .src-savedname { background:rgba(0,0,0,.35); border:1px solid rgba(247,147,26,.45); color:#eee;
+                         border-radius:6px; padding:3px 8px; font-size:11px; width:210px; }
         .src-listcard { align-self:stretch; display:flex; flex-direction:column; }
         /* Track the map's height so the list scrolls beside it rather than past it. */
         .src-list { overflow-y:auto; flex:1; min-height:280px; max-height:540px; }
@@ -120,6 +165,9 @@
         .src-row .s { color:#888; font-size:11px; margin-top:2px; }
         .src-row .kw { color:#f7931a; font-weight:600; text-align:right; white-space:nowrap; }
         .src-row .yr { color:#7a7; font-size:10px; text-align:right; }
+        /* The opportunity score. The list is in ranked order, so without this the reason a row is
+           near the top is invisible. */
+        .src-row .sc { color:#888; font-size:10px; text-align:right; margin-top:2px; }
         .src-op { color:#8ac; }
         .src-burning { color:#3ecf8e; font-weight:600; }
         .src-sub2 { color:#777; font-weight:400; }
@@ -610,12 +658,40 @@ blank on each site rather than being guessed.</p>
         </div>
         </div>
 
+        <!-- SAVED SEARCHES. A named filter combination, recalled by clicking its chip.
+             Applied ONLY by an explicit click, never restored at boot — that rule is the whole
+             safety story. The region anchor once restored itself silently, dragged the country
+             to USA and saved that over a deliberate choice; a saved search can safely carry the
+             anchor precisely because recalling one is something you do, not something that
+             happens to you. -->
+        <div class="src-saved" id="srcSaved"></div>
+
         <!-- ALWAYS visible, inside or outside the disclosure. This is what makes collapsing the
              controls safe. -->
         <div class="src-activebar" id="srcActiveBar"></div>
     </div>
 
     <div id="srcStatus" class="src-status"></div>
+
+    <!-- How the matches are shown. The list and the table are the SAME result set and only one is
+         ever on screen — which is what stops them being two walls of the same data, the complaint
+         that got the list deleted in the first place. Mutual exclusion, not deletion. -->
+    <div class="src-resultsbar prospects-only" id="srcResultsBar">
+        <div class="src-views" id="resViews">
+            <button type="button" class="src-view active" data-res="list" aria-pressed="true">List</button>
+            <button type="button" class="src-view" data-res="table" aria-pressed="false">Table</button>
+        </div>
+        <!-- Was a tab inside the ranked table, which made it look like a way of displaying the
+             results. It is not: it removes prospects by development stage, and it removes more of
+             them than any other control on the page. As a table tab it narrowed the table while
+             the map, the list and the summary tiles all went on showing the wider set, and it
+             appeared in none of the places that report active filters. It is a filter, so it now
+             sits with the other filter state and narrows everything at once. -->
+        <label class="src-acqtoggle" title="Prospects whose physical asset exists — constructed stage or later. Excludes anything with no recorded stage, since an unrecorded stage is missing data rather than a raw resource.">
+            <input type="checkbox" id="fAcquisition"> Acquisition targets only
+        </label>
+        <span class="src-viewnote" id="resNote"></span>
+    </div>
     <!-- In Prospects mode this becomes a two-column grid: map left, ranked list right.
          In Fleet mode the list is hidden and the map spans the full width, exactly as before. -->
     <div class="map-with-list" id="mapWithList">
@@ -629,6 +705,16 @@ blank on each site rather than being guessed.</p>
         <p class="src-note prospects-only" id="srcMapNote"></p>
       </div>
 
+      <!-- The scan list, beside the map rather than below it. Shown only in the List view; the
+           ranked table takes over the whole width in the Table view. Both paint from _filtered
+           at the moment they are painted, so neither can be showing a stale result set. -->
+      <aside class="card src-listcard prospects-only" id="srcListCard">
+          <div class="src-count">
+              <span id="srcCount">--</span>
+              <span id="srcFocusOut"></span>
+          </div>
+          <div class="src-list" id="srcList"></div>
+      </aside>
     </div>
 
     <div id="globePopup" class="globe-popup" style="display:none;">
@@ -643,11 +729,9 @@ blank on each site rather than being guessed.</p>
     <div class="widget-section prospects-only" data-widget="prospect-table" style="display:none;">
     <div class="sec-head"><div class="section-label">Ranked prospects</div></div>
     <div class="card" style="padding:0;">
-        <div class="src-views" id="tblViews">
-            <button type="button" class="src-view active" data-view="all">All prospects</button>
-            <button type="button" class="src-view" data-view="acquisition">Acquisition targets</button>
-            <span class="src-viewnote" id="viewNote"></span>
-        </div>
+        <!-- The All prospects / Acquisition targets tabs used to live here. They were never a
+             display choice — see the note on #fAcquisition in the results bar, which is where
+             that control now lives so it can be reached from either result surface. -->
         <div class="src-count">
             <span id="tblCount">--</span>
             <span id="tblCap" class="src-sub2"></span>
@@ -877,39 +961,39 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=314"></script>
-<script src="./sync.js?v=314"></script>
-<script src="./auth-ui.js?v=314"></script>
-<script src="./profile-panel.js?v=314"></script>
-<script src="./shared.js?v=314"></script>
-<script src="./fleet-data.js?v=314"></script>
-<script src="./geo-data.js?v=314"></script>
+<script src="./firebase-config.js?v=315"></script>
+<script src="./sync.js?v=315"></script>
+<script src="./auth-ui.js?v=315"></script>
+<script src="./profile-panel.js?v=315"></script>
+<script src="./shared.js?v=315"></script>
+<script src="./fleet-data.js?v=315"></script>
+<script src="./geo-data.js?v=315"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.41.3/dist/globe.gl.min.js"></script>
-<script src="./price-history.js?v=314"></script>
-<script src="./network-history.js?v=314"></script>
-<script src="./calc-engine.js?v=314"></script>
-<script src="./jurisdictions.js?v=314"></script>
-<script src="./site-engine.js?v=314"></script>
-<script src="./site-flags.js?v=314"></script>
-<script src="./site-scoring.js?v=314"></script>
-<script src="./site-opportunity.js?v=314"></script>
-<script src="./site-acquirability.js?v=314"></script>
-<script src="./site-capex.js?v=314"></script>
-<script src="./site-availability.js?v=314"></script>
-<script src="./site-sources.js?v=314"></script>
-<script src="./site-model.js?v=314"></script>
-<script src="./site-catalog.js?v=314"></script>
-<script src="./source-flare-gas.js?v=314"></script>
-<script src="./permit-index.js?v=314"></script>
-<script src="./site-links.js?v=314"></script>
-<script src="./source-facility.js?v=314"></script>
-<script src="./source-landfill.js?v=314"></script>
-<script src="./prospect-store.js?v=314"></script>
-<script src="./map.js?v=314"></script>
-<script src="./map-sourcing.js?v=314"></script>
+<script src="./price-history.js?v=315"></script>
+<script src="./network-history.js?v=315"></script>
+<script src="./calc-engine.js?v=315"></script>
+<script src="./jurisdictions.js?v=315"></script>
+<script src="./site-engine.js?v=315"></script>
+<script src="./site-flags.js?v=315"></script>
+<script src="./site-scoring.js?v=315"></script>
+<script src="./site-opportunity.js?v=315"></script>
+<script src="./site-acquirability.js?v=315"></script>
+<script src="./site-capex.js?v=315"></script>
+<script src="./site-availability.js?v=315"></script>
+<script src="./site-sources.js?v=315"></script>
+<script src="./site-model.js?v=315"></script>
+<script src="./site-catalog.js?v=315"></script>
+<script src="./source-flare-gas.js?v=315"></script>
+<script src="./permit-index.js?v=315"></script>
+<script src="./site-links.js?v=315"></script>
+<script src="./source-facility.js?v=315"></script>
+<script src="./source-landfill.js?v=315"></script>
+<script src="./prospect-store.js?v=315"></script>
+<script src="./map.js?v=315"></script>
+<script src="./map-sourcing.js?v=315"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
@@ -996,8 +1080,8 @@ commercial terms are your assumptions.</p>
     }, true);
 })();
 </script>
-<script src="./widget-settings.js?v=314"></script>
-<script src="./alerts.js?v=314"></script>
-<script src="./onboarding.js?v=314"></script>
+<script src="./widget-settings.js?v=315"></script>
+<script src="./alerts.js?v=315"></script>
+<script src="./onboarding.js?v=315"></script>
 </body>
 </html>

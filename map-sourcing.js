@@ -373,8 +373,17 @@ var MapSourcing = (function() {
         // here rather than in each of the handlers that can trigger one.
         invalidateOpportunity();
         try {
-            localStorage.setItem(SCN_KEY, JSON.stringify({ _v: 1, scn: _scn }));
-            localStorage.setItem(PF_KEY, JSON.stringify({ _v: 1, ids: Object.keys(_portfolio) }));
+            var scn = { _v: 1, scn: _scn };
+            var pf  = { _v: 1, ids: Object.keys(_portfolio) };
+            localStorage.setItem(SCN_KEY, JSON.stringify(scn));
+            localStorage.setItem(PF_KEY, JSON.stringify(pf));
+            // Both keys were added to SYNC_KEYS earlier in the belief that registering them was
+            // enough. It is not: SyncEngine.save is only ever called explicitly, so the shortlist
+            // and the pricing assumptions have never actually left this machine.
+            if (typeof SyncEngine !== 'undefined') {
+                SyncEngine.save('prospectScenario', scn);
+                SyncEngine.save('prospectPortfolio', pf);
+            }
         } catch (e) {}
     }
 
@@ -470,7 +479,8 @@ var MapSourcing = (function() {
     // merely unlikely.
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
-    var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
+    var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
+                         'fAcquisition'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
     // on a differently-sorted table with the open site closed. Same reasoning as the filters:
     // local only, never synced.
@@ -479,7 +489,7 @@ var MapSourcing = (function() {
     function saveView() {
         try {
             localStorage.setItem(VIEW_KEY, JSON.stringify({
-                _v: 1, view: _tableView, sort: _tableSort, sel: _selectedId
+                _v: 1, sort: _tableSort, sel: _selectedId
             }));
         } catch (e) { /* private mode / quota */ }
     }
@@ -600,6 +610,10 @@ var MapSourcing = (function() {
             confirmedBurning: (function() {
                 var el = document.getElementById('fBurning');
                 return !!(el && el.checked);
+            })(),
+            acquisitionOnly: (function() {
+                var el = document.getElementById('fAcquisition');
+                return !!(el && el.checked);
             })()
         };
     }
@@ -626,7 +640,8 @@ var MapSourcing = (function() {
         fMinKw: '0', fMaxKw: '5000', fYears: '0', fSort: 'persistence',
         fRegion: '', fRadius: '250',
         fOnshore: true, fWorkable: true,
-        fActive: false, fOperator: false, fBurning: false, fSmallOp: false
+        fActive: false, fOperator: false, fBurning: false, fSmallOp: false,
+        fAcquisition: false
     };
     var FILTER_LABELS = {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
@@ -635,7 +650,8 @@ var MapSourcing = (function() {
         fActive: 'Flare seen in the latest survey',
         fOperator: 'Only sites with a named operator',
         fBurning: 'Flare confirmed burning recently',
-        fSmallOp: 'Small operators only (Alberta)'
+        fSmallOp: 'Small operators only (Alberta)',
+        fAcquisition: 'Acquisition targets only'
     };
 
     // [{ key, label, clear }] for every filter not at its default.
@@ -690,11 +706,23 @@ var MapSourcing = (function() {
         // instead offered to re-enable them. Measured on the real catalog, Russia returns zero
         // with nothing but the defaults set, purely because it is not a workable jurisdiction —
         // and the old empty state could not say so.
-        ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'].forEach(function(id) {
+        //
+        // fAcquisition joined this list when it stopped being a table tab. It removes more
+        // prospects than anything else here and, as a tab, appeared in none of these reports.
+        ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
+         'fAcquisition'].forEach(function(id) {
             var e = el(id);
             if (!e || !e.checked) return;
             out.push({ key: id, label: FILTER_LABELS[id],
-                       clear: function() { e.checked = false; } });
+                       clear: function() {
+                           e.checked = false;
+                           // Its sort default came with it, so clearing from the bar has to undo
+                           // that too, or the table stays ranked on a combination nothing selects.
+                           if (id === 'fAcquisition') {
+                               _tableSort = { key: 'opportunity', dir: -1 };
+                               paintTableHead();
+                           }
+                       } });
         });
 
         // These two live outside the form and were never mentioned by the old message at all.
@@ -724,11 +752,6 @@ var MapSourcing = (function() {
         _companyFilter = null;
         renderSourceFilter();
         paintSizeRange();
-        // Exit focus from the ranked table's count row. Delegated on document because the button
-        // is re-rendered on every table paint.
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.id === 'tblUnfocus') { _ignoreNextDocClick = true; exitFocus(); }
-        });
         renderSizeHint();
         saveFilters();
         saveFiltersSources();
@@ -753,6 +776,264 @@ var MapSourcing = (function() {
         el.innerHTML = h;
     }
 
+    // ---- Saved searches -------------------------------------------------------------------
+    // A named filter combination you can get back to. Twelve controls across two panels is a
+    // configuration, and rebuilding "Alberta flare gas, small operators, seen every year" by hand
+    // every Monday is the kind of friction that stops a search being run at all.
+    //
+    // These DO sync: unlike the last-used filters — which are where you happen to be looking and
+    // should not jump between devices — a saved search is a considered piece of work.
+    var SEARCH_KEY = 'ionMiningProspectSearches';
+    var MAX_SEARCHES = 40;
+    var _searches = [];
+    var _naming = false;              // the inline name field is open
+
+    function loadSearches() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(SEARCH_KEY) || 'null');
+            if (!raw || raw._v !== 1 || !Array.isArray(raw.items)) return;
+            _searches = raw.items.filter(function(s) {
+                return s && typeof s.id === 'string' && typeof s.name === 'string' && s.f;
+            });
+        } catch (e) { _searches = []; }
+    }
+
+    function persistSearches() {
+        try {
+            var payload = { _v: 1, items: _searches };
+            localStorage.setItem(SEARCH_KEY, JSON.stringify(payload));
+            // Registering the key in SYNC_KEYS is not enough — SyncEngine.save is only ever called
+            // explicitly, per key, and nothing else in this file calls it. Without this line the
+            // comment above would be describing a sync that never happens, which under this
+            // project's own rules is the defect, not a missing nicety.
+            if (typeof SyncEngine !== 'undefined') SyncEngine.save('prospectSearches', payload);
+            return true;
+        } catch (e) {
+            // Say so. A saved search that silently was not saved is worse than no feature: you
+            // would rebuild the filters believing they were kept.
+            status('Could not save — browser storage is full or unavailable.', '#c85');
+            return false;
+        }
+    }
+
+    // Everything that decides WHICH prospects match, and nothing that decides how they are shown.
+    // The anchor IS included, unlike in the last-used filters: it was excluded there because it
+    // restored itself silently at boot and overwrote a chosen country. Recalling a saved search
+    // is an explicit act, so "power near Midland" can be a search you keep.
+    // NOT captured: the operator drill-down (_companyFilter), which is a click-through from one
+    // site rather than a search, and the table's sort and view, which are display state.
+    function captureSearch() {
+        var f = {};
+        FILTER_FIELDS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) f[id] = el.value;
+        });
+        FILTER_CHECKS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) f[id] = !!el.checked;
+        });
+        var reg = document.getElementById('fRegion');
+        var rad = document.getElementById('fRadius');
+        return {
+            f: f,
+            sources: Object.keys(_srcFilter).sort(),
+            region: reg ? reg.value : '',
+            radius: rad ? rad.value : ''
+        };
+    }
+
+    // Built by walking FILTER_FIELDS/FILTER_CHECKS in order rather than stringifying the object,
+    // so a stored search still compares equal after the field list is reordered in a later build.
+    function searchKey(s) {
+        var f = s.f || {};
+        var parts = [];
+        FILTER_FIELDS.forEach(function(id) { parts.push(id + '=' + (f[id] === undefined ? '' : f[id])); });
+        FILTER_CHECKS.forEach(function(id) { parts.push(id + '=' + (f[id] ? '1' : '0')); });
+        parts.push('src=' + (s.sources || []).slice().sort().join(','));
+        parts.push('region=' + (s.region || ''));
+        // A radius with no region filters nothing, so it must not make two identical searches
+        // compare as different — otherwise the chip fails to light up for an invisible reason.
+        parts.push('radius=' + (s.region ? (s.radius || '') : ''));
+        return parts.join('|');
+    }
+
+    function optionExists(el, val) {
+        if (!el || el.tagName !== 'SELECT') return true;
+        for (var i = 0; i < el.options.length; i++) if (el.options[i].value === val) return true;
+        return false;
+    }
+
+    // Applies what it can and NAMES what it could not. A catalog rebuild can retire a country or
+    // an adapter; silently falling back would leave the chip lit beside a result set that is not
+    // the search it claims to be.
+    function applySearch(s) {
+        var missing = [];
+        FILTER_FIELDS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el || s.f[id] === undefined) return;
+            if (el.tagName === 'SELECT' && !optionExists(el, s.f[id])) {
+                if (s.f[id] !== '') missing.push(el.id === 'fCountry' ? 'country "' + s.f[id] + '"' : id);
+                el.value = '';                       // widen rather than keep an unrelated value
+                return;
+            }
+            el.value = s.f[id];
+        });
+        FILTER_CHECKS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && s.f[id] !== undefined) el.checked = !!s.f[id];
+        });
+
+        var reg = document.getElementById('fRegion');
+        if (reg) {
+            if (s.region && !optionExists(reg, s.region)) { missing.push('region "' + s.region + '"'); reg.value = ''; }
+            else reg.value = s.region || '';
+        }
+        var rad = document.getElementById('fRadius');
+        if (rad && s.radius) rad.value = s.radius;
+
+        // Only sources that still exist. All of them gone means "every source", which is what an
+        // empty set already means — not an empty screen.
+        var live = {};
+        (ProspectStore.sources() || []).forEach(function(x) { live[x.id] = true; });
+        var keep = (s.sources || []).filter(function(id) { return live[id]; });
+        if ((s.sources || []).length && keep.length < s.sources.length) {
+            missing.push((s.sources.length - keep.length) + ' source' +
+                         (s.sources.length - keep.length === 1 ? '' : 's') + ' no longer in the catalog');
+        }
+        _srcFilter = {};
+        keep.forEach(function(id) { _srcFilter[id] = true; });
+
+        _companyFilter = null;
+        renderSourceFilter();
+        paintSizeRange();
+        renderSizeHint();
+        saveFilters();
+        saveFiltersSources();
+        applyFilters();
+
+        if (missing.length) {
+            status('Applied "' + s.name + '" — but ' + missing.join(', ') + ' could not be restored.', '#c85');
+        } else {
+            status('Applied "' + s.name + '" — ' + fmtInt(_filtered.length) + ' prospects.', '#8ac');
+        }
+    }
+
+    function applySearchById(id) {
+        for (var i = 0; i < _searches.length; i++) {
+            if (_searches[i].id === id) { applySearch(_searches[i]); return; }
+        }
+    }
+
+    function deleteSearch(id) {
+        var idx = -1;
+        for (var i = 0; i < _searches.length; i++) if (_searches[i].id === id) idx = i;
+        if (idx < 0) return;
+        // No undo, so ask. Rebuilding a twelve-control search from memory is exactly the work
+        // this feature exists to avoid.
+        if (!confirm('Delete the saved search "' + _searches[idx].name + '"?')) return;
+        _searches.splice(idx, 1);
+        persistSearches();
+        renderSaved();
+    }
+
+    function commitSave() {
+        var inp = document.getElementById('savedNameInput');
+        var name = inp ? inp.value.trim().slice(0, 60) : '';
+        if (!name) { status('Give the search a name first.', '#c85'); return; }
+        var next = captureSearch();
+        next.name = name;
+        next.at = new Date().toISOString().slice(0, 10);
+
+        // Saving under a name you already used UPDATES that search. Two chips with the same label
+        // would be indistinguishable, and "update" is the operation you actually want after
+        // tweaking a filter on a search you had already saved.
+        var existing = -1;
+        for (var i = 0; i < _searches.length; i++) {
+            if (_searches[i].name.toLowerCase() === name.toLowerCase()) existing = i;
+        }
+        if (existing >= 0) {
+            if (!confirm('Replace the saved search "' + _searches[existing].name +
+                         '" with the filters currently in force?')) return;
+            next.id = _searches[existing].id;
+            _searches[existing] = next;
+        } else {
+            if (_searches.length >= MAX_SEARCHES) {
+                status('That is ' + MAX_SEARCHES + ' saved searches — delete one first.', '#c85');
+                return;
+            }
+            next.id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+            _searches.push(next);
+        }
+        _naming = false;
+        if (persistSearches()) status('Saved "' + name + '".', '#8ac');
+        renderSaved();
+    }
+
+    function renderSaved() {
+        var el = document.getElementById('srcSaved');
+        if (!el) return;
+        // A repaint triggered by applyFilters must not eat what is being typed into the name box.
+        var typed = null;
+        var live = document.getElementById('savedNameInput');
+        if (live) typed = live.value;
+
+        var cur = searchKey(captureSearch());
+        var h = '<span class="src-savedlabel">Saved searches</span>';
+        if (!_searches.length) {
+            h += '<span class="src-savedhint">none yet &mdash; set the filters you want, then save them</span>';
+        }
+        for (var i = 0; i < _searches.length; i++) {
+            var on = searchKey(_searches[i]) === cur;
+            h += '<span class="src-savedchip' + (on ? ' on' : '') + '" data-sid="' + esc(_searches[i].id) +
+                 '" role="button" tabindex="0" title="' +
+                 (on ? 'These are the filters currently in force' : 'Apply this search') + '">' +
+                 esc(_searches[i].name) +
+                 '<span class="x" data-del="' + esc(_searches[i].id) + '" title="Delete">&times;</span></span>';
+        }
+        if (_naming) {
+            h += '<input type="text" class="src-savedname" id="savedNameInput" maxlength="60" ' +
+                 'placeholder="Name this search" autocomplete="off">' +
+                 '<button type="button" class="src-savedadd" id="savedConfirm">Save</button>' +
+                 '<button type="button" class="src-savedadd" id="savedCancel">Cancel</button>';
+        } else {
+            h += '<button type="button" class="src-savedadd" id="savedAdd">+ Save current</button>';
+        }
+        el.innerHTML = h;
+        if (_naming) {
+            var inp = document.getElementById('savedNameInput');
+            if (inp) { if (typed !== null) inp.value = typed; inp.focus(); }
+        }
+    }
+
+    function wireSaved() {
+        var el = document.getElementById('srcSaved');
+        if (!el) return;
+        el.addEventListener('click', function(e) {
+            // Everything in this bar changes the page deliberately; none of it should also be
+            // read as a click on the background that dismisses focus.
+            _ignoreNextDocClick = true;
+            var del = e.target.getAttribute && e.target.getAttribute('data-del');
+            if (del) { deleteSearch(del); return; }
+            if (e.target.id === 'savedAdd')     { _naming = true;  renderSaved(); return; }
+            if (e.target.id === 'savedCancel')  { _naming = false; renderSaved(); return; }
+            if (e.target.id === 'savedConfirm') { commitSave(); return; }
+            var chip = e.target.closest && e.target.closest('.src-savedchip');
+            if (chip) applySearchById(chip.getAttribute('data-sid'));
+        });
+        el.addEventListener('keydown', function(e) {
+            if (e.target && e.target.id === 'savedNameInput') {
+                if (e.key === 'Enter')       { e.preventDefault(); commitSave(); }
+                else if (e.key === 'Escape') { _naming = false; renderSaved(); }
+                return;
+            }
+            var chip = e.target.closest && e.target.closest('.src-savedchip');
+            if (chip && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                applySearchById(chip.getAttribute('data-sid'));
+            }
+        });
+    }
+
     // Shared by the list and the table so the two can never disagree about why the screen is
     // empty. Buttons carry the filter key; one delegated handler wires them where they render.
     // A combination that CANNOT match, as opposed to one that merely did not. Worth separating:
@@ -762,13 +1043,17 @@ var MapSourcing = (function() {
     // Both burning filters are flare-gas only — nothing else publishes a survey year or gets
     // checked against FIRMS — and every flare is a raw resource. So either of them combined with
     // a view or source selection that excludes flares is empty by construction, every time.
-    function impossibleCombination(inAcquisitionView) {
+    function impossibleCombination() {
         var a = document.getElementById('fActive'), b = document.getElementById('fBurning');
         var which = (a && a.checked) ? 'Flare seen in the latest survey'
                   : (b && b.checked) ? 'Flare confirmed burning recently' : null;
         if (!which) return null;
-        if (inAcquisitionView) {
-            return which + ' only ever matches flare gas, and the acquisition view shows only ' +
+        // Reads the filter directly now that it is one, rather than being told by whichever
+        // surface happened to be rendering. Both callers used to have to pass it, and the side
+        // list never did.
+        var acq = document.getElementById('fAcquisition');
+        if (acq && acq.checked) {
+            return which + ' only ever matches flare gas, and Acquisition targets only shows ' +
                    'assets already built. Nothing can satisfy both.';
         }
         var ids = Object.keys(_srcFilter);
@@ -779,9 +1064,9 @@ var MapSourcing = (function() {
         return null;
     }
 
-    function emptyStateHtml(lead, inAcquisitionView) {
+    function emptyStateHtml(lead) {
         var act = activeFilters();
-        var clash = impossibleCombination(inAcquisitionView);
+        var clash = impossibleCombination();
         var h = '<div class="src-emptybox"><div class="src-emptylead">' + esc(lead) + '</div>';
         if (clash) h += '<div class="src-clash">' + esc(clash) + '</div>';
         if (!act.length) {
@@ -887,6 +1172,15 @@ var MapSourcing = (function() {
         if (f.confirmedBurning) {
             matches = matches.filter(function(c) { return c.daysSinceActive !== null; });
         }
+        // Acquisition targets. Applied HERE, with the other filters, so the map, the list, the
+        // table, the summary tiles and the portfolio all narrow together. While this lived inside
+        // renderTable it narrowed the table alone, by thousands of rows, and said so nowhere.
+        _acqSuppressed = 0;
+        if (f.acquisitionOnly) {
+            var beforeAcq = matches.length;
+            matches = matches.filter(isAcquisitionCandidate);
+            _acqSuppressed = beforeAcq - matches.length;
+        }
         if (_companyFilter) {
             matches = matches.filter(function(c) {
                 var o = operatorRecord(c);
@@ -900,9 +1194,13 @@ var MapSourcing = (function() {
         paintSizeRange();
         renderSizeHint();
         renderActiveBar();
+        // Repainted on every filter change so the chip for the search you are actually looking at
+        // lights up — and stops lighting up the moment you change one control.
+        renderSaved();
         renderMoreFiltersCount();
         renderSummary(matches);
-        renderTable();
+        renderResults();
+        renderResultsNote();
         if (_focused) exitFocus(true);
         else renderMapLayer();
     }
@@ -1307,15 +1605,216 @@ var MapSourcing = (function() {
         renderWorklist();
     }
 
+    // ---- Results view: list beside the map, or the table below it -------------------------
+    // These are two renderings of ONE result set. Showing both at once is what made the page feel
+    // like the same data twice, so exactly one is painted at a time and the other is not in the
+    // DOM's way. Each reads _filtered at the moment it paints, so a stale surface is impossible
+    // rather than merely unlikely.
+    var RESVIEW_KEY = 'ionMiningProspectResultsView';
+    var _resView = 'list';
+    // How many prospects the acquisition filter removed on the last pass, so the results bar can
+    // report it. Set in applyFilters, which is the only place that filter is applied.
+    var _acqSuppressed = 0;
+
+    // ONE cap for one result set. The list used to stop at 300 and the table at 250, so switching
+    // tabs silently changed how much of the same search you were looking at — the exact class of
+    // disagreement these two surfaces are supposed to be incapable of.
+    var RESULT_CAP = 250;
+
+    // Survey persistence, shown ONLY where it means something. yearsSeen and yearsTotal come from
+    // the VIIRS flare survey and only the flare adapter sets them; every EIA facility and every
+    // LMOP landfill carries null. Printing "seen --/8 yr" against a 500 MW gas plant applies a
+    // survey it was never part of and reads as eight consecutive misses.
+    function yearsLabel(c) {
+        if (c.yearsSeen === null || c.yearsSeen === undefined) return '';
+        return 'seen ' + c.yearsSeen + '/' + (c.yearsTotal || '?') + ' yr';
+    }
+
+    // Miners the site can actually run, derated by duty cycle. The raw nameplate figure overstated
+    // this badly wherever duty is low — a 50 MW plant running 30% of the time was advertised at
+    // three times the miners it can keep powered, as a flat number with no basis attached.
+    function minersLabel(c) {
+        if (c.powerPotentialKw === null || c.powerPotentialKw === undefined) {
+            return '<span class="src-gap">--</span>';
+        }
+        var duty = 100, note = '';
+        if (typeof SiteAvailability !== 'undefined') {
+            var a = SiteAvailability.evaluate(c);
+            if (a.dutyPct === null) {
+                note = 'at full output — duty cycle has never been measured at this site';
+            } else {
+                duty = a.dutyPct;
+                if (a.basis === 'typical') note = 'duty assumed from technology class, not measured at this site';
+            }
+        }
+        var n = Math.floor(c.powerPotentialKw * 1000 * (duty / 100) / MINER_WATTS);
+        return note
+            ? '<span title="' + esc(note) + '">' + fmtInt(n) + ' miners*</span>'
+            : fmtInt(n) + ' miners';
+    }
+
+    function renderResults() {
+        if (_resView === 'table') renderTable();
+        else renderList();
+    }
+
+    // The scan list. Deliberately NOT a narrow copy of the table: it carries the four things you
+    // read while scrolling for something worth opening — who, how big, how sure we are it is real,
+    // and how it scores — and leaves the other ten columns to the table.
+    function renderList() {
+        var listEl = document.getElementById('srcList');
+        var countEl = document.getElementById('srcCount');
+        if (!listEl) return;
+        var shown = _filtered.slice(0, RESULT_CAP);
+
+        if (countEl) {
+            // Same basis line the table gives, for the same reason: a count beside a province
+            // name would imply the province's border was searched, and it was a circle.
+            var anch = currentAnchor();
+            countEl.textContent = fmtInt(_filtered.length) + ' prospect' + (_filtered.length === 1 ? '' : 's') +
+                (anch ? ' within ' + fmtInt(anch.km) + ' km of the centre of ' + anch.name : '') +
+                (_filtered.length > shown.length ? ' — top ' + shown.length + ' shown' : '');
+        }
+        // The way back out of focus mode, beside the count. The table has its own copy in its own
+        // count row; only one of the two is ever on screen.
+        var focusEl = document.getElementById('srcFocusOut');
+        if (focusEl) {
+            focusEl.innerHTML = _focused
+                ? '<button type="button" class="src-unfocus" id="srcUnfocus">&larr; All prospects</button>'
+                : '';
+        }
+
+        if (!_filtered.length) {
+            listEl.innerHTML = emptyStateHtml('No prospects match.');
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < shown.length; i++) {
+            var c = shown[i].candidate;
+            var op = operatorRecord(c);
+            var opp = opportunityFor(c);
+            html += '<div class="src-row' + (c.id === _selectedId ? ' sel' : '') + '" data-id="' + esc(c.id) + '">' +
+                '<label class="pf-check" title="Include in portfolio"><input type="checkbox" data-pf="' + esc(c.id) + '"' +
+                (_portfolio[c.id] ? ' checked' : '') + '></label>' +
+                '<div><div class="t">' + esc(placeLabel(c)) + tierBadge(c.iso3) + '</div>' +
+                '<div class="s">' + (op ? '<span class="src-op">' + esc(op.operator) + '</span>'
+                                        : '<span class="src-gap">operator not identified</span>') + '</div>' +
+                // Persistence where it exists, what the thing burns where it does not. A prospect
+                // outside the flare survey gets a fact about itself rather than a blank slot.
+                '<div class="s">' + (yearsLabel(c) || esc(energyLabel(c))) +
+                (c.trend ? ' · ' + esc(c.trend) : '') + burningBadge(c) + '</div></div>' +
+                '<div><div class="kw">' + fmtKw(c.powerPotentialKw) + '</div>' +
+                '<div class="yr">' + minersLabel(c) + '</div>' +
+                // The score, because the list is in ranked order and the reason a row is near the
+                // top is otherwise invisible. Unscoreable stays blank rather than becoming a zero.
+                '<div class="sc">' + (opp.score === null
+                    ? '<span class="src-gap">--</span>'
+                    : 'opp ' + opp.score) + '</div></div>' +
+                '</div>';
+        }
+        listEl.innerHTML = html;
+    }
+
+    // Is the ranked table reachable at all? widget-settings.js writes style.display='none' INLINE
+    // on a widget the user has hidden, and inline beats any stylesheet rule. Hide "Ranked
+    // prospects" and then pick the Table tab and you would get a map with no results anywhere and
+    // nothing saying why — a dead end created by giving the table a tab.
+    function tableWidgetHidden() {
+        var w = document.querySelector('[data-widget="prospect-table"]');
+        return !!(w && w.style && w.style.display === 'none');
+    }
+
+    // One writer for #resNote. It carries two different facts — which surface you are on, and how
+    // much the acquisition filter took out — and having setResultsView and renderTable each own
+    // half of it meant whichever ran last erased the other.
+    function renderResultsNote() {
+        var note = document.getElementById('resNote');
+        if (!note) return;
+        var bits = [];
+        if (_acqSuppressed) {
+            bits.push(fmtInt(_acqSuppressed) + ' raw-resource or unrecorded prospects excluded');
+        }
+        if (_resView === 'table' && tableWidgetHidden()) {
+            bits.push('Ranked prospects is hidden in widget settings — switch back to List, or ' +
+                      're-enable the widget');
+        } else {
+            bits.push(_resView === 'table'
+                ? 'every column, sortable'
+                : 'a quick scan beside the map — switch to Table for scores, cost and stage');
+        }
+        note.textContent = bits.join(' · ');
+    }
+
+    function setResultsView(v, skipRender) {
+        _resView = (v === 'table') ? 'table' : 'list';
+        document.body.setAttribute('data-res-view', _resView);
+        var bar = document.getElementById('resViews');
+        if (bar) {
+            var btns = bar.querySelectorAll('.src-view');
+            for (var i = 0; i < btns.length; i++) {
+                var on = btns[i].getAttribute('data-res') === _resView;
+                btns[i].classList.toggle('active', on);
+                btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+            }
+        }
+        renderResultsNote();
+        try { localStorage.setItem(RESVIEW_KEY, _resView); } catch (e) { /* private mode */ }
+        // Leaflet measured its container at the old width. Without this the tiles stay laid out
+        // for a 340 px narrower map and the markers sit in the wrong place.
+        var lm = (typeof MapBridge !== 'undefined' && MapBridge.leaflet) ? MapBridge.leaflet() : null;
+        if (lm) setTimeout(function() { try { lm.invalidateSize(); } catch (e) {} }, 80);
+        if (!skipRender) renderResults();
+    }
+
+    function wireResViews() {
+        var bar = document.getElementById('resViews');
+        if (!bar) return;
+        bar.addEventListener('click', function(e) {
+            var btn = e.target.closest('.src-view');
+            if (!btn) return;
+            var v = btn.getAttribute('data-res');
+            if (v === _resView) return;
+            _ignoreNextDocClick = true;
+            setResultsView(v);
+        });
+    }
+
+    // Both exit-focus buttons, wired ONCE. They are re-rendered on every paint, so the handler has
+    // to be delegated — and it must be installed at boot, not from inside a render or a reset,
+    // which would add another listener on every call.
+    function wireUnfocus() {
+        document.addEventListener('click', function(e) {
+            if (e.target && (e.target.id === 'tblUnfocus' || e.target.id === 'srcUnfocus')) {
+                _ignoreNextDocClick = true;
+                exitFocus();
+            }
+        });
+    }
+
+    function wireList() {
+        var listEl = document.getElementById('srcList');
+        if (!listEl) return;
+        listEl.addEventListener('click', function(e) {
+            // The portfolio tick is its own control, exactly as in the table — without this the
+            // click travels on and opens the site instead of ticking the box.
+            if (e.target && e.target.dataset && e.target.dataset.pf) {
+                _ignoreNextDocClick = true;
+                togglePortfolio(e.target.dataset.pf, e.target.checked);
+                return;
+            }
+            if (e.target.closest && e.target.closest('.pf-check')) return;
+            var row = e.target.closest('.src-row[data-id]');
+            if (!row) return;
+            select(row.getAttribute('data-id'));
+        });
+    }
+
     // ---- Ranked table --------------------------------------------------------------------
-    // The primary view. Reads the SAME _filtered result the map and the side list read, so the
-    // three can never disagree about what matched.
-    var TABLE_CAP = 250;
+    // The other rendering of the same result set. Richer — every column, sortable — and
+    // correspondingly not something you want on screen while scanning.
+    // Uses RESULT_CAP, shared with the list — see the note there.
     var _tableSort = { key: 'opportunity', dir: -1 };
-    // 'all' shows every match. 'acquisition' narrows to assets that physically EXIST — anything
-    // constructed or beyond — and ranks on the two axes combined, which is the view for deciding
-    // who to contact rather than for exploring the resource base.
-    var _tableView = 'all';
     var STAGE_ORDER = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
     var _oppCache = {};
     var _acqCache = {};
@@ -1404,11 +1903,26 @@ var MapSourcing = (function() {
 
     // A prospect qualifies as an acquisition target when the physical asset exists. Deliberately
     // excludes anything with NO recorded stage: an unrecorded stage is missing data, and letting
-    // it through would fill the view with prospects nobody has established anything about.
-    function isAcquisitionTarget(row) {
-        var st = SiteOpportunity.stageOf(row.candidate);
-        if (st === null) return false;
+    // it through would fill the set with prospects nobody has established anything about.
+    //
+    // Reads a stage recorded BY HAND in preference to the sourced one, the way acquirabilityFor
+    // already does. Without that, a site you personally established was built stays excluded from
+    // the acquisition set by a catalog that has not caught up with you — and the whole point of
+    // typing it in was to tell the app something it did not know.
+    function isAcquisitionCandidate(c) {
+        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var st = (manual && manual.development_stage) || SiteOpportunity.stageOf(c);
+        if (!st) return false;
         return STAGE_ORDER.indexOf(st) >= STAGE_ORDER.indexOf('constructed');
+    }
+
+    // The truncation notice used to print the raw data-sort attribute, so a capped table
+    // announced "showing the top 250 by allinkw", "by torevenue", "by iso3". The column heading
+    // is the name that column actually goes by on screen.
+    function sortKeyLabel(key) {
+        var th = document.querySelector('#srcTableHead th[data-sort="' + key + '"]');
+        var t = th && th.textContent ? th.textContent.trim() : '';
+        return t || key;
     }
 
     function renderTable() {
@@ -1416,21 +1930,10 @@ var MapSourcing = (function() {
         if (!body) return;
         var countEl = document.getElementById('tblCount');
         var capEl = document.getElementById('tblCap');
-        var noteEl = document.getElementById('viewNote');
 
+        // No longer filters. Acquisition targets is applied in applyFilters with everything else,
+        // so _filtered is already the answer and the table cannot hold a different one.
         var rows = _filtered.slice();
-        var suppressed = 0;
-        if (_tableView === 'acquisition') {
-            var before = rows.length;
-            rows = rows.filter(isAcquisitionTarget);
-            suppressed = before - rows.length;
-        }
-        if (noteEl) {
-            noteEl.textContent = _tableView === 'acquisition'
-                ? 'constructed or later, ranked on opportunity x acquirability — ' +
-                  fmtInt(suppressed) + ' raw-resource or unrecorded prospects hidden'
-                : '';
-        }
         var key = _tableSort.key, dir = _tableSort.dir;
         rows.sort(function(a, b) {
             var va = tableSortValue(a, key), vb = tableSortValue(b, key);
@@ -1442,7 +1945,7 @@ var MapSourcing = (function() {
             return 0;
         });
 
-        var shown = rows.slice(0, TABLE_CAP);
+        var shown = rows.slice(0, RESULT_CAP);
         if (countEl) {
             // Say what was actually searched. A centroid-and-radius circle is not the region's
             // border, and a count presented beside a province name would imply it was.
@@ -1462,16 +1965,14 @@ var MapSourcing = (function() {
         // Never truncate silently — a capped list that says nothing reads as "this is all of it".
         if (capEl) {
             capEl.textContent = rows.length > shown.length
-                ? 'showing the top ' + shown.length + ' by ' + key + ' — narrow the filters to see further down'
+                ? 'showing the top ' + shown.length + ' by ' + sortKeyLabel(key) +
+                  ' — narrow the filters to see further down'
                 : '';
         }
 
         if (!rows.length) {
             body.innerHTML = '<tr><td colspan="14" style="padding:6px 10px 14px;">' +
-                emptyStateHtml(_tableView === 'acquisition'
-                    ? 'No built assets match. The acquisition view shows only prospects at the ' +
-                      'constructed stage or later — switching back to all prospects may be enough.'
-                    : 'No prospects match.', _tableView === 'acquisition') + '</td></tr>';
+                emptyStateHtml('No prospects match.') + '</td></tr>';
             return;
         }
 
@@ -1538,27 +2039,22 @@ var MapSourcing = (function() {
         body.innerHTML = html;
     }
 
-    function wireViews() {
-        // By id, not by class. The worklist reuses .src-views for its stage chips, and a class
-        // selector silently bound this handler to whichever bar sits first in the DOM.
-        var bar = document.getElementById('tblViews');
-        if (!bar) return;
-        bar.addEventListener('click', function(e) {
-            var btn = e.target.closest('.src-view');
-            if (!btn) return;
-            var v = btn.getAttribute('data-view');
-            if (v === _tableView) return;
-            _tableView = v;
-            var all = bar.querySelectorAll('.src-view');
-            for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn);
-            // The acquisition view exists to rank on both axes, so it brings its own default
-            // sort. Switching back restores opportunity, which is the honest default while
+    // Acquisition targets. A filter now, so this only has to set the table's default sort and let
+    // applyFilters do the rest — the same handler shape as any other checkbox in the bar.
+    function wireAcquisition() {
+        var el = document.getElementById('fAcquisition');
+        if (!el) return;
+        el.addEventListener('change', function() {
+            _ignoreNextDocClick = true;
+            // Narrowing to built assets exists in order to rank on both axes, so it brings its own
+            // default sort. Unticking restores opportunity, the honest default while
             // acquirability is still thin.
-            _tableSort = v === 'acquisition' ? { key: 'combined', dir: -1 }
-                                             : { key: 'opportunity', dir: -1 };
+            _tableSort = el.checked ? { key: 'combined', dir: -1 }
+                                    : { key: 'opportunity', dir: -1 };
             paintTableHead();
-            renderTable();
             saveView();
+            saveFilters();
+            applyFilters();
         });
     }
 
@@ -1903,7 +2399,7 @@ var MapSourcing = (function() {
         }
         _focused = true;
         renderMapLayer();
-        renderTable();
+        renderResults();
 
         if (globe) {
             // Stop the idle spin, otherwise the globe drifts straight back off the target.
@@ -1923,7 +2419,7 @@ var MapSourcing = (function() {
     function exitFocus(skipCamera) {
         _focused = false;
         renderMapLayer();
-        renderTable();
+        renderResults();
         var globe = MapBridge.globe();
         if (globe && !skipCamera) {
             if (_prevPOV) globe.pointOfView(_prevPOV, 900);
@@ -1943,10 +2439,14 @@ var MapSourcing = (function() {
         _ignoreNextDocClick = true;
         enterFocus(c);
         renderDetail();
-        if (!fromMap) {
-            var row = document.querySelector('.src-row.sel');
-            if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
-        }
+        // Scroll the matching row into view on whichever surface is showing — a .src-row in the
+        // list, a <tr> in the table. No longer skipped when the click came from the map: that is
+        // precisely the case that needs it, since the row is usually hundreds down the list.
+        // 'nearest' is a no-op when the row is already visible, so clicking a row still costs
+        // nothing.
+        var row = document.querySelector('.src-row.sel') ||
+                  document.querySelector('#srcTableBody tr.sel');
+        if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
         saveView();
     }
 
@@ -1958,23 +2458,15 @@ var MapSourcing = (function() {
         var saved;
         try { saved = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) { return; }
         if (!saved || saved._v !== 1) return;
-        if (saved.view === 'all' || saved.view === 'acquisition') _tableView = saved.view;
+        // saved.view is deliberately ignored. Acquisition targets is a filter now and rides in
+        // ionMiningProspectFilters with the rest; restoring it from here too would give one
+        // control two sources of truth that can disagree after an update.
         if (saved.sort && typeof saved.sort.key === 'string' &&
             (saved.sort.dir === 1 || saved.sort.dir === -1)) _tableSort = saved.sort;
         // Only restore a selection that still exists. Prospect ids change when a catalog is
         // rebuilt, and a stale id would leave an empty panel claiming a site is open.
         if (saved.sel && ProspectStore.get(saved.sel)) _selectedId = saved.sel;
 
-        // The view toggle is markup, so it has to be told which button is active.
-        var bar = document.getElementById('tblViews');
-        if (bar) {
-            var btns = bar.querySelectorAll('.src-view');
-            for (var i = 0; i < btns.length; i++) {
-                btns[i].classList.toggle('active', btns[i].getAttribute('data-view') === _tableView);
-            }
-        }
-        // The acquisition view carries a different column set, so the head has to be rebuilt
-        // before the first paint, not just re-arrowed.
         paintTableHead();
     }
 
@@ -3018,7 +3510,7 @@ var MapSourcing = (function() {
             // the pre-edit ranking.
             invalidateOpportunity();
             renderWorklist();
-            renderTable();
+            renderResults();
         });
     }
 
@@ -3186,18 +3678,23 @@ var MapSourcing = (function() {
             _ignoreNextDocClick = true;
             _portfolio = {};
             saveScenario();
-            renderTable();
+            renderResults();
             renderPortfolio();
         });
 
         renderAbout();
         installDismiss();
         wireTable();
-        wireViews();
+        wireAcquisition();
+        wireList();
+        wireResViews();
+        wireUnfocus();
         wireWorklist();
         wireSourceFilter();
         wireEmptyState();
         wireMoreFilters();
+        loadSearches();
+        wireSaved();
         renderProvenance();
         wireProvenance();
         try {
@@ -3223,6 +3720,15 @@ var MapSourcing = (function() {
         // Before applyFilters, which does the first renderTable — otherwise the table paints in
         // the default view and sort and then visibly rewrites itself.
         restoreView();
+        // Which result surface was last open. Display state, so local only, and set BEFORE the
+        // first applyFilters — otherwise the page paints the list and then visibly swaps.
+        // NOTE what is deliberately NOT restored here: a saved search. Those are applied only by
+        // clicking one. Auto-applying at boot is precisely how the region anchor destroyed a
+        // chosen country, and a named search that reapplies itself would be the same bug wearing
+        // a better name.
+        var savedRes = null;
+        try { savedRes = localStorage.getItem(RESVIEW_KEY); } catch (e) {}
+        setResultsView(savedRes === 'table' ? 'table' : 'list', true);
         applyFilters();
         // The detail panel is painted from the restored selection. applyFilters had to run first
         // so the table exists for the row to be highlighted in.

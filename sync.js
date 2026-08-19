@@ -27,7 +27,12 @@ var SyncEngine = (function() {
         // follow you between machines. Those are still covered by the export, which now walks
         // every ionMining* key rather than this list.
         prospectPortfolio: { lsKey: 'ionMiningProspectPortfolio' },
-        prospectScenario:  { lsKey: 'ionMiningProspectScenario' }
+        prospectScenario:  { lsKey: 'ionMiningProspectScenario' },
+        // A named search is on the work side of that line, not the view side: it is a
+        // deliberately composed set of criteria, and having to rebuild it on the laptop after
+        // composing it on the desktop is the friction the feature exists to remove. The
+        // last-used filters above stay local for exactly the opposite reason.
+        prospectSearches:  { lsKey: 'ionMiningProspectSearches' }
     };
 
     function getDb() {
