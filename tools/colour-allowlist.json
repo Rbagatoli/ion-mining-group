@@ -1,0 +1,30 @@
+{
+  "_comment": [
+    "Colour literals that are allowed to survive the reskin, matched by FILE + LINE + LITERAL.",
+    "Never by literal alone: '#fff' appears 19 times in this repo and only three of them are",
+    "QR quiet zones. A literal-only allowlist would wave the other sixteen through.",
+    "",
+    "Line numbers drift when a file is edited above the entry. tools/colour-census.js reports",
+    "an allowlist entry whose line no longer contains its literal as a STALE ENTRY rather than",
+    "silently ignoring it -- a stale allowlist is how a forbidden colour creeps back in."
+  ],
+  "files": {
+    "chart.min.js": { "all": true, "why": "vendored Chart.js v4.5.1 -- never edited" },
+    "site/**": { "all": true, "why": "the marketing site is the SOURCE of this palette, not a target" },
+    "btc-mining-calculator.html.bak": { "all": true, "why": "stale backup, deleted in step 1" }
+  },
+  "lines": [
+    { "file": "auth-ui.js", "line": 64, "literals": ["#4285F4"], "why": "Google brand mark -- trademark. The sign-in button is required to look like Google's." },
+    { "file": "auth-ui.js", "line": 65, "literals": ["#34A853"], "why": "Google brand mark -- trademark" },
+    { "file": "auth-ui.js", "line": 66, "literals": ["#FBBC05"], "why": "Google brand mark -- trademark" },
+    { "file": "auth-ui.js", "line": 67, "literals": ["#EA4335"], "why": "Google brand mark -- trademark" },
+    { "file": "auth-ui.js", "line": 98, "literals": ["#4285F4"], "why": "Google brand mark -- second verbatim copy" },
+    { "file": "auth-ui.js", "line": 99, "literals": ["#34A853"], "why": "Google brand mark -- second verbatim copy" },
+    { "file": "auth-ui.js", "line": 100, "literals": ["#FBBC05"], "why": "Google brand mark -- second verbatim copy" },
+    { "file": "auth-ui.js", "line": 101, "literals": ["#EA4335"], "why": "Google brand mark -- second verbatim copy" },
+
+    { "file": "banking.html", "line": 211, "literals": ["#fff"], "why": "2FA QR quiet zone -- a QR on black is unscannable. The radius may go; the white may not." },
+    { "file": "banking.html", "line": 391, "literals": ["#fff"], "why": "Lightning invoice QR quiet zone" },
+    { "file": "pay.html", "line": 64, "literals": ["#fff"], "why": "invoice QR quiet zone" }
+  ]
+}
