@@ -49,6 +49,10 @@ function walk(dir, out) {
         // Generated data artifacts, not styling. '#200' in an EIA mailing address is a
         // suite number; scanning data/ finds only false positives.
         if (dir === ROOT && (e.name === 'data' || e.name === 'worker' || e.name === 'worker-strike')) return;
+        // The census's own mapping table and the allowlist are full of colour literals by
+        // necessity. Counting them would have this tool reporting itself as the problem.
+        if (e.name === 'colour-census.js' || e.name === 'colour-allowlist.json') return;
+        if (e.name === 'theme.test.js') return;
         var p = path.join(dir, e.name);
         if (e.isDirectory()) return walk(p, out);
         if (/\.(js|css|html|json)$/.test(e.name)) out.push(p);

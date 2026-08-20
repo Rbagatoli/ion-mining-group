@@ -266,10 +266,10 @@ console.log('\n=== recorded exceptions (asserted so they cannot spread) ===');
         var re = /font-size\s*:\s*([\d.]+)px/gi, m;
         while ((m = re.exec(f.text)) !== null) if (parseFloat(m[1]) < 10.5) small++;
     });
-    // 65 today: shared.css 26, map.html 18, banking.js 8, wallet.js 8 (dies with the dead-file
-    // deletion), map.js 3, banking.html 1, cycle.html 1. The ceiling only ever ratchets DOWN.
+    // 57 after the dead-file deletion took wallet.js's 8 with it: shared.css 26, map.html 18,
+    // banking.js 8, map.js 3, banking.html 1, cycle.html 1. Ratchets DOWN, never up.
     console.log('        declarations below the site 10.5px floor: ' + small);
-    ok('sub-10.5px type has not spread beyond the recorded ceiling', small <= 65);
+    ok('sub-10.5px type has not spread beyond the recorded ceiling', small <= 57);
 
     // Green/red/amber persist because a financial dashboard needs a fourth signal and direction is
     // not a brand decision. They must live in tokens.css, though — not scattered as literals.

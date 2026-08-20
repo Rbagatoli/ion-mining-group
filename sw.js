@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v316';
+const CACHE_NAME = 'ion-mining-v317';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -60,9 +60,6 @@ const ASSETS = [
   './onboarding.js',
   './widget-settings.js',
   './chart.min.js',
-  './accounting.js',
-  './payouts.js',
-  './wallet.js',
 
   // PWA manifest
   './manifest.json'
