@@ -1,21 +1,29 @@
 # Ion Mining Group — public website
 
 The company-facing marketing site. Completely separate from the app that lives at the
-repo root — no shared CSS, no dependencies. Four static pages, one stylesheet, and a small
+repo root — no shared CSS, no dependencies. Five static pages, one stylesheet, and a small
 diagram engine with one scene per page.
 
 ```
 site/
-  index.html    Home — the model, the two tracks, how we operate
-  hosting.html  Hosting & colocation (for miners)
-  energy.html   Energy partnerships + site submission form (for energy/site owners)
-  contact.html  Contact details and general enquiry form
-  styles.css    All styling
-  site.js       Nav, scroll reveal, mailto forms
+  index.html      Home — the model, the two tracks, how we operate
+  hosting.html    Hosting & colocation (for miners)
+  energy.html     Energy partnerships + site submission form (for energy/site owners)
+  calculator.html Mining profitability calculator (both audiences)
+  contact.html    Contact details and general enquiry form
+  styles.css      All styling
+  site.js         Nav, scroll reveal, mailto forms
   diagram-engine.js  Scene-agnostic 3D machinery, shared
   scene-site.js      Home page scene: a whole deployment
   scene-hosting.js   Hosting page scene: inside one hosted container
-  favicon.svg   Ion mark, matching manifest.json
+  scene-pad-now.js   Energy page scene: a wellpad as it stands, flaring
+  scene-pad-ion.js   Energy page scene: the same pad with a mine on it
+  pad-geometry.js    The wellpad itself, shared byte-for-byte by both pad scenes
+  site-kit.js        Gas skid, genset, transformer, container — shared by two scenes
+  calc-engine.js  Projection maths, copied verbatim from the app at the repo root
+  miner-db.js     28 machine models with specs, copied from the app
+  calculator.js   The form around the engine
+  favicon.svg     Ion mark, matching manifest.json
 ```
 
 ## Preview locally
@@ -109,7 +117,7 @@ to it. Keep the mailto path as the no-JS fallback.
 The repo publishes to GitHub Pages from the root, so this lands at
 `https://<user>.github.io/ion-mining-group/site/` as soon as it is pushed.
 
-**The `<link rel="canonical">` and `og:url` tags on all four pages point at
+**The `<link rel="canonical">` and `og:url` tags on all five pages point at
 `https://ionmininggroup.com/`.** That is correct once the custom domain is attached and
 serving this directory, and wrong until then — pointing search engines at a URL that does
 not serve the page. Either attach the domain before announcing the site, or update those
@@ -126,8 +134,8 @@ Two options for the custom domain:
 
 ## The nav is generated
 
-The nav and the footer's Company column are written into all four pages by
-[`tools/build-nav.js`](../tools/build-nav.js) from one definition, rather than hand-copied and
+The nav and the footer's Company column are written into all five pages by
+[`tools/build-nav.js`](./tools/build-nav.js) from one definition, rather than hand-copied and
 left to drift. Edit the definition in that script, never the pages:
 
 ```sh
@@ -135,6 +143,75 @@ node tools/build-nav.js
 ```
 
 Per-page differences it handles: which item gets `.active`, and each page's own CTA button.
+
+## Mining calculator
+
+`calculator.html` runs the same projection the app at the repo root runs. That is the whole
+point of the page, so it is worth being precise about how it is kept true.
+
+**[`calc-engine.js`](./calc-engine.js) is a verbatim copy of
+[`../calc-engine.js`](../calc-engine.js).** Not a port, not a simplification — the same bytes.
+It was already pure (no DOM, no network, no globals but its own export) because it was
+extracted from `calculator.js` to be node-testable, which is exactly what makes it portable.
+**Never edit the site copy.** Change the root one and re-copy, or the public page starts
+quoting different numbers than the desk does. `calc-suite.js` asserts the two are
+byte-identical and projects six scenarios through both, so drift fails the build rather
+than shipping quietly.
+
+The same goes for [`miner-db.js`](./miner-db.js), which is the root file plus a one-line
+`module.exports` tail so it can be required under node.
+
+**Two ways in.** *I have machines* takes a model and a count. *I have energy* takes gas
+volume or spare capacity and sizes the fleet, using the constants from the app's
+[`site-engine.js`](../site-engine.js) — 1,000 BTU per cubic foot, 10,000 BTU per kWh, so
+1 Mcf ≈ 100 kWh and 1 MMcf/day ≈ 4 MW. Both are exposed as inputs, because the internal
+engine exposes them too: heat rate moves materially with genset model and altitude. The
+suite asserts the page's defaults still equal the engine's.
+
+> Oilfield notation catches everyone, including the test that was written to check it:
+> **M is a thousand**, so 1 MMcf = 1,000 Mcf, not a million.
+
+**The engine floors `machineCount` at 1** because it is a divisor downstream. That floor is
+right for the engine and wrong for this page — a gas volume too small to run one machine
+must not come back as a one-machine projection. Everything user-facing therefore reads the
+*requested* count, and a fleet of zero blanks the results rather than projecting a phantom.
+
+**The chart is hand-built SVG against a fixed `viewBox`**, not a charting library. The site
+has no dependencies and the standing no-measurement rule applies here as much as to the
+diagrams — a viewBox scales without anyone asking the layout how wide it is.
+
+### Live market data — the site's only outbound request
+
+BTC price and network difficulty are fetched on every page load, because a calculator
+seeded with a constant is wrong from the day it ships and gets worse.
+
+| Figure | Endpoint | Shape |
+|---|---|---|
+| BTC price | `api.coinbase.com/v2/prices/BTC-USD/spot` | `{"data":{"amount":"75464.76",…}}` |
+| Difficulty | `blockchain.info/q/getdifficulty` | a bare number, absolute — divide by 1e12 for T |
+
+Both are public, keyless and CORS-open. Keyless matters: a key in a static page is a
+published key, and there is a test asserting neither URL carries one.
+
+**Every failure path falls back to the seeded values silently.** No fetch in the browser, a
+non-200, a parse failure, an outage, a blocking CSP — the calculator opens on the figures in
+the markup and says so. It never shows an error, an empty field, or a spinner that never
+resolves. A late response also will not overwrite a value the visitor has already typed.
+
+The note under those two fields is written for the fallback case and upgraded by script when
+the fetch lands, so it is true in both states. Re-date the seeded figures whenever you touch
+them; a test checks the note quotes the values actually shipped.
+
+> This breaks the site's no-external-requests rule, on purpose and by request. The privacy
+> policy needs a line about it — a visitor's IP reaches Coinbase and blockchain.info.
+
+### Placeholders here work differently
+
+BTC price and network difficulty ship with starting values rather than `[PLACEHOLDER]`
+spans, because they are *inputs the visitor overwrites*, not claims the site is making. The
+page says so in as many words directly under them. If that caveat is ever removed, the
+defaults become assertions about live market state and the placeholder rule applies again.
+There is a test for the caveat's presence.
 
 ## Design system
 
@@ -166,8 +243,13 @@ Other rules the pages follow:
   action, the active nav item, a live data point, and an unfilled placeholder.
 - Buttons and labels are uppercase mono with wide tracking; body copy is not.
 - Dark only, by choice. The app has a light theme; this site does not need one.
-- No external requests: no CDN, no web fonts, no analytics. Nothing leaks visitor data by
-  default. If you add analytics, disclose it in the privacy policy.
+- No CDN, no web fonts, no analytics. **One exception, added deliberately:** the calculator
+  fetches the live BTC price and network difficulty on load — see
+  [Mining calculator](#mining-calculator). That is the only outbound request the site makes.
+  Two public keyless endpoints, nothing sent but the request itself, and every failure path
+  falls back to the figures the page shipped with. **It does mean a visitor's IP reaches two
+  third parties, so the privacy policy needs a line about it.** If you add anything else that
+  calls out, disclose that too.
 - `prefers-reduced-motion` is respected — reveals, sheen sweeps, and transitions turn off.
 - Accessibility: semantic landmarks, keyboard-operable mobile nav with `aria-expanded`,
   visible focus state on every field, and no text below 10.5px (mono labels only).
@@ -212,6 +294,16 @@ instead of `-`, −Z becomes near and the whole scene renders inside-out — you
 the cutaway points away from you, and the ASIC fans face into a wall. The scene is authored
 throughout to "+Z toward the viewer"; that convention decides which wall is cut and which way the
 machines point.
+
+**0. All four drawings share one set of face weights** — `.dg-top` / `.dg-side` / `.dg-end` at
+0.42 / 0.30 / 0.20, with `.dg-detail` at 0.72 above them. There was briefly a second set: heavier
+weights for the wellpad on the reasoning that a container wall must be see-through and a wellpad
+need not be. The reasoning was sound and the result was not — side by side the drawings looked
+like three different materials and the wellpad read as lit from a different sun. The shared
+weight has to stay heavy enough for a solid object to have form (a lit face at 3.45:1 against the
+ground) and light enough that a cutaway still shows what is racked inside it. `pad-suite` asserts
+both bounds, and resolves them through `cascade.js` rather than reading the rule, because an
+override that loses is indistinguishable from one that was never written.
 
 **2. Faces must be solid and shaded, not wireframe.** An earlier version drew everything as
 outlined boxes, and a genset, a transformer and a container all read as the same anonymous box.

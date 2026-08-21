@@ -29,7 +29,7 @@
         'energyBasis', 'energyValue', 'gasBtuPerCf', 'heatRate',
         'elecCost', 'btcPrice', 'priceChange', 'difficulty', 'diffChange',
         'periodLength', 'investPeriod',
-        'poolFee', 'uptime', 'hodlRatio', 'minerLifespan', 'salvageValue',
+        'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
@@ -103,6 +103,15 @@
 
     var CUSTOM = '__custom__';
 
+    /* The model the page opens on. Chosen on cost per terahash, not on brand:
+       several prices in miner-db.js have gone stale at different rates, so the
+       list now spans $6/TH to $36/TH for machines of similar vintage, and
+       whichever one this page opens on decides whether a first-time visitor
+       sees a business or a write-off. This one sits mid-range at ~$11/TH and
+       is current-generation air-cooled, so the opening numbers are neither an
+       outlier bargain nor an outlier price. */
+    var DEFAULT_MODEL = 'Antminer S21 XP';
+
     function fillMinerModels() {
         if (typeof MinerDB === 'undefined') return;
         var list = MinerDB.getAll().slice().sort(function (a, b) {
@@ -120,7 +129,7 @@
         c.textContent = 'Custom — enter your own specs';
         frag.appendChild(c);
         el.minerModel.appendChild(frag);
-        el.minerModel.value = 'Antminer S21 Hyd.';
+        el.minerModel.value = DEFAULT_MODEL;
         applyMinerModel();
     }
 
@@ -217,15 +226,73 @@
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),
             capitalGainsTaxRate: num(el.capitalGainsTaxRate.value, 0),
         };
-        return { settings: s, derived: derived };
+        /* machineCount is handed back separately because the engine floors it at
+           1 — it is used as a divisor downstream, so normalise() will not accept
+           a zero. That floor is right for the engine and wrong for this page: a
+           volume too small to run one machine must not come back as a
+           one-machine projection. Everything user-facing reads `requested`. */
+        return { settings: s, derived: derived, requested: machineCount };
     }
 
-    /* ---------- the chart ----------
-       Straight SVG against a fixed viewBox. Nothing is measured; the browser
-       scales the whole thing to whatever width the column happens to be. */
+    /* Monotone cubic interpolation (Fritsch–Carlson).
 
-    var VB = { w: 1000, h: 330 };
-    var PAD = { l: 74, r: 18, t: 18, b: 34 };
+       A straight polyline through 60 monthly points looks like a saw. The usual
+       fix is Catmull-Rom, which is smooth but overshoots — it will draw the
+       curve dipping below zero between two points that are both above it, and on
+       a profit chart that is a lie with a nice curve on it. Monotone cubic is
+       smooth and cannot overshoot: between any two samples the curve stays
+       within their range. */
+    function monotoneTangents(xs, ys) {
+        var n = xs.length, d = [], m = [];
+        for (var i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+        m.push(d[0] || 0);
+        for (var k = 1; k < n - 1; k++) {
+            if (d[k - 1] * d[k] <= 0) { m.push(0); continue; }
+            m.push((d[k - 1] + d[k]) / 2);
+        }
+        m.push(d[n - 2] || 0);
+        /* Clamp so no segment can bulge past its own endpoints. */
+        for (var j = 0; j < n - 1; j++) {
+            if (d[j] === 0) { m[j] = 0; m[j + 1] = 0; continue; }
+            var a = m[j] / d[j], b = m[j + 1] / d[j];
+            var s = a * a + b * b;
+            if (s > 9) {
+                var t = 3 / Math.sqrt(s);
+                m[j] = t * a * d[j];
+                m[j + 1] = t * b * d[j];
+            }
+        }
+        return m;
+    }
+
+    function smoothPath(xs, ys) {
+        var n = xs.length;
+        if (n < 2) return n ? 'M' + xs[0].toFixed(1) + ' ' + ys[0].toFixed(1) : '';
+        var m = monotoneTangents(xs, ys);
+        var d = 'M' + xs[0].toFixed(1) + ' ' + ys[0].toFixed(1);
+        for (var i = 0; i < n - 1; i++) {
+            var h = (xs[i + 1] - xs[i]) / 3;
+            d += 'C' + (xs[i] + h).toFixed(1) + ' ' + (ys[i] + m[i] * h).toFixed(1) +
+                 ' ' + (xs[i + 1] - h).toFixed(1) + ' ' + (ys[i + 1] - m[i + 1] * h).toFixed(1) +
+                 ' ' + xs[i + 1].toFixed(1) + ' ' + ys[i + 1].toFixed(1);
+        }
+        return d;
+    }
+
+    var VB = { w: 1000, h: 360 };
+    var PAD = { l: 78, r: 96, t: 30, b: 42 };
+
+    var SERIES = [
+        { key: 'machines', label: 'Miners Owned',               kind: 'line', axis: 'count', on: false },
+        { key: 'mining',   label: 'Mining Net Value (USD)',     kind: 'line', axis: 'usd',   on: true },
+        { key: 'hold',     label: 'Buy & Hold Net Value (USD)', kind: 'line', axis: 'usd',   on: true },
+        { key: 'mined',    label: 'BTC Mined (cumulative)',     kind: 'bar',  axis: 'btc',   on: true },
+        { key: 'held',     label: 'BTC Held (cumulative)',      kind: 'bar',  axis: 'btc',   on: true },
+    ];
+    var seriesOn = {};
+    SERIES.forEach(function (s) { seriesOn[s.key] = s.on; });
+
+    var lastFrame = null;
 
     function niceStep(range, targetTicks) {
         if (!(range > 0)) return 1;
@@ -236,71 +303,317 @@
         return step * mag;
     }
 
+    function scaleOver(lo, hi, divs) {
+        if (!(hi > lo)) hi = lo + 1;
+        var step = niceStep(hi - lo, divs);
+        for (var guard = 0; guard < 12; guard++) {
+            var l = Math.floor(lo / step) * step;
+            var h = l + step * divs;
+            if (h >= hi - 1e-9) return { lo: l, hi: h, step: step };
+            step = niceStep(step * divs * 1.5, divs);
+        }
+        return { lo: lo, hi: hi, step: (hi - lo) / divs };
+    }
+
+    var DIVS = 6;
+
+    /* The site's own material language, in SVG. The README is explicit that
+       platinum and orange are gradients rather than flat fills — everything else
+       on the page catches light that way, and the chart was the one surface
+       still sitting flat. */
+    var CHART_DEFS =
+        '<defs>' +
+          '<linearGradient id="ckAreaMining" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#f7931a" stop-opacity="0.34"/>' +
+            '<stop offset="55%" stop-color="#f7931a" stop-opacity="0.09"/>' +
+            '<stop offset="100%" stop-color="#f7931a" stop-opacity="0"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="ckAreaHold" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#e5e4e2" stop-opacity="0.13"/>' +
+            '<stop offset="100%" stop-color="#e5e4e2" stop-opacity="0"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="ckBarMined" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#ffb347" stop-opacity="0.78"/>' +
+            '<stop offset="45%" stop-color="#f7931a" stop-opacity="0.55"/>' +
+            '<stop offset="100%" stop-color="#c86f0a" stop-opacity="0.30"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="ckBarHeld" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#efeeec" stop-opacity="0.44"/>' +
+            '<stop offset="45%" stop-color="#a9a8a5" stop-opacity="0.28"/>' +
+            '<stop offset="100%" stop-color="#5c5b58" stop-opacity="0.16"/>' +
+          '</linearGradient>' +
+        '</defs>';
+
     function drawChart(r) {
         var svg = $('calcChart');
         if (!svg) return;
-        var value = r.series.usdValue;
-        var bench = r.series.buyHold;
-        var n = value.length;
-        if (!n) { svg.innerHTML = ''; return; }
+        var s = r.series;
+        var n = s.labels.length;
+        if (!n) { svg.innerHTML = ''; lastFrame = null; return; }
 
-        var all = value.concat(bench).concat([0]);
-        var lo = Math.min.apply(null, all);
-        var hi = Math.max.apply(null, all);
-        if (hi === lo) { hi = lo + 1; }
-        var step = niceStep(hi - lo, 4);
-        lo = Math.floor(lo / step) * step;
-        hi = Math.ceil(hi / step) * step;
+        var data = {
+            mining: s.usdValue, hold: s.buyHold,
+            mined: s.cumulMined, held: s.btcHodl,
+            machines: s.machines,
+        };
+
+        function spread(keys) {
+            var lo = Infinity, hi = -Infinity, any = false;
+            keys.forEach(function (k) {
+                if (!seriesOn[k]) return;
+                any = true;
+                data[k].forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; });
+            });
+            return any ? { lo: lo, hi: hi } : null;
+        }
+        var btcS = spread(['mined', 'held']);
+        var usdS = spread(['mining', 'hold']);
+        var cntS = spread(['machines']);
+
+        var btcAx = btcS ? scaleOver(0, btcS.hi, DIVS) : null;
+        var usd = usdS ? scaleOver(Math.min(0, usdS.lo), Math.max(0, usdS.hi), DIVS) : null;
+        var cnt = cntS ? scaleOver(0, cntS.hi, DIVS) : null;
 
         var pw = VB.w - PAD.l - PAD.r;
         var ph = VB.h - PAD.t - PAD.b;
         function X(i) { return PAD.l + (n === 1 ? pw / 2 : (i / (n - 1)) * pw); }
-        function Y(v) { return PAD.t + ph - ((v - lo) / (hi - lo)) * ph; }
+        function Yof(sc, v) { return PAD.t + ph - ((v - sc.lo) / (sc.hi - sc.lo)) * ph; }
+        function axisOf(a) { return a === 'usd' ? usd : a === 'btc' ? btcAx : cnt; }
 
-        var parts = [];
+        var p = [CHART_DEFS];
 
-        // Horizontal gridlines and their money labels.
-        for (var g = lo; g <= hi + step * 0.001; g += step) {
-            var y = Y(g).toFixed(1);
-            var isZero = Math.abs(g) < step * 1e-6;
-            parts.push('<line x1="' + PAD.l + '" y1="' + y + '" x2="' + (VB.w - PAD.r) +
-                       '" y2="' + y + '" class="' + (isZero ? 'ck-zero' : 'ck-grid') + '"/>');
-            parts.push('<text x="' + (PAD.l - 10) + '" y="' + y + '" class="ck-ylab">' +
-                       moneyShort(g) + '</text>');
-        }
-
-        // Period ticks, thinned so the axis never crowds.
-        var everyX = Math.max(1, Math.ceil(n / 12));
-        for (var i = 0; i < n; i++) {
-            if (i % everyX !== 0 && i !== n - 1) continue;
-            parts.push('<text x="' + X(i).toFixed(1) + '" y="' + (VB.h - 10) +
-                       '" class="ck-xlab">' + (i + 1) + '</text>');
-        }
-
-        function path(arr) {
-            var d = '';
-            for (var i = 0; i < arr.length; i++) {
-                d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(arr[i]).toFixed(1);
+        for (var g = 0; g <= DIVS; g++) {
+            var y = PAD.t + ph - (g / DIVS) * ph;
+            p.push('<line x1="' + PAD.l + '" y1="' + y.toFixed(1) + '" x2="' + (VB.w - PAD.r) +
+                   '" y2="' + y.toFixed(1) + '" class="ck-grid"/>');
+            if (btcAx) {
+                p.push('<text x="' + (PAD.l - 10) + '" y="' + y.toFixed(1) + '" class="ck-ylab">' +
+                       (btcAx.lo + g * btcAx.step).toFixed(4) + '</text>');
             }
-            return d;
+            if (usd) {
+                p.push('<text x="' + (VB.w - PAD.r + 10) + '" y="' + y.toFixed(1) +
+                       '" class="ck-ylab ck-ylab--r">' + moneyShort(usd.lo + g * usd.step) + '</text>');
+            }
+        }
+        if (usd && usd.lo < 0 && usd.hi > 0) {
+            p.push('<line x1="' + PAD.l + '" y1="' + Yof(usd, 0).toFixed(1) + '" x2="' + (VB.w - PAD.r) +
+                   '" y2="' + Yof(usd, 0).toFixed(1) + '" class="ck-zero"/>');
+        }
+        if (btcAx) p.push('<text transform="translate(16,' + (PAD.t + ph / 2) + ') rotate(-90)" class="ck-axis">BTC (cumulative)</text>');
+        if (usd) p.push('<text transform="translate(' + (VB.w - 12) + ',' + (PAD.t + ph / 2) + ') rotate(-90)" class="ck-axis">Net value (USD)</text>');
+
+        /* Halvings, drawn as a small flag rather than floating text. */
+        (r.halvingPeriodIdxs || []).forEach(function (h) {
+            if (h.idx >= n) return;
+            var hx = X(h.idx);
+            p.push('<line x1="' + hx.toFixed(1) + '" y1="' + PAD.t + '" x2="' + hx.toFixed(1) +
+                   '" y2="' + (PAD.t + ph) + '" class="ck-halving"/>');
+            p.push('<rect class="ck-halvingflag" x="' + (hx - 52).toFixed(1) + '" y="' + (PAD.t - 22) +
+                   '" width="104" height="15"/>');
+            p.push('<text x="' + hx.toFixed(1) + '" y="' + (PAD.t - 11) +
+                   '" class="ck-halvinglab">HALVING &#8594; ' + h.reward + '</text>');
+        });
+
+        var asBars = n <= 96;
+        var barGroup = (pw / Math.max(1, n)) * 0.72;
+        var barW = Math.max(1.1, barGroup / 2);
+        if (btcAx) {
+            ['mined', 'held'].forEach(function (key, ki) {
+                if (!seriesOn[key]) return;
+                var grad = key === 'mined' ? 'ckBarMined' : 'ckBarHeld';
+                if (asBars) {
+                    var d = '';
+                    for (var i = 0; i < n; i++) {
+                        var v = data[key][i];
+                        if (!(v > 0)) continue;
+                        var bx = X(i) - barGroup / 2 + ki * barW;
+                        var by = Yof(btcAx, v);
+                        d += 'M' + bx.toFixed(1) + ' ' + by.toFixed(1) + 'h' + barW.toFixed(1) +
+                             'V' + (PAD.t + ph).toFixed(1) + 'h' + (-barW).toFixed(1) + 'Z';
+                    }
+                    p.push('<path d="' + d + '" fill="url(#' + grad + ')" stroke="none"/>');
+                } else {
+                    var xs = [], ys = [];
+                    for (var j = 0; j < n; j++) { xs.push(X(j)); ys.push(Yof(btcAx, data[key][j])); }
+                    p.push('<path d="' + smoothPath(xs, ys) + 'L' + X(n - 1).toFixed(1) + ' ' +
+                           (PAD.t + ph).toFixed(1) + 'L' + X(0).toFixed(1) + ' ' + (PAD.t + ph).toFixed(1) +
+                           'Z" fill="url(#' + grad + ')" stroke="none"/>');
+                }
+            });
         }
 
-        // Benchmark first so the mining line reads on top of it.
-        parts.push('<path d="' + path(bench) + '" class="ck-bench"/>');
-        parts.push('<path d="' + path(value) + '" class="ck-value"/>');
+        /* Curves, each with its own area beneath so the shape reads as mass
+           rather than as a hairline. */
+        var coords = {};
+        function curve(key, lineCls, areaFill) {
+            if (!seriesOn[key]) return;
+            var sc = axisOf(SERIES.filter(function (x) { return x.key === key; })[0].axis);
+            if (!sc) return;
+            var xs = [], ys = [];
+            for (var i = 0; i < n; i++) { xs.push(X(i)); ys.push(Yof(sc, data[key][i])); }
+            coords[key] = { xs: xs, ys: ys };
+            var line = smoothPath(xs, ys);
+            if (areaFill) {
+                var base = sc === usd && usd.lo < 0 && usd.hi > 0 ? Yof(usd, 0) : PAD.t + ph;
+                p.push('<path d="' + line + 'L' + xs[n - 1].toFixed(1) + ' ' + base.toFixed(1) +
+                       'L' + xs[0].toFixed(1) + ' ' + base.toFixed(1) + 'Z" fill="url(#' + areaFill +
+                       ')" stroke="none"/>');
+            }
+            p.push('<path d="' + line + '" class="' + lineCls + '"/>');
+        }
+        curve('machines', 'ck-machines', null);
+        curve('hold', 'ck-bench', 'ckAreaHold');
+        curve('mining', 'ck-value', 'ckAreaMining');
 
-        // Break-even, where the position first crosses zero.
-        if (r.breakEvenPeriod) {
+        if (r.breakEvenPeriod && seriesOn.mining) {
             var bx = X(r.breakEvenPeriod - 1).toFixed(1);
-            parts.push('<line x1="' + bx + '" y1="' + PAD.t + '" x2="' + bx + '" y2="' +
-                       (PAD.t + ph) + '" class="ck-be"/>');
-            parts.push('<text x="' + bx + '" y="' + (PAD.t - 5) + '" class="ck-belab">BREAK-EVEN</text>');
+            p.push('<line x1="' + bx + '" y1="' + PAD.t + '" x2="' + bx + '" y2="' +
+                   (PAD.t + ph) + '" class="ck-be"/>');
         }
 
-        svg.innerHTML = parts.join('');
+        /* Where each curve ends up, stated at the end of it. Saves reading a
+           value off an axis for the one period anyone cares most about. */
+        [['mining', 'ck-end-value'], ['hold', 'ck-end-bench']].forEach(function (pair) {
+            var c = coords[pair[0]];
+            if (!c) return;
+            var ex = c.xs[n - 1], ey = c.ys[n - 1];
+            p.push('<circle cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="3.5" class="' + pair[1] + '"/>');
+            p.push('<text x="' + (ex + 8).toFixed(1) + '" y="' + ey.toFixed(1) +
+                   '" class="ck-endlab ' + pair[1] + '-lab">' +
+                   moneyShort(data[pair[0]][n - 1]) + '</text>');
+        });
+
+        var everyX = Math.max(1, Math.ceil(n / 14));
+        for (var t = 0; t < n; t++) {
+            if (t % everyX !== 0 && t !== n - 1) continue;
+            p.push('<text x="' + X(t).toFixed(1) + '" y="' + (VB.h - 16) + '" class="ck-xlab">' + (t + 1) + '</text>');
+        }
+
+        var colW = pw / Math.max(1, n - 1 || 1);
+        for (var k = 0; k < n; k++) {
+            p.push('<rect class="ck-hit" data-i="' + k + '" x="' + (X(k) - colW / 2).toFixed(1) +
+                   '" y="' + PAD.t + '" width="' + colW.toFixed(1) + '" height="' + ph + '"/>');
+        }
+        p.push('<line id="ckCross" class="ck-cross" x1="0" y1="' + PAD.t + '" x2="0" y2="' +
+               (PAD.t + ph) + '" style="display:none"/>');
+        /* One dot per line series, parked until a period is hovered. */
+        ['mining', 'hold', 'machines'].forEach(function (key) {
+            p.push('<circle id="ckDot-' + key + '" class="ck-dot ck-dot--' + key +
+                   '" r="4.5" cx="0" cy="0" style="display:none"/>');
+        });
+
+        svg.innerHTML = p.join('');
+        lastFrame = { r: r, data: data, n: n, X: X, coords: coords, unit: r.periodConfig.labelSingular };
+        drawLegend();
+        hideTip();
+    }
+    /* ---------- legend ---------- */
+
+    function drawLegend() {
+        var box = $('calcLegend');
+        if (!box) return;
+        box.innerHTML = SERIES.map(function (sr) {
+            return '<button type="button" class="cl-item' + (seriesOn[sr.key] ? '' : ' is-off') +
+                   '" data-series="' + sr.key + '" aria-pressed="' + seriesOn[sr.key] + '">' +
+                   '<span class="cl-key cl-key--' + sr.key + '"></span>' + esc(sr.label) + '</button>';
+        }).join('');
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ---------- the readout ---------- */
+
+    /* The readout is a strip under the plot, not a tooltip over it, so it is
+       always on screen and never occludes the curve it describes. With nothing
+       hovered it says how to use it rather than going blank, which would make
+       the whole row appear and disappear as the pointer crosses the chart. */
+    var READOUT_IDLE = '<span class="ct-idle">Hover the chart, or focus it and use the arrow keys, to read any period exactly.</span>';
+
+    function hideTip() {
+        var tip = $('calcTip');
+        if (tip) tip.innerHTML = READOUT_IDLE;
+        var cross = $('ckCross');
+        if (cross) cross.style.display = 'none';
+        ['mining', 'hold', 'machines'].forEach(function (key) {
+            var dot = $('ckDot-' + key);
+            if (dot) dot.style.display = 'none';
+        });
+    }
+
+    function showTip(i) {
+        var tip = $('calcTip');
+        if (!tip || !lastFrame || i < 0 || i >= lastFrame.n) return;
+        var f = lastFrame;
+        var rows = SERIES.filter(function (sr) { return seriesOn[sr.key]; }).map(function (sr) {
+            var v = f.data[sr.key][i];
+            /* "(USD)" is redundant beside a value that already carries a
+               dollar sign, and dropping it is what keeps all five readings on
+               one row at the larger size. The legend still spells it out. */
+            var label = sr.label.split(' (USD)').join('');
+            var txt;
+            if (sr.axis === 'usd') txt = money(v, 2);
+            else if (sr.axis === 'btc') txt = btc(v, 8) + ' BTC';
+            else txt = int(v);
+            /* Label over value, the way the result tiles above are built. Side
+               by side, a bigger number would push the labels apart until the
+               row wrapped; stacked, each reading stays one column wide. */
+            return '<span class="ct-item"><span class="cl-key cl-key--' + sr.key + '"></span>' +
+                   '<span class="ct-body">' +
+                   '<span class="ct-name">' + esc(label) + '</span>' +
+                   '<span class="ct-num">' + txt + '</span></span></span>';
+        }).join('');
+        tip.innerHTML = '<span class="ct-head">' +
+            f.unit.charAt(0).toUpperCase() + f.unit.slice(1) + ' ' + (i + 1) + '</span>' + rows;
+
+        var cross = $('ckCross');
+        if (cross) {
+            cross.setAttribute('x1', f.X(i).toFixed(1));
+            cross.setAttribute('x2', f.X(i).toFixed(1));
+            cross.style.display = '';
+        }
+        /* A dot on each curve at the hovered period. The crosshair says which
+           period; the dots say where each line actually is at it. */
+        ['mining', 'hold', 'machines'].forEach(function (key) {
+            var dot = $('ckDot-' + key);
+            if (!dot) return;
+            var c = f.coords && f.coords[key];
+            if (!c || !seriesOn[key]) { dot.style.display = 'none'; return; }
+            dot.setAttribute('cx', c.xs[i].toFixed(1));
+            dot.setAttribute('cy', c.ys[i].toFixed(1));
+            dot.style.display = '';
+        });
     }
 
     /* ---------- render ---------- */
+
+    /* Every figure the projection would have filled, emptied. Used when there is
+       no fleet to project — better a row of dashes than a confident number
+       describing a machine the reader does not have. */
+    var OUT_IDS = [
+        'outDailyProfit', 'outCostPerBtc', 'outBreakEven', 'outRoi',
+        'outDailyRevenue', 'outDailyPower', 'outEfficiency', 'outFleetHash',
+        'outFleetPower', 'outMachines', 'outHorizon', 'outInvestment',
+        'outBtcMined', 'outPowerSpend', 'outTotalPl', 'outHeldBtc',
+        'outHeldValue', 'outFinalPrice', 'outBenchmark', 'outAdvantage',
+        'outOvertake', 'outVerdict',
+    ];
+
+    function blankResults() {
+        OUT_IDS.forEach(function (id) {
+            var n = $(id);
+            if (!n) return;
+            n.textContent = '—';
+            n.classList.remove('is-up');
+            n.classList.remove('is-down');
+        });
+        setText('outMachines', '0');
+        var c = $('calcChart'); if (c) c.innerHTML = '';
+        var t = $('calcTableBody'); if (t) t.innerHTML = '';
+        setText('calcTableNote', '—');
+        setText('chartCaption', '—');
+    }
 
     function render() {
         if (typeof CalcEngine === 'undefined') return;
@@ -330,13 +643,38 @@
             }
         }
 
+        /* No fleet, no projection. The engine would happily return one machine's
+           worth of revenue here; printing that would be answering a question
+           nobody asked. */
+        if (got.requested < 1) {
+            blankResults();
+            var w0 = $('calcWarn');
+            if (w0) {
+                w0.textContent = got.derived
+                    ? 'That is not enough energy to run one ' +
+                      (el.minerModel.value === CUSTOM ? 'machine' : el.minerModel.value) +
+                      '. Raise the volume, or pick a machine that draws less.'
+                    : 'Enter at least one machine.';
+                w0.hidden = false;
+            }
+            return;
+        }
+
         // Headline four.
         setSigned('outDailyProfit', money(r.dailyProfitDay1, 2), r.dailyProfitDay1);
         setText('outCostPerBtc', isFinite(r.costPerBTC) ? money(r.costPerBTC) : '—');
-        setText('outBreakEven', r.breakEvenPeriod
+        /* Break-even has no magnitude to colour by, only a yes or no: paying
+           back inside the horizon is the good outcome, never doing so is not. */
+        setSigned('outBreakEven', r.breakEvenPeriod
             ? r.breakEvenPeriod + ' ' + (r.breakEvenPeriod === 1 ? unit1 : unit)
-            : 'Not within ' + p.numPeriods + ' ' + unit);
+            : 'Not within ' + p.numPeriods + ' ' + unit,
+            r.breakEvenPeriod ? 1 : -1);
         setSigned('outRoi', pct(r.roi), r.roi);
+        /* "+445%" alone is meaningless without the window it was earned over —
+           the same number across 60 months and across 6 is two different
+           businesses. The tile therefore reads "+445%" over "over 60 months". */
+        setText('outRoiSub', 'over ' + p.numPeriods + ' ' +
+            (p.numPeriods === 1 ? unit1 : unit));
 
         // Day one.
         setText('outDailyRevenue', money(r.dailyRevenueDay1, 2));
@@ -346,7 +684,7 @@
             { maximumFractionDigits: 0 }) + ' TH/s');
         setText('outFleetPower', (p.powerKW * p.machineCount).toLocaleString('en-US',
             { maximumFractionDigits: 1 }) + ' kW');
-        setText('outMachines', int(p.machineCount));
+        setText('outMachines', int(got.requested));
 
         // Over the horizon.
         setText('outHorizon', p.numPeriods + ' ' + (p.numPeriods === 1 ? unit1 : unit));
@@ -374,14 +712,9 @@
             verdict.classList.toggle('is-down', !r.isMiningBetter);
         }
 
-        // Warn rather than silently projecting a fleet of nothing.
         var warn = $('calcWarn');
         if (warn) {
             var msgs = [];
-            if (p.machineCount < 1) {
-                msgs.push('That is not enough power for one machine of this model. ' +
-                          'Raise the volume, or pick a smaller miner.');
-            }
             if (p.elecCost === 0) {
                 msgs.push('Power is set to $0.00/kWh, so nothing is being charged for electricity.');
             }
@@ -425,6 +758,130 @@
         setText('calcTableNote', rows.length > out.length
             ? 'Showing ' + out.length + ' of ' + rows.length + ' periods, plus every halving.'
             : 'All ' + rows.length + ' periods.');
+    }
+
+    /* ---------- live market data ----------
+
+       The two market figures are fetched on load so the page opens on today's
+       numbers rather than on whatever was true the day it was written. Both
+       endpoints are public, keyless and CORS-open; nothing is sent but the
+       request itself.
+
+       This is the ONE outbound request the site makes, and it is a departure
+       from the no-external-requests rule the rest of the site keeps — see the
+       note in README.md. It is also the only thing here that can fail, so every
+       path falls back to the seeded value silently: no error state, no empty
+       field, just the figure the page shipped with. A calculator that refuses to
+       open because an API is down would be worse than a slightly stale one. */
+
+    var MARKET = {
+        price: {
+            url: 'https://api.coinbase.com/v2/prices/BTC-USD/spot',
+            read: function (body) {
+                var j = JSON.parse(body);
+                return j && j.data ? parseFloat(j.data.amount) : NaN;
+            },
+            field: 'btcPrice',
+            format: function (v) { return String(Math.round(v)); },
+        },
+        difficulty: {
+            /* Returns a bare number in absolute terms; the field is in trillions. */
+            url: 'https://blockchain.info/q/getdifficulty',
+            read: function (body) { return parseFloat(body) / 1e12; },
+            field: 'difficulty',
+            format: function (v) { return v.toFixed(2); },
+        },
+    };
+
+    var marketLive = { price: false, difficulty: false };
+
+    function noteMarket() {
+        var note = $('marketNote');
+        if (!note) return;
+        if (marketLive.price && marketLive.difficulty) {
+            note.innerHTML = '<strong>Live.</strong> BTC price and network difficulty were ' +
+                'fetched when this page loaded. Everything else is an assumption you set.';
+            note.classList.add('is-live');
+        }
+    }
+
+    function fetchMarket() {
+        if (typeof fetch !== 'function') return;
+        Object.keys(MARKET).forEach(function (key) {
+            var spec = MARKET[key];
+            var node = el[spec.field];
+            if (!node) return;
+            /* Never stomp something the visitor has already typed. If the field
+               no longer holds the value it shipped with, they have touched it. */
+            var untouched = node.value === node.getAttribute('data-default');
+            fetch(spec.url, { cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (body) {
+                    if (body === null) return;
+                    var v = spec.read(body);
+                    if (!isFinite(v) || v <= 0) return;
+                    marketLive[key] = true;
+                    if (untouched && node.value === node.getAttribute('data-default')) {
+                        node.value = spec.format(v);
+                        render();
+                    }
+                    noteMarket();
+                })
+                .catch(function () { /* seeded value stands */ });
+        });
+    }
+
+    /* ---------- chart interaction ---------- */
+
+    function wireChart() {
+        var svg = $('calcChart');
+        var legend = $('calcLegend');
+        var plot = $('calcPlot');
+        if (!svg) return;
+        var at = -1;
+
+        /* The pointer lands on a hit column that already knows its own index, so
+           there is nothing to convert and nothing to measure. */
+        svg.addEventListener('mouseover', function (e) {
+            var hit = e.target.closest && e.target.closest('.ck-hit');
+            if (!hit) return;
+            at = parseInt(hit.getAttribute('data-i'), 10);
+            showTip(at);
+        });
+        if (plot) {
+            plot.addEventListener('mouseleave', function () { at = -1; hideTip(); });
+        }
+
+        /* Same readout by keyboard. A chart that only answers a mouse is a chart
+           half the people who need the number cannot use. */
+        svg.addEventListener('focus', function () {
+            if (lastFrame && at < 0) { at = 0; showTip(0); }
+        });
+        svg.addEventListener('blur', hideTip);
+        svg.addEventListener('keydown', function (e) {
+            if (!lastFrame) return;
+            var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+            if (e.key === 'Home') at = 0;
+            else if (e.key === 'End') at = lastFrame.n - 1;
+            else if (step) at = Math.min(lastFrame.n - 1, Math.max(0, (at < 0 ? 0 : at) + step));
+            else if (e.key === 'Escape') { at = -1; hideTip(); return; }
+            else return;
+            e.preventDefault();
+            showTip(at);
+        });
+
+        /* Legend entries toggle their series, as the desk tool's do. Toggling
+           re-renders because the hidden series must also stop setting the
+           scale — otherwise turning one off leaves the axis stretched around
+           something nobody can see. */
+        if (legend) {
+            legend.addEventListener('click', function (e) {
+                var b = e.target.closest && e.target.closest('[data-series]');
+                if (!b) return;
+                seriesOn[b.getAttribute('data-series')] = !seriesOn[b.getAttribute('data-series')];
+                render();
+            });
+        }
     }
 
     /* ---------- mode switch ---------- */
@@ -471,21 +928,38 @@
             n.addEventListener('change', render);
         });
 
-        // The tax rates only mean anything with the toggle on.
-        el.taxAdjustment.addEventListener('change', function () {
-            document.querySelectorAll('[data-needs-tax]').forEach(function (n) {
-                n.classList.toggle('is-off', !el.taxAdjustment.checked);
-            });
+        /* Slider and number box are two views of one value. Each writes the
+           other; render() then reads hodlRatio as it always did, so the engine
+           never learns there are two controls. */
+        el.hodlSlider.addEventListener('input', function () {
+            el.hodlRatio.value = el.hodlSlider.value;
+        });
+        el.hodlRatio.addEventListener('input', function () {
+            var v = num(el.hodlRatio.value, 0);
+            el.hodlSlider.value = String(Math.min(100, Math.max(0, v)));
         });
 
-        var adv = $('advToggle');
-        if (adv) {
-            adv.addEventListener('click', function () {
-                var open = adv.getAttribute('aria-expanded') === 'true';
-                adv.setAttribute('aria-expanded', String(!open));
-                $('advPanel').hidden = open;
+        /* Tax rates are meaningless with the toggle off, so they are removed
+           rather than greyed — the same reveal the desk tool does. */
+        function syncTax() {
+            document.querySelectorAll('[data-needs-tax]').forEach(function (n) {
+                n.hidden = !el.taxAdjustment.checked;
             });
         }
+        el.taxAdjustment.addEventListener('change', syncTax);
+        syncTax();
+
+        /* "Number of Periods" is counted in whatever the period is, so the unit
+           beside it has to follow the selector. Left as a literal "months" it
+           reads as a flat lie the moment anyone picks Daily. */
+        function syncPeriodUnit() {
+            var cfg = CalcEngine.PERIOD_CONFIG[el.periodLength.value];
+            document.querySelectorAll('[data-period-unit]').forEach(function (n) {
+                n.textContent = cfg ? cfg.label : 'periods';
+            });
+        }
+        el.periodLength.addEventListener('change', syncPeriodUnit);
+        syncPeriodUnit();
 
         var reset = $('calcReset');
         if (reset) {
@@ -494,13 +968,17 @@
                     if (n.type === 'checkbox') n.checked = n.dataset.default === 'true';
                     else n.value = n.dataset.default;
                 });
-                el.minerModel.value = 'Antminer S21 Hyd.';
+                el.minerModel.value = DEFAULT_MODEL;
                 applyMinerModel();
                 setMode('machines');
             });
         }
 
+        /* Wired once. Doing this anywhere that runs more than once stacks a
+           second set of listeners on the same nodes every time. */
+        wireChart();
         setMode('machines');
+        fetchMarket();
     }
 
     if (document.readyState === 'loading') {

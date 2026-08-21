@@ -86,7 +86,6 @@ const PAGES = {
        transparent for that to work at all. This one is not a cutaway. It is
        solid plant standing on open ground, and at cutaway weights it read as a
        ghost of a site rather than a site. */
-    solid: true,
     scale: { lo: 'Your pad today', hi: 'With Ion on it',
              label: 'Your pad as it is today, or the same pad with Ion on it' },
     views: [
@@ -283,7 +282,7 @@ function build(key) {
     const note = v.note ? `\n        <p class="dg-note">${v.note}</p>` : '';
     const link = cfg.link ? ` data-link="${cfg.link}"` : '';
     return `
-      <div class="dg-wrap dg-wrap--${v.key}${cfg.solid ? ' dg-wrap--solid' : ''}${pair ? '' : ' reveal'}" data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
+      <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}" data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
         <canvas class="anim-field anim-field--dg" data-w="${v.D.VB.w}" data-h="${v.D.VB.h}" aria-hidden="true"></canvas>
         ${svg}${bubblesOf(v.D)}${controlsOf(v.prefix)}
         ${HINT}${note}

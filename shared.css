@@ -114,18 +114,34 @@ body > * { position: relative; z-index: 1; }
 .ion-nav-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     text-decoration: none;
     color: var(--text);
 }
-.ion-nav-brand .icon {
-    font-size: 24px;
-    color: #f7931a;
-}
+.ion-nav-brand .icon { display: flex; }
+.ion-nav-brand .icon svg { display: block; }
+/* The wordmark, matching the site: uppercase mono-ish tracking, "Ion" in soft chrome and
+   "Mining Group" a step back in platinum so the two read as one lockup rather than as a
+   single flat string. */
 .ion-nav-brand .name {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--plat-200);
+}
+.ion-nav-brand .name span { color: var(--plat-400); font-weight: 500; }
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    .ion-nav-brand .name {
+        background-image: var(--metal-plat-soft);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+    /* The nested span has to opt back OUT of the clip, or it inherits transparent fill. */
+    .ion-nav-brand .name span { -webkit-text-fill-color: var(--plat-400); }
 }
 .ion-nav-tabs {
     display: flex;

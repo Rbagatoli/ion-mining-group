@@ -148,8 +148,8 @@ function initNav(activePage) {
     var labels = mobile ? ['Data', 'Cycle', 'Calc', 'Home', 'Map', 'Bank'] : ['Data', 'Cycle', 'Calculator', 'Dashboard', 'Map', 'Banking'];
     nav.innerHTML =
         '<a class="ion-nav-brand" href="./index.html">' +
-            '<span class="icon"><svg width="24" height="24" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="8" fill="#f7931a"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(60 50 50)"/><ellipse cx="50" cy="50" rx="38" ry="14" stroke="#f7931a" stroke-width="3" transform="rotate(120 50 50)"/></svg></span>' +
-            '<span class="name">Ion Mining Group</span>' +
+            '<span class="icon"><svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="ionMarkP" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5c5b58"/><stop offset="13%" stop-color="#b5b4b1"/><stop offset="25%" stop-color="#ffffff"/><stop offset="34%" stop-color="#d0cfcd"/><stop offset="50%" stop-color="#83827f"/><stop offset="65%" stop-color="#e8e7e5"/><stop offset="76%" stop-color="#ffffff"/><stop offset="89%" stop-color="#a2a19e"/><stop offset="100%" stop-color="#6b6a67"/></linearGradient><linearGradient id="ionMarkO" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="38%" stop-color="#f7a02b"/><stop offset="70%" stop-color="#ffdcae"/><stop offset="100%" stop-color="#e07f10"/></linearGradient></defs><circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkP)" stroke-width="26"/><circle cx="256" cy="256" r="52" fill="url(#ionMarkP)"/><circle cx="373" cy="106" r="42" fill="url(#ionMarkO)"/></svg></span>' +
+            '<span class="name">Ion <span>Mining Group</span></span>' +
         '</a>' +
         '<div class="ion-nav-tabs">' +
             '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">' + labels[0] + '</a>' +

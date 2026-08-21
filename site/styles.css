@@ -47,6 +47,7 @@
        accent so a loss can never be mistaken for an accent. 5.18:1 on the
        result tiles, above the 4.5:1 small-text bar. */
     --loss:     #e05252;
+    --gain:     #3fb950;   /* 7.79:1 on the tiles, 95 deg off the accent */
     --text:     #e8e7e5;
     --text-mid: var(--plat-400);
     --text-dim: #787773;
@@ -121,6 +122,19 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* The `hidden` attribute has to actually hide things.
+
+   Its only definition is in the UA stylesheet, so ANY author rule that sets
+   display beats it — no extra specificity needed, author origin is simply
+   stronger. Three calculator blocks are `display: grid` and are toggled with
+   `hidden`, and they stayed on screen: switching to "I have machines" left the
+   energy inputs visible, because `.calc-group { display: grid }` quietly
+   outranked the attribute.
+
+   !important is the right tool exactly here. Without it this depends on source
+   order, and the next `display:` rule anyone adds silently breaks it again. */
+[hidden] { display: none !important; }
 
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) {
@@ -1044,9 +1058,15 @@ p + p { margin-top: 16px; }
 
 /* Surfaces, lit from above: roof brightest, long sides mid, ends darkest. The
    interior is darker than anything outside it so the machines read against it. */
-.dg-top    { fill: rgba(229, 228, 226, 0.115); stroke: none; }
-.dg-side   { fill: rgba(229, 228, 226, 0.062); stroke: none; }
-.dg-end    { fill: rgba(229, 228, 226, 0.032); stroke: none; }
+/* One weight for every drawing. These were split in two — cutaway weights for
+   the mine and the container, heavier ones for the wellpad — and the three
+   drawings ended up looking like three different materials. This is the shared
+   middle: a lit face clears 3:1 against the ground everywhere, and the cutaways
+   still read through to the machines behind them, which is what the low weights
+   were protecting in the first place. */
+.dg-top    { fill: rgba(229, 228, 226, 0.42); stroke: none; }
+.dg-side   { fill: rgba(229, 228, 226, 0.30); stroke: none; }
+.dg-end    { fill: rgba(229, 228, 226, 0.20); stroke: none; }
 .dg-inside { fill: rgba(0, 0, 0, 0.62);        stroke: none; }
 
 /* Hairlines that belong BEHIND the machines: far-wall corrugation, floor
@@ -1064,27 +1084,7 @@ p + p { margin-top: 16px; }
     stroke-width: 0.5;
 }
 
-/* ---- Solid plant, as opposed to a cutaway ----
-
-   The face weights above are set for looking THROUGH something: a container
-   wall has to be nearly transparent or the machines racked behind it cannot be
-   seen, which is the whole point of those two drawings. A wellpad is the
-   opposite problem. Nothing is cut away, everything is a solid object standing
-   in the open, and at cutaway weights a face sits at 1.36:1 against the panel
-   with 1.15:1 between its top and its side — barely present, and with almost no
-   form. It read as a ghost of a site rather than a site.
-
-   Roughly 2.6x the fill, which puts a lit face at 2.22:1 and opens the top-to-
-   side step to 1.37:1 so the boxes have volume. The line work goes up with it:
-   a detail stroke that reads at 2.56:1 on a cutaway face would drop to 1.98:1
-   on a solid one, so at 0.62 it comes back to 2.62:1 — slightly better than it
-   was, rather than sacrificed to the fills. */
-.dg-wrap--solid .dg-top  { fill: rgba(229, 228, 226, 0.52); }
-.dg-wrap--solid .dg-side { fill: rgba(229, 228, 226, 0.40); }
-.dg-wrap--solid .dg-end  { fill: rgba(229, 228, 226, 0.28); }
-.dg-wrap--solid .dg-detail { stroke: rgba(229, 228, 226, 0.88); }
-.dg-wrap--solid .dg-back   { stroke: rgba(229, 228, 226, 0.50); }
-.dg-back   { fill: none; stroke: var(--line-mid); stroke-width: 0.7; }
+.dg-back   { fill: none; stroke: rgba(229, 228, 226, 0.42); stroke-width: 0.7; }
 
 .dg-asics  { fill: rgba(229, 228, 226, 0.10);
              stroke: var(--line-mid); stroke-width: 0.6; }
@@ -1092,7 +1092,9 @@ p + p { margin-top: 16px; }
 /* Everything in front: fans, louvres, seams, hinges, panels, dishes. */
 .dg-detail {
     fill: none;
-    stroke: var(--line-hi);
+    /* Raised with the fills: at --line-hi (0.42) a detail stroke sat at the
+       same weight as the lit face it is drawn on and disappeared. */
+    stroke: rgba(229, 228, 226, 0.72);
     stroke-width: 0.8;
     stroke-linecap: round;
 }
@@ -1604,16 +1606,89 @@ p + p { margin-top: 16px; }
    desaturated red. It is semantic state, not a second brand colour, and it
    appears nowhere except on a number that is below zero. */
 
-.calc {
-    display: grid;
-    grid-template-columns: minmax(340px, 400px) 1fr;
-    gap: 44px;
-    align-items: start;
+/* One vertical run: chart, then the numbers it summarises, then the controls
+   that produced them. Nothing sits beside anything. */
+.calc { display: grid; gap: 40px; }
+
+/* ---- inputs ----
+   Full width now, so the groups sit side by side rather than stacking into one
+   very long thin form. Flex rather than grid auto-fit on purpose: the number of
+   groups changes with the mode (energy adds one), and flex-grow redistributes
+   the row to however many are actually showing. auto-fit would size tracks for
+   a fixed count and leave half the row empty in machines mode. */
+.calc-inputs { display: grid; gap: 26px; border-top: 1px solid var(--line); padding-top: 32px; }
+
+/* Market / Machine / Operating, side by side as the desk tool has them. A
+   fourth column appears in energy mode, so the track count has to follow the
+   number of visible groups rather than being fixed — hence flex with grow,
+   not a grid with a fixed template. */
+.calc-cols { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.calc-cols > .calc-group {
+    /* 200, not 270. Energy mode adds a fourth group, and at a 270 basis four
+       columns need 1152px inside a 1144px wrap — short by eight pixels, so the
+       last group wrapped to its own row and grew to fill it. That is why
+       Operating Parameters went full width on the energy tab and stayed a column
+       on the machines tab. At 200 both counts fit on one row: three at 365px,
+       four at 268px. */
+    flex: 1 1 200px;
+    min-width: 0;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 20px;
+    align-content: start;
 }
 
-/* ---- inputs ---- */
+/* A unit welded to its input, rather than tucked into the label. Reads faster
+   and stops "0.055" ever being ambiguous. */
+.calc-unit { display: flex; align-items: stretch; border: 1px solid var(--line-mid); background: var(--panel-solid); }
+.calc-unit input { border: none !important; background: transparent !important; flex: 1; min-width: 0; }
+.calc-unit input:focus { box-shadow: none !important; }
+.calc-unit:focus-within { border-color: var(--btc-300); box-shadow: inset 0 0 0 1px rgba(247,147,26,0.35); }
+.cu-pre, .cu-post {
+    display: flex; align-items: center; flex: none;
+    padding: 0 11px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--plat-500); background: rgba(255,255,255,0.022);
+    white-space: nowrap;
+}
+.cu-pre { border-right: 1px solid var(--line); }
+.cu-post { border-left: 1px solid var(--line); }
 
-.calc-inputs { display: grid; gap: 26px; }
+/* Square switch. Same anatomy as the app — state, title, one line of
+   explanation — but no radius, because the site has none anywhere. */
+.calc-switch {
+    display: flex; gap: 13px; align-items: flex-start; cursor: pointer;
+    border: 1px solid var(--line-mid); padding: 13px 14px;
+    transition: border-color 0.18s, background 0.18s;
+}
+.calc-switch:hover { border-color: var(--line-hi); }
+.calc-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cs-track {
+    flex: none; width: 38px; height: 20px; margin-top: 1px;
+    border: 1px solid var(--line-hi); background: var(--panel-solid);
+    position: relative; transition: background 0.18s, border-color 0.18s;
+}
+.cs-track::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; background: var(--plat-500);
+    transition: transform 0.18s, background 0.18s;
+}
+.calc-switch input:checked ~ .cs-track { border-color: var(--btc-300); }
+.calc-switch input:checked ~ .cs-track::after { transform: translateX(18px); background-image: var(--metal-btc-btn); background-color: var(--btc-300); }
+.calc-switch:has(input:checked) { border-color: var(--line-btc); background: rgba(247,147,26,0.045); }
+.calc-switch input:focus-visible ~ .cs-track { outline: 2px solid var(--btc-300); outline-offset: 2px; }
+.cs-body { display: grid; gap: 4px; }
+.cs-title { font-size: 13px; font-weight: 500; color: var(--plat-100); line-height: 1.3; }
+.cs-desc { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+
+/* Rates revealed by a switch, stepped in so they read as belonging to it. */
+.calc-sub {
+    display: grid; gap: 16px;
+    border-left: 2px solid var(--line-btc);
+    padding: 4px 0 4px 14px;
+}
+.calc-explain { font-size: 11.5px; line-height: 1.6; color: var(--text-dim); margin: 0; }
+.calc-explain strong { color: var(--plat-300); font-weight: 500; }
 
 .calc-modes {
     display: grid;
@@ -1660,6 +1735,9 @@ p + p { margin-top: 16px; }
 }
 .calc-hint { font-size: 12px; line-height: 1.65; color: var(--text-dim); margin: -2px 0 0; }
 .calc-hint--warn { color: var(--plat-400); border-left: 2px solid var(--line-btc); padding-left: 11px; }
+/* Turns green once the two market figures really are live. */
+.calc-hint--warn.is-live { border-left-color: var(--gain); }
+.calc-hint--warn.is-live strong { color: var(--gain); }
 
 /* Volume -> power -> machines, shown as a chain because that is the order the
    reasoning runs in and each step is one the reader may want to argue with. */
@@ -1687,7 +1765,6 @@ p + p { margin-top: 16px; }
 .calc-adv-toggle svg { transition: transform 0.2s; flex: none; }
 .calc-adv-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .calc-group--adv { gap: 16px; }
-#advPanel { display: grid; gap: 16px; padding-top: 4px; }
 
 .calc-checks { display: grid; gap: 11px; }
 .calc-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; line-height: 1.5; color: var(--plat-300); }
@@ -1720,28 +1797,141 @@ p + p { margin-top: 16px; }
     color: var(--plat-100); font-variant-numeric: tabular-nums; line-height: 1.1;
 }
 .ct-sub { font-size: 11px; color: var(--text-dim); line-height: 1.45; }
+.ct-val--btc { color: var(--btc-300); }
 
-.is-up { color: var(--plat-000); }
+.is-up { color: var(--gain); }
 .is-down { color: var(--loss); }
 
-/* ---- chart ---- */
-
-.calc-chart-wrap { border: 1px solid var(--line); background: var(--panel); padding: 18px 18px 14px; display: grid; gap: 12px; }
+/* ---- chart ----
+   Two axes: cumulative BTC on the left as bars, net value on the right as
+   lines. The app draws Buy & Hold green; here it is platinum, because this
+   site runs one accent and orange belongs to mining. The pair are told apart
+   by form — solid against dashed, filled against outlined. */
+.calc-chart-wrap { border: 1px solid var(--line); background: var(--panel); padding: 18px 18px 14px; display: grid; gap: 14px; }
+.calc-chart-title {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--plat-300); margin: 0;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.calc-plot { position: relative; }
 .calc-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.calc-chart:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 2px; }
+
 .ck-grid { stroke: var(--line); stroke-width: 1; }
 .ck-zero { stroke: var(--line-hi); stroke-width: 1; }
-.ck-ylab { fill: var(--plat-400); font-family: var(--mono); font-size: 11px; text-anchor: end; dominant-baseline: middle; }
-.ck-xlab { fill: var(--plat-400); font-family: var(--mono); font-size: 11px; text-anchor: middle; }
-.ck-value { fill: none; stroke: var(--btc-300); stroke-width: 2.5; stroke-linejoin: round; }
-.ck-bench { fill: none; stroke: var(--plat-500); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.ck-be { stroke: var(--line-btc); stroke-width: 1; stroke-dasharray: 3 3; }
-.ck-belab { fill: var(--btc-300); font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-anchor: middle; }
+.ck-ylab { fill: var(--plat-400); font-family: var(--mono); font-size: 10.5px; text-anchor: end; dominant-baseline: middle; }
+.ck-ylab--r { text-anchor: start; }
+.ck-xlab { fill: var(--plat-400); font-family: var(--mono); font-size: 10.5px; text-anchor: middle; }
+.ck-axis { fill: var(--plat-500); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-anchor: middle; text-transform: uppercase; }
 
-.calc-legend { display: flex; gap: 20px; flex-wrap: wrap; }
-.cl-item { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--plat-400); }
-.cl-key { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; flex: none; }
-.cl-key--value { border-top-color: var(--btc-300); }
-.cl-key--bench { border-top-color: var(--plat-500); border-top-style: dashed; }
+.ck-bar-mined { fill: rgba(247, 147, 26, 0.62); stroke: none; }
+.ck-bar-held  { fill: rgba(229, 228, 226, 0.34); stroke: none; }
+.ck-area { fill-opacity: 0.34; }
+/* Lines sit over their own gradient areas now, so they carry a little more
+   weight and a round cap — a hairline over a filled shape reads as an edge
+   rather than as the subject. */
+.ck-value  { fill: none; stroke: var(--btc-300); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.ck-bench  { fill: none; stroke: var(--plat-300); stroke-width: 1.7; stroke-dasharray: 6 5; stroke-linecap: round; }
+.ck-machines { fill: none; stroke: var(--plat-500); stroke-width: 1.4; stroke-dasharray: 2 3; }
+.ck-be { stroke: var(--line-btc); stroke-width: 1; stroke-dasharray: 3 3; }
+.ck-halving { stroke: var(--btc-400); stroke-width: 1; stroke-dasharray: 4 4; }
+.ck-halvingflag { fill: #0b0b0b; stroke: var(--line-btc); stroke-width: 1; }
+.ck-halvinglab { fill: var(--btc-300); font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-anchor: middle; }
+
+/* Where each curve ends up, said at the end of it. */
+.ck-end-value { fill: var(--btc-300); }
+.ck-end-bench { fill: var(--plat-300); }
+.ck-endlab { font-family: var(--mono); font-size: 11px; dominant-baseline: middle; font-variant-numeric: tabular-nums; }
+.ck-end-value-lab { fill: var(--btc-200); }
+.ck-end-bench-lab { fill: var(--plat-400); }
+
+/* The readout strip, under the plot rather than over it.
+
+   It began life as a floating tooltip. A tooltip covers the data it describes
+   and moves as you track along, so your eye chases it; parked here it holds
+   still and occludes nothing. It is always in the document so the row never
+   appears and disappears under the pointer, and it carries an idle line rather
+   than going blank.
+
+   Fonts are declared rather than inherited: this block was lost once in a slice,
+   and an unstyled readout does not vanish, it renders in the browser default
+   serif with no ground behind it. */
+.calc-readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 34px;
+    min-height: 76px;
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+}
+.ct-idle { font-family: var(--sans); font-size: 13.5px; color: var(--text-dim); }
+.ct-head {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--plat-200);
+    padding-right: 20px;
+    border-right: 1px solid var(--line);
+    white-space: nowrap;
+}
+.ct-item { display: inline-flex; align-items: center; gap: 11px; }
+.ct-item .cl-key { width: 12px; height: 12px; }
+.ct-body { display: grid; gap: 3px; }
+.ct-name {
+    font-family: var(--mono);
+    /* 10.5px is the floor the README sets for this site; 9.5 would have been
+       the smallest type on the page. */
+    font-size: 10.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--plat-500);
+    white-space: nowrap;
+}
+.ct-num {
+    font-family: var(--mono);
+    font-size: 17px;
+    color: var(--plat-100);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+/* The invisible columns that carry each period's index for hover.
+
+   These MUST declare a fill. An SVG rect with no fill defaults to opaque black,
+   and these are emitted last and tile the entire plot area — so losing this one
+   rule paints sixty black rectangles over the whole chart and leaves nothing but
+   the axis labels outside it. That is exactly what happened when this block was
+   rewritten and these two rules were dropped. */
+.ck-hit { fill: transparent; cursor: crosshair; }
+.ck-hit:hover { fill: rgba(229, 228, 226, 0.05); }
+.ck-cross { stroke: var(--line-hi); stroke-width: 1; pointer-events: none; }
+
+/* A dot per curve at the hovered period, so the crosshair is not left saying
+   only which period it is. */
+.ck-dot { pointer-events: none; stroke: #0b0b0b; stroke-width: 2; }
+.ck-dot--mining   { fill: var(--btc-300); }
+.ck-dot--hold     { fill: var(--plat-200); }
+.ck-dot--machines { fill: var(--plat-500); }
+.calc-legend { display: flex; gap: 8px 18px; flex-wrap: wrap; }
+.cl-item {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--plat-300);
+    background: none; border: none; padding: 2px 0; cursor: pointer;
+    transition: color 0.18s, opacity 0.18s;
+}
+.cl-item:hover { color: var(--plat-000); }
+.cl-item.is-off { color: var(--text-dim); text-decoration: line-through; opacity: 0.65; }
+.cl-item:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 2px; }
+.cl-key { width: 11px; height: 11px; flex: none; border: 1px solid transparent; }
+.cl-key--mining   { background: var(--btc-300); }
+.cl-key--hold     { border-color: var(--plat-300); background: transparent; }
+.cl-key--mined    { background: rgba(247, 147, 26, 0.62); }
+.cl-key--held     { background: rgba(229, 228, 226, 0.34); }
+.cl-key--machines { border-color: var(--plat-500); background: transparent; }
 .calc-caption { font-size: 11.5px; color: var(--text-dim); margin: 0; line-height: 1.55; }
 
 /* ---- panels ---- */
@@ -1806,10 +1996,52 @@ p + p { margin-top: 16px; }
 .calc-head { max-width: 780px; }
 
 @media (max-width: 1020px) {
-    .calc { grid-template-columns: 1fr; gap: 34px; }
+    .calc { gap: 32px; }
     .calc-panels { grid-template-columns: 1fr; }
     .calc-note-cols { grid-template-columns: 1fr; gap: 26px; }
 }
 @media (max-width: 660px) {
     .calc-tiles { grid-template-columns: 1fr 1fr; }
+}
+
+/* Slider + number box sharing one value. The number box is narrow on purpose:
+   it is for typing an exact figure, the slider is for sweeping. */
+.calc-pair { display: grid; grid-template-columns: 1fr 74px; gap: 12px; align-items: center; }
+.calc-pair input[type="number"] { padding: 9px 8px; text-align: center; font-family: var(--mono); }
+.calc-pair input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 26px;
+    background: transparent;
+    cursor: ew-resize;
+    padding: 0;
+    border: none;
+}
+.calc-pair input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--line-hi); }
+.calc-pair input[type="range"]::-moz-range-track           { height: 4px; background: var(--line-hi); }
+.calc-pair input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 26px;
+    margin-top: -11px;
+    border: none;
+    border-radius: 0;
+    background-image: var(--metal-btc-btn);
+}
+.calc-pair input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 26px;
+    border: none;
+    border-radius: 0;
+    background-image: var(--metal-btc-btn);
+}
+.calc-pair input[type="range"]:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+
+/* How much is in the drawer, said out loud. */
+.calc-adv-toggle em {
+    font-style: normal;
+    color: var(--btc-300);
+    margin-left: 8px;
 }
