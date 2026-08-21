@@ -1,8 +1,8 @@
 # Ion Mining Group — public website
 
 The company-facing marketing site. Completely separate from the app that lives at the
-repo root — no shared CSS, no dependencies. Five static pages, one stylesheet, and a small
-diagram engine with one scene per page.
+repo root — no shared CSS, no dependencies. Five pages plus an error page, one stylesheet,
+and a small diagram engine with one scene per page.
 
 ```
 site/
@@ -23,6 +23,9 @@ site/
   calc-engine.js  Projection maths, copied verbatim from the app at the repo root
   miner-db.js     28 machine models with specs, copied from the app
   calculator.js   The form around the engine
+  404.html        Not found — see the caveat below
+  robots.txt      Generated
+  sitemap.xml     Generated
   favicon.svg     Ion mark, matching manifest.json
 ```
 
@@ -114,8 +117,12 @@ to it. Keep the mailto path as the no-JS fallback.
 
 ## Deployment
 
-The repo publishes to GitHub Pages from the root, so this lands at
-`https://<user>.github.io/ion-mining-group/site/` as soon as it is pushed.
+The repo publishes to GitHub Pages from the root, so this would land at
+`https://<user>.github.io/ion-mining-group/site/` — except that it does not, yet.
+
+**[`_config.yml`](../_config.yml) excludes `site/` from the build**, deliberately, until the
+placeholders are filled and the canonicals point somewhere real. Publishing is deleting the
+`- site/` line. Everything below describes the state after that.
 
 **The `<link rel="canonical">` and `og:url` tags on all five pages point at
 `https://ionmininggroup.com/`.** That is correct once the custom domain is attached and
@@ -131,6 +138,38 @@ Two options for the custom domain:
    to the repo root and relocate the app to `/app/`. That touches the nav links in
    `shared.js`, `manifest.json`'s `start_url`, and the cache paths in `sw.js`, so it is a
    real change rather than a move. Ask before doing it.
+
+## Generated files
+
+Three generators, all idempotent — running any of them twice changes nothing the second time,
+and a test asserts it. Run them after editing what they own; never edit the output.
+
+| Script | Owns |
+|---|---|
+| [`tools/build-nav.js`](./tools/build-nav.js) | the nav and the footer Company column, on all six pages |
+| [`tools/build-diagram.js`](./tools/build-diagram.js) | the drawing sections and their static frames |
+| [`tools/build-seo.js`](./tools/build-seo.js) | `robots.txt`, `sitemap.xml`, and the home page JSON-LD |
+
+`build-seo.js` holds `BASE`, the single place the site origin is written. The `canonical` and
+`og:url` tags in each page already assume the same origin, and `seo-suite.js` asserts they agree —
+a sitemap that disagrees with a canonical tells search engines two different things about one page.
+
+The JSON-LD asserts only name, url, logo, description and email. **No address, telephone, founding
+date or headcount**, because those are all still `[PLACEHOLDER]` spans. JSON-LD is the one place an
+unverified claim becomes machine-readable and gets repeated back as fact, so a test asserts no
+bracket ever reaches it. Add those fields here at the same time you fill the spans.
+
+> ### None of this is live yet
+>
+> [`_config.yml`](../_config.yml) at the repo root excludes `site/` from the Pages build, on
+> purpose — 85 unfilled placeholders and canonicals aimed at a domain that does not serve this
+> directory. So `robots.txt`, `sitemap.xml` and the structured data are all correct and all
+> dormant. Publishing is deleting the `- site/` line, once the placeholders are filled.
+>
+> **`404.html` needs one thing more.** Pages takes its custom 404 from the *publish root*, and this
+> repo publishes from the root where the app lives. Even with `site/` published, a mistyped URL
+> lands on GitHub's default until the marketing site moves to the apex — option 2 under Deployment.
+> Putting a 404 at the repo root instead would mean touching the app.
 
 ## The nav is generated
 
@@ -204,6 +243,27 @@ them; a test checks the note quotes the values actually shipped.
 
 > This breaks the site's no-external-requests rule, on purpose and by request. The privacy
 > policy needs a line about it — a visitor's IP reaches Coinbase and blockchain.info.
+
+### Shareable scenarios
+
+The calculator's state lives in the query string, so a scenario can be sent to a colleague — or
+sent *to* a prospect, pre-filled at a quoted rate — and it survives a reload. **Only values that
+differ from the shipped defaults are written**, so an untouched page has a bare URL and a tweaked
+one stays short. The diff basis is the same `data-default` attribute the Reset button reads, rather
+than a second table of defaults that would drift away from the markup.
+
+Keys are element ids. A machine named in a link implies its own spec fields, so those are written
+only when they no longer match it — which is exactly when someone has hand-edited a custom machine.
+Unknown keys are ignored on the way in, so a link made by an older version of the page still opens.
+
+The address bar tracks the scenario through `history.replaceState` (debounced, and *replace* so the
+back button does not fill with one entry per keystroke), and a **Copy link** button beside Reset
+does the same thing for people who would never think to copy from the address bar.
+
+> **The trap.** `fetchMarket()` overwrites any market field still holding its default. A link that
+> names a price meant *that* price, not today's — so fields restored from a URL are marked pinned
+> and the fetch skips them. `calc-link.js` asserts both halves: a pinned price survives the fetch,
+> and an unpinned one in the same page load still goes live.
 
 ### Placeholders here work differently
 

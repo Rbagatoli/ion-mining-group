@@ -21,7 +21,9 @@ var ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'colour-allowlist.js
 
 // Hex, rgb() and rgba(). Deliberately NOT matching named colours ('white', 'transparent'):
 // 'transparent' and 'currentColor' are correct answers in this design system, not defects.
-var RE = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)/g;
+// (?<!&) keeps HTML numeric entities out: &#9656; is a caret glyph and &#9733; a star. Without
+// it the census reports them as four-digit hex colours and the count can never reach zero.
+var RE = /(?<!&)#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)/g;
 
 // Where a literal is going. Everything not listed here reports as UNMAPPED, which is the point --
 // the census must never quietly accept a colour nobody has decided about.

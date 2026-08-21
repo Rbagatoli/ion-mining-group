@@ -198,7 +198,8 @@ console.log('\n=== square, and unlit except where lit on purpose ===');
 console.log('\n=== colours live in tokens, not in 1,900 places ===');
 (function() {
     var ALLOW = JSON.parse(read('tools/colour-allowlist.json'));
-    var RE = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)/g;
+    // (?<!&) keeps HTML numeric entities out -- &#9656; is a caret, not a colour.
+    var RE = /(?<!&)#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)/g;
 
     // Context substring, not line number -- see the note in colour-allowlist.json.
     function allowed(r, text, lit) {
