@@ -1133,9 +1133,3 @@ function updateEarningsChart() {
 }
 
 // Chart palette is fixed at construction time, so rebuild it when the theme toggles
-window.addEventListener('themechange', function() {
-    if (!earningsChart) return;
-    earningsChart.destroy();
-    earningsChart = null;
-    initEarningsChart();
-});

@@ -6,10 +6,12 @@ if (window.ION_EMBED) {
     document.documentElement.setAttribute('data-embed', '');
 }
 
-// --- Theme helper (available immediately for other scripts) ---
-window.isLightMode = function() {
-    return document.documentElement.dataset.theme === 'light';
-};
+// --- Theme helper ---
+// The app is dark only, deliberately: the marketing site this palette comes from has no light
+// mode and does not want one. This is kept as a constant rather than deleted so the ~80 call
+// sites that still branch on it take the dark path immediately, and can be unwound file by file
+// instead of in one unreviewable commit. It goes when the last caller does.
+window.isLightMode = function() { return false; };
 
 // --- Aggressive SW auto-update: check for new SW on every page load ---
 (function() {
@@ -169,9 +171,6 @@ function initNav(activePage) {
                     return opts;
                 })() +
             '</select>' +
-            '<button class="ion-theme-toggle" id="themeToggle" title="Toggle light/dark theme">' +
-                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' +
-            '</button>' +
             '<button class="ion-nav-bell" onclick="window.toggleAlertSidebar && window.toggleAlertSidebar()">' +
                 '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
                 '<span class="ion-nav-bell-badge" id="alertBellBadge" style="display:none">0</span>' +
@@ -183,35 +182,17 @@ function initNav(activePage) {
     var sel = document.getElementById('currencySelect');
     if (sel) sel.addEventListener('change', function() { switchCurrency(this.value); });
 
-    // --- Theme Toggle ---
-    var THEME_KEY = 'ionMiningTheme';
-    var sunSVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-    var moonSVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-
-    function applyTheme(theme) {
-        document.documentElement.dataset.theme = theme;
-        var btn = document.getElementById('themeToggle');
-        if (btn) btn.innerHTML = (theme === 'light') ? moonSVG : sunSVG;
-        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: theme } }));
-    }
-
-    window.isLightMode = function() {
-        return document.documentElement.dataset.theme === 'light';
-    };
-
-    var savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-    applyTheme(savedTheme);
-
-    var themeBtn = document.getElementById('themeToggle');
-    if (themeBtn) {
-        themeBtn.addEventListener('click', function() {
-            var current = document.documentElement.dataset.theme || 'dark';
-            var next = (current === 'dark') ? 'light' : 'dark';
-            applyTheme(next);
-            localStorage.setItem(THEME_KEY, next);
-            if (typeof SyncEngine !== 'undefined') SyncEngine.save('theme', next);
-        });
-    }
+    // The theme toggle lived here. Removed with the light theme -- see isLightMode above.
+    // The stored preference is cleared once, behind a sentinel, so a returning user is not left
+    // with a dead key. The Firestore document is deliberately NOT deleted: a user still on the
+    // old build who syncs afterwards would read null, fall back to 'dark', and have their theme
+    // change under them for no reason we could explain.
+    try {
+        if (!localStorage.getItem('theme_retired_v318')) {
+            localStorage.removeItem('ionMiningTheme');
+            localStorage.setItem('theme_retired_v318', '1');
+        }
+    } catch (e) { /* private mode */ }
 
     // Auth button handler
     var syncBtn = document.getElementById('syncBtn');
@@ -1152,10 +1133,6 @@ async function fetchLiveMarketData() {
 if (window.ION_EMBED) {
     window.addEventListener('message', function(e) {
         if (!e.data || !e.data.ionMining) return;
-        if (e.data.type === 'themeChange') {
-            document.documentElement.dataset.theme = e.data.value || 'dark';
-            localStorage.setItem('ionMiningTheme', e.data.value);
-        }
         if (e.data.type === 'currencyChange' && typeof switchCurrency === 'function') {
             switchCurrency(e.data.value);
         }

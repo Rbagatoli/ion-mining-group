@@ -18,7 +18,9 @@ var SyncEngine = (function() {
         settings:    { lsKey: 'ionMiningSettings' },
         alerts:      { lsKey: 'ionMiningAlerts' },
         currency:    { lsKey: 'ionMiningCurrency' },
-        theme:       { lsKey: 'ionMiningTheme' },
+        // theme: RETIRED. The app is dark only. The Firestore document is deliberately left
+        // in place rather than deleted -- a user still on the old build who synced afterwards
+        // would read null, fall back to 'dark', and have their theme change under them.
         scenarios:   { lsKey: 'ionMiningScenarios' },
         sites:       { lsKey: 'ionMiningSites' },
         // Deal state, not view state — a shortlisted portfolio and a saved pricing scenario are
@@ -111,13 +113,13 @@ var SyncEngine = (function() {
                     // Compare with current localStorage — skip if identical
                     var lsKey = SYNC_KEYS[key].lsKey;
                     var current = localStorage.getItem(lsKey);
-                    var remoteStr = (key === 'currency' || key === 'theme') ? remote.data : JSON.stringify(remote.data);
+                    var remoteStr = (key === 'currency') ? remote.data : JSON.stringify(remote.data);
                     if (current === remoteStr) return;
 
                     _syncing = true;
 
                     // Update localStorage
-                    if (key === 'currency' || key === 'theme') {
+                    if (key === 'currency') {
                         localStorage.setItem(lsKey, remote.data);
                     } else {
                         localStorage.setItem(lsKey, JSON.stringify(remote.data));
@@ -165,7 +167,7 @@ var SyncEngine = (function() {
                     var lsKey = SYNC_KEYS[key].lsKey;
                     var remoteData = doc.data().data;
 
-                    if (key === 'currency' || key === 'theme') {
+                    if (key === 'currency') {
                         localStorage.setItem(lsKey, remoteData);
                     } else {
                         localStorage.setItem(lsKey, JSON.stringify(remoteData));
@@ -193,7 +195,7 @@ var SyncEngine = (function() {
             if (!raw) return;
 
             var data;
-            if (key === 'currency' || key === 'theme') {
+            if (key === 'currency') {
                 data = raw;
             } else {
                 try { data = JSON.parse(raw); } catch(e) { return; }

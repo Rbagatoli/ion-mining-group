@@ -1240,12 +1240,6 @@ window.onCurrencyChange = function() {
 };
 
 // Chart colours are baked in at construction time, so rebuild on theme change.
-window.addEventListener('themechange', function() {
-    if (comboChart) comboChart.destroy();
-    initChart();
-    recalculate();
-    renderBacktest();
-});
 
 // Restore fleet toggle state
 var ionSettings = FleetData.getSettings();

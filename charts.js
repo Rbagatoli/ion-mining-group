@@ -74,17 +74,6 @@ function buildChartOptions() {
 }
 var chartOptions = buildChartOptions();
 
-window.addEventListener('themechange', function() {
-    chartOptions = buildChartOptions();
-    if (allPriceData) renderPriceChart(currentPriceDays);
-    if (allMiningData) {
-        renderDifficultyChart(currentDiffTimeframe);
-        renderHashrateChart(currentHashTimeframe);
-    }
-    if (allPriceData && allMiningData) renderHashPriceChart(currentHashPriceDays);
-    if (poolDataCache[currentPoolTimeframe]) renderPoolChart(currentPoolTimeframe, poolDataCache[currentPoolTimeframe]);
-    loadFeeRateHistory(currentFeeTimeframe);
-});
 
 // Block explorer renders pool names straight from the mempool.space API
 function escapeHtml(str) {

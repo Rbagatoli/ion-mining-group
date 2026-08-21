@@ -1,0 +1,1588 @@
+/* ===== ION MINING GROUP — Public site =====
+   Sharp / minimal. Three materials, in this proportion:
+     1. Black       — the ground. ~55% of any viewport.
+     2. Platinum    — the structure. Type, hairlines, bevels, light.
+     3. BTC orange  — the accent. Small area, high value. Never a surface.
+
+   The page is one continuous sheet of metal, lit unevenly. Black is
+   the sheet in shadow; platinum is the same sheet catching light. Nothing
+   inverts, nothing has a hard edge, and no section owns its own surface —
+   brightness just varies across the whole sheet. Platinum shows up four ways:
+     - metal-filled type (chrome gradient via background-clip)
+     - soft bevel glow on sections and cards
+     - structural hairlines
+     - the drifting light field itself (see body::before)
+   Everything is square: no radii, no soft shadows, no colour bloom. */
+
+:root {
+    /* --- Black --- */
+    --black:     #000000;
+    --surface:   #0a0a0a;
+    --surface-2: #0e0e0e;
+
+    /* Panel fills — translucent, so the light field shows through. */
+    --panel:       rgba(255, 255, 255, 0.015);
+    --panel-hover: rgba(255, 255, 255, 0.042);
+    --panel-solid: rgba(0, 0, 0, 0.50);
+
+    /* --- Platinum --- */
+    --plat-000: #ffffff;
+    --plat-100: #efeeec;
+    --plat-200: #e5e4e2;  /* platinum */
+    --plat-300: #cbcac7;
+    --plat-400: #a9a8a5;
+    --plat-500: #83827f;
+    --plat-600: #5c5b58;
+
+    /* --- BTC orange --- */
+    --btc-100: #ffd9a0;
+    --btc-200: #ffb347;
+    --btc-300: #f7931a;   /* bitcoin */
+    --btc-400: #c86f0a;
+    --btc-500: #8a4a05;
+
+    /* --- Roles --- */
+    --text:     #e8e7e5;
+    --text-mid: var(--plat-400);
+    --text-dim: #787773;
+    --accent:   var(--btc-300);
+
+    /* --- Structural hairlines. Platinum, never white. --- */
+    --line:     rgba(229, 228, 226, 0.13);
+    --line-mid: rgba(229, 228, 226, 0.24);
+    --line-hi:  rgba(229, 228, 226, 0.42);
+    --line-btc: rgba(247, 147, 26, 0.36);
+
+    /* --- Metal: chrome for type. The hard dark-to-bright flip near 50%
+           is the horizon line that makes it read as metal, not grey. --- */
+    --metal-plat: linear-gradient(174deg,
+        #ffffff 0%, #dcdbd9 17%, #8e8d8a 39%, #6d6c69 47%,
+        #f2f1ef 52%, #ffffff 57%, #c9c8c5 72%, #91908c 88%, #e9e8e6 100%);
+
+    /* Softer chrome for small type, where the full flip reads as noise. */
+    --metal-plat-soft: linear-gradient(177deg,
+        #ffffff 0%, #e4e3e1 40%, #b3b2af 74%, #d6d5d3 100%);
+
+    /* Diagonal metal for surfaces, rules and borders. */
+    --metal-plat-flat: linear-gradient(135deg,
+        #5c5b58 0%, #b5b4b1 13%, #ffffff 25%, #d0cfcd 34%,
+        #83827f 50%, #e8e7e5 65%, #ffffff 76%, #a2a19e 89%, #6b6a67 100%);
+
+    --metal-btc: linear-gradient(176deg,
+        #ffd9a0 0%, #f7931a 28%, #c06a08 48%,
+        #f9a132 58%, #ffc46b 80%, #d2780b 100%);
+    --metal-btc-flat: linear-gradient(135deg,
+        #a85a06 0%, #f7931a 20%, #ffc978 40%,
+        #f7931a 56%, #c86f0a 76%, #ffb347 100%);
+
+    /* Chrome for small ORANGE TYPE on a lit panel. --metal-btc-flat bottoms
+       out at #a85a06, far too dark to read at 13px, and --metal-btc-btn below
+       was floored for the opposite case: dark text on an orange field. This
+       one is floored for the text itself. */
+    --metal-btc-lit: linear-gradient(150deg,
+        #ffcf8a 0%, #f7a02b 26%, #ffdcae 48%,
+        #f7a02b 68%, #ffb85c 86%, #f7a02b 100%);
+
+    /* Same metal, floor raised so dark text clears 4.5:1 on every stop. The
+       decorative gradient above bottoms out at #a85a06, which is only 3.79:1
+       against the label — unreadable at the nav CTA's size. Buttons use this. */
+    --metal-btc-btn: linear-gradient(135deg,
+        #d4791a 0%, #f7931a 18%, #ffd08a 38%,
+        #f7931a 56%, #e07f10 76%, #ffc46b 100%);
+
+    /* Polished edge: a machined bevel catching light along its length. */
+    --edge-plat: linear-gradient(90deg,
+        transparent 0%, rgba(229,228,226,0.03) 20%,
+        rgba(255,255,255,0.19) 50%,
+        rgba(229,228,226,0.03) 80%, transparent 100%);
+    --edge-plat-short: linear-gradient(90deg,
+        rgba(255,255,255,0.17) 0%, rgba(229,228,226,0.05) 45%, transparent 88%);
+
+
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+    --max: 1200px;
+    --gut: 28px;
+
+    /* The drawings are not illustrations beside the copy — they are the subject
+       of their sections — so they get their own measure, wider than the one
+       running text needs to stay readable.
+
+       Pulled back from 1720px: at that size the box stood 632px tall on a wide
+       screen, which is most of a laptop's viewport height once browser chrome
+       is off it, and the drawing read as oversized rather than prominent. */
+    --max-dg: 1520px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+body {
+    position: relative;
+    font-family: var(--sans);
+    background: var(--black);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* The light field. Four layers on long, deliberately non-harmonic periods
+   (1870 / 2630 / 3400px). Because the periods never
+   divide into each other, the crests drift continuously down the page and never
+   land on a section boundary — the lighting has its own rhythm, unrelated to
+   the layout. This is the only thing that varies brightness; sections are
+   transparent and simply sit on it. */
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image:
+        linear-gradient(101deg,
+            transparent 6%,
+            rgba(229,228,226,0.028) 20%,
+            rgba(229,228,226,0.068) 33%,
+            rgba(246,245,243,0.095) 43%,
+            rgba(229,228,226,0.044) 55%,
+            rgba(229,228,226,0.011) 68%,
+            transparent 82%),
+        linear-gradient(259deg,
+            transparent 12%,
+            rgba(229,228,226,0.022) 32%,
+            rgba(229,228,226,0.058) 50%,
+            rgba(246,245,243,0.082) 60%,
+            rgba(229,228,226,0.022) 74%,
+            transparent 90%),
+        linear-gradient(180deg,
+            rgba(229,228,226,0.026) 0%, transparent 24%,
+            rgba(229,228,226,0.019) 48%, transparent 72%,
+            rgba(229,228,226,0.024) 100%),
+        linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
+    background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
+    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
+    pointer-events: none;
+}
+
+::selection { background: rgba(247,147,26,0.30); color: #fff; }
+
+a { color: inherit; }
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--black); }
+::-webkit-scrollbar-thumb { background: rgba(229,228,226,0.20); border: 3px solid var(--black); }
+::-webkit-scrollbar-thumb:hover { background: rgba(229,228,226,0.38); }
+
+/* ===== Metal type ===== */
+
+.metal-plat, .metal-btc { color: var(--text); }
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    .metal-plat, .metal-btc {
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+    .metal-plat { background-image: var(--metal-plat); }
+    .metal-btc  { background-image: var(--metal-btc); }
+}
+
+/* ===== Layout ===== */
+
+.wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding-left: var(--gut);
+    padding-right: var(--gut);
+}
+
+section { position: relative; }
+
+/* Sections carry a soft bevel glow rather than a rule — enough to register a
+   change of subject, not enough to cut the sheet into blocks. */
+.band { position: relative; padding: 112px 0; }
+.band::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.band--tight { padding: 0 0 80px; }
+.band--flush::before { display: none; }
+
+/* ===== Typography ===== */
+
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.028em; line-height: 1.12; }
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--plat-400);
+    margin-bottom: 26px;
+}
+.eyebrow::before {
+    content: '';
+    width: 24px;
+    height: 2px;
+    background-image: var(--metal-btc-flat);
+    flex-shrink: 0;
+}
+
+.h-display {
+    font-size: clamp(40px, 6.6vw, 74px);
+    line-height: 1.01;
+    letter-spacing: -0.045em;
+    color: var(--plat-200);
+}
+.h-section {
+    font-size: clamp(28px, 3.8vw, 44px);
+    letter-spacing: -0.036em;
+    color: var(--plat-200);
+}
+.h-card { font-size: 19px; letter-spacing: -0.022em; color: var(--plat-100); }
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    .h-display, .h-section {
+        background-image: var(--metal-plat);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+    /* Small headings get the softer chrome — same material, less noise. */
+    .h-card:not(.metal-btc), .track h3, .step h3, .faq summary, .brand-name {
+        background-image: var(--metal-plat-soft);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+    .brand-name span { -webkit-text-fill-color: var(--plat-400); }
+}
+
+.lede {
+    font-size: clamp(15.5px, 1.6vw, 18px);
+    color: var(--plat-400);
+    line-height: 1.68;
+    max-width: 62ch;
+    letter-spacing: -0.006em;
+}
+
+.measure { max-width: 68ch; }
+.center { text-align: center; }
+.center .eyebrow { justify-content: center; }
+.center .lede, .center .measure { margin-left: auto; margin-right: auto; }
+
+p + p { margin-top: 16px; }
+.mono { font-family: var(--mono); }
+.accent { color: var(--btc-300); text-decoration: none; }
+.accent:hover { color: var(--btc-200); }
+
+/* Unfilled facts. Deliberately loud — nothing false should ship by accident. */
+.ph {
+    color: var(--btc-300);
+    -webkit-text-fill-color: var(--btc-300);
+    font-family: var(--mono);
+    font-size: 0.9em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    background: rgba(247, 147, 26, 0.07);
+    border-bottom: 1px dashed var(--line-btc);
+    padding: 0 4px;
+    white-space: nowrap;
+}
+
+/* ===== Nav ===== */
+
+.nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: background 0.25s;
+}
+.nav::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.nav.is-stuck { background: rgba(0, 0, 0, 0.95); }
+
+.nav-inner {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 var(--gut);
+    height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; flex-shrink: 0; }
+.brand svg { display: block; }
+.brand-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--plat-200);
+}
+.brand-name span { color: var(--plat-400); font-weight: 500; }
+
+.nav-links { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.nav-links a {
+    padding: 9px 15px;
+    font-size: 13.5px;
+    letter-spacing: -0.005em;
+    color: var(--plat-400);
+    text-decoration: none;
+    transition: color 0.18s;
+    position: relative;
+}
+.nav-links a:hover { color: var(--plat-000); }
+.nav-links a.active { color: var(--plat-100); }
+.nav-links a.active::after {
+    content: '';
+    position: absolute;
+    left: 15px; right: 15px; bottom: -1px;
+    height: 2px;
+    background-image: var(--metal-btc-flat);
+    z-index: 1;
+}
+.nav-cta { margin-left: 14px; }
+.nav-links a.nav-cta::after { display: none; }
+
+/* The CTA is an <a> inside .nav-links, so ".nav-links a" (0,1,1) outranks
+   ".btn--primary" (0,1,0) and the nav's own link colour was winning: the button
+   rendered --plat-400 grey on orange, and --plat-000 white on hover. Both of
+   those are the unreadable case. This has to be at least (0,2,1) to land. */
+.nav-links a.nav-cta,
+.nav-links a.nav-cta:hover,
+.nav-links a.nav-cta:focus-visible { color: #000000; }
+
+.nav-toggle {
+    display: none;
+    margin-left: auto;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    color: var(--plat-200);
+    border: 1px solid transparent;
+    background:
+        linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+        var(--metal-plat-flat) border-box;
+}
+
+/* ===== Buttons ===== */
+
+.btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 26px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    overflow: hidden;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+/* Brushed sheen that sweeps across on hover. */
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -130%;
+    width: 55%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,0.42), transparent);
+    transform: skewX(-18deg);
+    transition: left 0.55s cubic-bezier(0.3, 0, 0.2, 1);
+    pointer-events: none;
+}
+.btn:hover::after { left: 145%; }
+
+.btn--primary {
+    background-image: var(--metal-btc-btn);
+    /* Black rather than the near-black it was: at the nav CTA's 11px it reads
+       as more definitely dark against the metal, and it can only help the
+       contrast figure. */
+    color: #000000;
+    border-color: rgba(255, 210, 150, 0.45);
+}
+.btn--primary:hover { border-color: rgba(255, 225, 185, 0.8); }
+
+/* Solid platinum border, machined rather than a flat grey line. */
+.btn--ghost {
+    background:
+        linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+        var(--metal-plat-flat) border-box;
+    color: var(--plat-100);
+}
+.btn--ghost:hover { color: var(--plat-000); }
+.btn--ghost::after { background: linear-gradient(100deg, transparent, rgba(255,255,255,0.28), transparent); }
+
+.btn--sm { padding: 10px 18px; font-size: 11px; letter-spacing: 0.12em; }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+.center .btn-row { justify-content: center; }
+
+.arrow-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--btc-300);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+}
+.arrow-link svg { transition: transform 0.24s cubic-bezier(0.3, 0, 0.2, 1); }
+.arrow-link:hover { color: var(--btc-200); }
+.arrow-link:hover svg { transform: translateX(4px); }
+
+/* ===== Hero ===== */
+
+.hero { padding: 132px 0 104px; }
+
+/* The energy field is a BACKDROP now, not a panel: it fills whatever box it is
+   dropped into, behind the content. Each instance declares its own logical size
+   in data-w / data-h, so a wide box is laid out wide rather than being a tall
+   field stretched sideways.
+
+   Stretched to fill, so it needs no intrinsic ratio and nothing measures it. */
+.anim-field {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+/* The hero field is the quieter of the two. Behind the headline it only has to
+   say the page is alive; behind a drawing it has room to actually burn, since
+   there is no running text there and the drawing sits on top of it.
+
+   Both are a trade against what is painted over them, measured in
+   field-ceiling.js: every stroke in a drawing is translucent light on whatever
+   the field leaves underneath, so a brighter field costs it contrast. 0.55 is
+   where the leader hairlines still keep 88% of theirs. */
+.anim-field--hero { opacity: 0.35; }
+.anim-field--dg   { opacity: 0.55; }
+
+/* The hero headline is the longest on the site — “Your machines or ours.” is
+   9.35em — and the shared clamp floors at 40px, which needs 374px of measure
+   in the 320px a 360px phone has. It would wrap to four lines and read as a
+   mistake. Only the floor moves; the vw slope and the cap stay shared, so the
+   headline is identical to the other pages’ everywhere above ~455px. */
+.hero .h-display { font-size: clamp(30px, 6.6vw, 74px); }
+
+/* The hero and the stats strip under one backdrop. The canvas measures against
+   this, so the flame covers both and its source line lands on the bottom of the
+   pair. Everything after the canvas in document order is positioned, so it
+   paints above it without needing a z-index of its own. */
+.hero-zone { position: relative; }
+
+/* The flame’s source line now sits on the bottom of the zone, which is exactly
+   where the next band draws its top bevel. Two rules on the same pixel is the
+   doubled edge this was meant to remove, so the bevel gives way to the flame. */
+.hero-zone + .band::before { display: none; }
+
+.hero { position: relative; }
+.hero .wrap { position: relative; z-index: 1; }
+
+
+
+
+
+
+/* The drawing has to sit above its own backdrop: an absolutely positioned
+   canvas otherwise paints over static siblings in the same stacking context. */
+.site-diagram { position: relative; z-index: 1; }
+.hero .lede { margin-top: 30px; }
+
+.hero-note {
+    position: relative;
+    margin-top: 40px;
+    padding-top: 26px;
+    font-size: 13.5px;
+    color: var(--text-dim);
+    max-width: 58ch;
+    letter-spacing: -0.004em;
+}
+.hero-note::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat-short);
+}
+
+/* ===== Stat strip — a lit platinum plate ===== */
+
+.stats {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line-mid);
+    border: 1px solid var(--line-mid);
+}
+.stats::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+    z-index: 2;
+}
+.stat {
+    position: relative;
+    padding: 32px 28px;
+    background-color: var(--panel);
+    background-image: linear-gradient(163deg, rgba(229,228,226,0.055), transparent 62%);
+}
+.stat-value {
+    font-family: var(--mono);
+    font-size: clamp(24px, 2.8vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+    background-image: var(--metal-btc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--btc-300);
+}
+.stat-label {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--plat-400);
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+}
+
+/* ===== Grids & cards ===== */
+
+.grid { display: grid; gap: 24px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Matrix: cards share hairlines instead of floating apart. */
+.grid--matrix {
+    position: relative;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+}
+.grid--matrix::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+    z-index: 2;
+}
+.grid--matrix > .card { background: var(--panel); border: none; }
+.grid--matrix > .card::before { display: none; }
+.grid--matrix > .card:hover { background: var(--panel-hover); }
+
+.card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 34px 30px;
+    transition: background 0.24s, border-color 0.24s;
+}
+.card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.card--hover:hover { border-color: var(--line-mid); background: var(--panel-hover); }
+.card h3 { margin-bottom: 12px; }
+.card p { color: var(--plat-400); font-size: 14.5px; line-height: 1.66; }
+
+/* ===== Two-track split ===== */
+
+.tracks {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+}
+.tracks::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+    z-index: 2;
+}
+
+.track {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 44px 38px 38px;
+    background: var(--panel);
+    text-decoration: none;
+    overflow: hidden;
+    transition: background 0.28s;
+}
+/* Metal edge that lights up along the top on hover. */
+.track::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background-image: var(--metal-btc-flat);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.45s cubic-bezier(0.3, 0, 0.2, 1);
+    z-index: 3;
+}
+.track:hover { background: var(--panel-hover); }
+.track:hover::before { transform: scaleX(1); }
+
+.track-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--btc-300);
+    margin-bottom: 20px;
+}
+.track h3 {
+    font-size: clamp(22px, 2.5vw, 30px);
+    margin-bottom: 16px;
+    letter-spacing: -0.032em;
+    color: var(--plat-100);
+}
+.track p { color: var(--plat-400); font-size: 15px; line-height: 1.66; }
+.track ul { list-style: none; margin: 28px 0 32px; display: grid; gap: 0; }
+.track li {
+    position: relative;
+    padding: 11px 0 11px 24px;
+    font-size: 14px;
+    color: var(--plat-400);
+    border-top: 1px solid var(--line);
+}
+.track li:last-child { border-bottom: 1px solid var(--line); }
+.track li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 18px;
+    width: 6px;
+    height: 6px;
+    background-image: var(--metal-plat-flat);
+}
+.track .arrow-link { margin-top: auto; }
+
+/* ===== Numbered process ===== */
+
+.steps { counter-reset: step; }
+.step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 32px;
+    padding: 36px 0;
+    align-items: start;
+}
+.step::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat-short);
+}
+.step:last-child::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat-short);
+}
+.step-num {
+    counter-increment: step;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    padding-top: 5px;
+    background-image: var(--metal-plat);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--plat-200);
+}
+.step-num::before { content: '0' counter(step); }
+.step h3 { font-size: 19px; margin-bottom: 11px; color: var(--plat-100); }
+.step p { color: var(--plat-400); font-size: 15px; max-width: 76ch; line-height: 1.7; }
+
+/* ===== Spec table — lit plate ===== */
+
+.spec {
+    position: relative;
+    border: 1px solid var(--line);
+    background-image: linear-gradient(168deg, rgba(229,228,226,0.045), transparent 46%);
+}
+.spec::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.spec-row {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 28px;
+    padding: 22px 30px;
+    border-top: 1px solid var(--line);
+    align-items: baseline;
+}
+.spec-row:first-child { border-top: none; }
+.spec-key {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--plat-300);
+}
+.spec-val { font-size: 15px; color: var(--plat-200); line-height: 1.6; }
+.spec-val small { display: block; margin-top: 7px; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+
+/* ===== Checklist ===== */
+
+.checks { list-style: none; }
+.checks li {
+    position: relative;
+    padding: 16px 0 16px 32px;
+    font-size: 14.5px;
+    color: var(--plat-400);
+    line-height: 1.66;
+    border-top: 1px solid var(--line);
+}
+.checks li:last-child { border-bottom: 1px solid var(--line); }
+.checks li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 24px;
+    width: 14px;
+    height: 8px;
+    border-left: 1.5px solid var(--plat-200);
+    border-bottom: 1.5px solid var(--plat-200);
+    transform: rotate(-45deg);
+}
+.checks strong { color: var(--plat-000); font-weight: 600; }
+
+/* ===== FAQ ===== */
+
+.faq { border-top: 1px solid var(--line); }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 26px 48px 26px 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--plat-200);
+    position: relative;
+    transition: opacity 0.2s;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:hover { opacity: 0.78; }
+.faq summary::before,
+.faq summary::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    background-image: var(--metal-btc-flat);
+    /* The summary itself is clipped to text; its pseudos must not be. */
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    transition: transform 0.3s cubic-bezier(0.3, 0, 0.2, 1), opacity 0.3s;
+}
+.faq summary::before { width: 13px; height: 1.5px; margin-top: -0.75px; }
+.faq summary::after  { width: 1.5px; height: 13px; margin-top: -6.5px; right: 9.75px; }
+.faq details[open] summary::after { transform: scaleY(0); opacity: 0; }
+.faq details p {
+    color: var(--plat-400);
+    font-size: 15px;
+    padding: 0 48px 28px 0;
+    max-width: 84ch;
+    line-height: 1.72;
+}
+
+/* ===== CTA band ===== */
+
+.cta-band {
+    position: relative;
+    border: 1px solid var(--line-mid);
+    background-color: var(--panel);
+    background-image: linear-gradient(168deg, rgba(229,228,226,0.05), transparent 50%);
+    padding: 76px 44px;
+    text-align: center;
+    overflow: hidden;
+}
+.cta-band::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background-image: var(--metal-btc-flat);
+    z-index: 2;
+}
+.cta-band::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 620px 260px at 50% 0%, rgba(247,147,26,0.10), transparent 70%);
+    pointer-events: none;
+}
+.cta-band > * { position: relative; z-index: 1; }
+
+/* ===== Forms ===== */
+
+.form {
+    position: relative;
+    display: grid;
+    gap: 20px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 34px;
+}
+.form::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.field { display: grid; gap: 9px; }
+.field label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--plat-300);
+}
+.field input,
+.field select,
+.field textarea {
+    font-family: var(--sans);
+    font-size: 14.5px;
+    color: var(--plat-100);
+    background: var(--panel-solid);
+    border: 1px solid var(--line-mid);
+    padding: 12px 14px;
+    width: 100%;
+    transition: border-color 0.18s, box-shadow 0.18s;
+}
+.field textarea { resize: vertical; min-height: 128px; line-height: 1.6; }
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    outline: none;
+    border-color: var(--btc-300);
+    box-shadow: inset 0 0 0 1px rgba(247,147,26,0.35);
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--text-dim); }
+.field select { appearance: none; cursor: pointer; }
+.form-note { font-size: 12.5px; color: var(--text-dim); line-height: 1.6; }
+
+/* ===== Footer ===== */
+
+.footer { position: relative; padding: 76px 0 44px; }
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+}
+.footer-top {
+    display: grid;
+    grid-template-columns: 1.7fr 1fr 1fr 1fr;
+    gap: 44px;
+    padding-bottom: 52px;
+    border-bottom: 1px solid var(--line);
+}
+.footer-blurb { color: var(--plat-400); font-size: 13.5px; margin-top: 20px; max-width: 34ch; line-height: 1.66; }
+.footer-col h4 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--plat-500);
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+.footer-col a {
+    display: block;
+    color: var(--plat-400);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 0;
+    transition: color 0.18s;
+}
+.footer-col a:hover { color: var(--btc-300); }
+.footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding-top: 30px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+}
+
+/* ===== "Inside a site" diagram =====
+   Interactive cutaway. Geometry is recomputed per frame by site-diagram.js from
+   projected model coordinates — it measures nothing, so leader lines stay welded
+   to their anchors and drag/zoom need no geometry queries. The static frame ships
+   in the HTML, so the diagram is complete and correct with JS disabled. */
+
+.dg-wrap {
+    position: relative;
+    border: 1px solid var(--line);
+    /* No border along the bottom: the flame burns its source line there, and
+       overflow:hidden clips the canvas at the padding box, so a border below it
+       can never be covered — it would always read as a second, grey rule under
+       the orange one. The flame IS the bottom perimeter, the same way it is at
+       the foot of the hero zone. */
+    border-bottom: none;
+    background: var(--panel);
+    overflow: hidden;
+}
+
+/* The drawing breaks out of the text measure to its own. The child combinator
+   is doing real work: on the home page the outermost element is the .dg-wrap
+   itself, on the hosting page it is the .dg-views grid holding two of them, and
+   only the outer one may break out — applying this to both would offset the
+   inner wraps a second time.
+
+   Centred with a MARGIN, not a transform. These same elements carry .reveal,
+   which owns transform to animate them in — and .reveal.in resets it to none at
+   equal specificity and later in the file. A translate here therefore holds
+   until the element scrolls into view and then vanishes, dropping the box half
+   a wrap to the right exactly when someone first looks at it.
+
+   The margin resolves against the parent's content width and the width against
+   the viewport, so the two together land the centre of the box on the centre of
+   the page without anything being measured. The gutters are wider than any
+   scrollbar, so subtracting them from 100vw cannot overflow the line. */
+.wrap > .dg-wrap,
+.wrap > .dg-views {
+    --dg-w: min(var(--max-dg), 100vw - var(--gut) * 2);
+    width: var(--dg-w);
+    margin-left: calc(50% - var(--dg-w) / 2);
+}
+.dg-wrap::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 1px;
+    background-image: var(--edge-plat);
+    z-index: 4;
+}
+
+.site-diagram { display: block; width: 100%; height: auto; cursor: grab; touch-action: pan-y; }
+.dg-wrap.is-dragging .site-diagram { cursor: grabbing; }
+.site-diagram:focus-visible { outline: 1px solid var(--btc-300); outline-offset: -2px; }
+
+/* Surfaces, lit from above: roof brightest, long sides mid, ends darkest. The
+   interior is darker than anything outside it so the machines read against it. */
+.dg-top    { fill: rgba(229, 228, 226, 0.115); stroke: none; }
+.dg-side   { fill: rgba(229, 228, 226, 0.062); stroke: none; }
+.dg-end    { fill: rgba(229, 228, 226, 0.032); stroke: none; }
+.dg-inside { fill: rgba(0, 0, 0, 0.62);        stroke: none; }
+
+/* Hairlines that belong BEHIND the machines: far-wall corrugation, floor
+   grating, rack uprights. Painting these after the ASICs stripes them across
+   the machines, which is why the back layer exists at all. */
+/* Ground: the graded surface under everything. Deliberately the faintest thing
+   in the drawing — it is what the plant stands ON, and at .dg-back weight it
+   competed with the plant itself. */
+.dg-ground {
+    /* A faint fill, because this layer now carries the graded surface itself
+       and not only the grid on it. The grid lines share the layer and are
+       open subpaths, which enclose no area and so take no fill. */
+    fill: rgba(229, 228, 226, 0.04);
+    stroke: var(--line);
+    stroke-width: 0.5;
+}
+
+/* ---- Solid plant, as opposed to a cutaway ----
+
+   The face weights above are set for looking THROUGH something: a container
+   wall has to be nearly transparent or the machines racked behind it cannot be
+   seen, which is the whole point of those two drawings. A wellpad is the
+   opposite problem. Nothing is cut away, everything is a solid object standing
+   in the open, and at cutaway weights a face sits at 1.36:1 against the panel
+   with 1.15:1 between its top and its side — barely present, and with almost no
+   form. It read as a ghost of a site rather than a site.
+
+   Roughly 2.6x the fill, which puts a lit face at 2.22:1 and opens the top-to-
+   side step to 1.37:1 so the boxes have volume. The line work goes up with it:
+   a detail stroke that reads at 2.56:1 on a cutaway face would drop to 1.98:1
+   on a solid one, so at 0.62 it comes back to 2.62:1 — slightly better than it
+   was, rather than sacrificed to the fills. */
+.dg-wrap--solid .dg-top  { fill: rgba(229, 228, 226, 0.52); }
+.dg-wrap--solid .dg-side { fill: rgba(229, 228, 226, 0.40); }
+.dg-wrap--solid .dg-end  { fill: rgba(229, 228, 226, 0.28); }
+.dg-wrap--solid .dg-detail { stroke: rgba(229, 228, 226, 0.88); }
+.dg-wrap--solid .dg-back   { stroke: rgba(229, 228, 226, 0.50); }
+.dg-back   { fill: none; stroke: var(--line-mid); stroke-width: 0.7; }
+
+.dg-asics  { fill: rgba(229, 228, 226, 0.10);
+             stroke: var(--line-mid); stroke-width: 0.6; }
+
+/* Everything in front: fans, louvres, seams, hinges, panels, dishes. */
+.dg-detail {
+    fill: none;
+    stroke: var(--line-hi);
+    stroke-width: 0.8;
+    stroke-linecap: round;
+}
+
+/* The one orange element: gas in, power along the run, into the container. */
+.dg-flow {
+    fill: none;
+    stroke: var(--btc-300);
+    stroke-width: 2;
+    stroke-dasharray: 6 11;
+    opacity: 0.9;
+    animation: dg-flow 2.6s linear infinite;
+}
+@keyframes dg-flow { to { stroke-dashoffset: -17; } }
+
+/* The flare flame, on the energy page. This is the one filled, coloured object
+   in the entire drawing family, and it is a deliberate exception to "orange is
+   a stroke, never a surface": a flare flame IS a surface, it is the subject of
+   that page, and outlining it would read as a diagram of a flame rather than a
+   flame. It stays honest to the rest of the family by being translucent, the
+   same way every platinum face is.
+
+   Three nested tongues arrive as one path. Under fill-rule nonzero the overlaps
+   do not cancel, so the fill is a single silhouette and the stroke is what
+   draws the structure inside it.
+
+   The flicker is a scale about the base — how a flare actually moves — rather
+   than a change of opacity, which reads as a lamp. The engine rewrites this
+   path's d on every frame of rotation; a CSS transform composes with that
+   rather than fighting it. Reduced motion is already covered by the blanket
+   rule on .site-diagram * further down. */
+.dg-flame {
+    fill: rgba(247, 147, 26, 0.30);
+    stroke: var(--btc-300);
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: dg-flare 1.9s ease-in-out infinite alternate;
+}
+@keyframes dg-flare {
+    from { transform: scaleY(0.94) scaleX(1.03); }
+    to   { transform: scaleY(1.07) scaleX(0.97); }
+}
+
+/* Hover highlight, painted over the hovered region only. */
+.dg-highlight {
+    fill: rgba(247, 147, 26, 0.16);
+    stroke: var(--btc-300);
+    stroke-width: 1.1;
+    stroke-linejoin: round;
+    pointer-events: none;
+    transition: opacity 0.16s;
+}
+
+/* Invisible pointer targets. Emitted largest-first so the smallest region ends
+   up topmost and wins. */
+.dg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+
+/* Leaders are scaffolding: they tell you which bubble belongs to which part,
+   and the drawing should carry the eye, not the lines to the labels. Dropped
+   from --line-mid at width 1 to --line at 0.9 — a little under half the ink.
+   The hot state is deliberately untouched, so hovering still snaps one leader
+   to full orange against much quieter neighbours than before. */
+.dg-lead { stroke: var(--line); stroke-width: 0.9; transition: stroke 0.16s, stroke-width 0.16s; }
+.dg-lead.is-hot { stroke: var(--btc-300); stroke-width: 1.4; }
+.dg-node { fill: var(--btc-300); }
+
+/* Callout bubbles are HTML so the text wraps for real. */
+.dg-callout {
+    position: absolute;
+    z-index: 3;
+    width: 17.2%;
+    transform: translateY(-50%);
+    padding: 11px 13px;
+    background: rgba(0, 0, 0, 0.66);
+    border: 1px solid var(--line-mid);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    cursor: pointer;
+    transition: border-color 0.16s, background 0.16s;
+}
+.dg-callout--l { right: 80.47%; text-align: right; }
+.dg-callout--r { left: 80.47%; }
+.dg-callout.is-hot,
+.dg-callout:focus-visible {
+    border-color: var(--btc-300);
+    background: rgba(30, 16, 2, 0.86);
+    outline: none;
+}
+/* Everything dims a little while one part is called out. */
+.dg-wrap.is-focused .dg-callout:not(.is-hot) { opacity: 0.45; }
+
+.dg-c-title {
+    display: block;
+    font-family: var(--mono);
+    font-size: clamp(9px, 0.83vw, 11px);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--plat-200);
+    margin-bottom: 5px;
+}
+.dg-callout.is-hot .dg-c-title { color: var(--btc-200); }
+.dg-c-desc {
+    display: block;
+    font-size: clamp(10.5px, 0.94vw, 12.5px);
+    line-height: 1.42;
+    color: var(--plat-500);
+}
+
+/* Controls */
+/* A view can name what it is. Sits along the top, clear of the left bubble
+   column (which ends at 19.53%), the hint at bottom-left and the controls at
+   bottom-right. */
+.dg-note {
+    position: absolute;
+    left: 21%;
+    top: 14px;
+    z-index: 3;
+    max-width: 58%;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--plat-400);
+    pointer-events: none;
+}
+
+/* The route on. The home page shows the whole site; the next step down — one
+   container — lives on the hosting page, so the second segment is a link. It
+   reads as the same kind of control as the hosting page's slider, because it
+   does the same job. */
+.dg-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--line-mid);
+    margin-bottom: 22px;
+}
+.dg-toggle > * {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.dg-toggle-on { color: #000000; background-image: var(--metal-btc-btn); }
+/* A divider between every pair, since the control carries all three stops now
+   and the current one can sit at either end or in the middle. It used to hang
+   off .dg-toggle-to, which only worked while there was exactly one link. */
+.dg-toggle > * + * { border-left: 1px solid var(--line-mid); }
+
+.dg-toggle-to {
+    color: var(--plat-400);
+    transition: color 0.2s, background-color 0.2s;
+}
+.dg-toggle-to:hover,
+.dg-toggle-to:focus-visible {
+    color: var(--btc-300);
+    background-color: var(--panel-hover);
+    outline: none;
+}
+.dg-toggle-to svg { transition: transform 0.24s cubic-bezier(0.3, 0, 0.2, 1); }
+.dg-toggle-to:hover svg { transform: translateX(3px); }
+
+/* A link back up the chain leads with its arrow, so its travel goes the other
+   way. Doubled class rather than relying on source order: an equal-specificity
+   override that only wins because of where it sits in the file is the kind of
+   thing that breaks silently when rules move. */
+.dg-toggle-to.dg-toggle-to--back:hover svg { transform: translateX(-3px); }
+
+/* Three segments instead of two, so they need to give up more to fit a narrow
+   screen. The longest label is thirteen characters; at this size three of them
+   plus their padding come to about 280px, inside the 320px a 360px phone
+   leaves after gutters. */
+@media (max-width: 460px) {
+    .dg-toggle { display: flex; }
+    .dg-toggle > * {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 5px;
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+    }
+    .dg-toggle svg { width: 12px; height: 12px; }
+}
+
+.dg-controls {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 3;
+    display: flex;
+    gap: 6px;
+}
+.dg-controls button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--plat-300);
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--line-mid);
+    padding: 6px 10px;
+    min-width: 30px;
+    cursor: pointer;
+    transition: color 0.16s, border-color 0.16s;
+}
+.dg-controls button:hover,
+.dg-controls button:focus-visible {
+    color: var(--btc-300);
+    border-color: var(--btc-300);
+    outline: none;
+}
+
+.dg-hint {
+    position: absolute;
+    left: 14px;
+    bottom: 16px;
+    z-index: 3;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--plat-600);
+    pointer-events: none;
+}
+
+/* The same callouts as a stacked list, for widths where the drawing is too
+   dense to read and there is no pointer to hover with. Generated from the same
+   array, so they cannot drift. */
+.dg-list { display: none; list-style: none; counter-reset: dg; margin-top: 4px; }
+.dg-list li {
+    position: relative;
+    counter-increment: dg;
+    padding: 18px 0 18px 44px;
+    border-top: 1px solid var(--line);
+}
+.dg-list li:last-child { border-bottom: 1px solid var(--line); }
+.dg-list li::before {
+    content: '0' counter(dg);
+    position: absolute;
+    left: 0;
+    top: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--btc-300);
+}
+.dg-list-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--plat-100);
+    margin-bottom: 4px;
+}
+.dg-list-desc { display: block; font-size: 14.5px; color: var(--plat-400); line-height: 1.6; }
+
+/* ===== Detail slider — the whole container, or one machine =====
+
+   Two diagrams share one grid cell, so the taller sets the height and the
+   section never resizes as the slider moves. --d (0..1) is written on the
+   wrapper by site.js and drives the cross-dissolve; the small scale difference
+   either side of it is what makes the change read as diving in rather than as
+   two pictures swapping.
+
+   Every id in the second view is prefixed a- by the generator. Two diagrams on
+   one page would otherwise both answer to dg-flow, dg-s0-top and dg-zoom-in. */
+
+/* The slider had a 1px hairline for a track, which is easy to miss entirely if
+   you have never seen the page before — it read as a rule between two labels
+   rather than as something you could take hold of. Three changes: a track thick
+   enough to be a track, a thumb with a grip on it, and a hint that says what to
+   do and then gets out of the way once you have done it. */
+.dg-scale {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 18px;      /* room for the hint, which sits above the track */
+    margin-bottom: 20px;
+}
+.dg-scale-track {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Shown until the first drag, then faded. Arrows drift apart so the control
+   reads as something with travel in it rather than a static marker. */
+.dg-scale-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 3px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--btc-300);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.45s;
+}
+.dg-scale-hint svg { width: 12px; height: 12px; }
+.dg-scale-hint svg:first-child { animation: dg-nudge-l 1.9s ease-in-out infinite; }
+.dg-scale-hint svg:last-child  { animation: dg-nudge-r 1.9s ease-in-out infinite; }
+@keyframes dg-nudge-l { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-3px); } }
+@keyframes dg-nudge-r { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+.dg-scale.is-used .dg-scale-hint { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .dg-scale-hint svg { animation: none; }
+}
+.dg-scale-end {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--plat-400);
+    white-space: nowrap;
+    transition: color 0.2s;
+}
+.dg-scale-end.is-on { color: var(--btc-300); }
+
+.dg-scale-input {
+    flex: 1;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 26px;
+    background: transparent;
+    cursor: ew-resize;   /* the pointer says it slides */
+}
+.dg-scale-input::-webkit-slider-runnable-track { height: 4px; background: var(--line-hi); }
+.dg-scale-input::-moz-range-track           { height: 4px; background: var(--line-hi); }
+/* Square, like everything else on this site. */
+.dg-scale-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 26px;
+    margin-top: -11px;
+    border: none;
+    border-radius: 0;
+    background-image:
+        /* Two dark grip lines over the metal, so the thumb reads as a handle
+           rather than as a coloured tick on the track. */
+        linear-gradient(to right, transparent 4px, rgba(0,0,0,0.42) 4px 5px,
+                                  transparent 5px 8px, rgba(0,0,0,0.42) 8px 9px,
+                                  transparent 9px),
+        var(--metal-btc-btn);
+}
+.dg-scale-input::-moz-range-thumb {
+    width: 13px;
+    height: 26px;
+    border: none;
+    border-radius: 0;
+    background-image: var(--metal-btc-btn);
+}
+.dg-scale-input:focus-visible { outline: 1px solid var(--btc-300); outline-offset: 4px; }
+
+.dg-views { display: grid; }
+.dg-views > .dg-wrap { grid-area: 1 / 1; pointer-events: none; }
+.dg-views > .dg-wrap.is-on { pointer-events: auto; }
+/* The crossfade is by position, not by view name. It used to be keyed to
+   --cont and --asic, which meant a third pair of views anywhere on the site
+   would render both halves at full opacity on top of each other. The callouts
+   and controls of each view live inside its own wrapper, so the two wrappers
+   really are the first and last children here. */
+.dg-views > .dg-wrap:first-child { opacity: calc(1 - var(--d, 0)); }
+.dg-views > .dg-wrap:last-child  { opacity: var(--d, 0); }
+
+/* The slight push-in as the hosting slider travels is deliberately NOT
+   generalised. It belongs to a slider that changes subject — a container, then
+   one machine inside it — where a little dolly sells the change of scale. The
+   energy page's slider changes the same pad from one state to another, and any
+   movement there would break the illusion that you are looking at one site.
+   Kept small even here: the callout bubbles are positioned against the unscaled
+   wrapper, so a large difference would visibly unhook the leaders mid-drag. */
+.dg-wrap--cont .site-diagram { transform: scale(calc(1 + var(--d, 0) * 0.06)); }
+.dg-wrap--asic .site-diagram { transform: scale(calc(0.95 + var(--d, 0) * 0.05)); }
+
+@media (prefers-reduced-motion: reduce) {
+    .dg-wrap--cont .site-diagram, .dg-wrap--asic .site-diagram { transform: none; }
+}
+
+@media (max-width: 900px) {
+    .dg-wrap { display: none; }
+    .dg-list { display: block; }
+    /* Two lists, and the slider still picks which one you are reading. Keyed to
+       which END the slider is at rather than to the view names, so a second
+       pair of views elsewhere on the site does not silently show both lists at
+       once. site.js writes data-at alongside data-view for exactly this. */
+    .dg-views[data-at="lo"] ~ .dg-list:last-of-type,
+    .dg-views[data-at="hi"] ~ .dg-list:first-of-type { display: none; }
+}
+
+/* The global reduced-motion rule only forces animation-duration to 0.01ms, which
+   strobes an infinite animation rather than stopping it. Killing the NAME halts
+   it. site-diagram.js separately declines to start the idle sweep — but keeps
+   drag, zoom and hover working, since those are user-initiated. */
+@media (prefers-reduced-motion: reduce) {
+    .site-diagram *, .dg-flow { animation: none; }
+}
+
+/* ===== Reveal on scroll ===== */
+
+.reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+
+/* ===== Responsive ===== */
+
+@media (max-width: 980px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .tracks { grid-template-columns: 1fr; }
+    .spec-row { grid-template-columns: 1fr; gap: 8px; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+}
+
+/* ===== Nav width =====
+   Five items plus a CTA is a wide row. Below 1080px it gets tightened, and at
+   940px it collapses to the toggle — before it would otherwise overflow. */
+@media (max-width: 1080px) {
+    .nav-inner { gap: 18px; }
+    .nav-links a { padding: 9px 10px; font-size: 13px; }
+    .nav-cta { margin-left: 8px; }
+    .nav-links a.nav-cta { padding: 10px 14px; }
+}
+
+@media (max-width: 940px) {
+    .nav-toggle { display: inline-flex; }
+    .nav-links {
+        position: absolute;
+        top: 100%;
+        left: 0; right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        margin: 0;
+        padding: 8px 20px 20px;
+        background: rgba(0,0,0,0.97);
+        border-bottom: 1px solid var(--line-mid);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        display: none;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links a { padding: 14px 0; font-size: 15px; border-top: 1px solid var(--line); }
+    .nav-links a.active::after { left: 0; right: auto; width: 22px; bottom: 8px; }
+    .nav-cta { margin: 16px 0 0; }
+    .nav-links a.nav-cta { border-top: none; }
+}
+
+@media (max-width: 780px) {
+    :root { --gut: 20px; }
+    .band { padding: 76px 0; }
+    .band--tight { padding: 0 0 56px; }
+    .hero { padding: 76px 0 64px; }
+    .grid-2, .grid-4, .form-row { grid-template-columns: 1fr; }
+
+
+    .step { grid-template-columns: 1fr; gap: 12px; }
+    .step-num { padding-top: 0; }
+    .cta-band { padding: 52px 24px; }
+    .btn { width: 100%; }
+    .btn-row { flex-direction: column; }
+    .arrow-link { width: auto; }
+}
+
+@media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr; }
+    .track { padding: 34px 22px 30px; }
+    .card { padding: 28px 22px; }
+    .form { padding: 24px 20px; }
+    .footer-top { grid-template-columns: 1fr; gap: 34px; }
+}

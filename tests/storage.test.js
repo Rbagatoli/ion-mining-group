@@ -9,6 +9,7 @@
 //   - payouts were stamped with the price at SYNC time, not on the day they were paid
 
 var path = require('path');
+var fs = require('fs');
 var ROOT = path.join(__dirname, '..');
 
 var pass = 0, fail = 0;
@@ -113,10 +114,21 @@ console.log('\n--- the export covers every key, not just the synced ones ---');
 
     // The regression that matters: SYNC_KEYS is a strict subset. If the export ever goes back to
     // iterating it, this fails.
-    var SYNCED = ['ionMiningFleet', 'ionMiningWallet', 'ionMiningPayouts', 'ionMiningElectricity',
-                  'btcMinerCalcSettings', 'ionMiningSettings', 'ionMiningAlerts',
-                  'ionMiningCurrency', 'ionMiningTheme', 'ionMiningScenarios', 'ionMiningSites',
-                  'ionMiningProspectPortfolio', 'ionMiningProspectScenario'];
+    // Read out of sync.js rather than hand-copied. The list used to be duplicated here, which
+    // meant it went stale the moment a key was added or retired -- it still claimed
+    // ionMiningTheme long after the theme stopped syncing. Parsing the real SYNC_KEYS makes this
+    // a live check instead of a fixture that agrees with a past version of the code.
+    var SYNC_SRC = fs.readFileSync(path.join(ROOT, 'sync.js'), 'utf8');
+    var SYNC_BLOCK = SYNC_SRC.slice(SYNC_SRC.indexOf('var SYNC_KEYS'),
+                                    SYNC_SRC.indexOf('};', SYNC_SRC.indexOf('var SYNC_KEYS')));
+    var SYNCED = (SYNC_BLOCK.match(/lsKey:\s*'([^']+)'/g) || []).map(function(m) {
+        return m.replace(/.*'([^']+)'.*/, '$1');
+    });
+    ok('SYNC_KEYS was parsed, not guessed', SYNCED.length >= 10,
+       'found ' + SYNCED.length + ' synced keys in sync.js');
+    // The theme key retired with the light theme. Asserting its absence here is what stops it
+    // being quietly re-added.
+    ok('the theme key no longer syncs', SYNCED.indexOf('ionMiningTheme') < 0);
     var unsyncedButExported = got.filter(function(k) { return SYNCED.indexOf(k) < 0; });
     ok('the export is strictly wider than what syncs', unsyncedButExported.length > 0,
        'exported ' + got.length + ', of which ' + unsyncedButExported.length + ' never sync');

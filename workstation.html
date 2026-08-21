@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Workstation</title>
-    <link rel="stylesheet" href="./tokens.css?v=318">
+    <link rel="stylesheet" href="./tokens.css?v=319">
     <link rel="manifest" href="./manifest.json">
     <style>
     /* This file used to fork the tokens with DIFFERENT values from shared.css
@@ -74,15 +74,6 @@
         background: #1a1a1a;
         color: #e8e8e8;
     }
-    [data-theme="light"] .ws-pane-select-group select {
-        background: #fff;
-        border-color: rgba(0,0,0,0.12);
-        color: #1a1a1a;
-    }
-    [data-theme="light"] .ws-pane-select-group select option {
-        background: #fff;
-        color: #1a1a1a;
-    }
     .ws-actions {
         display: flex;
         align-items: center;
@@ -101,15 +92,6 @@
     .ws-actions select option {
         background: #1a1a1a;
         color: #e8e8e8;
-    }
-    [data-theme="light"] .ws-actions select {
-        background: #fff;
-        border-color: rgba(0,0,0,0.12);
-        color: #1a1a1a;
-    }
-    [data-theme="light"] .ws-actions select option {
-        background: #fff;
-        color: #1a1a1a;
     }
     .ws-actions button {
         background: none;
@@ -188,8 +170,6 @@
     .ion-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
     .ion-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
     .ion-nav-sparkline-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; white-space: nowrap; min-width: 52px; text-align: right; }
-    [data-theme="light"] .ion-nav-sparkline { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
-    [data-theme="light"] .ion-nav-sparkline:hover { background: rgba(0,0,0,0.06); }
     </style>
 </head>
 <body>
@@ -202,7 +182,6 @@
         <div class="ws-actions">
             <a href="./charts.html" class="ion-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="ion-nav-sparkline-price" id="navSparklinePrice">--</span></a>
             <select id="wsCurrency"></select>
-            <button id="wsTheme" title="Toggle theme"></button>
             <a href="./index.html" class="ws-exit-btn" title="Exit Workstation">Exit</a>
         </div>
     </nav>
@@ -224,12 +203,9 @@
     ];
 
     var STORAGE_KEY = 'ionMiningWorkstation';
-    var THEME_KEY = 'ionMiningTheme';
     var CURRENCY_KEY = 'ionMiningCurrency';
     var CURRENCIES = { usd: 'USD', eur: 'EUR', gbp: 'GBP', cad: 'CAD', aud: 'AUD', jpy: 'JPY' };
 
-    var SUN_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-    var MOON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
     function getMaxPanes() {
         var w = window.innerWidth;
@@ -255,12 +231,6 @@
 
     function saveConfig(config) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    }
-
-    function applyTheme(theme) {
-        document.documentElement.dataset.theme = theme;
-        var btn = document.getElementById('wsTheme');
-        if (btn) btn.innerHTML = (theme === 'light') ? MOON_SVG : SUN_SVG;
     }
 
     function initCurrencySelect() {
@@ -390,22 +360,12 @@
         }, 300);
     });
 
-    // Sync theme/currency from iframes via storage event
+    // Sync currency from iframes via storage event
     window.addEventListener('storage', function(e) {
-        if (e.key === THEME_KEY) applyTheme(e.newValue || 'dark');
         if (e.key === CURRENCY_KEY) {
             var sel = document.getElementById('wsCurrency');
             if (sel) sel.value = e.newValue || 'usd';
         }
-    });
-
-    // Theme toggle
-    document.getElementById('wsTheme').addEventListener('click', function() {
-        var current = document.documentElement.dataset.theme || 'dark';
-        var next = (current === 'dark') ? 'light' : 'dark';
-        localStorage.setItem(THEME_KEY, next);
-        applyTheme(next);
-        broadcastToIframes('themeChange', next);
     });
 
     // Currency change
@@ -415,12 +375,11 @@
     });
 
     // Init
-    applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
     initCurrencySelect();
     render();
 })();
 </script>
-<script src="./shared.js?v=318"></script>
+<script src="./shared.js?v=319"></script>
 <script>startNavSparkline();</script>
 </body>
 </html>

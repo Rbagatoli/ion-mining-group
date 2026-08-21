@@ -127,7 +127,20 @@ console.log('\n=== dark only, by choice ===');
     }
     eq('no [data-theme] anywhere', hits(/data-theme/).join(', ') || 'none', 'none');
     eq('no isLightMode', hits(/isLightMode/).join(', ') || 'none', 'none');
-    eq('no ionMiningTheme key', hits(/ionMiningTheme/).join(', ') || 'none', 'none');
+    // shared.js keeps ONE mention: a one-time localStorage.removeItem behind a sentinel, so a
+    // returning user is not left holding a dead key. That is a migration artifact with an expiry,
+    // not a survivor -- so it is exempted by shape (removeItem only), which still fails if
+    // anything starts READING or WRITING the key again.
+    var themeKey = FILES.filter(function(f2) {
+        if (!/ionMiningTheme/.test(f2.text)) return false;
+        // Split rather than regex: the line-matching pattern needed an escaped newline
+        // class, and this reads the same without one.
+        var uses = f2.text.split(String.fromCharCode(10)).filter(function(u) {
+            return u.indexOf('ionMiningTheme') >= 0;
+        });
+        return uses.some(function(u) { return u.indexOf('removeItem') < 0; });
+    }).map(function(f2) { return f2.rel; });
+    eq('nothing reads or writes ionMiningTheme', themeKey.join(', ') || 'none', 'none');
     eq('no prefers-color-scheme', hits(/prefers-color-scheme/).join(', ') || 'none', 'none');
 
     // The theme name was synced to Firestore. It must stop being written before the key retires.

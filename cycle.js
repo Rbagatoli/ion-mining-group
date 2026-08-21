@@ -642,10 +642,6 @@ document.getElementById('dcaAmount').addEventListener('input', renderDca);
 
 // ===== THEME / CURRENCY =====
 
-window.addEventListener('themechange', function() {
-    opts = buildOpts();
-    renderAllCharts();
-});
 
 window.onCurrencyChange = function() {
     renderPositionCards();
