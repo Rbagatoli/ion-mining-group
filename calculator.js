@@ -283,7 +283,6 @@ function initChart() {
                     data: [],
                     backgroundColor: 'rgba(247, 147, 26, 0.60)',
                     borderColor: '#f7931a',
-                    borderWidth: 1,
                     borderRadius: 3,
                     yAxisID: 'yBTC',
                     order: 2
@@ -294,7 +293,6 @@ function initChart() {
                     data: [],
                     backgroundColor: 'rgba(140, 140, 140, 0.45)',
                     borderColor: '#999',
-                    borderWidth: 1,
                     borderRadius: 3,
                     yAxisID: 'yBTC',
                     order: 3
@@ -318,7 +316,6 @@ function initChart() {
                     label: 'Miners Owned',
                     data: [],
                     borderColor: isLightMode() ? '#1a1a1a' : '#ffffff',
-                    backgroundColor: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)',
                     borderWidth: 2.5,
                     pointRadius: 0,
                     pointHoverRadius: 5,
@@ -353,14 +350,9 @@ function initChart() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 12 }, padding: 16, usePointStyle: true, pointStyleWidth: 16 }
+                    labels: {}
                 },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     padding: 12,
                     bodySpacing: 6,
                     callbacks: {
@@ -1174,11 +1166,8 @@ function renderBacktestChart(bt, mult) {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } },
+                legend: { display: true, position: 'top', labels: {} },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
                     borderColor: 'rgba(255,255,255,0.10)', borderWidth: 1, padding: 10,
                     callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmtUSD(ctx.parsed.y); } }
                 }

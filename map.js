@@ -176,7 +176,7 @@ function buildPieChart(currentA2) {
         slices.push({ label: currentA2, value: curHash, isCurrent: true });
     }
 
-    var mutedColors = ['#555', '#4a4a4a', '#3f3f3f', '#353535', '#2a2a2a', '#333'];
+    var mutedColors = IonTheme.seriesMuted;
     var cx = 50, cy = 50, r = 38;
     var startAngle = -Math.PI / 2;
     var paths = '';

@@ -255,9 +255,20 @@ console.log('\n=== the JS palette mirrors the CSS ===');
     var mod = require(path.join(ROOT, 'theme.js'));
     var checks = [['black', '--black'], ['text', '--text'], ['textMid', '--text-mid'],
                   ['btc', '--btc-300'], ['line', '--line'], ['pos', '--pos'], ['neg', '--neg']];
+    // A token may point at another token — --text-mid is var(--plat-400). theme.js cannot do
+    // that, because a canvas has no element to resolve a variable against, so it holds the
+    // literal. Follow one level of indirection here rather than calling the difference drift.
+    function tokenValue(name, depth) {
+        var m = TOKENS.match(new RegExp(name + '\\s*:\\s*([^;]+);'));
+        if (!m) return null;
+        var v = m[1].trim();
+        var ref = v.match(/^var\(\s*(--[a-z0-9-]+)\s*\)$/i);
+        if (ref && (depth || 0) < 4) return tokenValue(ref[1], (depth || 0) + 1);
+        return v;
+    }
     var drift = checks.filter(function(c) {
-        var m = TOKENS.match(new RegExp(c[1] + '\\s*:\\s*([^;]+);'));
-        return !m || String(mod[c[0]]).toLowerCase() !== m[1].trim().toLowerCase();
+        var v = tokenValue(c[1], 0);
+        return v === null || String(mod[c[0]]).toLowerCase() !== v.toLowerCase();
     }).map(function(c) { return c[0]; });
     eq('IonTheme matches tokens.css', drift.join(', ') || 'none', 'none');
 })();

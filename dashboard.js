@@ -1029,7 +1029,6 @@ function initEarningsChart() {
                 data: chartData.values,
                 backgroundColor: 'rgba(247, 147, 26, 0.50)',
                 borderColor: '#f7931a',
-                borderWidth: 1,
                 borderRadius: 4
             }]
         },
@@ -1041,12 +1040,6 @@ function initEarningsChart() {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     callbacks: {
                         label: function(ctx) {
                             return fmtUSD(ctx.parsed.y);
@@ -1056,8 +1049,8 @@ function initEarningsChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: {},
+                    grid: {}
                 },
                 y: {
                     beginAtZero: true,
@@ -1070,7 +1063,7 @@ function initEarningsChart() {
                             return s + v.toFixed(0);
                         }
                     },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    grid: {}
                 }
             }
         }

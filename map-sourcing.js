@@ -3747,10 +3747,9 @@ var MapSourcing = (function() {
                     } } }
                 },
                 scales: {
-                    x: { grid: { color: light ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)' }, ticks: { color: light ? '#666' : '#888' } },
-                    y: { grid: { color: light ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.05)' },
-                         ticks: { color: light ? '#666' : '#888',
-                                  callback: function(v) { return v >= 1000 ? (v / 1000) + ' MW' : v + ' kW'; } } }
+                    x: { grid: {}, ticks: {} },
+                    y: { grid: {},
+                         ticks: { callback: function(v) { return v >= 1000 ? (v / 1000) + ' MW' : v + ' kW'; } } }
                 }
             }
         });

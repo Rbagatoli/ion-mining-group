@@ -44,31 +44,19 @@ window.onCurrencyChange = function() {
 };
 
 // Built as a function so the palette can be re-derived when the theme toggles
+// Structure only. Every colour, font and border here now comes from Chart.defaults in
+// chart-theme.js -- this used to restate the whole palette, twice over, through isLightMode()
+// ternaries carrying a light branch that no longer has a second side.
 function buildChartOptions() {
     return {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                borderColor: 'rgba(255, 255, 255, 0.10)',
-                borderWidth: 1,
-                titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                padding: 10
-            }
-        },
+        plugins: { legend: { display: false } },
         scales: {
-            x: {
-                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12 },
-                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
-            },
-            y: {
-                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
-            }
+            // maxTicksLimit is genuinely per-chart: this axis is dates and crowds at 12.
+            x: { ticks: { maxTicksLimit: 12 } },
+            y: {}
         }
     };
 }
@@ -218,8 +206,9 @@ async function renderPriceChart(days) {
             scales: Object.assign({}, chartOptions.scales, {
                 y: {
                     ticks: {
-                        color: '#f7931a',
-                        font: { size: 11 },
+                        // No colour here: Chart.defaults sets it. It used to be #f7931a, which
+                        // put an entire axis of orange labels on screen to echo the orange line.
+                        // The line is the live data; the axis is structure.
                         callback: function(v) {
                             var s = getCurrencySymbol();
                             if (v >= 1e6) return s + (v / 1e6).toFixed(2) + 'M';
@@ -228,7 +217,7 @@ async function renderPriceChart(days) {
                             return s + Math.round(v).toLocaleString();
                         }
                     },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    grid: {}
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -306,7 +295,7 @@ function renderDifficultyChart(timeframe) {
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' T'; }
                     },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    grid: {}
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -383,7 +372,7 @@ function renderHashrateChart(timeframe) {
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' EH/s'; }
                     },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    grid: {}
                 }
             }),
             plugins: Object.assign({}, chartOptions.plugins, {
@@ -966,10 +955,11 @@ function renderHashPriceChart(days) {
 // ===== MINING POOL DOMINANCE =====
 
 var poolDataCache = {};
-var poolColors = [
-    '#f7931a', '#60a5fa', '#4ade80', '#ef4444',
-    '#fbbf24', '#a78bfa', '#f472b6', '#34d399', '#9ca3af'
-];
+// One ramp, from theme.js, replacing nine saturated hues. Mining pools are a categorical set
+// with no inherent order, and separating them by LUMINANCE rather than by hue means the
+// doughnut stays readable in greyscale and under every form of colour blindness -- which a
+// blue/green/red/purple/pink wheel does not.
+var poolColors = IonTheme.series;
 
 async function loadPoolDominance(timeframe) {
     if (poolDataCache[timeframe]) {
@@ -1049,21 +1039,9 @@ function renderPoolChart(timeframe, data) {
                 legend: {
                     display: true,
                     position: legendPos,
-                    labels: {
-                        color: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                        font: { size: 11 },
-                        padding: 12,
-                        usePointStyle: true,
-                        pointStyleWidth: 10
-                    }
+                    labels: {}
                 },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     callbacks: {
                         label: function(ctx) {
                             var pctVal = totalBlocks > 0 ? ((ctx.parsed / totalBlocks) * 100).toFixed(1) : '0';
@@ -1233,14 +1211,8 @@ function renderFeeChart(timeframe, apiData) {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 } } },
+                legend: { display: true, position: 'top', labels: {} },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     callbacks: {
                         label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' sat/vB'; }
                     }
@@ -1248,17 +1220,13 @@ function renderFeeChart(timeframe, apiData) {
             },
             scales: {
                 x: {
-                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 12, maxRotation: 45 },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: { maxTicksLimit: 12, maxRotation: 45 },
+                    grid: {}
                 },
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        color: isLightMode() ? '#6b7280' : '#888',
-                        font: { size: 11 },
-                        callback: function(v) { return v + ' sat/vB'; }
-                    },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: { callback: function(v) { return v + ' sat/vB'; } },
+                    grid: {}
                 }
             }
         }

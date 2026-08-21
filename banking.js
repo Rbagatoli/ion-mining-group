@@ -2950,20 +2950,14 @@ function initPayoutChart() {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 } } },
+                legend: { display: true, position: 'top', labels: {} },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10
                 }
             },
             scales: {
                 x: {
-                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: {},
+                    grid: {}
                 },
                 y: {
                     type: 'linear',
@@ -2973,7 +2967,7 @@ function initPayoutChart() {
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(4) + ' BTC'; }
                     },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    grid: {}
                 },
                 y1: {
                     type: 'linear',
@@ -3076,14 +3070,8 @@ function initRevCostChart() {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 } } },
+                legend: { display: true, position: 'top', labels: {} },
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     callbacks: {
                         label: function(ctx) { return ctx.dataset.label + ': ' + fmtUSD(ctx.parsed.y); }
                     }
@@ -3091,16 +3079,12 @@ function initRevCostChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: {},
+                    grid: {}
                 },
                 y: {
-                    ticks: {
-                        color: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                        font: { size: 11 },
-                        callback: function(v) { return '$' + v.toLocaleString(); }
-                    },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: { callback: function(v) { return '$' + v.toLocaleString(); } },
+                    grid: {}
                 }
             }
         }
@@ -4115,7 +4099,6 @@ function updatePnLChart(pnl) {
                     data: revData,
                     backgroundColor: 'rgba(74, 222, 128, 0.6)',
                     borderColor: '#4ade80',
-                    borderWidth: 1,
                     borderRadius: 4,
                     order: 2
                 },
@@ -4124,7 +4107,6 @@ function updatePnLChart(pnl) {
                     data: expData,
                     backgroundColor: 'rgba(239, 68, 68, 0.6)',
                     borderColor: '#ef4444',
-                    borderWidth: 1,
                     borderRadius: 4,
                     order: 2
                 },
@@ -4149,12 +4131,6 @@ function updatePnLChart(pnl) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     cornerRadius: 8,
                     callbacks: {
                         label: function(ctx) { return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString(); }
@@ -4163,13 +4139,10 @@ function updatePnLChart(pnl) {
                 legend: { labels: { color: '#bbb', font: { size: 12 } } }
             },
             scales: {
-                x: { ticks: { color: isLightMode() ? '#6b7280' : '#888' }, grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' } },
+                x: { ticks: {}, grid: {} },
                 y: {
-                    ticks: {
-                        color: isLightMode() ? '#6b7280' : '#888',
-                        callback: function(v) { return '$' + v.toLocaleString(); }
-                    },
-                    grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                    ticks: { callback: function(v) { return '$' + v.toLocaleString(); } },
+                    grid: {}
                 }
             }
         }
@@ -4206,7 +4179,10 @@ function updateExpenseDoughnut(pnl) {
     var catValues = catLabels.map(function(k) { return +cats[k].toFixed(2); });
     var totalExp = catValues.reduce(function(a, b) { return a + b; }, 0);
 
-    var palette = ['#ef4444', '#f7931a', '#60a5fa', '#a78bfa', '#4ade80', '#fbbf24', '#f472b6', '#38bdf8'];
+    // Expense categories are categorical, not semantic -- an expense is not "bad" the way a
+    // negative P&L is -- so this uses the luminance ramp rather than the red/green/amber that
+    // carry meaning elsewhere in the app.
+    var palette = IonTheme.series;
     var colors = catLabels.map(function(_, i) { return palette[i % palette.length]; });
 
     if (expenseDoughnutChart) expenseDoughnutChart.destroy();
@@ -4228,12 +4204,6 @@ function updateExpenseDoughnut(pnl) {
             cutout: '55%',
             plugins: {
                 tooltip: {
-                    backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    borderWidth: 1,
-                    titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                    padding: 10,
                     cornerRadius: 8,
                     callbacks: {
                         label: function(ctx) {

@@ -36,22 +36,16 @@ function buildOpts() {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: isLightMode() ? 'rgba(255,255,255,0.95)' : 'rgba(10, 10, 10, 0.92)',
-                borderColor: 'rgba(255, 255, 255, 0.10)',
-                borderWidth: 1,
-                titleColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                bodyColor: isLightMode() ? '#1a1a1a' : '#e8e8e8',
-                padding: 10
             }
         },
         scales: {
             x: {
-                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 }, maxTicksLimit: 10 },
-                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                ticks: { maxTicksLimit: 10 },
+                grid: {}
             },
             y: {
-                ticks: { color: isLightMode() ? '#6b7280' : '#888', font: { size: 11 } },
-                grid: { color: isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }
+                ticks: {},
+                grid: {}
             }
         }
     };
@@ -271,7 +265,7 @@ function renderValuationChart(range) {
 
     if (valuationChart) valuationChart.destroy();
     var o = buildOpts();
-    o.plugins.legend = { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } };
+    o.plugins.legend = { display: true, position: 'top', labels: {} };
     o.scales.y = {
         type: 'logarithmic',
         ticks: {
@@ -298,7 +292,7 @@ function renderValuationChart(range) {
             labels: labels,
             datasets: [
                 { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.08)', fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 },
-                { label: '200-day avg', data: m200, borderColor: '#60a5fa', backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
+                { label: '200-day avg', data: m200, borderColor: IonTheme.seriesAt(1), backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
                 { label: '200-week avg', data: m1400, borderColor: '#4ade80', backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0, spanGaps: false }
             ]
         },
@@ -399,7 +393,7 @@ function renderCyclesChart() {
     var idxs = sampleIdx(maxLen, 400);
     var labels = idxs.map(function(i) { return 'Day ' + i; });
 
-    var colors = ['#60a5fa', '#a78bfa', '#f7931a'];
+    var colors = [IonTheme.seriesAt(1), IonTheme.seriesAt(2), IonTheme.seriesAt(0)];
     var datasets = tracks.map(function(t, n) {
         var data = idxs.map(function(i) { return t.points[i] ? +t.points[i].value.toFixed(2) : null; });
         var isCurrent = (n === tracks.length - 1);
@@ -422,7 +416,7 @@ function renderCyclesChart() {
 
     if (cyclesChart) cyclesChart.destroy();
     var o = buildOpts();
-    o.plugins.legend = { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } };
+    o.plugins.legend = { display: true, position: 'top', labels: {} };
     o.scales.y = {
         type: 'logarithmic',
         ticks: { color: tickCol(), font: { size: 11 }, callback: function(v) { return v + '%'; } },
@@ -489,10 +483,10 @@ function renderFngChart(range) {
 
     if (fngChart) fngChart.destroy();
     var o = buildOpts();
-    o.plugins.legend = { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } };
+    o.plugins.legend = { display: true, position: 'top', labels: {} };
     o.scales.y = {
         min: 0, max: 100, position: 'left',
-        ticks: { color: '#a78bfa', font: { size: 11 } },
+        ticks: {},
         grid: { color: gridCol() }
     };
     o.scales.y1 = {
@@ -513,7 +507,7 @@ function renderFngChart(range) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Fear & Greed', data: fng, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.10)', fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y' },
+                { label: 'Fear & Greed', data: fng, borderColor: IonTheme.seriesAt(2), backgroundColor: IonTheme.alpha(IonTheme.seriesAt(2), 0.10), fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y' },
                 { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y1', spanGaps: true }
             ]
         },
@@ -581,7 +575,7 @@ function renderDcaChart(amount, everyDays, startDate, mult) {
 
     if (dcaChart) dcaChart.destroy();
     var o = buildOpts();
-    o.plugins.legend = { display: true, position: 'top', labels: { color: isLightMode() ? '#1a1a1a' : '#e8e8e8', font: { size: 11 }, usePointStyle: true, boxWidth: 8 } };
+    o.plugins.legend = { display: true, position: 'top', labels: {} };
     o.scales.y = {
         ticks: {
             color: tickCol(), font: { size: 11 },
