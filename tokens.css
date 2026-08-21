@@ -1,0 +1,183 @@
+/* ===== ION MINING GROUP — design tokens =====
+   The ONLY place in the application where a colour is defined.
+
+   Everything above the "app additions" line is COPIED BYTE-IDENTICAL from
+   site/styles.css. Not re-derived, not matched by eye — copied, so that
+   tests/theme.test.js can assert the two files agree, and "the app looks like
+   the website" becomes something a machine checks rather than something we
+   claim. If one of these needs to change, change it on the site and copy it
+   across.
+
+   Three materials, in this proportion:
+     Black    #000000  the ground.     ~55% of any viewport.
+     Platinum #e5e4e2  the structure.  Type, hairlines, borders. ~40%.
+     BTC      #f7931a  the accent.     Small area, high value. NEVER a surface. ~5%.
+
+   Orange marks exactly four things, and nothing else:
+     1. the primary action        .btn-primary, modal confirm, Export
+     2. the active nav item       a 2px metal underline, not a wash
+     3. a live data point         .chart-live-value, the sparkline, ticking hashrate
+     4. an unfilled placeholder   .src-gap — "the source does not publish this"
+
+   Everything is square. No radius, no soft shadow, no colour bloom.
+   Hairlines are platinum, never white.
+
+   Two rules for anyone extending this file:
+
+     - var() only works in CSS. A colour bound for ctx.fillStyle, for three.js,
+       or for map-sourcing.js's fade() must come from theme.js instead. fade()
+       returns its input UNCHANGED for anything that is not exactly six hex
+       digits, so a var() reaching it passes straight through to the WebGL layer
+       and fails with no console error at all.
+
+     - A token nothing reads is worse than no token. Nine of the previous
+       twenty-two were defined and referenced nowhere, so editing the palette
+       changed nothing on screen and the file was decorative.
+       tests/theme.test.js now fails on an unread token.
+*/
+
+:root {
+    /* ---- Inherited from site/styles.css. Byte-identical. Do not edit here. ---- */
+    --black: #000000;
+    --surface: #0a0a0a;
+    --surface-2: #0e0e0e;
+    --panel: rgba(255, 255, 255, 0.015);
+    --panel-hover: rgba(255, 255, 255, 0.042);
+    --panel-solid: rgba(0, 0, 0, 0.50);
+    --plat-000: #ffffff;
+    --plat-100: #efeeec;
+    --plat-200: #e5e4e2;
+    --plat-300: #cbcac7;
+    --plat-400: #a9a8a5;
+    --plat-500: #83827f;
+    --plat-600: #5c5b58;
+    --btc-100: #ffd9a0;
+    --btc-200: #ffb347;
+    --btc-300: #f7931a;
+    --btc-400: #c86f0a;
+    --btc-500: #8a4a05;
+    --text: #e8e7e5;
+    --text-mid: var(--plat-400);
+    --text-dim: #787773;
+    --accent: var(--btc-300);
+    --line: rgba(229, 228, 226, 0.13);
+    --line-mid: rgba(229, 228, 226, 0.24);
+    --line-hi: rgba(229, 228, 226, 0.42);
+    --line-btc: rgba(247, 147, 26, 0.36);
+    --metal-plat: linear-gradient(174deg,
+        #ffffff 0%, #dcdbd9 17%, #8e8d8a 39%, #6d6c69 47%,
+        #f2f1ef 52%, #ffffff 57%, #c9c8c5 72%, #91908c 88%, #e9e8e6 100%);
+    --metal-plat-soft: linear-gradient(177deg,
+        #ffffff 0%, #e4e3e1 40%, #b3b2af 74%, #d6d5d3 100%);
+    --metal-plat-flat: linear-gradient(135deg,
+        #5c5b58 0%, #b5b4b1 13%, #ffffff 25%, #d0cfcd 34%,
+        #83827f 50%, #e8e7e5 65%, #ffffff 76%, #a2a19e 89%, #6b6a67 100%);
+    --metal-btc: linear-gradient(176deg,
+        #ffd9a0 0%, #f7931a 28%, #c06a08 48%,
+        #f9a132 58%, #ffc46b 80%, #d2780b 100%);
+    --metal-btc-flat: linear-gradient(135deg,
+        #a85a06 0%, #f7931a 20%, #ffc978 40%,
+        #f7931a 56%, #c86f0a 76%, #ffb347 100%);
+    --metal-btc-lit: linear-gradient(150deg,
+        #ffcf8a 0%, #f7a02b 26%, #ffdcae 48%,
+        #f7a02b 68%, #ffb85c 86%, #f7a02b 100%);
+    --metal-btc-btn: linear-gradient(135deg,
+        #d4791a 0%, #f7931a 18%, #ffd08a 38%,
+        #f7931a 56%, #e07f10 76%, #ffc46b 100%);
+    --edge-plat: linear-gradient(90deg,
+        transparent 0%, rgba(229,228,226,0.03) 20%,
+        rgba(255,255,255,0.19) 50%,
+        rgba(229,228,226,0.03) 80%, transparent 100%);
+    --edge-plat-short: linear-gradient(90deg,
+        rgba(255,255,255,0.17) 0%, rgba(229,228,226,0.05) 45%, transparent 88%);
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    /* =========================================================================
+       APP ADDITIONS — nothing below this line has a counterpart on the
+       marketing site, because the site has no data in it.
+       ========================================================================= */
+
+    /* ---- Geometry ----------------------------------------------------------
+       Routing every radius and shadow through a token is what makes "square
+       everywhere" grep-provable instead of aspirational, and reversible in one
+       line if it ever turns out to be wrong. */
+    --radius: 0;
+    /* The two things that are genuinely round rather than merely soft-cornered:
+       the avatar and the range-slider thumb. Named so the lint can tell a
+       deliberate circle from a corner nobody squared. */
+    --knob: 50%;
+    --shadow-card: none;
+    /* Blur survives only where it does real work — the sticky nav and the modal
+       scrim, both of which sit over moving content. */
+    --blur: blur(16px) saturate(1.2);
+    --scrim: rgba(0, 0, 0, 0.78);
+
+    /* ---- Data colours ------------------------------------------------------
+       RECORDED EXCEPTION to the site's three-material rule, taken deliberately.
+       The site has no numbers in it. This app is a financial dashboard, and the
+       direction of a number is not a brand decision — losing red and green on
+       P&L, on alert severity and on the map's margin scale would be a real
+       regression dressed up as purity.
+       These are the ONLY hues in the app outside black, platinum and orange. */
+    --pos:  #4ade80;
+    --neg:  #ef4444;
+    --warn: #fbbf24;
+    --pos-line:  rgba(74, 222, 128, 0.30);
+    --neg-line:  rgba(239, 68, 68, 0.30);
+    --warn-line: rgba(251, 191, 36, 0.30);
+    --pos-wash:  rgba(74, 222, 128, 0.08);
+    --neg-wash:  rgba(239, 68, 68, 0.08);
+    --warn-wash: rgba(251, 191, 36, 0.08);
+    /* Orange at low alpha, for the one wash orange is allowed: an unfilled
+       placeholder. Replaces the old --accent-bg, which nothing ever read. */
+    --btc-wash: rgba(247, 147, 26, 0.10);
+
+    /* ---- Chart series ------------------------------------------------------
+       One ramp replacing five separate arrays. It alternates LIGHT and DARK
+       within two hues rather than cycling eight saturated ones, which gives
+       better luminance separation than the palette it replaces — a doughnut of
+       eight categories stays readable in greyscale and under every form of
+       colour blindness. The semantic three above appear in charts only where
+       they mean something, never as categorical fill. */
+    --sr-1: #f7931a;
+    --sr-2: #e5e4e2;
+    --sr-3: #a9a8a5;
+    --sr-4: #c86f0a;
+    --sr-5: #5c5b58;
+    --sr-6: #ffc46b;
+    --sr-7: #cbcac7;
+    --sr-8: #8a4a05;
+    /* Inactive slices in the fleet pie: present, but not competing for attention. */
+    --mu-1: #5c5b58;
+    --mu-2: #4e4d4a;
+    --mu-3: #414040;
+    --mu-4: #363535;
+    --mu-5: #2b2a2a;
+    --mu-6: #4a4947;
+
+    /* ---- Map and globe -----------------------------------------------------
+       CARTO's dark_all basemap is grey-blue and platinum is warm, so the tiles
+       are retinted in the browser rather than by swapping tile servers. */
+    --tile-filter: grayscale(1) contrast(1.06) brightness(0.82) sepia(0.12);
+    --globe-atmos: #f7931a;
+    --globe-fill-max: rgba(247, 147, 26, 0.85);
+    --globe-fill-min: rgba(247, 147, 26, 0.03);
+    --globe-stroke: rgba(247, 147, 26, 0.40);
+    --globe-stroke-dim: rgba(229, 228, 226, 0.10);
+
+    /* Flare persistence, as a real sequential scale. The palette this replaces
+       ran green → orange → brown → brown, which is not monotonic in luminance
+       and therefore was not a sequential scale at all: its two ends read as
+       equally dark. This one descends cleanly. */
+    --persist-4: #ffd9a0;
+    --persist-3: #f7931a;
+    --persist-2: #c86f0a;
+    --persist-1: #8a4a05;
+
+    /* ---- Chrome ------------------------------------------------------------ */
+    /* The sticky nav sits over scrolling content, so it needs a floor of its own
+       rather than the translucent --panel every card uses. */
+    --nav-bg: rgba(0, 0, 0, 0.82);
+    --scrollbar-thumb: rgba(229, 228, 226, 0.20);
+    --scrollbar-thumb-hover: rgba(229, 228, 226, 0.38);
+}

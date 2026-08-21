@@ -63,8 +63,8 @@ console.log('\n=== one place defines a colour ===');
     if (!TOKENS) return;
 
     // Every --x: used anywhere must be defined in tokens.css. This is the assertion that would
-    // have caught map.html:35 using var(--card-bg), which has never been defined anywhere and has
-    // silently fallen back for its whole life.
+    // have caught map.html:35 using var(--card-bg), which had never been defined anywhere and
+    // silently fell back for its whole life.
     var defined = {};
     (TOKENS.match(/^\s*--[a-z0-9-]+\s*:/gim) || []).forEach(function(d) {
         defined[d.trim().replace(/\s*:$/, '')] = true;
@@ -89,7 +89,9 @@ console.log('\n=== one place defines a colour ===');
 
     // Only tokens.css may declare :root. Four files do today, and workstation.html's copy holds
     // DIFFERENT values from shared.css's — drift, not a decision.
-    var roots = FILES.filter(function(f) { return /:root\s*\{/.test(f.text); }).map(function(f) { return f.rel; });
+    var roots = FILES.filter(function(f) {
+        return f.rel !== 'tokens.css' && /:root\s*\{/.test(f.text);
+    }).map(function(f) { return f.rel; });
     eq('nothing else declares :root', roots.join(', ') || 'none', 'none');
 })();
 

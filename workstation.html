@@ -4,30 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Workstation</title>
+    <link rel="stylesheet" href="./tokens.css?v=318">
     <link rel="manifest" href="./manifest.json">
     <style>
-    :root {
-        --bg: #060606;
-        --bg-nav: rgba(255, 255, 255, 0.04);
-        --text: #e8e8e8;
-        --text-muted: #888;
-        --border: rgba(255, 255, 255, 0.06);
-        --accent: #f7931a;
-    }
-    [data-theme="light"] {
-        --bg: #f5f5f5;
-        --bg-nav: rgba(255, 255, 255, 0.92);
-        --text: #1a1a1a;
-        --text-muted: #666;
-        --border: rgba(0, 0, 0, 0.08);
-        --accent: #f7931a;
-    }
+    /* This file used to fork the tokens with DIFFERENT values from shared.css
+       (--bg #f5f5f5 vs #f0f2f5, --text-muted #666 vs #6b7280). Both now come from
+       tokens.css, linked above, so they cannot disagree again. */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
         height: 100%;
         overflow: hidden;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-        background: var(--bg);
+        background: var(--black);
         color: var(--text);
     }
     .ws-nav {
@@ -35,8 +23,8 @@
         align-items: center;
         justify-content: space-between;
         padding: 8px 16px;
-        background: var(--bg-nav);
-        border-bottom: 1px solid var(--border);
+        background: var(--nav-bg);
+        border-bottom: 1px solid var(--line);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         height: 48px;
@@ -69,7 +57,7 @@
     }
     .ws-pane-select-group label {
         font-size: 11px;
-        color: var(--text-muted);
+        color: var(--text-mid);
         font-weight: 500;
         white-space: nowrap;
     }
@@ -126,7 +114,7 @@
     .ws-actions button {
         background: none;
         border: none;
-        color: var(--text-muted);
+        color: var(--text-mid);
         cursor: pointer;
         padding: 6px;
         border-radius: 6px;
@@ -155,7 +143,7 @@
         display: grid;
         height: calc(100vh - 48px);
         gap: 1px;
-        background: var(--border);
+        background: var(--line);
     }
     .ws-panes.panes-1 { grid-template-columns: 1fr; }
     .ws-panes.panes-2 { grid-template-columns: 1fr 1fr; }
@@ -164,7 +152,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        background: var(--bg);
+        background: var(--black);
     }
     .ws-pane-header {
         display: flex;
@@ -172,9 +160,9 @@
         justify-content: space-between;
         padding: 4px 10px;
         background: rgba(247, 147, 26, 0.05);
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--line);
         font-size: 11px;
-        color: var(--text-muted);
+        color: var(--text-mid);
         flex-shrink: 0;
         height: 24px;
         font-weight: 500;
@@ -186,17 +174,17 @@
         width: 100%;
         height: 100%;
         border: none;
-        background: var(--bg);
+        background: var(--black);
     }
     .ws-narrow-msg {
         display: none;
         text-align: center;
         padding: 40px 20px;
-        color: var(--text-muted);
+        color: var(--text-mid);
         font-size: 14px;
     }
     .ws-narrow-msg a { color: var(--accent); }
-    .ion-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
+    .ion-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
     .ion-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
     .ion-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
     .ion-nav-sparkline-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; white-space: nowrap; min-width: 52px; text-align: right; }
@@ -432,7 +420,7 @@
     render();
 })();
 </script>
-<script src="./shared.js?v=317"></script>
+<script src="./shared.js?v=318"></script>
 <script>startNavSparkline();</script>
 </body>
 </html>
