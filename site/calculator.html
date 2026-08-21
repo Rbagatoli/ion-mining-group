@@ -427,7 +427,12 @@
 
         </div>
 
-        <button type="button" class="btn btn--ghost btn--sm" id="calcReset">Reset to defaults</button>
+        <div class="calc-actions">
+          <button type="button" class="btn btn--ghost btn--sm" id="calcReset">Reset to defaults</button>
+          <!-- The address bar already tracks the scenario; this is the obvious
+               affordance for people who would never think to copy from it. -->
+          <button type="button" class="btn btn--ghost btn--sm" id="calcCopy">Copy link to this scenario</button>
+        </div>
       </div>
 
     </div>

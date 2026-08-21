@@ -1618,6 +1618,11 @@ p + p { margin-top: 16px; }
    a fixed count and leave half the row empty in machines mode. */
 .calc-inputs { display: grid; gap: 26px; border-top: 1px solid var(--line); padding-top: 32px; }
 
+/* Reset and Copy sit together under the columns. Copy holds a minimum width so
+   the row does not twitch when its label changes to the confirmation. */
+.calc-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+#calcCopy { min-width: 16em; }
+
 /* Market / Machine / Operating, side by side as the desk tool has them. A
    fourth column appears in energy mode, so the track count has to follow the
    number of visible groups rather than being fixed — hence flex with grow,

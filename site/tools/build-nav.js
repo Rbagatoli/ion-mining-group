@@ -18,6 +18,9 @@ const PAGES = {
   'energy.html':  'energy',
   'calculator.html': 'calculator',
   'contact.html': 'contact',
+  /* No nav item is active on the error page — you did not navigate to it on
+     purpose, so highlighting one would be a lie about where you are. */
+  '404.html':     '',
 };
 
 /* A platinum hydrogen atom: one shell, one proton, one electron. Hydrogen is
@@ -87,6 +90,7 @@ const CTA = {
   'energy.html':           { href: '#submit', label: 'Submit a site' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'contact.html':          { href: '#form', label: 'Send a message' },
+  '404.html':              { href: './index.html', label: 'Home page' },
 };
 
 const COMPANY_COL = `<h4>Company</h4>

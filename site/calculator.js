@@ -813,7 +813,12 @@
             if (!node) return;
             /* Never stomp something the visitor has already typed. If the field
                no longer holds the value it shipped with, they have touched it. */
-            var untouched = node.value === node.getAttribute('data-default');
+            /* A field carried in from a shared link was pinned on purpose:
+               the sender meant that price, not today's. Diff-encoding already
+               means a pinned value differs from its default, but relying on
+               that coincidence would break the moment the encoding changes. */
+            var untouched = !pinned[spec.field] &&
+                node.value === node.getAttribute('data-default');
             fetch(spec.url, { cache: 'no-store' })
                 .then(function (r) { return r.ok ? r.text() : null; })
                 .then(function (body) {
@@ -831,6 +836,154 @@
         });
     }
 
+    /* ---------- the scenario lives in the URL ----------
+
+       Someone can spend real time tuning thirty-odd inputs here. Without this
+       they cannot keep the result, send it to a colleague, or be sent one — and
+       a reload throws it away. Encoding the state into the address makes the
+       page shareable and reloadable at no cost to anyone who never uses it.
+
+       Only what DIFFERS from the shipped defaults is written, so a page nobody
+       has touched has a clean bare URL and a tweaked one stays short. The diff
+       basis is the same `data-default` attribute the Reset button reads, rather
+       than a second table of defaults that would drift away from the markup.
+
+       Keys are the element ids. Longer than short codes, but there is no
+       mapping to keep in sync and the URL is legible when something is wrong. */
+
+    /* hodlSlider mirrors hodlRatio, so writing both would be writing the same
+       number twice; it is restored from its partner instead. */
+    var SCENARIO_SKIP = { mode: 1, hodlSlider: 1 };
+
+    /* Fields restored from a link. fetchMarket must not overwrite these: the
+       sender pinned a price on purpose, and today's price is not what they
+       meant to send. */
+    var pinned = {};
+
+    function scenarioIds() {
+        return IDS.filter(function (id) { return !SCENARIO_SKIP[id]; });
+    }
+
+    function encodeScenario() {
+        var parts = [];
+        if (isEnergyMode()) parts.push('mode=energy');
+
+        /* A named model already implies its three spec fields, so they are only
+           written when they no longer match it — which is exactly when someone
+           has hand-edited them into a Custom machine. */
+        var model = el.minerModel ? el.minerModel.value : null;
+        var spec = (model && model !== CUSTOM && typeof MinerDB !== 'undefined')
+            ? MinerDB.findByModel(model) : null;
+        if (model && model !== DEFAULT_MODEL) {
+            parts.push('minerModel=' + encodeURIComponent(model));
+        }
+
+        scenarioIds().forEach(function (id) {
+            var n = el[id];
+            if (!n || id === 'minerModel') return;
+            var def = n.getAttribute('data-default');
+            if (def === null) return;
+            if (n.type === 'checkbox') {
+                if (!!n.checked !== (def === 'true')) parts.push(id + '=' + (n.checked ? '1' : '0'));
+                return;
+            }
+            if (spec) {
+                if (id === 'hashrate' && Number(n.value) === spec.hashrate) return;
+                if (id === 'power' && Number(n.value) === spec.power) return;
+                if (id === 'capex' && Number(n.value) === spec.cost) return;
+            }
+            if (String(n.value) !== String(def)) {
+                parts.push(id + '=' + encodeURIComponent(n.value));
+            }
+        });
+        return parts.join('&');
+    }
+
+    /* Forgiving on the way in: an unknown key is ignored rather than thrown on,
+       so a link made by an older version of this page still opens. Values go
+       through the same num() guards everything else does. */
+    function applyScenario() {
+        if (typeof location === 'undefined') return 'machines';
+        var q = String(location.search || '');
+        if (q.charAt(0) === '?') q = q.slice(1);
+        if (!q) return 'machines';
+
+        var params = {};
+        q.split('&').forEach(function (kv) {
+            if (!kv) return;
+            var i = kv.indexOf('=');
+            var k = i < 0 ? kv : kv.slice(0, i);
+            var raw = i < 0 ? '' : kv.slice(i + 1);
+            try { params[k] = decodeURIComponent(raw.split('+').join(' ')); }
+            catch (e) { params[k] = raw; }
+        });
+
+        /* The model goes first because selecting one rewrites the three spec
+           fields. Anything explicit in the link is applied after, so a
+           hand-edited machine wins over the model it started from. */
+        if (params.minerModel && el.minerModel) {
+            el.minerModel.value = params.minerModel;
+            if (el.minerModel.value === params.minerModel) applyMinerModel();
+            pinned.minerModel = true;
+        }
+
+        scenarioIds().forEach(function (id) {
+            if (!(id in params)) return;
+            var n = el[id];
+            if (!n || id === 'minerModel') return;
+            if (n.type === 'checkbox') n.checked = params[id] === '1';
+            else n.value = params[id];
+            pinned[id] = true;
+        });
+
+        if (el.hodlSlider && el.hodlRatio) {
+            el.hodlSlider.value = String(Math.min(100, Math.max(0, num(el.hodlRatio.value, 0))));
+        }
+        return params.mode === 'energy' ? 'energy' : 'machines';
+    }
+
+    /* The address bar tracks the scenario so copying from it is always correct,
+       and replaceState rather than pushState so the back button is not filled
+       with one entry per keystroke. Debounced for the same reason. */
+    var urlTimer = null;
+    function syncUrl() {
+        if (typeof history === 'undefined' || !history.replaceState) return;
+        if (urlTimer) clearTimeout(urlTimer);
+        urlTimer = setTimeout(function () {
+            var q = encodeScenario();
+            try {
+                history.replaceState(null, '', location.pathname + (q ? '?' + q : ''));
+            } catch (e) { /* file:// refuses; the copy button still works */ }
+        }, 400);
+    }
+
+    function scenarioUrl() {
+        var q = encodeScenario();
+        var base = String(location.href).split('?')[0].split('#')[0];
+        return base + (q ? '?' + q : '');
+    }
+
+    function wireCopy() {
+        var btn = $('calcCopy');
+        if (!btn) return;
+        var label = btn.textContent;
+        var revert = null;
+        function say(msg) {
+            btn.textContent = msg;
+            if (revert) clearTimeout(revert);
+            revert = setTimeout(function () { btn.textContent = label; }, 2600);
+        }
+        btn.addEventListener('click', function () {
+            var url = scenarioUrl();
+            /* navigator.clipboard needs a secure context — https or localhost.
+               Anywhere else it is absent or rejects, and the honest fallback is
+               to say so rather than to claim a copy that did not happen. */
+            var clip = (typeof navigator !== 'undefined') && navigator.clipboard;
+            if (!clip || !clip.writeText) { say('Copy it from the address bar'); return; }
+            clip.writeText(url).then(function () { say('Link copied'); },
+                                     function () { say('Copy it from the address bar'); });
+        });
+    }
     /* ---------- chart interaction ---------- */
 
     function wireChart() {
@@ -915,7 +1068,7 @@
 
         el.mode.addEventListener('click', function (e) {
             var b = e.target.closest('[data-mode]');
-            if (b) setMode(b.dataset.mode);
+            if (b) { setMode(b.dataset.mode); syncUrl(); }
         });
 
         // Every control re-runs the projection. It is a few hundred
@@ -970,14 +1123,30 @@
                 });
                 el.minerModel.value = DEFAULT_MODEL;
                 applyMinerModel();
+                /* Reset means reset: drop the pins so live data resumes, and
+                   clear the query so the address stops describing a scenario
+                   that no longer exists. */
+                pinned = {};
                 setMode('machines');
+                syncUrl();
             });
         }
 
         /* Wired once. Doing this anywhere that runs more than once stacks a
            second set of listeners on the same nodes every time. */
         wireChart();
-        setMode('machines');
+        wireCopy();
+
+        /* A shared link is applied before the first render, so the page never
+           paints the defaults and then jumps to the scenario. */
+        var startMode = applyScenario();
+        IDS.forEach(function (id) {
+            var node = el[id];
+            if (!node || id === 'mode') return;
+            node.addEventListener('input', syncUrl);
+            node.addEventListener('change', syncUrl);
+        });
+        setMode(startMode);
         fetchMarket();
     }
 

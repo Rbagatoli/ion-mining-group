@@ -52,6 +52,9 @@ function walk(dir, out) {
         // The census's own mapping table and the allowlist are full of colour literals by
         // necessity. Counting them would have this tool reporting itself as the problem.
         if (e.name === 'colour-census.js' || e.name === 'colour-allowlist.json') return;
+        // tokens.css is where colours are DEFINED. Counting it is counting the cure as the
+        // disease -- the number that matters is literals living anywhere else.
+        if (e.name === 'tokens.css') return;
         if (e.name === 'theme.test.js') return;
         var p = path.join(dir, e.name);
         if (e.isDirectory()) return walk(p, out);
