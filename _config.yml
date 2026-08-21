@@ -1,0 +1,25 @@
+# GitHub Pages build configuration.
+#
+# This repo publishes from the ROOT, so by default every directory in it becomes a live URL.
+# That is right for the app and not yet right for site/.
+#
+# WHY site/ IS EXCLUDED RATHER THAN REMOVED
+# It is committed on purpose: tokens.css is generated from site/styles.css, and
+# tests/theme.test.js asserts the two are byte-identical. Deleting it would break the app's
+# colour provenance and fail the suite. But it still carries 85 unfilled placeholders
+# (class="ph", rendering as orange [LIKE THIS] text) and its own README is explicit that nothing
+# false should ship by accident. Excluding it keeps both things true -- versioned and readable by
+# the tests, unreachable by a visitor.
+#
+# TO PUBLISH THE MARKETING SITE: fill in the placeholders (grep for class="ph"), point the
+# canonical and og:url tags at the real domain, then delete the "- site/" line below.
+#
+# The rest are build and test machinery. Nothing on any page fetches from them -- verified -- and
+# the Cloudflare Workers are called on their own workers.dev domain, so their source living here
+# is not a deployment path. tools/.cache/ alone is 665 MB.
+exclude:
+  - site/
+  - tools/
+  - tests/
+  - worker/
+  - worker-strike/
