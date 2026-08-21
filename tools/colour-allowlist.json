@@ -1,30 +1,39 @@
 {
   "_comment": [
-    "Colour literals that are allowed to survive the reskin, matched by FILE + LINE + LITERAL.",
-    "Never by literal alone: '#fff' appears 19 times in this repo and only three of them are",
-    "QR quiet zones. A literal-only allowlist would wave the other sixteen through.",
+    "Colour literals allowed to survive the reskin.",
     "",
-    "Line numbers drift when a file is edited above the entry. tools/colour-census.js reports",
-    "an allowlist entry whose line no longer contains its literal as a STALE ENTRY rather than",
-    "silently ignoring it -- a stale allowlist is how a forbidden colour creeps back in."
+    "Matched by FILE + a distinctive CONTEXT substring from the same line + the LITERAL --",
+    "never by literal alone. '#fff' appears twenty times in this repo and only three of them are",
+    "QR quiet zones; a literal-only allowlist would wave the other seventeen through.",
+    "",
+    "Context rather than line number, deliberately. An earlier version matched line numbers and",
+    "went stale the first time anything was inserted above an entry -- the census reported three",
+    "stale entries after a single unrelated edit. A substring survives the file moving around it,",
+    "and is still specific enough to name one element.",
+    "",
+    "An entry whose context is no longer found anywhere is REPORTED as stale, not ignored: a",
+    "drifted allowlist is how a forbidden colour walks back in unnoticed."
   ],
   "files": {
-    "chart.min.js": { "all": true, "why": "vendored Chart.js v4.5.1 -- never edited" },
+    "chart.min.js": { "all": true, "why": "vendored Chart.js v4.5.1 -- never edited by hand" },
     "site/**": { "all": true, "why": "the marketing site is the SOURCE of this palette, not a target" },
-    "btc-mining-calculator.html.bak": { "all": true, "why": "stale backup, deleted in step 1" }
+    "worker/**": { "all": true, "why": "Cloudflare Worker, deployed separately, cannot link tokens.css" },
+    "worker-strike/**": { "all": true, "why": "as above" }
   },
   "lines": [
-    { "file": "auth-ui.js", "line": 64, "literals": ["#4285F4"], "why": "Google brand mark -- trademark. The sign-in button is required to look like Google's." },
-    { "file": "auth-ui.js", "line": 65, "literals": ["#34A853"], "why": "Google brand mark -- trademark" },
-    { "file": "auth-ui.js", "line": 66, "literals": ["#FBBC05"], "why": "Google brand mark -- trademark" },
-    { "file": "auth-ui.js", "line": 67, "literals": ["#EA4335"], "why": "Google brand mark -- trademark" },
-    { "file": "auth-ui.js", "line": 98, "literals": ["#4285F4"], "why": "Google brand mark -- second verbatim copy" },
-    { "file": "auth-ui.js", "line": 99, "literals": ["#34A853"], "why": "Google brand mark -- second verbatim copy" },
-    { "file": "auth-ui.js", "line": 100, "literals": ["#FBBC05"], "why": "Google brand mark -- second verbatim copy" },
-    { "file": "auth-ui.js", "line": 101, "literals": ["#EA4335"], "why": "Google brand mark -- second verbatim copy" },
+    { "file": "auth-ui.js", "contains": "M17.64 9.2c0", "literals": ["#4285F4"],
+      "why": "Google brand mark -- trademark. The sign-in button is required to look like Google's. Two verbatim copies of this SVG exist." },
+    { "file": "auth-ui.js", "contains": "M9 18c2.43", "literals": ["#34A853"], "why": "Google brand mark -- trademark" },
+    { "file": "auth-ui.js", "contains": "M3.96 10.77", "literals": ["#FBBC05"], "why": "Google brand mark -- trademark" },
+    { "file": "auth-ui.js", "contains": "M9 3.58c1.32", "literals": ["#EA4335"], "why": "Google brand mark -- trademark" },
 
-    { "file": "banking.html", "line": 211, "literals": ["#fff"], "why": "2FA QR quiet zone -- a QR on black is unscannable. The radius may go; the white may not." },
-    { "file": "banking.html", "line": 391, "literals": ["#fff"], "why": "Lightning invoice QR quiet zone" },
-    { "file": "pay.html", "line": 64, "literals": ["#fff"], "why": "invoice QR quiet zone" }
+    { "file": "banking.html", "contains": "twofa-qr", "literals": ["#fff"],
+      "why": "2FA QR quiet zone. A QR on black is unscannable -- the radius could go, the white cannot." },
+    { "file": "banking.html", "contains": "lnInvoiceQR", "literals": ["#fff"],
+      "why": "Lightning invoice QR quiet zone" },
+    { "file": "banking.js", "contains": "onchainAddrQR", "literals": ["#fff"],
+      "why": "on-chain address QR quiet zone" },
+    { "file": "pay.html", "contains": "background: #fff", "literals": ["#fff"],
+      "why": "invoice QR quiet zone on the standalone payment page" }
   ]
 }

@@ -71,14 +71,15 @@ function fileAllowed(r) {
     return null;
 }
 
-// Line entries are matched on file + line + literal together. An entry whose line no longer holds
-// its literal is reported STALE rather than ignored -- a drifted allowlist is exactly how a
-// forbidden colour walks back in unnoticed.
+// Matched on file + a distinctive context substring + the literal. Context rather than line
+// number: an earlier version keyed on line numbers and went stale the first time anything was
+// inserted above an entry. An entry that matches nothing is reported STALE rather than ignored --
+// a drifted allowlist is exactly how a forbidden colour walks back in unnoticed.
 var lineHits = {};
-function lineAllowed(r, line, lit) {
+function lineAllowed(r, text, lit) {
     for (var i = 0; i < ALLOW.lines.length; i++) {
         var e = ALLOW.lines[i];
-        if (e.file === r && e.line === line && e.literals.indexOf(lit) >= 0) {
+        if (e.file === r && text.indexOf(e.contains) >= 0 && e.literals.indexOf(lit) >= 0) {
             lineHits[i] = true;
             return e.why;
         }
@@ -112,7 +113,7 @@ walk(ROOT).forEach(function(p) {
             // rgba(255,255,255,.06) and rgba(255, 255, 255, 0.06) count as one literal.
             var norm = lit.toLowerCase().replace(/\s+/g, '').replace(/\(\./g, '(0.').replace(/,\./g, ',0.');
             total++;
-            if (why || lineAllowed(r, i + 1, lit)) { allowed++; continue; }
+            if (why || lineAllowed(r, text, lit)) { allowed++; continue; }
             counts[norm] = (counts[norm] || 0) + 1;
             var side = sideOf(r, text);
             (sides[norm] = sides[norm] || {})[side] = (sides[norm][side] || 0) + 1;
@@ -156,7 +157,7 @@ console.log('  UNMAPPED            ' + unmappedN + ' occurrences across ' + unma
 if (stale.length) {
     console.log('');
     console.log('  STALE ALLOWLIST ENTRIES (line moved, or literal already gone):');
-    stale.forEach(function(e) { console.log('    ' + e.file + ':' + e.line + '  ' + e.literals.join(', ')); });
+    stale.forEach(function(e) { console.log('    ' + e.file + '  "' + e.contains + '"  ' + e.literals.join(', ')); });
 }
 console.log('');
 console.log(live === 0 ? '  CENSUS CLEAR' : '  ' + live + ' literals still to migrate');

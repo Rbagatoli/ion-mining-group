@@ -200,20 +200,30 @@ console.log('\n=== colours live in tokens, not in 1,900 places ===');
     var ALLOW = JSON.parse(read('tools/colour-allowlist.json'));
     var RE = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)/g;
 
-    function allowed(r, line, lit) {
+    // Context substring, not line number -- see the note in colour-allowlist.json.
+    function allowed(r, text, lit) {
         for (var i = 0; i < ALLOW.lines.length; i++) {
             var e = ALLOW.lines[i];
-            if (e.file === r && e.line === line && e.literals.indexOf(lit) >= 0) return true;
+            if (e.file === r && text.indexOf(e.contains) >= 0 && e.literals.indexOf(lit) >= 0) return true;
+        }
+        return false;
+    }
+    function fileAllowed(r) {
+        var fl = ALLOW.files;
+        for (var k in fl) {
+            if (!Object.prototype.hasOwnProperty.call(fl, k)) continue;
+            if (k.indexOf('**') >= 0 ? r.indexOf(k.replace('/**', '/')) === 0 : r === k) return true;
         }
         return false;
     }
     var live = 0, worst = {};
     FILES.forEach(function(f) {
         if (f.rel === 'tokens.css') return;           // the one file that MAY hold literals
+        if (fileAllowed(f.rel)) return;
         f.text.split(/\r?\n/).forEach(function(text, i) {
             var m; RE.lastIndex = 0;
             while ((m = RE.exec(text)) !== null) {
-                if (allowed(f.rel, i + 1, m[0])) continue;
+                if (allowed(f.rel, text, m[0])) continue;
                 live++;
                 worst[f.rel] = (worst[f.rel] || 0) + 1;
             }
