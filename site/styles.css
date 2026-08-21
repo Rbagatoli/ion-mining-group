@@ -42,6 +42,11 @@
     --btc-500: #8a4a05;
 
     /* --- Roles --- */
+    /* Semantic state, not a brand colour. Used only on a number below zero,
+       and picked for a full 33 degrees of hue separation from the orange
+       accent so a loss can never be mistaken for an accent. 5.18:1 on the
+       result tiles, above the 4.5:1 small-text bar. */
+    --loss:     #e05252;
     --text:     #e8e7e5;
     --text-mid: var(--plat-400);
     --text-dim: #787773;
@@ -1585,4 +1590,226 @@ p + p { margin-top: 16px; }
     .card { padding: 28px 22px; }
     .form { padding: 24px 20px; }
     .footer-top { grid-template-columns: 1fr; gap: 34px; }
+}
+
+/* ===== Calculator =====
+
+   Reuses .field / .form-row / .btn wholesale. What is new here is the two-column
+   shell, the result tiles, and the SVG chart.
+
+   One addition to the palette: a loss red. The site is otherwise platinum and a
+   single orange accent, and orange is reserved — it is the chart's own line. But
+   a profit-and-loss tool that renders a loss in the same colour as a profit is
+   withholding the one thing the reader is looking for, so negative numbers get a
+   desaturated red. It is semantic state, not a second brand colour, and it
+   appears nowhere except on a number that is below zero. */
+
+.calc {
+    display: grid;
+    grid-template-columns: minmax(340px, 400px) 1fr;
+    gap: 44px;
+    align-items: start;
+}
+
+/* ---- inputs ---- */
+
+.calc-inputs { display: grid; gap: 26px; }
+
+.calc-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--line-mid);
+}
+.calc-modes button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--plat-400);
+    background: transparent;
+    border: none;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: color 0.18s, background 0.18s;
+}
+.calc-modes button + button { border-left: 1px solid var(--line-mid); }
+.calc-modes button:hover { color: var(--plat-100); background: var(--panel-hover); }
+.calc-modes button[aria-pressed="true"] {
+    color: var(--black);
+    background-image: var(--metal-btc-btn);
+}
+.calc-modes button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
+
+.calc-group { display: grid; gap: 16px; }
+.calc-group-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--plat-500);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    margin: 0;
+}
+.field label small {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: var(--plat-500);
+    text-transform: none;
+}
+.calc-hint { font-size: 12px; line-height: 1.65; color: var(--text-dim); margin: -2px 0 0; }
+.calc-hint--warn { color: var(--plat-400); border-left: 2px solid var(--line-btc); padding-left: 11px; }
+
+/* Volume -> power -> machines, shown as a chain because that is the order the
+   reasoning runs in and each step is one the reader may want to argue with. */
+.calc-derived { border: 1px solid var(--line); background: var(--panel); padding: 16px; display: grid; gap: 12px; }
+.calc-chain { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.calc-chain > div { display: grid; gap: 3px; }
+.cd-lab {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--plat-500);
+}
+.cd-val { font-family: var(--mono); font-size: 16px; color: var(--plat-100); font-variant-numeric: tabular-nums; }
+.cd-sub { font-size: 11px; color: var(--text-dim); }
+.cd-arrow { color: var(--btc-300); font-size: 15px; }
+
+.calc-adv-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--plat-300);
+    background: transparent; border: 1px solid var(--line-mid);
+    padding: 13px 15px; cursor: pointer;
+    transition: border-color 0.18s, color 0.18s;
+}
+.calc-adv-toggle:hover { border-color: var(--line-hi); color: var(--plat-100); }
+.calc-adv-toggle svg { transition: transform 0.2s; flex: none; }
+.calc-adv-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.calc-group--adv { gap: 16px; }
+#advPanel { display: grid; gap: 16px; padding-top: 4px; }
+
+.calc-checks { display: grid; gap: 11px; }
+.calc-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; line-height: 1.5; color: var(--plat-300); }
+.calc-check input { flex: none; margin-top: 1px; accent-color: var(--btc-300); width: 15px; height: 15px; }
+[data-needs-tax] { transition: opacity 0.2s; }
+[data-needs-tax].is-off { opacity: 0.38; }
+
+/* ---- results ---- */
+
+.calc-results { display: grid; gap: 26px; min-width: 0; }
+
+.calc-warn {
+    border: 1px solid var(--line-btc);
+    background: rgba(247, 147, 26, 0.06);
+    color: var(--btc-100);
+    padding: 12px 15px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.calc-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.calc-tile { background: var(--surface); padding: 18px 16px; display: grid; gap: 7px; align-content: start; }
+.ct-lab {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.17em;
+    text-transform: uppercase; color: var(--plat-500);
+}
+.ct-val {
+    font-family: var(--mono); font-size: clamp(19px, 2vw, 25px); font-weight: 500;
+    color: var(--plat-100); font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.ct-sub { font-size: 11px; color: var(--text-dim); line-height: 1.45; }
+
+.is-up { color: var(--plat-000); }
+.is-down { color: var(--loss); }
+
+/* ---- chart ---- */
+
+.calc-chart-wrap { border: 1px solid var(--line); background: var(--panel); padding: 18px 18px 14px; display: grid; gap: 12px; }
+.calc-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.ck-grid { stroke: var(--line); stroke-width: 1; }
+.ck-zero { stroke: var(--line-hi); stroke-width: 1; }
+.ck-ylab { fill: var(--plat-400); font-family: var(--mono); font-size: 11px; text-anchor: end; dominant-baseline: middle; }
+.ck-xlab { fill: var(--plat-400); font-family: var(--mono); font-size: 11px; text-anchor: middle; }
+.ck-value { fill: none; stroke: var(--btc-300); stroke-width: 2.5; stroke-linejoin: round; }
+.ck-bench { fill: none; stroke: var(--plat-500); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.ck-be { stroke: var(--line-btc); stroke-width: 1; stroke-dasharray: 3 3; }
+.ck-belab { fill: var(--btc-300); font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-anchor: middle; }
+
+.calc-legend { display: flex; gap: 20px; flex-wrap: wrap; }
+.cl-item { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--plat-400); }
+.cl-key { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; flex: none; }
+.cl-key--value { border-top-color: var(--btc-300); }
+.cl-key--bench { border-top-color: var(--plat-500); border-top-style: dashed; }
+.calc-caption { font-size: 11.5px; color: var(--text-dim); margin: 0; line-height: 1.55; }
+
+/* ---- panels ---- */
+
+.calc-panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.calc-panel { border: 1px solid var(--line); background: var(--panel); padding: 18px; display: grid; gap: 13px; align-content: start; }
+.calc-panel h3 {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--plat-300); margin: 0;
+    padding-bottom: 11px; border-bottom: 1px solid var(--line);
+}
+.calc-panel dl { display: grid; gap: 9px; margin: 0; }
+.calc-panel dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
+.calc-panel dt { font-size: 12.5px; color: var(--text-mid); }
+.calc-panel dd {
+    margin: 0; font-family: var(--mono); font-size: 13px; color: var(--plat-100);
+    font-variant-numeric: tabular-nums; text-align: right;
+}
+.calc-panel dl > div.is-total { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 3px; }
+.calc-panel dl > div.is-total dt { color: var(--plat-200); }
+.calc-panel dl > div.is-total dd { font-size: 15px; }
+.calc-verdict { font-size: 13px; line-height: 1.55; margin: 0; }
+
+/* ---- table ---- */
+
+.calc-table-wrap { border: 1px solid var(--line); background: var(--panel); }
+.calc-table-wrap summary {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--plat-300);
+    padding: 15px 18px; cursor: pointer; list-style: none;
+}
+.calc-table-wrap summary::-webkit-details-marker { display: none; }
+.calc-table-wrap summary::before { content: '+ '; color: var(--btc-300); }
+.calc-table-wrap[open] summary::before { content: '\2212  '; }
+.calc-table-wrap summary:hover { color: var(--plat-100); }
+.calc-table-scroll { overflow-x: auto; }
+.calc-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.calc-table th {
+    text-align: right; font-weight: 500; color: var(--plat-500); white-space: nowrap;
+    padding: 9px 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font-size: 9.5px; letter-spacing: 0.13em; text-transform: uppercase;
+}
+.calc-table th:first-child, .calc-table td:first-child { text-align: left; }
+.calc-table td { text-align: right; padding: 8px 14px; color: var(--plat-300); white-space: nowrap; border-bottom: 1px solid rgba(229,228,226,0.05); }
+.calc-table tr.is-halving td { background: rgba(247, 147, 26, 0.045); }
+.calc-table .tag {
+    font-size: 8.5px; letter-spacing: 0.14em; color: var(--btc-300);
+    border: 1px solid var(--line-btc); padding: 1px 5px; margin-left: 6px;
+}
+.calc-table-wrap .calc-caption { padding: 0 18px 15px; }
+
+/* ---- closing note ---- */
+
+.calc-note { display: grid; gap: 26px; }
+.calc-note-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+.calc-note-cols h4 {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.17em;
+    text-transform: uppercase; color: var(--btc-300); margin: 0 0 10px;
+}
+.calc-note-cols p { font-size: 14px; line-height: 1.7; color: var(--text-mid); margin: 0; }
+.calc-cta { display: flex; gap: 14px; flex-wrap: wrap; }
+.calc-head { max-width: 780px; }
+
+@media (max-width: 1020px) {
+    .calc { grid-template-columns: 1fr; gap: 34px; }
+    .calc-panels { grid-template-columns: 1fr; }
+    .calc-note-cols { grid-template-columns: 1fr; gap: 26px; }
+}
+@media (max-width: 660px) {
+    .calc-tiles { grid-template-columns: 1fr 1fr; }
 }

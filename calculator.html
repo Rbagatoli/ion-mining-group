@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Calculator</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=321">
-    <link rel="stylesheet" href="./shared.css?v=321">
+    <link rel="stylesheet" href="./tokens.css?v=323">
+    <link rel="stylesheet" href="./shared.css?v=323">
     <script>
     // Force-clear old service workers and caches (runs before any external scripts)
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
@@ -17,7 +17,7 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=321"></script>
+    <script src="./chart.min.js?v=323"></script>
     <style>
         /* Reality-check callout under the backtest chart */
         .bt-reality { margin-top:14px; padding:12px 14px; border-radius: var(--radius); font-size:12px; line-height:1.6;
@@ -143,54 +143,6 @@
         </div>
     </div>
     </div><!-- /widget charts -->
-
-    <!-- ===== SCENARIOS ===== -->
-    <div class="widget-section" data-widget="scenarios">
-    <div class="section-label">Scenarios</div>
-    <div class="card">
-        <h3>Save &amp; Compare Scenarios</h3>
-        <p style="font-size:12px; color:#888; margin-bottom:12px;">
-            Keep a set of inputs under a name, then compare saved scenarios side by side against
-            whatever is currently in the calculator. Every column is run through the same engine
-            as the live projection.
-        </p>
-        <div class="scenario-save-row">
-            <div class="input-wrapper" style="flex:1; min-width:180px;">
-                <input type="text" id="scenarioName" placeholder="Name this scenario (optional)" maxlength="60" autocomplete="off">
-            </div>
-            <button class="btn btn-primary" id="btnSaveScenario">Save Current</button>
-        </div>
-        <div id="scenarioList" class="scenario-list"></div>
-        <div id="scenarioCompare" class="scenario-compare"></div>
-    </div>
-    </div><!-- /widget scenarios -->
-
-    <!-- ===== HISTORICAL BACKTEST ===== -->
-    <div class="widget-section" data-widget="backtest">
-    <div class="section-label">Historical Backtest</div>
-    <div class="card">
-        <div class="chart-title-row">
-            <h3 id="btTitle">What This Rig Would Have Earned (Last 1 Year)</h3>
-            <span id="btHeadline" class="chart-live-value" style="color:#f7931a;">--</span>
-        </div>
-        <p style="font-size:12px; color:#888; margin-bottom:12px;">
-            Replays your machine settings day by day against the <strong>real</strong> BTC price and the
-            <strong>real</strong> network difficulty in force on each of those days. No growth assumptions
-            at all &mdash; this is what actually happened, not a projection.
-        </p>
-        <div class="time-range-selector" id="btRange">
-            <button type="button" data-days="180">6M</button>
-            <button type="button" data-days="365" class="active">1Y</button>
-            <button type="button" data-days="730">2Y</button>
-            <button type="button" data-days="1095">3Y</button>
-        </div>
-        <section class="fleet-grid" id="btCards" style="margin-bottom:16px;"></section>
-        <div class="earnings-chart-container">
-            <canvas id="btChart"></canvas>
-        </div>
-        <div id="btReality" class="bt-reality"></div>
-    </div>
-    </div><!-- /widget backtest -->
 
     <!-- ===== INPUT PANEL ===== -->
     <div class="widget-section" data-widget="inputs">
@@ -444,6 +396,55 @@
     </section>
     </div><!-- /widget inputs -->
 
+    <!-- ===== SCENARIOS ===== -->
+    <div class="widget-section" data-widget="scenarios">
+    <div class="section-label">Scenarios</div>
+    <div class="card">
+        <h3>Save &amp; Compare Scenarios</h3>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">
+            Keep a set of inputs under a name, then compare saved scenarios side by side against
+            whatever is currently in the calculator. Every column is run through the same engine
+            as the live projection.
+        </p>
+        <div class="scenario-save-row">
+            <div class="input-wrapper" style="flex:1; min-width:180px;">
+                <input type="text" id="scenarioName" placeholder="Name this scenario (optional)" maxlength="60" autocomplete="off">
+            </div>
+            <button class="btn btn-primary" id="btnSaveScenario">Save Current</button>
+        </div>
+        <div id="scenarioList" class="scenario-list"></div>
+        <div id="scenarioCompare" class="scenario-compare"></div>
+    </div>
+    </div><!-- /widget scenarios -->
+
+    <!-- ===== HISTORICAL BACKTEST ===== -->
+    <div class="widget-section" data-widget="backtest">
+    <div class="section-label">Historical Backtest</div>
+    <div class="card">
+        <div class="chart-title-row">
+            <h3 id="btTitle">What This Rig Would Have Earned (Last 1 Year)</h3>
+            <span id="btHeadline" class="chart-live-value" style="color:#f7931a;">--</span>
+        </div>
+        <p style="font-size:12px; color:#888; margin-bottom:12px;">
+            Replays your machine settings day by day against the <strong>real</strong> BTC price and the
+            <strong>real</strong> network difficulty in force on each of those days. No growth assumptions
+            at all &mdash; this is what actually happened, not a projection.
+        </p>
+        <div class="time-range-selector" id="btRange">
+            <button type="button" data-days="180">6M</button>
+            <button type="button" data-days="365" class="active">1Y</button>
+            <button type="button" data-days="730">2Y</button>
+            <button type="button" data-days="1095">3Y</button>
+        </div>
+        <section class="fleet-grid" id="btCards" style="margin-bottom:16px;"></section>
+        <div class="earnings-chart-container">
+            <canvas id="btChart"></canvas>
+        </div>
+        <div id="btReality" class="bt-reality"></div>
+    </div>
+    </div><!-- /widget backtest -->
+
+
     <div class="widget-section" data-widget="heatmap">
     <div class="section-label">Profitability Heatmap</div>
     <div class="card">
@@ -520,19 +521,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=321"></script>
-<script src="./sync.js?v=321"></script>
-<script src="./auth-ui.js?v=321"></script>
-<script src="./profile-panel.js?v=321"></script>
-<script src="./shared.js?v=321"></script>
-<script src="./fleet-data.js?v=321"></script>
-<script src="./miner-db.js?v=321"></script>
-<script src="./price-history.js?v=321"></script>
-<script src="./network-history.js?v=321"></script>
-<script src="./calc-engine.js?v=321"></script>
-<script src="./calculator.js?v=321"></script>
-<script src="./widget-settings.js?v=321"></script>
-<script src="./alerts.js?v=321"></script>
-<script src="./onboarding.js?v=321"></script>
+<script src="./firebase-config.js?v=323"></script>
+<script src="./sync.js?v=323"></script>
+<script src="./auth-ui.js?v=323"></script>
+<script src="./profile-panel.js?v=323"></script>
+<script src="./shared.js?v=323"></script>
+<script src="./fleet-data.js?v=323"></script>
+<script src="./miner-db.js?v=323"></script>
+<script src="./price-history.js?v=323"></script>
+<script src="./network-history.js?v=323"></script>
+<script src="./calc-engine.js?v=323"></script>
+<script src="./calculator.js?v=323"></script>
+<script src="./widget-settings.js?v=323"></script>
+<script src="./alerts.js?v=323"></script>
+<script src="./onboarding.js?v=323"></script>
 </body>
 </html>

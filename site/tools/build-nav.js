@@ -16,6 +16,7 @@ const PAGES = {
   'index.html':   'home',
   'hosting.html': 'hosting',
   'energy.html':  'energy',
+  'calculator.html': 'calculator',
   'contact.html': 'contact',
 };
 
@@ -67,6 +68,10 @@ function nav(active, cta) {
       <a href="./energy.html"${on('energy')}>Energy Partners</a>
       <a href="./index.html"${on('home')}>Home</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html"${on('calculator')}>Calculator</a>
       <a href="./index.html#operate">How We Operate</a>
       <a href="./contact.html"${on('contact')}>Contact</a>
       <a class="btn btn--primary btn--sm nav-cta" href="${cta.href}">${cta.label}</a>
@@ -80,6 +85,7 @@ const CTA = {
   'index.html':            { href: './contact.html', label: 'Start a conversation' },
   'hosting.html':          { href: './contact.html?topic=hosting', label: 'Request a quote' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
+  'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'contact.html':          { href: '#form', label: 'Send a message' },
 };
 

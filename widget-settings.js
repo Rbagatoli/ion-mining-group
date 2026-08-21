@@ -9,10 +9,17 @@
     var page = path.replace('.html', '') || 'index';
     var WIDGET_KEY = 'ionMiningWidgets_' + page;
     var WIDGET_VERSION_KEY = WIDGET_KEY + '_v';
+    // Per PAGE, not global. The saved order already lives under a per-page key, but the version
+    // was one number for the whole app -- so moving one section on one page reset every page's
+    // order the next time it was opened, throwing away arrangements that had nothing to do with
+    // the change. Bump only the page you actually reordered.
+    //
     // 7: prospect-filters stopped being a widget (it moved inside the map), and the table and
     //    detail panels were promoted above the worklist. A saved order from 6 would keep the old
     //    layout and strand a widget id that no longer exists.
-    var WIDGET_VERSION = 7; // Bump to reset saved order when HTML order changes
+    // 8 (calculator): Inputs moved directly beneath Charts.
+    var WIDGET_VERSIONS = { calculator: 8 };
+    var WIDGET_VERSION = WIDGET_VERSIONS[page] || 7;
 
     // Migrate old dashboard key (one-time backward compat)
     if (page === 'index') {

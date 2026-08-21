@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mining Calculator — Ion Mining Group</title>
+<meta name="description" content="Model a bitcoin mining operation on your own numbers: your machines or your available energy, your power cost, your assumptions. The same projection engine Ion Mining Group runs internally.">
+<link rel="canonical" href="https://ionmininggroup.com/calculator.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mining Calculator — Ion Mining Group">
+<meta property="og:description" content="Run a full mining projection on your own fleet or your own stranded energy.">
+<meta property="og:url" content="https://ionmininggroup.com/calculator.html">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Ion <span>Mining Group</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html" class="active">Calculator</a>
+      <a href="./index.html#operate">How We Operate</a>
+      <a href="./contact.html">Contact</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./contact.html">Talk to us</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== HEADER ===== -->
+<section class="hero-zone">
+  <div class="wrap">
+    <div class="calc-head">
+      <p class="eyebrow">Mining calculator</p>
+      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Run the numbers<br>on your own setup.</h1>
+      <p class="lede">This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you already own, or from energy you already have and want to put to work. Every assumption below is yours to change.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CALCULATOR ===== -->
+<section class="band">
+  <div class="wrap">
+
+    <div class="calc">
+
+      <!-- ---------- inputs ---------- -->
+      <div class="calc-inputs">
+
+        <div class="calc-modes" id="mode" role="group" aria-label="What are you starting from?">
+          <button type="button" data-mode="machines" aria-pressed="true">I have machines</button>
+          <button type="button" data-mode="energy" aria-pressed="false">I have energy</button>
+        </div>
+
+        <!-- Fleet -->
+        <div class="calc-group">
+          <h2 class="calc-group-title">Your fleet</h2>
+
+          <div class="field">
+            <label for="minerModel">Machine model</label>
+            <select id="minerModel"></select>
+          </div>
+
+          <div class="form-row" data-when="machines">
+            <div class="field">
+              <label for="machineCount">How many machines</label>
+              <input id="machineCount" type="number" min="0" step="1" value="100" data-default="100">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="hashrate">Hashrate <small>per machine, TH/s</small></label>
+              <input id="hashrate" type="number" min="0" step="1" value="335" data-default="335">
+            </div>
+            <div class="field">
+              <label for="power">Power draw <small>per machine, kW</small></label>
+              <input id="power" type="number" min="0" step="0.01" value="5.36" data-default="5.36">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="capex">Machine cost <small>each, USD</small></label>
+            <input id="capex" type="number" min="0" step="1" value="9000" data-default="9000">
+          </div>
+          <p class="calc-hint">Specs fill in from the model you pick, and stay editable — an underclocked machine is a different machine.</p>
+        </div>
+
+        <!-- Energy -->
+        <div class="calc-group" data-when="energy" hidden>
+          <h2 class="calc-group-title">Your energy</h2>
+          <div class="form-row">
+            <div class="field">
+              <label for="energyBasis">What you have</label>
+              <select id="energyBasis" data-default="mcfd">
+                <option value="mcfd">Gas volume (Mcf/day)</option>
+                <option value="mw">Available power (MW)</option>
+                <option value="kw">Available power (kW)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="energyValue">How much</label>
+              <input id="energyValue" type="number" min="0" step="1" value="900" data-default="900">
+            </div>
+          </div>
+
+          <div class="calc-derived" id="energyDerived" hidden>
+            <div class="calc-chain">
+              <div><span class="cd-lab">Gas</span><span class="cd-val" id="edGas">—</span></div>
+              <div class="cd-arrow" aria-hidden="true">&rarr;</div>
+              <div><span class="cd-lab">Power</span><span class="cd-val" id="edKw">—</span><span class="cd-sub" id="edMw">—</span></div>
+              <div class="cd-arrow" aria-hidden="true">&rarr;</div>
+              <div><span class="cd-lab">Machines</span><span class="cd-val" id="edMachines">—</span><span class="cd-sub" id="edModel">—</span></div>
+            </div>
+            <p class="calc-hint">Converted at the same constants our internal engine uses: 1,000 BTU per cubic foot and 10,000 BTU per kWh, so roughly 1 MMcf/day to 4 MW. Both are editable under Advanced, because heat rate moves with genset model and altitude.</p>
+          </div>
+        </div>
+
+        <!-- Market -->
+        <div class="calc-group">
+          <h2 class="calc-group-title">Cost and market</h2>
+          <div class="field">
+            <label for="elecCost">Your power cost <small>USD per kWh, all-in</small></label>
+            <input id="elecCost" type="number" min="0" step="0.001" value="0.045" data-default="0.045">
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="btcPrice">BTC price <small>USD</small></label>
+              <input id="btcPrice" type="number" min="0" step="100" value="96000" data-default="96000">
+            </div>
+            <div class="field">
+              <label for="priceChange">Price change <small>% per month</small></label>
+              <input id="priceChange" type="number" step="0.1" value="0" data-default="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="difficulty">Network difficulty <small>T</small></label>
+              <input id="difficulty" type="number" min="0" step="0.01" value="125.86" data-default="125.86">
+            </div>
+            <div class="field">
+              <label for="diffChange">Difficulty change <small>% per month</small></label>
+              <input id="diffChange" type="number" step="0.1" value="0" data-default="0">
+            </div>
+          </div>
+          <p class="calc-hint calc-hint--warn">Price and difficulty are starting assumptions, not live market data. Put today&rsquo;s figures in before you read anything into the result.</p>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="periodLength">Period</label>
+              <select id="periodLength" data-default="monthly">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly" selected>Monthly</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="investPeriod">How many periods</label>
+              <input id="investPeriod" type="number" min="1" max="730" step="1" value="24" data-default="24">
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced -->
+        <div class="calc-group calc-group--adv">
+          <button type="button" class="calc-adv-toggle" id="advToggle" aria-expanded="false" aria-controls="advPanel">
+            <span>Advanced assumptions</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+
+          <div id="advPanel" hidden>
+            <div class="form-row">
+              <div class="field">
+                <label for="poolFee">Pool fee <small>%</small></label>
+                <input id="poolFee" type="number" min="0" max="100" step="0.1" value="1" data-default="1">
+              </div>
+              <div class="field">
+                <label for="uptime">Uptime <small>%</small></label>
+                <input id="uptime" type="number" min="0" max="100" step="0.1" value="98" data-default="98">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label for="hodlRatio">Mined BTC held <small>%, rest sold</small></label>
+                <input id="hodlRatio" type="number" min="0" max="100" step="1" value="0" data-default="0">
+              </div>
+              <div class="field">
+                <label for="btcTreasury">Starting BTC <small>already held</small></label>
+                <input id="btcTreasury" type="number" min="0" step="0.0001" value="0" data-default="0">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label for="minerLifespan">Machine lifespan <small>months</small></label>
+                <input id="minerLifespan" type="number" min="1" step="1" value="36" data-default="36">
+              </div>
+              <div class="field">
+                <label for="salvageValue">Salvage value <small>% of cost</small></label>
+                <input id="salvageValue" type="number" min="0" max="100" step="1" value="10" data-default="10">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label for="minerAdditions">Machines added <small>per month</small></label>
+                <input id="minerAdditions" type="number" min="0" step="1" value="0" data-default="0">
+              </div>
+              <div class="field">
+                <label for="infrastructureCost">Infrastructure <small>one-time USD</small></label>
+                <input id="infrastructureCost" type="number" min="0" step="100" value="0" data-default="0">
+              </div>
+            </div>
+
+            <div class="form-row" data-when="energy" hidden>
+              <div class="field">
+                <label for="gasBtuPerCf">Gas heating value <small>BTU per cubic foot</small></label>
+                <input id="gasBtuPerCf" type="number" min="1" step="10" value="1000" data-default="1000">
+              </div>
+              <div class="field">
+                <label for="heatRate">Genset heat rate <small>BTU per kWh</small></label>
+                <input id="heatRate" type="number" min="1" step="100" value="10000" data-default="10000">
+              </div>
+            </div>
+
+            <div class="calc-checks">
+              <label class="calc-check">
+                <input id="autoReplace" type="checkbox" checked data-default="true">
+                <span>Replace machines when they reach end of life</span>
+              </label>
+              <label class="calc-check">
+                <input id="additionCapex" type="checkbox" checked data-default="true">
+                <span>Charge for machines added along the way</span>
+              </label>
+              <label class="calc-check">
+                <input id="reinvest" type="checkbox" data-default="false">
+                <span>Reinvest profit into more machines</span>
+              </label>
+              <label class="calc-check">
+                <input id="savingsElec" type="checkbox" data-default="false">
+                <span>Power is already paid for elsewhere &mdash; do not charge it here</span>
+              </label>
+              <label class="calc-check">
+                <input id="taxAdjustment" type="checkbox" data-default="false">
+                <span>Apply tax</span>
+              </label>
+            </div>
+
+            <div class="form-row" data-needs-tax>
+              <div class="field">
+                <label for="miningIncomeTaxRate">Mining income tax <small>%</small></label>
+                <input id="miningIncomeTaxRate" type="number" min="0" max="100" step="0.1" value="0" data-default="0">
+              </div>
+              <div class="field">
+                <label for="capitalGainsTaxRate">Capital gains tax <small>%</small></label>
+                <input id="capitalGainsTaxRate" type="number" min="0" max="100" step="0.1" value="0" data-default="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn--ghost btn--sm" id="calcReset">Reset to defaults</button>
+      </div>
+
+      <!-- ---------- results ---------- -->
+      <div class="calc-results">
+
+        <p class="calc-warn" id="calcWarn" hidden></p>
+
+        <div class="calc-tiles">
+          <div class="calc-tile">
+            <span class="ct-lab">Profit per day</span>
+            <span class="ct-val" id="outDailyProfit">—</span>
+            <span class="ct-sub">At today&rsquo;s difficulty and price</span>
+          </div>
+          <div class="calc-tile">
+            <span class="ct-lab">Cost to mine 1 BTC</span>
+            <span class="ct-val" id="outCostPerBtc">—</span>
+            <span class="ct-sub">Power only, before machine cost</span>
+          </div>
+          <div class="calc-tile">
+            <span class="ct-lab">Break-even</span>
+            <span class="ct-val" id="outBreakEven">—</span>
+            <span class="ct-sub">When the position first clears zero</span>
+          </div>
+          <div class="calc-tile">
+            <span class="ct-lab">Return on investment</span>
+            <span class="ct-val" id="outRoi">—</span>
+            <span class="ct-sub">Over the full horizon</span>
+          </div>
+        </div>
+
+        <div class="calc-chart-wrap">
+          <svg id="calcChart" class="calc-chart" viewBox="0 0 1000 330" role="img"
+               aria-label="Projected position over the modelled horizon"></svg>
+          <div class="calc-legend">
+            <span class="cl-item"><span class="cl-key cl-key--value"></span>Mining this fleet</span>
+            <span class="cl-item"><span class="cl-key cl-key--bench"></span>Buying BTC instead</span>
+          </div>
+          <p class="calc-caption" id="chartCaption">—</p>
+        </div>
+
+        <div class="calc-panels">
+          <div class="calc-panel">
+            <h3>Day one</h3>
+            <dl>
+              <div><dt>Revenue mined</dt><dd id="outDailyRevenue">—</dd></div>
+              <div><dt>Power cost</dt><dd id="outDailyPower">—</dd></div>
+              <div><dt>Machines running</dt><dd id="outMachines">—</dd></div>
+              <div><dt>Fleet hashrate</dt><dd id="outFleetHash">—</dd></div>
+              <div><dt>Fleet draw</dt><dd id="outFleetPower">—</dd></div>
+              <div><dt>Efficiency</dt><dd id="outEfficiency">—</dd></div>
+            </dl>
+          </div>
+
+          <div class="calc-panel">
+            <h3>Over <span id="outHorizon">—</span></h3>
+            <dl>
+              <div><dt>Up-front investment</dt><dd id="outInvestment">—</dd></div>
+              <div><dt>BTC mined</dt><dd id="outBtcMined">—</dd></div>
+              <div><dt>Spent on power</dt><dd id="outPowerSpend">—</dd></div>
+              <div><dt>BTC still held</dt><dd id="outHeldBtc">—</dd></div>
+              <div><dt>Value of held BTC</dt><dd id="outHeldValue">—</dd></div>
+              <div><dt>BTC price at end</dt><dd id="outFinalPrice">—</dd></div>
+              <div class="is-total"><dt>Total profit or loss</dt><dd id="outTotalPl">—</dd></div>
+            </dl>
+          </div>
+
+          <div class="calc-panel">
+            <h3>Against simply buying BTC</h3>
+            <p class="calc-verdict" id="outVerdict">—</p>
+            <dl>
+              <div><dt>Buying the same dollar</dt><dd id="outBenchmark">—</dd></div>
+              <div><dt>Difference</dt><dd id="outAdvantage">—</dd></div>
+              <div><dt>Mining pulls ahead at</dt><dd id="outOvertake">—</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <details class="calc-table-wrap">
+          <summary>Period-by-period detail</summary>
+          <div class="calc-table-scroll">
+            <table class="calc-table">
+              <thead>
+                <tr>
+                  <th>Period</th><th>BTC price</th><th>Difficulty</th><th>Machines</th>
+                  <th>BTC mined</th><th>Power</th><th>Net cash</th><th>Position</th>
+                </tr>
+              </thead>
+              <tbody id="calcTableBody"></tbody>
+            </table>
+          </div>
+          <p class="calc-caption" id="calcTableNote">—</p>
+        </details>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CAVEAT ===== -->
+<section class="band">
+  <div class="wrap">
+    <div class="calc-note">
+      <h2 class="h-section">What this does and does not tell you.</h2>
+      <div class="calc-note-cols">
+        <div>
+          <h4>It is a model, not a quote</h4>
+          <p>Every figure here comes from assumptions you typed. Bitcoin price and network difficulty are the two that matter most and the two nobody can forecast. Move them and watch how fast the answer changes &mdash; that sensitivity is the most useful thing on this page.</p>
+        </div>
+        <div>
+          <h4>What it leaves out</h4>
+          <p>No curtailment, no seasonal derate, no shipping, customs, or import duty, no insurance, and no bad luck. Pool variance is averaged away. Machines are assumed to run at the specs you entered for their whole life.</p>
+        </div>
+        <div>
+          <h4>Where we come in</h4>
+          <p>The single input with the most leverage is your power cost. That is the number we exist to change, by building on energy that is currently being flared, vented, or curtailed. Put a real quote in and see what it does.</p>
+        </div>
+      </div>
+      <div class="calc-cta">
+        <a class="btn btn--primary" href="./contact.html?topic=hosting">Talk about a real number</a>
+        <a class="btn btn--ghost" href="./energy.html">If you have the energy</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Ion <span>Mining Group</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on flared gas, landfill gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <a href="./hosting.html">Hosting &amp; colocation</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="../legal-privacy.html">Privacy policy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js"></script>
+<script src="./miner-db.js"></script>
+<script src="./calc-engine.js"></script>
+<script src="./calculator.js"></script>
+</body>
+</html>

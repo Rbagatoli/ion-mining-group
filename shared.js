@@ -599,12 +599,25 @@ async function fetchLiveMarketData() {
 }
 
 // ===== TECH LINES BACKGROUND =====
-// Platinum, not orange. The particle field is painted to a canvas, so var(--plat-200) cannot
-// reach it -- this is the CSS/JS boundary tokens.css warns about, and a constant is the JS-side
-// answer. It was rgba(247,147,26,...) at nine call sites, which combined with the three orange
-// radial gradients on body::before to make the whole app read brown rather than black. Orange is
-// an accent that is never a surface, and a full-viewport particle field is a surface.
-var TECH_INK = 'rgba(229, 228, 226, ';
+// Two inks, because the canvas draws two different KINDS of thing.
+//
+// The field is painted to a canvas, so var() cannot reach it -- this is the CSS/JS boundary
+// tokens.css warns about in its header, and a named constant is the JS-side answer. When
+// theme.js lands these move onto IonTheme with the rest of the JS palette.
+//
+// RECORDED EXCEPTION to "orange is an accent, never a surface". A full-viewport particle field
+// is not one of the four things orange is supposed to mark. Taken deliberately: the strokes are
+// thin and the alphas run 0.04 to 0.35, so this reads as embers rather than as a fill, and the
+// overall orange ratio broadly survives. Sparks in the dark suit a business built on flared gas.
+//
+// This is NOT a walk-back of the haze fix. That haze was three RADIAL GRADIENTS on body::before
+// covering the whole viewport at 0.06-0.12 -- solid washes, which is a surface. Thin strokes at
+// the same alpha are not the same object.
+var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
+
+// The scrolling genesis-block hex stays platinum: it is TYPE, and all type in this palette is
+// platinum. It also sits at 0.010-0.022, where orange would be invisible anyway.
+var HEX_INK = 'rgba(229, 228, 226, ';
 
 (function() {
     var canvas = document.getElementById('techLinesCanvas');
@@ -747,7 +760,7 @@ var TECH_INK = 'rgba(229, 228, 226, ';
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
-            ctx.fillStyle = TECH_INK + S.opacity.toFixed(4) + ')';
+            ctx.fillStyle = HEX_INK + S.opacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
             var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
 
@@ -767,7 +780,7 @@ var TECH_INK = 'rgba(229, 228, 226, ';
 
             // Glow pass
             if (L.glow && opacity > 0.04) {
-                ctx.strokeStyle = TECH_INK + (opacity * 0.3).toFixed(4) + ')';
+                ctx.strokeStyle = SPARK_INK + (opacity * 0.3).toFixed(4) + ')';
                 ctx.lineWidth = L.width + 4;
                 ctx.beginPath();
                 if (L.horizontal) {
@@ -781,7 +794,7 @@ var TECH_INK = 'rgba(229, 228, 226, ';
             }
 
             // Main line
-            ctx.strokeStyle = TECH_INK + opacity.toFixed(4) + ')';
+            ctx.strokeStyle = SPARK_INK + opacity.toFixed(4) + ')';
             ctx.lineWidth = L.width;
             ctx.beginPath();
             if (L.horizontal) {
@@ -802,7 +815,7 @@ var TECH_INK = 'rgba(229, 228, 226, ';
 
             // Outer ring
             if (N.ring) {
-                ctx.strokeStyle = TECH_INK + (nOpacity * 0.4).toFixed(4) + ')';
+                ctx.strokeStyle = SPARK_INK + (nOpacity * 0.4).toFixed(4) + ')';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.arc(N.x, N.y, N.radius + 3, 0, Math.PI * 2);
@@ -810,14 +823,14 @@ var TECH_INK = 'rgba(229, 228, 226, ';
             }
 
             // Filled dot
-            ctx.fillStyle = TECH_INK + nOpacity.toFixed(4) + ')';
+            ctx.fillStyle = SPARK_INK + nOpacity.toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(N.x, N.y, N.radius, 0, Math.PI * 2);
             ctx.fill();
 
             // Glow
             if (nOpacity > 0.1) {
-                ctx.fillStyle = TECH_INK + (nOpacity * 0.15).toFixed(4) + ')';
+                ctx.fillStyle = SPARK_INK + (nOpacity * 0.15).toFixed(4) + ')';
                 ctx.beginPath();
                 ctx.arc(N.x, N.y, N.radius + 6, 0, Math.PI * 2);
                 ctx.fill();
@@ -843,19 +856,19 @@ var TECH_INK = 'rgba(229, 228, 226, ';
             }
 
             // Bright pulse dot
-            ctx.fillStyle = TECH_INK + P.maxOpacity.toFixed(3) + ')';
+            ctx.fillStyle = SPARK_INK + P.maxOpacity.toFixed(3) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size * 0.4, 0, Math.PI * 2);
             ctx.fill();
 
             // Pulse glow
-            ctx.fillStyle = TECH_INK + (P.maxOpacity * 0.2).toFixed(4) + ')';
+            ctx.fillStyle = SPARK_INK + (P.maxOpacity * 0.2).toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size, 0, Math.PI * 2);
             ctx.fill();
 
             // Large soft glow
-            ctx.fillStyle = TECH_INK + (P.maxOpacity * 0.06).toFixed(4) + ')';
+            ctx.fillStyle = SPARK_INK + (P.maxOpacity * 0.06).toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size * 3, 0, Math.PI * 2);
             ctx.fill();
