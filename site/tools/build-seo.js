@@ -30,6 +30,7 @@ const PAGES = {
   'hosting.html':    { priority: '0.9', changefreq: 'monthly' },
   'calculator.html': { priority: '0.8', changefreq: 'monthly' },
   'contact.html':    { priority: '0.7', changefreq: 'yearly' },
+  'privacy.html':    { priority: '0.3', changefreq: 'yearly' },
 };
 
 /* The home page is the site's root once the domain is attached, so it is listed

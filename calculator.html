@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Calculator</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=329">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=330">
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=329">
-    <link rel="stylesheet" href="./shared.css?v=329">
+    <link rel="stylesheet" href="./tokens.css?v=330">
+    <link rel="stylesheet" href="./shared.css?v=330">
     <script>
     // Force-clear old service workers and caches (runs before any external scripts)
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
@@ -18,9 +18,9 @@
         });
     }
     </script>
-    <script src="./theme.js?v=329"></script>
-    <script src="./chart.min.js?v=329"></script>
-    <script src="./chart-theme.js?v=329"></script>
+    <script src="./theme.js?v=330"></script>
+    <script src="./chart.min.js?v=330"></script>
+    <script src="./chart-theme.js?v=330"></script>
     <style>
         /* Reality-check callout under the backtest chart */
         .bt-reality { margin-top:14px; padding:12px 14px; border-radius: var(--radius); font-size:12px; line-height:1.6;
@@ -353,17 +353,23 @@
                 </label>
                 <div class="reinvest-info">
                     <strong>Apply Tax Adjustment</strong><br>
-                    <span style="font-size:11px">Compare mining vs buy-and-hold with realistic tax treatment</span>
+                    <span style="font-size:11px">Mining income taxed on profit after electricity;
+                    capital gains on appreciation above the price each coin was mined at.
+                    <strong>Hardware depreciation is not modelled</strong>, so the tax shown is
+                    higher than a business claiming capital allowances would pay.</span>
                 </div>
             </div>
-            <div id="taxRateInputs" style="display:none; margin-top:16px; padding:16px; background:rgba(0,0,0,0.2); border-radius: var(--radius); border:1px solid rgba(255,255,255,0.06);">
+            <div id="taxRateInputs" style="display:none; margin-top:16px; padding:16px; background: var(--panel-solid); border-radius: var(--radius); border:1px solid var(--line);">
                 <div class="input-group">
                     <label>Mining Income Tax Rate</label>
                     <div class="input-wrapper">
                         <input type="number" id="miningIncomeTaxRate" value="35" min="0" max="100" step="1">
                         <span class="suffix">%</span>
                     </div>
-                    <div style="font-size:11px; color:#888; margin-top:4px;">Applied daily to mined BTC revenue</div>
+                    <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Applied to mined BTC
+                    revenue <strong>less electricity</strong> &mdash; mining income is taxed on net,
+                    and power is the largest deductible cost. Held or sold makes no difference:
+                    the income event is the mining.</div>
                 </div>
                 <div class="input-group" style="margin-top:12px;">
                     <label>Capital Gains Tax Rate</label>
@@ -371,7 +377,7 @@
                         <input type="number" id="capitalGainsTaxRate" value="15" min="0" max="100" step="1">
                         <span class="suffix">%</span>
                     </div>
-                    <div style="font-size:11px; color:#888; margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
+                    <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
                 </div>
             </div>
             <div class="reinvest-row" id="savingsElecRow" style="margin-top:8px">
@@ -524,19 +530,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=329"></script>
-<script src="./sync.js?v=329"></script>
-<script src="./auth-ui.js?v=329"></script>
-<script src="./profile-panel.js?v=329"></script>
-<script src="./shared.js?v=329"></script>
-<script src="./fleet-data.js?v=329"></script>
-<script src="./miner-db.js?v=329"></script>
-<script src="./price-history.js?v=329"></script>
-<script src="./network-history.js?v=329"></script>
-<script src="./calc-engine.js?v=329"></script>
-<script src="./calculator.js?v=329"></script>
-<script src="./widget-settings.js?v=329"></script>
-<script src="./alerts.js?v=329"></script>
-<script src="./onboarding.js?v=329"></script>
+<script src="./firebase-config.js?v=330"></script>
+<script src="./sync.js?v=330"></script>
+<script src="./auth-ui.js?v=330"></script>
+<script src="./profile-panel.js?v=330"></script>
+<script src="./shared.js?v=330"></script>
+<script src="./fleet-data.js?v=330"></script>
+<script src="./miner-db.js?v=330"></script>
+<script src="./price-history.js?v=330"></script>
+<script src="./network-history.js?v=330"></script>
+<script src="./calc-engine.js?v=330"></script>
+<script src="./calculator.js?v=330"></script>
+<script src="./widget-settings.js?v=330"></script>
+<script src="./alerts.js?v=330"></script>
+<script src="./onboarding.js?v=330"></script>
 </body>
 </html>

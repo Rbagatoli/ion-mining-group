@@ -103,8 +103,14 @@ var CalcEngine = (function() {
             reinvestMode: !!s.reinvest,
             deductAdditionCapex: s.additionCapex !== false,
             taxAdjustmentEnabled: !!s.taxAdjustment,
-            miningIncomeTaxRate: s.taxAdjustment ? (num(s.miningIncomeTaxRate, 0) || 0) / 100 : 0,
-            capitalGainsTaxRate: s.taxAdjustment ? (num(s.capitalGainsTaxRate, 0) || 0) / 100 : 0,
+            // These were the only two ratios in this function still using `|| 0` -- the exact
+            // idiom the NOTE above warns against -- and the only two left unclamped. Typing 350
+            // produced a 350% tax and turned a profitable site into a $7.7M loss; typing -40
+            // produced a subsidy. They also defaulted to 0 when absent, so a scenario saved
+            // before the tax fields existed rendered UNTAXED inside a comparison table that
+            // claimed it was taxed. Defaults now match the markup: 35 and 15.
+            miningIncomeTaxRate: s.taxAdjustment ? clamp(num(s.miningIncomeTaxRate, 35), 0, 100) / 100 : 0,
+            capitalGainsTaxRate: s.taxAdjustment ? clamp(num(s.capitalGainsTaxRate, 15), 0, 100) / 100 : 0,
             startDate: s.startDate ? new Date(s.startDate) : new Date()
         };
     }
@@ -214,9 +220,23 @@ var CalcEngine = (function() {
             var periodBTCMined = dailyBTCNet * daysPerPeriod;
             var periodElecCost = currentPowerKW * 24 * daysPerPeriod * p.elecCost * p.uptimePct;
 
-            // Mining income is taxed on ALL mined BTC at fair market value when mined
+            // Mining income is taxed on ALL mined BTC at fair market value when mined -- held or
+            // sold, the income event is the mining, not the sale.
+            //
+            // But it is taxed on NET income. Electricity is the single largest deductible expense
+            // a miner has, and this line used to apply the rate to gross revenue with nothing
+            // subtracted. At the calculator's own defaults that turned a 35% field into a 63.6%
+            // effective rate on real profit, and on a 200-machine site it charged an identical
+            // $959,928 whether power cost $0.02/kWh or $0.12 -- a business losing $1.67M was
+            // billed as though it had earned. The single input a gas-site operator cares about
+            // most had no effect on the tax line at all.
+            //
+            // Math.max(0, ...) rather than a negative tax: a loss reduces the bill to zero, it
+            // does not generate a refund. Carrying that loss forward against later periods is a
+            // separate, real improvement and is NOT done here.
             var grossMiningRevenue = periodBTCMined * btcPrice;
-            var taxOnMiningIncome = p.taxAdjustmentEnabled ? (grossMiningRevenue * p.miningIncomeTaxRate) : 0;
+            var taxableMiningIncome = Math.max(0, grossMiningRevenue - periodElecCost);
+            var taxOnMiningIncome = p.taxAdjustmentEnabled ? (taxableMiningIncome * p.miningIncomeTaxRate) : 0;
 
             var btcHeld = periodBTCMined * p.hodlPct;
             var btcSold = periodBTCMined * (1 - p.hodlPct);
@@ -242,8 +262,16 @@ var CalcEngine = (function() {
             cumulBtcHeld += btcHeld;
             heldCostBasis += btcHeld * btcPrice;
             cumulElecCost += periodElecCost;
-            if (p.reinvestMode && p.capex > 0 && periodCashFlow > 0) cumulCashFlow += periodCashFlow - reinvestSpent;
-            else cumulCashFlow += periodCashFlow;
+            // In reinvest mode the cash lives in reinvestPool and NOWHERE ELSE. It used to be
+            // added here as well, so totalEconomicValue -- which adds reinvestPool on top --
+            // counted every uninvested dollar twice, inflating the chart, the table and the
+            // break-even period while the headline totalPL (which omitted the pool) disagreed
+            // with the last row of its own table.
+            //
+            // NOT `cumulCashFlow -= reinvestSpent`: the while loop above has already drained the
+            // pool by exactly that amount, so subtracting it again double-counts in the other
+            // direction. That was a proposed fix and it is wrong.
+            if (!(p.reinvestMode && p.capex > 0 && periodCashFlow > 0)) cumulCashFlow += periodCashFlow;
 
             // Value if liquidated now, net of capital gains on the held BTC
             var heldValueNow = cumulBtcHeld * btcPrice;
@@ -274,11 +302,21 @@ var CalcEngine = (function() {
             });
         }
 
-        var finalBtcPrice = p.btcPrice0 * Math.pow(1 + priceChangePerPeriod, p.numPeriods);
+        // numPeriods - 1, not numPeriods. The loop runs i = 0..numPeriods-1 and prices period i
+        // at btcPrice0 * (1+g)^i, so the last period modelled is (1+g)^(numPeriods-1). Using
+        // numPeriods here priced an extra month that no row of the table represents, which is why
+        // the Total P/L card disagreed with the bottom of its own table by $70,422 on a
+        // 36-month run -- and by exactly $0 at a flat price, which is the tell that it was a
+        // phantom period rather than a rounding difference.
+        var finalBtcPrice = p.btcPrice0 * Math.pow(1 + priceChangePerPeriod, p.numPeriods - 1);
         var heldBtcValue = cumulBtcHeld * finalBtcPrice;
         var heldGainFinal = heldBtcValue - heldCostBasis;
         var cgtOnHeld = (p.taxAdjustmentEnabled && heldGainFinal > 0) ? heldGainFinal * p.capitalGainsTaxRate : 0;
-        var totalPL = cumulCashFlow + heldBtcValue - cgtOnHeld;
+        // reinvestPool included. Without it, cash the pool never spent -- and salvage from
+        // retired miners, which is paid into the pool -- simply disappeared from the headline,
+        // so switching reinvest ON while it bought nothing made Total P/L $135,000 WORSE.
+        // This is also what makes the last table row equal the card.
+        var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld;
         var roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
 
         var buyHoldFinalNet = buyHoldNetGain(finalBtcPrice);
@@ -293,7 +331,10 @@ var CalcEngine = (function() {
         var dailyRevenueDay1 = dailyBTCDay1Net * p.btcPrice0;
         var dailyElecDay1 = initPowerKW * 24 * p.elecCost * p.uptimePct;
         var dailyProfitDay1 = dailyRevenueDay1 - dailyElecDay1;
-        var dailyTaxDay1 = p.taxAdjustmentEnabled ? (dailyRevenueDay1 * p.miningIncomeTaxRate) : 0;
+        // Same correction as the loop: the rate applies to profit, not revenue. This card used
+        // to print a NEGATIVE daily profit for a rig that was genuinely earning money.
+        var dailyTaxDay1 = p.taxAdjustmentEnabled
+            ? (Math.max(0, dailyRevenueDay1 - dailyElecDay1) * p.miningIncomeTaxRate) : 0;
 
         return {
             params: p,

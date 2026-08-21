@@ -93,6 +93,19 @@
       <!-- ---------- results ---------- -->
       <div class="calc-results">
 
+        <!-- The diagrams degrade properly: a static frame ships in the HTML, so
+             with scripts off you still get a complete annotated drawing. This
+             page cannot do that — every figure below is computed — so it says so
+             rather than sitting there as a grid of dashes looking broken. -->
+        <noscript>
+          <p class="calc-warn" style="display:block">
+            <strong>This calculator needs JavaScript.</strong> Every figure on the page is
+            computed in your browser &mdash; nothing is sent anywhere &mdash; so with scripts
+            off there is nothing to show. Turn them on for this page, or
+            <a href="./contact.html">tell us your numbers</a> and we will run them.
+          </p>
+        </noscript>
+
         <p class="calc-warn" id="calcWarn" hidden></p>
 
         <div class="calc-tiles">
@@ -403,13 +416,13 @@
               <div class="field">
                 <label for="miningIncomeTaxRate">Mining Income Tax Rate</label>
                 <div class="calc-unit">
-                  <input id="miningIncomeTaxRate" type="number" min="0" max="100" step="0.1" value="0" data-default="0"><span class="cu-post">%</span></div>
+                  <input id="miningIncomeTaxRate" type="number" min="0" max="100" step="0.1" value="35" data-default="35"><span class="cu-post">%</span></div>
                 <p class="calc-explain">Applied to mined BTC revenue at the price it was mined at.</p>
               </div>
               <div class="field">
                 <label for="capitalGainsTaxRate">Capital Gains Tax Rate</label>
                 <div class="calc-unit">
-                  <input id="capitalGainsTaxRate" type="number" min="0" max="100" step="0.1" value="0" data-default="0"><span class="cu-post">%</span></div>
+                  <input id="capitalGainsTaxRate" type="number" min="0" max="100" step="0.1" value="15" data-default="15"><span class="cu-post">%</span></div>
                 <p class="calc-explain">Applied to gains on exit &mdash; both to buy-and-hold and to appreciation of mined BTC you hold.</p>
               </div>
             </div>
@@ -521,7 +534,7 @@
       </div>
       <div class="footer-col">
         <h4>Legal</h4>
-        <a href="../legal-privacy.html">Privacy policy</a>
+        <a href="./privacy.html">Privacy</a>
         <a href="./contact.html">Media &amp; enquiries</a>
       </div>
     </div>

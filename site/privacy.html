@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page not found — Ion Mining Group</title>
-<meta name="description" content="That page does not exist. Here is where everything else on the Ion Mining Group site lives.">
-<meta name="robots" content="noindex">
+<title>Privacy — Ion Mining Group</title>
+<meta name="description" content="What this website collects, which is almost nothing, and the two outside services one page on it calls.">
+<link rel="canonical" href="https://ionmininggroup.com/privacy.html">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./styles.css">
@@ -57,41 +57,60 @@
       <a href="./calculator.html">Calculator</a>
       <a href="./index.html#operate">How We Operate</a>
       <a href="./contact.html">Contact</a>
-      <a class="btn btn--primary btn--sm nav-cta" href="./index.html">Home page</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./contact.html">Talk to us</a>
     </div>
   </div>
 </nav>
 
-<!-- ===== NOT FOUND ===== -->
 <section class="hero-zone">
   <div class="wrap">
     <div class="calc-head">
-      <p class="eyebrow">Error 404</p>
-      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">That page is not<br>on this site.</h1>
-      <p class="lede">Either the address is mistyped or the page has moved. Everything the site actually has is one click away.</p>
+      <p class="eyebrow">Privacy</p>
+      <h1 class="h-display" style="font-size:clamp(30px,4vw,44px)">What this site<br>collects about you.</h1>
+      <p class="lede">Almost nothing. This page says exactly what, and names the two outside services one page here talks to, because a policy that leaves those out is not a policy.</p>
+      <p class="calc-caption">Covers <strong>ionmininggroup.com</strong> only. The Ion Mining Group application is a separate product with its own <a href="../legal-privacy.html">privacy policy</a>, which is the one to read if you hold an account.</p>
     </div>
   </div>
 </section>
 
 <section class="band">
   <div class="wrap">
-    <div class="calc-note-cols">
-      <div>
-        <h4>You have energy</h4>
-        <p>Flared gas, landfill gas, or power you cannot sell. <a href="./energy.html">Energy partnerships</a>.</p>
+    <div class="calc-note">
+      <div class="calc-note-cols">
+        <div>
+          <h4>No accounts, no cookies</h4>
+          <p>This site sets no cookies, uses no analytics, and has no login. Nothing is stored in your browser except what you type into the calculator, which never leaves it.</p>
+        </div>
+        <div>
+          <h4>Forms open your mail client</h4>
+          <p>The contact and site-submission forms do not transmit anything to us. Pressing send composes a draft in your own mail application, addressed to us. Nothing reaches us until you send it yourself, and you can see exactly what it says first.</p>
+        </div>
+        <div>
+          <h4>Hosting</h4>
+          <p>Served as static files by GitHub Pages, which keeps its own server logs including visitor IP addresses. We do not have access to them and do not receive a copy.</p>
+        </div>
       </div>
-      <div>
-        <h4>You have machines</h4>
-        <p>Miners that need somewhere cheap and reliable to run. <a href="./hosting.html">Hosting and colocation</a>.</p>
+
+      <h2 class="h-section" style="margin-top:44px">The two outside services.</h2>
+      <p class="lede">The <a href="./calculator.html">mining calculator</a> asks two public services for today's figures each time it loads, so it does not open on stale numbers. Your browser contacts them directly, which means <strong>your IP address reaches them</strong>. Nothing about you is sent, and no request identifies you as a visitor to this site.</p>
+      <div class="calc-note-cols" style="margin-top:26px">
+        <div>
+          <h4>Coinbase</h4>
+          <p>The current bitcoin price, from their public price endpoint. No key, no account, no payload &mdash; a bare read.</p>
+        </div>
+        <div>
+          <h4>Blockchain.info</h4>
+          <p>The current bitcoin network difficulty, the same way. Also a bare read.</p>
+        </div>
+        <div>
+          <h4>If you would rather not</h4>
+          <p>Block scripts for this page, or use the calculator with JavaScript disabled. It will show the figures it shipped with instead, dated on the page, and everything else still works.</p>
+        </div>
       </div>
-      <div>
-        <h4>You want the numbers</h4>
-        <p>Run a full projection on your own figures. <a href="./calculator.html">Mining calculator</a>.</p>
-      </div>
-    </div>
-    <div class="calc-cta" style="margin-top:34px">
-      <a class="btn btn--primary" href="./index.html">Back to the home page</a>
-      <a class="btn btn--ghost" href="./contact.html">Talk to us</a>
+
+      <h2 class="h-section" style="margin-top:44px">Questions.</h2>
+      <p class="lede">Write to <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>. If you have asked us something by email and would like it deleted, say so and we will.</p>
+      <p class="calc-caption">Last updated <strong>21 August 2026</strong>. If this page changes materially we will move that date.</p>
     </div>
   </div>
 </section>

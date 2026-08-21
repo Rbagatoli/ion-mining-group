@@ -20,6 +20,7 @@ const PAGES = {
   'contact.html': 'contact',
   /* No nav item is active on the error page — you did not navigate to it on
      purpose, so highlighting one would be a lie about where you are. */
+  'privacy.html': '',
   '404.html':     '',
 };
 
@@ -90,8 +91,18 @@ const CTA = {
   'energy.html':           { href: '#submit', label: 'Submit a site' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'contact.html':          { href: '#form', label: 'Send a message' },
+  'privacy.html':          { href: './contact.html', label: 'Talk to us' },
   '404.html':              { href: './index.html', label: 'Home page' },
 };
+
+/* The footer Legal column, generated for the same reason the Company one is:
+   it was hand-copied into every page and pointed at the APP's privacy policy,
+   which is written for account holders and lists QuickBooks and Firebase. A
+   visitor here is not an app user, and that policy does not mention the two
+   services the calculator calls. */
+const LEGAL_COL = `<h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>`;
 
 const COMPANY_COL = `<h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
@@ -116,6 +127,8 @@ for (const [file, active] of Object.entries(PAGES)) {
   html = replaceBlock(html, '<nav class="nav">', '</nav>', nav(active, CTA[file]), 'nav', file);
   html = replaceBlock(html, '<h4>Company</h4>', 'hello@ionmininggroup.com</a>',
                       COMPANY_COL, 'footer Company column', file);
+  html = replaceBlock(html, '<h4>Legal</h4>', 'Media &amp; enquiries</a>',
+                      LEGAL_COL, 'footer Legal column', file);
 
   if (html !== before) { fs.writeFileSync(p, html); touched++; }
   console.log(`${file}: nav${active ? ` (active: ${active})` : ''} + footer${html === before ? ' — unchanged' : ''}`);

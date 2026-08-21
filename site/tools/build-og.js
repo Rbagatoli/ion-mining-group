@@ -18,7 +18,7 @@
    page does not. */
 const fs = require('fs');
 const path = require('path');
-const { Canvas } = require('./raster.js');
+const { Canvas, parsePath } = require('./raster.js');
 
 const SITE = path.join(__dirname, '..');
 const OUT = path.join(SITE, 'og');
@@ -76,13 +76,29 @@ function render(sceneFile) {
         const frame = scene.frame(0, null);
         const vb = scene.VB;
 
-        /* Fit the drawing into the card with room around it, and centre what is
-           actually drawn rather than the viewBox — the scenes leave headroom for
-           callouts that a card has no use for. */
-        const pad = 96;
-        const scale = Math.min((W - pad * 2) / vb.w, (H - pad * 2) / vb.h);
-        const ox = (W - vb.w * scale) / 2;
-        const oy = (H - vb.h * scale) / 2;
+        /* Fit what is actually DRAWN, not the viewBox. The scenes reserve a lot
+           of vertical room for callout leaders, and fitting the box left the
+           drawing small and sitting low with a dead band across the top. */
+        let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        frame.slots.forEach(slot => {
+            scene.LAYERS.forEach(layer => {
+                if (!WEIGHT[layer] || !slot[layer]) return;
+                parsePath(slot[layer]).forEach(sp => {
+                    for (let k = 0; k + 1 < sp.pts.length; k += 2) {
+                        if (sp.pts[k] < bx0) bx0 = sp.pts[k];
+                        if (sp.pts[k] > bx1) bx1 = sp.pts[k];
+                        if (sp.pts[k + 1] < by0) by0 = sp.pts[k + 1];
+                        if (sp.pts[k + 1] > by1) by1 = sp.pts[k + 1];
+                    }
+                });
+            });
+        });
+        if (!isFinite(bx0)) { bx0 = 0; by0 = 0; bx1 = vb.w; by1 = vb.h; }
+        const cw = bx1 - bx0, ch = by1 - by0;
+        const pad = 84;
+        const scale = Math.min((W - pad * 2) / cw, (H - pad * 2) / ch);
+        const ox = (W - cw * scale) / 2 - bx0 * scale;
+        const oy = (H - ch * scale) / 2 - by0 * scale;
         const map = d => d.replace(/(-?[\d.]+) (-?[\d.]+)/g,
             (m, x, y) => (ox + parseFloat(x) * scale).toFixed(2) + ' ' +
                          (oy + parseFloat(y) * scale).toFixed(2));
