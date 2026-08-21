@@ -166,18 +166,31 @@ console.log('\n=== square, and unlit except where lit on purpose ===');
     });
     eq('every border-radius goes through a token', literalRadius.length, 0);
 
-    // "No soft shadows, no colour bloom." A shadow that is not black is a bloom.
-    var colourShadow = [];
+    // "No soft shadows, no colour bloom" is not "no box-shadow": the SITE focuses its own
+    // fields with `inset 0 0 0 1px rgba(247,147,26,0.35)`. A zero-blur ring is a machined edge
+    // and is allowed; anything with a blur radius is a bloom and is not. So the rule this
+    // asserts is the third length being zero, not the colour being absent.
+    var blurred = [];
     FILES.forEach(function(f) {
-        var re = /box-shadow\s*:\s*([^;}\n]+)/gi, m;
-        while ((m = re.exec(f.text)) !== null) {
+        // Line by line, so the value pattern needs no newline class.
+        f.text.split(String.fromCharCode(10)).forEach(function(line) {
+            var re = /box-shadow\s*:\s*([^;}"']+)/gi, m;
+            while ((m = re.exec(line)) !== null) {
             var v = m[1].trim();
-            if (v === 'none' || v.indexOf('var(--shadow') >= 0) continue;
-            if (/rgba\(\s*0\s*,\s*0\s*,\s*0/.test(v) || /#000/.test(v)) continue;
-            colourShadow.push(f.rel + ': ' + v.slice(0, 50));
-        }
+            if (v === 'none' || v.indexOf('var(--shadow') >= 0 || v === 'inherit') continue;
+            var layers = v.split(/,(?![^()]*\))/);
+            for (var i = 0; i < layers.length; i++) {
+                var nums = layers[i].match(/-?[\d.]+px/g) || [];
+                if (nums.length < 3 || parseFloat(nums[2]) !== 0) {
+                    blurred.push(f.rel + ': ' + v.slice(0, 46));
+                    break;
+                }
+            }
+            }
+        });
     });
-    eq('no box-shadow carries a colour', colourShadow.length, 0);
+    if (blurred.length) console.log('        ' + blurred.slice(0, 3).join(' | '));
+    eq('no box-shadow has a blur radius', blurred.length, 0);
 })();
 
 // ---- 5. no literal survives outside the allowlist -----------------------------------------------

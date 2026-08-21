@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Dashboard</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=319">
-    <link rel="stylesheet" href="./shared.css?v=319">
+    <link rel="stylesheet" href="./tokens.css?v=320">
+    <link rel="stylesheet" href="./shared.css?v=320">
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -16,7 +16,7 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=319"></script>
+    <script src="./chart.min.js?v=320"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
@@ -209,7 +209,7 @@
                     </div>
                 </div>
             </div>
-            <div id="poolComingSoon" style="display:none;margin:16px 0;padding:16px;background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius:8px;text-align:center;">
+            <div id="poolComingSoon" style="display:none;margin:16px 0;padding:16px;background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius: var(--radius);text-align:center;">
                 <div style="font-size:18px;margin-bottom:6px">&#x1F6A7;</div>
                 <div style="color:#f7931a;font-weight:600;margin-bottom:4px">Coming Soon</div>
                 <div style="font-size:12px;color:#888">This pool integration requires a dedicated Cloudflare Worker proxy. Stay tuned!</div>
@@ -228,7 +228,7 @@
                     </div>
                 </div>
             </div>
-            <div id="apiStatus" style="margin-top:12px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(255,255,255,0.06); display:none;">
+            <div id="apiStatus" style="margin-top:12px; padding:10px; background:rgba(0,0,0,0.3); border-radius: var(--radius); border:1px solid rgba(255,255,255,0.06); display:none;">
                 <div style="font-size:12px; color:#888;" id="apiStatusText"></div>
             </div>
             <div class="panel-actions">
@@ -356,17 +356,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=319"></script>
-<script src="./sync.js?v=319"></script>
-<script src="./auth-ui.js?v=319"></script>
-<script src="./profile-panel.js?v=319"></script>
-<script src="./shared.js?v=319"></script>
-<script src="./fleet-data.js?v=319"></script>
-<script src="./geo-data.js?v=319"></script>
-<script src="./miner-db.js?v=319"></script>
-<script src="./dashboard.js?v=319"></script>
-<script src="./onboarding.js?v=319"></script>
-<script src="./widget-settings.js?v=319"></script>
-<script src="./alerts.js?v=319"></script>
+<script src="./firebase-config.js?v=320"></script>
+<script src="./sync.js?v=320"></script>
+<script src="./auth-ui.js?v=320"></script>
+<script src="./profile-panel.js?v=320"></script>
+<script src="./shared.js?v=320"></script>
+<script src="./fleet-data.js?v=320"></script>
+<script src="./geo-data.js?v=320"></script>
+<script src="./miner-db.js?v=320"></script>
+<script src="./dashboard.js?v=320"></script>
+<script src="./onboarding.js?v=320"></script>
+<script src="./widget-settings.js?v=320"></script>
+<script src="./alerts.js?v=320"></script>
 </body>
 </html>

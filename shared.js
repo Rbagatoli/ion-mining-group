@@ -905,7 +905,7 @@ async function fetchLiveMarketData() {
         </div>\
         <div id="strikeKeyResult" style="margin-top:10px; font-size:12px;"></div>\
         <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">\
-            <div style="font-size:13px; color:#4ade80; margin-bottom:10px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:8px;">\
+            <div style="font-size:13px; color:#4ade80; margin-bottom:10px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:var(--radius);">\
                 <strong>Create a Send PIN</strong> — This PIN will be required every time you send BTC, adding an extra layer of security.\
             </div>\
             <div class="input-group">\

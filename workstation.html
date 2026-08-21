@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Workstation</title>
-    <link rel="stylesheet" href="./tokens.css?v=319">
+    <link rel="stylesheet" href="./tokens.css?v=320">
     <link rel="manifest" href="./manifest.json">
     <style>
     /* This file used to fork the tokens with DIFFERENT values from shared.css
@@ -67,7 +67,7 @@
         color: #e8e8e8;
         font-size: 12px;
         padding: 4px 8px;
-        border-radius: 5px;
+        border-radius: var(--radius);
         cursor: pointer;
     }
     .ws-pane-select-group select option {
@@ -86,7 +86,7 @@
         color: #e8e8e8;
         font-size: 12px;
         padding: 4px 8px;
-        border-radius: 5px;
+        border-radius: var(--radius);
         cursor: pointer;
     }
     .ws-actions select option {
@@ -99,7 +99,7 @@
         color: var(--text-mid);
         cursor: pointer;
         padding: 6px;
-        border-radius: 6px;
+        border-radius: var(--radius);
         display: flex;
         align-items: center;
         transition: background 0.2s, color 0.2s;
@@ -114,7 +114,7 @@
         text-decoration: none;
         padding: 4px 10px;
         border: 1px solid rgba(247, 147, 26, 0.3);
-        border-radius: 5px;
+        border-radius: var(--radius);
         transition: background 0.2s;
         white-space: nowrap;
     }
@@ -166,7 +166,7 @@
         font-size: 14px;
     }
     .ws-narrow-msg a { color: var(--accent); }
-    .ion-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
+    .ion-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: var(--radius); background: rgba(255,255,255,0.03); border: 1px solid var(--line); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
     .ion-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
     .ion-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
     .ion-nav-sparkline-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; white-space: nowrap; min-width: 52px; text-align: right; }
@@ -379,7 +379,7 @@
     render();
 })();
 </script>
-<script src="./shared.js?v=319"></script>
+<script src="./shared.js?v=320"></script>
 <script>startNavSparkline();</script>
 </body>
 </html>

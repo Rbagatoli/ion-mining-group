@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Banking</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=319">
-    <link rel="stylesheet" href="./shared.css?v=319">
+    <link rel="stylesheet" href="./tokens.css?v=320">
+    <link rel="stylesheet" href="./shared.css?v=320">
     <style>
         /* Transaction filter tabs */
         .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid rgba(255,255,255,0.05); padding-bottom:8px; }
@@ -24,7 +24,7 @@
         });
     }
     </script>
-    <script src="./chart.min.js?v=319"></script>
+    <script src="./chart.min.js?v=320"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
@@ -84,7 +84,7 @@
     </div>
 
     <!-- ===== USER AUTH BAR (shown when logged in) ===== -->
-    <div id="userAuthBar" style="display:none; padding:8px 16px; margin-bottom:8px; background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.15); border-radius:8px;">
+    <div id="userAuthBar" style="display:none; padding:8px 16px; margin-bottom:8px; background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.15); border-radius: var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:13px;">
                 <span style="color:#888;">Logged in as</span>
@@ -209,11 +209,11 @@
             </div>
             <div id="twofa-setup-result" style="display:none;">
                 <div style="text-align:center; margin:12px 0;">
-                    <img id="twofa-qr" style="border-radius:8px; background:#fff; padding:8px; width:200px; height:200px;" alt="Scan with authenticator app">
+                    <img id="twofa-qr" style="border-radius: var(--radius); background:#fff; padding:8px; width:200px; height:200px;" alt="Scan with authenticator app">
                 </div>
                 <div style="font-size:12px; color:#aaa; margin-bottom:8px;">Or enter this key manually in your authenticator app:</div>
-                <div style="background:rgba(255,255,255,0.05); padding:10px 14px; border-radius:8px; font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
-                <div style="font-size:12px; color:#4ade80; margin-bottom:8px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:8px;">
+                <div style="background:rgba(255,255,255,0.05); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
+                <div style="font-size:12px; color:#4ade80; margin-bottom:8px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius: var(--radius);">
                     <strong>Verify & Activate:</strong> Enter the code from your authenticator app to activate 2FA on your account.
                 </div>
                 <div class="input-group" style="margin-bottom:8px;">
@@ -268,7 +268,7 @@
     <div class="slide-panel" id="sendBtcPanel">
         <div class="panel-inner">
             <h4>Send BTC</h4>
-            <div style="margin-bottom:12px; padding:10px 14px; background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); border-radius:8px; font-size:12px; color:#f7931a;">
+            <div style="margin-bottom:12px; padding:10px 14px; background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); border-radius: var(--radius); font-size:12px; color:#f7931a;">
                 Session authenticated. 2FA required for sends if enabled. Per-account limits apply.
             </div>
 
@@ -389,18 +389,18 @@
                 <button class="btn btn-primary" id="btnCreateInvoice" style="width:100%; margin-top:12px;">Create Invoice</button>
                 <div id="invoiceResult" style="display:none; margin-top:14px;">
                     <div style="text-align:center; margin-bottom:10px;">
-                        <img id="lnInvoiceQR" width="200" height="200" style="border-radius:8px; background:#fff; padding:8px;">
+                        <img id="lnInvoiceQR" width="200" height="200" style="border-radius: var(--radius); background:#fff; padding:8px;">
                     </div>
                     <div style="font-size:12px; color:#aaa; margin-bottom:6px;">Lightning Invoice:</div>
                     <div style="position:relative;">
-                        <div id="lnInvoiceText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius:8px; font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a; max-height:80px; overflow-y:auto;"></div>
+                        <div id="lnInvoiceText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius: var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a; max-height:80px; overflow-y:auto;"></div>
                         <button class="btn btn-secondary" id="btnCopyInvoice" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                     </div>
                     <div id="invoiceStatus" style="font-size:12px; margin-top:8px; color:#888;"></div>
-                    <div id="invoiceShareLink" style="display:none; margin-top:12px; padding:12px; background:rgba(74,222,128,0.06); border:1px solid rgba(74,222,128,0.2); border-radius:10px;">
+                    <div id="invoiceShareLink" style="display:none; margin-top:12px; padding:12px; background:rgba(74,222,128,0.06); border:1px solid rgba(74,222,128,0.2); border-radius: var(--radius);">
                         <div style="font-size:12px; color:#4ade80; margin-bottom:6px; font-weight:500;">Client Payment Link:</div>
                         <div style="position:relative;">
-                            <div id="shareUrlText" style="background:rgba(255,255,255,0.05); padding:8px 40px 8px 12px; border-radius:8px; font-size:11px; word-break:break-all; color:#4ade80; line-height:1.5;"></div>
+                            <div id="shareUrlText" style="background:rgba(255,255,255,0.05); padding:8px 40px 8px 12px; border-radius: var(--radius); font-size:11px; word-break:break-all; color:#4ade80; line-height:1.5;"></div>
                             <button class="btn btn-secondary" id="btnCopyShareLink" style="position:absolute; top:4px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                         </div>
                         <div style="font-size:10px; color:#666; margin-top:6px;">Send this link to your client — no app download needed</div>
@@ -424,7 +424,7 @@
     <div class="slide-panel" id="addAddressPanel">
         <div class="panel-inner">
             <h4 id="addressFormTitle">Add Bitcoin Address</h4>
-            <div id="strikeAddressWarning" style="display:none; margin-bottom:12px; padding:10px 14px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:8px; font-size:12px; color:#a78bfa;">
+            <div id="strikeAddressWarning" style="display:none; margin-bottom:12px; padding:10px 14px; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius: var(--radius); font-size:12px; color:#a78bfa;">
                 <strong>Note:</strong> Your Strike deposit address will show 0 balance here. Strike is custodial &mdash; it sweeps incoming funds to pooled storage. Your Strike balance is shown via the Strike connection above.
             </div>
             <div class="panel-form-grid">
@@ -775,7 +775,7 @@
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
             <h3 style="margin: 0;">Assets Overview</h3>
             <span id="assetsTotalDisplay" class="value" style="font-size: 1.5em; font-weight: 600;">--</span>
-            <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 8px 16px; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: inherit; font-size: 0.85em; font-weight: 600; transition: all 0.2s;">USD</button>
+            <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 8px 16px; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius); background: rgba(255, 255, 255, 0.1); color: inherit; font-size: 0.85em; font-weight: 600; transition: all 0.2s;">USD</button>
         </div>
         <section class="fleet-grid" id="assetsGrid">
             <!-- Cards rendered by renderAssetsOverview() -->
@@ -931,7 +931,7 @@
             </div>
 
             <div id="qboConnected" style="display:none;">
-                <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:8px;padding:12px;margin-bottom:15px;">
+                <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius: var(--radius);padding:12px;margin-bottom:15px;">
                     <div style="font-size:14px;color:#4ade80;margin-bottom:5px;">✓ Connected</div>
                     <div style="font-size:12px;color:#888;" id="qboCompanyName">Company Name</div>
                 </div>
@@ -973,18 +973,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=319"></script>
-<script src="./sync.js?v=319"></script>
-<script src="./auth-ui.js?v=319"></script>
-<script src="./profile-panel.js?v=319"></script>
-<script src="./shared.js?v=319"></script>
+<script src="./firebase-config.js?v=320"></script>
+<script src="./sync.js?v=320"></script>
+<script src="./auth-ui.js?v=320"></script>
+<script src="./profile-panel.js?v=320"></script>
+<script src="./shared.js?v=320"></script>
 <!-- Payouts are priced from the date they were PAID, not from today. Without this the writer
      has no historical prices and can only stamp the spot price at sync time. -->
-<script src="./price-history.js?v=319"></script>
-<script src="./fleet-data.js?v=319"></script>
-<script src="./widget-settings.js?v=319"></script>
-<script src="./banking.js?v=319"></script>
-<script src="./alerts.js?v=319"></script>
-<script src="./onboarding.js?v=319"></script>
+<script src="./price-history.js?v=320"></script>
+<script src="./fleet-data.js?v=320"></script>
+<script src="./widget-settings.js?v=320"></script>
+<script src="./banking.js?v=320"></script>
+<script src="./alerts.js?v=320"></script>
+<script src="./onboarding.js?v=320"></script>
 </body>
 </html>

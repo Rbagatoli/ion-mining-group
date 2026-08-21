@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="./manifest.json">
     <title>Invoice — Payment</title>
-    <link rel="stylesheet" href="./tokens.css?v=319">
+    <link rel="stylesheet" href="./tokens.css?v=320">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -21,11 +21,11 @@
         .invoice-card {
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
+            border-radius: var(--radius);
             max-width: 440px;
             width: 100%;
             padding: 32px 28px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            box-shadow: var(--shadow-card);
         }
         .business-name {
             font-size: 20px;
@@ -43,7 +43,7 @@
         .details {
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px;
+            border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 24px;
         }
@@ -61,7 +61,7 @@
             margin-bottom: 20px;
         }
         .qr-section img {
-            border-radius: 12px;
+            border-radius: var(--radius);
             background: #fff;
             padding: 10px;
             width: 220px;
@@ -74,7 +74,7 @@
         .bolt11-text {
             background: rgba(255,255,255,0.05);
             padding: 10px 50px 10px 14px;
-            border-radius: 8px;
+            border-radius: var(--radius);
             font-family: monospace;
             font-size: 11px;
             word-break: break-all;
@@ -92,7 +92,7 @@
             background: rgba(247,147,26,0.15);
             border: 1px solid rgba(247,147,26,0.3);
             color: #f7931a;
-            border-radius: 6px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-family: inherit;
         }
@@ -100,7 +100,7 @@
         .status-bar {
             text-align: center;
             padding: 14px;
-            border-radius: 10px;
+            border-radius: var(--radius);
             font-size: 14px;
             font-weight: 500;
             margin-bottom: 16px;
@@ -181,7 +181,7 @@
             </div>
 
             <div id="walletBtnWrap" style="display:none; text-align:center; margin-bottom:16px;">
-                <a id="btnOpenWallet" href="#" style="display:inline-block; padding:12px 28px; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:10px; text-decoration:none; font-size:14px; font-weight:600;">Open in Wallet</a>
+                <a id="btnOpenWallet" href="#" style="display:inline-block; padding:12px 28px; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius: var(--radius); text-decoration:none; font-size:14px; font-weight:600;">Open in Wallet</a>
             </div>
 
             <div class="footer">Secured payment via Lightning Network</div>

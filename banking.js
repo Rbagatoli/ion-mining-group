@@ -1176,7 +1176,7 @@ function renderAddressCards(data) {
                             '<div class="stat-label">Deposit Address</div>' +
                             '<div style="display:flex; align-items:center; gap:6px;">' +
                                 '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(strikeAddr) + '</div>' +
-                                '<button class="copy-addr-btn" data-addr="' + escapeHtml(strikeAddr) + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                                '<button class="copy-addr-btn" data-addr="' + escapeHtml(strikeAddr) + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                             '</div>' +
                         '</div>';
                     }
@@ -1210,7 +1210,7 @@ function renderAddressCards(data) {
                     '<div class="stat-label">Address</div>' +
                     '<div style="display:flex; align-items:center; gap:6px;">' +
                         '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(a.address) + '</div>' +
-                        '<button class="copy-addr-btn" data-addr="' + escapeHtml(a.address) + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:4px; padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                        '<button class="copy-addr-btn" data-addr="' + escapeHtml(a.address) + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Balance</div><div class="stat-value" style="color:#f7931a;">' + fmtBTC(a.lastBalance, 8) + ' BTC</div></div>' +
@@ -2211,9 +2211,9 @@ function updateOnchainBadge(type) {
     var badge = document.getElementById('onchainAddrBadge');
     if (!badge) return;
     if (type === 'strike') {
-        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;">Strike Custodial &mdash; funds appear in your Strike balance</span>';
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;">Strike Custodial &mdash; funds appear in your Strike balance</span>';
     } else {
-        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); color:#f7931a;">Self-Custody Address</span>';
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); color:#f7931a;">Self-Custody Address</span>';
     }
 }
 
@@ -2260,10 +2260,10 @@ async function renderOnchainReceiveTab() {
     }
     html += '</select></div></div>';
     html += '<div id="onchainAddrBadge" style="margin-bottom:8px; text-align:center;"></div>';
-    html += '<div style="margin:12px 0;"><img id="onchainAddrQR" width="200" height="200" style="border-radius:8px; background:#fff; padding:8px;"></div>';
+    html += '<div style="margin:12px 0;"><img id="onchainAddrQR" width="200" height="200" style="border-radius:var(--radius); background:#fff; padding:8px;"></div>';
     html += '<div style="font-size:12px; color:#aaa; margin-bottom:6px;">Bitcoin Address:</div>';
     html += '<div style="position:relative;">' +
-        '<div id="onchainAddrText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius:8px; font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
+        '<div id="onchainAddrText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius:var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
         '<button class="btn btn-secondary" id="btnCopyOnchainAddr" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>' +
     '</div>';
 
@@ -4002,11 +4002,11 @@ function renderRevenueTable(entries) {
 
         html += '<tr>' +
             '<td>' + e.date + '</td>' +
-            '<td><span style="font-size:11px; padding:3px 8px; border-radius:4px; display:inline-block; ' + sourceBadgeStyle + '">' + escapeHtml(e.source) + '</span></td>' +
+            '<td><span style="font-size:11px; padding:3px 8px; border-radius:var(--radius); display:inline-block; ' + sourceBadgeStyle + '">' + escapeHtml(e.source) + '</span></td>' +
             '<td class="btc-orange">' + fmtBTC(e.btcAmount, 8) + '</td>' +
             '<td>' + fmtUSD(e.btcPrice * mult) + '</td>' +
             '<td class="positive">' + fmtUSD(e.usdValue * mult) + '</td>' +
-            '<td><span style="font-size:11px; padding:3px 8px; border-radius:4px; display:inline-block; ' + categoryBadgeStyle + '">' + escapeHtml(e.category) + '</span></td>' +
+            '<td><span style="font-size:11px; padding:3px 8px; border-radius:var(--radius); display:inline-block; ' + categoryBadgeStyle + '">' + escapeHtml(e.category) + '</span></td>' +
         '</tr>';
     }
     tbody.innerHTML = html;

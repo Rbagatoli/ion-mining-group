@@ -211,7 +211,7 @@ function buildPieChart(currentA2) {
         var pctText = (pct * 100).toFixed(1) + '%';
         var labelColor = slice.isCurrent ? '#f7931a' : '#999';
         legendHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:' + labelColor + ';">' +
-            '<span style="width:8px;height:8px;border-radius:50%;background:' + fill + ';flex-shrink:0;"></span>' +
+            '<span style="width:8px;height:8px;border-radius:var(--radius);background:' + fill + ';flex-shrink:0;"></span>' +
             '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayLabel + '</span>' +
             '<span style="font-weight:600;">' + pctText + '</span></div>';
     }

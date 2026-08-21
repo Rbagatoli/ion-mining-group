@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Fleet Map</title>
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=319">
-    <link rel="stylesheet" href="./shared.css?v=319">
+    <link rel="stylesheet" href="./tokens.css?v=320">
+    <link rel="stylesheet" href="./shared.css?v=320">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="./chart.min.js?v=319"></script>
+    <script src="./chart.min.js?v=320"></script>
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -34,7 +34,7 @@
            top half of one surface: square bottom corners and no gap, so the pair reads as a
            single control-plus-canvas rather than two stacked cards. */
         .src-filterbar { background:var(--panel,rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.07);
-            border-bottom:0; border-radius:12px 12px 0 0; padding:12px 14px 10px; margin-bottom:0; }
+            border-bottom:0; border-radius: var(--radius); padding:12px 14px 10px; margin-bottom:0; }
         .src-filterbar + .src-status { margin:0; }
         /* The map card below completes the shape. */
         .src-filterbar ~ .map-with-list .map-card { border-top-left-radius:0; border-top-right-radius:0; }
@@ -45,11 +45,11 @@
            bare inputs fell back to the browser default (white on a dark page). */
         .src-field select, .src-field input, .src-field textarea {
             width:100%; background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.08);
-            border-radius:6px; color:#e8e8e8; font-size:13px; padding:6px 8px;
+            border-radius: var(--radius); color:#e8e8e8; font-size:13px; padding:6px 8px;
             font-family:inherit; outline:none; transition:border-color .2s, box-shadow .2s;
         }
         .src-field select:focus, .src-field input:focus, .src-field textarea:focus {
-            border-color:#f7931a; box-shadow:0 0 0 2px rgba(247,147,26,.20);
+            border-color:#f7931a; box-shadow: var(--shadow-card);
         }
         .src-field select option { background:#1a1a1a; color:#e8e8e8; }
         .src-field textarea { resize:vertical; }
@@ -62,7 +62,7 @@
         .src-field-wide { grid-column:1 / -1; }
         .range-dual { position:relative; height:30px; margin-top:6px; }
         .range-track, .range-fill {
-            position:absolute; top:13px; height:4px; border-radius:2px; pointer-events:none;
+            position:absolute; top:13px; height:4px; border-radius: var(--radius); pointer-events:none;
         }
         .range-track { left:0; right:0; background:rgba(255,255,255,.10); }
         .range-fill  { background:#f7931a; }
@@ -75,19 +75,19 @@
         .range-dual input[type=range]::-moz-range-track { background:none; border:none; }
         .range-dual input[type=range]::-webkit-slider-thumb {
             -webkit-appearance:none; appearance:none; pointer-events:auto; cursor:grab;
-            width:16px; height:16px; border-radius:50%; margin-top:7px;
-            background:#f7931a; border:2px solid #1a1a1a; box-shadow:0 0 0 1px rgba(247,147,26,.6);
+            width:16px; height:16px; border-radius: var(--knob); margin-top:7px;
+            background:#f7931a; border:2px solid #1a1a1a; box-shadow: var(--shadow-card);
         }
         .range-dual input[type=range]::-webkit-slider-thumb:active { cursor:grabbing; }
         .range-dual input[type=range]::-moz-range-thumb {
-            pointer-events:auto; cursor:grab; width:16px; height:16px; border-radius:50%;
-            background:#f7931a; border:2px solid #1a1a1a; box-shadow:0 0 0 1px rgba(247,147,26,.6);
+            pointer-events:auto; cursor:grab; width:16px; height:16px; border-radius: var(--knob);
+            background:#f7931a; border:2px solid #1a1a1a; box-shadow: var(--shadow-card);
         }
         .range-ends { display:flex; justify-content:space-between; font-size:11px; color:#f7931a;
                       font-weight:600; margin-top:-2px; }
         .src-srcfilter { display:flex; flex-wrap:wrap; gap:6px; }
         .src-srcbtn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
-                      color:#bbb; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; }
+                      color:#bbb; border-radius: var(--radius); padding:4px 10px; font-size:11px; cursor:pointer; }
         .src-srcbtn:hover { border-color:rgba(247,147,26,.5); color:#eee; }
         .src-srcbtn.on { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.6); color:#f7931a; }
         .src-srcbtn .n { color:#888; margin-left:5px; }
@@ -132,28 +132,28 @@
         .src-savedlabel { font-size:10px; text-transform:uppercase; letter-spacing:.06em;
                           color:#888; margin-right:2px; }
         .src-savedchip { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.05);
-                         border:1px solid rgba(255,255,255,.12); color:#ccc; border-radius:999px;
+                         border:1px solid rgba(255,255,255,.12); color:#ccc; border-radius: var(--radius);
                          padding:3px 5px 3px 10px; font-size:11px; cursor:pointer; }
         .src-savedchip:hover { background:rgba(247,147,26,.12); border-color:rgba(247,147,26,.4); }
         /* The chip matching the filters currently in force. Without this you cannot tell whether
            what is on screen is the saved search or something you have since changed. */
         .src-savedchip.on { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.55); color:#f7931a; }
-        .src-savedchip .x { color:#777; font-size:13px; line-height:1; padding:0 4px; border-radius:999px; }
+        .src-savedchip .x { color:#777; font-size:13px; line-height:1; padding:0 4px; border-radius: var(--radius); }
         .src-savedchip .x:hover { color:#e06c6c; background:rgba(224,108,108,.15); }
         .src-savedadd { background:rgba(247,147,26,.12); border:1px solid rgba(247,147,26,.45);
-                        color:#f7931a; border-radius:999px; padding:3px 11px; font-size:11px; cursor:pointer; }
+                        color:#f7931a; border-radius: var(--radius); padding:3px 11px; font-size:11px; cursor:pointer; }
         .src-savedadd:hover { background:rgba(247,147,26,.25); }
         .src-savedadd[disabled] { opacity:.4; cursor:default; }
         .src-savedhint { font-size:11px; color:#777; }
         .src-savedname { background:rgba(0,0,0,.35); border:1px solid rgba(247,147,26,.45); color:#eee;
-                         border-radius:6px; padding:3px 8px; font-size:11px; width:210px; }
+                         border-radius: var(--radius); padding:3px 8px; font-size:11px; width:210px; }
         .src-listcard { align-self:stretch; display:flex; flex-direction:column; }
         /* Track the map's height so the list scrolls beside it rather than past it. */
         .src-list { overflow-y:auto; flex:1; min-height:280px; max-height:540px; }
         .src-count { font-size:11px; color:#888; padding:7px 10px; border-bottom:1px solid rgba(255,255,255,.06);
                      display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .src-unfocus { background:rgba(247,147,26,.15); border:1px solid rgba(247,147,26,.5); color:#f7931a;
-                       border-radius:6px; padding:3px 9px; font-size:11px; cursor:pointer; }
+                       border-radius: var(--radius); padding:3px 9px; font-size:11px; cursor:pointer; }
         .src-unfocus:hover { background:rgba(247,147,26,.28); }
         /* Portfolio tick column in the ranked table — narrow, and it must not trigger row select. */
         .src-table th.pf-col, .src-table td.pf-col { width:26px; text-align:center; padding-left:8px; padding-right:4px; }
@@ -194,13 +194,13 @@
         .src-activefilters { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
         .src-fchip { display:inline-flex; align-items:center; gap:7px;
             background:rgba(247,147,26,.12); border:1px solid rgba(247,147,26,.45);
-            color:#f7931a; border-radius:6px; padding:4px 9px; font-size:11px; cursor:pointer;
+            color:#f7931a; border-radius: var(--radius); padding:4px 9px; font-size:11px; cursor:pointer;
             font-family:inherit; }
         .src-fchip:hover { background:rgba(247,147,26,.24); }
         .src-fchip .x { color:#c88; font-size:13px; line-height:1; }
         .src-fchip:hover .x { color:#fff; }
         .src-resetall { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16);
-            color:#ddd; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer;
+            color:#ddd; border-radius: var(--radius); padding:5px 12px; font-size:12px; cursor:pointer;
             font-family:inherit; }
         .src-resetall:hover { border-color:#f7931a; color:#f7931a; }
 
@@ -225,13 +225,13 @@
         .src-table tbody tr.sel { background:rgba(247,147,26,.14); }
         .src-table td.name { font-weight:600; color:#eee; white-space:normal; min-width:170px; }
         .src-table td.kw { color:#f7931a; font-weight:600; }
-        .src-srcchip { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px;
+        .src-srcchip { display:inline-block; padding:1px 6px; border-radius: var(--radius); font-size:9px;
                        text-transform:uppercase; letter-spacing:.04em;
                        background:rgba(120,170,255,.15); color:#8ac; }
         .src-oppcell { color:#eee; font-weight:600; }
         /* Development stage: hollow for raw resource through solid for operating, so how far
            along an asset is reads at a glance down the column. */
-        .src-stage { display:inline-block; padding:1px 7px; border-radius:8px; font-size:9px;
+        .src-stage { display:inline-block; padding:1px 7px; border-radius: var(--radius); font-size:9px;
                      text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
         .src-stage.s-raw_resource { background:transparent; border:1px solid rgba(160,160,160,.45); color:#999; }
         .src-stage.s-permitted    { background:rgba(120,170,255,.12); border:1px solid rgba(120,170,255,.4); color:#8ac; }
@@ -246,7 +246,7 @@
            argue with. */
         .src-struck { color:#777; text-decoration:line-through; font-size:11px; }
         .src-assume { color:#db2; font-size:9px; text-transform:uppercase; letter-spacing:.04em;
-                      border:1px solid rgba(221,187,34,.4); border-radius:6px; padding:0 4px; }
+                      border:1px solid rgba(221,187,34,.4); border-radius: var(--radius); padding:0 4px; }
         .src-capsum { margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,.10); }
 
         /* Distress timeline. Severity is a left border rather than text colour so the shape of a
@@ -254,12 +254,12 @@
         .src-views { display:flex; align-items:center; gap:8px; padding:8px 10px;
                      border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
         .src-view { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
-                    color:#bbb; border-radius:6px; padding:4px 11px; font-size:11px; cursor:pointer; }
+                    color:#bbb; border-radius: var(--radius); padding:4px 11px; font-size:11px; cursor:pointer; }
         .src-view:hover { border-color:rgba(247,147,26,.5); color:#eee; }
         .src-view.active { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.6); color:#f7931a; }
         .src-viewnote { font-size:11px; color:#777; margin-left:4px; }
         .wl-stage { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
-                    color:#bbb; border-radius:6px; padding:4px 11px; font-size:11px; cursor:pointer; }
+                    color:#bbb; border-radius: var(--radius); padding:4px 11px; font-size:11px; cursor:pointer; }
         .wl-stage.active { background:rgba(247,147,26,.16); border-color:rgba(247,147,26,.6); color:#f7931a; }
         .wl-stage .n { color:#eee; font-weight:600; margin-left:5px; }
         .wl-empty { padding:16px; color:#777; font-size:12px; }
@@ -273,7 +273,7 @@
         .prov-caret { display:inline-block; color:#888; font-size:11px; transition:transform .15s ease; }
         .prov-toggle[aria-expanded="true"] .prov-caret { transform:rotate(90deg); }
         .prov-toggle:hover .prov-caret, .prov-toggle:hover .section-label { color:#f7931a; }
-        .prov-toggle:focus-visible { outline:2px solid #f7931a; outline-offset:3px; border-radius:4px; }
+        .prov-toggle:focus-visible { outline:2px solid #f7931a; outline-offset:3px; border-radius: var(--radius); }
         /* Any disclosure panel, not just the provenance card. Without this a container that sets
            its own display would keep painting while the caret and aria-expanded said collapsed. */
         [hidden] { display:none !important; }
@@ -310,7 +310,7 @@
         .prov-meta { font-size:11px; color:#888; margin-top:2px; }
         .prov-caveat { font-size:11px; color:#777; margin-top:4px; }
         /* Stage colouring mirrors the pipeline's direction of travel rather than being decorative. */
-        .wl-pill { display:inline-block; padding:1px 7px; border-radius:8px; font-size:9px;
+        .wl-pill { display:inline-block; padding:1px 7px; border-radius: var(--radius); font-size:9px;
                    text-transform:uppercase; letter-spacing:.04em; }
         .wl-pill.s-unreviewed  { background:rgba(160,160,160,.15); color:#999; }
         .wl-pill.s-researching { background:rgba(120,170,255,.15); color:#8ac; }
@@ -331,7 +331,7 @@
         .src-timeline em { color:#777; font-style:normal; }
         .src-covwarn { color:#777; font-weight:400; font-size:10px; }
 
-        .src-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; letter-spacing:.04em;
+        .src-badge { display:inline-block; padding:1px 6px; border-radius: var(--radius); font-size:9px; letter-spacing:.04em;
                      text-transform:uppercase; margin-left:5px; vertical-align:middle; }
         .src-badge.t-preferred  { background:rgba(60,200,120,.18); color:#5c9; }
         .src-badge.t-workable   { background:rgba(120,170,255,.15); color:#8ac; }
@@ -358,13 +358,13 @@
         .src-crm-wide { display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-top:10px; }
         .src-saverow { margin-top:12px; display:flex; align-items:center; gap:10px; }
         .src-savebtn { background:rgba(247,147,26,.16); border:1px solid rgba(247,147,26,.55); color:#f7931a;
-                       border-radius:7px; padding:7px 15px; font-size:12px; font-weight:600; cursor:pointer; }
+                       border-radius: var(--radius); padding:7px 15px; font-size:12px; font-weight:600; cursor:pointer; }
         .src-savebtn:hover { background:rgba(247,147,26,.3); }
-        .src-ticker { display:inline-block; margin-left:8px; padding:2px 7px; border-radius:5px;
+        .src-ticker { display:inline-block; margin-left:8px; padding:2px 7px; border-radius: var(--radius);
                       font-size:11px; font-weight:600; letter-spacing:.04em;
                       background:rgba(120,170,255,.15); color:#8ac; vertical-align:middle; }
         .src-ticker.priv { background:rgba(160,160,160,.15); color:#999; }
-        .src-registry { margin-top:10px; border:1px solid rgba(255,255,255,.07); border-radius:8px;
+        .src-registry { margin-top:10px; border:1px solid rgba(255,255,255,.07); border-radius: var(--radius);
                         background:rgba(0,0,0,.25); padding:10px 12px; }
         .src-reg-row { display:grid; grid-template-columns:130px 1fr; gap:8px; padding:4px 0; font-size:12px; }
         .src-reg-k { color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding-top:2px; }
@@ -381,7 +381,7 @@
            landing in the wrong place, and it cannot be scrolled through with the widget it
            describes; anchoring the text to the thing it explains removes both problems. */
         .info-panel {
-            display:none; margin:8px 0 14px; padding:14px 16px; border-radius:10px;
+            display:none; margin:8px 0 14px; padding:14px 16px; border-radius: var(--radius);
             border:1px solid rgba(247,147,26,.28); background:rgba(247,147,26,.05);
             border-left:3px solid #f7931a;
         }
@@ -396,7 +396,7 @@
         .info-panel .cav { border-top:1px solid rgba(255,255,255,.09); margin-top:10px; padding-top:9px; }
         .sec-head { display:flex; align-items:center; gap:8px; }
         .info-btn {
-            width:17px; height:17px; flex:0 0 17px; border-radius:50%; cursor:pointer;
+            width:17px; height:17px; flex:0 0 17px; border-radius: var(--radius); cursor:pointer;
             border:1px solid rgba(247,147,26,.55); background:rgba(247,147,26,.12); color:#f7931a;
             font-size:11px; font-weight:700; line-height:1; font-family:Georgia, serif;
             display:inline-flex; align-items:center; justify-content:center; padding:0;
@@ -420,7 +420,7 @@
         .scn-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
         .scn-dirty { color:#c85; }
 
-        .pf-headline { border:1px solid rgba(247,147,26,.35); border-radius:10px; padding:14px 16px;
+        .pf-headline { border:1px solid rgba(247,147,26,.35); border-radius: var(--radius); padding:14px 16px;
                        background:linear-gradient(180deg, rgba(247,147,26,.10), rgba(247,147,26,.03)); }
         .pf-hl-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:#c99; }
         .pf-hl-value { font-size:30px; font-weight:700; color:#f7931a; line-height:1.15; margin-top:2px; }
@@ -965,39 +965,39 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=319"></script>
-<script src="./sync.js?v=319"></script>
-<script src="./auth-ui.js?v=319"></script>
-<script src="./profile-panel.js?v=319"></script>
-<script src="./shared.js?v=319"></script>
-<script src="./fleet-data.js?v=319"></script>
-<script src="./geo-data.js?v=319"></script>
+<script src="./firebase-config.js?v=320"></script>
+<script src="./sync.js?v=320"></script>
+<script src="./auth-ui.js?v=320"></script>
+<script src="./profile-panel.js?v=320"></script>
+<script src="./shared.js?v=320"></script>
+<script src="./fleet-data.js?v=320"></script>
+<script src="./geo-data.js?v=320"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.41.3/dist/globe.gl.min.js"></script>
-<script src="./price-history.js?v=319"></script>
-<script src="./network-history.js?v=319"></script>
-<script src="./calc-engine.js?v=319"></script>
-<script src="./jurisdictions.js?v=319"></script>
-<script src="./site-engine.js?v=319"></script>
-<script src="./site-flags.js?v=319"></script>
-<script src="./site-scoring.js?v=319"></script>
-<script src="./site-opportunity.js?v=319"></script>
-<script src="./site-acquirability.js?v=319"></script>
-<script src="./site-capex.js?v=319"></script>
-<script src="./site-availability.js?v=319"></script>
-<script src="./site-sources.js?v=319"></script>
-<script src="./site-model.js?v=319"></script>
-<script src="./site-catalog.js?v=319"></script>
-<script src="./source-flare-gas.js?v=319"></script>
-<script src="./permit-index.js?v=319"></script>
-<script src="./site-links.js?v=319"></script>
-<script src="./source-facility.js?v=319"></script>
-<script src="./source-landfill.js?v=319"></script>
-<script src="./prospect-store.js?v=319"></script>
-<script src="./map.js?v=319"></script>
-<script src="./map-sourcing.js?v=319"></script>
+<script src="./price-history.js?v=320"></script>
+<script src="./network-history.js?v=320"></script>
+<script src="./calc-engine.js?v=320"></script>
+<script src="./jurisdictions.js?v=320"></script>
+<script src="./site-engine.js?v=320"></script>
+<script src="./site-flags.js?v=320"></script>
+<script src="./site-scoring.js?v=320"></script>
+<script src="./site-opportunity.js?v=320"></script>
+<script src="./site-acquirability.js?v=320"></script>
+<script src="./site-capex.js?v=320"></script>
+<script src="./site-availability.js?v=320"></script>
+<script src="./site-sources.js?v=320"></script>
+<script src="./site-model.js?v=320"></script>
+<script src="./site-catalog.js?v=320"></script>
+<script src="./source-flare-gas.js?v=320"></script>
+<script src="./permit-index.js?v=320"></script>
+<script src="./site-links.js?v=320"></script>
+<script src="./source-facility.js?v=320"></script>
+<script src="./source-landfill.js?v=320"></script>
+<script src="./prospect-store.js?v=320"></script>
+<script src="./map.js?v=320"></script>
+<script src="./map-sourcing.js?v=320"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
@@ -1084,8 +1084,8 @@ commercial terms are your assumptions.</p>
     }, true);
 })();
 </script>
-<script src="./widget-settings.js?v=319"></script>
-<script src="./alerts.js?v=319"></script>
-<script src="./onboarding.js?v=319"></script>
+<script src="./widget-settings.js?v=320"></script>
+<script src="./alerts.js?v=320"></script>
+<script src="./onboarding.js?v=320"></script>
 </body>
 </html>
