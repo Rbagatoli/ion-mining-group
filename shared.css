@@ -20,26 +20,64 @@ body {
     min-height: 100vh;
     position: relative;
 }
+/* The light field. Copied from the site, where it is the whole reason the page reads as a sheet
+   of metal rather than as dark grey: four layers on deliberately non-harmonic periods
+   (1870 / 2630 / 3400px) plus an 88px machinist grid. Because the periods do not divide into
+   each other the crests drift continuously down the page and never land on a section boundary,
+   so the lighting has its own rhythm unrelated to the layout.
+
+   This replaces three orange radial gradients at 12%, 8% and 6% that covered the entire viewport.
+   They were the app's dominant visual element and they are precisely what the palette forbids:
+   "no colour bloom", and orange is an accent that is never a surface. With them in place nothing
+   else that changed was visible -- the page read as brown-black regardless of what the hairlines
+   or the corners were doing.
+
+   position:absolute, not fixed: the field must span the DOCUMENT and drift as you scroll, which
+   is the entire point of the non-harmonic periods. Not the site's z-index:-2 either -- that
+   paints behind the body background and works there only because its <html> has none. This uses
+   z-index:0 and relies on `body > * { position:relative; z-index:1 }` below, which already
+   exists. */
 body::before {
     content: '';
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background:
-        radial-gradient(ellipse 600px 600px at 15% 10%, rgba(247, 147, 26, 0.12), transparent),
-        radial-gradient(ellipse 500px 500px at 85% 40%, rgba(247, 147, 26, 0.08), transparent),
-        radial-gradient(ellipse 700px 400px at 50% 85%, rgba(247, 147, 26, 0.06), transparent);
-    pointer-events: none;
+    position: absolute;
+    inset: 0;
     z-index: 0;
+    background-image:
+        linear-gradient(101deg,
+            transparent 6%,
+            rgba(229,228,226,0.028) 20%,
+            rgba(229,228,226,0.068) 33%,
+            rgba(246,245,243,0.095) 43%,
+            rgba(229,228,226,0.044) 55%,
+            rgba(229,228,226,0.011) 68%,
+            transparent 82%),
+        linear-gradient(259deg,
+            transparent 12%,
+            rgba(229,228,226,0.022) 32%,
+            rgba(229,228,226,0.058) 50%,
+            rgba(246,245,243,0.082) 60%,
+            rgba(229,228,226,0.022) 74%,
+            transparent 90%),
+        linear-gradient(180deg,
+            rgba(229,228,226,0.026) 0%, transparent 24%,
+            rgba(229,228,226,0.019) 48%, transparent 72%,
+            rgba(229,228,226,0.024) 100%),
+        linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
+    background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
+    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
+    pointer-events: none;
 }
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
-    body::before {
-        background:
-            radial-gradient(ellipse 300px 300px at 15% 10%, rgba(247, 147, 26, 0.08), transparent),
-            radial-gradient(ellipse 250px 250px at 85% 40%, rgba(247, 147, 26, 0.05), transparent),
-            radial-gradient(ellipse 350px 200px at 50% 85%, rgba(247, 147, 26, 0.04), transparent);
-    }
+    /* The grid tightens on a narrow screen so the cell stays a cell rather than becoming a
+       backdrop. The drifting layers are left alone -- they are sized in viewport-independent
+       pixels and read the same at any width. */
+    body::before { background-size: 100% 1870px, 100% 2630px, 100% 3400px, 56px 56px, 56px 56px; }
+    /* Opaque surfaces on mobile, where a translucent panel over a moving field costs a
+       composite on every scroll frame. --surface, not the old hardcoded rgba(6,6,6,0.85),
+       which ignored --bg entirely and so survived every previous palette change. */
     .card, .metric-card, .miner-card, .input-wrapper, .ion-nav, .fleet-toggle-row, .slide-panel .panel-inner {
-        background: rgba(6, 6, 6, 0.85);
+        background: var(--surface);
     }
 }
 
@@ -386,7 +424,42 @@ tbody tr.halving-row { background: rgba(247, 147, 26, 0.10); }
 .live-status.live { color: #4ade80; }
 .live-status.offline { color: #888; }
 
-.section-label { font-size: 18px; font-weight: 500; color: #e8e8e8; margin-bottom: 12px; letter-spacing: 0.5px; }
+/* Chrome type. The site's signature: a hard dark-to-bright flip near 50% is what makes these
+   read as machined metal rather than as grey text. Restricted to STATIC headings -- never a
+   live-updating number, never a table cell. background-clip:text re-rasterises the gradient on
+   every textContent write, and because the gradient is sized to the element box a three-character
+   cell and a nine-character cell land on completely different slices of the ramp, so rows in a
+   column would not match each other. */
+.page-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    letter-spacing: -0.028em;
+    color: var(--plat-200);
+}
+.section-label { font-size: 18px; font-weight: 500; color: var(--plat-100); margin-bottom: 12px; letter-spacing: 0.2px; }
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    /* SOFT chrome, not the full flip. --metal-plat drops to #6d6c69 at 47% and back to #f2f1ef
+       at 52%; across a 74px display heading that hard horizon is what makes it read as metal,
+       but across 22px it lands mid-glyph and reads as a rendering fault. The site draws exactly
+       this line -- full flip for .h-display and .h-section, soft everywhere below. */
+    .page-title {
+        background-image: var(--metal-plat-soft);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+    /* Section labels get the SOFTER chrome. At 18px the full flip reads as noise rather than
+       as metal -- the site draws the same distinction. */
+    .section-label, .chart-title-row h3 {
+        background-image: var(--metal-plat-soft);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+}
 
 footer {
     text-align: center; padding: 24px 16px; color: #555; font-size: 12px;

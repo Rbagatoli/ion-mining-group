@@ -599,6 +599,13 @@ async function fetchLiveMarketData() {
 }
 
 // ===== TECH LINES BACKGROUND =====
+// Platinum, not orange. The particle field is painted to a canvas, so var(--plat-200) cannot
+// reach it -- this is the CSS/JS boundary tokens.css warns about, and a constant is the JS-side
+// answer. It was rgba(247,147,26,...) at nine call sites, which combined with the three orange
+// radial gradients on body::before to make the whole app read brown rather than black. Orange is
+// an accent that is never a surface, and a full-viewport particle field is a surface.
+var TECH_INK = 'rgba(229, 228, 226, ';
+
 (function() {
     var canvas = document.getElementById('techLinesCanvas');
     if (!canvas) return;
@@ -740,7 +747,7 @@ async function fetchLiveMarketData() {
             var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + S.opacity.toFixed(4) + ')';
+            ctx.fillStyle = TECH_INK + S.opacity.toFixed(4) + ')';
             var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
             var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
 
@@ -760,7 +767,7 @@ async function fetchLiveMarketData() {
 
             // Glow pass
             if (L.glow && opacity > 0.04) {
-                ctx.strokeStyle = 'rgba(247, 147, 26, ' + (opacity * 0.3).toFixed(4) + ')';
+                ctx.strokeStyle = TECH_INK + (opacity * 0.3).toFixed(4) + ')';
                 ctx.lineWidth = L.width + 4;
                 ctx.beginPath();
                 if (L.horizontal) {
@@ -774,7 +781,7 @@ async function fetchLiveMarketData() {
             }
 
             // Main line
-            ctx.strokeStyle = 'rgba(247, 147, 26, ' + opacity.toFixed(4) + ')';
+            ctx.strokeStyle = TECH_INK + opacity.toFixed(4) + ')';
             ctx.lineWidth = L.width;
             ctx.beginPath();
             if (L.horizontal) {
@@ -795,7 +802,7 @@ async function fetchLiveMarketData() {
 
             // Outer ring
             if (N.ring) {
-                ctx.strokeStyle = 'rgba(247, 147, 26, ' + (nOpacity * 0.4).toFixed(4) + ')';
+                ctx.strokeStyle = TECH_INK + (nOpacity * 0.4).toFixed(4) + ')';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.arc(N.x, N.y, N.radius + 3, 0, Math.PI * 2);
@@ -803,14 +810,14 @@ async function fetchLiveMarketData() {
             }
 
             // Filled dot
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + nOpacity.toFixed(4) + ')';
+            ctx.fillStyle = TECH_INK + nOpacity.toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(N.x, N.y, N.radius, 0, Math.PI * 2);
             ctx.fill();
 
             // Glow
             if (nOpacity > 0.1) {
-                ctx.fillStyle = 'rgba(247, 147, 26, ' + (nOpacity * 0.15).toFixed(4) + ')';
+                ctx.fillStyle = TECH_INK + (nOpacity * 0.15).toFixed(4) + ')';
                 ctx.beginPath();
                 ctx.arc(N.x, N.y, N.radius + 6, 0, Math.PI * 2);
                 ctx.fill();
@@ -836,19 +843,19 @@ async function fetchLiveMarketData() {
             }
 
             // Bright pulse dot
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + P.maxOpacity.toFixed(3) + ')';
+            ctx.fillStyle = TECH_INK + P.maxOpacity.toFixed(3) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size * 0.4, 0, Math.PI * 2);
             ctx.fill();
 
             // Pulse glow
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + (P.maxOpacity * 0.2).toFixed(4) + ')';
+            ctx.fillStyle = TECH_INK + (P.maxOpacity * 0.2).toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size, 0, Math.PI * 2);
             ctx.fill();
 
             // Large soft glow
-            ctx.fillStyle = 'rgba(247, 147, 26, ' + (P.maxOpacity * 0.06).toFixed(4) + ')';
+            ctx.fillStyle = TECH_INK + (P.maxOpacity * 0.06).toFixed(4) + ')';
             ctx.beginPath();
             ctx.arc(px, py, P.size * 3, 0, Math.PI * 2);
             ctx.fill();
