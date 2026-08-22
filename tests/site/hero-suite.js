@@ -92,6 +92,83 @@ const DEAD = ['top-zone', 'BLOCK_RUN', 'plate-hash', 'plate-fuel', 'stack-window
         ok(left.length === 0, '  nothing dead left in ' + f, left.join(', '));
     });
 
+/* ---------- 9. The field measures, and that is now allowed ----------
+
+   Section 7 forbids site.js from measuring anything, because of the loop that
+   pulled this animation once: read the HOST's border box, write it into
+   canvas.style (a content box), and a ResizeObserver grew the panel ~2px every
+   150ms forever.
+
+   hero-anim.js DOES measure now — it has to, or a 1px particle gets stretched
+   into a 2.9px smear and the rise looks soft next to the portal's. So the rule
+   here is not "don't measure", it is the three things the loop actually needed,
+   each of which is checked:
+
+     read a box that includes borders  — no, it reads the canvas's own content box
+     write something that moves layout — no, only canvas.width/height, and every
+                                         .anim-field is out of flow anyway
+     an observer to close the circle   — no, only window 'resize'
+
+   Comments are stripped first. This file's header explains the bug by NAME, so
+   a plain indexOf would match the explanation and pass having checked nothing —
+   the same trap the ledger and firestore-rules suites both record. */
+const anim = fs.readFileSync(D + 'hero-anim.js', 'utf8');
+const code = anim.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+['getBoundingClientRect', 'offsetWidth', 'offsetHeight', 'ResizeObserver'].forEach(b => {
+    ok(code.indexOf(b) < 0, '  hero-anim.js never uses ' + b);
+});
+ok(code.indexOf('.style') < 0,
+   '  and never writes any style — the write half of the loop is absent');
+ok(/canvas\.clientWidth/.test(code) && /canvas\.clientHeight/.test(code),
+   '  it measures the CANVAS, not the host',
+   'a content box read against a content box');
+ok(/canvas\.width\s*=\s*Math\.round\(w \* dpr\)/.test(code),
+   '  the backing store is the measured size — 1 logical px is 1 CSS px');
+ok(/data-w/.test(code) && /data-h/.test(code),
+   '  the authored size survives as the not-laid-out fallback',
+   '0x0 means unmeasured, never zero');
+
+/* Out of flow is what makes the measurement non-circular: CSS is already
+   overriding the intrinsic size, so writing the backing store cannot move a
+   pixel of layout and there is nothing for the next read to pick up. */
+ok(fRule.indexOf('position: absolute') >= 0 && fRule.indexOf('inset: 0') >= 0 &&
+   fRule.indexOf('width: 100%') >= 0 && fRule.indexOf('height: 100%') >= 0,
+   '  and the canvas is out of flow, so a backing-store write cannot feed back');
+
+/* The sharpness half. A 1px rect at a fractional coordinate is split across two
+   device pixels at partial alpha in each, which is a smudge and not a pixel. */
+ok(/fill\(col, a, Math\.round\(Q\.x\), Math\.round\(Q\.y\)/.test(code),
+   '  particles land on whole pixels');
+
+/* One CSS opacity dims the whole canvas, so raising it for the gas raises the
+   lattice too. LATTICE_DIM exists to put the fabric back exactly where it was;
+   if somebody retunes the canvas value alone, the hero gets busier by stealth
+   and this catches it. */
+const heroOp = (css.match(/\.anim-field--hero \{ opacity: ([0-9.]+)/) || [])[1];
+const dim = code.match(/var LATTICE_DIM = ([0-9.]+) \/ ([0-9.]+);/);
+ok(!!heroOp && !!dim, '  the hero opacity and LATTICE_DIM are both findable');
+if (heroOp && dim) {
+    ok(+dim[2] === +heroOp,
+       '  LATTICE_DIM is stated against the opacity actually shipping',
+       'divisor ' + dim[2] + ', css ' + heroOp);
+    ok(Math.abs(+heroOp * (+dim[1] / +dim[2]) - 0.35) < 1e-9,
+       '  so the lattice still lands at 0.35 — only the gas moved',
+       'effective ' + (+heroOp * (+dim[1] / +dim[2])).toFixed(4));
+}
+
+/* The header field was the thing reported as dimmer than the portal's. It is
+   brighter than the diagram fields on purpose: .wrap lifts the headline out of
+   this stacking context, so type never competes with the field for a pixel,
+   whereas a drawing genuinely shares pixels with its backdrop. */
+const headOp = +(css.match(/\.anim-field--head \{ opacity: ([0-9.]+)/) || [])[1];
+const dgOp = +(css.match(/\.anim-field--dg\s+\{ opacity: ([0-9.]+)/) || [])[1];
+ok(headOp > dgOp && headOp > +heroOp,
+   '  the header field is the brightest of the three',
+   'head ' + headOp + ', dg ' + dgOp + ', hero ' + heroOp);
+ok(css.indexOf('.hero-zone > .wrap { position: relative; z-index: 1; }') >= 0,
+   '  and .hero-zone lifts its wrap, or the field lays over the headline');
+
 console.log('');
 console.log(fail ? fail + ' FAILED' : 'ALL OK');
 process.exitCode = fail ? 1 : 0;

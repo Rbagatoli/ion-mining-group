@@ -590,20 +590,35 @@ p + p { margin-top: 16px; }
    field-ceiling.js: every stroke in a drawing is translucent light on whatever
    the field leaves underneath, so a brighter field costs it contrast. 0.55 is
    where the leader hairlines still keep 88% of theirs. */
-.anim-field--hero { opacity: 0.35; }
+/* 0.35 -> 0.60. This dims the WHOLE canvas, so it used to be one number doing
+   two jobs: holding the lattice back and holding the gas back with it. The gas
+   is the part that was asked to come forward — the portal's field runs
+   undimmed and that is the reference — so this value is now set for the rise,
+   and hero-anim.js's LATTICE_DIM multiplies the fabric back to the 0.35 it was
+   already at. The lattice is unchanged; only the gas moved. */
+.anim-field--hero { opacity: 0.60; }
 .anim-field--dg   { opacity: 0.55; }
 
 /* The header field, on every marketing page except the home hero.
 
-   BRIGHTER than the hero's 0.35, which is the opposite of what it looks like it
-   should be. The hero has a lattice at the top and a solve beat crossing it, so
-   its 0.35 is carrying three things; a header has only gas, and at the same
-   value the rise reads as smudge under the headline rather than as anything
-   moving. Tried at 0.30 first and it was barely visible at all.
+   BRIGHTER than the hero, which is the opposite of what it looks like it should
+   be. The hero has a lattice at the top and a solve beat crossing it; a header
+   has only gas, and at the hero's value the rise reads as smudge under the
+   headline rather than as anything moving. Tried at 0.30 first and it was
+   barely visible at all.
 
-   Still below the diagram fields' 0.55, for the obvious reason: a headline is
-   type somebody has to read, a drawing is a picture they only have to look at. */
-.anim-field--head { opacity: 0.50; }
+   0.50 -> 0.85, to match the portal, which is what this was measured against.
+   That field's canvas is undimmed and its scrim clears to rgba(0,0,0,0.12) at
+   the edges, so a producer signing in sees the rise at roughly 0.88 — near
+   twice a header's 0.50. "On the portal the rising pixels seem more prominent"
+   was that gap, and it is the whole of the gap now that the canvas is no longer
+   being stretched.
+
+   Above the diagram fields' 0.55, which reverses the old order and is right:
+   the headline is lifted out of this stacking context by .wrap's z-index, so
+   the type is never competing with the field for the same pixels. A drawing
+   IS in the same pixels as its backdrop, so that one still has to give way. */
+.anim-field--head { opacity: 0.85; }
 
 /* .hero already lifts its .wrap; .hero-zone did not, because until now nothing
    was ever painted behind one. The canvas is position:absolute and therefore

@@ -55,6 +55,16 @@
     var LINK_AT     = 0.5;    // charge above which neighbours link
     var SOLVE_MS    = 700;    // scanline duration
 
+    /* One CSS opacity dims this whole canvas, so brightening the gas brightens
+       the lattice with it. The stylesheet value is now set for the GAS — the
+       portal's field has no dimming at all and that is the reference — and the
+       lattice carries its own multiplier back down to where it already was.
+       0.35 was the hero's canvas opacity before, 0.60 is after; the ratio is
+       what keeps the fabric exactly as busy as it was while the rise gets the
+       brightness it was asked for. Only the lattice takes it: the gas, the
+       source line and the haze are the parts meant to come up. */
+    var LATTICE_DIM = 0.35 / 0.60;
+
     var w = 0, h = 0, latticeH = 0, sourceY = 0;
     var particles = [], emitters = [], nodes = [], cols = 0, rows = 0;
     var maxParticles = 140;
@@ -68,35 +78,50 @@
 
     /* ---- Layout -------------------------------------------------------
 
-       The canvas is a FIXED logical size and CSS scales it. That is not a
-       preference. The first version of this file read the host's
-       getBoundingClientRect() — a BORDER box — and wrote the result into
-       canvas.style, which sizes a CONTENT box. Every ResizeObserver tick
-       therefore added the border width and re-triggered the observer: the
-       panel grew about 2px every 150ms and build() re-ran roughly seven times
-       a second. That is the whole of the "glitchy and constantly expanding"
-       this animation was pulled for.
+       THE BUG THIS FILE WAS PULLED FOR, AND WHY THE FIX IS NOT "DON'T MEASURE".
+       The first version read the HOST's getBoundingClientRect() — a BORDER box
+       — and wrote the result into canvas.style, which sizes a CONTENT box.
+       Every ResizeObserver tick therefore added the border width and
+       re-triggered the observer: the panel grew about 2px every 150ms and
+       build() re-ran roughly seven times a second. That is the whole of the
+       "glitchy and constantly expanding".
 
-       So: nothing here reads geometry, and nothing anywhere writes to
-       canvas.style. There is no path from a write back to a read, which makes
-       that failure structurally impossible rather than merely fixed. The
-       canvas carries its intrinsic size and the stylesheet gives it
-       width:100%; height:auto — the aspect ratio does the rest.
+       The loop needed three things: a read of a box that includes borders, a
+       WRITE that changes layout, and an observer closing the circle. Nothing
+       here does any of them.
 
-       devicePixelRatio is read once for the backing store. It is a display
-       property, not a layout one, and nothing we draw can change it. */
+         - It reads the CANVAS's own clientWidth/clientHeight, which is a
+           content box measured against a content box.
+         - It writes canvas.width/height — the BACKING STORE — and never
+           canvas.style. Every .anim-field is position:absolute; inset:0 with
+           width and height at 100%, so it is out of flow and CSS is already
+           overriding the intrinsic size. Changing the backing store cannot
+           move a single pixel of layout, so there is nothing for a read to
+           pick up.
+         - No ResizeObserver. Only window 'resize', which no canvas write can
+           possibly fire.
+
+       WHY MEASURE AT ALL. The fixed logical size was stretched by CSS, and the
+       stretch was never uniform: the contact header ran a 430px-tall field into
+       1249px of box, so every 1px particle became a 2.9px interpolated smear.
+       That softness is what "the portal ones are sharper" was pointing at — the
+       portal sizes to the viewport and has none of it. Backing store == display
+       size is the only way a one-pixel particle is one pixel.
+
+       data-w / data-h survive as the fallback for a host that is not laid out
+       yet (display:none, or a diagram in a collapsed section measures 0x0), and
+       as the aspect the field was tuned at. */
 
     function build() {
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-        /* The logical size comes from the element's own data attributes. That
-           is a number we wrote reading a number we wrote — not a measurement,
-           and nothing drawn can change it. Declaring it per host is what lets a
-           wide backdrop be laid out wide instead of being a tall field
-           stretched sideways: the emitter spacing, the lattice and the particle
-           budget all derive from w and h. */
-        w = Math.max(120, +canvas.getAttribute('data-w') || 480);
-        h = Math.max(120, +canvas.getAttribute('data-h') || 600);
+        /* Measured, with the authored size as the floor-case. A 0x0 read means
+           "not laid out", not "zero wide" — the same rule as everywhere else in
+           this repo, where an absent measurement is never silently a number. */
+        w = Math.round(canvas.clientWidth)  || +canvas.getAttribute('data-w') || 480;
+        h = Math.round(canvas.clientHeight) || +canvas.getAttribute('data-h') || 600;
+        w = Math.max(120, w);
+        h = Math.max(120, h);
 
         canvas.width  = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
@@ -115,8 +140,16 @@
            the widest field on the site rather than for the 480px panel this
            started as, where the old 160/9 clamped a backdrop to half density
            and made it read as absent. Raised again when the hero field grew to
-           cover the stats strip below it. */
-        maxParticles = Math.round(Math.min(420, Math.max(70, w * h / 2600)));
+           cover the stats strip below it.
+
+           420 -> 900, matching portal/gas-field.js, when this file started
+           measuring. The rule asks for 586 particles across a real 1473x1034
+           hero and 708 across the contact header, so 420 was truncating both by
+           a third and the field read as a starfield rather than as gas coming
+           off a source — the portal's own comment records raising it for
+           exactly that reason at exactly that size. The two files now agree on
+           the cap as well as on the rule. */
+        maxParticles = Math.round(Math.min(900, Math.max(70, w * h / 2600)));
 
         // Emitters along the source line, each flickering on its own phase.
         emitters = [];
@@ -247,7 +280,8 @@
                 if (!M || M.charge <= LINK_AT) continue;
                 var la = Math.min(N.charge, M.charge) - LINK_AT;
                 var hotLink = N.hot > 0 && M.hot > 0;
-                ctx.strokeStyle = 'rgba(' + (hotLink ? HOT : PLAT) + ',' + (la * 0.5).toFixed(3) + ')';
+                ctx.strokeStyle = 'rgba(' + (hotLink ? HOT : PLAT) + ',' +
+                                  (la * 0.5 * LATTICE_DIM).toFixed(3) + ')';
                 ctx.beginPath();
                 ctx.moveTo(N.x, N.y);
                 ctx.lineTo(M.x, M.y);
@@ -261,13 +295,14 @@
             var a = 0.06 + P.charge * 0.55;
             var rgb = P.hot > 0 ? HOT : PLAT;
             if (P.hot > 0) a = Math.max(a, 0.35 + P.hot * 0.55);
+            a *= LATTICE_DIM;
 
             if (P.charge > 0.45) fill(rgb, a * 0.10, P.x - 4.5, P.y - 4.5, 9, 9);
             fill(rgb, a, P.x - 1.5, P.y - 1.5, 3, 3);
 
             // Sealed nodes get machined tick marks.
             if (P.charge > 0.8) {
-                var ta = (P.charge - 0.8) * 2.2;
+                var ta = (P.charge - 0.8) * 2.2 * LATTICE_DIM;
                 fill(rgb, ta * 0.6, P.x - 5, P.y, 3, 1);
                 fill(rgb, ta * 0.6, P.x + 2, P.y, 3, 1);
             }
@@ -278,8 +313,8 @@
             var edge = Math.min(1, solve.at / SOLVE_MS) * w;
             var row = nodes[solve.row * cols];
             if (row) {
-                fill(HOT, 0.5, edge - 1, row.y - 7, 1, 14);
-                fill(WARM, 0.10, edge - 9, row.y - 7, 9, 14);
+                fill(HOT, 0.5 * LATTICE_DIM, edge - 1, row.y - 7, 1, 14);
+                fill(WARM, 0.10 * LATTICE_DIM, edge - 9, row.y - 7, 9, 14);
             }
         }
 
@@ -300,7 +335,12 @@
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
             var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);
             var a = 0.14 + (1 - climb) * 0.5;
-            fill(col, a, Q.x, Q.y, Q.size, Q.size);
+            /* Whole pixels. A 1px rect at a fractional coordinate is split
+               across two device pixels at partial alpha in each, which is a
+               grey smudge and not a pixel. gas-field.js has always rounded
+               here; this file did not, and it is the second half of why the
+               portal's rise looked sharper than the site's. */
+            fill(col, a, Math.round(Q.x), Math.round(Q.y), Q.size, Q.size);
         }
 
         // --- Heat haze above the source ---
@@ -356,14 +396,35 @@
 
     /* ---- Wiring -------------------------------------------------------- */
 
-    /* No resize wiring at all. The field is laid out in fixed logical units,
-       so a resize changes nothing it would need to know about — and the
-       observer that used to live here was half of the bug described above. */
+    /* Resize IS wired now, because the field is laid out in measured pixels
+       rather than fixed ones. Deliberately window 'resize' and NOT a
+       ResizeObserver: 'resize' is fired by the viewport and by nothing this
+       code can do, so the circuit the old bug needed cannot close. Debounced at
+       the same 200ms gas-field.js uses, because a drag would otherwise
+       reallocate the particle array on every intermediate width. */
+    function rebuildIfResized() {
+        var cw = Math.round(canvas.clientWidth), ch = Math.round(canvas.clientHeight);
+        if (!cw || !ch) return;                                  // not laid out
+        if (Math.abs(cw - w) < 2 && Math.abs(ch - h) < 2) return; // nothing moved
+        build();
+        if (reduced) still();
+    }
+
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(rebuildIfResized, 200);
+    });
 
     if (window.IntersectionObserver) {
         new IntersectionObserver(function (entries) {
             visible = entries[0].isIntersecting;
-            if (visible) start(); else stop();
+            /* A host that was not laid out when build() first ran measured 0x0
+               and fell back to its authored size. Four of the diagram backdrops
+               are in sections like that; the moment one scrolls into view it
+               has a real box, so re-measure here rather than leave it
+               stretched for the whole visit. */
+            if (visible) { rebuildIfResized(); start(); } else stop();
         }, { threshold: 0 }).observe(host);
     }
 
