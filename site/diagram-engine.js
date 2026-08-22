@@ -59,6 +59,35 @@
        other scene, which costs one unused path per slot. */
     var LAYERS = ['ground', 'inside', 'back', 'asics', 'end', 'side', 'top', 'detail', 'flame'];
 
+    /* Which layers the plant is SOLID in, for the occluder the gas field reads.
+
+       The rule: a layer contributes iff its fill describes enclosed volume.
+         end / side / top   the lit faces of every solid
+         inside             the cutaway interior
+         asics              the machines (geometrically inside `inside` on every
+                            scene measured, but the rule is what survives new
+                            geometry, not a hand-kept exception list)
+         flame              a real filled surface, and gas drifting through the
+                            fire says the flare is not destroying it
+
+       And what is excluded, which matters more:
+         ground   a 0.04 surface the scene stands ON, not a volume. It spans
+                  ~80% of the frame and its lower edge runs off the bottom, so
+                  occluding it would delete the source line, the emitter flicker
+                  and the haze — the whole subject of the animation. Gas coming
+                  up through the earth is the correct reading for a landfill.
+         back     fill:none. Its hairlines are the x-ray content the field must
+                  not hide, and some of them — the flare stack's guy wires — run
+                  out into open air where an occluding smear would be a scar.
+         detail   fill:none, and drawn on faces the fills already cover.
+         flow     dashed on purpose; the gaps ARE the message.
+         node     already fully opaque, so a no-op.
+
+       This list is deliberately NOT LAYERS-shaped: adding to LAYERS would make
+       every drawing on the site silently refuse to mount until all three pages
+       were regenerated. */
+    var OCCLUDING = ['inside', 'asics', 'end', 'side', 'top', 'flame'];
+
 
     /* Views that move together. Scenes load as separate modules and never see
        each other, so the link is looked up by name rather than passed around. */
@@ -415,6 +444,13 @@
             var hlEl = byId('dg-highlight');
             if (!flowEl || !hlEl) return;
 
+            /* Optional on purpose — no bail if it is missing. Every other
+               element above is geometry this engine cannot draw without, so a
+               missing one means the markup is stale and stopping is right. The
+               occluder is a courtesy to a canvas that may not be there, and a
+               page without it should still get its drawing. */
+            var occEl = byId('dg-occluder');
+
             var leaders = {}, bubbles = {};
             CALLOUTS.forEach(function (c) {
                 leaders[c.id] = byId('dg-lead-' + c.id);
@@ -435,12 +471,26 @@
 
             function paint() {
                 var f = frame(yaw, hover);
+                var occ = '';
                 for (var i = 0; i < f.slots.length; i++) {
                     var L = f.slots[i], g = slots[i];
                     for (var li = 0; li < LAYERS.length; li++) {
                         g[LAYERS[li]].setAttribute('d', L[LAYERS[li]]);
                     }
+                    /* One union path for the WHOLE drawing, not one per slot.
+                       A slot is a depth rank, not an object — frame() re-sorts
+                       renderables into them every turn — so a per-slot occluder
+                       would have the near object blanking the far one, and
+                       scene-site is built on seeing the far container's top
+                       tier through the near container's wall. Concatenating is
+                       safe because every layer string starts a fresh subpath
+                       with M, and the canvas fills nonzero, so a machine inside
+                       a container does not punch a hole in its own occluder. */
+                    if (occEl) {
+                        for (var oi = 0; oi < OCCLUDING.length; oi++) occ += L[OCCLUDING[oi]];
+                    }
                 }
+                if (occEl) occEl.setAttribute('d', occ);
                 for (var h = 0; h < f.hits.length; h++) {
                     hitEls[h].setAttribute('d', f.hits[h].d);
                     hitEls[h].setAttribute('data-region', f.hits[h].id);

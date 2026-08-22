@@ -214,7 +214,23 @@ function svgOf(D, alt, p) {
     `\n        <path class="dg-hit" id="${p}dg-hit${i}" data-region="${h.id}" d="${h.d}"/>`
   ).join('');
 
+  /* The occluder is DATA, not a drawing. It never renders — styles.css gives it
+     display:none — and exists so the gas field on the canvas behind this SVG
+     knows which pixels the plant is standing in front of.
+
+     Why the canvas erases instead of this painting an opaque shape: what sits
+     behind the canvas is not a flat colour. .dg-wrap's background is
+     rgba(255,255,255,0.016) over the body's diagonal light field and its 88px
+     grid, so an opaque silhouette — whatever colour you picked — would read as
+     a hole punched through the panel wherever that sheen is bright. Erasing
+     removes the particles and nothing else.
+
+     It ships with d="" rather than a baked yaw-0 union. Baking it would add
+     roughly half the slot geometry again to every page, and it would buy
+     nothing: the only reader is a canvas that JS also has to start, so with
+     scripting off there is no field to occlude. */
   return `<svg class="site-diagram" id="${p}siteDiagram" viewBox="0 0 ${D.VB.w} ${D.VB.h}" preserveAspectRatio="xMidYMid meet" tabindex="0" role="img" aria-label="${esc(alt)}">
+        <path class="dg-occluder" id="${p}dg-occluder" d=""/>
         <path class="dg-flow" id="${p}dg-flow" d="${f.flow}"/>${slots}
         <path class="dg-highlight" id="${p}dg-highlight" d=""/>${leaders}${nodes}${hits}
       </svg>`;

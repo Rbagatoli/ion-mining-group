@@ -53,11 +53,41 @@
     var MAX_DT    = 0.05;   // clamp, so a backgrounded tab cannot teleport the field
     var SHIMMER_H = 62;     // heat haze height above the source line
 
-    var w = 0, h = 0, sourceY = 0;
+    var w = 0, h = 0, sourceY = 0, dpr = 1;
     var particles = [], emitters = [];
     var maxParticles = 140;
     var raf = null, last = 0, t = 0;
     var visible = true;
+
+    /* ---- The drawing in front, when there is one ----------------------
+
+       Behind each engineering drawing this field would otherwise be visible
+       THROUGH the plant: those faces are translucent on purpose — 0.42 on a
+       top, 0.30 on a side, 0.20 on an end — so that you can read a container's
+       racks and its back edges through its own walls. That x-ray look is the
+       point of the drawing. Gas rising through the machine is not; it reads as
+       dirt on the glass.
+
+       So the drawing publishes its silhouette and the field subtracts it. Two
+       things are deliberate here.
+
+       IT ERASES RATHER THAN SOMETHING PAINTING OVER IT. The obvious fix is an
+       opaque copy of the drawing between the canvas and the SVG. But what sits
+       behind this canvas is not a flat colour: .dg-wrap is
+       rgba(255,255,255,0.016) over the body's diagonal light field and its 88px
+       grid, measured varying across the panel. An opaque silhouette in any
+       single colour reads as a hole punched through that sheen. Erasing takes
+       the particles and leaves everything else exactly as it was.
+
+       IT IS ONE PATH FOR THE WHOLE DRAWING. diagram-engine.js unions it across
+       every slot before publishing, because a slot is a depth rank rather than
+       an object — see the note there.
+
+       Absent on twelve of the thirteen canvases, and that is the normal case. */
+    var occEl = host && host.querySelector ? host.querySelector('.dg-occluder') : null;
+    var occSvg = host && host.querySelector ? host.querySelector('svg.site-diagram') : null;
+    var vbW = 0, vbH = 0, occD = null, occPath = null;
+    var canOcclude = !!(occEl && occSvg && typeof Path2D !== 'undefined');
 
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -99,7 +129,20 @@
        aspect the field was tuned at. */
 
     function build() {
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        /* The drawing's user space, read once per build. An attribute we wrote,
+           not a measurement — the sibling SVG's rendered box was checked to sit
+           exactly on the canvas's (dx 0, dy 0, and w/vbW equal to h/vbH), so
+           the mapping below is a uniform scale. It is still written as
+           min-with-centring, because that is what preserveAspectRatio="xMidYMid
+           meet" on the SVG actually promises and the two must not disagree if
+           the layout ever changes. */
+        if (canOcclude) {
+            var vb = (occSvg.getAttribute('viewBox') || '').split(/[\s,]+/);
+            vbW = +vb[2] || 0;
+            vbH = +vb[3] || 0;
+        }
 
         /* Measured, with the authored size as the floor-case. A 0x0 read means
            "not laid out", not "zero wide" — the same rule as everywhere else in
@@ -229,6 +272,36 @@
             fill(HOT, 0.13 * burn, E.x - 20, sourceY - 4, 40, 5);
         }
         fill(WARM, 0.30, 0, sourceY + 1, w, 1);
+
+        occlude();
+    }
+
+    /* Last, so it takes the source line and the haze too — the plant stands in
+       front of those as much as it stands in front of the gas. */
+    function occlude() {
+        if (!canOcclude || !vbW || !vbH) return;
+        var d = occEl.getAttribute('d') || '';
+        /* Rebuilt only when the geometry actually changes. The drawing turns
+           continuously while it is on screen, so this is usually every frame,
+           but a still one costs a string compare. */
+        if (d !== occD) {
+            occD = d;
+            occPath = d ? new Path2D(d) : null;
+        }
+        if (!occPath) return;
+
+        var s = Math.min(w / vbW, h / vbH);
+        ctx.save();
+        ctx.setTransform(dpr * s, 0, 0, dpr * s,
+                         dpr * (w - vbW * s) / 2, dpr * (h - vbH * s) / 2);
+        /* Nonzero, which is the canvas default and is load-bearing: the union
+           nests machines inside containers and three tongues inside one flame,
+           and evenodd would let each of those punch a hole back through the
+           silhouette it sits in. */
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = '#000';
+        ctx.fill(occPath);
+        ctx.restore();
     }
 
     /* ---- Loop ---------------------------------------------------------- */

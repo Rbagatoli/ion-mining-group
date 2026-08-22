@@ -225,6 +225,78 @@ ok(html.indexOf('anim-field--hero') >= 0 &&
    fs.readFileSync(D + 'energy.html', 'utf8').indexOf('anim-field--dg') >= 0,
    '  the marker classes are still on the canvases');
 
+/* ---------- 11. The drawing tells the field where not to paint ----------
+
+   The engineering drawings are translucent on purpose — 0.42 on a top face,
+   0.30 on a side, 0.20 on an end — so a container's racks and its back edges
+   read through its own walls. That is the drawing. What was ALSO reading
+   through it was the gas field on the canvas behind, and particles inside a
+   machine look like dirt on the glass rather than like gas.
+
+   The fix is a contract between three files, and none of them is comprehensible
+   alone, so it is asserted here in one place:
+
+     build-diagram.js   emits an empty <path class="dg-occluder"> per drawing
+     diagram-engine.js  unions the solid layers into its d, every frame
+     hero-anim.js       reads that d and subtracts it from the field
+
+   WHY THE CANVAS ERASES rather than something opaque painting over it: what
+   sits behind the canvas is not a flat colour. .dg-wrap is
+   rgba(255,255,255,0.016) over the body's diagonal light field and its 88px
+   grid, and that was measured varying across the panel — so an opaque
+   silhouette in any single colour reads as a hole punched through the sheen.
+   Erasing removes the particles and nothing else. */
+const engine = fs.readFileSync(D + 'diagram-engine.js', 'utf8');
+const engineCode = engine.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+/* (a) One occluder per drawing, on every page that has drawings, id-prefixed
+   the way every other id in a drawing is — energy.html carries four. */
+[['index.html', 1], ['hosting.html', 2], ['energy.html', 4]].forEach(pair => {
+    const src = fs.readFileSync(D + pair[0], 'utf8');
+    const occ = (src.match(/class="dg-occluder"/g) || []).length;
+    const wraps = (src.match(/class="dg-wrap /g) || []).length;
+    ok(occ === pair[1] && occ === wraps,
+       '  ' + pair[0] + ' has one occluder per drawing',
+       occ + ' occluders, ' + wraps + ' drawings');
+    /* Emitted BEFORE the geometry. It never renders, so this cannot currently
+       matter — but the day somebody gives it a fill, the difference between
+       "behind the drawing" and "over the drawing" is the whole feature. */
+    ok(src.indexOf('class="dg-occluder"') < src.indexOf('class="dg-slot"'),
+       '  and sits ahead of the slots in paint order');
+});
+ok(/\.dg-occluder \{ display: none; \}/.test(css),
+   '  it is display:none — data, not a layer of the drawing');
+
+/* (b) The engine fills it from the layers that describe enclosed VOLUME.
+   Excluding the ground is the load-bearing half: it spans most of the frame
+   and its lower edge runs off the bottom, so occluding it would delete the
+   source line, the emitter flicker and the haze — the subject of the field. */
+const occSet = (engineCode.match(/var OCCLUDING = \[([^\]]*)\]/) || [])[1] || '';
+['inside', 'asics', 'end', 'side', 'top', 'flame'].forEach(L => {
+    ok(occSet.indexOf("'" + L + "'") >= 0, '  the plant is solid in ' + L);
+});
+['ground', 'back', 'detail', 'flow', 'node'].forEach(L => {
+    ok(occSet.indexOf("'" + L + "'") < 0,
+       '  and NOT in ' + L, L === 'ground' ? 'or the source line goes with it' : '');
+});
+ok(!/LAYERS = \[[^\]]*occluder/.test(engineCode),
+   '  the occluder is not a LAYERS entry',
+   'adding one makes every drawing silently refuse to mount until all three pages are rebuilt');
+ok(/if \(occEl\)/.test(engineCode) && !/if \(!occEl\) return/.test(engineCode),
+   '  and the engine tolerates its absence rather than bailing',
+   'the drawing must still work on a page with no field behind it');
+
+/* (c) The field subtracts it. destination-out, and NOT evenodd: the union nests
+   machines inside containers and three tongues inside one flame, so evenodd
+   would let each punch a hole back through the silhouette it sits in. */
+ok(/destination-out/.test(code), '  the field erases the silhouette');
+ok(/new Path2D\(/.test(code), '  built from the published path data');
+ok(!/fill\(\s*occPath\s*,/.test(code),
+   '  filled nonzero, so nested solids do not punch holes in their own occluder');
+ok(code.indexOf('occlude();') >= 0 &&
+   code.indexOf('occlude();') > code.indexOf('sourceY + 1'),
+   '  and erases last, so the plant covers the source line and haze too');
+
 console.log('');
 console.log(fail ? fail + ' FAILED' : 'ALL OK');
 process.exitCode = fail ? 1 : 0;
