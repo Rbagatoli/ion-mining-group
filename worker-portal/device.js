@@ -39,10 +39,17 @@
 // forged device still cannot reach a site it is not bound to in KV -- but it is a single point of
 // failure and whoever operates this should know that.
 
+// Set on BOTH module.exports and the global, unconditionally.
+//
+// The Worker has no `module`, so it needs the global. Node has one, so the test suites can
+// require() this directly. And when node imports it from an ESM file BOTH are defined -- an
+// either/or wrapper takes the module.exports branch there and leaves the global undefined, which
+// is a failure that only appears in the Worker entry point and not in any test.
 (function(root, factory) {
-    if (typeof module !== 'undefined' && module.exports) module.exports = factory();
-    else root.PortalDevice = factory();
-})(typeof self !== 'undefined' ? self : this, function() {
+    var api = factory();
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    root.PortalDevice = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
     'use strict';
 
     // Five minutes, matching worker-orders/stripe.js. A device that cannot hold its clock to five

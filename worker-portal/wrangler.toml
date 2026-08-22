@@ -1,0 +1,25 @@
+name = "ion-portal"
+main = "index.mjs"
+compatibility_date = "2024-12-01"
+
+# Sellers, sites, meters, devices, readings, contracts and statements all live here.
+# Create with:  wrangler kv namespace create PORTAL
+[[kv_namespaces]]
+binding = "PORTAL"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Not a secret — the same public project id the browser already carries in firebase-config.js.
+# It is here so the token verifier can check `aud` and `iss` without a round trip.
+FIREBASE_PROJECT_ID = "ion-mining"
+
+# Secrets, set with `wrangler secret put <NAME>` — never in this file:
+#
+#   OPS_SECRET        bearer token for the owner-only routes. If it is UNSET those routes are
+#                     CLOSED, not open — see isOwner(). Do not "temporarily" leave it out.
+#
+#   DEVICE_ROOT_KEY   every field meter's signing secret is derived from this as
+#                     HMAC(root, device_id + ':' + kid), so no per-device secret is ever stored
+#                     and a KV dump leaks nothing. The trade-off is real and worth stating:
+#                     compromise of this key compromises every meter at once, so it is rotated by
+#                     issuing new kids, and revoking a kid stops it signing immediately.

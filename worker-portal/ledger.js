@@ -38,10 +38,17 @@
 // SEPARATE record type with an author and a document reference, and they never enter segments[].
 // There is no source: 'interpolated' anywhere, and a test asserts the string does not appear.
 
+// Set on BOTH module.exports and the global, unconditionally.
+//
+// The Worker has no `module`, so it needs the global. Node has one, so the test suites can
+// require() this directly. And when node imports it from an ESM file BOTH are defined -- an
+// either/or wrapper takes the module.exports branch there and leaves the global undefined, which
+// is a failure that only appears in the Worker entry point and not in any test.
 (function(root, factory) {
-    if (typeof module !== 'undefined' && module.exports) module.exports = factory();
-    else root.PortalLedger = factory();
-})(typeof self !== 'undefined' ? self : this, function() {
+    var api = factory();
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    root.PortalLedger = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
     'use strict';
 
     // A device that cannot hold its clock to five minutes is broken and must be fixed, so the
