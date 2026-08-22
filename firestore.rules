@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// ===== ION MINING GROUP — Firestore authorization =====
+//
+// WHY THIS FILE EXISTS, AND WHY IT DID NOT BEFORE.
+//
+// This is a static site. There is no server between the browser and Firestore, so THESE RULES
+// ARE THE ENTIRE AUTHORIZATION LAYER. Every check in the client is a UI convenience: sync.js
+// builds users/{uid}/data/{key} from firebase.auth().currentUser.uid, but anyone can open
+// devtools and ask for a different uid. The path convention is naming, not isolation.
+//
+// Until now no rules file existed anywhere in this repo or in its history. Whatever is live in
+// the Firebase console was written by hand, is not versioned, is not reviewable, and cannot be
+// redeployed from source. For a single-operator sync tool that was a tolerable risk, because the
+// only data at stake was the operator's own. It stops being tolerable the moment a second party
+// has an account, which is exactly what the client portal introduces.
+//
+// DEPLOY WITH:  firebase deploy --only firestore:rules
+//
+// THE WHOLE DATA SURFACE IS ONE PATH. Verified by grep across the repo -- collection() and .doc()
+// appear in exactly two files:
+//     sync.js:50       users/{uid}/data/{key}      get, set(merge)
+//     sync.js:159      users/{uid}/data            list, for pullAll
+//     profile-panel.js:211, :244                   list + batch delete, for "delete cloud data"
+// Nothing else touches Firestore. So everything below the user document is denied by omission,
+// and that is deliberate: a rule that is easy to audit is worth more than one that anticipates
+// features nobody has written.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The one allowed surface. A signed-in user reaches their own data subcollection and nothing
+    // else. `uid` here is the path segment; request.auth.uid is who the caller actually is, and
+    // the two must be the same string.
+    match /users/{uid}/data/{key} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // The parent user document itself is never read or written by any code in this repo. Denying
+    // it rather than leaving it open means a future feature has to come back here and say so,
+    // which is the point.
+    //
+    // NOTE ON EMAIL VERIFICATION: firebase-config.js sends a verification mail on sign-up but
+    // nothing enforces it, and profile-panel.js only renders a badge. Adding
+    // `request.auth.token.email_verified` here would lock out any existing account that never
+    // clicked the link -- including, quite possibly, the operator's. The portal enforces
+    // verification at INVITE REDEMPTION instead, where it can fail safely with an explanation.
+
+    // Default deny. Anything not matched above is refused, including any collection a future
+    // change adds without updating this file.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
