@@ -267,17 +267,48 @@ const engineCode = engine.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/
 ok(/\.dg-occluder \{ display: none; \}/.test(css),
    '  it is display:none — data, not a layer of the drawing');
 
-/* (b) The engine fills it from the layers that describe enclosed VOLUME.
-   Excluding the ground is the load-bearing half: it spans most of the frame
-   and its lower edge runs off the bottom, so occluding it would delete the
-   source line, the emitter flicker and the haze — the subject of the field. */
+/* (b) The engine fills it from every layer that declares a FILL.
+
+   GROUND IS THE ONE THAT MATTERS, and it is asserted here because it was got
+   wrong once in exactly the way that leaves the suite green. Left out, every
+   drawing on index.html and hosting.html looks perfect — they have no ground
+   layer — while the landfill and flare drawings, the only two that do, still
+   show gas through the earth. Nothing else in this file would have caught that,
+   because nothing else knows the two pages differ. */
 const occSet = (engineCode.match(/var OCCLUDING = \[([^\]]*)\]/) || [])[1] || '';
-['inside', 'asics', 'end', 'side', 'top', 'flame'].forEach(L => {
-    ok(occSet.indexOf("'" + L + "'") >= 0, '  the plant is solid in ' + L);
+['ground', 'inside', 'asics', 'end', 'side', 'top', 'flame'].forEach(L => {
+    ok(occSet.indexOf("'" + L + "'") >= 0, '  the plant is solid in ' + L,
+       L === 'ground' ? 'the landfill cap and the wellpad slab are made of this' : '');
 });
-['ground', 'back', 'detail', 'flow', 'node'].forEach(L => {
-    ok(occSet.indexOf("'" + L + "'") < 0,
-       '  and NOT in ' + L, L === 'ground' ? 'or the source line goes with it' : '');
+['back', 'detail', 'flow', 'node'].forEach(L => {
+    ok(occSet.indexOf("'" + L + "'") < 0, '  and NOT in ' + L, 'no fill, no silhouette');
+});
+
+/* The rule stated as a check rather than as prose: every layer with a fill
+   contributes, and only those. Read off the stylesheet, so adding a filled
+   layer later and forgetting the occluder fails here instead of shipping.
+
+   Its own helper rather than rule() above, which looks for the selector
+   followed by exactly one space — the layer block aligns its braces
+   (".dg-top    {") so rule() finds nothing there and every check reads a
+   garbage slice. And the fill test asks for "fill: none" rather than using a
+   negative lookahead, because /fill:\s*(?!none)/ backtracks \s* to zero and
+   matches the space in front of "none".
+
+   .dg-node is deliberately not on the list: it declares a fill, but it is
+   opaque annotation painted after the whole drawing, so nothing can show
+   through it and occluding it would be a no-op. */
+const layerRule = L => {
+    const m = css.match(new RegExp('^\\.dg-' + L + '\\s*\\{([^}]*)\\}', 'm'));
+    return m ? m[1] : null;
+};
+['ground', 'inside', 'asics', 'end', 'side', 'top', 'flame',
+ 'back', 'detail', 'flow'].forEach(L => {
+    const r = layerRule(L);
+    const fills = r !== null && /fill:/.test(r) && !/fill:\s*none/.test(r);
+    ok(r !== null && fills === (occSet.indexOf("'" + L + "'") >= 0),
+       '  .dg-' + L + ': ' + (fills ? 'fills, so it occludes' : 'fill:none, so it does not'),
+       r === null ? 'RULE NOT FOUND' : '');
 });
 ok(!/LAYERS = \[[^\]]*occluder/.test(engineCode),
    '  the occluder is not a LAYERS entry',

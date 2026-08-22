@@ -1190,12 +1190,18 @@ p + p { margin-top: 16px; }
    keeps it out of the picture; the attribute is still readable.
 
    THE RULE FOR WHAT GOES IN IT, because the set is easy to get wrong later: a
-   layer contributes iff its fill describes enclosed VOLUME. So the faces, the
-   cutaway interior, the machines and the flame do; the ground the plant stands
-   on does not — it is a 0.04 surface spanning most of the frame, and occluding
-   it would delete the source line and the haze that the field exists to show.
-   Stroke-only layers have no silhouette at all. The list lives in
-   diagram-engine.js's OCCLUDING, with the full argument. */
+   layer contributes iff it declares a FILL. Filled area is surface you look AT;
+   the stroke-only layers are marks on surfaces that already contribute, and
+   .dg-back's guy wires are hairlines in open air with no silhouette at all.
+
+   The ground counts. It was left out at first on the theory that a 0.04 surface
+   spanning most of the frame should not blank the field — which was measured
+   against a prototype that PAINTED the silhouette, where it was true. Erasing
+   leaves the ground exactly as translucent as it was. Leaving it out is also
+   what made the landfill and flare drawings, the only two with a ground plane,
+   still show gas through them while every other drawing looked clean.
+
+   The list lives in diagram-engine.js's OCCLUDING, with the full argument. */
 .dg-occluder { display: none; }
 
 .dg-top    { fill: rgba(229, 228, 226, 0.42); stroke: none; }

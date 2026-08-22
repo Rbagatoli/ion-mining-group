@@ -61,32 +61,49 @@
 
     /* Which layers the plant is SOLID in, for the occluder the gas field reads.
 
-       The rule: a layer contributes iff its fill describes enclosed volume.
+       The rule: a layer contributes iff it declares a FILL. Anything with a
+       filled area is a surface you are meant to be looking at rather than
+       through, whatever it is made of.
          end / side / top   the lit faces of every solid
          inside             the cutaway interior
-         asics              the machines (geometrically inside `inside` on every
-                            scene measured, but the rule is what survives new
-                            geometry, not a hand-kept exception list)
-         flame              a real filled surface, and gas drifting through the
-                            fire says the flare is not destroying it
+         asics              the machines
+         flame              a filled surface, and gas drifting through the fire
+                            says the flare is not destroying it
+         ground             the earth the plant stands on — the landfill cap's
+                            apron and the wellpad slab
 
-       And what is excluded, which matters more:
-         ground   a 0.04 surface the scene stands ON, not a volume. It spans
-                  ~80% of the frame and its lower edge runs off the bottom, so
-                  occluding it would delete the source line, the emitter flicker
-                  and the haze — the whole subject of the animation. Gas coming
-                  up through the earth is the correct reading for a landfill.
+       GROUND WAS EXCLUDED AT FIRST, AND THAT WAS A MISTAKE WORTH RECORDING,
+       because the reasoning was sound and the evidence behind it was not. The
+       argument was that the ground is a 0.04 surface spanning most of the frame,
+       so occluding it would blank the field across the picture and delete the
+       source line with it. That was checked against a prototype that PAINTED an
+       opaque silhouette, where it was true and looked terrible: the ground
+       turned into a black slab and stopped reading as translucent at all.
+
+       Erasing is not painting. Subtracting the ground from the canvas leaves the
+       ground exactly as translucent as it was — its 0.04 fill, its grid, the
+       panel sheen behind it, all untouched — and removes only the particles
+       behind it. Measured after the fact: the source line survives on 99-100% of
+       the bottom edge through a full turn, because the quad's near edge never
+       actually reaches it.
+
+       The visible consequence of getting this wrong was precise: index.html and
+       hosting.html have NO ground layer, so those drawings looked completely
+       clean, while the landfill and flare drawings — the only ones with a ground
+       plane — still showed gas through it.
+
+       Excluded, and these hold:
          back     fill:none. Its hairlines are the x-ray content the field must
                   not hide, and some of them — the flare stack's guy wires — run
                   out into open air where an occluding smear would be a scar.
          detail   fill:none, and drawn on faces the fills already cover.
-         flow     dashed on purpose; the gaps ARE the message.
+         flow     fill:none, and dashed on purpose; the gaps ARE the message.
          node     already fully opaque, so a no-op.
 
        This list is deliberately NOT LAYERS-shaped: adding to LAYERS would make
        every drawing on the site silently refuse to mount until all three pages
        were regenerated. */
-    var OCCLUDING = ['inside', 'asics', 'end', 'side', 'top', 'flame'];
+    var OCCLUDING = ['ground', 'inside', 'asics', 'end', 'side', 'top', 'flame'];
 
 
     /* Views that move together. Scenes load as separate modules and never see
