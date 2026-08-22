@@ -141,33 +141,55 @@ ok(fRule.indexOf('position: absolute') >= 0 && fRule.indexOf('inset: 0') >= 0 &&
 ok(/fill\(col, a, Math\.round\(Q\.x\), Math\.round\(Q\.y\)/.test(code),
    '  particles land on whole pixels');
 
-/* One CSS opacity dims the whole canvas, so raising it for the gas raises the
-   lattice too. LATTICE_DIM exists to put the fabric back exactly where it was;
-   if somebody retunes the canvas value alone, the hero gets busier by stealth
-   and this catches it. */
-const heroOp = (css.match(/\.anim-field--hero \{ opacity: ([0-9.]+)/) || [])[1];
-const dim = code.match(/var LATTICE_DIM = ([0-9.]+) \/ ([0-9.]+);/);
-ok(!!heroOp && !!dim, '  the hero opacity and LATTICE_DIM are both findable');
-if (heroOp && dim) {
-    ok(+dim[2] === +heroOp,
-       '  LATTICE_DIM is stated against the opacity actually shipping',
-       'divisor ' + dim[2] + ', css ' + heroOp);
-    ok(Math.abs(+heroOp * (+dim[1] / +dim[2]) - 0.35) < 1e-9,
-       '  so the lattice still lands at 0.35 — only the gas moved',
-       'effective ' + (+heroOp * (+dim[1] / +dim[2])).toFixed(4));
-}
-
-/* The header field was the thing reported as dimmer than the portal's. It is
-   brighter than the diagram fields on purpose: .wrap lifts the headline out of
-   this stacking context, so type never competes with the field for a pixel,
-   whereas a drawing genuinely shares pixels with its backdrop. */
-const headOp = +(css.match(/\.anim-field--head \{ opacity: ([0-9.]+)/) || [])[1];
-const dgOp = +(css.match(/\.anim-field--dg\s+\{ opacity: ([0-9.]+)/) || [])[1];
-ok(headOp > dgOp && headOp > +heroOp,
-   '  the header field is the brightest of the three',
-   'head ' + headOp + ', dg ' + dgOp + ', hero ' + heroOp);
 ok(css.indexOf('.hero-zone > .wrap { position: relative; z-index: 1; }') >= 0,
    '  and .hero-zone lifts its wrap, or the field lays over the headline');
+
+/* ---------- 10. One field, thirteen canvases ----------
+
+   The hero used to run a third part the other twelve backdrops did not: a
+   lattice across its top where hashrate crystallised out of the arriving gas,
+   plus the links between charged nodes and a scanline sealing a row every nine
+   to fifteen seconds. It made the home page read as a different site from every
+   other page, so it is gone and every backdrop is now the same animation.
+
+   Two things have to hold for "the same" to keep meaning anything, and neither
+   is visible from reading one file. */
+
+/* (a) The lattice is gone from the CODE, not merely unreachable. A dormant
+   riseOnly branch would have been the tempting version of this change and it
+   would have left ~120 lines and a node grid one attribute away from coming
+   back on one canvas. Comment-stripped, because the header explains at length
+   what used to be here and names all of it. */
+['NODE_GAP', 'LATTICE_PCT', 'LINK_AT', 'LATTICE_DIM', 'SOLVE_MS', 'DECAY',
+ 'nodeAt', 'nodes', 'latticeH', 'solveAt', 'riseOnly', 'data-mode'].forEach(n => {
+    ok(code.indexOf(n) < 0, '  no lattice: ' + n + ' is absent from hero-anim.js');
+});
+ok(!/data-mode/.test(html), '  and no canvas asks for a mode any more');
+
+/* The one line where deleting a lattice name required substituting a VALUE
+   rather than removing code: the first build scattered particles between the
+   lattice and the source, because nothing above the lattice survived to be
+   seen. Left alone it would have read rand(0, sourceY) as rand(latticeH=0, ...)
+   by accident and looked right for the wrong reason. */
+ok(/P\.y = scatter \? rand\(0, sourceY\)/.test(code),
+   '  the first build scatters over the whole box, not from a lattice line');
+
+/* (b) ONE opacity, in one place. Three selectors used to disagree — 0.35 hero,
+   0.55 behind the drawings, 0.85 on the headers — each argued for separately
+   and each true of a different animation. They cannot disagree again without
+   this failing. */
+const fieldOp = (fRule.match(/opacity:\s*([0-9.]+)/) || [])[1];
+ok(!!fieldOp, '  .anim-field carries the field opacity itself', 'opacity ' + fieldOp);
+const modOp = css.match(/\.anim-field--\w+[^{]*\{[^}]*opacity/g) || [];
+ok(modOp.length === 0,
+   '  and no modifier class overrides it',
+   modOp.length ? modOp.join(' | ') : 'none — hero, head and dg are one field');
+
+/* The modifiers survive as markers rather than styles, and two suites identify
+   canvases by them, so they must not be tidied out of the markup. */
+ok(html.indexOf('anim-field--hero') >= 0 &&
+   fs.readFileSync(D + 'energy.html', 'utf8').indexOf('anim-field--dg') >= 0,
+   '  the marker classes are still on the canvases');
 
 console.log('');
 console.log(fail ? fail + ' FAILED' : 'ALL OK');

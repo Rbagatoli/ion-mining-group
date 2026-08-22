@@ -1,24 +1,38 @@
-/* ===== ION MINING GROUP — Hero animation =====
-   "Energy → hashrate", the company thesis drawn literally, bottom to top:
+/* ===== ION MINING GROUP — the gas field =====
+   Stranded energy combusting and rising, drawn bottom to top:
 
-     source line   stranded energy combusting — flare, landfill, curtailed power
+     source line   flare, landfill, curtailed power — energy with no customer
      rise          that energy travelling upward, cooling orange → platinum
-     lattice       hashrate crystallising as the energy arrives
 
-   Square geometry and a two-colour palette, to match the rest of the sheet.
+   ONE FIELD, EVERYWHERE. Every backdrop on the marketing site is this, at the
+   same density and the same brightness: the home hero, each page header, and
+   the canvas behind each engineering drawing. portal/gas-field.js is the same
+   animation again for the producer sign-in, sized to a viewport instead of to
+   an element. A producer arriving from ionmininggroup.com sees one substance
+   moving one way on every screen, because it is one piece of code.
+
+   WHAT USED TO BE HERE. A third part: a lattice across the top of the hero
+   where hashrate crystallised out of the arriving gas, with links knitting
+   between charged nodes and a scanline that sealed a row every nine to fifteen
+   seconds. It was the busiest thing on the site and it was on exactly one
+   backdrop out of thirteen, so the hero read as a different page from the rest
+   of the site. Removing it is what made them all the same — and it took the
+   node grid, the charge decay, the absorption test and the solve beat with it,
+   about 120 lines and ~1,400 live objects per frame on energy.html alone.
+
    No dependencies. Glow is layered low-alpha rectangles, never ctx.shadowBlur —
-   shadowBlur is by far the most expensive thing you can do on a canvas this busy.
+   shadowBlur is by far the most expensive thing you can do on a canvas this
+   busy.
 
    Self-disables on prefers-reduced-motion (draws one composed still instead),
-   when scrolled out of view, when the tab is hidden, and below 980px where the
-   column does not exist. */
+   when scrolled out of view, and when the tab is hidden. */
 
 (function () {
     'use strict';
 
     /* One independent field per host. Every piece of state below lives inside
-       mount(), so two fields on a page cannot share a particle array, a
-       lattice, or an animation frame. */
+       mount(), so two fields on a page cannot share a particle array or an
+       animation frame. */
     Array.prototype.forEach.call(
         document.querySelectorAll('canvas.anim-field'), mount);
 
@@ -26,50 +40,19 @@
     if (!canvas || !canvas.getContext) return;
     var host = canvas.parentNode;
 
-    /* data-mode="rise" draws the middle third of the thesis only: source line
-       and rising gas, no lattice, no links, no solve beat.
-
-       It exists because the lattice is the half that says HASHRATE, and most
-       page headers are not making that argument -- an energy seller reading
-       about gas purchase does not need a fabric knitting itself behind the
-       headline. The home hero still runs all three parts, because that is the
-       one page where the whole thesis is the point.
-
-       Almost nothing needs a branch for it. With no nodes the lattice loops in
-       draw() iterate zero times and the absorption test in step() never fires,
-       so the mode falls out of an empty array rather than out of conditionals
-       sprinkled through the draw path. */
-    var riseOnly = canvas.getAttribute('data-mode') === 'rise';
-
     var ctx = canvas.getContext('2d', { alpha: true });
 
     var PLAT = '229,228,226';
     var HOT  = '247,147,26';
     var WARM = '255,196,107';
 
-    var MAX_DT      = 0.05;   // clamp, so a backgrounded tab cannot teleport the field
-    var NODE_GAP    = 34;     // lattice spacing, px
-    var LATTICE_PCT = 0.56;   // top share of the panel the lattice occupies
-    var SHIMMER_H   = 62;     // heat haze height above the source line
-    var DECAY       = 0.6;    // node charge lost per second
-    var LINK_AT     = 0.5;    // charge above which neighbours link
-    var SOLVE_MS    = 700;    // scanline duration
+    var MAX_DT    = 0.05;   // clamp, so a backgrounded tab cannot teleport the field
+    var SHIMMER_H = 62;     // heat haze height above the source line
 
-    /* One CSS opacity dims this whole canvas, so brightening the gas brightens
-       the lattice with it. The stylesheet value is now set for the GAS — the
-       portal's field has no dimming at all and that is the reference — and the
-       lattice carries its own multiplier back down to where it already was.
-       0.35 was the hero's canvas opacity before, 0.60 is after; the ratio is
-       what keeps the fabric exactly as busy as it was while the rise gets the
-       brightness it was asked for. Only the lattice takes it: the gas, the
-       source line and the haze are the parts meant to come up. */
-    var LATTICE_DIM = 0.35 / 0.60;
-
-    var w = 0, h = 0, latticeH = 0, sourceY = 0;
-    var particles = [], emitters = [], nodes = [], cols = 0, rows = 0;
+    var w = 0, h = 0, sourceY = 0;
+    var particles = [], emitters = [];
     var maxParticles = 140;
     var raf = null, last = 0, t = 0;
-    var solveAt = 0, solve = null;
     var visible = true;
 
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -104,13 +87,12 @@
        WHY MEASURE AT ALL. The fixed logical size was stretched by CSS, and the
        stretch was never uniform: the contact header ran a 430px-tall field into
        1249px of box, so every 1px particle became a 2.9px interpolated smear.
-       That softness is what "the portal ones are sharper" was pointing at — the
-       portal sizes to the viewport and has none of it. Backing store == display
-       size is the only way a one-pixel particle is one pixel.
+       Backing store == display size is the only way a one-pixel particle is
+       one pixel.
 
        data-w / data-h survive as the fallback for a host that is not laid out
-       yet (display:none, or a diagram in a collapsed section measures 0x0), and
-       as the aspect the field was tuned at. */
+       yet (a diagram in the fuel switch's hidden pane measures 0x0), and as the
+       aspect the field was tuned at. */
 
     function build() {
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -127,28 +109,25 @@
         canvas.height = Math.round(h * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        latticeH = h * LATTICE_PCT;
         /* The source burns ON the bottom edge, not above it. It sat at h - 8,
-           which stretched to about eleven pixels of dead space under the hero
-           and eight under a drawing — enough that the bright line read as a
-           separate rule hovering over the perimeter rather than as the floor of
-           the box. Two 1px lines are drawn from here, so h - 2 puts the pair
-           flush against the bottom with both still inside the canvas. */
-        sourceY  = h - 2;
-        /* Both counts below are densities per unit of area and per unit of
-           width. The ceilings are a frame-rate stop, nothing more — sized for
-           the widest field on the site rather than for the 480px panel this
-           started as, where the old 160/9 clamped a backdrop to half density
-           and made it read as absent. Raised again when the hero field grew to
-           cover the stats strip below it.
+           which read as a separate rule hovering over the perimeter rather than
+           as the floor of the box. Two 1px lines are drawn from here, so h - 2
+           puts the pair flush against the bottom with both still inside the
+           canvas.
 
-           420 -> 900, matching portal/gas-field.js, when this file started
-           measuring. The rule asks for 586 particles across a real 1473x1034
-           hero and 708 across the contact header, so 420 was truncating both by
-           a third and the field read as a starfield rather than as gas coming
-           off a source — the portal's own comment records raising it for
-           exactly that reason at exactly that size. The two files now agree on
-           the cap as well as on the rule. */
+           This is the one place the site's field differs from the portal's,
+           which pushes the source to h + 12 so the emitters sit below the fold.
+           A full-viewport sign-in has no bottom edge to be the floor of; these
+           do, and on the hero that line is also the bevel between the hero zone
+           and the band beneath it (see .hero-zone + .band::before). */
+        sourceY = h - 2;
+
+        /* Density per unit of AREA, not width, so a tall box is not sparse.
+           The ceiling is a frame-rate stop, nothing more. It is 900 rather than
+           the 420 it was, because at real measured sizes the rule asks for 586
+           across the hero and 708 across the contact header — 420 truncated
+           both by a third and the field read as a starfield rather than as gas
+           coming off a source. Same number as portal/gas-field.js. */
         maxParticles = Math.round(Math.min(900, Math.max(70, w * h / 2600)));
 
         // Emitters along the source line, each flickering on its own phase.
@@ -162,30 +141,6 @@
             });
         }
 
-        /* latticeH is what a particle is absorbed AT, so zero means nothing
-           absorbs and the gas simply leaves the top. */
-        if (riseOnly) {
-            latticeH = 0;
-            cols = rows = 0;
-            nodes = [];
-            particles = [];
-            for (var rp = 0; rp < maxParticles; rp++) particles.push(spawn({}, true));
-            return;
-        }
-
-        // Lattice, inset so nodes never touch the panel edge.
-        cols = Math.max(2, Math.floor((w - 28) / NODE_GAP));
-        rows = Math.max(2, Math.floor((latticeH - 28) / NODE_GAP));
-        var ox = (w - (cols - 1) * NODE_GAP) / 2;
-        var oy = (latticeH - (rows - 1) * NODE_GAP) / 2 + 8;
-
-        nodes = [];
-        for (var r = 0; r < rows; r++) {
-            for (var c = 0; c < cols; c++) {
-                nodes.push({ x: ox + c * NODE_GAP, y: oy + r * NODE_GAP, r: r, c: c, charge: 0, hot: 0 });
-            }
-        }
-
         particles = [];
         for (var p = 0; p < maxParticles; p++) particles.push(spawn({}, true));
     }
@@ -193,24 +148,17 @@
     function spawn(P, scatter) {
         var em = emitters[(Math.random() * emitters.length) | 0];
         P.x = em ? em.x + rand(-5, 5) : w / 2;
-        P.y = scatter ? rand(latticeH, sourceY) : sourceY - rand(0, 6);
+        /* Scattered over the WHOLE box on first build, so the field is already
+           full rather than filling from the bottom over the first ten seconds.
+           This used to start at the lattice line, because nothing above it
+           survived to be seen. */
+        P.y = scatter ? rand(0, sourceY) : sourceY - rand(0, 6);
         P.vy = -rand(18, 46);
         P.drift = rand(0.006, 0.02);
         P.phase = rand(0, Math.PI * 2);
         P.amp = rand(3, 11);
         P.size = Math.random() > 0.72 ? 2 : 1;
         return P;
-    }
-
-    function nodeAt(x, y) {
-        if (!nodes.length) return null;
-        var first = nodes[0];
-        var c = Math.round((x - first.x) / NODE_GAP);
-        var r = Math.round((y - first.y) / NODE_GAP);
-        if (c < 0 || c >= cols || r < 0 || r >= rows) return null;
-        var n = nodes[r * cols + c];
-        if (!n) return null;
-        return (Math.abs(n.x - x) < NODE_GAP * 0.5 && Math.abs(n.y - y) < NODE_GAP * 0.5) ? n : null;
     }
 
     /* ---- Simulation ---------------------------------------------------- */
@@ -223,38 +171,10 @@
             P.y += P.vy * dt;
             P.x += Math.sin(P.y * P.drift + P.phase) * P.amp * dt;
 
-            // Absorbed by the lattice, or off the top — either way, recycle.
-            if (P.y < latticeH) {
-                var n = nodeAt(P.x, P.y);
-                if (n) {
-                    n.charge = Math.min(1, n.charge + 0.5);
-                    spawn(P, false);
-                    continue;
-                }
-            }
+            /* Off the top or out the side — recycle. A particle could also be
+               absorbed by the lattice once; there is nothing to absorb it now,
+               so gas simply leaves the top of the box. */
             if (P.y < -4 || P.x < -20 || P.x > w + 20) spawn(P, false);
-        }
-
-        for (var k = 0; k < nodes.length; k++) {
-            var N = nodes[k];
-            if (N.charge > 0) N.charge = Math.max(0, N.charge - DECAY * dt);
-            if (N.hot > 0) N.hot = Math.max(0, N.hot - dt * 1.1);
-        }
-
-        // The solve beat: a scanline crossing one row, sealing it.
-        if (riseOnly) return;
-        if (!solve && t > solveAt) {
-            solve = { row: (Math.random() * rows) | 0, at: 0 };
-        }
-        if (solve) {
-            solve.at += dt * 1000;
-            var prog = Math.min(1, solve.at / SOLVE_MS);
-            var edge = prog * w;
-            for (var s = 0; s < cols; s++) {
-                var sn = nodes[solve.row * cols + s];
-                if (sn && sn.x <= edge) { sn.charge = 1; sn.hot = 1; }
-            }
-            if (prog >= 1) { solve = null; solveAt = t + rand(9, 15); }
         }
     }
 
@@ -268,78 +188,23 @@
     function draw() {
         ctx.clearRect(0, 0, w, h);
 
-        // --- Lattice links: the fabric knitting itself as charge arrives ---
-        ctx.lineWidth = 1;
-        for (var i = 0; i < nodes.length; i++) {
-            var N = nodes[i];
-            if (N.charge <= LINK_AT) continue;
-            var right = (N.c < cols - 1) ? nodes[i + 1] : null;
-            var down  = (N.r < rows - 1) ? nodes[i + cols] : null;
-            for (var d = 0; d < 2; d++) {
-                var M = d ? down : right;
-                if (!M || M.charge <= LINK_AT) continue;
-                var la = Math.min(N.charge, M.charge) - LINK_AT;
-                var hotLink = N.hot > 0 && M.hot > 0;
-                ctx.strokeStyle = 'rgba(' + (hotLink ? HOT : PLAT) + ',' +
-                                  (la * 0.5 * LATTICE_DIM).toFixed(3) + ')';
-                ctx.beginPath();
-                ctx.moveTo(N.x, N.y);
-                ctx.lineTo(M.x, M.y);
-                ctx.stroke();
-            }
-        }
-
-        // --- Lattice nodes ---
-        for (var k = 0; k < nodes.length; k++) {
-            var P = nodes[k];
-            var a = 0.06 + P.charge * 0.55;
-            var rgb = P.hot > 0 ? HOT : PLAT;
-            if (P.hot > 0) a = Math.max(a, 0.35 + P.hot * 0.55);
-            a *= LATTICE_DIM;
-
-            if (P.charge > 0.45) fill(rgb, a * 0.10, P.x - 4.5, P.y - 4.5, 9, 9);
-            fill(rgb, a, P.x - 1.5, P.y - 1.5, 3, 3);
-
-            // Sealed nodes get machined tick marks.
-            if (P.charge > 0.8) {
-                var ta = (P.charge - 0.8) * 2.2 * LATTICE_DIM;
-                fill(rgb, ta * 0.6, P.x - 5, P.y, 3, 1);
-                fill(rgb, ta * 0.6, P.x + 2, P.y, 3, 1);
-            }
-        }
-
-        // --- Solve scanline ---
-        if (solve) {
-            var edge = Math.min(1, solve.at / SOLVE_MS) * w;
-            var row = nodes[solve.row * cols];
-            if (row) {
-                fill(HOT, 0.5 * LATTICE_DIM, edge - 1, row.y - 7, 1, 14);
-                fill(WARM, 0.10 * LATTICE_DIM, edge - 9, row.y - 7, 9, 14);
-            }
-        }
-
         // --- Rising particles, cooling as they climb ---
         for (var p = 0; p < particles.length; p++) {
             var Q = particles[p];
             if (Q.y > sourceY || Q.y < 0) continue;
-            /* 0 at the source, 1 at the TOP OF THE PANEL -- not at the lattice.
-               It used to be measured against sourceY - latticeH, which finished
-               the whole orange-to-platinum ramp inside the bottom 44% of the
-               hero and left everything above it uniformly faint platinum. The
-               gas read as a thin hot band with haze over it.
-               Measured over the full height the orange band is 248px instead of
-               109px and the cooling is gradual all the way up, which is what
-               the portal's field does and the reason it looks better. Same
-               formula in both files now, deliberately. */
+            /* 0 at the source, 1 at the top of the box. It used to be measured
+               against the lattice, which finished the whole orange-to-platinum
+               ramp inside the bottom 44% and left everything above it uniformly
+               faint platinum — the gas read as a thin hot band with haze over
+               it. Measured over the full height the cooling is gradual all the
+               way up. Same formula as the portal's, deliberately. */
             var climb = (sourceY - Q.y) / Math.max(1, sourceY);
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
             var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);
             var a = 0.14 + (1 - climb) * 0.5;
             /* Whole pixels. A 1px rect at a fractional coordinate is split
                across two device pixels at partial alpha in each, which is a
-               grey smudge and not a pixel. gas-field.js has always rounded
-               here; this file did not, and it is the second half of why the
-               portal's rise looked sharper than the site's. */
+               grey smudge and not a pixel. */
             fill(col, a, Math.round(Q.x), Math.round(Q.y), Q.size, Q.size);
         }
 
@@ -387,24 +252,20 @@
 
     function still() {
         for (var i = 0; i < 90; i++) step(1 / 30);
-        for (var k = 0; k < nodes.length; k++) {
-            nodes[k].charge = Math.max(nodes[k].charge, Math.random() > 0.55 ? rand(0.25, 0.95) : 0);
-        }
-        solve = null;
         draw();
     }
 
     /* ---- Wiring -------------------------------------------------------- */
 
-    /* Resize IS wired now, because the field is laid out in measured pixels
-       rather than fixed ones. Deliberately window 'resize' and NOT a
-       ResizeObserver: 'resize' is fired by the viewport and by nothing this
-       code can do, so the circuit the old bug needed cannot close. Debounced at
-       the same 200ms gas-field.js uses, because a drag would otherwise
-       reallocate the particle array on every intermediate width. */
+    /* Resize IS wired, because the field is laid out in measured pixels rather
+       than fixed ones. Deliberately window 'resize' and NOT a ResizeObserver:
+       'resize' is fired by the viewport and by nothing this code can do, so the
+       circuit the old bug needed cannot close. Debounced at the same 200ms
+       gas-field.js uses, because a drag would otherwise reallocate the particle
+       array on every intermediate width. */
     function rebuildIfResized() {
         var cw = Math.round(canvas.clientWidth), ch = Math.round(canvas.clientHeight);
-        if (!cw || !ch) return;                                  // not laid out
+        if (!cw || !ch) return;                                   // not laid out
         if (Math.abs(cw - w) < 2 && Math.abs(ch - h) < 2) return; // nothing moved
         build();
         if (reduced) still();
@@ -416,14 +277,18 @@
         resizeTimer = setTimeout(rebuildIfResized, 200);
     });
 
+    /* The gate. Two of the four drawings on energy.html are inside a hidden
+       fuel pane at any moment, and without this their fields would animate
+       forever behind a display:none. pad-suite.js asserts this block exists and
+       mutate-landfill.js mutates the .observe(host) off to prove the assertion
+       bites — keep both intact.
+
+       It doubles as the re-measure hook: a host that was not laid out when
+       build() first ran measured 0x0 and fell back to its authored size. The
+       moment the switch reveals it, it has a real box. */
     if (window.IntersectionObserver) {
         new IntersectionObserver(function (entries) {
             visible = entries[0].isIntersecting;
-            /* A host that was not laid out when build() first ran measured 0x0
-               and fell back to its authored size. Four of the diagram backdrops
-               are in sections like that; the moment one scrolls into view it
-               has a real box, so re-measure here rather than leave it
-               stretched for the whole visit. */
             if (visible) { rebuildIfResized(); start(); } else stop();
         }, { threshold: 0 }).observe(host);
     }

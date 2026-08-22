@@ -65,10 +65,14 @@ console.log('\n=== what the pages DO load is deliberate and minimal ===');
         // which failed the moment portal-demo.js was added and said nothing about whether the
         // fifth was dangerous — a count catches arrivals but cannot tell you what arrived.
         // gas-field.js draws the rising-gas field behind the sign-in. It is on this list
-        // rather than exempted from it: DOM text on a grid and one setInterval, with
-        // no network, no storage and no reference to anything else — which is
-        // asserted below rather than asked for on trust. What a counterparty's
-        // browser loads is decided deliberately, not by whatever got added.
+        // rather than exempted from it: one canvas driven by requestAnimationFrame,
+        // with no network, no storage and no reference to anything else — which is
+        // asserted below rather than asked for on trust. (That sentence used to say
+        // "DOM text on a grid and one setInterval", which described hex-rain.js, two
+        // backdrops ago. The justification for letting a file into a counterparty's
+        // browser has to describe the file that is actually there.) What a
+        // counterparty's browser loads is decided deliberately, not by whatever
+        // got added.
         var ALLOWED = [/firebase-app-compat/, /firebase-auth-compat/, /firebase-config\.js/,
                        /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/gas-field\.js/];
         var unexpected = srcs.filter(function(s) {
@@ -287,9 +291,12 @@ console.log('\n=== the sign-in backdrop stays inert ===');
 console.log('\n=== it is the hero rise, and only the rise ===');
 (function () {
     /* The point of this file is that it is the SAME animation as the marketing
-       site's hero with two of its three parts removed — not a lookalike. So the
-       constants are checked against site/hero-anim.js rather than pinned to
-       literals here: if the hero is retuned and this is not, they have drifted
+       site's fields — not a lookalike. It used to be "the hero with two of its
+       three parts removed"; the hero has since lost its lattice too, so the two
+       files are now the same two parts and differ in one deliberate place, which
+       is asserted below. So the constants are checked against site/hero-anim.js
+       rather than pinned to literals here: if the site is retuned and this is not,
+       they have drifted
        apart and a producer arriving from the site sees two different substances. */
     var gas = fs.readFileSync(path.join(ROOT, 'portal', 'gas-field.js'), 'utf8');
     var hero = fs.readFileSync(path.join(ROOT, 'site', 'hero-anim.js'), 'utf8');
@@ -302,6 +309,7 @@ console.log('\n=== it is the hero rise, and only the rise ===');
         ['the drift rate', 'rand(0.006, 0.02)'],
         ['the drift amplitude', 'rand(3, 11)'],
         ['the density rule', 'w * h / 2600'],
+        ['the particle ceiling', 'Math.min(900,'],
         ['the emitter spacing', 'w / 62'],
         ['the cooling ramp', '0.14 + (1 - climb) * 0.5'],
         ['the haze flicker', 'Math.sin(t * 3.1) * 0.012']
@@ -311,13 +319,36 @@ console.log('\n=== it is the hero rise, and only the rise ===');
            gas.indexOf(pair[1]) >= 0 && hero.indexOf(pair[1]) >= 0, pair[1]);
     });
 
-    /* And the two parts that were deliberately left behind. The lattice is the
-       busiest half of the hero and the half that says 'hashrate'; this is a
-       sign-in for somebody selling gas. */
+    /* The lattice, which this file never had and the site no longer has either.
+       It was the busiest half of the hero and the half that said 'hashrate',
+       which is not the argument a sign-in for somebody SELLING gas is making.
+       Checked in both files now: site/hero-anim.js dropped it so that every
+       backdrop on the site would be this same animation, and the cheap way to
+       undo that by accident is to let one of the two grow it back. */
+    var stripped = function (s) {
+        return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    };
     ['nodes', 'lattice', 'NODE_GAP', 'LINK_AT', 'solve'].forEach(function (gone) {
-        ok('no lattice: ' + gone + ' is absent',
-           gas.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').indexOf(gone) < 0);
+        ok('no lattice in the portal field: ' + gone, stripped(gas).indexOf(gone) < 0);
+        ok('  nor in the site field: ' + gone, stripped(hero).indexOf(gone) < 0);
     });
+
+    /* THE ONE INTENDED DIFFERENCE, so that "the same animation" stays a claim
+       with an edge to it rather than a slogan.
+
+       The site's fields sit in bounded boxes whose bottom edge is a real edge —
+       on the hero it is also the bevel between the hero zone and the band below
+       — so the source burns ON it at h - 2 and you see the line. The portal's is
+       a full viewport behind a sign-in card, which has no floor to be the floor
+       of, so it pushes the source to h + 12 and the emitters sit below the fold:
+       what you see there is gas that has already left them.
+
+       If a third value ever appears, or these two converge, it should be because
+       somebody decided to — not because a constant got copied across. */
+    ok('the site burns its source line on the bottom edge',
+       /sourceY = h - 2;/.test(stripped(hero)));
+    ok('and the portal puts its emitters below the fold',
+       /sourceY = h \+ 12;/.test(stripped(gas)));
 
     /* shadowBlur is the single most expensive thing available on a busy canvas.
        hero-anim.js says so in its header and layers rectangles instead — and so

@@ -2,30 +2,37 @@
 
    Stranded gas rising and cooling, behind the producer sign-in.
 
-   THIS IS THE HERO ANIMATION WITH TWO OF ITS THREE PARTS REMOVED. site/hero-anim.js
-   draws the company thesis bottom to top — a source line where energy combusts,
-   the rise where it travels upward cooling orange to platinum, and a lattice at
-   the top where hashrate crystallises out of it. Only the middle part is here.
-   No nodes, no links, no solve scanline.
+   THIS IS THE SAME ANIMATION AS THE MARKETING SITE'S. site/hero-anim.js draws a
+   source line where energy combusts and the rise where it travels upward,
+   cooling orange to platinum, on all thirteen of its backdrops. This is that,
+   sized to a viewport instead of to an element.
 
    Which means the emitters, the spawn, the sine drift, the climb ramp and the
    heat haze below are lifted from that file rather than reinvented, down to the
    constants: vy of 18-46 px/s, drift 0.006-0.02, amplitude 3-11, one pixel in
-   four at double size, and alpha 0.14 + (1 - climb) * 0.5. A producer arriving
-   from ionmininggroup.com should see the same substance moving the same way,
-   because it is the same code.
+   four at double size, alpha 0.14 + (1 - climb) * 0.5, and the same particle
+   cap. A producer arriving from ionmininggroup.com should see the same substance
+   moving the same way, because it is the same code — tests/portal-frontend.test.js
+   checks the constants against that file rather than pinning them here, so the
+   two cannot drift apart quietly.
 
-   WHAT CHANGED FOR THIS SETTING. In the hero the rise ends at the lattice, so a
-   particle is absorbed partway up and the climb ramp is measured against that
-   boundary. Here there is nothing to arrive at, so the climb is measured over
-   the whole viewport and a particle simply leaves the top. That is the only
-   behavioural difference; everything else is the same numbers.
+   WHY THIS FILE EXISTS AT ALL, given that. The portal loads a deliberately short
+   allowlist of scripts into a counterparty's browser and site/ is not on it. The
+   duplication is the price of that boundary, and the cross-file assertions are
+   what keeps it honest.
 
-   WHY NOT THE LATTICE TOO. It is the busiest part of the hero and it is the part
-   that says "hashrate". This page is a sign-in for somebody selling gas, not
-   somebody buying hashrate, and a lattice knitting itself behind a password
-   field is decoration arguing with the form. The rise says the thing that
-   matters here on its own.
+   THE ONE INTENDED DIFFERENCE. The site's fields sit in bounded boxes whose
+   bottom edge is a real edge, so the source burns ON it at h - 2 and the line is
+   part of the design. This is a full viewport behind a sign-in card, which has
+   no floor to be the floor of, so the source goes to h + 12 and the emitters sit
+   below the fold: what you see is gas that has already left them.
+
+   WHAT USED TO BE HERE, AND THERE. The hero once had a third part — a lattice
+   where hashrate crystallised out of the arriving gas. This file never took it,
+   on the grounds that a lattice knitting itself behind a password field is
+   decoration arguing with the form, and a sign-in for somebody SELLING gas is
+   not making the hashrate argument. The site has since dropped it as well, so
+   that every backdrop would be one thing.
 
    No dependencies. Glow is layered low-alpha rectangles, never ctx.shadowBlur,
    which is by far the most expensive thing available on a canvas this busy —
@@ -74,15 +81,16 @@
            a row of dots along the bottom edge. */
         sourceY = h + 12;
 
-        /* Same density RULE as the hero — area, not width, so a tall window is
-           not sparse — but a higher ceiling.
+        /* Same density rule AND the same ceiling as the site — area, not width,
+           so a tall window is not sparse.
 
-           The hero's cap is 420 and its own comment records it being raised
-           twice as the panel grew. At full viewport the rule asks for ~570 on a
-           1484x1005 screen, so 420 truncates it and the field reads as a
-           starfield rather than as gas coming off a source. The cap is a cost
-           bound, not part of the look, so it is the one number here that
-           differs from hero-anim.js. */
+           The cap was the one number that differed: the site's was 420 while
+           this asked for ~570 on a 1484x1005 screen, so 420 truncated it and the
+           field read as a starfield rather than as gas coming off a source. The
+           site started measuring its real boxes, discovered it wanted 586 across
+           the hero and 708 across the contact header, and took this number. It
+           is a cost bound rather than part of the look, but the two agreeing is
+           what makes the density identical everywhere. */
         maxParticles = Math.round(Math.min(900, Math.max(70, w * h / 2600)));
 
         emitters = [];

@@ -168,10 +168,16 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 
 /* ===== the sign-in backdrop =====
 
-   The same field that runs behind the marketing site's hero: energy rising and
-   crystallising into a lattice. A producer arriving here has just come from
-   ionmininggroup.com, and the portal looking like a different company's
-   software is a small thing that costs trust at exactly the wrong moment.
+   The same field that runs behind every backdrop on the marketing site: gas
+   rising off a source and cooling orange to platinum. A producer arriving here
+   has just come from ionmininggroup.com, and the portal looking like a
+   different company's software is a small thing that costs trust at exactly the
+   wrong moment.
+
+   It used to say "rising and crystallising into a lattice", which was true of
+   the site's hero and never of this page. The hero has since dropped its
+   lattice so that all thirteen of its backdrops would be one animation, and
+   this is that animation at viewport size.
 
    ONLY ON THE SIGN-IN VIEW. show() puts .pt-signin on <body>, and it comes off
    the moment a session starts — behind statements and volumes it would be
@@ -189,11 +195,15 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 }
 body.pt-signin .pt-bg { display: block; }
 
-/* A scrim, because the field was built as a bounded hero panel and this is a
-   full viewport behind a form. At full strength the hex runs straight through
-   the sign-in copy and both lose: the field reads as noise and the words read
-   as hard work. Darkest under the card, clearing toward the edges where there
-   is nothing to protect. */
+/* A scrim, because the field was built for a bounded box and this is a full
+   viewport behind a form. At full strength the gas runs straight through the
+   sign-in copy and both lose: the field reads as noise and the words read as
+   hard work. Darkest under the card, clearing toward the edges where there is
+   nothing to protect.
+
+   It clears to rgba(0,0,0,0.12), so the rise is seen at roughly 0.88 out at the
+   margins. That number is what the site's fields are set against — .anim-field
+   ships at 0.85 — so the two match by construction rather than by eye. */
 .pt-bg::after {
     content: "";
     position: absolute;
@@ -203,7 +213,7 @@ body.pt-signin .pt-bg { display: block; }
     pointer-events: none;
 }
 
-/* ===== the genesis field =====
+/* ===== the gas field =====
 
    The canvas fills the backdrop. It is sized in script from the VIEWPORT, never
    from this element, so there is no measure-then-draw loop to get wrong and no

@@ -12,18 +12,12 @@
 </head>
 <body>
 
-<!-- The hash field: proof-of-work as type. Ninety-six hex groups on a CSS
-     grid, churning, with a rare row locking to a hash with leading zeros.
-
-     THE CELLS ARE SEEDED IN THE MARKUP, deterministically, so the page has a
-     full field before a line of script runs and the committed HTML is stable
-     across rebuilds. With JS off, or blocked, this is what stays: a still
-     field rather than ninety-six empty boxes. -->
-<!-- The gas field: the hero animation's rise, without its lattice.
-     site/hero-anim.js draws source line, rise and lattice; this is the middle
-     part only — stranded gas going up and cooling orange to platinum. Same
-     emitters, same constants, same code, so a producer arriving from the
-     marketing site sees the same substance moving the same way.
+<!-- The gas field: the same animation as every backdrop on the marketing site.
+     site/hero-anim.js draws a source line and the rise above it — stranded gas
+     going up and cooling orange to platinum. Same emitters, same constants,
+     same code, so a producer arriving from the marketing site sees the same
+     substance moving the same way. tests/portal-frontend.test.js checks the
+     constants across both files so they cannot drift apart quietly.
 
      Inert: no pointer events, aria-hidden on the wrapper. -->
 <div class="pt-bg" aria-hidden="true">

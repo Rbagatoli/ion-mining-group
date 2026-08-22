@@ -567,12 +567,21 @@ p + p { margin-top: 16px; }
 
 .hero { padding: 132px 0 104px; }
 
-/* The energy field is a BACKDROP now, not a panel: it fills whatever box it is
-   dropped into, behind the content. Each instance declares its own logical size
-   in data-w / data-h, so a wide box is laid out wide rather than being a tall
-   field stretched sideways.
+/* The energy field is a BACKDROP: it fills whatever box it is dropped into,
+   behind the content. data-w / data-h are now only the fallback size for a box
+   that is not laid out yet — hero-anim.js measures the real one, because a
+   fixed size stretched to fill turned every 1px particle into a 2-3px smear.
 
-   Stretched to fill, so it needs no intrinsic ratio and nothing measures it. */
+   ONE OPACITY, ALL THIRTEEN. This used to be three values: 0.35 on the hero,
+   0.55 behind the drawings, 0.85 on the headers, each argued for separately.
+   They are one value because the fields are now one animation — the hero's
+   lattice is gone, so there is no longer a busier backdrop needing to be held
+   back, and "all the backgrounds look the same" is not achievable while three
+   selectors disagree about brightness.
+
+   The modifier classes below still exist and no longer carry any style. They
+   are markers for what a canvas sits behind, and pad-suite.js and hero-suite.js
+   both identify canvases by them. */
 .anim-field {
     position: absolute;
     inset: 0;
@@ -581,44 +590,29 @@ p + p { margin-top: 16px; }
     height: 100%;
     pointer-events: none;
     z-index: 0;
+    opacity: 0.85;
 }
-/* The hero field is the quieter of the two. Behind the headline it only has to
-   say the page is alive; behind a drawing it has room to actually burn, since
-   there is no running text there and the drawing sits on top of it.
+/* WHERE 0.85 CAME FROM. The portal's sign-in field is the reference the whole
+   look was tuned against: its canvas is undimmed and its scrim clears to
+   rgba(0,0,0,0.12) at the edges, so a producer signing in sees the rise at
+   roughly 0.88. Anything much below that and the site reads dimmer than the
+   page a counterparty lands on from it.
 
-   Both are a trade against what is painted over them, measured in
-   field-ceiling.js: every stroke in a drawing is translucent light on whatever
-   the field leaves underneath, so a brighter field costs it contrast. 0.55 is
-   where the leader hairlines still keep 88% of theirs. */
-/* 0.35 -> 0.60. This dims the WHOLE canvas, so it used to be one number doing
-   two jobs: holding the lattice back and holding the gas back with it. The gas
-   is the part that was asked to come forward — the portal's field runs
-   undimmed and that is the reference — so this value is now set for the rise,
-   and hero-anim.js's LATTICE_DIM multiplies the fabric back to the 0.35 it was
-   already at. The lattice is unchanged; only the gas moved. */
-.anim-field--hero { opacity: 0.60; }
-.anim-field--dg   { opacity: 0.55; }
+   WHAT IT COSTS BEHIND THE DRAWINGS, which is where 0.85 was expected to be too
+   hot and measurably is not. The worry is real in form: a drawing's faintest ink
+   is rgba(229,228,226,0.13) at 0.5px, translucent light laid over whatever the
+   field leaves underneath, so lifting the ground under it should cost contrast.
 
-/* The header field, on every marketing page except the home hero.
+   Measured off the canvas's own pixels across the band the drawing occupies —
+   not derived from the alphas, which is what made it look dangerous. Coverage is
+   0.063%: 292 inked pixels in 463,450. The field is a few hundred 1-2px marks,
+   not a wash, so 99.94% of every hairline sits on untouched ground. On the
+   fraction that is touched, the hairline's contrast against its own local ground
+   goes UP, 1.300 to 1.377, because stroke and ground rise together and the ratio
+   is dominated by the +0.05 floor at near-black.
 
-   BRIGHTER than the hero, which is the opposite of what it looks like it should
-   be. The hero has a lattice at the top and a solve beat crossing it; a header
-   has only gas, and at the hero's value the rise reads as smudge under the
-   headline rather than as anything moving. Tried at 0.30 first and it was
-   barely visible at all.
-
-   0.50 -> 0.85, to match the portal, which is what this was measured against.
-   That field's canvas is undimmed and its scrim clears to rgba(0,0,0,0.12) at
-   the edges, so a producer signing in sees the rise at roughly 0.88 — near
-   twice a header's 0.50. "On the portal the rising pixels seem more prominent"
-   was that gap, and it is the whole of the gap now that the canvas is no longer
-   being stretched.
-
-   Above the diagram fields' 0.55, which reverses the old order and is right:
-   the headline is lifted out of this stacking context by .wrap's z-index, so
-   the type is never competing with the field for the same pixels. A drawing
-   IS in the same pixels as its backdrop, so that one still has to give way. */
-.anim-field--head { opacity: 0.85; }
+   Re-measure before lowering this on legibility grounds. The instinct is right
+   and the arithmetic is wrong. */
 
 /* .hero already lifts its .wrap; .hero-zone did not, because until now nothing
    was ever painted behind one. The canvas is position:absolute and therefore
