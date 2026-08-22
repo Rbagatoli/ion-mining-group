@@ -15,6 +15,11 @@
    Everything is square: no radii, no soft shadows, no colour bloom. */
 
 :root {
+    /* Every form control, scrollbar, caret and autofill on this site renders
+       against the system palette unless told otherwise, and the system
+       default is light — which is where a stray white field comes from on a
+       page that declares none of its own. */
+    color-scheme: dark;
     /* --- Black --- */
     --black:     #000000;
     --surface:   #0a0a0a;
@@ -1037,8 +1042,22 @@ p + p { margin-top: 16px; }
    the viewport, so the two together land the centre of the box on the centre of
    the page without anything being measured. The gutters are wider than any
    scrollbar, so subtracting them from 100vw cannot overflow the line. */
+/* The third selector is the fuel switch's doing. energy.html wraps each pair in
+   a .dg-fuel-pane, which put .dg-views one level deeper and silently stopped
+   this rule matching — the child combinator above is deliberate, so it did not
+   fall through. The drawings kept rendering, just at the 1144px text measure
+   instead of the 1520px diagram measure, a quarter narrower than the identical
+   drawings one click away on index.html and hosting.html. Nothing looked broken;
+   it only showed against the other pages.
+
+   The PANE must not take the width itself. It also holds .dg-scale and the two
+   .dg-list columns, and those belong on the text measure. And the centring still
+   resolves through the pane without measuring anything, because the pane is a
+   plain block: its content width is .wrap's content width, so the 50% here means
+   what it always meant. */
 .wrap > .dg-wrap,
-.wrap > .dg-views {
+.wrap > .dg-views,
+.wrap > .dg-fuel-pane > .dg-views {
     --dg-w: min(var(--max-dg), 100vw - var(--gut) * 2);
     width: var(--dg-w);
     margin-left: calc(50% - var(--dg-w) / 2);
@@ -1377,6 +1396,79 @@ p + p { margin-top: 16px; }
    rather than as something you could take hold of. Three changes: a track thick
    enough to be a track, a thumb with a grip on it, and a hint that says what to
    do and then gets out of the way once you have done it. */
+/* --- The fuel switch ---
+   Which PAIR of drawings is on screen. The slider then picks between the two
+   drawings inside that pair, so these are two different axes and have to look
+   like two different controls — they sit directly above one another.
+
+   That is why the selected state here is a rule under the word rather than the
+   metal fill the chain toggle and the calculator use: two filled segments
+   stacked would read as one control that had somehow been pressed twice. */
+/* BLOCK-LEVEL flex, not inline-flex, with max-content to keep the shrink-to-fit
+   width. .dg-toggle immediately above is inline-flex, so an inline-flex switch
+   sits on the SAME LINE as it and the two controls read as one five-segment
+   thing — which is precisely the confusion the separate treatment below exists
+   to prevent. */
+.dg-fuel {
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    align-items: stretch;
+    border: 1px solid var(--line-mid);
+    margin-bottom: 4px;
+}
+.dg-fuel button {
+    position: relative;
+    padding: 10px 16px 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--plat-400);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.18s, background 0.18s;
+}
+.dg-fuel button + button { border-left: 1px solid var(--line-mid); }
+.dg-fuel button:hover { color: var(--plat-100); background: var(--panel-hover); }
+.dg-fuel button[aria-pressed="true"] { color: var(--btc-300); }
+/* Inset from the edges so it underlines the word rather than bordering the
+   button, which would just look like a thicker box. */
+.dg-fuel button[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 5px;
+    height: 2px;
+    background: var(--btc-300);
+}
+.dg-fuel button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
+
+/* Hiding a pane is already guaranteed by the global `[hidden] { display: none
+   !important; }` near the top of this file, which no ordinary rule here can
+   beat — so this is a restatement for whoever reads the fuel switch in one
+   place, not the thing doing the work.
+
+   It is also why the no-JS override that build-diagram.js emits has to carry
+   !important of its own: to show a hidden pane again it must outrank that
+   global rule, and specificity is the only lever left once both are important. */
+.dg-fuel-pane[hidden] { display: none; }
+
+@media (max-width: 460px) {
+    .dg-fuel { width: auto; }
+    .dg-fuel button {
+        flex: 1;
+        padding: 10px 5px 12px;
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+    }
+    .dg-fuel button[aria-pressed="true"]::after { left: 8px; right: 8px; }
+}
+
 .dg-scale {
     display: flex;
     align-items: center;
@@ -1539,7 +1631,7 @@ p + p { margin-top: 16px; }
 /* ===== Nav width =====
    Five items plus a CTA is a wide row. Below 1080px it gets tightened, and at
    940px it collapses to the toggle — before it would otherwise overflow. */
-@media (max-width: 1080px) {
+@media (max-width: 1240px) {
     .nav-inner { gap: 18px; }
     .nav-links a { padding: 9px 10px; font-size: 13px; }
     .nav-cta { margin-left: 8px; }
@@ -1835,8 +1927,8 @@ p + p { margin-top: 16px; }
 /* Lines sit over their own gradient areas now, so they carry a little more
    weight and a round cap — a hairline over a filled shape reads as an edge
    rather than as the subject. */
-.ck-value  { fill: none; stroke: var(--btc-300); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
-.ck-bench  { fill: none; stroke: var(--plat-300); stroke-width: 1.7; stroke-dasharray: 6 5; stroke-linecap: round; }
+.ck-value  { fill: none; stroke: url(#ckMetalBtc);  stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.ck-bench  { fill: none; stroke: url(#ckMetalPlat); stroke-width: 1.7; stroke-dasharray: 6 5; stroke-linecap: round; }
 .ck-machines { fill: none; stroke: var(--plat-500); stroke-width: 1.4; stroke-dasharray: 2 3; }
 .ck-be { stroke: var(--line-btc); stroke-width: 1; stroke-dasharray: 3 3; }
 .ck-halving { stroke: var(--btc-400); stroke-width: 1; stroke-dasharray: 4 4; }
@@ -1844,8 +1936,8 @@ p + p { margin-top: 16px; }
 .ck-halvinglab { fill: var(--btc-300); font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-anchor: middle; }
 
 /* Where each curve ends up, said at the end of it. */
-.ck-end-value { fill: var(--btc-300); }
-.ck-end-bench { fill: var(--plat-300); }
+.ck-end-value { fill: url(#ckMetalBtc); }
+.ck-end-bench { fill: url(#ckMetalPlat); }
 .ck-endlab { font-family: var(--mono); font-size: 11px; dominant-baseline: middle; font-variant-numeric: tabular-nums; }
 .ck-end-value-lab { fill: var(--btc-200); }
 .ck-end-bench-lab { fill: var(--plat-400); }
@@ -1918,8 +2010,8 @@ p + p { margin-top: 16px; }
 /* A dot per curve at the hovered period, so the crosshair is not left saying
    only which period it is. */
 .ck-dot { pointer-events: none; stroke: #0b0b0b; stroke-width: 2; }
-.ck-dot--mining   { fill: var(--btc-300); }
-.ck-dot--hold     { fill: var(--plat-200); }
+.ck-dot--mining   { fill: url(#ckMetalBtc); }
+.ck-dot--hold     { fill: url(#ckMetalPlat); }
 .ck-dot--machines { fill: var(--plat-500); }
 .calc-legend { display: flex; gap: 8px 18px; flex-wrap: wrap; }
 .cl-item {
@@ -1932,10 +2024,11 @@ p + p { margin-top: 16px; }
 .cl-item.is-off { color: var(--text-dim); text-decoration: line-through; opacity: 0.65; }
 .cl-item:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 2px; }
 .cl-key { width: 11px; height: 11px; flex: none; border: 1px solid transparent; }
-.cl-key--mining   { background: var(--btc-300); }
-.cl-key--hold     { border-color: var(--plat-300); background: transparent; }
-.cl-key--mined    { background: rgba(247, 147, 26, 0.62); }
-.cl-key--held     { background: rgba(229, 228, 226, 0.34); }
+/* The legend swatches take the CSS ramps directly; same metal as the chart. */
+.cl-key--mining   { background-image: var(--metal-btc-flat); }
+.cl-key--hold     { border-color: var(--plat-200); background-image: var(--metal-plat-soft); background-clip: border-box; }
+.cl-key--mined    { background-image: var(--metal-btc-flat); opacity: 0.72; }
+.cl-key--held     { background-image: var(--metal-plat-flat); opacity: 0.5; }
 .cl-key--machines { border-color: var(--plat-500); background: transparent; }
 .calc-caption { font-size: 11.5px; color: var(--text-dim); margin: 0; line-height: 1.55; }
 
@@ -2049,4 +2142,364 @@ p + p { margin-top: 16px; }
     font-style: normal;
     color: var(--btc-300);
     margin-left: 8px;
+}
+
+/* ---- hardware catalogue ----
+   The order summary sits above the table and sticks, so the totals stay in
+   view while you are still choosing. It is not a cart: nothing persists and
+   nothing is charged, because we source per order rather than holding stock. */
+.hw { display: grid; gap: 30px; }
+
+.hw-order {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    border: 1px solid var(--line-mid);
+    background: #0b0b0b;
+    padding: 18px 20px;
+    display: grid;
+    gap: 14px;
+}
+.hw-totals { display: flex; flex-wrap: wrap; gap: 14px 40px; }
+.hw-totals > div { display: grid; gap: 5px; }
+.hw-totals .ct-val { font-size: clamp(18px, 2vw, 23px); }
+.hw-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.hw-cat { display: grid; gap: 22px; }
+
+/* Grouped by maker so a long catalogue has landmarks. */
+/* The catalogue is a table again. Cards gave each machine a large section but
+   twenty-eight of them is a very long page, and the job here is comparison —
+   reading J/TH and price down a column, which a list does and a stack of cards
+   does not. The spacing is where the cards' benefit is kept: roughly double the
+   row padding of the shared .calc-table, so the rows breathe. */
+.hw-table { font-size: 12px; }
+.hw-table th { padding: 14px 22px; }
+.hw-table td { padding: 16px 22px; vertical-align: middle; }
+.hw-table td, .hw-table th { white-space: nowrap; }
+.hw-table .hw-name { text-align: left; color: var(--plat-100); font-size: 13.5px; letter-spacing: 0.01em; }
+.hw-table .hw-price { color: var(--btc-200); }
+.hw-noprice { color: var(--text-dim); font-style: italic; }
+
+/* A row with machines on it lights up, so a long list still shows what has been
+   picked without scrolling back to the summary. Keyed on the value ATTRIBUTE,
+   which is why setQty() in hardware.js writes it as well as the property — a
+   version that sets only .value keeps every total right and never lights a row. */
+.hw-table tr:has(input[data-qty]:not([value="0"])) .hw-name { color: var(--btc-200); }
+
+.hw-see a { font-size: 12px; color: var(--plat-400); }
+
+/* --- the daily economics columns ---
+
+   Right-aligned and tabular so a column of money can be compared down its own
+   length: proportional digits put the decimal points in different places on
+   every row, which is the whole reason tabular-nums exists. */
+.hw-table .hw-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.hw-table th.hw-num { text-align: right; }
+
+/* A machine losing money at the entered power price says so in the loss colour
+   rather than quietly showing a number with a minus in front of it. That is the
+   single most useful thing this table can tell somebody: at your power price,
+   this one does not work. */
+.hw-table .hw-loss { color: var(--loss); }
+
+/* The power-price control sits above the table rather than in it — it applies
+   to every row, and a control repeated per row would read as a per-row setting. */
+.hw-econ {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px 28px;
+    margin-bottom: 4px;
+}
+.hw-econ .field { min-width: 190px; }
+.hw-econ .calc-hint { flex: 1 1 320px; margin: 0 0 6px; }
+
+/* Only ever added once both figures actually arrived, so it means what it says. */
+.hw-live { color: var(--gain); }
+.hw-see a:hover { color: var(--btc-300); }
+
+/* The quantity control, kept from the card version. It is the site's own input
+   anatomy — a .calc-unit with .cu-pre / .cu-post affix chips — not a bespoke
+   widget. What it replaced was a bare number field carrying the browser's
+   spinner arrows, the one control on this site the browser drew rather than the
+   stylesheet. .hw-step adds only the button reset and the hover; the edge, the
+   ground, the chip colour and the focus ring all come from rules the calculator
+   already owns, so the two cannot drift apart. */
+.hw-qty { width: 1%; }
+.hw-qty .calc-unit { display: inline-flex; }
+.hw-qty input {
+    width: 4em;
+    text-align: center;
+    font-family: var(--mono); font-size: 13px;
+    color: var(--plat-100);
+    padding: 7px 4px;
+    font-variant-numeric: tabular-nums;
+    /* The chips are the stepper, so the browser's own arrows would be a second
+       one. Removed here only — the calculator keeps its native spinners. */
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.hw-qty input::-webkit-outer-spin-button,
+.hw-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.hw-step {
+    -webkit-appearance: none; appearance: none;
+    border: 0; padding: 0 13px; cursor: pointer;
+    font-size: 13px; line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+/* .cu-pre / .cu-post carry the divider at (0,1,0); these win at (0,2,0) rather
+   than relying on being later in the file. */
+.cu-pre.hw-step { border-right: 1px solid var(--line); }
+.cu-post.hw-step { border-left: 1px solid var(--line); }
+.hw-step:hover { color: var(--plat-100); background: var(--panel-hover); }
+.hw-step:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -2px; }
+
+.hw-send { display: grid; gap: 16px; }
+.hw-preview {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--plat-200);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+.hw-preview.is-empty { color: var(--text-dim); font-style: italic; }
+.hw-send .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- the order, carried between pages ---- */
+
+/* The nav badge. Sized off the CTA beside it rather than given a shape of its
+   own, and it only exists when the order does — cart.js keeps it hidden at
+   zero, so the nav is seven items again the moment the order is emptied. */
+/* Every one of these is selected as .nav-links a.nav-cart, not .nav-cart. The
+   badge is an <a> inside .nav-links, so ".nav-links a" is (0,1,1) and beats a
+   bare class at (0,1,0) — the first version of this rendered at the nav link's
+   own padding and 15px type, which is what pushed the nav into wrapping. It is
+   the same trap .nav-cta already carries a note about. */
+.nav-links a.nav-cart {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--plat-300);
+    border: 1px solid var(--line-mid); padding: 6px 9px;
+    margin-left: 10px;
+    white-space: nowrap;
+    transition: border-color 0.18s, color 0.18s;
+}
+.nav-links a.nav-cart::after { display: none; }
+.nav-links a.nav-cart:hover { color: var(--btc-300); border-color: var(--line-btc); }
+.nav-cart-n {
+    font-size: 10.5px; letter-spacing: 0; color: var(--black);
+    background-image: var(--metal-btc-btn);
+    padding: 1px 6px; min-width: 18px; text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- the checkout ---- */
+
+.ck-empty { display: grid; gap: 16px; justify-items: start; max-width: 60ch; }
+
+/* The line table is the catalogue table with a money column, so it inherits
+   .hw-table wholesale and only says what differs. */
+.ck-table .hw-price { color: var(--plat-100); }
+.ck-drop { width: 1%; }
+.ck-remove {
+    -webkit-appearance: none; appearance: none;
+    border: 0; background: none; cursor: pointer;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--plat-500);
+    padding: 4px 2px;
+    transition: color 0.15s;
+}
+.ck-remove:hover { color: var(--loss); }
+.ck-remove:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 1px; }
+
+/* The deposit split sits under the totals and above the caveat, because the
+   order of reading is what it costs, what you pay now, what is left. Ruled off
+   rather than boxed: it is the same figure divided, not a second summary. */
+.ck-split {
+    display: flex; flex-wrap: wrap; gap: 14px 44px;
+    border-top: 1px solid var(--line);
+    padding-top: 15px;
+}
+.ck-split-part { display: grid; gap: 5px; }
+.ck-split .ct-val { font-size: clamp(18px, 2vw, 23px); }
+
+/* The demo banner. Loud on purpose and pinned to the top of the page: this is
+   the one message that must not be missed, because everything below it is
+   pretending. Not the loss colour — nothing is wrong, it is just not real. */
+.demo-flag {
+    position: sticky; top: 0; z-index: 200;
+    margin: 0;
+    padding: 11px 20px;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+    letter-spacing: 0.02em;
+    color: var(--black);
+    background-image: var(--metal-btc-flat);
+    text-align: center;
+}
+.demo-flag strong { font-weight: 600; }
+
+/* ---- paying, and following an order ---- */
+
+.pay { display: grid; gap: 30px; }
+.pay-rail { display: grid; gap: 12px; border: 1px solid var(--line); padding: 20px 22px; }
+.pay-rail-title {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.17em; text-transform: uppercase;
+    color: var(--btc-300); margin: 0;
+}
+
+/* The address is the authoritative thing on the page and the one a mistake
+   cannot be undone on, so it is set larger than anything else and grouped into
+   fours. Breaking anywhere is deliberate: a long address that overflows its box
+   is worse than one that wraps. */
+.pay-addr {
+    font-family: var(--mono);
+    font-size: clamp(15px, 2.1vw, 20px);
+    line-height: 1.7; letter-spacing: 0.04em;
+    color: var(--plat-100);
+    background: var(--panel-solid);
+    border: 1px solid var(--line-mid);
+    padding: 14px 16px; margin: 0;
+    word-break: break-all;
+}
+/* The Lightning invoice is long, secondary, and nobody reads it — it is here to
+   be copied, so it is sized to fit rather than to be legible. */
+.pay-bolt {
+    font-family: var(--mono); font-size: 11px; line-height: 1.6;
+    color: var(--plat-300);
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    padding: 12px 14px; margin: 0;
+    word-break: break-all;
+    max-height: 96px; overflow-y: auto;
+}
+
+/* One line that is always true about the payment. Colour carries the state as
+   well as the words, since this is the thing a customer stares at. */
+.pay-state {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+    border-left: 3px solid var(--line-mid);
+    padding: 12px 16px; margin: 0;
+    color: var(--plat-300);
+}
+.pay-state[data-state="waiting"] { border-left-color: var(--btc-300); color: var(--btc-200); }
+.pay-state[data-state="unknown"] { border-left-color: var(--plat-500); }
+.pay-state[data-state="expired"] { border-left-color: var(--loss); color: var(--loss); }
+
+.pay-problem, .pay-done { display: grid; gap: 14px; max-width: 68ch; }
+.pay-done {
+    border: 1px solid var(--line-btc);
+    box-shadow: inset 3px 0 0 0 var(--btc-300);
+    background: var(--panel-solid);
+    padding: 22px 24px;
+}
+
+/* Picking a rail. Built from the same parts as the calculator mode switch,
+   so it reads as the same kind of control rather than a new one. */
+.pay-rails { display: flex; flex-wrap: wrap; border: 1px solid var(--line-mid); }
+.pay-rail-pick {
+    -webkit-appearance: none; appearance: none;
+    flex: 1 1 auto; min-width: 120px;
+    border: 0; border-right: 1px solid var(--line);
+    padding: 13px 18px; cursor: pointer;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--plat-400); background: var(--panel-solid);
+    transition: color 0.16s, background 0.16s;
+}
+.pay-rail-pick:last-child { border-right: 0; }
+.pay-rail-pick:hover { color: var(--plat-100); background: var(--panel-hover); }
+.pay-rail-pick.is-on { color: var(--black); background-image: var(--metal-btc-flat); }
+.pay-rail-pick:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -2px; }
+
+/* Bank details. Laid out as label/value pairs in mono, because every one of
+   them is a string somebody has to copy exactly. */
+.pay-bank { display: grid; gap: 9px; margin: 0; }
+.pay-bank > div { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
+.pay-bank dt {
+    flex: 0 0 150px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--plat-500);
+}
+.pay-bank dd {
+    margin: 0; flex: 1 1 200px;
+    font-family: var(--mono); font-size: 13.5px; color: var(--plat-100);
+    word-break: break-all;
+}
+.pay-ref-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--btc-300); margin: 4px 0 0;
+}
+
+/* ---- the order lifecycle ---- */
+
+.ord-flow { display: grid; gap: 14px; }
+.ord-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.ord-step {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+    padding: 12px 0 12px 22px;
+    border-bottom: 1px solid rgba(229,228,226,0.05);
+    position: relative;
+    font-size: 13.5px;
+}
+/* A square marker, because the site has no radii anywhere. Filled for done,
+   accented for the step in progress, hollow for what has not happened. */
+.ord-step::before {
+    content: ''; position: absolute; left: 0; top: 17px;
+    width: 9px; height: 9px;
+    border: 1px solid var(--line-hi);
+}
+.ord-step.is-done::before { background: var(--plat-400); border-color: var(--plat-400); }
+.ord-step.is-now::before { background-image: var(--metal-btc-flat); border-color: var(--btc-300); }
+.ord-step.is-done { color: var(--plat-300); }
+.ord-step.is-now { color: var(--plat-100); }
+.ord-step.is-todo { color: var(--plat-500); }
+.ord-step.is-cancelled { color: var(--loss); }
+.ord-step.is-cancelled::before { background: var(--loss); border-color: var(--loss); }
+.ord-step-label { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ord-step-when {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    color: var(--plat-500); white-space: nowrap;
+}
+/* The steps that are a person. Labelled rather than disguised — see order.js. */
+.ord-step-ours {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--plat-500);
+    border: 1px solid var(--line-mid); padding: 2px 6px;
+}
+
+/* The order landed. The reference is the customer's only handle on it, so it
+   is set at display size and in mono, where a transposed character is visible. */
+.ck-placed {
+    display: grid; gap: 12px;
+    border: 1px solid var(--line-btc);
+    box-shadow: inset 3px 0 0 0 var(--btc-300);
+    background: var(--panel-solid);
+    padding: 20px 22px;
+}
+.ck-ref {
+    font-family: var(--mono);
+    font-size: clamp(19px, 2.6vw, 26px);
+    letter-spacing: 0.06em;
+    color: var(--btc-200);
+    margin: 0;
+    word-break: break-all;
+}
+
+/* The checkout summary does not follow the page: the form is directly below it
+   and a sticky block would sit on top of the fields being filled in. */
+.ck-order { position: static; }
+
+@media (max-width: 720px) {
+    .hw-order { position: static; }
 }

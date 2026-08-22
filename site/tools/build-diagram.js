@@ -74,28 +74,66 @@ const PAGES = {
        'note' is inserted raw and may carry entities. */
     eyebrow: 'Your site, before and after',
     heading: 'The flare goes out. Nothing else moves.',
-    lede: 'One pad, drawn twice from the same angle. Pull the slider and the gas stops going up the stack and starts going into engines. Your wellhead, your separator, your tanks and your flare stay exactly where they are — because in practice that is what changes and what does not.',
-    /* The two states share the same camera, so the slider reads as one site
-       changing rather than as two drawings. There is no toggle: this page is
-       not a step in the index -> hosting sequence, it is its own argument. */
-    link: 'pad',
+    /* FUEL-NEUTRAL ON PURPOSE, and it has to stay that way. This paragraph
+       opens the drawing for BOTH fuels, so it may not name a wellhead, a
+       separator or a tank battery: a landfill has none of them. It says "your
+       existing equipment" and lets whichever drawing is on screen be the
+       specific one. Changing it back here silently reverts energy.html on the
+       next build. */
+    lede: 'One site, drawn twice from the same angle. Pull the slider and the gas stops going up the stack and starts going into engines. Your collection system, your existing equipment and your flare stay exactly where they are — because in practice that is what changes and what does not.',
     chain: 'pad',
-    deps: ['pad-geometry.js', 'site-kit.js'],
-    /* The other two drawings are cutaways: you are looking THROUGH a container
-       wall at what is racked inside it, and the near faces have to be nearly
-       transparent for that to work at all. This one is not a cutaway. It is
-       solid plant standing on open ground, and at cutaway weights it read as a
-       ghost of a site rather than a site. */
-    scale: { lo: 'Your pad today', hi: 'With Ion on it',
-             label: 'Your pad as it is today, or the same pad with Ion on it' },
-    views: [
-      { key: 'now', name: 'padnow', module: '../scene-pad-now.js',
-        script: 'scene-pad-now.js', prefix: '',
-        alt: 'Interactive drawing of a wellpad as it operates today: wellhead, separator, tank battery, and a lit flare stack burning the gas that has no customer. Drag to rotate, scroll to zoom.' },
-      { key: 'ion', name: 'padion', module: '../scene-pad-ion.js',
-        script: 'scene-pad-ion.js', prefix: 'i-',
-        alt: 'The same wellpad with Ion on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and two containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
-        note: 'The flare stack stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
+    /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
+       and reads root.PadGeometry at load. */
+    deps: ['pad-geometry.js', 'landfill-geometry.js', 'site-kit.js'],
+    /* TWO FUELS, ONE ON SCREEN AT A TIME.
+
+       Landfill leads because that is the market we are going after first, so
+       it is the pane the section opens on. Flared gas is still served and is
+       one click away — the pad drawing is untouched, it simply no longer opens
+       the section.
+
+       Both fuels are drawn twice and each pair shares ITS OWN camera: the two
+       links below must differ, or turning the landfill would turn the wellpad
+       behind it and the pane you switch to would be facing somewhere you never
+       put it.
+
+       Neither drawing is a cutaway — unlike the other two pages, where you look
+       THROUGH a container wall and the near faces have to be nearly
+       transparent. These are solid plant standing on open ground, and at
+       cutaway weights they read as a ghost of a site rather than a site. */
+    fuelLabel: 'Which kind of site is yours?',
+    fuels: [
+      {
+        key: 'landfill', label: 'Landfill gas', link: 'landfill',
+        scale: { lo: 'Your site today', hi: 'With Ion on it',
+                 label: 'Your landfill as it is today, or the same site with Ion on it' },
+        views: [
+          { key: 'now', name: 'landfillnow', module: '../scene-landfill-now.js',
+            script: 'scene-landfill-now.js', prefix: 'l-',
+            /* WRITTEN, NOT COPIED FROM THE PAD. A screen reader that is told
+               about a separator and a tank battery has been told about a site
+               that is not on the screen. */
+            alt: 'Interactive drawing of a landfill gas collection system as it operates today: a capped cell with extraction wells across it, a header main gathering them, a blower holding the field under vacuum, and an enclosed flare burning everything it brings up. Drag to rotate, scroll to zoom.' },
+          { key: 'ion', name: 'landfillion', module: '../scene-landfill-ion.js',
+            script: 'scene-landfill-ion.js', prefix: 'li-',
+            alt: 'The same landfill with Ion on it: the flare down to a pilot, and a tie-in downstream of the blower running gas through a treatment skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
+            note: 'The flare stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
+        ],
+      },
+      {
+        key: 'flare', label: 'Flared gas', link: 'pad',
+        scale: { lo: 'Your pad today', hi: 'With Ion on it',
+                 label: 'Your pad as it is today, or the same pad with Ion on it' },
+        views: [
+          { key: 'now', name: 'padnow', module: '../scene-pad-now.js',
+            script: 'scene-pad-now.js', prefix: '',
+            alt: 'Interactive drawing of a wellpad as it operates today: wellhead, separator, tank battery, and a lit flare stack burning the gas that has no customer. Drag to rotate, scroll to zoom.' },
+          { key: 'ion', name: 'padion', module: '../scene-pad-ion.js',
+            script: 'scene-pad-ion.js', prefix: 'i-',
+            alt: 'The same wellpad with Ion on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and two containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
+            note: 'The flare stack stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
+        ],
+      },
     ],
   },
 };
@@ -259,69 +297,164 @@ function splice(cfg, section, scripts) {
   fs.writeFileSync(OUT, html);
 }
 
+/* ---- the fuel switch: which of several pairs is on screen ----
+
+   Only a page that declares `fuels` gets one. It picks between GROUPS of views,
+   where the slider picks between the two views inside the chosen group — a
+   different axis, so it is a different control and looks like one.
+
+   The panes are all in the DOM and all mounted; the switch only hides. That
+   costs nothing per frame, because diagram-engine.js watches each drawing with
+   an IntersectionObserver and a hidden pane has no box to intersect with, so
+   its render loop is already stopped. Switching back finds it exactly as you
+   left it. */
+function fuelOf(cfg, groups) {
+  if (!cfg.fuels) return '';
+  const seg = groups.map((g, i) =>
+    `<button type="button" data-fuel="${g.key}" aria-pressed="${i === 0}">${esc(g.label)}</button>`
+  ).join('\n      ');
+  /* WITHOUT JS THE SWITCH CANNOT SWITCH, and every drawing on this site is
+     supposed to survive that: the generator bakes a static frame precisely so
+     that JS-off gets a complete, annotated diagram. A hidden second pane would
+     quietly break that promise for the second fuel — its drawing, its callouts
+     and its plain-text list would all be unreachable.
+
+     So with scripting off, both pairs are shown stacked and the control that
+     cannot work is taken away.
+
+     THE !important IS LOAD-BEARING, and not cargo cult. styles.css carries a
+     global `[hidden] { display: none !important; }`, which beats an ordinary
+     author rule no matter how specific it is or how late it comes — the first
+     version of this block was plain `display: block` and did nothing at all.
+     Between two important author declarations specificity decides, and
+     `.dg-fuel-pane[hidden]` (0,2,0) beats `[hidden]` (0,1,0). */
+  return `
+    <noscript>
+      <style>
+        .dg-fuel { display: none; }
+        .dg-fuel-pane[hidden] { display: block !important; }
+      </style>
+    </noscript>
+    <div class="dg-fuel reveal" id="dgFuel" role="group" aria-label="${esc(cfg.fuelLabel)}">
+      ${seg}
+    </div>`;
+}
+
 /* ---- a page: two views behind a slider ---- */
 
 function build(key) {
   const cfg = PAGES[key];
-  const views = cfg.views.map(v => ({ ...v, D: require(path.join(__dirname, v.module)) }));
 
-  const vb = views[0].D.VB;
-  views.forEach(v => {
+  /* One shape for both kinds of page. Without `fuels` there is a single
+     unnamed group, and everything below emits exactly what it always did —
+     that is what keeps index.html and hosting.html byte-identical through
+     this change. */
+  const groups = (cfg.fuels || [{ key: null, link: cfg.link, scale: cfg.scale, views: cfg.views }])
+    .map(g => ({ ...g, views: g.views.map(v => ({ ...v, D: require(path.join(__dirname, v.module)) })) }));
+
+  const all = groups.reduce((a, g) => a.concat(g.views), []);
+
+  /* Across ALL groups, not just within one. Every pane lands in the same
+     section, so a landfill drawn at a different aspect ratio from the wellpad
+     would make the page change height when you switch fuels. */
+  const vb = all[0].D.VB;
+  all.forEach(v => {
     if (v.D.VB.w !== vb.w || v.D.VB.h !== vb.h) {
       console.error(`${key}: view "${v.key}" has viewBox ${v.D.VB.w}x${v.D.VB.h}, ` +
-                    `but "${views[0].key}" has ${vb.w}x${vb.h}. Stacked views must ` +
+                    `but "${all[0].key}" has ${vb.w}x${vb.h}. Stacked views must ` +
                     `share one aspect ratio or the section changes height as the slider moves.`);
       process.exit(1);
     }
   });
 
-  const pair = views.length > 1;
+  /* Two pairs on one page must not share a camera. `link` is what joins two
+     views' view state, so if both groups named the same one, turning the
+     landfill would turn the wellpad behind it. */
+  const links = groups.map(g => g.link).filter(Boolean);
+  if (new Set(links).size !== links.length) {
+    console.error(`${key}: two view groups share a data-link (${links.join(', ')}). ` +
+                  `Each group needs its own, or dragging one pane turns the other.`);
+    process.exit(1);
+  }
 
-  const wraps = views.map(v => {
-    const svg = svgOf(v.D, v.alt, v.prefix);
-    const note = v.note ? `\n        <p class="dg-note">${v.note}</p>` : '';
-    const link = cfg.link ? ` data-link="${cfg.link}"` : '';
-    return `
+  /* Same for id prefixes: every drawing on the page answers to ${prefix}dg-flow
+     and the rest, so a repeat means two scenes writing the same path. */
+  const pre = all.map(v => v.prefix);
+  if (new Set(pre).size !== pre.length) {
+    console.error(`${key}: two views share an id prefix (${pre.map(p => `"${p}"`).join(', ')}). ` +
+                  `Every drawing on a page needs its own, or they overwrite each other.`);
+    process.exit(1);
+  }
+
+  /* Everything that belongs to ONE pair: its slider, its two stacked drawings,
+     and the plain-list fallback for both. A page without fuels calls this once
+     and splices the result straight in, which is why the output for
+     index.html and hosting.html does not move. */
+  function groupBlock(g) {
+    const views = g.views;
+    const pair = views.length > 1;
+    /* Suffixed only when the page has more than one group, so a single-group
+       page keeps the bare dgScale/dgViews ids it has always had. Two panes
+       both answering to #dgScale would be invalid, and only the first would
+       ever be found. */
+    const sfx = g.key ? `-${g.key}` : '';
+
+    const wraps = views.map(v => {
+      const svg = svgOf(v.D, v.alt, v.prefix);
+      const note = v.note ? `\n        <p class="dg-note">${v.note}</p>` : '';
+      const link = g.link ? ` data-link="${g.link}"` : '';
+      return `
       <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}" data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
         <canvas class="anim-field anim-field--dg" data-w="${v.D.VB.w}" data-h="${v.D.VB.h}" aria-hidden="true"></canvas>
         ${svg}${bubblesOf(v.D)}${controlsOf(v.prefix)}
         ${HINT}${note}
       </div>`;
-  }).join('');
+    }).join('');
 
-  const lists = views.map(v =>
-    `\n    <ol class="dg-list dg-list--${v.key} reveal">${listOf(v.D)}
+    const lists = views.map(v =>
+      `\n    <ol class="dg-list dg-list--${v.key} reveal">${listOf(v.D)}
     </ol>`).join('');
 
-  /* Two controls, and a page can carry either or both:
-
-       the TOGGLE crosses pages. Its second segment is a link, so stepping to
-       the next drawing is a deliberate navigation rather than a drag that
-       surprises you by leaving the page.
-
-       the SLIDER works within a page, cross-dissolving two stacked views. */
-  const toggle = chainOf(cfg.chain);
-
-  /* The hint is aria-hidden: the input already carries a label saying what the
-     two ends are, and a screen reader gets no use from being told to drag. */
-  const slider = pair ? `
+    /* The hint is aria-hidden: the input already carries a label saying what
+       the two ends are, and a screen reader gets no use from being told to
+       drag. */
+    const slider = pair ? `
     <div class="dg-scale reveal">
-      <span class="dg-scale-end" data-end="lo">${esc(cfg.scale.lo)}</span>
+      <span class="dg-scale-end" data-end="lo">${esc(g.scale.lo)}</span>
       <span class="dg-scale-track">
-        <input class="dg-scale-input" id="dgScale" type="range" min="0" max="100" step="1" value="0"
-               aria-label="${esc(cfg.scale.label)}">
+        <input class="dg-scale-input" id="dgScale${sfx}" type="range" min="0" max="100" step="1" value="0"
+               aria-label="${esc(g.scale.label)}">
         <span class="dg-scale-hint" aria-hidden="true">${ARROW_BACK}Drag to compare${ARROW}</span>
       </span>
-      <span class="dg-scale-end" data-end="hi">${esc(cfg.scale.hi)}</span>
+      <span class="dg-scale-end" data-end="hi">${esc(g.scale.hi)}</span>
     </div>` : '';
 
-  const control = toggle + slider;
-
-  const body = pair ? `
+    const body = pair ? `
     <!-- Both views share one grid cell, so the taller sets the height and the
          section never changes size as the slider moves. -->
-    <div class="dg-views reveal" id="dgViews" style="--d:0">${wraps}
+    <div class="dg-views reveal" id="dgViews${sfx}" style="--d:0">${wraps}
     </div>` : wraps;
+
+    return slider + body +
+      `\n    <!-- Below 900px the drawing is too dense to read and there is no pointer to
+         hover with, so the same callouts carry the content as a plain list.
+         Generated from the same source. -->${lists}`;
+  }
+
+  /* The TOGGLE crosses pages. Its second segment is a link, so stepping to the
+     next drawing is a deliberate navigation rather than a drag that surprises
+     you by leaving the page. It sits above the fuel switch because it changes
+     which site you are looking at, not which fuel feeds it. */
+  const toggle = chainOf(cfg.chain);
+
+  /* One group splices bare. Several are each wrapped in a pane the fuel switch
+     shows and hides — and the pane, not the drawing, carries `hidden`, so the
+     slider and the mobile list go with it. */
+  const panes = cfg.fuels
+    ? groups.map((g, i) => `
+    <div class="dg-fuel-pane" data-fuel="${g.key}"${i === 0 ? '' : ' hidden'}>${groupBlock(g)}
+    </div>`).join('')
+    : groupBlock(groups[0]);
 
   const section = `<!-- ===== ${cfg.marker} ===== -->
 <section class="band" id="${cfg.sectionId}">
@@ -330,10 +463,7 @@ function build(key) {
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
       <p class="lede" style="margin-top:20px">${esc(cfg.lede)}</p>
-    </div>${control}${body}
-    <!-- Below 900px the drawing is too dense to read and there is no pointer to
-         hover with, so the same callouts carry the content as a plain list.
-         Generated from the same source. -->${lists}
+    </div>${toggle}${fuelOf(cfg, groups)}${panes}
   </div>
 </section>
 
@@ -341,10 +471,12 @@ function build(key) {
 
   /* deps come first: a scene that reads shared geometry needs that module to
      have executed before it does. */
-  splice(cfg, section, (cfg.deps || []).concat(views.map(v => v.script)));
-  console.log(`${key}: ${views.length} views [${views.map(v =>
-    `${v.key}(${v.name}) ${v.D.SLOTS}x${v.D.LAYERS.length} ${v.D.CALLOUTS.length}co` +
-    (v.prefix ? ` "${v.prefix}"` : '')).join(', ')}]${cfg.link ? ` link "${cfg.link}"` : ''} chain@${cfg.chain} ` +
+  splice(cfg, section, (cfg.deps || []).concat(all.map(v => v.script)));
+  console.log(`${key}: ${all.length} views [${groups.map(g =>
+    (g.key ? `${g.key}: ` : '') + g.views.map(v =>
+      `${v.key}(${v.name}) ${v.D.SLOTS}x${v.D.LAYERS.length} ${v.D.CALLOUTS.length}co` +
+      (v.prefix ? ` "${v.prefix}"` : '')).join(', ') +
+    (g.link ? ` link "${g.link}"` : '')).join(' | ')}] chain@${cfg.chain} ` +
     `-> ${path.basename(cfg.target)}`);
 }
 

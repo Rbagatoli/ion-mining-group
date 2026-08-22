@@ -29,6 +29,10 @@ const PAGES = {
   'energy.html':     { priority: '0.9', changefreq: 'monthly' },
   'hosting.html':    { priority: '0.9', changefreq: 'monthly' },
   'calculator.html': { priority: '0.8', changefreq: 'monthly' },
+  'hardware.html':   { priority: '0.8', changefreq: 'monthly' },
+  /* Low: a step inside a purchase, not a page anyone should land on cold.
+     Listed rather than excluded so it is not treated as an orphan. */
+  'cart.html':       { priority: '0.2', changefreq: 'monthly' },
   'contact.html':    { priority: '0.7', changefreq: 'yearly' },
   'privacy.html':    { priority: '0.3', changefreq: 'yearly' },
 };
@@ -89,7 +93,7 @@ const LD = {
   name: 'Ion Mining Group',
   url: BASE + '/',
   logo: BASE + '/favicon.svg',
-  description: 'Bitcoin mining sites built on flared gas, landfill gas, and ' +
+  description: 'Bitcoin mining sites built on landfill gas, flared gas, and ' +
                'curtailed power. We finance, build, and operate the interruptible ' +
                'load that turns stranded energy into revenue, and host third-party fleets.',
   email: 'hello@ionmininggroup.com',

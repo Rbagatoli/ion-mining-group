@@ -57,10 +57,18 @@
        genuinely unpleasant thing to tab through. Both diagrams stay mounted
        and keep their own view state, so sliding back finds the container
        exactly as you left it. */
-    var scale = document.getElementById('dgScale');
-    var views = document.getElementById('dgViews');
-    if (scale && views) {
-        var ends = document.querySelectorAll('.dg-scale-end');
+    /* EVERY slider on the page, each scoped to its own pane. This used to look
+       up #dgScale and #dgViews once, which was true while a page could only
+       ever carry one pair. energy.html now carries two behind a fuel switch,
+       so a single lookup would drive the first pair and leave the second one
+       dead — and a document-wide .dg-scale-end query would light up the hidden
+       pane's labels from the visible pane's slider. */
+    var scales = document.querySelectorAll('.dg-scale-input');
+    Array.prototype.forEach.call(scales, function (scale) {
+        var scope = (scale.closest && scale.closest('.dg-fuel-pane')) || document;
+        var views = scope.querySelector('.dg-views');
+        if (!views) return;
+        var ends = scope.querySelectorAll('.dg-scale-end');
         var panes = views.querySelectorAll('.dg-wrap');
 
         /* Which two views these are is read off the page, not written here.
@@ -111,6 +119,43 @@
         scale.addEventListener('pointerdown', used, { once: true });
         scale.addEventListener('input', used, { once: true });
         scale.addEventListener('keydown', used, { once: true });
+    });
+
+    /* --- The fuel switch ---
+       Which PAIR is on screen, where the slider picks between the two drawings
+       inside it. Both panes stay mounted and keep their view state; hiding one
+       also stops it animating, because diagram-engine.js gates each drawing on
+       an IntersectionObserver and a hidden pane has no box to intersect. */
+    var fuel = document.getElementById('dgFuel');
+    if (fuel) {
+        var picks = fuel.querySelectorAll('[data-fuel]');
+        var fuelPanes = document.querySelectorAll('.dg-fuel-pane');
+
+        var showFuel = function (want) {
+            for (var i = 0; i < picks.length; i++) {
+                picks[i].setAttribute('aria-pressed',
+                    picks[i].getAttribute('data-fuel') === want ? 'true' : 'false');
+            }
+            for (var p = 0; p < fuelPanes.length; p++) {
+                var on = fuelPanes[p].getAttribute('data-fuel') === want;
+                fuelPanes[p].hidden = !on;
+                /* The reveal observer unobserves on first intersection, and a
+                   pane that was hidden at load never had one — so its contents
+                   would sit at the pre-reveal opacity forever once shown.
+                   Marking them revealed on the way in costs nothing and needs
+                   no measurement. */
+                if (on) {
+                    var late = fuelPanes[p].querySelectorAll('.reveal');
+                    for (var r = 0; r < late.length; r++) late[r].classList.add('in');
+                }
+            }
+        };
+
+        Array.prototype.forEach.call(picks, function (b) {
+            b.addEventListener('click', function () {
+                showFuel(b.getAttribute('data-fuel'));
+            });
+        });
     }
 
     /* --- Forms ---
@@ -124,7 +169,18 @@
             e.preventDefault();
             if (!form.reportValidity()) return;
 
+            /* The attribute is read HERE, not captured when the listener was
+               attached, because a page can take the form over after this ran.
+
+               checkout.js does exactly that: it removes data-mailto so the
+               checkout can POST an order instead. But this listener was already
+               bound — removing an attribute does not detach a listener — and it
+               is bound FIRST, since site.js loads first. Without this guard it
+               fired anyway, read null, and navigated to `mailto:null`, so
+               placing an order opened a mail draft on top of it. */
             var to = form.getAttribute('data-mailto');
+            if (!to) return;
+
             var subject = form.getAttribute('data-subject') || 'Website enquiry';
             var lines = [];
 

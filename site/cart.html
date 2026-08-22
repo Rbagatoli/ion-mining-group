@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your order — Ion Mining Group</title>
+<meta name="description" content="Review your machines, choose where they ship, and send the order. A deposit reserves it; the price is confirmed on your quote.">
+<link rel="canonical" href="https://ionmininggroup.com/cart.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your order — Ion Mining Group">
+<meta property="og:description" content="Review the fleet, choose a destination, and send the order for a firm quote.">
+<meta property="og:url" content="https://ionmininggroup.com/cart.html">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+<!-- ===== SHARE CARD ===== -->
+<meta property="og:image" content="https://ionmininggroup.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ionmininggroup.com/og/home.png">
+<!-- ===== /SHARE CARD ===== -->
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Ion <span>Mining Group</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html" class="active">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <a href="./index.html#operate">How We Operate</a>
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./hardware.html">Add machines</a>
+    </div>
+  </div>
+</nav>
+
+  <!-- Only ever shown when the browser is standing in for the orders service.
+       A payment page that might be pretending has to say so, unmissably, at
+       the top, before anything that looks like an amount or an address. -->
+  <p class="demo-flag" id="demoFlag" hidden>Demo mode &mdash; payments on this page are simulated. <strong>Nothing here is real, no address is a real address, and nothing can be paid.</strong></p>
+
+<!-- ===== HEADER ===== -->
+<section class="hero-zone">
+  <div class="wrap">
+    <div class="calc-head">
+      <p class="eyebrow">Your order</p>
+      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Confirm the fleet,<br>and say where it goes.</h1>
+      <p class="lede">Machines, destination and hosting in one place. A deposit reserves the order; the price and the lead time are confirmed on your quote before anything is charged or shipped.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+
+    <!-- Nothing chosen yet. Shown instead of an empty table, because column
+         headings over no rows read as a page that failed to load. -->
+    <div class="ck-empty" id="ckEmpty" hidden>
+      <h2 class="calc-chart-title">Nothing in the order yet</h2>
+      <p class="calc-hint">Pick machines from the catalogue and they will be waiting here. The order is kept in this browser, so you can leave and come back to it.</p>
+      <a class="btn btn--primary" href="./hardware.html">Browse the machines</a>
+    </div>
+
+      <!-- Shown once the orders service has actually taken the order. The
+           reference is the customer's only way back to it, so it is the
+           largest thing on the page at that moment. -->
+      <div class="ck-placed" id="ckPlaced" hidden>
+        <h3 class="calc-chart-title">Order received</h3>
+        <p class="ck-ref" id="ckRef">&mdash;</p>
+        <!-- The way to pay. Hidden until the orders service is switched
+             on, because a Pay button that leads nowhere is worse than no
+             button at all. checkout.js unhides it. -->
+        <div class="hw-actions" id="ckPayNow" hidden>
+          <a class="btn btn--primary" id="ckPayDeposit" href="./pay.html">Pay the deposit</a>
+          <a class="btn btn--ghost" id="ckPayFull" href="./pay.html">Pay in full instead</a>
+        </div>
+        <p class="form-note">Keep this reference. <strong>Nothing has been charged.</strong> We confirm the price, the lead time and the freight with our distributor, then send you a quote and instructions for the deposit. You can check the order at any time at <a id="ckRefLink" href="./order.html">the status page</a>.</p>
+      </div>
+
+    <div class="hw" id="ckBody" hidden>
+
+      <!-- ---------- what is being bought ---------- -->
+      <div class="hw-cat">
+        <h2 class="calc-chart-title">The machines</h2>
+        <!-- A model held in a saved order that the catalogue no longer lists.
+             Reported rather than dropped, because silently deleting somebody's
+             line is worse than telling them it went. -->
+        <p class="calc-hint calc-hint--warn" id="ckStale" hidden></p>
+        <div class="calc-table-scroll">
+          <table class="calc-table hw-table ck-table">
+            <thead>
+              <tr>
+                <th>Machine</th><th>Hashrate</th><th>Draw</th>
+                <th>Each</th><th>Quantity</th><th>Line</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="ckLines"></tbody>
+          </table>
+        </div>
+        <p class="calc-caption">Prices are indicative as of <span id="ckAsOf">&mdash;</span> and are confirmed on quote &mdash; we source per order rather than holding stock.</p>
+      </div>
+
+      <!-- ---------- what it comes to ---------- -->
+      <div class="hw-order ck-order">
+        <h2 class="calc-chart-title">What it comes to</h2>
+        <div class="hw-totals">
+          <div><span class="ct-lab">Machines</span><span class="ct-val" id="ckUnits">&mdash;</span></div>
+          <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="ckHash">&mdash;</span></div>
+          <div><span class="ct-lab">Power draw</span><span class="ct-val" id="ckPower">&mdash;</span></div>
+          <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="ckCost">&mdash;</span></div>
+        </div>
+        <p class="calc-explain" id="ckUnpriced" hidden></p>
+
+        <!-- The deposit split. Indicative for the same reason the prices are: it
+             is a share of a total that is itself confirmed per order. -->
+        <div class="ck-split">
+          <div class="ck-split-part">
+            <span class="ct-lab">Deposit to reserve <span id="ckRate">&mdash;</span></span>
+            <span class="ct-val ct-val--btc" id="ckDeposit">&mdash;</span>
+          </div>
+          <div class="ck-split-part">
+            <span class="ct-lab">Balance before shipping</span>
+            <span class="ct-val" id="ckBalance">&mdash;</span>
+          </div>
+        </div>
+        <p class="form-note"><strong>Nothing is charged on this page.</strong> Send the order and we come back with a firm quote &mdash; confirmed price, lead time and freight &mdash; along with instructions for the deposit. The deposit reserves your place in the order and comes off the invoice; the balance is due once the quote is agreed and before the machines ship.</p>
+      </div>
+
+      <!-- ---------- destination, hosting, and sending it ---------- -->
+      <!-- Deliberately NOT a form[data-mailto]. site.js binds a mail handler to
+           every one of those at load, before this page can take the form over,
+           and a checkout that sometimes turns into a mail draft is the single
+           most confusing thing this page could do. Ordering goes one way: to
+           the orders service, and then to the payment page. -->
+      <form class="form hw-send" id="ckForm">
+        <input type="hidden" name="order" id="ckOrderText">
+
+        <h2 class="calc-chart-title">Where they go</h2>
+        <div class="field">
+          <label for="ck-dest">Destination</label>
+          <select id="ck-dest" name="destination">
+            <option value="ion">An Ion facility &mdash; host them for me</option>
+            <option value="own">My own site</option>
+            <option value="third">A third-party facility</option>
+          </select>
+        </div>
+
+        <!-- Shown for an Ion destination. Which site depends on what has power
+             free when the order lands, so the page does not promise one. -->
+        <p class="calc-hint" id="ckIonNote">We will confirm which of our sites has capacity for a fleet this size, and quote hosting on the same order. You do not arrange freight &mdash; the machines are delivered straight to the facility that will run them.</p>
+
+        <!-- Shown for anywhere else. A pallet of ASICs cannot simply be posted:
+             somebody has to be there to receive it. -->
+        <div id="ckAddr" hidden>
+          <div class="form-row">
+            <div class="field">
+              <label for="ck-facility">Facility or company name</label>
+              <input id="ck-facility" name="facility" type="text" placeholder="Who is receiving them">
+            </div>
+            <div class="field">
+              <label for="ck-attn">Receiving contact</label>
+              <input id="ck-attn" name="attention" type="text" placeholder="Name and phone">
+            </div>
+          </div>
+          <div class="field">
+            <label for="ck-street">Delivery address</label>
+            <input id="ck-street" name="street" type="text" placeholder="Street, unit, dock">
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="ck-city">City</label>
+              <input id="ck-city" name="city" type="text" placeholder="City">
+            </div>
+            <div class="field">
+              <label for="ck-region">State or region</label>
+              <input id="ck-region" name="region" type="text" placeholder="State, province, region">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="ck-post">Postcode</label>
+              <input id="ck-post" name="postcode" type="text" placeholder="Postcode">
+            </div>
+            <div class="field">
+              <label for="ck-country">Country</label>
+              <input id="ck-country" name="country" type="text" placeholder="Country">
+            </div>
+          </div>
+          <p class="calc-hint calc-hint--warn">These arrive as palletised freight and need someone able to take delivery on a dock or with a forklift. Tell us if the address cannot, and we will route it through a receiving agent instead. Cross-border orders carry duty and customs clearance, which the quote itemises.</p>
+        </div>
+
+        <h2 class="calc-chart-title">Send it</h2>
+        <div class="form-row">
+          <div class="field">
+            <label for="ck-name">Name</label>
+            <input id="ck-name" name="name" type="text" required placeholder="Your name">
+          </div>
+          <div class="field">
+            <label for="ck-company">Company</label>
+            <input id="ck-company" name="company" type="text" placeholder="Optional">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="ck-email">Email</label>
+            <input id="ck-email" name="email" type="email" required placeholder="you@company.com">
+          </div>
+          <div class="field">
+            <label for="ck-phone">Phone</label>
+            <input id="ck-phone" name="phone" type="tel" placeholder="Optional, faster for freight">
+          </div>
+        </div>
+        <div class="field">
+          <label for="ck-notes">Anything else</label>
+          <textarea id="ck-notes" name="notes" placeholder="Timing, power available at the destination, whether you want hosting quoted, anything relevant."></textarea>
+        </div>
+
+        <h2 class="calc-chart-title">How you want to pay</h2>
+        <div class="field">
+          <label for="ck-leg">Payment</label>
+          <select id="ck-leg" name="leg">
+            <option value="deposit">Deposit now, balance before shipping</option>
+            <option value="full">Pay in full now</option>
+          </select>
+        </div>
+        <p class="calc-hint" id="ckLegNote">&mdash;</p>
+
+        <pre class="hw-preview" id="ckPreview">No machines selected yet.</pre>
+
+        <div class="hw-actions">
+          <button class="btn btn--primary" type="submit" id="ckSubmit">Continue to payment</button>
+          <button class="btn btn--ghost" type="button" id="ckCopy">Copy the order</button>
+          <button class="btn btn--ghost" type="button" id="ckClear">Empty the order</button>
+        </div>
+        <!-- Shown only when the order could not be placed. It says what went
+             wrong and offers an address as a LINK — it never opens mail by
+             itself, because a checkout that pops a mail window instead of
+             taking payment reads as broken. -->
+        <p class="calc-hint calc-hint--warn" id="ckFallback" hidden></p>
+        <p class="form-note">Nothing is charged on the next page either &mdash; it shows what to send and where. The price and the lead time are confirmed with you before the machines ship.</p>
+      </form>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Ion <span>Mining Group</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <a href="./hosting.html">Hosting &amp; colocation</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js"></script>
+<script src="./miner-db.js"></script>
+<script src="./price-list.js"></script>
+<script src="./cart.js"></script>
+<script src="./orders-demo.js"></script>
+<script src="./orders-api.js"></script>
+<script src="./checkout.js"></script>
+</body>
+</html>

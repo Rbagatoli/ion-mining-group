@@ -52,7 +52,7 @@ const CARDS = [
     /* The calculator and contact pages have no drawing of their own. They get
        the whole-mine card: it is what the company builds, which is the honest
        thing to show beside either title. */
-    { file: 'home.png',      scene: null, pages: ['calculator.html', 'contact.html'] },
+    { file: 'home.png',      scene: null, pages: ['calculator.html', 'contact.html', 'hardware.html', 'cart.html', 'pay.html', 'order.html'] },
 ];
 
 /* ---------- the mark ----------
@@ -130,7 +130,9 @@ function render(sceneFile) {
      [W - m, H - m, m, H - m], [m, H - m, m, m]].forEach(l => {
         c.strokeLine(l[0], l[1], l[2], l[3], 1.5, PLAT[0], PLAT[1], PLAT[2], 0.20);
     });
-    drawMark(c, 88, 88, 40);
+    /* Sized to read in a Slack preview, which is often a few hundred pixels
+       wide — at 40 the mark survived the card and vanished in the thumbnail. */
+    drawMark(c, 102, 98, 54);
     return c;
 }
 

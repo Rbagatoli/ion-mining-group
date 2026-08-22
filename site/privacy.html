@@ -51,12 +51,17 @@
       <a href="./energy.html">Energy Partners</a>
       <a href="./index.html">Home</a>
       <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html">Calculator</a>
       <a href="./index.html#operate">How We Operate</a>
       <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
       <a class="btn btn--primary btn--sm nav-cta" href="./contact.html">Talk to us</a>
     </div>
   </div>
@@ -91,20 +96,39 @@
         </div>
       </div>
 
-      <h2 class="h-section" style="margin-top:44px">The two outside services.</h2>
-      <p class="lede">The <a href="./calculator.html">mining calculator</a> asks two public services for today's figures each time it loads, so it does not open on stale numbers. Your browser contacts them directly, which means <strong>your IP address reaches them</strong>. Nothing about you is sent, and no request identifies you as a visitor to this site.</p>
+      <h2 class="h-section" style="margin-top:44px">The outside services.</h2>
+      <p class="lede">Some of these your browser contacts <em>directly</em>, which means <strong>your IP address reaches them</strong>. Others we contact on your behalf from our own server, so they never see your browser at all. The difference matters, so it is stated for each one.</p>
+
+      <h3 class="pay-rail-title" style="margin-top:30px">Your browser contacts these directly</h3>
       <div class="calc-note-cols" style="margin-top:26px">
         <div>
           <h4>Coinbase</h4>
-          <p>The current bitcoin price, from their public price endpoint. No key, no account, no payload &mdash; a bare read.</p>
+          <p>The current bitcoin price, from their public price endpoint, on the <a href="./calculator.html">calculator</a> and the <a href="./hardware.html">hardware catalogue</a>. No key, no account, no payload &mdash; a bare read.</p>
         </div>
         <div>
           <h4>Blockchain.info</h4>
-          <p>The current bitcoin network difficulty, the same way. Also a bare read.</p>
+          <p>The current bitcoin network difficulty, from the same two pages and in the same way. Also a bare read.</p>
         </div>
         <div>
+          <h4>Cloudflare</h4>
+          <p>Our order service runs there. If you place an order, what you typed into it &mdash; machines, destination, contact details &mdash; goes to that service, along with your IP address. It is ours; Cloudflare hosts it.</p>
+        </div>
+        <div>
+          <h4>Stripe</h4>
+          <p>Only if you choose to pay by card. You are sent to a page Stripe hosts, and <strong>your card details go to Stripe, never to us</strong> &mdash; we never see or store a card number. They tell us afterwards whether the payment succeeded, and nothing more.</p>
+        </div>
+
+      <h3 class="pay-rail-title" style="margin-top:34px">We contact these for you</h3>
+      <p class="form-note">Your browser never talks to these, so they do not see your IP address or anything about your visit.</p>
+      <div class="calc-note-cols" style="margin-top:20px">
+        <div>
+          <h4>Strike</h4>
+          <p>Raises the bitcoin invoice when you choose to pay that way. Our server asks for it and passes you the address; Strike sees the payment, not you.</p>
+        </div>
+      </div>
+        <div>
           <h4>If you would rather not</h4>
-          <p>Block scripts for this page, or use the calculator with JavaScript disabled. It will show the figures it shipped with instead, dated on the page, and everything else still works.</p>
+          <p>Block scripts for those pages, or use them with JavaScript disabled. Both fall back to the figures they shipped with, dated on the page, and everything else still works.</p>
         </div>
       </div>
 
@@ -147,7 +171,7 @@
             </svg>
           <span class="brand-name">Ion <span>Mining Group</span></span>
         </a>
-        <p class="footer-blurb">Bitcoin mining sites built on flared gas, landfill gas, and curtailed power.</p>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
       <div class="footer-col">
         <h4>Services</h4>
@@ -175,5 +199,6 @@
 </footer>
 
 <script src="./site.js"></script>
+<script src="./cart.js"></script>
 </body>
 </html>

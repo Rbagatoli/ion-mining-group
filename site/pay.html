@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment — Ion Mining Group</title>
+<meta name="description" content="Pay the deposit or the balance on your hardware order, in bitcoin.">
+<link rel="canonical" href="https://ionmininggroup.com/pay.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Payment — Ion Mining Group">
+<meta property="og:description" content="Pay the deposit or the balance on your hardware order, in bitcoin.">
+<meta property="og:url" content="https://ionmininggroup.com/pay.html">
+<!-- Carries an order reference. Indexing it would publish a delivery address. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+<!-- ===== SHARE CARD ===== -->
+<meta property="og:image" content="https://ionmininggroup.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ionmininggroup.com/og/home.png">
+<!-- ===== /SHARE CARD ===== -->
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Ion <span>Mining Group</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <a href="./index.html#operate">How We Operate</a>
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./hardware.html">Back to the catalogue</a>
+    </div>
+  </div>
+</nav>
+
+  <!-- Only ever shown when the browser is standing in for the orders service.
+       A payment page that might be pretending has to say so, unmissably, at
+       the top, before anything that looks like an amount or an address. -->
+  <p class="demo-flag" id="demoFlag" hidden>Demo mode &mdash; payments on this page are simulated. <strong>Nothing here is real, no address is a real address, and nothing can be paid.</strong></p>
+
+<!-- ===== HEADER ===== -->
+<section class="hero-zone">
+  <div class="wrap">
+    <div class="calc-head">
+      <p class="eyebrow">Payment</p>
+      <h1 class="h-display" style="font-size:clamp(30px,4vw,44px)">Send the payment,<br>and we take it from there.</h1>
+      <p class="lede">Pay in bitcoin, on-chain or over Lightning. The page updates itself the moment the payment confirms &mdash; you do not need to tell us.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="pay">
+
+      <!-- Nothing resolved yet. Never an empty frame: a payment page that shows
+           blank boxes while it loads reads as broken at the exact moment a
+           customer is deciding whether to trust it with money. -->
+      <p class="calc-hint" id="payLoading">Fetching the payment details&hellip;</p>
+
+      <!-- Anything that went wrong. Says what, and what to do instead. -->
+      <div class="pay-problem" id="payError" hidden>
+        <h2 class="calc-chart-title">We could not load that payment</h2>
+        <p class="calc-hint calc-hint--warn" id="payErrorWhy">&mdash;</p>
+        <p class="form-note"><strong>Nothing has been charged.</strong> Email <a href="mailto:hosting@ionmininggroup.com">hosting@ionmininggroup.com</a> with your order reference and we will send payment instructions directly.</p>
+      </div>
+
+      <!-- The payment itself. -->
+      <div class="pay-live" id="payLive" hidden>
+
+        <div class="hw-order ck-order">
+          <h2 class="calc-chart-title" id="payLegTitle">Deposit</h2>
+          <div class="hw-totals">
+            <div><span class="ct-lab">Amount due</span><span class="ct-val ct-val--btc" id="payAmount">&mdash;</span></div>
+            <div><span class="ct-lab">Order</span><span class="ct-val" id="payRef">&mdash;</span></div>
+          </div>
+          <p class="form-note" id="payLegNote">This reserves the order. The balance falls due once the quote is agreed and before the machines ship.</p>
+        </div>
+
+        <!-- Waiting / settled / expired. One line, always true. -->
+        <p class="pay-state" id="payState" data-state="waiting">Waiting for the payment to arrive&hellip;</p>
+
+        <!-- One rail at a time. A screen showing a bitcoin address and a card
+             button together invites somebody to pay twice, and only one of
+             those can be refunded easily. -->
+        <div class="pay-rails" id="payRails" role="group" aria-label="How to pay">
+          <button type="button" class="pay-rail-pick is-on" data-rail="btc" aria-pressed="true">Bitcoin</button>
+          <button type="button" class="pay-rail-pick" data-rail="card" aria-pressed="false" hidden>Card</button>
+          <button type="button" class="pay-rail-pick" data-rail="wire" aria-pressed="false">Wire transfer</button>
+        </div>
+
+        <!-- ON-CHAIN FIRST, and deliberately so: Lightning routing is unreliable
+             well below a five-figure payment, and anybody moving this much is
+             doing it from an exchange or a desktop wallet. -->
+        <div class="pay-rail" id="payChain">
+          <h3 class="pay-rail-title">Bitcoin, on-chain</h3>
+          <p class="calc-hint">Send the exact amount above to this address. It is for this payment only.</p>
+          <p class="pay-addr" id="payAddr">&mdash;</p>
+          <div class="hw-actions">
+            <button type="button" class="btn btn--primary btn--sm" id="payCopyAddr">Copy the address</button>
+            <a class="btn btn--ghost btn--sm" id="payWallet" href="#">Open in a wallet</a>
+          </div>
+          <!-- The address is the authoritative thing on this page. Grouped into
+               fours so it can be checked by eye against a wallet before sending,
+               which is the only check that catches a clipboard that lied. -->
+          <p class="calc-hint calc-hint--warn">Check the first and last four characters against your wallet before you send. A bitcoin payment cannot be reversed.</p>
+        </div>
+
+        <div class="pay-rail" id="payLn" hidden>
+          <h3 class="pay-rail-title">Lightning</h3>
+          <p class="calc-hint">Faster, and better suited to the smaller amounts. This quote expires &mdash; if it lapses, reload and a fresh one is issued.</p>
+          <p class="pay-bolt" id="payBolt">&mdash;</p>
+          <div class="hw-actions">
+            <button type="button" class="btn btn--ghost btn--sm" id="payCopyBolt">Copy the invoice</button>
+            <a class="btn btn--ghost btn--sm" id="payLnWallet" href="#">Open in a wallet</a>
+          </div>
+        </div>
+
+        <div class="pay-rail" id="payCard" hidden>
+          <h3 class="pay-rail-title">Card</h3>
+          <p class="calc-hint">You will be handed to Stripe to enter your card, then brought back here. <strong>Your card details never touch this site.</strong></p>
+          <p class="calc-hint" id="payCardOnly">Cards are available for the deposit. The balance is settled by wire or bitcoin.</p>
+          <div class="hw-actions">
+            <button type="button" class="btn btn--primary" id="payCardGo">Pay by card</button>
+          </div>
+          <!-- Beside the button, not in the status line above the rail
+               chooser. That is where this used to go, and a message that
+               far from the thing you pressed reads as nothing happening. -->
+          <p class="calc-hint calc-hint--warn" id="payCardWhy" hidden></p>
+        </div>
+
+        <div class="pay-rail" id="payWire" hidden>
+          <h3 class="pay-rail-title">Wire transfer</h3>
+          <p class="calc-hint">Send the amount above to the account below and quote the reference. No fee, and it usually clears in one to two business days.</p>
+          <dl class="pay-bank" id="payBank"></dl>
+          <!-- The reference is how an incoming transfer gets matched to an
+               order. Without it the money arrives unattributed. -->
+          <p class="pay-ref-label">Reference — must be quoted on the transfer</p>
+          <p class="pay-addr" id="payWireRef">&mdash;</p>
+          <div class="hw-actions">
+            <button type="button" class="btn btn--ghost btn--sm" id="payCopyRef">Copy the reference</button>
+          </div>
+          <!-- Shown while the details are still placeholders. Sending money
+               against a made-up account number is unrecoverable. -->
+          <p class="calc-hint calc-hint--warn" id="payBankUnready" hidden></p>
+          <p class="form-note">A wire is confirmed by a person reading the bank statement, so this page will not update by itself. We email you when it lands.</p>
+        </div>
+
+        <!-- No QR, on purpose. See site/README.md: rendering one needs an
+             encoder whose output cannot be verified here, and the app's habit of
+             fetching QR images from a third party would hand this address to
+             someone else. -->
+
+        <!-- Demo only. Stands in for the payment arriving, so the settled
+             state can be seen without a wallet. Hidden unless the browser
+             is standing in for the service. -->
+        <div class="hw-actions" id="paySettleWrap" hidden>
+          <button type="button" class="btn btn--ghost btn--sm" id="paySettle">Simulate the payment arriving</button>
+        </div>
+
+        <p class="form-note">Paying from an exchange? Withdraw to the address above. Allow for the network fee &mdash; the amount that must <em>arrive</em> is the amount shown.</p>
+      </div>
+
+      <!-- Settled. -->
+      <div class="pay-done" id="payDone" hidden>
+        <h2 class="calc-chart-title">Payment received</h2>
+        <p class="pay-addr" id="payDoneAmount">&mdash;</p>
+        <p class="form-note" id="payDoneNote">Thank you. We are placing the order with our distributor and will email you the confirmed price, the lead time and the freight details. You can follow it on <a id="payDoneLink" href="./order.html">the order page</a>.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Ion <span>Mining Group</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <a href="./hosting.html">Hosting &amp; colocation</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js"></script>
+<script src="./miner-db.js"></script>
+<script src="./price-list.js"></script>
+<script src="./cart.js"></script>
+<script src="./bank-details.js"></script>
+<script src="./orders-demo.js"></script>
+<script src="./orders-api.js"></script>
+<script src="./pay.js"></script>
+</body>
+</html>

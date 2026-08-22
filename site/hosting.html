@@ -62,12 +62,17 @@
       <a href="./energy.html">Energy Partners</a>
       <a href="./index.html">Home</a>
       <a href="./hosting.html" class="active">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html">Calculator</a>
       <a href="./index.html#operate">How We Operate</a>
       <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
       <a class="btn btn--primary btn--sm nav-cta" href="./contact.html?topic=hosting">Request a quote</a>
     </div>
   </div>
@@ -396,6 +401,7 @@
       <div>
         <div class="eyebrow">Before you ship</div>
         <h2 class="h-section">What we need from you.</h2>
+        <p class="lede">Do not have the machines yet? <a href="./hardware.html">Pick them from our catalogue</a> and we will source and host them on one agreement.</p>
         <p class="lede" style="margin-top:20px">Short list. Most of it you already have if the machines are running somewhere today.</p>
         <div class="btn-row">
           <a class="btn btn--primary" href="./contact.html?topic=hosting">Request a quote</a>
@@ -550,7 +556,7 @@
             </svg>
           <span class="brand-name">Ion <span>Mining Group</span></span>
         </a>
-        <p class="footer-blurb">Bitcoin mining sites built on flared gas, landfill gas, and curtailed power.</p>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
       <div class="footer-col">
         <h4>Services</h4>
@@ -578,6 +584,7 @@
 </footer>
 
 <script src="./site.js"></script>
+<script src="./cart.js"></script>
 <script src="./diagram-engine.js"></script>
 <script src="./hero-anim.js"></script>
 <script src="./scene-hosting.js"></script>

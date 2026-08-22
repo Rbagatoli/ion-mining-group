@@ -1,8 +1,9 @@
 # Ion Mining Group — public website
 
 The company-facing marketing site. Completely separate from the app that lives at the
-repo root — no shared CSS, no dependencies. Five pages plus an error page, one stylesheet,
-and a small diagram engine with one scene per page.
+repo root — no shared CSS, no dependencies. Six pages plus an error page, one stylesheet,
+and a small diagram engine. Most pages carry one drawing; the energy page carries
+four, in two pairs behind a fuel switch.
 
 ```
 site/
@@ -19,11 +20,21 @@ site/
   scene-pad-now.js   Energy page scene: a wellpad as it stands, flaring
   scene-pad-ion.js   Energy page scene: the same pad with a mine on it
   pad-geometry.js    The wellpad itself, shared byte-for-byte by both pad scenes
+  scene-landfill-now.js  Energy page scene: a landfill collection system, flaring
+  scene-landfill-ion.js  Energy page scene: the same landfill with a mine on it
+  landfill-geometry.js   The cell and wellfield, shared by both landfill scenes
   site-kit.js        Gas skid, genset, transformer, container — shared by two scenes
   calc-engine.js  Projection maths, copied verbatim from the app at the repo root
   miner-db.js     28 machine models with specs, copied from the app
   calculator.js   The form around the engine
+  hardware.html   Catalogue and order builder — a quote request, not a checkout
+  hardware.js     The catalogue and the running order
+  cart.js         The order, kept between pages. Loaded everywhere.
+  checkout.js     The checkout page: lines, deposit split, destination
+  price-list.js   Dated indicative prices, the one place to refresh them
+  privacy.html    What this site collects, and the two services the calculator calls
   404.html        Not found — see the caveat below
+  og/             Generated share cards
   robots.txt      Generated
   sitemap.xml     Generated
   favicon.svg     Ion mark, matching manifest.json
@@ -139,9 +150,37 @@ Two options for the custom domain:
    `shared.js`, `manifest.json`'s `start_url`, and the cache paths in `sw.js`, so it is a
    real change rather than a move. Ask before doing it.
 
+## Running the tests
+
+```sh
+node tests/site/run.js            # every suite
+node tests/site/run.js --mutate   # and the mutation harnesses
+```
+
+Twenty-one suites plus a snapshot baseline, in [`tests/site/`](../tests/site/). Plain node, no
+runner, no dependency — the same style as the app's own tests one directory up.
+
+**They used to live in a scratch directory outside the repo.** They were real and they passed, and
+this file cited them by name in a dozen places as the thing enforcing an invariant — but the
+operating system was entitled to delete them at any moment, and nothing in a fresh checkout would
+have said they were missing. Moving them cost one change each: an absolute path that worked on one
+machine became a path derived from the test file's own location.
+
+They are in `tests/site/` rather than `site/tests/` deliberately. `_config.yml` already excludes
+`tests/` from the Pages build, and `site/` **stops** being excluded the day this site publishes —
+test files being served to the public is not a thing to discover afterwards.
+
+`snapshot.js` is a tool rather than a suite: `verify` compares every path string in all seven
+drawings against a captured baseline, and `capture <scene>` re-takes one after a deliberate change.
+
+> **The two mutation harnesses rewrite files under `site/` and restore them in a `finally`.** That
+> is what makes the guards trustworthy, and it is why a plain run does not do it: an interrupted
+> run leaves the tree modified. `--mutate` re-verifies the snapshot afterwards, because "it
+> restores itself" is a claim worth checking rather than trusting.
+
 ## Generated files
 
-Three generators, all idempotent — running any of them twice changes nothing the second time,
+Four generators, all idempotent — running any of them twice changes nothing the second time,
 and a test asserts it. Run them after editing what they own; never edit the output.
 
 | Script | Owns |
@@ -149,6 +188,7 @@ and a test asserts it. Run them after editing what they own; never edit the outp
 | [`tools/build-nav.js`](./tools/build-nav.js) | the nav and the footer Company column, on all six pages |
 | [`tools/build-diagram.js`](./tools/build-diagram.js) | the drawing sections and their static frames |
 | [`tools/build-seo.js`](./tools/build-seo.js) | `robots.txt`, `sitemap.xml`, and the home page JSON-LD |
+| [`tools/build-og.js`](./tools/build-og.js) | the share cards in `og/`, and the `og:image` tags pointing at them |
 
 `build-seo.js` holds `BASE`, the single place the site origin is written. The `canonical` and
 `og:url` tags in each page already assume the same origin, and `seo-suite.js` asserts they agree —
@@ -182,6 +222,470 @@ node tools/build-nav.js
 ```
 
 Per-page differences it handles: which item gets `.active`, and each page's own CTA button.
+
+## Hardware catalogue
+
+[`hardware.html`](./hardware.html) lists every machine in `miner-db.js`, takes quantities, and sends
+the result as a quote request. Hosting was bring-your-own — "send us the machine list" — which loses
+the customer who has decided to mine but owns nothing yet.
+
+**It is not a checkout, and that is a business fact rather than a missing feature.** Ion brokers
+rather than holds stock, so price and delivery are confirmed against a distributor per order. Taking
+money at the moment someone clicks would be promising something not yet sourced. An order builder
+that produces a quote is the same conversion step without that exposure. Cart persistence, payment
+rails, inventory levels and lead times are all out of scope for the same reason.
+
+### Two sources, on purpose
+
+| File | Holds | Changes |
+|---|---|---|
+| [`miner-db.js`](./miner-db.js) | hashrate, draw, J/TH | never, once a machine ships |
+| [`price-list.js`](./price-list.js) | the indicative price, and `ASOF` | weekly |
+
+They were one file. `miner-db.js` is the app's spec table and its price column was labelled
+`cost (USD approx.)` with no date and no source — and across same-generation machines it spans
+**5.8× in dollars per terahash**, from $6.2/TH to $36.2/TH. That is not a market spread, it is
+entries priced at different times and never reconciled. Tolerable as an editable calculator default;
+disqualifying on a page where a published number reads as an offer.
+
+So the page states `ASOF` beside the catalogue and calls the prices indicative and confirmed on
+quote. `hardware-suite.js` fails if the date is missing, if it does not reach the page, or if
+`hardware.js` starts reading `m.cost` from the specs table again.
+
+> **Reconciling those prices is a data job and it is not done.** The per-TH figure is written beside
+> every row in `price-list.js` so the outliers are visible. Do that before this page is published.
+
+A machine with no price on file reads **"on request"**, never `$0` — a zero is an offer of nothing
+rather than the absence of one, and there is a test for it.
+
+### A row per machine, with room to breathe
+
+The catalogue is a table, sorted by efficiency, best first. It was briefly a card per machine —
+twenty-eight large sections, which gave each one presence but made a very long page and broke the
+thing the catalogue is actually for: reading J/TH and price *down a column*. A list does that; a
+stack of cards does not. So it went back to rows, with roughly double the row padding of the shared
+`.calc-table` and a larger machine name. The extra air is what the cards were really buying.
+
+### The quantity control is the site's own input, not a new one
+
+This is the one thing kept from the card version. The column originally carried a bare
+`<input type="number">` — the only control on the site the *browser* drew rather than the stylesheet,
+spinner arrows and all. The replacement is not a bespoke stepper either; that was tried and it looked
+wrong for a measurable reason: its `−` / `+` glyphs sat at **12.08:1 against the page ground where the
+affix chips the calculator uses sit at 5.15:1**, at 15px against their 11px, with an outline *and* two
+internal dividers packed into a small box. Same tokens as everything else, roughly three times the
+ink — which is what "bright white" meant.
+
+The site already has an input anatomy: a `.calc-unit` with small dim mono affix chips for the unit.
+The quantity control simply **is** that, with the chips as buttons:
+
+```html
+<td class="hw-qty">
+  <div class="calc-unit">
+    <button class="cu-pre hw-step"  data-step="-1">−</button>
+    <input type="number" data-qty="3" value="0" aria-label="Quantity of Antminer S21 XP">
+    <button class="cu-post hw-step" data-step="1">+</button>
+  </div>
+</td>
+```
+
+`.hw-step` adds only the button reset and the hover. The edge, the ground, the chip colour and the
+focus ring all come from rules the calculator owns, so the two cannot drift. There is no per-row
+label — the `<th>Quantity</th>` heading is the label, and repeating it twenty-eight times would be
+noise; the field carries an `aria-label` naming its machine instead. `hardware-suite.js` asserts the
+parts are shared, that the heading exists, and resolves the rendered chip colour through `cascade.js`
+rather than reading the rule, because `.hw-step` sits after `.cu-pre` at equal specificity and a
+colour declared on it would win silently.
+
+> One trap worth recording: **`cascade.js` resolves longhands and never expands `border`.** `.hw-step`
+> sets `border: 0` to strip the button chrome, so asking it for `border-right` cheerfully reports
+> `.cu-pre`'s hairline as the winner while a real browser has already wiped it with the shorthand. The
+> divider check resolves both and compares which actually outranks the other; the first version of it
+> passed a mutation that removed the divider entirely.
+
+The stylesheet also declares `color-scheme: dark` on `:root`. Without it every form control on the
+site — caret, spinner arrows, autofill, scrollbars — is drawn from the *light* system palette, which
+is where a stray white field comes from on a page that declares none of its own.
+
+### A row holding machines lights up
+
+`.hw-table tr:has(input[data-qty]:not([value="0"])) .hw-name` turns the machine name BTC orange, so a
+long list still shows what has been picked without scrolling back to the summary. **This is the one
+part with a real trap in it, and the original version of the rule could never have fired.** CSS
+attribute selectors read the *content attribute*, which neither typing nor `input.value = n` updates.
+A version that sets only the property keeps every total correct and silently never lights a row.
+`setQty()` writes both, and the suite drives the `+` button and reads the attribute back off the
+element rather than grepping for the call.
+
+### It hands off to the calculator
+
+Every row links to `calculator.html?minerModel=…&machineCount=…`, and the order summary links with
+the whole order. That needed no new machinery: the scenario encoder built for shareable links
+already reads both keys. `hardware-suite.js` checks the link is built and encoded; `calc-link.js`
+already proves the decode half.
+
+### The form is the weak link
+
+It reuses the `form[data-mailto]` handler, so it opens a **draft** and sends nothing. Where no mail
+client is registered, nothing happens at all. Losing a contact enquiry that way is bad; losing an
+order while the customer believes they placed it is worse. So this page prints the address beside
+the form, offers a **Copy the order** button, and says in as many words that nothing is sent until
+you send it. Tests assert all three, and that no success message ever claims otherwise.
+
+**This is the third time real submission has come up.** It is now the weakest link in a conversion
+path rather than a nice-to-have, and [`worker/`](../worker/) already has the Cloudflare Worker
+pattern to copy.
+
+
+## The order, and the checkout
+
+[`cart.js`](./cart.js) holds what has been chosen; [`cart.html`](./cart.html) spends it. Quantities
+used to live in the DOM of `hardware.html`, so picking eight machines and then following a link threw
+the whole order away.
+
+**It stops at a deposit, and does not take money.** Ion sources per order rather than holding stock,
+so price and lead time are confirmed against a distributor per order. The checkout produces an order
+and says, in as many words, that nothing is charged on the page — you send it, we quote it, the
+deposit reserves it, the balance falls due before shipping. Card rails, BNPL, refunds and tax
+handling are all out of scope for the same reason, and there is a test that no phrase on the page
+ever suggests money changed hands.
+
+> **The deposit rate is a commercial term and it has not been confirmed.** `DEPOSIT_RATE` is 0.25,
+> drawn from what the market does. It lives in [`price-list.js`](./price-list.js) beside the prices
+> because it belongs to the same category — a number that binds only on a quote — and changing it
+> there changes every figure and caption on the checkout. Confirm it before publishing, along with
+> the 5.8× $/TH spread the prices still carry.
+
+### The store is deliberately dependency-free
+
+Every page loads `cart.js` so every nav can show the order, and most pages load neither `miner-db.js`
+nor `price-list.js`. So the store itself only ever handles **model names and counts** — that is all
+`count()` needs, which is all the nav badge needs.
+
+Anything requiring a hashrate or a price lives in `lines()` and `totals()`, and those return **`null`,
+not `[]`**, when the tables are absent. The distinction matters: an empty array means "the order is
+empty", `null` means "this page cannot answer". A caller that conflates them renders *nothing in your
+order* over somebody's saved cart because a script tag was missing. Both pages check for `null` before
+rendering, and there is a test that drives the store with `MinerDB` deleted.
+
+### What comes back out of storage is untrusted
+
+It is the only input on the site that was not typed into a field: it may have been written by an older
+version of this code, by another tab, or by hand in devtools. `clean()` runs at **every** boundary —
+read, write and `set()` — and drops anything that is not a model name against a positive whole number,
+rather than trying to repair it. Quantities are capped, because a stored number reaches arithmetic
+that reaches the page.
+
+That triple-guarding has a testing consequence worth recording: **no single-point mutation of the
+sanitiser is observable**, because the other two boundaries still catch it. The suite proves the
+invariant instead — neutering `clean()` outright fails seven checks.
+
+Storage that throws is handled the same way. Private browsing, disabled storage and `file://` all fail
+on read or write; a cart that throws takes the page with it, so it degrades to memory and the page
+never knows.
+
+### The money
+
+| Figure | Where it comes from |
+|---|---|
+| units, hashrate, draw | `miner-db.js`, times the counts |
+| indicative hardware | `price-list.js`, times the counts |
+| deposit | `DEPOSIT_RATE` × the hardware total |
+| balance | hardware total − deposit |
+
+The deposit is the only figure on the site that is a *share* of another one, so the suite asserts both
+halves add back up — quoting two numbers that do not describe the same order is the failure worth
+catching. A machine with **no price on file** is counted as unpriced, never as zero dollars, so it
+cannot quietly under-quote the order or under-charge the deposit.
+
+> That test was vacuous when first written. It looked for a machine with no price, found none —
+> every model currently has one — and passed while asserting nothing. It now stubs the price list to
+> force the path.
+
+### Both pages key quantities by model
+
+Not by row position. An index means a catalogue that gains or loses a machine silently shifts somebody's
+saved order onto its neighbour, and it would force the two pages to agree on a sort order forever.
+There is a test that neither file emits an index-keyed `data-qty`.
+
+A model held in a saved order that the catalogue no longer lists is **reported, not dropped** —
+silently deleting somebody's line is worse than telling them it went.
+
+### The nav badge
+
+`.nav-links a.nav-cart`, not `.nav-cart`. The badge is an `<a>` inside `.nav-links`, so `.nav-links a`
+is (0,1,1) and beats a bare class at (0,1,0) — the first version rendered at the nav link's own padding
+and 15px type, which pushed the whole nav into wrapping at desktop widths. It is the same trap
+`.nav-cta` already carries a note about, and the suite resolves the rendered value through
+`cascade.js` rather than reading the rule. The nav's compact breakpoint moved from 1080px to 1240px to
+make room for it.
+
+It is hidden entirely at zero rather than showing a `0`, so the nav is seven items again the moment
+the order is emptied.
+
+### Where the machines go
+
+The destination is the point of the checkout: an Ion facility, the customer's own site, or a
+third-party facility. Picking anything but Ion reveals the delivery address, and `required` is added
+and removed with it — a hidden required field blocks submission with a validation message pointing at
+something nobody can see. The page says plainly that ASICs arrive as palletised freight and need
+somebody able to receive them, and that cross-border orders carry duty and clearance.
+
+### Still the weak link
+
+The form is the same `mailto:` handler as everywhere else, so it opens a **draft** and sends nothing.
+The page prints the address and offers Copy for exactly that reason. This is now the fourth time real
+submission has come up, and it is carrying an *order* rather than an enquiry —
+[`worker/`](../worker/) has the Cloudflare Worker pattern to copy.
+
+## Taking the order for real
+
+[`worker-orders/`](../worker-orders/) is a fourth Cloudflare Worker, alongside the Strike, QuickBooks
+and F2Pool proxies already deployed. It takes an order from `cart.html`, prices it, and holds it
+through a lifecycle. **It does not take money and does not buy anything** — see below.
+
+### The one rule: the browser does not price the order
+
+`Cart.totals()` computes totals client-side so the checkout can show them. **A number computed in a
+browser is a number the customer controls** — edit localStorage, or the script, and submit a $1
+deposit on a $52,000 order. So the checkout sends **models and counts only**, and the Worker
+recomputes every figure from `catalogue.js`. Prices, deposits and line totals in the request are
+ignored even when present.
+
+The suite sends real orders carrying forged totals, forged per-line prices, unknown machines,
+negative quantities, a quantity of 1e9, and duplicated lines. There is a mutation for each, including
+one that makes the handler honour `body.usd` — all thirty-two are caught.
+
+> Server-side pricing stops **tampering**. It does not fix **wrong** prices: `price-list.js` still
+> spans 5.8× in $/TH and `DEPOSIT_RATE` is still an unconfirmed 0.25. Both remain go-live blockers.
+
+### Where the catalogue comes from
+
+`tools/build-order-catalogue.js` generates `worker-orders/catalogue.js` from `site/miner-db.js` and
+`site/price-list.js`. Generated rather than byte-copied — the site's files are browser scripts that
+assign a global and a Worker is an ES module — and the suite asserts every model, spec, price, the
+`ASOF` date and the rate all agree.
+
+The generator takes optional source paths. That is not flexibility for its own sake: **every machine
+currently has a price, so the "no price on file" branch is unreachable from the real tables**, and an
+unreachable branch passes every test while being wrong. The suite drives it against a fixture with
+one price removed and asserts it emits `null`, never `0`.
+
+### The lifecycle, including the parts that are a person
+
+```
+quote_requested → quoted → deposit_invoiced → deposit_paid
+                                                   ▼ ◀── a person places the PO
+                                              po_placed → balance_invoiced
+                                              → balance_paid → shipped → delivered
+```
+
+**No ASIC distributor exposes a public ordering API.** Bitmain, MicroBT and Canaan sell through
+accounts and channel partners; secondary desks trade over email against a wire. Every broker
+automates up to the money landing and then picks up the phone. The two marked steps are that, and the
+status page says so rather than showing a spinner that implies otherwise.
+
+Statuses advance **one step at a time**, forward only. `cancelled` is always reachable and is a dead
+end — and that guard is load-bearing in a way that is easy to miss: `stepOf('cancelled')` is `-1`,
+and `-1 + 1 === 0`, so the one-step rule alone would happily revive a cancelled order back to
+`quote_requested`. Every other transition is caught by the step arithmetic; that one is caught by
+nothing else, and there is a test naming it.
+
+### The endpoint is unset, and that is a supported state
+
+`ORDERS_ENDPOINT` in `checkout.js` is empty until the Worker is deployed. With it empty the page
+behaves **exactly as it did before any of this existed** — a mail draft plus a copyable order — and
+upgrades itself the moment a URL is set. Same convention as the calculator's market fetch: every
+failure path falls back to something honest rather than showing an error. If the POST fails, the page
+says what happened, says nothing was sent, and hands back the address.
+
+### A bug only a browser could find
+
+The reference the customer gets back is their only handle on the order. `showPlaced()` empties the
+cart; emptying fires a re-render; and the reference panel was sitting **inside** `#ckBody`, which the
+re-render hides. The order was placed and the page said *"nothing in the order yet"* one frame later.
+
+Every unit test passed. It took driving a real Chrome against a real Worker to see it. The panel now
+sits outside the cart body, `render()` stands down once `placed` is set, and three mutations cover it.
+
+### Deploying it
+
+```
+cd worker-orders
+wrangler kv namespace create ORDERS      # put the id in wrangler.toml
+wrangler secret put OPS_SECRET           # bearer token for the owner routes
+wrangler deploy
+```
+
+Then set `ORDERS_ENDPOINT` in `site/checkout.js` and add the origin to `ALLOWED_ORIGINS` in
+`worker-orders/index.js`. Owner routes (`GET /orders`, `POST /orders/:ref/status`) take
+`Authorization: Bearer <OPS_SECRET>`; an unset secret **closes** them rather than opening them, and
+there is a test for that.
+
+## Paying for an order
+
+[`cart.html`](./cart.html) → **Pay the deposit** → [`pay.html`](./pay.html) → [`order.html`](./order.html).
+
+The catalogue's quantities become a persisted cart, the cart becomes an order with a reference, the
+reference becomes a Strike invoice, and the order page follows it to delivery. Customers choose
+**deposit** or **pay in full**; both are the same rail with a different amount.
+
+### The rule, restated for money
+
+Stage 1's rule was that the browser does not price the order. The payment rule is the same shape and
+higher stakes: **the browser does not decide what was paid.** `GET /orders/:ref/payment` reads no
+request body at all — it asks Strike and reports the answer. The suite attacks it with
+`?state=PAID`, `?paid=true`, `?settled=1` and a POST claiming settlement; all return UNPAID, and
+the POST 404s. A Strike outage reports `UNKNOWN`, never `PAID`, and the page tells anyone who has
+already sent money that it is not lost.
+
+Invoices are **USD-denominated** and quoted into bitcoin at pay time, so a customer owes $13,140
+whatever bitcoin does in between. Asking for the same leg twice **re-quotes the existing invoice**
+rather than minting a second one — quotes expire in about an hour and orders take days, and two live
+invoices for the same money strands whichever one is not paid.
+
+### On-chain first
+
+Lightning routing is unreliable well below a five-figure payment, and nobody moving $13,140 is doing
+it from a phone wallet. The on-chain address is the primary rail; Lightning is offered underneath. If
+Strike fails to produce an address the invoice still stands with Lightning alone, rather than the
+whole payment aborting.
+
+### There is no QR code, and that is a decision
+
+Rendering one needs an encoder whose output **cannot be verified from here** — there is no decoder to
+check it against — and a QR that silently encodes a wrong address sends five figures somewhere
+unrecoverable. The app fetches QR images from `api.qrserver.com`, including for a bitcoin address
+([`banking.js`](../banking.js)); doing that here would hand a customer's payment address to a third
+party. The address is shown in full instead, grouped into fours so it can be checked by eye, with a
+copy button and a `bitcoin:` wallet link.
+
+> The copy button and the wallet link carry the **raw** address, never the grouped display string —
+> a wallet handed `bc1q xy2k …` cannot pay. Two mutations cover it.
+
+### The steps that are a person
+
+`order.html` marks two steps **our side**: confirming the price with a distributor, and placing the
+purchase order. No ASIC distributor exposes an ordering API, so those are somebody picking up the
+phone. A progress bar implying otherwise would be lying to a customer who has paid a deposit.
+
+### Two guards that were blind, and how they were found
+
+**The third-party-request check could not see URLs.** It stripped `//` line comments before scanning
+— and `https://` contains `//`, so every outbound address was deleted before the check ran. A
+mutation inserting a live `api.qrserver.com` fetch sailed straight through it. The stripper now
+ignores `//` preceded by a colon.
+
+**The sitemap parity check exempted `404.html` by name.** The stated reason was always "it carries
+noindex", so it now *reads* each page and exempts the noindex ones — which covers `pay.html` and
+`order.html` for the same reason, and covers whatever comes next without being edited.
+
+### Switching it on
+
+```
+cd worker-orders
+wrangler kv namespace create ORDERS       # id into wrangler.toml
+wrangler secret put OPS_SECRET
+wrangler secret put STRIKE_API_KEY
+wrangler deploy
+```
+
+Then set `ORDERS_ENDPOINT` in `checkout.js`, `pay.js` and `order.js`, and add the domain to
+`ALLOWED_ORIGINS`. **All three default to empty, and empty is a supported state** — the checkout
+falls back to a mail draft, and both new pages say plainly that payment is not switched on rather
+than hanging. No key reaches the browser and there is a test for it.
+
+> **[`strike.js`](../worker-orders/strike.js) is the one file no test can settle.** Response shapes
+> are Strike's to define; everything around the call is proven, the call itself needs one live smoke
+> test with a real key before it takes a real dollar.
+
+## Three ways to pay
+
+Bitcoin, card and wire, chosen on `pay.html`. One rail visible at a time — a screen showing an
+address and a card button together invites paying twice, and only one of those refunds easily.
+
+### Cards are capped to the deposit, in the Worker
+
+~2.9% is about **$381 on a $13,140 deposit** and **$1,525 on a $52,560 order paid in full**, and the
+whole of it stays chargeback-exposed after machines have shipped to a facility Ion does not control.
+So cards take the deposit; the balance comes by wire or bitcoin at no fee.
+
+**The cap lives in `METHODS` in the Worker, not in the page that hides the button.** A rail the
+interface does not offer is still a rail somebody can POST to. The suite POSTs
+`{leg:'full', method:'card'}` and `{leg:'balance', method:'card'}` directly; both are refused.
+
+### The success redirect proves nothing
+
+This is the card equivalent of "the browser does not decide what was paid", and it is sharper, because
+after paying there is a URL the customer lands on. **Anyone can open that URL, with any query string,
+having paid nobody.** Only `POST /stripe/webhook` may settle a card payment.
+
+The webhook verifies HMAC-SHA256 over `timestamp.payload`, compared in constant time, inside a
+five-minute window — without the window a captured request stays valid forever, so anyone who ever saw
+one legitimate webhook could replay it later. It then checks the amount Stripe says it collected
+against what the order says is owed, and that `payment_status` really is `paid`.
+
+The suite tries: no signature, empty, malformed, wrong secret, signed over a different body, replayed
+from an hour ago, correct signature with the wrong amount, and a completed session that was never
+paid. Only a correct one settles anything, and **every rejection returns the identical message** —
+an endpoint that explains which part of a signature failed helps somebody forge the next one.
+
+> That last assertion needed strengthening. The first version grepped one response for words like
+> "secret" and "timestamp"; a mutation echoing the real reason back passed it, because that particular
+> reason happened not to contain any of them. It now asserts four different causes produce byte-identical
+> replies.
+
+### One leg, one settlement
+
+A customer can open a card checkout and then send bitcoin instead. Both attempts stay on the order,
+keyed `leg:method`, but the first to land closes the leg and every other attempt stops being payable.
+Without this they are charged twice and the order advances twice.
+
+Whichever panel is open sees it: someone watching the bitcoin tab when a card payment lands is shown
+PAID, so they do not pay again.
+
+### Wire is instructions, and says so
+
+`site/bank-details.js` holds the details, every field a visible `[PLACEHOLDER]`. **Wrong bank details
+are worse than absent ones** — an absent one stops somebody and makes them ask; a wrong one sends five
+figures somewhere unrecoverable. So unfilled fields render in the site's placeholder orange, and the
+page says outright: *do not send anything against them*. There is a test.
+
+The order reference is shown as the thing that must be quoted on the transfer, because it is the only
+way an incoming payment gets matched. The page states plainly that a person confirms it and that the
+page will not update by itself.
+
+### Can you send bitcoin to the address on screen?
+
+**No, and it is checked rather than asserted.** Demo mode shows `DEMO-NOT-A-BITCOIN-ADDRESS-DO-NOT-SEND`;
+the dev server shows a regtest string in mixed case, which bech32 forbids, with characters outside its
+alphabet. Every wallet rejects both before a send can be confirmed.
+
+### Every pretending mode says so
+
+The banner is raised from a `demo: true` flag. `tools/dev-server.js` stubs Strike at the fetch layer,
+so the Worker answered normally and **no flag was set** — that mode showed a fake address, said
+"waiting for the payment to arrive", and warned nobody. The dev server now marks its responses.
+
+### Switching it on
+
+```
+wrangler secret put STRIPE_SECRET_KEY        # sk_live_… or sk_test_…
+wrangler secret put STRIPE_WEBHOOK_SECRET    # whsec_… from the endpoint you register
+```
+
+Point a Stripe webhook endpoint at `https://<worker>/stripe/webhook` for
+`checkout.session.completed`. Without `STRIPE_SECRET_KEY` the card rail returns 503 rather than
+pretending; without `STRIPE_WEBHOOK_SECRET` the webhook refuses everything rather than trusting it.
+
+> **[`stripe.js`](../worker-orders/stripe.js) is the second file no test can settle**, alongside
+> `strike.js`. Response shapes are Stripe's; everything around them is proven, and one live test with
+> test keys is what remains.
+
+**Before it takes real money:** confirm Stripe will take the business in writing (high-ticket mining
+hardware is commonly treated as high-risk), fill in the bank details, reconcile `price-list.js`,
+confirm `DEPOSIT_RATE`, and write terms of sale saying when a deposit stops being refundable — a card
+deposit with no stated refund terms is a chargeback waiting to happen.
 
 ## Mining calculator
 
@@ -328,13 +832,19 @@ container’s three tiers read above the near roof. Closing the gap or flattenin
 sweeps — including the container shell itself, since a 40 ft box retrofitted for power, cooling
 and racking is a large part of what a hosting client is actually buying.
 
-There are **two** diagrams now, sharing one engine:
+There are **six** drawings now, sharing one engine:
 
 | File | Role |
 |---|---|
 | [`diagram-engine.js`](./diagram-engine.js) | Everything scene-agnostic. `createDiagram(scene)` is a **factory**, not a singleton — view state lives per instance, so two diagrams can never share it. |
 | [`scene-site.js`](./scene-site.js) | Home page: gas conditioning, genset, transformer, two containers. |
 | [`scene-hosting.js`](./scene-hosting.js) | Hosting page: inside one container, drawn ~2.4× closer so each machine is legible. |
+| [`scene-asic.js`](./scene-asic.js) | Hosting page: one machine, the far end of that page's slider. |
+| [`scene-pad-now.js`](./scene-pad-now.js) / [`scene-pad-ion.js`](./scene-pad-ion.js) | Energy page, **flared gas**: a wellpad flaring, and the same pad with our kit on it. |
+| [`scene-landfill-now.js`](./scene-landfill-now.js) / [`scene-landfill-ion.js`](./scene-landfill-ion.js) | Energy page, **landfill gas**: a collection system flaring, and the same site with our kit on it. |
+
+The energy page carries **four** of these, in two pairs behind a fuel switch — see
+[Landfill leads](#landfill-leads-and-what-that-did-to-the-drawings) below.
 
 A scene supplies `view`, `renderables`, `callouts`, `flow`, `regionBoxes`, `objects`,
 `extraBoxes` and `data`. Builders receive the engine's helper bundle as `H` rather than
@@ -347,6 +857,148 @@ node tools/build-diagram.js            # both pages
 node tools/build-diagram.js hosting    # just one
 ```
 
+### Landfill leads, and what that did to the drawings
+
+The company's priority moved to **landfill gas first, flared gas still served and second**.
+That is a copy change almost everywhere and a drawing change in exactly one place.
+
+**Ordering.** Wherever both fuels are named, landfill comes first: the footer tagline on all
+eleven pages, the home hero, the four-fuel grid and the enquiry form on `energy.html`. The
+tagline is **generated** — it lives in `tools/build-seo.js` as a string split across three
+lines. Fixing the eleven pages without fixing the generator buys exactly one build, which is
+what happened the first time.
+
+**The flare framing survived, on purpose.** It is tempting to read "The flare goes out.
+Nothing else moves." as oil-and-gas language that had to go. It is not: landfill gas is
+flared too, and most collection systems end in an enclosed flare. The heading, the slider
+ends, and "your flare stays" are all true of both fuels and were left alone.
+
+What is genuinely oil-and-gas-only is the **upstream vocabulary** — wellhead, separator, tank
+battery, lease, royalty, Permian, Bakken. A landfill has none of those. Those words are gone
+from the page's narrative, which now says "your collection system, your existing equipment"
+and lets whichever drawing is on screen be the specific one.
+
+They are **not** gone from the page, and should not be. Two zones keep them legitimately:
+the *Flared associated gas* card, which is about oil and gas, and the wellpad drawing behind
+the fuel switch, whose own labels and alt text describe a wellpad. `landfill-copy-suite.js`
+carves both zones out and asserts the vocabulary is absent from everything that is left —
+scoping that matters, because a check that greps for absent words also passes when its own
+carve-out has silently eaten the whole page.
+
+**The drawings.** `index.html` and `hosting.html` draw conditioning → generation → containers,
+which is the same whatever feeds it, and needed **no change at all**. Only `energy.html` drew
+a well pad. It now carries two pairs and a switch:
+
+| Pane | Scenes | Camera |
+|---|---|---|
+| Landfill gas *(open at load)* | `landfillnow` / `landfillion` | `data-link="landfill"` |
+| Flared gas | `padnow` / `padion` | `data-link="pad"` |
+
+Five rules hold this together, and each has a test behind it:
+
+1. **The two pairs must not share a camera.** `data-link` is what joins two views' view state.
+   If both pairs named the same one, turning the landfill would turn the wellpad behind it and
+   the pane you switched to would be facing somewhere you never put it. The generator exits
+   non-zero on a duplicate.
+2. **Every drawing needs its own id prefix.** All four answer to `<prefix>dg-flow`,
+   `<prefix>dg-s0-top` and the rest. A repeat means two scenes writing the same path element,
+   which looks like one drawing simply refusing to move. The generator exits non-zero on that
+   too, and a separate check asserts no id is duplicated on any page.
+3. **The slider driver binds every slider, not `#dgScale`.** It used to look that id up once,
+   which was correct while a page could only carry one pair. Two panes means two sliders and
+   two `.dg-views`, each scoped to its own `.dg-fuel-pane`.
+4. **Hiding a pane is free.** `diagram-engine.js` gates each drawing on an `IntersectionObserver`
+   at `threshold: 0`, and a hidden pane has no box to intersect, so its render loop stops on its
+   own. Both panes stay mounted and keep their view state; switching back finds the drawing
+   exactly as you left it. The canvas behind each drawing is gated the same way.
+5. **The hidden pane must come back without JS.** Every drawing here ships a static frame so
+   that JS-off still gets a complete, annotated diagram — a promise made further down this file.
+   A pane hidden at load breaks it for the second fuel, so `build-diagram.js` emits a
+   `<noscript>` block that hides the (useless) switch and un-hides the second pane. That
+   override needs **`!important`**: `styles.css` carries a global
+   `[hidden] { display: none !important; }`, and the first version of the fallback was a plain
+   `display: block` that lost to it silently and looked perfectly reasonable in the source.
+   Between two important author rules specificity decides, and `.dg-fuel-pane[hidden]` (0,2,0)
+   beats `[hidden]` (0,1,0).
+
+**Drawing a landfill is harder than it sounds, and it took three goes.** The cell was a stack
+of four inset boxes first — which is how a landfill is *built*, lift by lift, so it sounded
+right. Boxes have vertical walls and square corners, and it read as a warehouse. The second
+attempt sloped the sides but eased the batter off toward the top, making it convex: a grassy
+hill, or a circus tent. Nothing man-made has a continuously softening slope. What works is a
+**frustum** — one constant batter, a flat crown, a lobed (never rectangular) outline, and the
+benches drawn as contour lines *across* the slope. A bench is a terrace cut into a face, so
+there has to be a face for it to be cut into; that is the whole reason the box version could
+never have read correctly no matter how it was shaded.
+
+A fourth pass added the thing that finally sold it: **the benches are terraces, not lines.** A
+bench on a real cap is a road — a flat strip a few metres wide, cut into the face so a truck can
+drive it and so surface water has somewhere to go. `LEVEL_Y` / `LEVEL_S` therefore read *toe,
+slope, bench, slope, bench, slope, crown*, where two consecutive entries at the same height are a
+terrace. The flat bands take `.dg-top` and the sloped bands `.dg-side`, and that alternation down
+the face is what reads as engineered fill rather than a hill.
+
+**The ground is two surfaces.** It was one, and the cell hung off the edge of it: the toe reached
+x −23 while the slab started at −19, so a quarter of the landfill floated past the ground it
+stands on. Now `GROUND` is earth and covers everything with margin, and `PAD` is the graded gravel
+compound that only the plant stands on — which is also what a real site looks like. `GROUND` is
+deliberately **not** in `extraBoxes()`: the fitter sizes the drawing from whatever it is given, and
+a ground plane forced inside the callout rails would shrink the whole site to make room for empty
+earth. The wellpad does the same with its own slab.
+
+**Every well is tied back to the header, over the cap.** The callout has always said "every well
+tied into one main running to the plant"; what was actually drawn was four stubs of pipe lying on
+the ground *in front of* the toe, joined to nothing, while the wellheads stood on the mound
+connected to nothing at all. Each lateral is now walked over the cap in steps, taking its height
+from the same surface function the mound is drawn from, as a hairline rather than pipe — eleven
+laterals at pipe weight would bury the mound they lie on.
+
+Two things about that surface are load-bearing:
+
+- **Winding order decides which half of the mound you see.** The engine culls on the sign of
+  the projected area, so a band wound the wrong way keeps the *far* half and discards the near
+  half — you end up looking at the inside of the back surface. It does not look like an error;
+  it looks like a hollow shell or a draped sheet. At yaw 0 it was drawing eleven of the twelve
+  far segments and one of the eleven near ones.
+- **Contour lines have to be culled too, not just the faces.** The faces are translucent, so a
+  bench drawn all the way round shows its far half straight through the mound and the whole
+  thing reads as a wireframe dome. Culling the quads but not the lines is the kind of
+  half-applied fix that looks deliberate in the source.
+
+`lift()` and the drawn contours are both derived from one `LEVEL_Y` / `LEVEL_S` / `radial()`,
+so the surface a wellhead stands on and the surface you see cannot drift apart. A suite check
+asserts every well is flush with the cap and that the cap falls away from the crown in every
+direction with no step.
+
+**`buildPad` must not delegate to `PadGeometry`.** It did, and `P.buildPad` closes over the
+*wellpad's* 44 x 22 slab at z 0 — so the landfill's own `PAD` and `ROAD` were never drawn. The
+gravel under the landfill was the wellpad's, in the wellpad's place, and since it stops at
+z 11 while the far container sits at z 17, the containers stood off the front edge of the
+ground they are supposed to be standing on. The *technique* is still borrowed (build into a
+scratch bundle, fold it all into the `ground` layer); the dimensions must be this file's own.
+
+**Growing the mound does nothing on its own — `SHIFT_X` is what pays for it.** The drawing
+rotates about the model origin, so the size of the circle it sweeps depends on how far the heavy
+things sit from that pivot, and the fitter buys `BASE_SCALE` out of whatever is left. The cell sat
+6 m off to one side: enlarging it from 32x18x7 to 37x25x11 dropped the scale from 13.0 to 10.5 and
+left the mound *exactly the same size on screen*, with everything else 19% smaller. Setting
+`SHIFT_X: 6.0` — applied before the rotation, so it moves the site onto the pivot — took the scale
+back to 12.0 and the mound from 393x88 px to 416x120 px. If the drawing ever needs to be bigger,
+this is the lever, not the dimensions.
+
+**`BASE_SCALE` and `ORIGIN` for the landfill pair are fitted, not chosen.** Scale is applied
+before the perspective divide, so what fits head-on tells you nothing about what fits at
+three-quarters. An eyeballed 13.6 looked right in a screenshot and ran the mound out under the
+callout labels and off the bottom of the frame as it turned — the check that caught it sweeps
+all 360° and compares against the leader rails. Change anything in `landfill-geometry.js` and
+that fit has to be redone; both scene files carry the block verbatim and a test compares the
+two sources, not just the resolved numbers.
+
+**The flare business is provably untouched.** `snapshot.js verify` holds a baseline of every
+path string in every scene. The five that existed before this change — including both wellpad
+drawings — still match byte-for-byte; the landfill pair was added to the baseline rather than
+replacing anything.
+
 ### Five things that are easy to get wrong
 
 **1. +Z is the near side.** The perspective divide is `FOV / (FOV - z2 * SCALE)`. With `+`
@@ -355,7 +1007,7 @@ the cutaway points away from you, and the ASIC fans face into a wall. The scene 
 throughout to "+Z toward the viewer"; that convention decides which wall is cut and which way the
 machines point.
 
-**0. All four drawings share one set of face weights** — `.dg-top` / `.dg-side` / `.dg-end` at
+**0. All six drawings share one set of face weights** — `.dg-top` / `.dg-side` / `.dg-end` at
 0.42 / 0.30 / 0.20, with `.dg-detail` at 0.72 above them. There was briefly a second set: heavier
 weights for the wellpad on the reasoning that a container wall must be see-through and a wellpad
 need not be. The reasoning was sound and the result was not — side by side the drawings looked

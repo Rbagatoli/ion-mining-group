@@ -1,0 +1,325 @@
+/* Full suite for the hosting scene. Same invariants as the home page suite,
+   expressed for a single-object scene. */
+/* Repo-relative, so this runs wherever the checkout is. Was an absolute
+   c:/Users/rbaga/... path that worked on one machine. */
+const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
+const fs = require('fs'), vm = require('vm');
+const D = require(REPO_ROOT + 'site/scene-hosting.js');
+const SITE = require(REPO_ROOT + 'site/scene-site.js');
+const html = fs.readFileSync(REPO_ROOT + 'site/hosting.html', 'utf8');
+let bad = 0;
+const fail = m => { console.error('FAIL: ' + m); bad = 1; };
+const sweep = n => Array.from({ length: n + 1 }, (_, i) => Math.PI * 2 * (i / n));
+
+function subpathAreas(d) {
+  return d.split('M').filter(Boolean).map(sp => {
+    const nums = sp.match(/-?\d+(\.\d+)?/g).map(Number);
+    const pts = [];
+    for (let i = 0; i < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      a += p[0] * q[1] - q[0] * p[1];
+    }
+    return a;
+  });
+}
+
+// --- 1. Depth direction ---
+{
+  const near = Math.abs(D.project([1,1,1],0)[0] - D.project([-1,1,1],0)[0]);
+  const far  = Math.abs(D.project([1,1,-1],0)[0] - D.project([-1,1,-1],0)[0]);
+  if (!(near > far)) fail('+Z is not the near side — scene renders inside-out');
+  else console.log('depth: +Z is the near side  OK');
+}
+
+// --- 2. Culling invariant ---
+{
+  const probe = D.boxFaces({ x: 0, y: 0, z: 0, w: 2, h: 2, d: 2 });
+  let lo = 9, hi = 0;
+  for (const yaw of sweep(80)) {
+    let v = 0;
+    for (const k of Object.keys(probe)) if (D.frontFacing(probe[k], yaw)) v++;
+    lo = Math.min(lo, v); hi = Math.max(hi, v);
+  }
+  if (lo < 2 || hi > 3) fail(`visible faces per box ${lo}..${hi}, want 2..3`);
+  else console.log(`culling: ${lo}..${hi} faces per box across the sweep  OK`);
+  for (const yaw of sweep(40)) {
+    if (D.frontFacing(probe.top, yaw) === D.frontFacing(probe.bot, yaw)) fail('top/bot agree — winding error');
+    if (D.frontFacing(probe.front, yaw) && D.frontFacing(probe.back, yaw)) fail('front and back both visible');
+  }
+}
+
+// --- 3. Nothing clips, and the scene clears both callout columns ---
+{
+  const pts = D.allPoints();
+  let mnX=1e9,mxX=-1e9,mnY=1e9,mxY=-1e9;
+  for (const yaw of sweep(120)) for (const p of pts) {
+    const q = D.project(p, yaw);
+    mnX=Math.min(mnX,q[0]); mxX=Math.max(mxX,q[0]);
+    mnY=Math.min(mnY,q[1]); mxY=Math.max(mxY,q[1]);
+  }
+  console.log(`bbox: x ${mnX.toFixed(0)}..${mxX.toFixed(0)}  y ${mnY.toFixed(0)}..${mxY.toFixed(0)}  (viewBox ${D.VB.w}x${D.VB.h})`);
+  if (mnX < 262) fail(`scene reaches x=${mnX.toFixed(0)}, into the left callout column`);
+  if (mxX > D.VB.w - 262) fail(`scene reaches x=${mxX.toFixed(0)}, into the right callout column`);
+  if (mnY < 6 || mxY > D.VB.h - 6) fail(`scene clips vertically (${mnY.toFixed(0)}..${mxY.toFixed(0)})`);
+  else console.log('clipping: fits the frame and clears both callout columns  OK');
+}
+
+// --- 4. Machines inside the shell, against the far wall ---
+{
+  const C = D.MODEL.container;
+  let esc = 0;
+  for (const r of D.RACKS) {
+    if (r.x - r.w/2 < C.x - C.w/2 || r.x + r.w/2 > C.x + C.w/2) esc++;
+    if (r.z - r.d/2 < C.z - C.d/2 || r.z + r.d/2 > C.z + C.d/2) esc++;
+    if (r.y < 0 || r.y + r.h > C.h) esc++;
+  }
+  if (esc) fail(`${esc} rack dimensions escape the container`);
+  if (!D.RACKS.every(r => r.z < C.z)) fail('racks are not against the far wall');
+  console.log(`racks: ${D.RACKS.length} units inside the shell, against the far wall  OK`);
+}
+
+// --- 5. THE POINT OF THIS DIAGRAM: machines materially bigger than the home page ---
+{
+  const widthOf = M => {
+    const u = M.RACKS[0];
+    const a = M.project([u.x - u.w/2, u.y + u.h/2, u.z + u.d/2], 0);
+    const b = M.project([u.x + u.w/2, u.y + u.h/2, u.z + u.d/2], 0);
+    return Math.abs(b[0] - a[0]);
+  };
+  const hw = widthOf(D), sw = widthOf(SITE);
+  if (hw / sw < 1.7) fail(`ASICs only ${(hw/sw).toFixed(2)}x the home page size — the whole point was legibility`);
+  else console.log(`scale: ASIC ${hw.toFixed(0)}px vs ${sw.toFixed(0)}px on the home page (${(hw/sw).toFixed(2)}x)  OK`);
+}
+
+// --- 6. Frames well formed at every angle ---
+{
+  for (const yaw of sweep(24)) {
+    const f = D.frame(yaw, null);
+    if (f.slots.length !== D.SLOTS) { fail('slot count changed'); break; }
+    for (const L of f.slots) for (const k of D.LAYERS) {
+      if (typeof L[k] !== 'string') { fail(`${L.id}.${k} not a string`); break; }
+      if (/NaN|undefined|Infinity/.test(L[k])) { fail(`${L.id}.${k} has NaN`); break; }
+    }
+    if (/NaN|undefined/.test(f.flow)) fail('flow has NaN');
+  }
+  const f0 = D.frame(0, null), cont = f0.slots[0];
+  if (!cont.inside.length) fail('container interior is empty');
+  if (!cont.asics.length) fail('no ASIC geometry');
+  if (!cont.top.length) fail('roof is empty');
+  const total = f0.slots.reduce((a,s) => a + D.LAYERS.reduce((b,k) => b + s[k].length, 0), 0);
+  console.log(`frame: ${total}b of path data; inside ${cont.inside.length}b, asics ${cont.asics.length}b, detail ${cont.detail.length}b  OK`);
+}
+
+// --- 7. Interior winding consistent (or nonzero fill punches a hole) ---
+{
+  let mixed = null, checked = 0;
+  for (const yaw of sweep(72)) for (const slot of D.frame(yaw, null).slots) {
+    if (!slot.inside) continue;
+    checked++;
+    if (new Set(subpathAreas(slot.inside).map(a => (a < 0 ? '-' : '+'))).size !== 1)
+      mixed = (yaw * 180 / Math.PI).toFixed(1);
+  }
+  if (!checked) fail('no interior geometry produced');
+  if (mixed !== null) fail(`interior winding mixed at ${mixed}deg — fill-rule:nonzero will cancel`);
+  else console.log(`interior: ${checked} sets share one screen winding  OK`);
+}
+
+// --- 8. Leaders welded to anchors, and terminating on drawn geometry ---
+{
+  let drift = 0;
+  for (const yaw of sweep(12)) for (const L of D.frame(yaw, null).leaders) {
+    const co = D.CALLOUTS.find(c => c.id === L.id);
+    const a = D.calloutAnchor(co, yaw);
+    if (Math.abs(L.x2-a[0]) > 0.06 || Math.abs(L.y2-a[1]) > 0.06) drift++;
+  }
+  if (drift) fail(`${drift} leader endpoints drifted off their anchor`);
+
+  // Distance to the nearest drawn SEGMENT, not the nearest vertex. A louvre or
+  // a rib is a long line with vertices only at its ends; an anchor sitting
+  // mid-way along one is on drawn geometry, and a vertex-only metric reports it
+  // as floating in space.
+  const segs = yaw => {
+    const L = D.frame(yaw, null).slots[0], out = [];
+    for (const k of D.LAYERS) {
+      for (const sp of L[k].split('M')) {
+        if (!sp) continue;
+        const nums = (sp.match(/-?\d+(\.\d+)?/g) || []).map(Number);
+        const pts = [];
+        for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i+1]]);
+        for (let i = 1; i < pts.length; i++) out.push([pts[i-1], pts[i]]);
+        if (sp.indexOf('Z') >= 0 && pts.length > 2) out.push([pts[pts.length-1], pts[0]]);
+      }
+    }
+    return out;
+  };
+  const distToSeg = (p, a, b) => {
+    const vx = b[0]-a[0], vy = b[1]-a[1];
+    const len2 = vx*vx + vy*vy;
+    let t = len2 ? ((p[0]-a[0])*vx + (p[1]-a[1])*vy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0] - (a[0]+t*vx), p[1] - (a[1]+t*vy));
+  };
+  let worst = 0, worstId = '';
+  for (const yaw of [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2]) {
+    const S = segs(yaw);
+    for (const co of D.CALLOUTS) {
+      const tip = D.calloutAnchor(co, yaw);
+      let best = 1e9;
+      for (const [a, b] of S) best = Math.min(best, distToSeg(tip, a, b));
+      if (best > worst) { worst = best; worstId = co.id; }
+    }
+  }
+  if (worst > 18) fail(`leader "${worstId}" ends ${worst.toFixed(0)}px from any drawn vertex`);
+  else console.log(`leaders: ${D.CALLOUTS.length} welded, worst tip-to-geometry gap ${worst.toFixed(0)}px (${worstId})  OK`);
+}
+
+// --- 9. Regions: geometry, highlight, and hit shapes sorted largest-first ---
+{
+  for (const c of D.CALLOUTS) {
+    if (!D.regionBoxes(c.id).length) fail(`region "${c.id}" has no boxes`);
+    const h = D.regionHit(c.id, 0);
+    if (!h.d || /NaN/.test(h.d)) fail(`region "${c.id}" hit shape invalid`);
+    if (h.area < 100) fail(`region "${c.id}" hit area only ${h.area.toFixed(0)}px2`);
+    const hl = D.frame(0, c.id).highlight;
+    if (!hl || /NaN/.test(hl)) fail(`region "${c.id}" highlight missing or NaN`);
+  }
+  for (const yaw of [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2]) {
+    const hits = D.frame(yaw, null).hits;
+    if (hits.length !== D.CALLOUTS.length) fail('wrong hit count');
+    for (let i = 1; i < hits.length; i++)
+      if (hits[i].area > hits[i-1].area + 1e-6) fail('hit shapes not sorted by descending area');
+  }
+  if (D.frame(0, null).highlight !== '') fail('highlight non-empty with no hover');
+  console.log(`regions: all ${D.CALLOUTS.length} hittable and highlightable, sorted smallest-on-top  OK`);
+}
+
+// --- 10. No NaN anywhere in the view envelope ---
+{
+  for (const z of [D.ZOOM_MIN, 1, D.ZOOM_MAX])
+    for (const pi of [D.PITCH_MIN, 0.4, D.PITCH_MAX]) {
+      D.setView({ zoom: z, pitch: pi });
+      for (const yaw of [-Math.PI, 0, Math.PI]) {
+        const f = D.frame(yaw, 'asics');
+        for (const L of f.slots) for (const k of D.LAYERS)
+          if (/NaN|Infinity/.test(L[k])) fail(`NaN at zoom ${z} pitch ${pi.toFixed(2)}`);
+        if (/NaN|Infinity/.test(f.highlight) || /NaN|Infinity/.test(f.flow)) fail('NaN in highlight/flow');
+      }
+    }
+  D.resetView();
+  console.log('view: whole zoom/pitch envelope finite, including a full 360 yaw  OK');
+}
+
+// --- 11. Bubbles do not collide ---
+{
+  for (const [label, wrapW] of [['1144px', 1144], ['845px', 845]]) {
+    const inner = wrapW * 0.172 - 26;
+    const box = co => 21 + Math.ceil(co.desc.length * 6.0 / inner) * 17 + 22;
+    for (const side of ['l', 'r']) {
+      const col = D.CALLOUTS.filter(c => c.side === side).sort((a,b) => a.y - b.y);
+      for (let i = 0; i < col.length; i++) {
+        const h = box(col[i]), top = col[i].y - h/2, bot = col[i].y + h/2;
+        if (top < 0) fail(`${label}: "${col[i].id}" overflows the top`);
+        if (bot > D.VB.h) fail(`${label}: "${col[i].id}" overflows the bottom`);
+        if (i && top < col[i-1].y + box(col[i-1])/2)
+          fail(`${label}: "${col[i-1].id}" and "${col[i].id}" overlap`);
+      }
+    }
+  }
+  console.log('bubbles: no collisions or overflow at 1144px or 845px  OK');
+}
+
+// --- 12. Static frame in hosting.html equals the runtime ---
+{
+  const attrAfter = (s, marker, attr) => {
+    const i = s.indexOf(marker); if (i < 0) return null;
+    const j = s.indexOf(' ' + attr + '="', i); if (j < 0) return null;
+    const k = j + attr.length + 3, e = s.indexOf('"', k);
+    return e < 0 ? null : s.slice(k, e);
+  };
+  const f0 = D.frame(0, null);
+  let n = 0;
+  f0.slots.forEach((L, i) => D.LAYERS.forEach(k => {
+    const got = attrAfter(html, `id="dg-s${i}-${k}"`, 'd');
+    if (got === null) return fail(`#dg-s${i}-${k} missing from hosting.html`);
+    if (got !== L[k]) fail(`#dg-s${i}-${k} differs from runtime`);
+    n++;
+  }));
+  f0.hits.forEach((h, i) => {
+    if (attrAfter(html, `id="dg-hit${i}"`, 'd') !== h.d) fail(`#dg-hit${i} differs`);
+    if (attrAfter(html, `id="dg-hit${i}"`, 'data-region') !== h.id) fail(`#dg-hit${i} wrong region`);
+  });
+  for (const c of D.CALLOUTS) {
+    if (!html.includes('>' + c.title + '<')) fail(`title missing from markup: ${c.title}`);
+    if (!html.includes(`data-region="${c.id}"`)) fail(`no element tagged data-region="${c.id}"`);
+  }
+  if (!bad) console.log(`parity: ${n} slot layers + ${f0.hits.length} hit shapes match runtime exactly  OK`);
+}
+
+// --- 13. The browser build mounts and responds ---
+{
+  const ENGINE = fs.readFileSync(REPO_ROOT + 'site/diagram-engine.js', 'utf8');
+  const SCENE  = fs.readFileSync(REPO_ROOT + 'site/scene-hosting.js', 'utf8');
+  const handlers = {};
+  let writes = 0;
+  const mkEl = id => {
+    const cls = new Set(), attrs = {};
+    return { id, dataset: {},
+      setAttribute: (k, v) => {
+        if (/NaN|undefined|Infinity/.test(String(v))) throw new Error(`${id} ${k}=${v}`);
+        attrs[k] = v; writes++;
+      },
+      getAttribute: k => (attrs[k] === undefined ? null : attrs[k]),
+      classList: { add: c=>cls.add(c), remove: c=>cls.delete(c), contains: c=>cls.has(c),
+                   toggle: (c,on)=>{ on?cls.add(c):cls.delete(c); } },
+      addEventListener: (ev, fn) => { (handlers[id] = handlers[id] || {})[ev] = fn; },
+      setPointerCapture(){}, releasePointerCapture(){}, hasPointerCapture:()=>false,
+      querySelector: sel => { const m = sel.match(/data-region="([a-z]+)"/); return m ? mkEl('b-'+m[1]) : null; },
+    };
+  };
+  const els = {}; const get = id => (els[id] = els[id] || mkEl(id));
+  let rafQ = [];
+  let timers = [], timerId = 0;
+  const sb = { console, Math, Object, Array, String, Number, Set,
+    document: { hidden:false, readyState:'complete', getElementById:get,
+                querySelector: () => get('wrap'), addEventListener(){} },
+    window: { matchMedia: () => ({ matches:false }),
+              IntersectionObserver: function(){ return { observe(){} }; } },
+    requestAnimationFrame: cb => { rafQ.push(cb); return rafQ.length; },
+    cancelAnimationFrame: () => { rafQ = []; },
+    // A controllable clock: the engine schedules its resume on this.
+    setTimeout: (cb, ms) => { timers.push({ cb, ms, id: ++timerId }); return timerId; },
+    clearTimeout: id => { timers = timers.filter(t => t.id !== id); },
+  };
+  sb.self = sb; sb.IntersectionObserver = sb.window.IntersectionObserver;
+  sb.require = () => { throw new Error('scene must use the global engine in browser mode'); };
+  vm.createContext(sb);
+  vm.runInContext(ENGINE, sb, { filename: 'diagram-engine.js' });
+  vm.runInContext(SCENE, sb, { filename: 'scene-hosting.js' });
+
+  const H = handlers['siteDiagram'] || {};
+  for (const ev of ['pointerdown','pointermove','pointerup','pointerover','pointerout','keydown'])
+    if (!H[ev]) fail(`no ${ev} handler bound`);
+  const w0 = writes;
+  H.pointerover({ target: { getAttribute: k => (k === 'data-region' ? 'pdu' : null) } });
+  if (writes === w0) fail('hover did not repaint');
+  const V = sb.ContainerDiagram;
+  const W = handlers['wrap'] || {};
+  if (!W.wheel) fail('no wheel handler bound to the figure wrapper');
+  const z0 = V.getView().zoom;
+  let prevented = 0;
+  // The pointer has priority now: over the figure, the wheel zooms at once.
+  W.wheel({ deltaY:-100, ctrlKey:false, metaKey:false, preventDefault: () => prevented++ });
+  if (V.getView().zoom <= z0 || prevented !== 1) fail('wheel did not zoom on hover');
+  // But it must never trap the page: at the ceiling it hands the scroll back.
+  for (let n = 0; n < 40; n++) W.wheel({ deltaY:-100, ctrlKey:false, metaKey:false, preventDefault: () => prevented++ });
+  const pk = prevented;
+  W.wheel({ deltaY:-100, ctrlKey:false, metaKey:false, preventDefault: () => prevented++ });
+  if (prevented !== pk) fail('at max zoom the wheel still took the event — the page would be trapped');
+  V.resetView();
+  console.log(`browser: mounts, ${writes} attribute writes, hover + drag + zoom respond, no NaN  OK`);
+}
+
+process.exitCode = bad;
+console.log(bad ? 'FAILED' : 'ALL OK');

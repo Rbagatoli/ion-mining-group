@@ -321,8 +321,61 @@
        platinum and orange are gradients rather than flat fills — everything else
        on the page catches light that way, and the chart was the one surface
        still sitting flat. */
+    /* The site's own metal, in SVG.
+
+       styles.css defines platinum and orange as multi-stop gradients rather
+       than flat fills, and every other surface on the site catches light that
+       way. These are those exact ramps, re-expressed as SVG gradients because
+       a CSS gradient cannot paint a stroke.
+
+       The line gradients run HORIZONTALLY — along the curve rather than across
+       it. A 2.6px stroke is not tall enough to show a vertical ramp; swept
+       along its length instead, the light travels down the line the way it does
+       across a brushed edge.
+
+       Which ramp each element gets is a legibility decision, not a taste one.
+       --metal-btc-flat and --metal-plat-flat carry the full flip and bottom out
+       at 4.04:1 and 3.02:1 against this panel — fine on a thick solid line or a
+       filled bar. The benchmark line is 1.7px and dashed, and dark bands on a
+       thin dashed line read as a broken line rather than as metal, so it takes
+       --metal-plat-soft, which is the variant styles.css already keeps for
+       exactly this problem at small sizes. */
     var CHART_DEFS =
         '<defs>' +
+          /* --metal-btc-flat, swept along the line. */
+          '<linearGradient id="ckMetalBtc" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0%" stop-color="#a85a06"/>' +
+            '<stop offset="20%" stop-color="#f7931a"/>' +
+            '<stop offset="40%" stop-color="#ffc978"/>' +
+            '<stop offset="56%" stop-color="#f7931a"/>' +
+            '<stop offset="76%" stop-color="#c86f0a"/>' +
+            '<stop offset="100%" stop-color="#ffb347"/>' +
+          '</linearGradient>' +
+          /* --metal-plat-soft: floored, because this line is thin and dashed. */
+          '<linearGradient id="ckMetalPlat" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0%" stop-color="#ffffff"/>' +
+            '<stop offset="40%" stop-color="#e4e3e1"/>' +
+            '<stop offset="74%" stop-color="#b3b2af"/>' +
+            '<stop offset="100%" stop-color="#d6d5d3"/>' +
+          '</linearGradient>' +
+          /* Bars are tall enough for the ramp to run down them, so these keep
+             the vertical sweep and the full flip. */
+          '<linearGradient id="ckBarMined" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#ffc46b" stop-opacity="0.82"/>' +
+            '<stop offset="20%" stop-color="#f7931a" stop-opacity="0.66"/>' +
+            '<stop offset="48%" stop-color="#ffc978" stop-opacity="0.52"/>' +
+            '<stop offset="76%" stop-color="#c86f0a" stop-opacity="0.38"/>' +
+            '<stop offset="100%" stop-color="#a85a06" stop-opacity="0.24"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="ckBarHeld" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#ffffff" stop-opacity="0.46"/>' +
+            '<stop offset="25%" stop-color="#d0cfcd" stop-opacity="0.36"/>' +
+            '<stop offset="50%" stop-color="#83827f" stop-opacity="0.28"/>' +
+            '<stop offset="76%" stop-color="#e8e7e5" stop-opacity="0.22"/>' +
+            '<stop offset="100%" stop-color="#6b6a67" stop-opacity="0.14"/>' +
+          '</linearGradient>' +
+          /* Areas stay simple fades. Metal wants an edge to travel along; a
+             large soft wash with bands in it just looks like banding. */
           '<linearGradient id="ckAreaMining" x1="0" y1="0" x2="0" y2="1">' +
             '<stop offset="0%" stop-color="#f7931a" stop-opacity="0.34"/>' +
             '<stop offset="55%" stop-color="#f7931a" stop-opacity="0.09"/>' +
@@ -332,18 +385,7 @@
             '<stop offset="0%" stop-color="#e5e4e2" stop-opacity="0.13"/>' +
             '<stop offset="100%" stop-color="#e5e4e2" stop-opacity="0"/>' +
           '</linearGradient>' +
-          '<linearGradient id="ckBarMined" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0%" stop-color="#ffb347" stop-opacity="0.78"/>' +
-            '<stop offset="45%" stop-color="#f7931a" stop-opacity="0.55"/>' +
-            '<stop offset="100%" stop-color="#c86f0a" stop-opacity="0.30"/>' +
-          '</linearGradient>' +
-          '<linearGradient id="ckBarHeld" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0%" stop-color="#efeeec" stop-opacity="0.44"/>' +
-            '<stop offset="45%" stop-color="#a9a8a5" stop-opacity="0.28"/>' +
-            '<stop offset="100%" stop-color="#5c5b58" stop-opacity="0.16"/>' +
-          '</linearGradient>' +
         '</defs>';
-
     function drawChart(r) {
         var svg = $('calcChart');
         if (!svg) return;
@@ -414,34 +456,52 @@
                    '" class="ck-halvinglab">HALVING &#8594; ' + h.reward + '</text>');
         });
 
-        var asBars = n <= 96;
-        var barGroup = (pw / Math.max(1, n)) * 0.72;
+        /* Cumulative BTC, bucketed.
+
+           One pair of bars per period put 120 shapes in the plot at the default
+           60-month horizon — more than the gridlines, both curves, both areas
+           and the halving marker together. Width was never the problem; each
+           bar was still 5.7px. The problem is that both series only ever rise,
+           so every bar is its neighbour one step taller and the run of them
+           reads as a solid ramp with stripes cut into it. Past a halving the
+           step drops below a pixel and stretches of it genuinely are one block.
+
+           Capping the count near 24 keeps a bar wide enough to be a bar at any
+           horizon, and leaves anything at or below 24 periods exactly as it was.
+
+           Each bar carries the running total at the LAST period in its bucket.
+           Not a sum — these are already cumulative and summing them would count
+           the same coins repeatedly — and not a mean, which would understate
+           where the series had actually got to. That distinction is the one way
+           this could draw a convincing picture of the wrong quantity, so it has
+           its own assertion rather than a comment. */
+        var BAR_TARGET = 24;
+        var bucket = Math.max(1, Math.ceil(n / BAR_TARGET));
+        var bucketEnds = [];
+        for (var be = bucket - 1; be < n; be += bucket) bucketEnds.push(be);
+        /* A partial final bucket still ends at the last period, so the last bar
+           is always the series total rather than whatever the last whole bucket
+           happened to reach. */
+        if (bucketEnds[bucketEnds.length - 1] !== n - 1) bucketEnds.push(n - 1);
+
+        var barGroup = (pw / Math.max(1, bucketEnds.length)) * 0.72;
         var barW = Math.max(1.1, barGroup / 2);
         if (btcAx) {
             ['mined', 'held'].forEach(function (key, ki) {
                 if (!seriesOn[key]) return;
                 var grad = key === 'mined' ? 'ckBarMined' : 'ckBarHeld';
-                if (asBars) {
-                    var d = '';
-                    for (var i = 0; i < n; i++) {
-                        var v = data[key][i];
-                        if (!(v > 0)) continue;
-                        var bx = X(i) - barGroup / 2 + ki * barW;
-                        var by = Yof(btcAx, v);
-                        d += 'M' + bx.toFixed(1) + ' ' + by.toFixed(1) + 'h' + barW.toFixed(1) +
-                             'V' + (PAD.t + ph).toFixed(1) + 'h' + (-barW).toFixed(1) + 'Z';
-                    }
-                    p.push('<path d="' + d + '" fill="url(#' + grad + ')" stroke="none"/>');
-                } else {
-                    var xs = [], ys = [];
-                    for (var j = 0; j < n; j++) { xs.push(X(j)); ys.push(Yof(btcAx, data[key][j])); }
-                    p.push('<path d="' + smoothPath(xs, ys) + 'L' + X(n - 1).toFixed(1) + ' ' +
-                           (PAD.t + ph).toFixed(1) + 'L' + X(0).toFixed(1) + ' ' + (PAD.t + ph).toFixed(1) +
-                           'Z" fill="url(#' + grad + ')" stroke="none"/>');
-                }
+                var d = '';
+                bucketEnds.forEach(function (idx) {
+                    var v = data[key][idx];
+                    if (!(v > 0)) return;
+                    var bx = X(idx) - barGroup / 2 + ki * barW;
+                    var by = Yof(btcAx, v);
+                    d += 'M' + bx.toFixed(1) + ' ' + by.toFixed(1) + 'h' + barW.toFixed(1) +
+                         'V' + (PAD.t + ph).toFixed(1) + 'h' + (-barW).toFixed(1) + 'Z';
+                });
+                if (d) p.push('<path d="' + d + '" fill="url(#' + grad + ')" stroke="none"/>');
             });
         }
-
         /* Curves, each with its own area beneath so the shape reads as mass
            rather than as a hairline. */
         var coords = {};

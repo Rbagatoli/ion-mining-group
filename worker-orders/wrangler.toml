@@ -1,0 +1,14 @@
+name = "ion-orders"
+main = "index.js"
+compatibility_date = "2024-12-01"
+
+# Orders, the created-time index, and the per-IP rate counter all live here.
+# Create with:  wrangler kv namespace create ORDERS
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secrets, set with `wrangler secret put <NAME>` — never in this file:
+#   OPS_SECRET     bearer token for the owner-only status and list routes
+#   STRIKE_API_KEY the account key invoices are raised against. Without it the
+#                  payment routes return 503 rather than pretending to work.

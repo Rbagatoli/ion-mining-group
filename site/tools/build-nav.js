@@ -16,8 +16,20 @@ const PAGES = {
   'index.html':   'home',
   'hosting.html': 'hosting',
   'energy.html':  'energy',
+  'hardware.html': 'hardware',
   'calculator.html': 'calculator',
   'contact.html': 'contact',
+  /* The checkout highlights the catalogue: it is the same errand, and a nav
+     item that only appears mid-purchase would be an eighth thing to read.
+     What marks it instead is the order badge, which is only there when there
+     is something in it. */
+  'cart.html':    'hardware',
+  /* No nav item is active on either: you did not navigate here, you were
+     sent by an order. Both are noindex and neither is in the sitemap, for
+     the same reason 404.html is not — they carry an order reference, and
+     indexing one would publish a delivery address. */
+  'pay.html':     '',
+  'order.html':   '',
   /* No nav item is active on the error page — you did not navigate to it on
      purpose, so highlighting one would be a lie about where you are. */
   'privacy.html': '',
@@ -72,12 +84,17 @@ function nav(active, cta) {
       <a href="./energy.html"${on('energy')}>Energy Partners</a>
       <a href="./index.html"${on('home')}>Home</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
+      <a href="./hardware.html"${on('hardware')}>Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html"${on('calculator')}>Calculator</a>
       <a href="./index.html#operate">How We Operate</a>
       <a href="./contact.html"${on('contact')}>Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
       <a class="btn btn--primary btn--sm nav-cta" href="${cta.href}">${cta.label}</a>
     </div>
   </div>
@@ -89,8 +106,12 @@ const CTA = {
   'index.html':            { href: './contact.html', label: 'Start a conversation' },
   'hosting.html':          { href: './contact.html?topic=hosting', label: 'Request a quote' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
+  'hardware.html':         { href: '#quote', label: 'Request a quote' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'contact.html':          { href: '#form', label: 'Send a message' },
+  'cart.html':             { href: './hardware.html', label: 'Add machines' },
+  'pay.html':              { href: './hardware.html', label: 'Back to the catalogue' },
+  'order.html':            { href: './hardware.html', label: 'Order more machines' },
   'privacy.html':          { href: './contact.html', label: 'Talk to us' },
   '404.html':              { href: './index.html', label: 'Home page' },
 };
