@@ -26,6 +26,21 @@
     if (!canvas || !canvas.getContext) return;
     var host = canvas.parentNode;
 
+    /* data-mode="rise" draws the middle third of the thesis only: source line
+       and rising gas, no lattice, no links, no solve beat.
+
+       It exists because the lattice is the half that says HASHRATE, and most
+       page headers are not making that argument -- an energy seller reading
+       about gas purchase does not need a fabric knitting itself behind the
+       headline. The home hero still runs all three parts, because that is the
+       one page where the whole thesis is the point.
+
+       Almost nothing needs a branch for it. With no nodes the lattice loops in
+       draw() iterate zero times and the absorption test in step() never fires,
+       so the mode falls out of an empty array rather than out of conditionals
+       sprinkled through the draw path. */
+    var riseOnly = canvas.getAttribute('data-mode') === 'rise';
+
     var ctx = canvas.getContext('2d', { alpha: true });
 
     var PLAT = '229,228,226';
@@ -114,6 +129,17 @@
             });
         }
 
+        /* latticeH is what a particle is absorbed AT, so zero means nothing
+           absorbs and the gas simply leaves the top. */
+        if (riseOnly) {
+            latticeH = 0;
+            cols = rows = 0;
+            nodes = [];
+            particles = [];
+            for (var rp = 0; rp < maxParticles; rp++) particles.push(spawn({}, true));
+            return;
+        }
+
         // Lattice, inset so nodes never touch the panel edge.
         cols = Math.max(2, Math.floor((w - 28) / NODE_GAP));
         rows = Math.max(2, Math.floor((latticeH - 28) / NODE_GAP));
@@ -183,6 +209,7 @@
         }
 
         // The solve beat: a scanline crossing one row, sealing it.
+        if (riseOnly) return;
         if (!solve && t > solveAt) {
             solve = { row: (Math.random() * rows) | 0, at: 0 };
         }
@@ -260,8 +287,16 @@
         for (var p = 0; p < particles.length; p++) {
             var Q = particles[p];
             if (Q.y > sourceY || Q.y < 0) continue;
-            // 0 at the source, 1 by the time it reaches the lattice.
-            var climb = (sourceY - Q.y) / Math.max(1, sourceY - latticeH);
+            /* 0 at the source, 1 at the TOP OF THE PANEL -- not at the lattice.
+               It used to be measured against sourceY - latticeH, which finished
+               the whole orange-to-platinum ramp inside the bottom 44% of the
+               hero and left everything above it uniformly faint platinum. The
+               gas read as a thin hot band with haze over it.
+               Measured over the full height the orange band is 248px instead of
+               109px and the cooling is gradual all the way up, which is what
+               the portal's field does and the reason it looks better. Same
+               formula in both files now, deliberately. */
+            var climb = (sourceY - Q.y) / Math.max(1, sourceY);
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
             var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);
             var a = 0.14 + (1 - climb) * 0.5;

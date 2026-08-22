@@ -329,6 +329,14 @@ p + p { margin-top: 16px; }
     border-bottom: 1px dashed var(--line-btc);
     padding: 0 4px;
     white-space: nowrap;
+
+    /* And it must not be squeezed, or nowrap just moves the problem. .nav-links
+       is a flex row and every item in it shrinks by default, so the CTA was
+       being compressed below its own text width — and .btn sets overflow:
+       hidden, so the label was clipped at both ends rather than overflowing
+       visibly. Clipped symmetric text is precisely what "not centred" looks
+       like when the box is too small for it. */
+    flex: 0 0 auto;
 }
 
 /* ===== Nav ===== */
@@ -376,6 +384,13 @@ p + p { margin-top: 16px; }
 .nav-links { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .nav-links a {
     padding: 9px 15px;
+    /* A nav label that wraps is a nav that has changed height, and this row is
+       a fixed bar. The items are flex children, so without this they shrink and
+       break mid-phrase — "Energy Partners" and "How We Operate" both did, the
+       moment the CTA stopped giving up its own width to make room. Measured at
+       1400px the row needs 966px of a 1006px budget, so nothing has to wrap;
+       it was only wrapping because it was allowed to. */
+    white-space: nowrap;
     font-size: 13.5px;
     letter-spacing: -0.005em;
     color: var(--plat-400);
@@ -403,6 +418,59 @@ p + p { margin-top: 16px; }
 .nav-links a.nav-cta,
 .nav-links a.nav-cta:hover,
 .nav-links a.nav-cta:focus-visible { color: #000000; }
+
+/* THE SAME CLASH AS ABOVE, AND ONLY HALF OF IT WAS EVER FIXED. ".nav-links a"
+   (0,1,1) outranks .btn and .btn--sm (0,1,0), so it takes the CTA padding as
+   well as its colour, and .btn--sm padding never applied here at all.
+
+   ONLY THE PADDING IS RESTATED. An earlier version of this rule also forced
+   .btn--sm font-size (11px) and letter-spacing (0.12em) back on, which was
+   correct by the stylesheet and wrong on the page: the label dropped two and a
+   half points, leaving the same box around much smaller type, and the button
+   read as thick and hollow. The nav own 13.5px is the size this button has
+   always been drawn at and is the size it keeps.
+
+   Positive tracking also puts a trailing space after the final letter that is
+   inside the text box but not visible, so centred text sits half a space left
+   of where it looks like it should. At the nav own -0.005em that is nothing.
+   At 0.12em it is a pixel and a third, which is exactly the amount the button
+   looked wrong by. */
+.nav-links a.nav-cta {
+    /* 15px, not the .btn--sm 18px. The nav is exactly full at 1400px — 878 of
+       918 used — and at 18px this button needs 4.5px more than the row has, so
+       it was being shrunk below its own text and clipped at both ends by the
+       overflow:hidden on .btn. Clipped-but-symmetric is what "not centred"
+       looks like when the box is too small. */
+    /* 9 top, 7 bottom. The label is all-caps and has no descenders, but the
+       font reserves descender space below the baseline regardless, so centring
+       the line box leaves the letters riding about 1.6px high in a button this
+       size. Moving one pixel of padding from the bottom to the top centres the
+       CAPS, which is what an eye measures. Same total, same height. */
+    padding: 9px 15px 7px;
+
+    /* And it must not be squeezed again. .nav-links is a flex row, every item
+       in it shrinks by default, and a CTA that gives up width silently is how
+       the clipping happened in the first place. */
+    flex-shrink: 0;
+
+    /* THIS IS THE LINE THAT WAS ACTUALLY MISSING.
+
+       The label was wrapping onto two lines. "Start a conversation" is the
+       longest CTA on the site, .btn does not set white-space and neither does
+       .nav-links a, so the button grew to 59px — two line boxes — and the text
+       inside a two-line centred flex box does not look centred, because it is
+       not: the second line is a different width from the first.
+
+       That is the whole reported fault. Too thick and not centred were one
+       cause, not two.
+
+       It hid behind a font swap. With the fallback face the label fits on one
+       line and everything measures correctly; the wrap only appears once the
+       real face loads, which is after most measurements are taken and after a
+       screenshot is usually captured. Measure this one behind document.fonts.
+       ready or it will tell you it is fine. */
+    white-space: nowrap;
+}
 
 .nav-toggle {
     display: none;
@@ -524,6 +592,24 @@ p + p { margin-top: 16px; }
    where the leader hairlines still keep 88% of theirs. */
 .anim-field--hero { opacity: 0.35; }
 .anim-field--dg   { opacity: 0.55; }
+
+/* The header field, on every marketing page except the home hero.
+
+   BRIGHTER than the hero's 0.35, which is the opposite of what it looks like it
+   should be. The hero has a lattice at the top and a solve beat crossing it, so
+   its 0.35 is carrying three things; a header has only gas, and at the same
+   value the rise reads as smudge under the headline rather than as anything
+   moving. Tried at 0.30 first and it was barely visible at all.
+
+   Still below the diagram fields' 0.55, for the obvious reason: a headline is
+   type somebody has to read, a drawing is a picture they only have to look at. */
+.anim-field--head { opacity: 0.50; }
+
+/* .hero already lifts its .wrap; .hero-zone did not, because until now nothing
+   was ever painted behind one. The canvas is position:absolute and therefore
+   paints above non-positioned content whatever the source order says, so
+   without this the field lays over the headline on hardware and calculator. */
+.hero-zone > .wrap { position: relative; z-index: 1; }
 
 /* The hero headline is the longest on the site — “Your machines or ours.” is
    9.35em — and the shared clamp floors at 40px, which needs 374px of measure
@@ -2174,8 +2260,42 @@ p + p { margin-top: 16px; }
    does not. The spacing is where the cards' benefit is kept: roughly double the
    row padding of the shared .calc-table, so the rows breathe. */
 .hw-table { font-size: 12px; }
-.hw-table th { padding: 14px 22px; }
-.hw-table td { padding: 16px 22px; vertical-align: middle; }
+/* 16px across, not 22. Three economics columns took the table from seven
+   columns to ten and 1255px into a 1144px container — 111px over, which put
+   "Run the numbers" almost entirely past the right edge. Six pixels a side on
+   ten columns is 120px back, which is the whole overflow. */
+.hw-table th { padding: 14px 16px; }
+.hw-table td { padding: 16px 16px; vertical-align: middle; }
+
+/* AND THE LAST COLUMN IS PINNED, so it is reachable at any width rather than
+   only at the widths where the table happens to fit. Below 1200px the container
+   shrinks and the overflow comes back; the padding above fixes the common case,
+   this fixes every other one.
+
+   The background is opaque black because it has to be: a sticky cell that lets
+   the scrolling cells show through it is worse than no sticky cell at all. Black
+   is exact here — body is the only opaque background above this table, and it is
+   #000. The rule is written against the token rather than the literal so a
+   future theme change moves both together. */
+.hw-table th:last-child,
+.hw-table td.hw-see {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: var(--black);
+}
+/* A hairline so the pinned column reads as pinned rather than as a cell that
+   happens to be there, and only while there is actually something behind it. */
+.hw-table th:last-child::before,
+.hw-table td.hw-see::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: var(--line);
+}
 .hw-table td, .hw-table th { white-space: nowrap; }
 .hw-table .hw-name { text-align: left; color: var(--plat-100); font-size: 13.5px; letter-spacing: 0.01em; }
 .hw-table .hw-price { color: var(--btc-200); }
