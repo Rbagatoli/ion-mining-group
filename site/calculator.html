@@ -73,6 +73,15 @@
            a 0, because an empty cart does not deserve a place in the nav.
            cart.js unhides it, and cart.js is on every page. -->
       <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="nav-signin" href="../portal/">Producer Portal</a>
       <a class="btn btn--primary btn--sm nav-cta" href="./contact.html">Talk to us</a>
     </div>
   </div>

@@ -2296,6 +2296,23 @@ p + p { margin-top: 16px; }
 }
 .nav-links a.nav-cart::after { display: none; }
 .nav-links a.nav-cart:hover { color: var(--btc-300); border-color: var(--line-btc); }
+
+/* The producer portal link. Same mono treatment as the order badge so the two
+   read as one class of thing — utilities, not destinations — but with no border,
+   because it is always present and a second bordered box beside the CTA turns
+   the right-hand end of the nav into three competing rectangles.
+
+   Selected as .nav-links a.nav-signin for the specificity reason spelled out
+   above: a bare class loses to .nav-links a and renders at 15px, which is what
+   pushed the nav into wrapping the first time. */
+.nav-links a.nav-signin {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--plat-400);
+    margin-left: 10px; white-space: nowrap;
+    transition: color 0.18s;
+}
+.nav-links a.nav-signin::after { display: none; }
+.nav-links a.nav-signin:hover { color: var(--btc-300); }
 .nav-cart-n {
     font-size: 10.5px; letter-spacing: 0; color: var(--black);
     background-image: var(--metal-btc-btn);
