@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ion Mining Group — Producer Portal</title>
+<!-- Not indexed. A counterparty gets the link from us; nobody needs to find it. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../tokens.css?v=337">
+<link rel="stylesheet" href="./portal.css?v=337">
+</head>
+<body>
+
+<div class="pt-wrap">
+
+  <header class="pt-head">
+    <div class="pt-brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="#e5e4e2" stroke-width="1.4"/>
+        <circle cx="16" cy="16" r="4.2" fill="#f7931a"/>
+      </svg>
+      <span class="pt-wordmark">Ion Mining Group</span>
+    </div>
+    <div class="pt-who" id="ptWho"></div>
+  </header>
+
+  <div id="ptStatus" class="pt-status" style="display:none;"></div>
+
+  <!-- ===== SIGN IN =====
+       The portal's whole first screen is sign-in, so it is the page rather than a modal over it.
+       auth-ui.js is deliberately not loaded: its modal is built to overlay an app you are already
+       inside, and here there is nothing behind it. IonAuth from firebase-config.js is the same
+       authentication either way. -->
+  <section id="ptAuth" class="pt-auth" style="display:none;">
+    <h1>Producer portal</h1>
+    <p class="pt-sub" id="ptAuthSub">Sign in to see your gas volumes and statements.</p>
+
+    <form id="ptSignInForm" autocomplete="on">
+      <div class="pt-field">
+        <label for="ptEmail">Email</label>
+        <input type="email" id="ptEmail" autocomplete="username" required>
+      </div>
+      <div class="pt-field">
+        <label for="ptPassword">Password</label>
+        <input type="password" id="ptPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="pt-btn" id="ptSignIn">Sign in</button>
+    </form>
+
+    <div class="pt-alt">
+      <button type="button" id="ptReset">Forgot your password?</button>
+    </div>
+
+    <p class="pt-foot">
+      Accounts are created by Ion Mining Group and sent to you by invitation. There is no public
+      sign-up. If you have an invitation link, open it and it will set your account up.
+    </p>
+  </section>
+
+  <!-- ===== STATEMENTS ===== -->
+  <section id="ptMain" style="display:none;">
+    <h1 id="ptTitle">Your statements</h1>
+    <p class="pt-sub" id="ptSites"></p>
+    <div id="ptList"></div>
+
+    <p class="pt-foot">
+      Figures are taken from the meter at your site. Where a period is not fully covered by meter
+      readings, the gap is shown as a gap &mdash; nothing is estimated or filled in. Statements
+      are frozen when issued and do not change afterwards; a later correction appears as an
+      adjustment on the next statement, so you can always see why a figure differs.
+      <br><br>
+      Questions about a figure: <a href="mailto:energy@ionmininggroup.com"
+      style="color:var(--plat-400);">energy@ionmininggroup.com</a>
+    </p>
+  </section>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js?v=337"></script>
+<script src="./portal.js?v=337"></script>
+<script>
+/* NOTE ON WHAT IS *NOT* ON THIS PAGE.
+   No sync.js, no shared.js, no firestore-compat. Every other authenticated page in this app loads
+   all three; this one loads none. SYNC_KEYS covers Ion's fleet, wallet, payouts and banking, and
+   the surest way to guarantee a counterparty's browser never holds that engine is not to ship it.
+   There is a test asserting this file references none of them. */
+(function() {
+    'use strict';
+    var P = IonPortal;
+
+    function show(which) {
+        document.getElementById('ptAuth').style.display = which === 'auth' ? '' : 'none';
+        document.getElementById('ptMain').style.display = which === 'main' ? '' : 'none';
+    }
+
+    // An invitation link: ?invite=INV-XXXX. The holder still has to sign in or create the
+    // Firebase account first — the invite binds an identity to a seller, it is not itself one.
+    function inviteFromUrl() {
+        var m = location.search.match(/[?&]invite=(INV-[0-9A-HJKMNP-TV-Z]{20})/);
+        return m ? m[1] : null;
+    }
+
+    async function redeemIfInvited(user) {
+        var inv = inviteFromUrl();
+        if (!inv) return true;
+        P.status('Setting up your account...', null);
+        var idToken = await user.getIdToken(true);
+        var res = await P.api('/portal/redeem', { method: 'POST', noAuth: true,
+                                                  body: { invite: inv, idToken: idToken } });
+        if (res.notConfigured) { notConfigured(); return false; }
+        if (!res.ok) {
+            // The worker returns one identical refusal for every reason, so the page cannot say
+            // which — and should not guess. It says what to do instead.
+            P.status('That invitation could not be used. It may have already been used, or it ' +
+                     'may have been sent to a different email address than the one you signed in ' +
+                     'with. Please contact us and we will send a new one.', 'error');
+            return false;
+        }
+        // Clear the token out of the address bar so it is not left in history or a screenshot.
+        history.replaceState(null, '', location.pathname);
+        return true;
+    }
+
+    function notConfigured() {
+        P.status('This portal is not connected to a server yet. Nothing is wrong with your ' +
+                 'account — the service is still being set up.', null);
+        show('auth');
+    }
+
+    async function afterSignIn(user) {
+        if (!(await redeemIfInvited(user))) return;
+
+        P.status('Signing you in...', null);
+        var idToken = await user.getIdToken(true);
+        var login = await P.api('/portal/login', { method: 'POST', noAuth: true,
+                                                   body: { idToken: idToken } });
+        if (login.notConfigured) { notConfigured(); return; }
+        if (!login.ok) {
+            P.status('This email address is not linked to a producer account. If you were sent ' +
+                     'an invitation, open that link. Otherwise please contact us.', 'error');
+            show('auth');
+            return;
+        }
+        P.setSession(login.body.session);
+        P.status('', null);
+        await loadStatements();
+    }
+
+    async function loadStatements() {
+        var me = await P.api('/portal/me');
+        if (!me.ok) { show('auth'); return; }
+
+        document.getElementById('ptWho').innerHTML =
+            P.esc(me.body.legal_name || '') +
+            '<br><button type="button" class="pt-signout" id="ptSignOut">Sign out</button>';
+        document.getElementById('ptSignOut').addEventListener('click', function() {
+            P.setSession(null);
+            if (typeof IonAuth !== 'undefined') IonAuth.signOut();
+            location.reload();
+        });
+
+        var sites = me.body.sites || [];
+        document.getElementById('ptSites').textContent =
+            sites.length === 1 ? sites[0] : sites.length + ' sites';
+
+        var list = await P.api('/portal/statements');
+        var el = document.getElementById('ptList');
+        var rows = (list.ok && list.body && list.body.statements) || [];
+
+        if (!rows.length) {
+            // An empty portal must read as empty, not as zero. There is a real difference between
+            // "we have not issued you a statement yet" and "you are owed nothing".
+            el.innerHTML = '<div class="pt-empty">No statements have been issued yet. ' +
+                'Your first one will appear here at the end of the first billing period.</div>';
+            show('main');
+            return;
+        }
+
+        rows.sort(function(a, b) { return String(b.period).localeCompare(String(a.period)); });
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<a class="pt-card pt-clickable" style="display:block;text-decoration:none;" ' +
+                'href="./statement.html?site=' + encodeURIComponent(r.site_id) +
+                '&period=' + encodeURIComponent(r.period) + '">' +
+                '<table class="pt-rows"><tr>' +
+                '<td>' + P.esc(r.period) + ' &middot; ' + P.esc(r.site_id) + '<br>' +
+                '<span class="pt-unit">issued ' + P.date(r.issued_at) + '</span></td>' +
+                '<td>' + P.money(r.total_usd) +
+                (r.total_is_partial ? '<br><span class="pt-unit">incomplete</span>' : '') +
+                '</td></tr></table></a>';
+        }
+        el.innerHTML = html;
+        show('main');
+    }
+
+    // ---- wiring ----
+    document.getElementById('ptSignInForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('ptSignIn');
+        btn.disabled = true;
+        try {
+            await IonAuth.signInWithEmail(
+                document.getElementById('ptEmail').value.trim(),
+                document.getElementById('ptPassword').value);
+        } catch (err) {
+            P.status('That email address and password did not match an account.', 'error');
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('ptReset').addEventListener('click', async function() {
+        var email = document.getElementById('ptEmail').value.trim();
+        if (!email) { P.status('Enter your email address first, then press this again.', null); return; }
+        try {
+            await IonAuth.sendPasswordReset(email);
+            // Deliberately does not confirm whether the address exists.
+            P.status('If that address has an account, a reset link is on its way.', 'ok');
+        } catch (e) {
+            P.status('If that address has an account, a reset link is on its way.', 'ok');
+        }
+    });
+
+    if (inviteFromUrl()) {
+        document.getElementById('ptAuthSub').textContent =
+            'Sign in with the email address your invitation was sent to, and your account will be set up.';
+    }
+
+    IonAuth.onAuthChange(function(user) {
+        if (user) afterSignIn(user);
+        else { P.setSession(null); show('auth'); }
+    });
+})();
+</script>
+</body>
+</html>

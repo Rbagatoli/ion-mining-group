@@ -95,7 +95,7 @@
     // Returning zero when the truth is unknown would silently delete money the seller is owed,
     // and nobody would ever notice. So a pending shortfall is excluded from the total and the
     // statement says outright that it is partial.
-    function takeOrPay(terms, deliveredQty, curtailments) {
+    function takeOrPay(terms, deliveredQty, curtailments, deliveredIsFirm) {
         var top = terms && terms.take_or_pay;
         if (!top || !isNum(top.minimum_per_period)) return null;
 
@@ -110,12 +110,20 @@
             // Ion's favour underpays; guessing in the seller's overpays. So: pending.
             if (!e.attribution) { pending = true; continue; }
             if (excusedCodes.indexOf(e.attribution) >= 0) {
+                // A SELLER-side failure (or force majeure) excuses the minimum: Ion cannot be
+                // made to pay for gas that was never available to take.
                 if (isNum(e.quantity)) excused += e.quantity; else pending = true;
             } else if (e.attribution === 'ion_economic' || e.attribution === 'ion_maintenance') {
-                // Ion refused gas the seller made available. Counts toward the minimum, but ONLY
-                // with evidence of what was actually available -- otherwise it is an assertion.
+                // ION-side curtailment. Recorded for the record and shown on the statement, but
+                // it does NOT reduce what Ion owes.
+                //
+                // The first version subtracted this from the shortfall, on the reading that gas
+                // Ion refused "counts toward the minimum". That inverts the clause. Take-or-pay
+                // exists precisely so that when Ion declines gas the seller made available, the
+                // seller is paid anyway -- so netting it out made the clause pay ZERO in exactly
+                // the month it exists for. Verified: minimum 800, delivered 0, 800 refused by Ion
+                // produced a $0 statement where the seller was owed the full minimum.
                 if (isNum(e.available_quantity)) ionCurtailed += e.available_quantity;
-                else pending = true;
             }
         }
 
@@ -127,10 +135,16 @@
             delivered: qty(deliveredQty),
             ion_curtailed_available: qty(ionCurtailed),
             shortfall: null,
-            pending_attribution: pending
+            pending_attribution: pending,
+            // A shortfall is the gap between a contractual minimum and a MEASURED delivery. When
+            // the period is not fully covered by meter readings, the delivered figure is a floor
+            // rather than a measurement -- so the difference is not a shortfall, it is partly the
+            // size of the hole in the data. Charging it firm would bill the seller's meter outage
+            // to Ion, or the reverse, depending on which way the contract runs.
+            delivered_is_firm: deliveredIsFirm !== false
         };
-        if (pending || !isNum(deliveredQty)) return out;
-        out.shortfall = qty(Math.max(0, adjustedMinimum - deliveredQty - ionCurtailed));
+        if (pending || !isNum(deliveredQty) || out.delivered_is_firm === false) return out;
+        out.shortfall = qty(Math.max(0, adjustedMinimum - deliveredQty));
         return out;
     }
 
@@ -151,9 +165,13 @@
 
         var hv = input.heating_value_record || heatingValue(contract);
         var deliveredMMBtu = hv ? qty(toMMBtu(deliveredMcf, hv.value_btu_scf)) : null;
-        if (deliveredMMBtu === null) unresolved.push('delivered_mmbtu');
 
         var basisUnit = (contract.measurement && contract.measurement.billing_basis) || null;
+
+        // Flagged unresolved only when the contract actually BILLS on energy. A volume contract
+        // does not need a heating value, and listing it as unresolved there tells a seller
+        // something is missing from their statement when nothing is.
+        if (deliveredMMBtu === null && basisUnit === 'energy_mmbtu') unresolved.push('delivered_mmbtu');
         var billQty = basisUnit === 'energy_mmbtu' ? deliveredMMBtu
                     : basisUnit === 'volume_mcf'  ? deliveredMcf
                     : null;
@@ -162,8 +180,18 @@
         var charges = [];
         var totalIsPartial = false;
 
+        // Is the delivered figure a measurement, or a floor? Any unbounded gap or unbillable span
+        // means gas may have flowed that nothing recorded, so every figure derived from it is a
+        // lower bound. Take-or-pay must know this, because a shortfall computed against a floor is
+        // partly just the size of the hole.
+        var hasUnknownVolume =
+            (built.gaps || []).some(function(g) { return g.kind === 'unbounded'; }) ||
+            (built.unbillable || []).length > 0;
+
+        var isStruct01 = contract.structure === '01_purchase';
+
         // An unrecognised structure charges NOTHING. Not a default, not a guess.
-        if (contract.structure === '01_purchase' && isNum(terms.price) && billQty !== null) {
+        if (isStruct01 && isNum(terms.price) && billQty !== null) {
             charges.push({
                 code: 'gas_purchase',
                 label: 'Gas delivered',
@@ -174,22 +202,48 @@
                 amount_usd: money(billQty * terms.price),
                 contract_version: contract.version || null
             });
-        } else if (contract.structure !== '01_purchase') {
+        } else if (!isStruct01) {
             // Said out loud rather than producing an empty statement that looks like zero gas.
             disclosures.push('This contract uses structure ' + (contract.structure || 'unrecorded') +
                 ', which this system does not yet compute. No charge has been calculated.');
             unresolved.push('structure_not_implemented');
+            totalIsPartial = true;
+        } else {
+            // Structure 01, but something needed to price it is missing -- no rate on the
+            // contract, or no billable quantity because the heating value is absent.
+            //
+            // Without this branch the statement showed a confident $0.00 with total_is_partial
+            // FALSE, which reads as "you are owed nothing this month" when the truth is "nobody
+            // has recorded what you are owed". Those are opposite messages to send a counterparty.
+            disclosures.push('No amount could be calculated for this period. ' +
+                (isNum(terms.price) ? 'The billable quantity is not available.'
+                                    : 'No contract rate is recorded.') +
+                ' This is not a zero balance.');
+            unresolved.push(isNum(terms.price) ? 'billable_quantity' : 'contract_price');
+            totalIsPartial = true;
         }
 
         // Take-or-pay, always shown as three lines when the contract has a minimum -- so that a
         // zero shortfall is a COMPUTED zero rather than the absence of a check.
-        var top = takeOrPay(terms, billQty, input.curtailments);
+        //
+        // INSIDE the structure gate. It used to sit outside it, so a structure-02 or -03 contract
+        // -- whose statement charges nothing by design, because per-site revenue attribution does
+        // not exist yet -- still produced a take-or-pay shortfall line and billed it. A contract
+        // this file cannot price must not bill anything at all.
+        var top = isStruct01 ? takeOrPay(terms, billQty, input.curtailments, !hasUnknownVolume) : null;
         if (top) {
             if (top.pending_attribution) {
                 totalIsPartial = true;
                 unresolved.push('take_or_pay_shortfall');
                 disclosures.push('A take-or-pay shortfall cannot be calculated until every ' +
                     'curtailment in this period has been attributed. The total below excludes it.');
+            } else if (top.delivered_is_firm === false) {
+                totalIsPartial = true;
+                unresolved.push('take_or_pay_shortfall');
+                disclosures.push('A take-or-pay shortfall has not been charged for this period. ' +
+                    'Part of it is not covered by meter readings, so the delivered figure is a ' +
+                    'minimum rather than a measurement, and the difference against the contract ' +
+                    'minimum would partly be the size of that gap rather than a real shortfall.');
             } else if (top.shortfall > 0) {
                 var rate = isNum(terms.take_or_pay.shortfall_price)
                     ? terms.take_or_pay.shortfall_price : terms.price;

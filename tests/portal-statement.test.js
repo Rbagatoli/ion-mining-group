@@ -124,24 +124,58 @@ console.log('\n=== an unattributed curtailment makes the shortfall PENDING, not 
     eq('no shortfall charge was invented', s.charges.length, 1);
 })();
 
-console.log('\n=== gas Ion refused still counts toward the minimum ===');
+console.log('\n=== gas Ion refused does NOT reduce what Ion owes ===');
 (function() {
+    // THIS SECTION PREVIOUSLY ASSERTED THE OPPOSITE, and the assertion was wrong rather than the
+    // code being right. It read "gas Ion refused still counts toward the minimum" and expected the
+    // refusal to shrink the shortfall.
+    //
+    // That inverts the clause. Take-or-pay exists so that when Ion declines gas the seller made
+    // available, the seller is paid anyway. Netting it out made the clause pay ZERO in exactly the
+    // month it exists for: minimum 800, delivered 0, 800 refused by Ion produced a $0 statement
+    // when the seller was owed the full minimum.
     var c = contract();
     c.terms.take_or_pay = { minimum_per_period: 800, excused_events: ['seller_outage'] };
+
     var s = Statement.compute({ site_id: 'S1', contract: c, built: built(1000),
         curtailments: [{ attribution: 'ion_economic', available_quantity: 200 }] });
-    eq('delivered 500 plus 200 Ion refused, against 800', s.take_or_pay.shortfall, 100);
+    eq('delivered 500 against a minimum of 800 is a shortfall of 300', s.take_or_pay.shortfall, 300);
+    eq('and Ion refusing 200 does not shrink it', s.take_or_pay.ion_curtailed_available, 200);
 
-    // Without evidence of what was available it is an assertion, not a measurement.
-    var noEvidence = Statement.compute({ site_id: 'S1', contract: c, built: built(1000),
-        curtailments: [{ attribution: 'ion_economic', available_quantity: null }] });
-    eq('but with no evidence of the quantity it goes pending', noEvidence.take_or_pay.shortfall, null);
+    // The case the old test could not have caught, because it netted to zero.
+    var worst = Statement.compute({ site_id: 'S1', contract: c, built: built(0),
+        curtailments: [{ attribution: 'ion_economic', available_quantity: 800 }] });
+    eq('Ion refusing the entire minimum still owes the entire minimum', worst.take_or_pay.shortfall, 800);
+    ok('and it is charged', worst.total_usd > 0, '$' + worst.total_usd);
 
-    // A seller outage excuses the minimum rather than counting toward it.
+    // A SELLER-side failure is the opposite case: Ion cannot be made to pay for gas that was
+    // never available to take, so it reduces the minimum rather than being owed.
     var excused = Statement.compute({ site_id: 'S1', contract: c, built: built(1000),
         curtailments: [{ attribution: 'seller_outage', quantity: 300 }] });
     eq('a seller outage reduces the minimum instead', excused.take_or_pay.adjusted_minimum, 500);
     eq('leaving no shortfall', excused.take_or_pay.shortfall, 0);
+})();
+
+console.log('\n=== a shortfall is not charged against a hole in the data ===');
+(function() {
+    // Delivered is a floor, not a measurement, when part of the period has no readings. The
+    // difference against the minimum would then partly be the size of the gap rather than a real
+    // shortfall — so it is disclosed and left out rather than billed.
+    var c = contract();
+    c.terms.take_or_pay = { minimum_per_period: 800, excused_events: [] };
+    var b = built(200);
+    b.gaps = [{ kind: 'unbounded', volume_mcf: null, hours: 120 }];
+
+    var holed = Statement.compute({ site_id: 'S1', contract: c, built: b });
+    eq('the shortfall is not asserted', holed.take_or_pay.shortfall, null);
+    eq('because delivered is not firm', holed.take_or_pay.delivered_is_firm, false);
+    ok('the total says it is incomplete', holed.total_is_partial);
+    ok('and the reason is given', holed.basis.disclosures.some(function(d) {
+        return /minimum rather than a measurement/.test(d); }));
+
+    // With full coverage the same figures DO produce a charge.
+    var firm = Statement.compute({ site_id: 'S1', contract: c, built: built(200) });
+    eq('with complete coverage it is charged', firm.take_or_pay.shortfall, 700);
 })();
 
 // ---- 3. structures that are not implemented ---------------------------------------------------

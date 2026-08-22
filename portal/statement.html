@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statement — Ion Mining Group</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../tokens.css?v=337">
+<link rel="stylesheet" href="./portal.css?v=337">
+</head>
+<body>
+
+<div class="pt-wrap">
+
+  <header class="pt-head">
+    <div class="pt-brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="#e5e4e2" stroke-width="1.4"/>
+        <circle cx="16" cy="16" r="4.2" fill="#f7931a"/>
+      </svg>
+      <span class="pt-wordmark">Ion Mining Group</span>
+    </div>
+    <div class="pt-who"><a href="./index.html" style="color:var(--plat-400);font-size:11px;">&larr; All statements</a></div>
+  </header>
+
+  <div id="ptStatus" class="pt-status" style="display:none;"></div>
+  <div id="ptDoc"></div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js?v=337"></script>
+<script src="./portal.js?v=337"></script>
+<script>
+/* The statement, rendered as a document rather than a dashboard.
+   No sync.js, no shared.js — see the note in index.html. */
+(function() {
+    'use strict';
+    var P = IonPortal;
+
+    function param(n) {
+        var m = location.search.match(new RegExp('[?&]' + n + '=([^&]+)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function rows(pairs) {
+        var h = '<table class="pt-rows">';
+        for (var i = 0; i < pairs.length; i++) {
+            if (!pairs[i]) continue;
+            h += '<tr' + (pairs[i][2] ? ' class="' + pairs[i][2] + '"' : '') + '><td>' +
+                 pairs[i][0] + '</td><td>' + pairs[i][1] + '</td></tr>';
+        }
+        return h + '</table>';
+    }
+
+    function render(st) {
+        var q = st.quantity || {};
+        var cov = q.coverage || {};
+        var h = '';
+
+        h += '<h1>' + P.esc(st.period ? st.period.id : '') + '</h1>' +
+             '<p class="pt-sub">' + P.esc(st.site_id || '') + ' &middot; issued ' +
+             P.date(st.issued_at) + '</p>';
+
+        // Before anything else, if the figure is incomplete, say so where it cannot be missed.
+        h += P.partialBanner(st);
+
+        // ---- what was delivered ----
+        h += '<h2>Gas delivered</h2><div class="pt-card">';
+        var hv = q.heating_value_applied;
+        h += rows([
+            ['Volume', P.num(q.delivered_mcf, 'Mcf')],
+            hv ? ['Heating value', P.num(hv.value_btu_scf, 'Btu/scf') +
+                  ' <span class="pt-unit">(' + P.esc(hv.source || '') + ')</span>']
+               : ['Heating value', '<span class="pt-absent">not recorded for this period</span>'],
+            ['Energy', P.num(q.delivered_mmbtu, 'MMBtu')]
+        ]);
+        h += '</div>';
+
+        // ---- how well the meter covered the period ----
+        // Always shown, so a full month is a MEASURED full month rather than the absence of a
+        // check. This is the section a counterparty will read first if they distrust a number.
+        h += '<h2>Meter coverage</h2><div class="pt-card">';
+        h += rows([
+            ['Period', P.num(cov.period_hours, 'hours')],
+            ['Covered by meter readings', P.num(cov.covered_hours, 'hours') +
+                ' <span class="pt-unit">(' + P.pct(cov.coverage_pct) + ')</span>'],
+            ['Not covered', P.num(cov.gap_hours, 'hours')]
+        ]);
+
+        var gaps = q.gaps || [];
+        if (gaps.length) {
+            h += '<div style="margin-top:14px;">';
+            for (var g = 0; g < gaps.length; g++) {
+                var gap = gaps[g];
+                h += '<div class="pt-gap"><span class="pt-gap-when">' +
+                     P.date(gap.from) + ' &ndash; ' + P.date(gap.to) +
+                     ' <span class="pt-unit">(' + P.num(gap.hours, 'h') + ')</span></span>' +
+                     '<span class="pt-gap-what">' +
+                     (gap.kind === 'bounded'
+                        ? 'volume known, timing not: ' + P.num(gap.volume_mcf, 'Mcf')
+                        : 'volume unknown') +
+                     '</span></div>';
+            }
+            h += '<p class="pt-disclosure" style="margin-top:10px;">A gap is shown as a gap. ' +
+                 'No volume has been estimated or filled in for these periods.</p>';
+            h += '</div>';
+        }
+        h += '</div>';
+
+        // ---- take-or-pay ----
+        // Three lines whenever the contract has a minimum, so a zero shortfall is visibly a
+        // COMPUTED zero rather than a line nobody rendered.
+        var top = st.take_or_pay;
+        if (top) {
+            h += '<h2>Minimum take</h2><div class="pt-card">';
+            h += rows([
+                ['Contract minimum', P.num(top.minimum)],
+                top.excused ? ['Excused', P.num(top.excused)] : null,
+                ['Adjusted minimum', P.num(top.adjusted_minimum)],
+                ['Delivered', P.num(top.delivered)],
+                top.ion_curtailed_available
+                    ? ['Available but not taken by Ion', P.num(top.ion_curtailed_available)] : null,
+                ['Shortfall', top.pending_attribution
+                    ? '<span class="pt-absent">pending &mdash; see below</span>'
+                    : P.num(top.shortfall)]
+            ]);
+            if (top.pending_attribution) {
+                h += '<p class="pt-disclosure">A meter cannot record why gas did not flow. ' +
+                     'Until every interruption in this period has been attributed, a shortfall ' +
+                     'cannot be calculated &mdash; so it has been left out rather than set to zero.</p>';
+            }
+            h += '</div>';
+        }
+
+        // ---- the money ----
+        h += '<h2>Amount</h2><div class="pt-card">';
+        var lines = [];
+        var charges = st.charges || [];
+        for (var c = 0; c < charges.length; c++) {
+            lines.push([P.esc(charges[c].label || charges[c].code) +
+                        '<br><span class="pt-unit">' + P.esc(charges[c].basis_text || '') + '</span>',
+                        P.money(charges[c].amount_usd)]);
+        }
+        if (!charges.length) {
+            lines.push(['<span class="pt-absent">No charge has been calculated for this period</span>', '']);
+        }
+        var adj = st.adjustments || [];
+        for (var a = 0; a < adj.length; a++) {
+            lines.push([P.esc(adj[a].label) +
+                        '<br><span class="pt-unit">' + P.esc(adj[a].relates_to_period || '') +
+                        (adj[a].reason ? ' &middot; ' + P.esc(adj[a].reason) : '') + '</span>',
+                        P.money(adj[a].amount_usd)]);
+        }
+        lines.push(['Total' + (st.total_is_partial ? ' <span class="pt-unit">(incomplete)</span>' : ''),
+                    P.money(st.total_usd), 'pt-total']);
+        h += rows(lines);
+        h += '</div>';
+
+        // ---- basis: everything the figure rests on ----
+        var basis = st.basis || {};
+        h += '<h2>Basis</h2><div class="pt-card">';
+        var disc = basis.disclosures || [];
+        if (disc.length) {
+            for (var d = 0; d < disc.length; d++) {
+                h += '<p class="pt-disclosure">' + P.esc(disc[d]) + '</p>';
+            }
+        }
+        var unbill = basis.unbillable_segments || [];
+        if (unbill.length) {
+            h += '<p class="pt-disclosure"><strong>Could not be billed:</strong></p>';
+            for (var u = 0; u < unbill.length; u++) {
+                h += '<div class="pt-gap"><span class="pt-gap-when">' +
+                     P.date(unbill[u].from) + ' &ndash; ' + P.date(unbill[u].to) + '</span>' +
+                     '<span class="pt-gap-what">' + P.esc(unbill[u].reason) + '</span></div>';
+            }
+        }
+        h += rows([
+            ['Meter readings used', P.num(basis.readings_included_count)],
+            ['Statement version', P.num(st.version)],
+            // The hash is what lets this document be proved unchanged later. It is shown rather
+            // than hidden precisely so the counterparty can keep it.
+            ['Document reference', '<span style="font-size:10.5px;color:var(--plat-500);">' +
+                P.esc(String(st.content_hash || '').slice(0, 32)) + '</span>']
+        ]);
+        h += '<p class="pt-disclosure">This statement was frozen when it was issued and has not ' +
+             'changed since. The reference above identifies this exact version of it. Any later ' +
+             'correction appears as an adjustment on a following statement rather than by ' +
+             'altering this one.</p>';
+        h += '</div>';
+
+        h += '<p class="pt-foot">Questions about any figure here: ' +
+             '<a href="mailto:energy@ionmininggroup.com" style="color:var(--plat-400);">' +
+             'energy@ionmininggroup.com</a></p>';
+
+        document.getElementById('ptDoc').innerHTML = h;
+    }
+
+    async function load() {
+        var site = param('site'), period = param('period');
+        if (!site || !period) { location.replace('./index.html'); return; }
+
+        var res = await P.api('/portal/statements/' + encodeURIComponent(site) + '/' +
+                              encodeURIComponent(period));
+        if (res.notConfigured) {
+            P.status('This portal is not connected to a server yet.', null);
+            return;
+        }
+        if (res.unauthorized) { location.replace('./index.html'); return; }
+        if (!res.ok) {
+            // The worker answers "not yours" and "does not exist" identically, so the page must
+            // not speculate about which it was.
+            P.status('That statement is not available.', 'error');
+            return;
+        }
+        render(res.body);
+    }
+
+    if (!P.session()) location.replace('./index.html');
+    else load();
+})();
+</script>
+</body>
+</html>

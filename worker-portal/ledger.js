@@ -99,7 +99,31 @@
         if (faulted(prev) || faulted(curr)) return { mcf: null, quality: 'suspect' };
 
         var d = curr.index_corrected - prev.index_corrected;
-        if (d >= 0) return { mcf: d, quality: 'measured' };
+        if (d >= 0) {
+            // THE SAME DATASHEET BOUND AS THE WRAP BRANCH BELOW, APPLIED FORWARD.
+            //
+            // The first version of this function bounded only NEGATIVE movement, on the reasoning
+            // that a backwards index needs explaining and a forwards one does not. That was wrong
+            // and it was the most expensive bug in the file: a register that jumps further than
+            // the meter can physically pass is not a measurement, it is a unit error (firmware
+            // reporting cf instead of Mcf is a clean 1000x), a transcription typo, or a meter
+            // swapped in at a higher odometer without an epoch bump.
+            //
+            // Unbounded, a 40,000 Mcf hour on a 60 Mcf/hr register was returned as quality
+            // 'measured' -- the strongest word this file has -- and billed. A verified repro
+            // turned 300 Mcf of real gas into 4,510,860 Mcf and an $11.2M statement.
+            //
+            // Gated on the datasheet figure alone, mirroring the wrap branch: a meter record with
+            // no published rate keeps the old behaviour rather than having a bound invented for
+            // it, because inferring the limit from the data is how the bad number gets blessed.
+            if (meter && isNum(meter.max_rate_per_hour)) {
+                var fwdHours = elapsedHours(prev, curr);
+                if (fwdHours === null || d > meter.max_rate_per_hour * fwdHours) {
+                    return { mcf: null, quality: 'implausible' };
+                }
+            }
+            return { mcf: d, quality: 'measured' };
+        }
 
         // Negative. Either the register wrapped, or something is wrong. Resolve it ONLY with
         // figures published on the meter's own datasheet -- never inferred from the data itself,
@@ -174,6 +198,27 @@
             var prev = rs[i - 1], curr = rs[i];
             var from = Date.parse(prev.effective_ts), to = Date.parse(curr.effective_ts);
             if (!isFinite(from) || !isFinite(to)) continue;
+
+            // THE CLOCK-FAULT CHECK THIS FILE'S HEADER PROMISES, which the first version did not
+            // actually perform.
+            //
+            // Readings are ordered by (epoch, seq) because within an epoch the monotonicity of the
+            // index is physics while the monotonicity of the clock is firmware. So when the two
+            // disagree, the TIMESTAMP is the suspect one -- and disagreement has to be caught
+            // here, because further down the segment is prorated by elapsed time.
+            //
+            // Two readings sharing an effective_ts made `full` zero, which made `share` zero,
+            // which silently turned real volume into a segment of 0 Mcf reported as quality
+            // 'measured'. A decreasing timestamp did worse. Both are now unbillable: the index
+            // moved, so gas flowed, and we cannot say when.
+            if (to <= from) {
+                out.unbillable.push({
+                    from: prev.effective_ts, to: curr.effective_ts,
+                    reason: 'clock_fault',
+                    start_reading_id: prev.reading_id, end_reading_id: curr.reading_id
+                });
+                continue;
+            }
 
             // Entirely outside the window.
             if (to <= t0 || from >= t1) continue;

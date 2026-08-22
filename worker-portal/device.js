@@ -27,7 +27,11 @@
 //
 // THE SECRET IS DERIVED, NOT STORED.
 //
-//     secret = HMAC-SHA256(DEVICE_ROOT_KEY, device_id + ':' + kid)
+//     secret = HMAC-SHA256(DEVICE_ROOT_KEY, len(device_id) + ':' + device_id + ':' + kid)
+//
+// The length prefix is not decoration -- plain concatenation is NOT injective, so device 'A:B'
+// with kid 'C' and device 'A' with kid 'B:C' would derive the SAME secret and each device could
+// sign as the other. See deriveSecret.
 //
 // KV holds only the kid and its state. There is no secret at rest to leak from a KV dump, no
 // encryption-at-rest scheme to get wrong, and no per-device secret to back up or lose. Rotation
@@ -94,9 +98,30 @@
         return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
     }
 
+    // Device ids and key ids are restricted to a charset with no delimiter in it. Both are used
+    // to build KV keys AND the derivation input below, and a colon inside either would make both
+    // ambiguous -- see the note on injectivity in deriveSecret.
+    var ID_SHAPE = /^[A-Za-z0-9_-]{1,64}$/;
+    function validId(s) { return typeof s === 'string' && ID_SHAPE.test(s); }
+
     // The per-device, per-kid secret. Callers never persist the result.
+    //
+    // THE INPUT MUST BE INJECTIVE, and naive concatenation is not.
+    //
+    //     deviceId 'A:B', kid 'C'   ->  'A:B:C'
+    //     deviceId 'A',   kid 'B:C' ->  'A:B:C'
+    //
+    // Same string, same derived secret. Two separately enrolled devices would share a key and
+    // each could sign as the other, which defeats the entire point of putting device_id inside
+    // the MAC. Two defences, because one of them is a validation that a future caller might skip:
+    //
+    //   1. Both ids are validated against a charset that excludes the delimiter.
+    //   2. The device id is LENGTH-PREFIXED, so the boundary is unambiguous even if a caller
+    //      somehow gets an unvalidated value through.
     async function deriveSecret(rootKey, deviceId, kid) {
-        var mac = await hmac(new TextEncoder().encode(rootKey), deviceId + ':' + kid);
+        if (!validId(deviceId) || !validId(kid)) return null;
+        var material = deviceId.length + ':' + deviceId + ':' + kid;
+        var mac = await hmac(new TextEncoder().encode(rootKey), material);
         return hex(mac);
     }
 
@@ -112,11 +137,20 @@
         var nowMs = opts.nowMs;
 
         if (!opts.rootKey) return { ok: false, why: 'no device root key configured' };
-        if (!opts.deviceId) return { ok: false, why: 'no device id' };
+        if (!validId(opts.deviceId)) return { ok: false, why: 'no device id' };
         if (!sig.t || !sig.kid || !sig.v1.length) return { ok: false, why: 'malformed signature' };
+        if (!validId(sig.kid)) return { ok: false, why: 'bad kid' };
 
         var t = parseInt(sig.t, 10);
         if (!isFinite(t)) return { ok: false, why: 'bad timestamp' };
+
+        // nowMs must be a real number BEFORE it reaches the comparison. Math.floor(undefined/1000)
+        // is NaN, and `Math.abs(NaN - t) > TOLERANCE_SEC` is FALSE -- so a caller that forgot to
+        // pass a clock would not get a tolerance failure, it would get an unbounded replay window
+        // and every captured request valid forever. Fail closed instead.
+        if (typeof nowMs !== 'number' || !isFinite(nowMs)) {
+            return { ok: false, why: 'no clock' };
+        }
         if (Math.abs(Math.floor(nowMs / 1000) - t) > TOLERANCE_SEC) {
             return { ok: false, why: 'timestamp outside tolerance' };
         }
@@ -124,10 +158,20 @@
         // The key record decides whether this kid may still sign. A revoked kid stops here, before
         // any comparison, so a leaked key is dead the moment it is marked rather than at the next
         // rotation.
+        //
+        // hasOwnProperty, NOT `VERIFYING_STATES[state]`. A state of 'constructor', 'toString' or
+        // '__proto__' resolves up Object.prototype to a FUNCTION, which is truthy -- so a plain
+        // lookup would fail OPEN on exactly the strings an attacker would try. site-opportunity.js
+        // documents this same trap for counterparty types; it applies here with far more at stake.
         var state = opts.keyState;
-        if (!state || !VERIFYING_STATES[state]) return { ok: false, why: 'key not in a signing state' };
+        if (typeof state !== 'string' ||
+            !Object.prototype.hasOwnProperty.call(VERIFYING_STATES, state) ||
+            VERIFYING_STATES[state] !== true) {
+            return { ok: false, why: 'key not in a signing state' };
+        }
 
         var secret = await deriveSecret(opts.rootKey, opts.deviceId, sig.kid);
+        if (!secret) return { ok: false, why: 'cannot derive' };
         var mac = await hmac(new TextEncoder().encode(secret),
                              sig.t + '.' + opts.deviceId + '.' + rawBody);
         var expected = hex(mac);
@@ -141,6 +185,7 @@
     return {
         verify: verify,
         deriveSecret: deriveSecret,
+        validId: validId,
         parseSignature: parseSignature,
         constantEquals: constantEquals,
         hex: hex,

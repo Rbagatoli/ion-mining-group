@@ -97,6 +97,70 @@ console.log('\n=== rollover is resolved from the datasheet, or not at all ===');
     eq('and with no published digits, nothing is guessed', noSpec.mcf, null);
 })();
 
+console.log('\n=== a forward jump the meter could not physically pass is refused ===');
+(function() {
+    // The most expensive bug this file had. The datasheet bound was applied ONLY to negative
+    // movement, on the reasoning that a backwards index needs explaining and a forwards one does
+    // not. A firmware unit error reporting cf instead of Mcf is a clean 1000x forward jump, and
+    // it came back as quality 'measured' -- the strongest word here -- and was billed. A verified
+    // repro turned 300 Mcf of real gas into 4,510,860 Mcf and an $11.2M statement.
+    var jump = Ledger.delta(reading({ index_corrected: 501140, effective_ts: at(0) }),
+                            reading({ index_corrected: 4511000, effective_ts: at(1) }), METER);
+    eq('40,000 Mcf in one hour on a 60 Mcf/hr meter is refused', jump.mcf, null);
+    eq('and named as implausible rather than measured', jump.quality, 'implausible');
+
+    // The bound must not swallow ordinary readings.
+    var normal = Ledger.delta(reading({ index_corrected: 0, effective_ts: at(0) }),
+                              reading({ index_corrected: 42.5, effective_ts: at(1) }), METER);
+    eq('a normal hour still measures', normal.mcf, 42.5);
+    var atLimit = Ledger.delta(reading({ index_corrected: 0, effective_ts: at(0) }),
+                               reading({ index_corrected: 60, effective_ts: at(1) }), METER);
+    eq('exactly the rated maximum is allowed', atLimit.mcf, 60);
+    var zero = Ledger.delta(reading({ index_corrected: 100, effective_ts: at(0) }),
+                            reading({ index_corrected: 100, effective_ts: at(1) }), METER);
+    eq('and a measured zero is untouched', zero.mcf, 0);
+
+    // Datasheet or nothing, mirroring the wrap branch: a meter with no published rate keeps the
+    // old behaviour rather than having a bound invented from the data it is meant to police.
+    var noSpec = Ledger.delta(reading({ index_corrected: 0, effective_ts: at(0) }),
+                              reading({ index_corrected: 999999, effective_ts: at(1) }),
+                              { meter_id: 'M', index_digits: 6, max_rate_per_hour: null });
+    eq('with no published rate, nothing is inferred', noSpec.quality, 'measured');
+})();
+
+console.log('\n=== a clock that disagrees with the index is the suspect ===');
+(function() {
+    // Readings are ordered by (epoch, seq) because within an epoch the index is physics and the
+    // clock is firmware. The header always said a disagreement makes the TIMESTAMP suspect; the
+    // first version of build() never actually checked.
+    //
+    // Two readings sharing a timestamp made the segment duration zero, which made the pro-rata
+    // share zero, which turned 500 Mcf of real gas into a segment of 0 Mcf reported as
+    // 'measured' with the period fully covered.
+    var same = Ledger.build([
+        reading({ seq: 1, index_corrected: 0,   effective_ts: at(0) }),
+        reading({ seq: 2, index_corrected: 500, effective_ts: at(0) }),
+        reading({ seq: 3, index_corrected: 520, effective_ts: at(2) })
+    ], METER, at(0), at(3));
+
+    ok('the duplicated timestamp is unbillable', same.unbillable.length >= 1);
+    eq('and named a clock fault', same.unbillable[0].reason, 'clock_fault');
+    ok('its 500 Mcf did not become a measured zero', Ledger.fromMilli(same.milli) < 500,
+       Ledger.fromMilli(same.milli) + ' Mcf billed');
+    var c = Ledger.coverage(same);
+    ok('and the period is no longer reported as fully covered', c.coverage_pct < 100,
+       c.coverage_pct + '%');
+    near('covered + gap still tiles the window', c.covered_hours + c.gap_hours, c.period_hours);
+
+    // A timestamp going backwards against index order is the same fault.
+    var back = Ledger.build([
+        reading({ seq: 1, index_corrected: 0,   effective_ts: at(2) }),
+        reading({ seq: 2, index_corrected: 500, effective_ts: at(1) })
+    ], METER, at(0), at(3));
+    ok('a decreasing timestamp is unbillable too', back.unbillable.length >= 1);
+    eq('nothing was billed on it', back.milli, 0);
+})();
+
 console.log('\n=== an epoch break is never crossed ===');
 (function() {
     // A meter swap. The new meter starts near zero; the arithmetic across the boundary would be

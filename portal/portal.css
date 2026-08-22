@@ -1,0 +1,126 @@
+/* ===== ION MINING GROUP — client portal =====
+
+   Its own stylesheet, not shared.css. shared.css is 2,000 lines of operator chrome — nav tabs,
+   widget settings, chart panels, map controls — none of which exists here, and all of which would
+   have to be overridden. The portal reads tokens.css for the palette so it looks like the same
+   company, and defines its own dozen rules for the four things it actually renders.
+
+   Same rules as the app: square corners (--radius is 0), no blur on any shadow, and the
+   dark-first palette with no light theme. */
+
+:root { color-scheme: dark; }
+
+body {
+    background: var(--black);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.pt-wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
+
+/* ---- masthead ---- */
+.pt-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding-bottom: 18px; margin-bottom: 26px;
+    border-bottom: 1px solid var(--line);
+}
+.pt-brand { display: flex; align-items: center; gap: 10px; }
+.pt-brand svg { width: 26px; height: 26px; display: block; }
+.pt-wordmark { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--plat-200); }
+.pt-who { font-size: 11px; color: var(--plat-400); text-align: right; line-height: 1.4; }
+.pt-signout {
+    background: none; border: none; color: var(--plat-500); font: inherit; font-size: 11px;
+    cursor: pointer; padding: 0; text-decoration: underline;
+}
+.pt-signout:hover { color: var(--btc-300); }
+
+h1 { font-size: 21px; font-weight: 600; color: var(--plat-100); margin: 0 0 4px; }
+.pt-sub { font-size: 12px; color: var(--plat-400); margin: 0 0 26px; }
+h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 12px; }
+
+/* ---- cards ---- */
+.pt-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px;
+}
+.pt-card.pt-clickable { cursor: pointer; }
+.pt-card.pt-clickable:hover { border-color: var(--line-btc); }
+
+/* ---- the figure table ---- */
+.pt-rows { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pt-rows td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.pt-rows tr:last-child td { border-bottom: none; }
+.pt-rows td:first-child { color: var(--plat-400); padding-right: 20px; }
+.pt-rows td:last-child { text-align: right; color: var(--plat-200); font-variant-numeric: tabular-nums; }
+.pt-total td { border-top: 1px solid var(--line-mid); font-size: 15px; color: var(--btc-300); padding-top: 12px; }
+.pt-unit { color: var(--plat-500); font-size: 11px; }
+
+/* An absent value is rendered, never blank. A blank cell reads as zero; this does not. */
+.pt-absent { color: var(--plat-600); font-style: italic; font-size: 11.5px; }
+
+/* ---- the partial-total warning, which must not be subtle ---- */
+.pt-partial {
+    background: var(--btc-wash); border: 1px solid var(--line-btc);
+    border-radius: var(--radius); padding: 13px 15px; margin-bottom: 18px;
+    font-size: 12px; color: var(--plat-200); line-height: 1.5;
+}
+.pt-partial strong { color: var(--btc-300); }
+
+/* ---- disclosures: coverage, gaps, what could not be billed ---- */
+.pt-disclosure {
+    font-size: 11.5px; color: var(--plat-400); line-height: 1.55;
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.pt-disclosure:last-child { border-bottom: none; }
+.pt-gap { display: flex; justify-content: space-between; gap: 14px; font-size: 11.5px; padding: 7px 0; }
+.pt-gap-when { color: var(--plat-400); }
+.pt-gap-what { color: var(--plat-500); text-align: right; }
+
+/* ---- sign in ---- */
+.pt-auth { max-width: 340px; margin: 60px auto; }
+.pt-field { margin-bottom: 13px; }
+.pt-field label {
+    display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--plat-400); margin-bottom: 5px;
+}
+.pt-field input {
+    width: 100%; box-sizing: border-box; background: var(--surface-2);
+    border: 1px solid var(--line-mid); border-radius: var(--radius);
+    color: var(--text); font: inherit; font-size: 13px; padding: 9px 11px;
+}
+.pt-field input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--btc-300); border-color: var(--btc-300); }
+.pt-btn {
+    width: 100%; background: var(--btc-wash); border: 1px solid var(--line-btc);
+    color: var(--btc-300); border-radius: var(--radius); padding: 10px;
+    font: inherit; font-size: 13px; cursor: pointer;
+}
+.pt-btn:hover { background: var(--btc-300); color: var(--black); }
+.pt-btn[disabled] { opacity: .5; cursor: default; }
+.pt-alt { text-align: center; margin-top: 14px; }
+.pt-alt button {
+    background: none; border: none; color: var(--plat-400); font: inherit; font-size: 11.5px;
+    cursor: pointer; text-decoration: underline;
+}
+.pt-alt button:hover { color: var(--btc-300); }
+
+/* ---- status line ---- */
+.pt-status {
+    font-size: 12px; padding: 10px 13px; margin-bottom: 16px;
+    border: 1px solid var(--line-mid); border-radius: var(--radius); color: var(--plat-300);
+}
+.pt-status.pt-error { border-color: var(--neg-line); color: var(--neg); }
+.pt-status.pt-ok { border-color: var(--line-btc); color: var(--btc-300); }
+
+.pt-empty { color: var(--plat-500); font-size: 12.5px; padding: 26px 0; text-align: center; }
+.pt-foot { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--line);
+           font-size: 11px; color: var(--plat-600); line-height: 1.6; }
+
+@media print {
+    .pt-head, .pt-signout, .pt-foot, .pt-status { display: none; }
+    body { background: #fff; color: #000; }
+    .pt-card { border-color: #ccc; }
+    .pt-absent { color: #666; }
+}

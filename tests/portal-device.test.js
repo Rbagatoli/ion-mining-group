@@ -114,6 +114,40 @@ function v(over) {
     eq('no device id means nothing verifies',
        (await v({ rawBody: body, signatureHeader: good, deviceId: '' })).ok, false);
 
+    console.log('\n=== the derivation input is injective ===');
+    // Plain concatenation is NOT. deviceId 'A:B' with kid 'C' and deviceId 'A' with kid 'B:C'
+    // both make 'A:B:C', so two separately enrolled devices would share a secret and each could
+    // sign as the other -- defeating the whole reason device_id is inside the MAC.
+    eq('a device id containing the delimiter is rejected',
+       await Device.deriveSecret(ROOT, 'A:B', 'C'), null);
+    eq('and so is a kid containing it',
+       await Device.deriveSecret(ROOT, 'A', 'B:C'), null);
+    ok('adjacent splits of the same characters derive differently',
+       (await Device.deriveSecret(ROOT, 'AB', 'C')) !== (await Device.deriveSecret(ROOT, 'A', 'BC')),
+       'the length prefix, not just the charset check');
+    eq('a verify with a delimiter in the kid is refused',
+       (await v({ rawBody: body, signatureHeader: 't=' + t + ',kid=a:b,v1=ff' })).ok, false);
+
+    console.log('\n=== it will not verify without a clock ===');
+    // Math.floor(undefined / 1000) is NaN, and Math.abs(NaN - t) > 300 is FALSE -- so a caller
+    // that forgot to pass a clock got an UNBOUNDED replay window rather than a failure, and every
+    // captured request stayed valid forever.
+    eq('no clock is refused',
+       (await v({ rawBody: body, signatureHeader: good, nowMs: undefined })).ok, false);
+    eq('NaN is refused', (await v({ rawBody: body, signatureHeader: good, nowMs: NaN })).ok, false);
+    eq('a string clock is refused',
+       (await v({ rawBody: body, signatureHeader: good, nowMs: String(NOW) })).ok, false);
+
+    console.log('\n=== key state cannot be spoofed through the prototype ===');
+    // VERIFYING_STATES['constructor'] resolves up Object.prototype to a FUNCTION, which is
+    // truthy -- so a plain lookup failed OPEN on exactly the strings an attacker would try.
+    for (var evil of ['constructor', 'toString', '__proto__', 'valueOf', 'hasOwnProperty']) {
+        eq('a key state of ' + evil + ' cannot sign',
+           (await v({ rawBody: body, signatureHeader: good, keyState: evil })).ok, false);
+    }
+    eq('and a non-string state cannot either',
+       (await v({ rawBody: body, signatureHeader: good, keyState: {} })).ok, false);
+
     console.log('\n=== constant-time compare ===');
     ok('equal strings match', Device.constantEquals('abc', 'abc'));
     ok('different lengths do not', !Device.constantEquals('abc', 'abcd'));
