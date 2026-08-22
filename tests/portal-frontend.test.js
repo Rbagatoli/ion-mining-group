@@ -282,10 +282,48 @@ console.log('\n=== the sign-in backdrop stays inert ===');
     ok('it stops on a hidden tab', /visibilitychange/.test(gf));
     ok('and when scrolled offscreen', /IntersectionObserver/.test(gf));
 
-    var pt = fs.readFileSync(path.join(ROOT, 'portal', 'index.html'), 'utf8');
-    ok('the canvas is in the markup', pt.indexOf('id="gasField"') > 0);
-    ok('inside an aria-hidden backdrop',
-       /<div class="pt-bg" aria-hidden="true">[\s\S]{0,400}gasField/.test(pt));
+    /* On BOTH pages and on every view. The field used to come off the moment a
+       session started, on the argument that behind statements and volumes it is
+       decoration over data somebody is reading. */
+    ['index.html', 'statement.html'].forEach(function (page) {
+        var pt = fs.readFileSync(path.join(ROOT, 'portal', page), 'utf8');
+        ok(page + ' carries the canvas', pt.indexOf('id="gasField"') > 0);
+        ok('  inside an aria-hidden backdrop',
+           /<div class="pt-bg" aria-hidden="true">[\s\S]{0,400}gasField/.test(pt));
+        ok('  and loads the field', /gas-field\.js/.test(pt));
+    });
+
+    var pcss = fs.readFileSync(path.join(ROOT, 'portal', 'portal.css'), 'utf8');
+    var pcode = pcss.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    /* WHAT MAKES IT SAFE BEHIND DATA is not the scrim, it is that every figure
+       sits on an opaque card. If --surface ever goes translucent, the gas field
+       appears behind money and this whole arrangement is wrong — so the token
+       is asserted here, in the file that depends on it, rather than trusted. */
+    var tokens = fs.readFileSync(path.join(ROOT, 'tokens.css'), 'utf8');
+    ok('--surface is opaque, so the field can never be behind a figure',
+       /--surface:\s*#[0-9a-fA-F]{3,8}\s*;/.test(tokens),
+       (tokens.match(/--surface:[^;]*/) || [''])[0].trim());
+    ok('and the cards actually use it',
+       /\.pt-card\s*\{[^}]*background:\s*var\(--surface\)/.test(pcode));
+
+    /* The backdrop is no longer gated on the sign-in view. .pt-signin now picks
+       WHICH scrim runs: a radial over the sign-in card, a column across the
+       860px measure of the scrolling portal. */
+    ok('the backdrop is not hidden by default',
+       /\.pt-bg\s*\{[^}]*display:\s*block/.test(pcode) &&
+       !/body\.pt-signin\s+\.pt-bg\s*\{\s*display/.test(pcode));
+    ok('the default scrim is the column',
+       /\.pt-bg::after\s*\{[^}]*linear-gradient\(90deg/.test(pcode));
+    ok('and sign-in still gets the radial over its card',
+       /body\.pt-signin\s+\.pt-bg::after\s*\{[^}]*radial-gradient/.test(pcode));
+    ok('both clear to the same edge value the site is tuned against',
+       (pcode.match(/rgba\(0,0,0,0\.12\)/g) || []).length >= 2,
+       '.anim-field ships at 0.85; the scrims clear to 0.12 so the rise reads at ~0.88 either side');
+
+    /* A statement is a commercial document. */
+    var printBlock = (pcss.match(/@media print \{[\s\S]*?\n\}/) || [''])[0];
+    ok('print drops the backdrop entirely', /\.pt-bg\s*\{\s*display:\s*none/.test(printBlock));
 })();
 
 console.log('\n=== it is the hero rise, and only the rise ===');

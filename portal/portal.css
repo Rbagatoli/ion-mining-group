@@ -159,6 +159,9 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
            font-size: 11px; color: var(--plat-600); line-height: 1.6; }
 
 @media print {
+    /* A statement is a commercial document. It prints on white with no
+       decoration behind the figures. */
+    .pt-bg { display: none; }
     .pt-head, .pt-signout, .pt-foot, .pt-status { display: none; }
     body { background: #fff; color: #000; }
     .pt-card { border-color: #ccc; }
@@ -166,7 +169,7 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 }
 
 
-/* ===== the sign-in backdrop =====
+/* ===== the portal backdrop =====
 
    The same field that runs behind every backdrop on the marketing site: gas
    rising off a source and cooling orange to platinum. A producer arriving here
@@ -179,9 +182,18 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
    lattice so that all thirteen of its backdrops would be one animation, and
    this is that animation at viewport size.
 
-   ONLY ON THE SIGN-IN VIEW. show() puts .pt-signin on <body>, and it comes off
-   the moment a session starts — behind statements and volumes it would be
-   decoration over data somebody is trying to read.
+   ON EVERY VIEW, not just sign-in. It used to come off the moment a session
+   started, on the argument that behind statements and volumes it is decoration
+   over data somebody is reading. That argument was about the FIELD and it is
+   answered by the SCRIM instead: .pt-signin now selects which scrim runs rather
+   than whether the backdrop exists at all.
+
+   What makes it safe behind data is structural rather than a matter of taste.
+   Every figure in this portal sits on a .pt-card, and --surface is #0a0a0a —
+   opaque. So the field cannot appear behind a number under any circumstances;
+   it appears in the margins beside the column and in the gaps between cards.
+   The only copy it can reach is the bare text in the column — the masthead,
+   the headings, the footer — and that is what the second scrim is for.
 
    The canvas is fixed rather than absolute so it covers the viewport whatever
    the page height is, and .pt-wrap is lifted above it. Both are inert: the
@@ -191,26 +203,45 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    display: none;
+    display: block;
 }
-body.pt-signin .pt-bg { display: block; }
 
 /* A scrim, because the field was built for a bounded box and this is a full
-   viewport behind a form. At full strength the gas runs straight through the
-   sign-in copy and both lose: the field reads as noise and the words read as
-   hard work. Darkest under the card, clearing toward the edges where there is
-   nothing to protect.
+   viewport behind content. At full strength the gas runs straight through the
+   copy and both lose: the field reads as noise and the words read as hard work.
 
-   It clears to rgba(0,0,0,0.12), so the rise is seen at roughly 0.88 out at the
-   margins. That number is what the site's fields are set against — .anim-field
-   ships at 0.85 — so the two match by construction rather than by eye. */
+   TWO SHAPES, because the two views are shaped differently. Sign-in is one card
+   floating in the middle of the screen, so its scrim is a radial centred on the
+   card. The signed-in portal is a 860px column of cards scrolling past a fixed
+   backdrop, so its scrim is a COLUMN: dark across the measure, clearing to the
+   margins on both sides where there is nothing to protect.
+
+   Both clear to roughly rgba(0,0,0,0.12) at the edges, so the rise is seen at
+   about 0.88 out there. That number is what the site's fields are set against —
+   .anim-field ships at 0.85 — so the two match by construction rather than by
+   eye, on every screen of both.
+
+   The column stops are in calc() off the centre rather than in percentages,
+   because the measure is a fixed 860px and the viewport is not. On a narrow
+   screen both outer stops go negative, the whole width falls inside the dark
+   band, and the field quietly gives way — which is right, because on a phone
+   the column IS the screen and there are no margins to show it in. */
 .pt-bg::after {
     content: "";
     position: absolute;
     inset: 0;
+    background: linear-gradient(90deg,
+                rgba(0,0,0,0.12) 0,
+                rgba(0,0,0,0.12) calc(50% - 580px),
+                rgba(0,0,0,0.90) calc(50% - 450px),
+                rgba(0,0,0,0.90) calc(50% + 450px),
+                rgba(0,0,0,0.12) calc(50% + 580px),
+                rgba(0,0,0,0.12) 100%);
+    pointer-events: none;
+}
+body.pt-signin .pt-bg::after {
     background: radial-gradient(46% 54% at 50% 42%,
                 rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.93) 38%, rgba(0,0,0,0.55) 72%, rgba(0,0,0,0.12) 100%);
-    pointer-events: none;
 }
 
 /* ===== the gas field =====

@@ -11,6 +11,16 @@
 </head>
 <body>
 
+<!-- The same gas field as the rest of the portal and the marketing site. A
+     statement is the page a producer stares at longest, so it gets the column
+     scrim: dark across the measure, clearing to the margins. It is removed
+     entirely for print — see the @media print block in portal.css.
+
+     Inert: no pointer events, aria-hidden on the wrapper. -->
+<div class="pt-bg" aria-hidden="true">
+  <canvas id="gasField"></canvas>
+</div>
+
 <div class="pt-wrap">
 
   <header class="pt-head">
@@ -34,6 +44,7 @@
 <script src="../firebase-config.js?v=338"></script>
 <script src="./portal.js?v=338"></script>
 <script src="./portal-demo.js?v=338"></script>
+<script src="./gas-field.js?v=338"></script>
 <script>
 /* The statement, rendered as a document rather than a dashboard.
    No sync.js, no shared.js — see the note in index.html. */

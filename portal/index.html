@@ -123,9 +123,11 @@
     function show(which) {
         document.getElementById('ptAuth').style.display = which === 'auth' ? '' : 'none';
         document.getElementById('ptMain').style.display = which === 'main' ? '' : 'none';
-          /* The hero field is a sign-in backdrop, not a page background. Behind
-             statements and volumes it is decoration over data somebody is
-             reading, so it comes off with the sign-in screen. */
+          /* Which SCRIM the backdrop wears, not whether it runs. The field is
+             on both views; sign-in is one card in the middle of the screen and
+             wants a radial over it, the signed-in portal is a scrolling column
+             and wants a column. Every figure sits on an opaque card either way,
+             so the field is never behind a number. */
           document.body.classList.toggle('pt-signin', which === 'auth');
     }
 
