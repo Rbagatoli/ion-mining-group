@@ -64,13 +64,13 @@ console.log('\n=== what the pages DO load is deliberate and minimal ===');
         // An ALLOWLIST rather than a count. The first version asserted "exactly four scripts",
         // which failed the moment portal-demo.js was added and said nothing about whether the
         // fifth was dangerous — a count catches arrivals but cannot tell you what arrived.
-        // genesis-field.js draws the hex field behind the sign-in. It is on this list
+        // hex-rain.js draws the hex field behind the sign-in. It is on this list
         // rather than exempted from it: DOM text on a grid and one setInterval, with
         // no network, no storage and no reference to anything else — which is
         // asserted below rather than asked for on trust. What a counterparty's
         // browser loads is decided deliberately, not by whatever got added.
         var ALLOWED = [/firebase-app-compat/, /firebase-auth-compat/, /firebase-config\.js/,
-                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/genesis-field\.js/];
+                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/hex-rain\.js/];
         var unexpected = srcs.filter(function(s) {
             return !ALLOWED.some(function(re) { return re.test(s); });
         });
@@ -248,79 +248,76 @@ console.log('\n=== the sample months show the cases that matter ===');
 
 console.log('\n=== the sign-in backdrop stays inert ===');
 (function () {
-    /* genesis-field.js is allowed into a counterparty's browser on the grounds
-       that it cannot reach anything: it paints a canvas it was handed and does
+    /* hex-rain.js is allowed into a counterparty's browser on the grounds that
+       it cannot reach anything: it paints a canvas it was handed and does
        nothing else. That is the entire basis for the allowlist entry above, so
        it is checked rather than repeated. */
-    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'genesis-field.js'), 'utf8');
-    // Comments stripped, because the header explains WHERE this was recovered from and names
-    // shared.js in doing so. A rule about what the code may touch has to be checked against the
-    // code — the same trap the firestore-rules and ledger tests both record.
-    var gf = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'hex-rain.js'), 'utf8');
+    // Comments stripped, because the header explains what this REPLACED and names
+    // the old file in doing so. A rule about what the code may touch has to be
+    // checked against the code — the same trap the firestore-rules and ledger
+    // tests both record.
+    var hr = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB',
      'firebase', 'sync.js', 'shared.js', 'IonPortal', 'PORTAL_ENDPOINT'].forEach(function (bad) {
-        ok('the genesis field does not reference ' + bad, gf.indexOf(bad) < 0);
+        ok('the rain does not reference ' + bad, hr.indexOf(bad) < 0);
     });
 
     /* It sizes itself from the VIEWPORT, never from the element it sits behind.
-       A backdrop that measures its container is a backdrop that depends on the
-       layout in front of it, which is how one ends up a frame behind. */
+       A backdrop that measures its container depends on the layout in front of
+       it, which is how one ends up a frame behind. */
     ['getBoundingClientRect', 'offsetWidth', 'offsetHeight', 'clientWidth']
         .forEach(function (m) {
-            ok('it does not measure any element (' + m + ')', gf.indexOf(m) < 0);
+            ok('it does not measure any element (' + m + ')', hr.indexOf(m) < 0);
         });
 
-    /* Motion is optional; the picture is not. */
-    ok('it honours prefers-reduced-motion', /prefers-reduced-motion/.test(gf));
-    ok('and still draws one frame when motion is off', /reduced[\s\S]{0,200}draw\(0\)/.test(gf) ||
-       /draw\(0\)[\s\S]{0,200}if \(reduced\) return/.test(gf),
+    ok('it honours prefers-reduced-motion', /prefers-reduced-motion/.test(hr));
+    ok('and draws a still field rather than nothing', /still\(\)/.test(hr),
        'reduced motion means still, not absent');
-
-    /* Two independent stop conditions, so a tab regaining focus does not restart
-       a field that is still scrolled out of sight. */
-    ok('it stops on a hidden tab', /visibilitychange/.test(gf));
-    ok('and when scrolled offscreen', /IntersectionObserver/.test(gf));
+    ok('it stops on a hidden tab', /visibilitychange/.test(hr));
+    ok('and when scrolled offscreen', /IntersectionObserver/.test(hr));
 
     var pt = fs.readFileSync(path.join(ROOT, 'portal', 'index.html'), 'utf8');
-    ok('the canvas is in the markup', pt.indexOf('id="genesisField"') > 0);
+    ok('the canvas is in the markup', pt.indexOf('id="hexRain"') > 0);
     ok('inside an aria-hidden backdrop',
-       /<div class="pt-bg" aria-hidden="true">[\s\S]{0,300}genesisField/.test(pt));
+       /<div class="pt-bg" aria-hidden="true">[\s\S]{0,400}hexRain/.test(pt));
+})();
 
-    /* THE HEX IS THE REAL BLOCK 0, and this DECODES it rather than looking for a
-       substring. Inventing plausible-looking hex would have been easier and
-       would have been a small lie on the first screen a counterparty sees.
+console.log('\n=== the rain is legible, which is the whole point ===');
+(function () {
+    /* THE FAILURE THIS SECTION EXISTS FOR.
 
-       A substring check was the first version and it was too weak twice over: it
-       missed that the string is concatenated across source lines, so the bytes
-       it looked for spanned a break and were never contiguous in the file — and
-       it would have passed anyway on a hex string with a wrong byte in it, which
-       is exactly what the first draft had. Parsing the header catches both. */
-    var body = raw.slice(raw.indexOf('var GENESIS_HEX ='),
-                         raw.indexOf(';', raw.indexOf('var GENESIS_HEX =')));
-    var hex = (body.match(/'([0-9a-f]+)'/g) || [])
-        .map(function (s) { return s.slice(1, -1); }).join('');
-    function le(h) { return h.match(/../g).reverse().join(''); }
+       The version before this drew three transparent sheets of type on top of
+       one another. Three layers of glyphs at 2-4% alpha average into grey, and
+       no tuning fixes it, because the problem is that a character with two more
+       behind it is not a character. It was reported as 'blurry' and it was.
 
-    eq('block version is 1', parseInt(le(hex.slice(0, 8)), 16), 1);
-    ok('the previous block hash is all zeroes, because this IS block 0',
-       /^0{64}$/.test(hex.slice(8, 72)));
-    eq('the merkle root is the genesis one', le(hex.slice(72, 136)),
-       '4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b');
-    eq('mined 3 January 2009',
-       new Date(parseInt(le(hex.slice(136, 144)), 16) * 1000).toISOString(),
-       '2009-01-03T18:15:05.000Z');
-    eq('with the original difficulty bits', le(hex.slice(144, 152)), '1d00ffff');
-    eq('and the nonce Satoshi found', parseInt(le(hex.slice(152, 160)), 16), 2083236893);
+       So: ONE layer, at an alpha somebody can read. Both are asserted, because
+       'add another sheet, it will look richer' is exactly the change somebody
+       would make later without having had to look at the mush. */
+    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'hex-rain.js'), 'utf8');
+    var hr = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
-    // The headline, and the push-length byte in front of it. That byte is what the
-    // first draft got wrong (0x44 for a 69-byte message), and nothing but decoding
-    // would have caught it.
-    var i = hex.indexOf('5468652054696d6573');
-    var msg = Buffer.from(hex.slice(i, i + 138), 'hex').toString('ascii');
-    eq('the coinbase carries the Times headline', msg,
-       'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks');
-    eq('and the length byte in front of it matches its length',
-       parseInt(hex.slice(i - 2, i), 16), msg.length);
+    var alphas = (hr.match(/rgba\([^)]*\)/g) || []).map(function (m) {
+        return parseFloat(m.slice(m.lastIndexOf(',') + 1));
+    }).filter(function (a) { return !isNaN(a); });
+    var inks = alphas.filter(function (a) { return a > 0.1; });
+    ok('the characters are drawn at a readable alpha', inks.length >= 2,
+       'found ' + inks.join(', ') + ' — the illegible version ran at 0.02-0.04');
+    ok('and the head is brighter than the trail',
+       Math.max.apply(null, inks) > Math.min.apply(null, inks));
+
+    /* The fade wash is the trail. It has to stay low or the screen strobes. */
+    var fade = (hr.match(/var FADE = ([0-9.]+)/) || [])[1];
+    ok('the fade wash is gentle', !!fade && parseFloat(fade) < 0.15, 'FADE = ' + fade);
+
+    /* Whole pixels. Fractional y antialiases a glyph across two rows, and that
+       blur was half of why the last one could not be read. */
+    ok('rows land on whole pixels', /Math\.round\(/.test(hr));
+
+    /* No second sheet, and no loop that would build one. */
+    ok('there is exactly one layer of type',
+       !/SHEETS|sheets\.push|SHEET_COUNT/.test(hr));
 })();
 
 console.log('');

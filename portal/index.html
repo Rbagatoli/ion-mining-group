@@ -19,16 +19,16 @@
      full field before a line of script runs and the committed HTML is stable
      across rebuilds. With JS off, or blocked, this is what stays: a still
      field rather than ninety-six empty boxes. -->
-<!-- The genesis field: three sheets of block 0's raw hex, scrolling at
-     different speeds. Recovered from shared.js, where it ran until it was
-     taken out for competing with dense tables -- which is the right call
-     there and the wrong one here, behind a page with one form on it.
+<!-- Hex rain: columns falling, characters changing as they go.
+     One layer, every glyph drawn once at an alpha somebody can read. The
+     three-sheet genesis field this replaced was three transparent layers of
+     type stacked on each other, which averages to grey mush whatever the
+     sizes and alphas -- see the note at the top of hex-rain.js.
 
-     A canvas rather than DOM text, because this is a full-viewport field of
-     several thousand characters redrawn continuously; ninety-six spans is a
-     grid, this is not. Inert: no pointer events, aria-hidden on the wrapper. -->
+     A canvas, because this is a full-viewport field repainted continuously.
+     Inert: no pointer events, aria-hidden on the wrapper. -->
 <div class="pt-bg" aria-hidden="true">
-  <canvas id="genesisField"></canvas>
+  <canvas id="hexRain"></canvas>
 </div>
 
 <div class="pt-wrap">
@@ -114,7 +114,7 @@
 
 <!-- No dependencies, no network, no storage: DOM text on a grid and one
      setInterval. On the allowlist in tests/portal-frontend.test.js by name. -->
-<script src="./genesis-field.js?v=338"></script>
+<script src="./hex-rain.js?v=338"></script>
 
 
 <script>
