@@ -995,59 +995,182 @@ var MapSourcing = (function() {
     // One clause deliberately absent: collection system installed. It reads "Yes" on 1,871 of
     // 1,908 rows -- regulatory compliance means nearly every landfill of consequence collects --
     // so it removes 16 rows and creates a false impression of having narrowed anything.
-    function applyLandfillShortlist() {
+    // ---- Starting points ------------------------------------------------------------------
+    //
+    // Seventeen filter inputs, and every one of them REFINES. None of them answers "what am I
+    // looking for", which is the only question someone opening this page cold actually has. Two
+    // of them are also ticked before you arrive, so the page is already filtering and never said
+    // so on the primary row.
+    //
+    // These are the answer: a handful of goals in plain words, each setting every control at
+    // once. They are not tutorials -- each one is a shortcut, and the whole set is meant to be
+    // recognised at a glance months later rather than read.
+    //
+    // A starting point deliberately returns a POOL, not a shortlist. "A plant I can buy and
+    // restart" matches thousands, because the fields that would cut it to fifteen are not filter
+    // controls and making them into controls would exclude sites for reasons that are not about
+    // quality. The RANKING shortlists -- which is why every one of these sets the sort too, and
+    // why the landfill starting point below is the proof: same 336 sites, and the sort decides
+    // whether the top twenty are running plants you cannot buy or idle ones you can.
+    var STARTERS = [
+        {
+            id: 'restart',
+            label: 'A plant I can buy and restart',
+            // Says "1 MW and up", not "1-5 MW". The upper thumb at 5000 is the slider's OPEN top,
+            // documented on the control in map.html -- it means no ceiling, not a 5 MW one. The
+            // pool really does run to 18 MW, so the hint says so rather than describing a band
+            // the filter is not applying.
+            hint: '1 MW and up, ranked by how gettable it is',
+            set: function() {
+                setCheck('fHasGen', true);
+                setCheck('fAcquisition', true);
+                setSize(1000, 5000);
+                setSort('combined');
+            }
+        },
+        {
+            id: 'landfill',
+            label: 'Landfill gas with the engine still standing',
+            hint: 'Shut-down projects, generator already on site',
+            set: function() {
+                _srcFilter = {}; _srcFilter['lmop-landfill'] = true;
+                renderSourceFilter();
+                setCheck('fHasGen', true);
+                setSize(1000, 3000);
+                setValue('fCountry', 'USA');
+                setSort('combined');
+            }
+        },
+        {
+            id: 'flare',
+            label: 'Gas nobody is using yet',
+            hint: 'Flares burning year after year, seen from orbit',
+            set: function() {
+                _srcFilter = {}; _srcFilter['flare-viirs'] = true;
+                renderSourceFilter();
+                setValue('fYears', '5');
+                setSort('persistence');
+            }
+        },
+        {
+            id: 'alberta',
+            label: 'Close to my Alberta operations',
+            hint: 'Everything in Alberta, biggest first',
+            set: function() {
+                setValue('fCountry', 'CAN');
+                setSort('power_potential');
+            }
+        },
+        {
+            id: 'biggest',
+            label: 'The biggest sites anywhere',
+            hint: 'No filters beyond onshore and workable jurisdictions',
+            set: function() { setSort('power_potential'); }
+        }
+    ];
+
+    function setCheck(id, on) { var e = document.getElementById(id); if (e) e.checked = !!on; }
+    function setValue(id, v) { var e = document.getElementById(id); if (e) e.value = v; }
+    function setSort(v) { setValue('fSort', v); }
+    function setSize(lo, hi) { setValue('fMinKw', String(lo)); setValue('fMaxKw', String(hi)); }
+
+    function starterById(id) {
+        for (var i = 0; i < STARTERS.length; i++) if (STARTERS[i].id === id) return STARTERS[i];
+        return null;
+    }
+
+    function applyStarter(id) {
+        var s = starterById(id);
+        if (!s) return;
         _ignoreNextDocClick = true;
         resetFilterControls();
-        // Landfill gas only.
         _srcFilter = {};
-        _srcFilter['lmop-landfill'] = true;
+        s.set();
         renderSourceFilter();
-        // A generator already standing is the single largest capital line -- $600K to $1.2M of a
-        // 1-2 MW build -- and the one field that actually discriminates in this dataset.
-        var gen = document.getElementById('fHasGen');
-        if (gen) gen.checked = true;
-        // 1-3 MW: the band where a shutdown project is worth reviving and still fits behind one
-        // interconnect. The 16-26 MW sites at the top of the unfiltered list are utility-scale.
-        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
-        if (lo) lo.value = '1000';
-        if (hi) hi.value = '3000';
-        var country = document.getElementById('fCountry');
-        if (country) country.value = 'USA';      // LMOP is a US programme
-        // The filter is the universe, NOT the shortlist. It returns 336 -- because the fields that
-        // would cut it to fifteen (project shut down, still flaring, closed recently) are not
-        // filter controls, and turning them into controls would be the wrong fix anyway: every one
-        // of them excludes sites for a reason that is not about quality.
-        //
-        // The ranking is what shortlists. Measured over these same 336, sort by sort:
-        //
-        //   Persistence (the default)  null for all 336. Landfill prospects have no satellite
-        //                              history, so SiteScoring cannot score them and the default
-        //                              sort does not rank them AT ALL -- the order you see is
-        //                              purely the volume tie-break.
-        //   Recency                    null for all 336, same reason.
-        //   Overall score              89 distinct values across 336, top 8 tied. It separates a
-        //                              little, but its criteria are flare criteria.
-        //   Acquisition rank           20 of the top 20 are shut-down projects with generation
-        //                              already standing.
-        //
-        // So this is not a preference between two good sorts. Until this option existed, the side
-        // list had no sort that ranked a landfill on anything.
-        //
-        // Separately, on the OPPORTUNITY axis -- the score in the table, which asks whether the
-        // energy is worth mining against -- the best shutdown project sits at rank 141 of 336,
-        // and the top 50 are all operating plants. That is not a defect either: a running 2 MW
-        // plant genuinely is the better energy. Its gas is just already sold, which is precisely
-        // what the acquirability axis exists to say.
-        var sort = document.getElementById('fSort');
-        if (sort) sort.value = 'combined';
         paintSizeRange();
         renderSizeHint();
         saveFilters();
         saveFiltersSources();
-        applyFilters();
-        status('Landfill shortlist — ' + fmtInt(_filtered.length) +
-               ' with generation already on site, ranked by acquisition. Read the top twenty: ' +
-               'those are shut-down projects whose engines are still standing.', '#8ac');
+        // Set BEFORE applyFilters, which repaints the cards, and guarded so the same repaint does
+        // not immediately clear it again. Touching any control afterwards drops the highlight,
+        // because the search on screen is then yours and not the starting point's.
+        _activeStarter = id;
+        _applyingStarter = true;
+        try { applyFilters(); } finally { _applyingStarter = false; }
+        renderStarters();
+        status(s.label + ' — ' + fmtInt(_filtered.length) + ' prospects, best first. ' +
+               'Open Refine to narrow it.', '#8ac');
+    }
+
+    // How many each one returns, without applying it.
+    //
+    // Counted by writing the starting point's controls into the DOM, reading currentFilters()
+    // back, then restoring every control exactly as it was. That looks roundabout next to
+    // building the filter object directly, and it is deliberate: currentFilters() is the ONE
+    // definition of what the controls mean, and a second copy of that mapping would drift from it
+    // silently -- the count would stay plausible while describing a search the button no longer
+    // performs. Nothing renders between the write and the restore, so none of it is observable.
+    var _starterCounts = null, _activeStarter = null, _applyingStarter = false;
+
+    function countStarters() {
+        if (_starterCounts) return _starterCounts;
+        if (typeof ProspectStore === 'undefined' || !ProspectStore.all || !ProspectStore.all().length) return null;
+        var ids = FILTER_FIELDS.concat(['fOnshore', 'fWorkable', 'fOperator', 'fSmallOp',
+                                        'fBurning', 'fActive', 'fAcquisition', 'fHasGen', 'fRegion', 'fRadius']);
+        var saved = {}, i;
+        for (i = 0; i < ids.length; i++) {
+            var el = document.getElementById(ids[i]);
+            if (!el) continue;
+            saved[ids[i]] = (el.type === 'checkbox') ? el.checked : el.value;
+        }
+        // resetFilterControls() also clears the operator drill-down, which is NOT one of the ids
+        // above and would otherwise be silently discarded by the act of counting.
+        var savedSrc = _srcFilter, savedCo = _companyFilter, savedCoId = _companyFilterId;
+        var out = {};
+        try {
+            for (i = 0; i < STARTERS.length; i++) {
+                resetFilterControls();
+                _srcFilter = {};
+                STARTERS[i].set();
+                out[STARTERS[i].id] = matchesFor(currentFilters(), null, null, null).length;
+            }
+        } catch (e) {
+            out = null;
+        }
+        // Restore, whatever happened above. A starting point that threw must not leave the user's
+        // own search overwritten by the last one counted.
+        for (i = 0; i < ids.length; i++) {
+            if (!Object.prototype.hasOwnProperty.call(saved, ids[i])) continue;
+            var e2 = document.getElementById(ids[i]);
+            if (!e2) continue;
+            if (e2.type === 'checkbox') e2.checked = saved[ids[i]]; else e2.value = saved[ids[i]];
+        }
+        _srcFilter = savedSrc;
+        _companyFilter = savedCo;
+        _companyFilterId = savedCoId;
+        renderSourceFilter();
+        _starterCounts = out;
+        return out;
+    }
+
+    function renderStarters() {
+        var wrap = document.getElementById('srcStarters');
+        if (!wrap) return;
+        var counts = countStarters();
+        var html = '';
+        for (var i = 0; i < STARTERS.length; i++) {
+            var s = STARTERS[i];
+            var n = counts && counts[s.id] !== undefined ? counts[s.id] : null;
+            html += '<button type="button" class="src-starter' +
+                (_activeStarter === s.id ? ' active' : '') + '" data-starter="' + esc(s.id) + '">' +
+                '<span class="src-startlabel">' + esc(s.label) + '</span>' +
+                '<span class="src-starthint">' + esc(s.hint) + '</span>' +
+                // A count that could not be computed shows nothing rather than a zero, which
+                // would read as "this search finds nothing" instead of "not counted yet".
+                (n === null ? '' : '<span class="src-startcount">' + fmtInt(n) + ' sites</span>') +
+                '</button>';
+        }
+        wrap.innerHTML = html;
     }
 
     // Every checkbox and select back to its default, without the side effects resetAllFilters
@@ -1094,14 +1217,10 @@ var MapSourcing = (function() {
                  '<button type="button" class="src-savedadd" id="savedCancel">Cancel</button>';
         } else {
             h += '<button type="button" class="src-savedadd" id="savedAdd">+ Save current</button>';
-            // A built-in, visually distinct from anything you saved. Deliberately NOT seeded into
-            // the saved list: a shipped row is indistinguishable from one you made, it would sync
-            // to your other devices, and deleting it would look broken when it came back. This
-            // one applies filters and owns nothing.
-            h += '<button type="button" class="src-savedpreset" id="presetLandfill" ' +
-                 'title="Shutdown landfill projects with a generator already on site, still ' +
-                 'flaring gas, 1-3 MW. Filters to roughly 70 sites; the ranking puts the best ' +
-                 'at the top.">&#9733; Landfill shortlist</button>';
+            // The built-in "Landfill shortlist" chip that used to sit here is now a starting
+            // point above, alongside the others. One mechanism, not two -- and its tooltip had
+            // already gone stale, still promising "roughly 70 sites" for a filter that returns
+            // 336, which is exactly how a second copy of the same thing decays.
         }
         el.innerHTML = h;
         if (_naming) {
@@ -1119,7 +1238,6 @@ var MapSourcing = (function() {
             _ignoreNextDocClick = true;
             var del = e.target.getAttribute && e.target.getAttribute('data-del');
             if (del) { deleteSearch(del); return; }
-            if (e.target.id === 'presetLandfill') { applyLandfillShortlist(); return; }
             if (e.target.id === 'savedAdd')     { _naming = true;  renderSaved(); return; }
             if (e.target.id === 'savedCancel')  { _naming = false; renderSaved(); return; }
             if (e.target.id === 'savedConfirm') { commitSave(); return; }
@@ -1243,9 +1361,14 @@ var MapSourcing = (function() {
         return true;
     }
 
-    function applyFilters(changed) {
-        if (reconcileGeo(typeof changed === 'string' ? changed : null)) saveFilters();
-        var f = currentFilters();
+    // The whole match chain, as a pure function of a filter object. Extracted from applyFilters
+    // so a starting point can COUNT what it would return without navigating to it -- previously
+    // the only way to learn how many prospects a combination matched was to apply it, which is
+    // exactly the thing a starting point exists to save you from.
+    //
+    // stats is an optional out-parameter rather than a return value, because every caller but one
+    // wants the array and nothing else.
+    function matchesFor(f, company, companyId, stats) {
         var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
             matches = matches.filter(function(c) { return !!operatorName(c); });
@@ -1290,22 +1413,30 @@ var MapSourcing = (function() {
         // Acquisition targets. Applied HERE, with the other filters, so the map, the list, the
         // table, the summary tiles and the portfolio all narrow together. While this lived inside
         // renderTable it narrowed the table alone, by thousands of rows, and said so nowhere.
-        _acqSuppressed = 0;
         if (f.acquisitionOnly) {
             var beforeAcq = matches.length;
             matches = matches.filter(isAcquisitionCandidate);
-            _acqSuppressed = beforeAcq - matches.length;
+            if (stats) stats.acqSuppressed = beforeAcq - matches.length;
         }
-        if (_companyFilter) {
+        if (company) {
             matches = matches.filter(function(c) {
                 // Prefer the id on both sides. A candidate without one is not excluded by that
                 // alone -- flares and landfills have no registry key at all -- so it falls back
                 // to the name, exactly as an unmeasured field is treated everywhere else.
-                if (_companyFilterId && c.operatorId) return c.operatorId === _companyFilterId;
+                if (companyId && c.operatorId) return c.operatorId === companyId;
                 var o = operatorRecord(c);
-                return o && o.operator === _companyFilter;
+                return o && o.operator === company;
             });
         }
+        return matches;
+    }
+
+    function applyFilters(changed) {
+        if (reconcileGeo(typeof changed === 'string' ? changed : null)) saveFilters();
+        var f = currentFilters();
+        var stats = { acqSuppressed: 0 };
+        var matches = matchesFor(f, _companyFilter, _companyFilterId, stats);
+        _acqSuppressed = stats.acqSuppressed;
         var sortBy = document.getElementById('fSort').value;
         _filtered = SiteScoring.rank(matches, { jurisdictions: Jurisdictions }, sortBy);
         // 'combined' cannot live in SiteScoring: that module ranks a candidate on its published
@@ -1340,6 +1471,11 @@ var MapSourcing = (function() {
         // lights up — and stops lighting up the moment you change one control.
         renderSaved();
         renderMoreFiltersCount();
+        renderRefineCount();
+        // Any filter change that did not come from a starting point means the search on screen is
+        // the user's own, so the card stops claiming credit for it.
+        if (!_applyingStarter) _activeStarter = null;
+        renderStarters();
         renderSummary(matches);
         renderResults();
         renderResultsNote();
@@ -1593,6 +1729,75 @@ var MapSourcing = (function() {
     function wireMoreFilters() {
         disclosure('moreFiltersToggle', 'moreFilters', MOREF_KEY, false);
         renderMoreFiltersCount();
+
+        // The outer drawer, holding all seventeen controls. Closed by default -- the starting
+        // points above are meant to be enough on their own.
+        _refine = disclosure('refineToggle', 'refinePanel', REFINE_KEY, false);
+        renderRefineCount();
+
+        var wrap = document.getElementById('srcStarters');
+        if (wrap) {
+            wrap.addEventListener('click', function(e) {
+                var b = e.target.closest ? e.target.closest('[data-starter]') : null;
+                if (b) applyStarter(b.getAttribute('data-starter'));
+            });
+        }
+    }
+    var REFINE_KEY = 'ionMiningProspectRefine';
+    var _refine = null;
+
+    // Open the drawer whenever something inside it is actually filtering. A collapsed panel is
+    // only honest while it is empty; leaving a live filter behind a closed disclosure is how a
+    // search silently returns fewer rows than the page appears to be asking for. The count in the
+    // heading and the "Filtering by" bar both still say so, but neither shows you the control.
+    // Non-DEFAULT, not merely active. fOnshore and fWorkable ship ticked, so "any active filter"
+    // is true on a completely fresh load and the drawer would spring open every time, which is
+    // the collapse not happening at all. What matters is whether the restored search differs from
+    // the baseline -- that is the state whose controls need to be visible.
+    //
+    // The country select and the source chips are not in FILTER_DEFAULTS, so they are checked
+    // directly; both are genuinely a departure from the baseline when set.
+    var BASELINE_IDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fRegion', 'fRadius',
+                        'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
+                        'fAcquisition', 'fHasGen'];
+    var _filterBaseline = null;
+
+    function captureFilterBaseline() {
+        var b = {};
+        for (var i = 0; i < BASELINE_IDS.length; i++) {
+            var el = document.getElementById(BASELINE_IDS[i]);
+            if (!el) continue;
+            b[BASELINE_IDS[i]] = (el.type === 'checkbox') ? el.checked : el.value;
+        }
+        _filterBaseline = b;
+    }
+
+    function hasNonDefaultFilters() {
+        // No baseline means boot has not reached the snapshot yet. Reporting "nothing is
+        // filtering" would be a guess, so report nothing and let a later call decide.
+        if (!_filterBaseline) return false;
+        for (var id in _filterBaseline) {
+            if (!Object.prototype.hasOwnProperty.call(_filterBaseline, id)) continue;
+            var el = document.getElementById(id);
+            if (!el) continue;
+            var now = (el.type === 'checkbox') ? el.checked : el.value;
+            if (now !== _filterBaseline[id]) return true;
+        }
+        if (_srcFilter && Object.keys(_srcFilter).length) return true;
+        return !!_companyFilter;
+    }
+
+    function revealRefineIfFiltering() {
+        if (!_refine || _refine.isOpen()) return;
+        if (hasNonDefaultFilters()) _refine.set(true);
+    }
+
+    function renderRefineCount() {
+        var el = document.getElementById('refineCount');
+        if (!el) return;
+        var n = activeFilters().length;
+        el.textContent = n ? n + ' active' : '';
+        el.style.color = n ? '#f7931a' : '#777';
     }
     var HIDDEN_FILTER_IDS = ['fSources', 'fRegion', 'fRadius', 'fYears',
                              'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
@@ -4115,6 +4320,14 @@ var MapSourcing = (function() {
         }
         sel.value = 'CAN';                     // home market unless a previous search is restored
 
+        // The baseline, snapshotted at exactly this moment: after every shipped default is in
+        // place and before any saved search is restored over the top. hasNonDefaultFilters()
+        // compares against this rather than FILTER_DEFAULTS, which does not contain fCountry and
+        // therefore could not know that CAN above is a default rather than a choice -- so the
+        // Refine drawer sprang open on a completely fresh visit, which is the collapse not
+        // happening at all. Snapshotting means this stays right if the shipped defaults change.
+        captureFilterBaseline();
+
         ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             // The id, not the Event — reconcileGeo has to know WHICH of the two geographic
@@ -4228,6 +4441,11 @@ var MapSourcing = (function() {
         // silently dropped anything it did not already know about back to the list.
         setResultsView(savedRes, true);
         applyFilters();
+        // Only at boot, and only if a restored filter is genuinely excluding something. Doing it
+        // on every applyFilters would re-open the drawer the moment you closed it, which turns a
+        // deliberate act into a fight; doing it never would restore a search whose controls are
+        // out of sight.
+        revealRefineIfFiltering();
         // The detail panel is painted from the restored selection. applyFilters had to run first
         // so the table exists for the row to be highlighted in.
         if (_selectedId) renderDetail();
