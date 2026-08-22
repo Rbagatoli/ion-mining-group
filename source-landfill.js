@@ -214,19 +214,58 @@ var LandfillSource = (function() {
     // Generation life left in the waste. LMOP publishes the closure year and the tonnage; the
     // decay curve is not published by anyone, so this is a horizon, not a forecast.
     var LFG_DECAY_YEARS = 25;      // typical useful life after closure, EPA LMOP guidance range 20-30
+    // Is gas measurably coming out of this landfill TODAY? Any of the three published flows being
+    // above zero settles it. Order is the artifact's own preference: flow to the project is the
+    // most specific, then collected, then flared.
+    function measuredGasMmscfd(p) {
+        var v = [p.lfgFlowToProjectMmscfd, p.lfgCollectedMmscfd, p.lfgFlaredMmscfd];
+        for (var i = 0; i < v.length; i++) {
+            if (v[i] !== null && v[i] !== undefined && v[i] > 0) return v[i];
+        }
+        return null;
+    }
+
     function remainingYears(p) {
         if (!p.landfillClosureYear) return null;
         // Still open: the clock has not started. Fuel is being added faster than it decays.
         if (/open/i.test(p.landfillStatus || '')) return LFG_DECAY_YEARS;
         var since = new Date().getFullYear() - p.landfillClosureYear;
         if (!isFinite(since)) return null;
-        return Math.max(0, LFG_DECAY_YEARS - since);
+        var left = LFG_DECAY_YEARS - since;
+        if (left > 0) return left;
+
+        // Past the modelled horizon — and this is where the first version was wrong. It returned
+        // 0, which put 90 of the 336 shortlist sites at "no fuel left". Measured against the
+        // artifact, 88 of those 90 are STILL COLLECTING GAS. Kingsland Landfill closed in 1988,
+        // is thirteen years past the horizon, and flares 1.13 mmscfd today — roughly 2.3 MW being
+        // burned for nothing, which is the single best prospect in the dataset, not a dead one.
+        //
+        // 0 is a measurement claim: it says the gas is gone. Returning it while the meter reads
+        // otherwise breaks the rule the whole codebase runs on — measured beats modelled, and
+        // null means unmeasured rather than zero. So the horizon yields to the meter here.
+        //
+        // The real fix is a decline curve fitted to reported gas over time, which needs a
+        // multi-year series this artifact does not carry. Until then, saying "the model does not
+        // know" is the honest answer, and remainingBasis() gives the reader the measured rate to
+        // judge for themselves.
+        return measuredGasMmscfd(p) !== null ? null : 0;
     }
     function remainingBasis(p) {
         if (!p.landfillClosureYear) return null;
         if (/open/i.test(p.landfillStatus || '')) {
             return 'still accepting waste, so the ' + LFG_DECAY_YEARS +
                    '-year post-closure horizon has not started';
+        }
+        var since = new Date().getFullYear() - p.landfillClosureYear;
+        var measured = measuredGasMmscfd(p);
+        // Past the horizon but still producing. The reader gets the contradiction stated outright
+        // rather than a number that hides it — and the measured rate, which is the fact that
+        // actually decides whether there is a deal here.
+        if (isFinite(since) && (LFG_DECAY_YEARS - since) <= 0 && measured !== null) {
+            return 'closed ' + p.landfillClosureYear + ', ' + (since - LFG_DECAY_YEARS) +
+                   ' years past the typical ' + LFG_DECAY_YEARS + '-year post-closure horizon — ' +
+                   'but still producing ' + measured + ' mmscfd, so the horizon does not apply ' +
+                   'here and no remaining-life estimate is offered';
         }
         return 'closed ' + p.landfillClosureYear + ', against a typical ' + LFG_DECAY_YEARS +
                '-year post-closure horizon';

@@ -208,7 +208,41 @@ console.log('\n=== the national majors are identified by name, not by count ==='
     ok('and an independent private operator outranks one too', S.landfill_private > S.landfill_major);
 })();
 
-// ---- 5. what must not have changed -------------------------------------------------------------
+// ---- 5. the meter beats the model ---------------------------------------------------------------
+//
+// remainingYears() shipped with a flat 25-year post-closure horizon and returned 0 past it. That
+// put 90 of the 336 shortlist sites at "no fuel left" while 88 of them were still collecting gas.
+// 0 is a measurement claim; the meter said otherwise, so the horizon yields.
+
+console.log('\n=== no site is called empty while its meter is still running ===');
+(function() {
+    function flow(c) {
+        var r = c.sourceDetail || {};
+        var v = [r.lfgFlowToProjectMmscfd, r.lfgCollectedMmscfd, r.lfgFlaredMmscfd];
+        for (var i = 0; i < v.length; i++) if (v[i] !== null && v[i] !== undefined && v[i] > 0) return v[i];
+        return null;
+    }
+    function yrs(c) { return (c.sourceDetail || {}).estimatedRemainingYears; }
+
+    var lying = ALL.filter(function(c) { return yrs(c) === 0 && flow(c) !== null; });
+    eq('no prospect claims zero years while gas is measurably flowing', lying.length, 0);
+
+    var past = UNIVERSE.filter(function(c) {
+        return yrs(c) === null && /past the typical/.test((c.sourceDetail || {}).estimatedRemainingBasis || '');
+    });
+    ok('sites past the horizon that still produce say so instead', past.length > 50,
+       past.length + ' of ' + UNIVERSE.length + ' in the shortlist');
+    ok('and every one of them quotes the measured rate',
+       past.every(function(c) { return /still producing [0-9.]+ mmscfd/.test((c.sourceDetail || {}).estimatedRemainingBasis); }),
+       'the reader gets the fact, not just the absence of a number');
+
+    // The horizon still applies where nothing contradicts it — the fix must not have deleted it.
+    var stillModelled = ALL.filter(function(c) { return yrs(c) !== null && yrs(c) > 0; });
+    ok('the horizon still produces an estimate where the meter is silent',
+       stillModelled.length > 1000, stillModelled.length + ' prospects');
+})();
+
+// ---- 6. what must not have changed -------------------------------------------------------------
 
 console.log('\n=== the rest of the model is undisturbed ===');
 (function() {
