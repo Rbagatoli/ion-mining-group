@@ -226,11 +226,20 @@ async function ingestReadings(request, env, origin, nowMs) {
     var accepted = [], duplicate = [], conflict = [], rejected = [];
 
     for (var i = 0; i < list.length; i++) {
-        var r = list[i];
-        var why = Ledger.checkReading(r, nowMs);
-        if (why) { rejected.push({ seq: r && r.seq, why: 'invalid' }); continue; }
+        var r = list[i] || {};
 
+        // The epoch is resolved BEFORE validation, not after.
+        //
+        // It is normally carried once on the envelope rather than repeated on every reading, so
+        // validating the reading on its own saw epoch: undefined and refused all of them. The
+        // unit tests passed throughout, because they call checkReading with a complete reading;
+        // only an end-to-end post through the real route exposed it.
         var epoch = Number(body.epoch != null ? body.epoch : r.epoch);
+        var candidate = {
+            seq: r.seq, epoch: epoch, index_corrected: r.index_corrected, device_ts: r.device_ts
+        };
+        var why = Ledger.checkReading(candidate, nowMs);
+        if (why) { rejected.push({ seq: r.seq, why: 'invalid' }); continue; }
         var key = K.reading(meterId, epoch, r.seq);
         var existing = await env.PORTAL.get(key, 'json');
 
@@ -474,6 +483,50 @@ async function admin(request, env, origin, nowMs, p) {
             created_at: new Date(nowMs).toISOString()
         }));
         return json({ seller_id: id }, 200, origin);
+    }
+
+    // Register a meter. index_digits and max_rate_per_hour come off the datasheet and are the
+    // ONLY things that may explain a rollover or refuse an implausible jump -- so a meter without
+    // them is accepted but will bill nothing the ledger cannot verify, which is the correct
+    // failure. They are never inferred from the readings the meter itself produces.
+    if (p === '/admin/meter' && request.method === 'POST') {
+        var m = await request.json();
+        var mid = text(m.meter_id, 64), msite = text(m.site_id, 64);
+        if (!Device.validId(mid) || !msite) return json({ error: 'bad request' }, 400, origin);
+        await env.PORTAL.put(K.meter(mid), JSON.stringify({
+            meter_id: mid, site_id: msite,
+            index_digits: isFinite(Number(m.index_digits)) ? Number(m.index_digits) : null,
+            max_rate_per_hour: isFinite(Number(m.max_rate_per_hour)) ? Number(m.max_rate_per_hour) : null,
+            units: text(m.units, 16) || 'mcf',
+            installed_at: new Date(nowMs).toISOString()
+        }));
+        return json({ ok: true, meter_id: mid }, 200, origin);
+    }
+
+    // Enrol a device and mint its first key.
+    //
+    // The derived secret is returned ONCE and never stored -- KV holds only the kid and its
+    // state, so there is nothing at rest to leak. Whoever installs the meter writes it into the
+    // device and it is not displayed again.
+    if (p === '/admin/device' && request.method === 'POST') {
+        var dv = await request.json();
+        var did = text(dv.device_id, 64), kid = text(dv.kid, 64) || 'k1';
+        if (!Device.validId(did) || !Device.validId(kid)) return json({ error: 'bad request' }, 400, origin);
+        var meters = (dv.meters || []).slice(0, 20).map(function(x) { return text(x, 64); })
+                        .filter(function(x) { return Device.validId(x); });
+        await env.PORTAL.put(K.device(did), JSON.stringify({
+            device_id: did, meters: meters, disabled: false,
+            enrolled_at: new Date(nowMs).toISOString()
+        }));
+        await env.PORTAL.put(K.devKey(did, kid), JSON.stringify({
+            device_id: did, kid: kid, state: 'active',
+            created_at: new Date(nowMs).toISOString()
+        }));
+        var secret = await Device.deriveSecret(env.DEVICE_ROOT_KEY, did, kid);
+        if (!secret) return json({ error: 'cannot derive' }, 500, origin);
+        return json({ ok: true, device_id: did, kid: kid, secret: secret,
+                      note: 'This secret is shown once. It is not stored and cannot be shown again.' },
+                    200, origin);
     }
 
     // Store a contract version. Immutable: an amendment is a NEW version, never an edit, so a
