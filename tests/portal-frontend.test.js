@@ -60,8 +60,16 @@ console.log('\n=== what the pages DO load is deliberate and minimal ===');
         ok(p + ' loads firebase auth', srcs.some(function(s) { return /firebase-auth-compat/.test(s); }));
         ok(p + ' loads the auth facade', srcs.some(function(s) { return /firebase-config\.js/.test(s); }));
         ok(p + ' loads portal.js', srcs.some(function(s) { return /portal\.js/.test(s); }));
-        ok(p + ' loads nothing else', srcs.length === 4,
-           srcs.length + ' scripts: ' + srcs.join(' '));
+
+        // An ALLOWLIST rather than a count. The first version asserted "exactly four scripts",
+        // which failed the moment portal-demo.js was added and said nothing about whether the
+        // fifth was dangerous — a count catches arrivals but cannot tell you what arrived.
+        var ALLOWED = [/firebase-app-compat/, /firebase-auth-compat/, /firebase-config\.js/,
+                       /\.\/portal\.js/, /\.\/portal-demo\.js/];
+        var unexpected = srcs.filter(function(s) {
+            return !ALLOWED.some(function(re) { return re.test(s); });
+        });
+        eq(p + ' loads nothing beyond the allowlist', unexpected.join(' '), '');
     });
 })();
 
@@ -141,6 +149,95 @@ console.log('\n=== values from the server are escaped ===');
     eq('ampersands first, so escaping is not double-applied',
        P.esc('&lt;'), '&amp;lt;');
     eq('null becomes empty rather than the word null', P.esc(null), '');
+})();
+
+// ---- 5. the preview, and the fence that kills it ------------------------------------------------
+
+console.log('\n=== the sample-data preview cannot survive a real backend ===');
+(function() {
+    var demoSrc = fs.readFileSync(path.join(PORTAL, 'portal-demo.js'), 'utf8');
+    var mainSrc = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
+
+    function build(endpoint) {
+        // Rebuild portal.js with an endpoint configured, which is what deploying does. If the
+        // preview can still be reached after that, the fence is decoration.
+        var patched = mainSrc.replace("var PORTAL_ENDPOINT = '';",
+                                      "var PORTAL_ENDPOINT = '" + endpoint + "';");
+        var store = {};
+        var fn = new Function('localStorage', 'location',
+            demoSrc + ';' + patched + '; return IonPortal;');
+        return fn(
+            { getItem: function(k) { return store[k] || null; },
+              setItem: function(k, v) { store[k] = v; },
+              removeItem: function(k) { delete store[k]; } },
+            { hostname: 'rbagatoli.github.io', origin: 'https://rbagatoli.github.io' });
+    }
+
+    var open = build('');
+    ok('with no backend, the preview is offered', open.demoAvailable());
+    ok('but nobody is in it until they ask', !open.inDemo(),
+       'a counterparty who mistypes a password gets the real refusal, not sample numbers');
+    ok('clicking enters it', open.startDemo() && open.inDemo());
+
+    // THE ASSERTION THIS SECTION EXISTS FOR.
+    var deployed = build('https://ion-portal.example.workers.dev');
+    ok('once a backend is configured the preview is gone', !deployed.demoAvailable(),
+       'the fence is the endpoint, not a flag somebody has to remember');
+    ok('and it cannot be entered', !deployed.startDemo() && !deployed.inDemo());
+})();
+
+console.log('\n=== and it says so on every screen ===');
+(function() {
+    var demoSrc = fs.readFileSync(path.join(PORTAL, 'portal-demo.js'), 'utf8');
+    var mainSrc = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
+    var store = {};
+    var P = new Function('localStorage', 'location', demoSrc + ';' + mainSrc + '; return IonPortal;')(
+        { getItem: function(k) { return store[k] || null; },
+          setItem: function(k, v) { store[k] = v; }, removeItem: function(k) { delete store[k]; } },
+        { hostname: 'localhost', origin: 'http://localhost' });
+    P.startDemo();
+
+    // Both pages must call it. A banner on one screen and not the other is how orders-demo.js
+    // ended up showing a fake bitcoin address with no warning on it.
+    PAGES.forEach(function(p) {
+        var src = fs.readFileSync(path.join(PORTAL, p), 'utf8');
+        ok(p + ' raises the demo banner', /demoBanner\(\)/.test(src));
+    });
+
+    // Every response carries the flag, so a page that forgets to check has still been told.
+    var Demo = new Function(demoSrc + '; return PortalDemo;')();
+    ok('the seller record is flagged', Demo.handle('/portal/me').body.demo === true);
+    ok('the statement list is flagged', Demo.handle('/portal/statements').body.demo === true);
+    ok('and a statement is flagged',
+       Demo.handle('/portal/statements/SAMPLE-LANDFILL-1/2026-07').body.demo === true);
+
+    // The sample data must be obviously not a real counterparty.
+    ok('the legal name says it is a demonstration', /demonstration/i.test(Demo.seller.legal_name));
+    ok('and the site is named SAMPLE', /SAMPLE/.test(Demo.seller.sites[0]));
+
+    // It must still refuse a site that is not the sample seller's — same answer as the worker,
+    // so the preview does not teach a different behaviour than the real thing.
+    var wrong = Demo.handle('/portal/statements/SOMEONE-ELSE/2026-07');
+    eq('another site is 404 in the preview too', wrong.status, 404);
+})();
+
+console.log('\n=== the sample months show the cases that matter ===');
+(function() {
+    var Demo = new Function(fs.readFileSync(path.join(PORTAL, 'portal-demo.js'), 'utf8') +
+                            '; return PortalDemo;')();
+    var jul = Demo.statements['2026-07'];
+    ok('one month has an incomplete total', jul.total_is_partial === true);
+    eq('with the shortfall pending, not zero', jul.take_or_pay.shortfall, null);
+    ok('and a prior-period adjustment', (jul.adjustments || []).length > 0);
+
+    var jun = Demo.statements['2026-06'];
+    var kinds = (jun.quantity.gaps || []).map(function(g) { return g.kind; });
+    ok('another shows both kinds of gap', kinds.indexOf('bounded') >= 0 && kinds.indexOf('unbounded') >= 0,
+       kinds.join(', '));
+    eq('the unbounded one has a null volume, not zero',
+       jun.quantity.gaps.filter(function(g) { return g.kind === 'unbounded'; })[0].volume_mcf, null);
+
+    ok('and one is simply clean', Demo.statements['2026-05'].total_is_partial === false);
 })();
 
 console.log('');

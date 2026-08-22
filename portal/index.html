@@ -7,8 +7,8 @@
 <!-- Not indexed. A counterparty gets the link from us; nobody needs to find it. -->
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../tokens.css?v=337">
-<link rel="stylesheet" href="./portal.css?v=337">
+<link rel="stylesheet" href="../tokens.css?v=338">
+<link rel="stylesheet" href="./portal.css?v=338">
 </head>
 <body>
 
@@ -56,6 +56,14 @@
       Accounts are created by Ion Mining Group and sent to you by invitation. There is no public
       sign-up. If you have an invitation link, open it and it will set your account up.
     </p>
+
+    <!-- Only rendered while there is no backend to sign in to. Hidden by default so it cannot
+         flash up on a configured deployment before the script decides. -->
+    <div class="pt-demoentry" id="ptDemoEntry" style="display:none;">
+      <button type="button" id="ptDemoStart">Preview with sample data</button>
+      <p>No account needed. Nothing you see will be real &mdash; it is the portal running with
+         no backend, so it can be looked at before there is anything in it.</p>
+    </div>
   </section>
 
   <!-- ===== STATEMENTS ===== -->
@@ -79,8 +87,11 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="../firebase-config.js?v=337"></script>
-<script src="./portal.js?v=337"></script>
+<script src="../firebase-config.js?v=338"></script>
+<script src="./portal.js?v=338"></script>
+<!-- The stand-in. Loaded on every visit, but it can only DO anything while
+     PORTAL_ENDPOINT is empty, and only when somebody clicks for it. -->
+<script src="./portal-demo.js?v=338"></script>
 <script>
 /* NOTE ON WHAT IS *NOT* ON THIS PAGE.
    No sync.js, no shared.js, no firestore-compat. Every other authenticated page in this app loads
@@ -229,10 +240,38 @@
             'Sign in with the email address your invitation was sent to, and your account will be set up.';
     }
 
-    IonAuth.onAuthChange(function(user) {
-        if (user) afterSignIn(user);
-        else { P.setSession(null); show('auth'); }
-    });
+    // ---- the preview ----
+    //
+    // Offered only while there is no backend to sign in to. The button exists so that entering
+    // the preview is something somebody DID, not something that happened to them: a counterparty
+    // sent the real link who mistypes a password must get the real refusal, not sample numbers.
+    if (P.demoAvailable()) {
+        document.getElementById('ptDemoEntry').style.display = '';
+        document.getElementById('ptDemoStart').addEventListener('click', async function() {
+            if (!P.startDemo()) return;
+            P.demoBanner();
+            P.status('', null);
+            await loadStatements();
+        });
+    }
+
+    // Already previewing. Skip Firebase entirely — there is no account to wait for, and waiting
+    // for onAuthChange to report nobody would flash the sign-in form first.
+    if (P.inDemo()) {
+        P.demoBanner();
+        loadStatements();
+    } else {
+        IonAuth.onAuthChange(function(user) {
+            if (user) afterSignIn(user);
+            else {
+                // Clears the session on sign-out — but NOT a preview session, or the preview
+                // would end the instant Firebase reported there was nobody signed in, which is
+                // always, because in preview there never is.
+                if (!P.inDemo()) P.setSession(null);
+                show('auth');
+            }
+        });
+    }
 })();
 </script>
 </body>

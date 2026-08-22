@@ -49,13 +49,38 @@ var IonPortal = (function() {
         catch (e) { /* private mode: the session simply does not persist */ }
     }
 
+    // ---- The demo stand-in --------------------------------------------------------------------
+    //
+    // Fenced on PORTAL_ENDPOINT being empty. Not on a flag somebody has to remember to turn off,
+    // and not on the hostname: the condition that allows it IS the condition that means there is
+    // no real service to reach. Configure a backend and this becomes unreachable in the same
+    // edit, which is the only kind of fence that survives being forgotten about. There is a test.
+    function demoAvailable() {
+        return !PORTAL_ENDPOINT && typeof PortalDemo !== 'undefined';
+    }
+
+    // In demo mode only when it was ASKED FOR. A counterparty who was sent the real link and
+    // tries to sign in must get the real refusal, not a lobby full of invented numbers.
+    function inDemo() {
+        return demoAvailable() && session() === PortalDemo.SESSION;
+    }
+
+    function startDemo() {
+        if (!demoAvailable()) return false;
+        setSession(PortalDemo.SESSION);
+        return true;
+    }
+
     // Every call goes through here so there is one place that handles "not configured" and one
     // place that handles an expired session.
     async function api(path, opts) {
         opts = opts || {};
         var url = base() + path;
+
+        if (inDemo()) return PortalDemo.handle(path);
+
         if (!base()) {
-            return { ok: false, notConfigured: true };
+            return { ok: false, notConfigured: true, demoAvailable: demoAvailable() };
         }
         var headers = { 'Content-Type': 'application/json' };
         var tok = session();
@@ -137,10 +162,36 @@ var IonPortal = (function() {
             'higher than or equal to what is shown.</div>';
     }
 
+    // Not dismissible, and drawn before anything else on the page.
+    //
+    // site/orders-demo.js learned this the hard way: stubbing below the surface meant the page
+    // had no way to know it was pretending, so it showed a fake bitcoin address while saying
+    // "waiting for the payment to arrive". A portal that might be showing invented numbers has to
+    // say so on every screen that can show them, not once at the door.
+    function demoBanner() {
+        if (!inDemo()) return;
+        if (document.getElementById('ptDemoBar')) return;
+        var bar = document.createElement('div');
+        bar.id = 'ptDemoBar';
+        bar.className = 'pt-demobar';
+        bar.innerHTML = '<strong>Sample data.</strong> Nothing on this screen is real — ' +
+            'no meter reported these volumes and no money is owed. This is the portal running ' +
+            'with no backend, so it can be looked at before there is anything in it. ' +
+            '<button type="button" id="ptDemoExit">Leave preview</button>';
+        document.body.insertBefore(bar, document.body.firstChild);
+        var btn = document.getElementById('ptDemoExit');
+        if (btn) btn.addEventListener('click', function() {
+            setSession(null);
+            location.href = './index.html';
+        });
+    }
+
     return {
         api: api, session: session, setSession: setSession, base: base,
         esc: esc, num: num, money: money, pct: pct, date: date,
         status: status, partialBanner: partialBanner,
+        demoAvailable: demoAvailable, inDemo: inDemo, startDemo: startDemo,
+        demoBanner: demoBanner,
         SESSION_KEY: SESSION_KEY, PORTAL_ENDPOINT: PORTAL_ENDPOINT
     };
 })();

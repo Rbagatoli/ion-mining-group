@@ -106,6 +106,38 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 }
 .pt-alt button:hover { color: var(--btc-300); }
 
+/* ---- the demo banner ----
+   Deliberately the loudest thing on the page, pinned above everything, and with
+   no dismiss. A quieter version of this was the whole problem orders-demo.js
+   was written to fix: a page that might be pretending has to say so where it
+   cannot be scrolled past. */
+.pt-demobar {
+    background: var(--btc-300); color: var(--black);
+    font-size: 12px; line-height: 1.5; padding: 11px 18px;
+    text-align: center; position: sticky; top: 0; z-index: 50;
+}
+.pt-demobar strong { font-weight: 700; }
+.pt-demobar button {
+    background: none; border: 1px solid rgba(0,0,0,0.45); color: var(--black);
+    font: inherit; font-size: 11px; padding: 2px 9px; margin-left: 10px;
+    cursor: pointer; border-radius: var(--radius);
+}
+.pt-demobar button:hover { background: rgba(0,0,0,0.12); }
+
+/* The way in. Quiet, and below the real form, because it is not the way most
+   people arrive — it is the way it gets reviewed before anyone can arrive. */
+.pt-demoentry {
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);
+    text-align: center;
+}
+.pt-demoentry button {
+    background: none; border: 1px solid var(--line-mid); color: var(--plat-300);
+    font: inherit; font-size: 11.5px; padding: 8px 14px; cursor: pointer;
+    border-radius: var(--radius);
+}
+.pt-demoentry button:hover { border-color: var(--line-btc); color: var(--btc-300); }
+.pt-demoentry p { font-size: 10.5px; color: var(--plat-600); margin: 9px 0 0; line-height: 1.5; }
+
 /* ---- status line ---- */
 .pt-status {
     font-size: 12px; padding: 10px 13px; margin-bottom: 16px;

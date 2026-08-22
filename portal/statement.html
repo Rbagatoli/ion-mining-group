@@ -6,8 +6,8 @@
 <title>Statement — Ion Mining Group</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../tokens.css?v=337">
-<link rel="stylesheet" href="./portal.css?v=337">
+<link rel="stylesheet" href="../tokens.css?v=338">
+<link rel="stylesheet" href="./portal.css?v=338">
 </head>
 <body>
 
@@ -31,8 +31,9 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="../firebase-config.js?v=337"></script>
-<script src="./portal.js?v=337"></script>
+<script src="../firebase-config.js?v=338"></script>
+<script src="./portal.js?v=338"></script>
+<script src="./portal-demo.js?v=338"></script>
 <script>
 /* The statement, rendered as a document rather than a dashboard.
    No sync.js, no shared.js — see the note in index.html. */
@@ -219,7 +220,7 @@
     }
 
     if (!P.session()) location.replace('./index.html');
-    else load();
+    else { P.demoBanner(); load(); }
 })();
 </script>
 </body>
