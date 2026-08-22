@@ -19,7 +19,15 @@ body {
     min-height: 100vh;
 }
 
-.pt-wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
+/* position + z-index are LOAD-BEARING, not tidiness.
+
+   .pt-bg is position:fixed, which makes it a positioned element, and positioned
+   elements paint above non-positioned content regardless of source order. Without
+   this rule the backdrop's scrim — a near-black radial — lays over the sign-in
+   form instead of behind it, and the whole page reads washed out. The backdrop's
+   own comment claimed the wrap "is lifted above it" while nothing lifted it. */
+.pt-wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px;
+           position: relative; z-index: 1; }
 
 /* ---- masthead ---- */
 .pt-head {
@@ -156,3 +164,54 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
     .pt-card { border-color: #ccc; }
     .pt-absent { color: #666; }
 }
+
+
+/* ===== the sign-in backdrop =====
+
+   The same field that runs behind the marketing site's hero: energy rising and
+   crystallising into a lattice. A producer arriving here has just come from
+   ionmininggroup.com, and the portal looking like a different company's
+   software is a small thing that costs trust at exactly the wrong moment.
+
+   ONLY ON THE SIGN-IN VIEW. show() puts .pt-signin on <body>, and it comes off
+   the moment a session starts — behind statements and volumes it would be
+   decoration over data somebody is trying to read.
+
+   The canvas is fixed rather than absolute so it covers the viewport whatever
+   the page height is, and .pt-wrap is lifted above it. Both are inert: the
+   canvas takes no pointer events and carries aria-hidden. */
+.pt-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    display: none;
+}
+body.pt-signin .pt-bg { display: block; }
+
+/* A scrim, because the field was built as a bounded hero panel and this is a
+   full viewport behind a form. At full strength the hex runs straight through
+   the sign-in copy and both lose: the field reads as noise and the words read
+   as hard work. Darkest under the card, clearing toward the edges where there
+   is nothing to protect. */
+.pt-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(46% 54% at 50% 42%,
+                rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.93) 38%, rgba(0,0,0,0.55) 72%, rgba(0,0,0,0.12) 100%);
+    pointer-events: none;
+}
+
+/* ===== the genesis field =====
+
+   The canvas fills the backdrop. It is sized in script from the VIEWPORT, never
+   from this element, so there is no measure-then-draw loop to get wrong and no
+   dependency on the layout it sits behind. All this rule does is put it where
+   the backdrop is. */
+.pt-bg canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+

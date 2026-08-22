@@ -12,6 +12,25 @@
 </head>
 <body>
 
+<!-- The hash field: proof-of-work as type. Ninety-six hex groups on a CSS
+     grid, churning, with a rare row locking to a hash with leading zeros.
+
+     THE CELLS ARE SEEDED IN THE MARKUP, deterministically, so the page has a
+     full field before a line of script runs and the committed HTML is stable
+     across rebuilds. With JS off, or blocked, this is what stays: a still
+     field rather than ninety-six empty boxes. -->
+<!-- The genesis field: three sheets of block 0's raw hex, scrolling at
+     different speeds. Recovered from shared.js, where it ran until it was
+     taken out for competing with dense tables -- which is the right call
+     there and the wrong one here, behind a page with one form on it.
+
+     A canvas rather than DOM text, because this is a full-viewport field of
+     several thousand characters redrawn continuously; ninety-six spans is a
+     grid, this is not. Inert: no pointer events, aria-hidden on the wrapper. -->
+<div class="pt-bg" aria-hidden="true">
+  <canvas id="genesisField"></canvas>
+</div>
+
 <div class="pt-wrap">
 
   <header class="pt-head">
@@ -92,6 +111,12 @@
 <!-- The stand-in. Loaded on every visit, but it can only DO anything while
      PORTAL_ENDPOINT is empty, and only when somebody clicks for it. -->
 <script src="./portal-demo.js?v=338"></script>
+
+<!-- No dependencies, no network, no storage: DOM text on a grid and one
+     setInterval. On the allowlist in tests/portal-frontend.test.js by name. -->
+<script src="./genesis-field.js?v=338"></script>
+
+
 <script>
 /* NOTE ON WHAT IS *NOT* ON THIS PAGE.
    No sync.js, no shared.js, no firestore-compat. Every other authenticated page in this app loads
@@ -105,6 +130,10 @@
     function show(which) {
         document.getElementById('ptAuth').style.display = which === 'auth' ? '' : 'none';
         document.getElementById('ptMain').style.display = which === 'main' ? '' : 'none';
+          /* The hero field is a sign-in backdrop, not a page background. Behind
+             statements and volumes it is decoration over data somebody is
+             reading, so it comes off with the sign-in screen. */
+          document.body.classList.toggle('pt-signin', which === 'auth');
     }
 
     // An invitation link: ?invite=INV-XXXX. The holder still has to sign in or create the
