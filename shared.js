@@ -615,10 +615,6 @@ async function fetchLiveMarketData() {
 // the same alpha are not the same object.
 var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 
-// The scrolling genesis-block hex stays platinum: it is TYPE, and all type in this palette is
-// platinum. It also sits at 0.010-0.022, where orange would be invisible anyway.
-var HEX_INK = 'rgba(229, 228, 226, ';
-
 (function() {
     var canvas = document.getElementById('techLinesCanvas');
     if (!canvas) return;
@@ -628,7 +624,6 @@ var HEX_INK = 'rgba(229, 228, 226, ';
     var lines = [];
     var nodes = [];
     var pulses = [];
-    var hexSheets = [];
     var animId = null;
     var lastFrame = 0;
     var isMobile = Math.min(window.innerWidth, window.innerHeight) < 768;
@@ -636,14 +631,6 @@ var HEX_INK = 'rgba(229, 228, 226, ';
     var LINE_COUNT = isMobile ? 25 : 45;
     var NODE_COUNT = isMobile ? 15 : 30;
     var PULSE_COUNT = isMobile ? 6 : 12;
-    var HEX_FONT_SIZE = isMobile ? 10 : 11;
-    var HEX_LINE_HEIGHT = isMobile ? 14 : 15;
-    var HEX_CHAR_WIDTH = isMobile ? 6.6 : 7.3;
-    var HEX_SHEET_COUNT = 3;
-
-    // Actual Bitcoin genesis block raw hex (block header + coinbase tx) — repeated for density
-    var GENESIS_HEX = '0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c0101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a0100000043410467e6e18906b18c1a10c82c3017656397f490eee7abcb2e24079cd82afa96d38';
-
     function resize() {
         var dpr = window.devicePixelRatio || 1;
         canvas.width = window.innerWidth * dpr;
@@ -660,35 +647,6 @@ var HEX_INK = 'rgba(229, 228, 226, ';
         pulses = [];
         var w = window.innerWidth;
         var h = window.innerHeight;
-
-        // Generate full-screen hex sheets — dense scrolling block data
-        hexSheets = [];
-        var charsPerRow = Math.ceil(w / HEX_CHAR_WIDTH) + 4;
-        var rowsNeeded = Math.ceil(h / HEX_LINE_HEIGHT) + 4;
-        var totalRows = rowsNeeded * 2; // double height for seamless scrolling
-
-        for (var s = 0; s < HEX_SHEET_COUNT; s++) {
-            var rows = [];
-            var hexPos = Math.floor(Math.random() * GENESIS_HEX.length);
-            for (var r = 0; r < totalRows; r++) {
-                var row = '';
-                for (var ch = 0; ch < charsPerRow; ch++) {
-                    row += GENESIS_HEX[hexPos % GENESIS_HEX.length];
-                    hexPos++;
-                    // Add space every 2 chars for hex-dump look
-                    if ((ch + 1) % 2 === 0 && ch < charsPerRow - 1) row += ' ';
-                }
-                rows.push(row);
-            }
-            hexSheets.push({
-                rows: rows,
-                totalRows: totalRows,
-                visibleRows: rowsNeeded,
-                scrollY: Math.random() * totalRows * HEX_LINE_HEIGHT,
-                speed: 8 + s * 12,
-                opacity: 0.01 + s * 0.006
-            });
-        }
 
         // Generate grid lines — horizontal and vertical
         for (var i = 0; i < LINE_COUNT; i++) {
@@ -750,27 +708,6 @@ var HEX_INK = 'rgba(229, 228, 226, ';
         var dt = FRAME_INTERVAL / 1000;
 
         ctx.clearRect(0, 0, w, h);
-
-        // Draw dense genesis block hex sheets (behind everything)
-        ctx.font = HEX_FONT_SIZE + 'px monospace';
-        ctx.textAlign = 'left';
-        for (var s = 0; s < hexSheets.length; s++) {
-            var S = hexSheets[s];
-            S.scrollY -= S.speed * dt;
-            var sheetHeight = S.totalRows * HEX_LINE_HEIGHT;
-            if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
-
-            ctx.fillStyle = HEX_INK + S.opacity.toFixed(4) + ')';
-            var startRow = Math.floor(S.scrollY / HEX_LINE_HEIGHT);
-            var offsetY = -(S.scrollY % HEX_LINE_HEIGHT);
-
-            for (var r = 0; r <= S.visibleRows; r++) {
-                var rowIdx = (startRow + r) % S.totalRows;
-                var y = offsetY + r * HEX_LINE_HEIGHT;
-                if (y < -HEX_LINE_HEIGHT || y > h + HEX_LINE_HEIGHT) continue;
-                ctx.fillText(S.rows[rowIdx], 0, y);
-            }
-        }
 
         // Draw lines with glow
         for (var i = 0; i < lines.length; i++) {
@@ -884,10 +821,6 @@ var HEX_INK = 'rgba(229, 228, 226, ';
             LINE_COUNT = isMobile ? 25 : 45;
             NODE_COUNT = isMobile ? 15 : 30;
             PULSE_COUNT = isMobile ? 6 : 12;
-            HEX_FONT_SIZE = isMobile ? 10 : 11;
-            HEX_LINE_HEIGHT = isMobile ? 14 : 15;
-            HEX_CHAR_WIDTH = isMobile ? 6.6 : 7.3;
-            HEX_SHEET_COUNT = 3;
             resize();
         }, 200);
     });
