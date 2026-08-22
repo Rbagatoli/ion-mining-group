@@ -484,8 +484,12 @@ var MapSourcing = (function() {
     // merely unlikely.
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
-    var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-                         'fAcquisition', 'fHasGen'];
+    // The four scope controls were removed from this list IN THE SAME CHANGE that removed the
+    // markup, deliberately. searchKey() builds its key from FILTER_CHECKS on both sides: leave an
+    // id here with no control and captureSearch() skips it, so the key part becomes fWorkable=0
+    // while every stored search still carries fWorkable=1 -- and those chips never light up
+    // again. Removing from both sides keeps old and new keys consistent.
+    var FILTER_CHECKS = ['fActive', 'fOperator', 'fBurning', 'fAcquisition'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
     // on a differently-sorted table with the open site closed. Same reasoning as the filters:
     // local only, never synced.
@@ -593,24 +597,58 @@ var MapSourcing = (function() {
         });
     }
 
+    // ---- Operating scope ------------------------------------------------------------------
+    //
+    // Ion operates in mainland USA and Canada. That is a business fact, not a search preference,
+    // so it is a constant here rather than four checkboxes the user has to keep set correctly.
+    //
+    // Measured against the shipped artifacts, this is what the scope is worth:
+    //     whole catalog                             30,361
+    //     old shipped default (onshore + workable)  21,553
+    //     mainland USA + Canada                     19,397
+    // being 6,721 US onshore flares, 1,003 Canadian onshore flares, 9,765 EIA facilities and
+    // 1,908 LMOP landfills.
+    //
+    // Three controls died with it rather than being hidden:
+    //   - "Workable jurisdictions only" was MOOT. It existed because the flare catalog spans
+    //     Russia, Iran and Venezuela; USA and CAN are both `preferred` tier, so inside this scope
+    //     it excluded nothing. The tier constant stays below because prospect-store.js still
+    //     reads it and jurisdictions.js is still what makes it true.
+    //   - "Onshore only" is now part of the word MAINLAND. It removes 84 Gulf of Mexico flares.
+    //   - "Small operators only (Alberta)" collapsed the catalog to 64 sites, all Alberta,
+    //     deleting every landfill and every US facility. A 0.2% slice behind a checkbox.
+    //
+    // The data is NOT rebuilt. data/flare-catalog.json keeps all 18,688 rows and the 10,880
+    // rest-of-world flares are excluded by this constant alone, so widening the scope later is a
+    // one-line change rather than a pipeline run.
+    var SCOPE_ISO3 = ['USA', 'CAN'];
+    var SCOPE_TIERS = ['preferred', 'workable'];
+
+    // "Generation already on site" survives as a filter without surviving as a control: the
+    // `restart` and `landfill` starting points both depend on it and their labels would be lies
+    // without it. setCheck() is null-safe, so had this stayed a DOM read the checkbox's removal
+    // would have silently no-opped and left both starters returning a much larger, wholly
+    // undifferentiated pool while still claiming a generator was standing.
+    var _hasGenFilter = false;
+
     function currentFilters() {
         var meta = SiteCatalog.meta();
         var size = sizeBounds();
         var minYears = parseInt(document.getElementById('fYears').value, 10);
+        var iso = document.getElementById('fCountry').value || null;
         return {
-            iso3: document.getElementById('fCountry').value || null,
+            iso3: iso,
+            // Applied whenever no single country is chosen. With one chosen, iso3 already
+            // narrows harder than the scope does and the two would be redundant.
+            iso3In: iso ? null : SCOPE_ISO3,
             minKw: size.min,
             maxKw: size.max,
             minYearsSeen: minYears > 0 ? minYears : null,
-            onshoreOnly: document.getElementById('fOnshore').checked,
+            onshoreOnly: true,
             activeThrough: document.getElementById('fActive').checked && meta ? meta.dataThrough : null,
-            tiers: document.getElementById('fWorkable').checked ? ['preferred', 'workable'] : null,
+            tiers: SCOPE_TIERS,
             sources: Object.keys(_srcFilter).length ? Object.keys(_srcFilter) : null,
             hasOperator: document.getElementById('fOperator').checked,
-            smallOperatorsOnly: (function() {
-                var el = document.getElementById('fSmallOp');
-                return !!(el && el.checked);
-            })(),
             anchor: currentAnchor(),
             confirmedBurning: (function() {
                 var el = document.getElementById('fBurning');
@@ -620,10 +658,7 @@ var MapSourcing = (function() {
                 var el = document.getElementById('fAcquisition');
                 return !!(el && el.checked);
             })(),
-            hasGeneration: (function() {
-                var el = document.getElementById('fHasGen');
-                return !!(el && el.checked);
-            })()
+            hasGeneration: _hasGenFilter
         };
     }
 
@@ -648,19 +683,16 @@ var MapSourcing = (function() {
     var FILTER_DEFAULTS = {
         fMinKw: '0', fMaxKw: '5000', fYears: '0', fSort: 'persistence',
         fRegion: '', fRadius: '250',
-        fOnshore: true, fWorkable: true,
-        fActive: false, fOperator: false, fBurning: false, fSmallOp: false,
-        fAcquisition: false, fHasGen: false
+        fActive: false, fOperator: false, fBurning: false,
+        fAcquisition: false
     };
     var FILTER_LABELS = {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
         fSort: 'Ranked by', fRadius: 'Search radius',
-        fOnshore: 'Onshore only', fWorkable: 'Workable jurisdictions only',
+
         fActive: 'Flare seen in the latest survey',
         fOperator: 'Only sites with a named operator',
         fBurning: 'Flare confirmed burning recently',
-        fSmallOp: 'Small operators only (Alberta)',
-        fHasGen: 'Generation already on site',
         fAcquisition: 'Acquisition targets only'
     };
 
@@ -719,8 +751,7 @@ var MapSourcing = (function() {
         //
         // fAcquisition joined this list when it stopped being a table tab. It removes more
         // prospects than anything else here and, as a tab, appeared in none of these reports.
-        ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-         'fAcquisition', 'fHasGen'].forEach(function(id) {
+        ['fActive', 'fOperator', 'fBurning', 'fAcquisition'].forEach(function(id) {
             var e = el(id);
             if (!e || !e.checked) return;
             out.push({ key: id, label: FILTER_LABELS[id],
@@ -761,6 +792,9 @@ var MapSourcing = (function() {
         _srcFilter = {};
         _companyFilter = null;
         _companyFilterId = null;
+        // Not a DOM control any more, so resetFilterControls has to clear it explicitly or a
+        // starting point's filter would outlive the starting point.
+        _hasGenFilter = false;
         renderSourceFilter();
         paintSizeRange();
         renderSizeHint();
@@ -789,7 +823,7 @@ var MapSourcing = (function() {
 
     // ---- Saved searches -------------------------------------------------------------------
     // A named filter combination you can get back to. Twelve controls across two panels is a
-    // configuration, and rebuilding "Alberta flare gas, small operators, seen every year" by hand
+    // configuration, and rebuilding "Alberta flare gas, 1-3 MW, seen every year" by hand
     // every Monday is the kind of friction that stops a search being run at all.
     //
     // These DO sync: unlike the last-used filters — which are where you happen to be looking and
@@ -847,6 +881,11 @@ var MapSourcing = (function() {
         var rad = document.getElementById('fRadius');
         return {
             f: f,
+            // Carried on its own key because it is no longer a checkbox for FILTER_CHECKS to
+            // walk. Without this a saved "landfill shortlist" would restore as every landfill
+            // regardless of whether a generator is standing -- a clause dropped in silence,
+            // which is exactly what the missing[] report exists to prevent.
+            hasGen: !!_hasGenFilter,
             sources: Object.keys(_srcFilter).sort(),
             region: reg ? reg.value : '',
             radius: rad ? rad.value : ''
@@ -860,6 +899,7 @@ var MapSourcing = (function() {
         var parts = [];
         FILTER_FIELDS.forEach(function(id) { parts.push(id + '=' + (f[id] === undefined ? '' : f[id])); });
         FILTER_CHECKS.forEach(function(id) { parts.push(id + '=' + (f[id] ? '1' : '0')); });
+        parts.push('gen=' + (s.hasGen ? '1' : '0'));
         parts.push('src=' + (s.sources || []).slice().sort().join(','));
         parts.push('region=' + (s.region || ''));
         // A radius with no region filters nothing, so it must not make two identical searches
@@ -916,6 +956,10 @@ var MapSourcing = (function() {
 
         _companyFilter = null;
         _companyFilterId = null;
+        // RESTORED from the saved search, not merely cleared: a search saved with the generation
+        // clause on must come back with it on. A search saved before this key existed has it
+        // undefined, which correctly reads as off.
+        _hasGenFilter = !!s.hasGen;
         renderSourceFilter();
         paintSizeRange();
         renderSizeHint();
@@ -997,10 +1041,8 @@ var MapSourcing = (function() {
     // so it removes 16 rows and creates a false impression of having narrowed anything.
     // ---- Starting points ------------------------------------------------------------------
     //
-    // Seventeen filter inputs, and every one of them REFINES. None of them answers "what am I
-    // looking for", which is the only question someone opening this page cold actually has. Two
-    // of them are also ticked before you arrive, so the page is already filtering and never said
-    // so on the primary row.
+    // Every filter input REFINES. None of them answers "what am I looking for", which is the
+    // only question someone opening this page cold actually has.
     //
     // These are the answer: a handful of goals in plain words, each setting every control at
     // once. They are not tutorials -- each one is a shortcut, and the whole set is meant to be
@@ -1022,7 +1064,7 @@ var MapSourcing = (function() {
             // the filter is not applying.
             hint: '1 MW and up, ranked by how gettable it is',
             set: function() {
-                setCheck('fHasGen', true);
+                _hasGenFilter = true;
                 setCheck('fAcquisition', true);
                 setSize(1000, 5000);
                 setSort('combined');
@@ -1035,7 +1077,7 @@ var MapSourcing = (function() {
             set: function() {
                 _srcFilter = {}; _srcFilter['lmop-landfill'] = true;
                 renderSourceFilter();
-                setCheck('fHasGen', true);
+                _hasGenFilter = true;
                 setSize(1000, 3000);
                 setValue('fCountry', 'USA');
                 setSort('combined');
@@ -1064,7 +1106,7 @@ var MapSourcing = (function() {
         {
             id: 'biggest',
             label: 'The biggest sites anywhere',
-            hint: 'No filters beyond onshore and workable jurisdictions',
+            hint: 'Everything in scope, largest first',
             set: function() { setSort('power_potential'); }
         }
     ];
@@ -1115,8 +1157,8 @@ var MapSourcing = (function() {
     function countStarters() {
         if (_starterCounts) return _starterCounts;
         if (typeof ProspectStore === 'undefined' || !ProspectStore.all || !ProspectStore.all().length) return null;
-        var ids = FILTER_FIELDS.concat(['fOnshore', 'fWorkable', 'fOperator', 'fSmallOp',
-                                        'fBurning', 'fActive', 'fAcquisition', 'fHasGen', 'fRegion', 'fRadius']);
+        var ids = FILTER_FIELDS.concat(['fOperator', 'fBurning', 'fActive', 'fAcquisition',
+                                        'fRegion', 'fRadius']);
         var saved = {}, i;
         for (i = 0; i < ids.length; i++) {
             var el = document.getElementById(ids[i]);
@@ -1187,6 +1229,9 @@ var MapSourcing = (function() {
         }
         _companyFilter = null;
         _companyFilterId = null;
+        // Not a DOM control any more, so resetFilterControls has to clear it explicitly or a
+        // starting point's filter would outlive the starting point.
+        _hasGenFilter = false;
     }
 
     function renderSaved() {
@@ -1372,19 +1417,6 @@ var MapSourcing = (function() {
         var matches = stampLiveness(ProspectStore.filter(f));
         if (f.hasOperator) {
             matches = matches.filter(function(c) { return !!operatorName(c); });
-        }
-        // Small operators only. Flaring is a real annoyance to a company with a few dozen wells
-        // and nobody whose job is to field proposals; at a major it is a rounding error and you
-        // do not get past the switchboard.
-        //
-        // Filters OUT prospects with no size class rather than keeping them: the class only
-        // exists for Alberta, so keeping unknowns would leave the control looking broken
-        // everywhere else. The label says Alberta explicitly for the same reason.
-        if (f.smallOperatorsOnly) {
-            matches = matches.filter(function(c) {
-                var sc = operatorSizeClass(c);
-                return sc === 'micro' || sc === 'small';
-            });
         }
         // Geographic anchor: everything within N km of a state or province centroid.
         //
@@ -1730,7 +1762,7 @@ var MapSourcing = (function() {
         disclosure('moreFiltersToggle', 'moreFilters', MOREF_KEY, false);
         renderMoreFiltersCount();
 
-        // The outer drawer, holding all seventeen controls. Closed by default -- the starting
+        // The outer drawer. Closed by default -- the starting
         // points above are meant to be enough on their own.
         _refine = disclosure('refineToggle', 'refinePanel', REFINE_KEY, false);
         renderRefineCount();
@@ -1750,16 +1782,15 @@ var MapSourcing = (function() {
     // only honest while it is empty; leaving a live filter behind a closed disclosure is how a
     // search silently returns fewer rows than the page appears to be asking for. The count in the
     // heading and the "Filtering by" bar both still say so, but neither shows you the control.
-    // Non-DEFAULT, not merely active. fOnshore and fWorkable ship ticked, so "any active filter"
-    // is true on a completely fresh load and the drawer would spring open every time, which is
-    // the collapse not happening at all. What matters is whether the restored search differs from
-    // the baseline -- that is the state whose controls need to be visible.
+    // Non-DEFAULT, not merely active. What matters is whether the restored search differs from
+    // the baseline -- that is the state whose controls need to be visible. (Before the scope
+    // became a constant, fOnshore and fWorkable shipped ticked, so "any active filter" was true
+    // on a completely fresh load and the drawer sprang open every time.)
     //
     // The country select and the source chips are not in FILTER_DEFAULTS, so they are checked
     // directly; both are genuinely a departure from the baseline when set.
     var BASELINE_IDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fRegion', 'fRadius',
-                        'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-                        'fAcquisition', 'fHasGen'];
+                        'fActive', 'fOperator', 'fBurning', 'fAcquisition'];
     var _filterBaseline = null;
 
     function captureFilterBaseline() {
@@ -1800,8 +1831,7 @@ var MapSourcing = (function() {
         el.style.color = n ? '#f7931a' : '#777';
     }
     var HIDDEN_FILTER_IDS = ['fSources', 'fRegion', 'fRadius', 'fYears',
-                             'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-                             'fHasGen'];
+                             'fActive', 'fOperator', 'fBurning'];
     function renderMoreFiltersCount() {
         var el = document.getElementById('moreFiltersCount');
         if (!el) return;
@@ -1901,6 +1931,131 @@ var MapSourcing = (function() {
     // The address is resolved at export time from the companies map rather than copied onto the
     // saved record: it is SOURCED data with its own rebuild cadence, and a copy on the record
     // would silently go stale against the registry while looking authoritative.
+    // A mailable address for the counterparty, and honestly labelled about where it came from.
+    //
+    // operatorCompany() resolves through an EIA utility id or the Alberta operator registry, and a
+    // landfill has neither -- 0 of 1,908 carry an operatorId, and none of the 565 LMOP owner names
+    // appears in a 482-row Alberta oil-and-gas list. So every landfill got nothing.
+    //
+    // data/site-links.json already links EIA landfill-gas plants to their LMOP landfill by 1 km
+    // coordinate proximity, with no name matching of any kind, and the EIA side carries a filing
+    // address. The bridge was built and tested and nothing ever crossed it.
+    //
+    // `via` is returned, not discarded: an address reached through a linked facility is a
+    // different claim from one the prospect published itself, and the two must never be shown
+    // with the same authority.
+    function mailingFor(c) {
+        if (!c) return { co: null, via: null };
+        var co = operatorCompany(c);
+        if (co) return { co: co, via: null };
+        if (typeof SiteLinks === 'undefined' || !SiteLinks.aliasesOf) return { co: null, via: null };
+        if (typeof FacilitySource === 'undefined' || !FacilitySource.companyFor) return { co: null, via: null };
+        var alias = SiteLinks.aliasesOf(c.id) || [];
+        for (var i = 0; i < alias.length; i++) {
+            var other = (typeof ProspectStore !== 'undefined' && ProspectStore.get)
+                ? ProspectStore.get(alias[i]) : null;
+            if (!other || !other.operatorId) continue;
+            var hit = FacilitySource.companyFor(other.operatorId);
+            if (hit) return { co: hit, via: other };
+        }
+        return { co: null, via: null };
+    }
+
+    // ---- Draft enquiry ---------------------------------------------------------------------
+    //
+    // Composes an addressed letter for a prospect and copies it, so the step between "this is the
+    // best target in the list" and "I have written to them" is not a blank page.
+    //
+    // COPY, not mailto:. site/site.js:161-207 uses mailto: with a Copy fallback and
+    // site/hardware.html documents why: where no mail client is registered, nothing happens at
+    // all. There is no email address for any landfill counterparty anywhere in this data, so a
+    // mailto: here would open an empty To: field at best. What you actually do with this is post
+    // it or paste it, so copying is the whole feature rather than the fallback.
+    //
+    // It composes and copies. It never sends anything.
+    // navigator.clipboard is undefined on a plain-HTTP origin, which is exactly how this app is
+    // served during local development -- so the execCommand path is not legacy cruft here, it is
+    // the one that actually runs while you are testing.
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text)
+                .then(function() { return true; })
+                .catch(function() { return legacyCopy(text); });
+        }
+        return Promise.resolve(legacyCopy(text));
+    }
+    function legacyCopy(text) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return !!ok;
+        } catch (e) { return false; }
+    }
+
+    var NL = String.fromCharCode(10);
+
+    function draftableFor(c) {
+        if (!c) return null;
+        var sd = c.sourceDetail || {};
+        var gh = (typeof GhgrpContacts !== 'undefined') ? GhgrpContacts.forCandidate(c) : null;
+        var to = gh && gh.parent ? gh.parent : (c.operator || null);
+        var line = gh ? GhgrpContacts.addressLine(gh) : null;
+        if (!line && sd.address) {
+            line = [sd.address, sd.city, sd.state, sd.zip].filter(Boolean).join(', ');
+        }
+        if (!to || !line) return null;
+        return { to: to, address: line };
+    }
+
+    function draftEnquiry(c) {
+        var d = draftableFor(c);
+        if (!d) return null;
+        var sd = c.sourceDetail || {};
+        var mw = c.powerPotentialKw ? (c.powerPotentialKw / 1000).toFixed(1) + ' MW' : null;
+        var gen = c.existingGenerationKw ? (c.existingGenerationKw / 1000).toFixed(1) + ' MW' : null;
+        var L = [];
+        L.push(d.to);
+        L.push(d.address);
+        L.push('');
+        L.push('Re: ' + (c.name || 'landfill gas project') +
+               (sd.projectName ? ' — ' + sd.projectName : ''));
+        L.push('');
+        L.push('We are a bitcoin mining company that generates power on site from gas that would');
+        L.push('otherwise be flared or vented, and we are interested in the landfill gas at this');
+        L.push('site.');
+        L.push('');
+        // Every fact stated back to them is one EPA published. Nothing here is inferred, because
+        // a letter that opens with a wrong number about their own site does not get a reply.
+        var facts = [];
+        if (sd.projectStatus) facts.push('EPA records the gas project as ' + String(sd.projectStatus).toLowerCase() +
+            (sd.projectShutdownDate ? ' since ' + sd.projectShutdownDate : '') + '.');
+        if (gen) facts.push('Generating equipment of about ' + gen + ' appears to remain on site.');
+        if (mw) facts.push('Published gas volumes suggest roughly ' + mw + ' of continuous generation.');
+        if (sd.lfgFlaredMmscfd) facts.push('EPA shows about ' + sd.lfgFlaredMmscfd +
+            ' mmscfd currently being flared.');
+        for (var i = 0; i < facts.length; i++) L.push('  - ' + facts[i]);
+        if (facts.length) L.push('');
+        L.push('We would take the gas as it is, on site, and we do not need a grid export');
+        L.push('agreement or a power purchase contract. If the site is of interest we can discuss');
+        L.push('terms, and we would cover the cost of gas treatment ourselves.');
+        L.push('');
+        L.push('Could you tell us who handles gas rights for this site?');
+        L.push('');
+        L.push('');
+        L.push('---');
+        L.push('Drafted from EPA LMOP' + (sd.lfid ? ' (LFID ' + sd.lfid + ')' : '') +
+               (sd.ghgrpId ? ' and GHGRP facility ' + sd.ghgrpId : '') +
+               '. Check every figure before sending.');
+        return L.join(NL);
+    }
+
     function worklistCsv() {
         var rows = worklistRows().map(function(r) {
             var out = {}, k;
@@ -1910,19 +2065,39 @@ var MapSourcing = (function() {
             if (!co && r.operator && typeof SiteCatalog !== 'undefined' && SiteCatalog.companyFor) {
                 co = SiteCatalog.companyFor(r.operator);
             }
+            var cand = (typeof ProspectStore !== 'undefined' && ProspectStore.get)
+                ? ProspectStore.get(r.id) : null;
+            var sd = (cand && cand.sourceDetail) || {};
+
+            // A landfill has no operatorId and its owner is never in the Alberta registry, so both
+            // lookups above miss and all five operator_* columns shipped blank on every landfill
+            // row. But data/site-links.json ALREADY links 204 of 279 EIA landfill-gas plants to
+            // their LMOP landfill by 1 km coordinate proximity -- no name matching -- and the EIA
+            // side carries a mailing address. That bridge was built, tested, and never crossed.
+            var via = null;
+            if (!co && cand) {
+                var m = mailingFor(cand);
+                if (m.co) { co = m.co; via = m.via ? m.via.id : null; }
+            }
             out.operator_address = co ? (co.address || '') : '';
             out.operator_city    = co ? (co.city || '') : '';
             out.operator_state   = co ? (co.state || '') : '';
             out.operator_zip     = co ? (co.zip || '') : '';
             out.operator_phone   = co ? (co.phone || '') : '';
+            // Never present an address reached sideways as if the prospect published it itself.
+            out.operator_address_via = via || '';
+
             // The counterparty who actually signs, where the filing distinguishes them from the
             // operator. Blank is not "the operator owns it" -- it is "no separate owner filed".
-            var cand = (typeof ProspectStore !== 'undefined' && ProspectStore.get)
-                ? ProspectStore.get(r.id) : null;
-            var sd = (cand && cand.sourceDetail) || {};
+            //
+            // Reads BOTH spellings. source-facility.js writes owners[] and ownership;
+            // source-landfill.js writes owner and ownershipType. Reading only the facility
+            // spelling is why these two columns were blank on all 1,908 landfills -- the data was
+            // there the whole time under a different key.
             out.owner_name = (Array.isArray(sd.owners) && sd.owners.length)
-                ? sd.owners.map(function(o) { return o.name; }).join(' | ') : '';
-            out.ownership  = sd.ownership || '';
+                ? sd.owners.map(function(o) { return o.name; }).join(' | ')
+                : (sd.owner || '');
+            out.ownership  = sd.ownership || sd.ownershipType || '';
             out.site_address = [sd.address, sd.city, sd.state, sd.zip].filter(Boolean).join(', ');
             return out;
         });
@@ -1931,7 +2106,8 @@ var MapSourcing = (function() {
         var cols = ['name', 'stage', 'status', 'operator', 'contact_name', 'contact_role',
                     'contact_email', 'contact_phone', 'contact_notes',
                     'operator_address', 'operator_city', 'operator_state', 'operator_zip',
-                    'operator_phone', 'owner_name', 'ownership', 'site_address',
+                    'operator_phone', 'operator_address_via', 'owner_name', 'ownership',
+                    'site_address',
                     'jurisdiction', 'usable_kw',
                     'development_stage', 'latitude', 'longitude', 'updated'];
         function cell(v) {
@@ -3735,13 +3911,25 @@ var MapSourcing = (function() {
 
             // The operator's own filing address. This is the deliverable: before it, the app
             // could identify 9,765 US plants and 4,080 companies and reach none of them.
-            if (coF && coF.address) {
-                var mail = [coF.address, coF.city, coF.state, coF.zip].filter(Boolean).join(', ');
+            //
+            // Falls back to a linked facility's address for landfills, which have no registry key
+            // of their own -- and says so on the row when it does, because an address reached
+            // through a coordinate link is a weaker claim than one the source published, and the
+            // whole point of separating sourced from inferred is that the reader can tell.
+            var mf = (coF && coF.address) ? { co: coF, via: null } : mailingFor(c);
+            var coM = mf.co;
+            if (coM && coM.address) {
+                var mail = [coM.address, coM.city, coM.state, coM.zip].filter(Boolean).join(', ');
                 html += '<div class="src-registry"><div class="src-reg-row">' +
                     '<span class="src-reg-k">Mailing address</span>' +
                     '<a class="src-reg-v" target="_blank" rel="noopener" ' +
                     'href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mail) + '">' +
                     esc(mail) + '</a></div></div>';
+                if (mf.via) {
+                    html += '<p class="src-note">Not published for this landfill. Taken from ' +
+                        esc(mf.via.name || 'a co-located power plant') + ', which EPA and EIA place ' +
+                        'at the same coordinates &mdash; so confirm it before you post anything.</p>';
+                }
             }
             if (addrParts.length) {
                 var addr = addrParts.join(', ');
@@ -3753,6 +3941,50 @@ var MapSourcing = (function() {
                     '<p class="src-note">The site\'s own postal address, not the owner\'s head office. ' +
                     'Useful for identifying the operating company and the local contact.</p>';
             }
+            // ---- The legal counterparty, from EPA GHGRP -------------------------------
+            //
+            // For a landfill this is the whole answer to "who do I write to". LMOP gives a
+            // free-text owner string; GHGRP gives the legal entity WITH its ownership share, so a
+            // jointly-held site shows as one, plus a complete address including the postcode that
+            // LMOP's own record was silently dropping.
+            //
+            // Reached by an exact integer join on the GHGRP id LMOP already publishes. It covers
+            // 1,754 of the 1,755 landfills that carry one, and 411 of the 462 shutdown projects
+            // with a generator still standing.
+            var gh = (typeof GhgrpContacts !== 'undefined') ? GhgrpContacts.forCandidate(c) : null;
+            if (gh) {
+                html += '<div class="src-registry">';
+                if (gh.parent) {
+                    html += '<div class="src-reg-row"><span class="src-reg-k">Legal owner</span>' +
+                        '<span class="src-reg-v"><strong>' + esc(gh.parent) + '</strong></span></div>';
+                }
+                var gline = GhgrpContacts.addressLine(gh);
+                if (gline) {
+                    html += '<div class="src-reg-row"><span class="src-reg-k">Write to</span>' +
+                        '<a class="src-reg-v" target="_blank" rel="noopener" ' +
+                        'href="https://www.google.com/maps/search/?api=1&query=' +
+                        encodeURIComponent(gline) + '">' + esc(gline) + '</a></div>';
+                }
+                if (gh.frsId) {
+                    // The FRS id is the way into ECHO for permit and violation history -- the
+                    // thing source-landfill.js permitFor() returns null for on every landfill.
+                    html += '<div class="src-reg-row"><span class="src-reg-k">EPA record</span>' +
+                        '<a class="src-reg-v" target="_blank" rel="noopener" ' +
+                        'href="https://echo.epa.gov/detailed-facility-report?fid=' +
+                        encodeURIComponent(gh.frsId) + '">ECHO facility report &rarr;</a></div>';
+                }
+                html += '</div>';
+                // Say plainly what this address is, because the honest answer differs by
+                // counterparty and getting it wrong wastes a letter.
+                html += '<p class="src-note">Legal owner and address as filed with the EPA ' +
+                    'greenhouse gas programme' + (gh.latestYear ? ' for ' + gh.latestYear : '') +
+                    '. This is the <strong>site</strong> address, not a head office &mdash; ' +
+                    'for a county or municipal authority a letter addressed to the named entity ' +
+                    'here usually reaches someone, but for a site held by a national waste ' +
+                    'company you need their corporate address instead. EPA publishes no phone ' +
+                    'number, email or named individual for any landfill.</p>';
+            }
+
             // Who actually owns it, as a separate role.
             html += ownershipHtml(sdc);
 
@@ -3958,6 +4190,9 @@ var MapSourcing = (function() {
             esc(contactOutcomeDateOf(saved) || '') + '"></div>' +
             '</div>' +
             '<div class="src-saverow"><button id="srcSave" class="src-savebtn">Save to my sites</button>' +
+            // Composes an addressed enquiry and puts it on the clipboard. Only offered where
+            // there is somewhere to send it -- an enquiry with no address is a blank page.
+            (draftableFor(c) ? '<button id="srcDraft" class="src-draftbtn">Draft enquiry</button>' : '') +
             '<span id="srcSaveMsg" class="src-note"></span></div>';
         html += '</div>';
 
@@ -4118,6 +4353,23 @@ var MapSourcing = (function() {
             exitFocus(true);
             applyFilters();
         });
+
+        // Wired BEFORE the early return below: srcSave is absent on some prospects, and an
+        // `if (!save) return` above this would take the draft button with it.
+        var draft = document.getElementById('srcDraft');
+        if (draft) {
+            draft.addEventListener('click', function() {
+                var cand = _selectedId ? ProspectStore.get(_selectedId) : null;
+                var text = cand ? draftEnquiry(cand) : null;
+                if (!text) { status('Nothing to draft — no counterparty address for this site.', '#fa4'); return; }
+                copyText(text).then(function(ok) {
+                    status(ok ? 'Enquiry copied — paste it into a letter or an email. Nothing was sent.'
+                              : 'Could not reach the clipboard. The draft is in the console instead.',
+                           ok ? '#8ac' : '#fa4');
+                    if (!ok) console.log(text);
+                });
+            });
+        }
 
         var save = document.getElementById('srcSave');
         if (!save) return;
@@ -4294,6 +4546,12 @@ var MapSourcing = (function() {
             // artifact, so every registered source contributes prospects to the same store.
             await ProspectStore.load();
             await loadMarket();
+            // Counterparty details for landfills. Deliberately OUTSIDE the try/catch's failure
+            // path -- load() swallows its own errors and warns, because a missing contact index
+            // must degrade to "no counterparty published" rather than taking down a page that
+            // ranks 19,397 prospects perfectly well without it. Awaited so the detail panel never
+            // renders a landfill before the lookup is available and silently shows nothing.
+            if (typeof GhgrpContacts !== 'undefined') await GhgrpContacts.load();
         } catch (e) {
             status('Could not load prospects: ' + e.message, '#f55');
             var l = document.getElementById('srcTableBody');
@@ -4310,15 +4568,22 @@ var MapSourcing = (function() {
                    errs.map(function(e) { return e.source; }).join(', '), '#f55');
         }
 
+        // Only the countries Ion operates in. The catalog still holds all 30,361 prospects and
+        // ProspectStore.countries() still reports every one of them -- this narrows the CONTROL to
+        // the scope, so the select is two entries rather than a list of eighty, most of which
+        // return nothing because SCOPE_ISO3 excludes them anyway. A select offering choices that
+        // silently yield zero results is worse than not offering them.
         var sel = document.getElementById('fCountry');
-        var list = ProspectStore.countries();
-        for (var i = 0; i < list.length; i++) {
+        var counts = {};
+        (ProspectStore.countries() || []).forEach(function(x) { counts[x.iso3] = x.count; });
+        SCOPE_ISO3.forEach(function(iso) {
             var o = document.createElement('option');
-            o.value = list[i].iso3;
-            o.textContent = countryName(list[i].iso3) + ' (' + list[i].count + ')';
+            o.value = iso;
+            // The count is the scope's own count, so it cannot promise rows the scope excludes.
+            o.textContent = countryName(iso) + (counts[iso] ? ' (' + fmtInt(counts[iso]) + ')' : '');
             sel.appendChild(o);
-        }
-        sel.value = 'CAN';                     // home market unless a previous search is restored
+        });
+        sel.value = '';                        // both countries; the scope is the default view
 
         // The baseline, snapshotted at exactly this moment: after every shipped default is in
         // place and before any saved search is restored over the top. hasNonDefaultFilters()
@@ -4328,7 +4593,7 @@ var MapSourcing = (function() {
         // happening at all. Snapshotting means this stays right if the shipped defaults change.
         captureFilterBaseline();
 
-        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp', 'fRegion', 'fRadius'].forEach(function(id) {
+        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             // The id, not the Event — reconcileGeo has to know WHICH of the two geographic
             // controls the user just moved to decide which one yields.

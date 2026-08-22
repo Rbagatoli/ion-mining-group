@@ -117,6 +117,11 @@ var ProspectStore = (function() {
             var c = list[i];
             if (f.onshoreOnly && c.offshore !== false) continue;
             if (f.iso3 && c.iso3 !== f.iso3) continue;
+            // The operating scope: a set of countries rather than a single one. Ion works in
+            // mainland USA and Canada, so this is applied whenever no single country is chosen.
+            // Kept as its own facet rather than folded into iso3 so that a caller asking for one
+            // country still means exactly that country, and so a test can exercise either alone.
+            if (f.iso3In && f.iso3In.length && f.iso3In.indexOf(c.iso3) < 0) continue;
             if (f.minKw !== undefined && f.minKw !== null && !(c.powerPotentialKw >= f.minKw)) continue;
             if (f.maxKw !== undefined && f.maxKw !== null && !(c.powerPotentialKw <= f.maxKw)) continue;
             if (f.minYearsSeen && !(c.yearsSeen >= f.minYearsSeen)) continue;

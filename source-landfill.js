@@ -162,6 +162,15 @@ var LandfillSource = (function() {
                 county: p.county,
                 city: p.city,
                 address: p.address,
+                // 1,897 of 1,908 rows carry a postcode. It was read from EPA, written to the
+                // artifact, shipped in the 1.5 MB payload -- and then dropped right here, because
+                // this list omitted one line. TWO consumers were already written to use it and
+                // degraded in silence: the contact panel's address block, and the outreach CSV's
+                // site_address column, which is the column that exists FOR a mail merge. Every
+                // landfill address it exported was undeliverable.
+                zip: p.zip,
+                // Carried since the adapter was written and read by nothing until now.
+                lfid: p.lfid,
                 ghgrpId: p.ghgrpId,
                 requiresGasTreatment: true
             },

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v335';
+const CACHE_NAME = 'ion-mining-v336';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -48,6 +48,10 @@ const ASSETS = [
   './site-links.js',
   './source-facility.js',
   './source-landfill.js',
+  // Not an adapter -- it decorates landfill prospects with the legal owner and a mailable
+  // address. data/ghgrp-contacts.json is deliberately NOT cached here, matching every other
+  // artifact: the data/ files are far too large to precache and are fetched on demand.
+  './ghgrp-contacts.js',
   './prospect-store.js',
   './site-model.js',
   './jurisdictions.js',
