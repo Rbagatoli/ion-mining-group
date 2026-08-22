@@ -11,14 +11,18 @@
    an element. A producer arriving from ionmininggroup.com sees one substance
    moving one way on every screen, because it is one piece of code.
 
-   WHAT USED TO BE HERE. A third part: a lattice across the top of the hero
-   where hashrate crystallised out of the arriving gas, with links knitting
-   between charged nodes and a scanline that sealed a row every nine to fifteen
-   seconds. It was the busiest thing on the site and it was on exactly one
-   backdrop out of thirteen, so the hero read as a different page from the rest
-   of the site. Removing it is what made them all the same — and it took the
-   node grid, the charge decay, the absorption test and the solve beat with it,
-   about 120 lines and ~1,400 live objects per frame on energy.html alone.
+   WHAT USED TO BE HERE. A third part: a lattice across the top, where hashrate
+   crystallised out of the arriving gas, with links knitting between charged
+   nodes and a scanline that sealed a row every nine to fifteen seconds.
+
+   It ran on EIGHT of the thirteen canvases — the hero and all seven backdrops
+   behind the engineering drawings. Only the five page headers were ever without
+   it, via a data-mode="rise" attribute. So the site was split down the middle
+   between two different animations, which is what "all the backgrounds look the
+   same" was asking about. Removing it took the node grid, the charge decay, the
+   absorption test and the solve beat with it: about 120 lines, and 1,006 live
+   node objects per frame on energy.html alone (2 laid-out drawings at 41x7 plus
+   2 in the hidden fuel pane at 36x6 — the header contributed none).
 
    No dependencies. Glow is layered low-alpha rectangles, never ctx.shadowBlur —
    shadowBlur is by far the most expensive thing you can do on a canvas this

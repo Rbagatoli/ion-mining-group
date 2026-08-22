@@ -127,9 +127,9 @@
             var P = particles[i];
             P.y += P.vy * dt;
             P.x += Math.sin(P.y * P.drift + P.phase) * P.amp * dt;
-            /* Off the top or out the side — recycle. In the hero a particle can
-               also be absorbed by the lattice; there is nothing to absorb it
-               here. */
+            /* Off the top or out the side — recycle. A particle could once also
+               be absorbed by the hero's lattice; nothing absorbs one partway up
+               in either file now, so gas simply leaves the top. */
             if (P.y < -4 || P.x < -20 || P.x > w + 20) spawn(P, false);
         }
     }
@@ -145,10 +145,11 @@
         for (var p = 0; p < particles.length; p++) {
             var Q = particles[p];
             if (Q.y > sourceY || Q.y < 0) continue;
-            /* 0 at the source, 1 at the top of the viewport. In the hero this
-               is measured to the lattice; with no lattice the whole rise is the
-               ramp, so gas cools over the full height instead of over the lower
-               half. */
+            /* 0 at the source, 1 at the top of the viewport. Measured over the
+               whole rise, so the orange-to-platinum ramp is gradual all the way
+               up rather than finishing in a hot band near the bottom. This was
+               once measured to the hero's lattice; the site computes the
+               identical expression now. */
             var climb = (sourceY - Q.y) / Math.max(1, sourceY);
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
             var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);

@@ -146,11 +146,15 @@ ok(css.indexOf('.hero-zone > .wrap { position: relative; z-index: 1; }') >= 0,
 
 /* ---------- 10. One field, thirteen canvases ----------
 
-   The hero used to run a third part the other twelve backdrops did not: a
-   lattice across its top where hashrate crystallised out of the arriving gas,
-   plus the links between charged nodes and a scanline sealing a row every nine
-   to fifteen seconds. It made the home page read as a different site from every
-   other page, so it is gone and every backdrop is now the same animation.
+   There used to be a third part: a lattice where hashrate crystallised out of
+   the arriving gas, plus the links between charged nodes and a scanline sealing
+   a row every nine to fifteen seconds.
+
+   It ran on EIGHT of the thirteen canvases — the hero and all seven backdrops
+   behind the drawings — and only the five page headers opted out, through a
+   data-mode="rise" attribute. The site was therefore split between two
+   animations, which is what "all the backgrounds look the same" was about. It
+   is gone from all of them.
 
    Two things have to hold for "the same" to keep meaning anything, and neither
    is visible from reading one file. */
@@ -164,7 +168,22 @@ ok(css.indexOf('.hero-zone > .wrap { position: relative; z-index: 1; }') >= 0,
  'nodeAt', 'nodes', 'latticeH', 'solveAt', 'riseOnly', 'data-mode'].forEach(n => {
     ok(code.indexOf(n) < 0, '  no lattice: ' + n + ' is absent from hero-anim.js');
 });
-ok(!/data-mode/.test(html), '  and no canvas asks for a mode any more');
+/* The attribute has to be gone from the FIVE PAGES THAT CARRIED IT. Checking
+   index.html for it — which is what this did at first — is vacuous: the hero
+   canvas never had a data-mode, so that assertion passed identically before the
+   attribute was removed and would pass again if all five came back.
+
+   Checked per canvas rather than per file, because calculator.html legitimately
+   uses data-mode on the machines/energy toggle buttons and map.html does the
+   same on the root app's map switch. A file-level grep here would either fail
+   on those or, worse, be loosened until it stopped catching anything. */
+['index', 'energy', 'hosting', 'calculator', 'hardware', 'contact'].forEach(p => {
+    const src = fs.readFileSync(D + p + '.html', 'utf8');
+    const canvases = src.match(/<canvas[^>]*anim-field[^>]*>/g) || [];
+    ok(canvases.length > 0 && canvases.every(c => c.indexOf('data-mode') < 0),
+       '  no field canvas on ' + p + '.html asks for a mode',
+       canvases.length + ' canvas(es)');
+});
 
 /* The one line where deleting a lattice name required substituting a VALUE
    rather than removing code: the first build scattered particles between the
@@ -174,16 +193,31 @@ ok(!/data-mode/.test(html), '  and no canvas asks for a mode any more');
 ok(/P\.y = scatter \? rand\(0, sourceY\)/.test(code),
    '  the first build scatters over the whole box, not from a lattice line');
 
-/* (b) ONE opacity, in one place. Three selectors used to disagree — 0.35 hero,
-   0.55 behind the drawings, 0.85 on the headers — each argued for separately
-   and each true of a different animation. They cannot disagree again without
-   this failing. */
+/* (b) ONE opacity, in one place. Three selectors used to disagree — 0.60 on the
+   hero, 0.55 behind the drawings, 0.85 on the headers — each argued for
+   separately and each true of a different animation.
+
+   Counted over EVERY rule whose selector mentions .anim-field, not just the
+   modifier classes. Matching /\.anim-field--\w+/ was the obvious version and it
+   has a hole big enough to drive the old design back through: a contextual
+   override like `.hero-zone .anim-field { opacity: 0.5 }` reinstates a
+   per-context brightness and never names a modifier at all.
+
+   Comments stripped first, or the block above this — which lists all three
+   historical values while explaining why they are gone — counts as three rules
+   and fails the assertion it is documenting. */
+const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '');
+const opacityRules = (cssCode.match(/[^{}]*\.anim-field[^{}]*\{[^}]*\}/g) || [])
+    .filter(r => /opacity\s*:/.test(r))
+    .map(r => r.slice(0, r.indexOf('{')).trim());
+ok(opacityRules.length === 1,
+   '  exactly one rule sets a field opacity',
+   opacityRules.length ? opacityRules.join(' | ') : 'none — the field would be invisible');
+ok(opacityRules[0] === '.anim-field',
+   '  and it is the base rule, so all thirteen get the same one',
+   opacityRules[0]);
 const fieldOp = (fRule.match(/opacity:\s*([0-9.]+)/) || [])[1];
 ok(!!fieldOp, '  .anim-field carries the field opacity itself', 'opacity ' + fieldOp);
-const modOp = css.match(/\.anim-field--\w+[^{]*\{[^}]*opacity/g) || [];
-ok(modOp.length === 0,
-   '  and no modifier class overrides it',
-   modOp.length ? modOp.join(' | ') : 'none — hero, head and dg are one field');
 
 /* The modifiers survive as markers rather than styles, and two suites identify
    canvases by them, so they must not be tidied out of the markup. */

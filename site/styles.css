@@ -572,12 +572,15 @@ p + p { margin-top: 16px; }
    that is not laid out yet — hero-anim.js measures the real one, because a
    fixed size stretched to fill turned every 1px particle into a 2-3px smear.
 
-   ONE OPACITY, ALL THIRTEEN. This used to be three values: 0.35 on the hero,
+   ONE OPACITY, ALL THIRTEEN. This used to be three values: 0.60 on the hero,
    0.55 behind the drawings, 0.85 on the headers, each argued for separately.
-   They are one value because the fields are now one animation — the hero's
-   lattice is gone, so there is no longer a busier backdrop needing to be held
-   back, and "all the backgrounds look the same" is not achievable while three
-   selectors disagree about brightness.
+   (The hero's was 0.35 for most of its life and had just been raised to 0.60
+   when the lattice still needed holding back — the number that shipped is the
+   one that matters here.) They are one value because the fields are now one
+   animation: the lattice is gone from the hero and from the seven drawing
+   backdrops, so there is no longer a busier field needing to be held back, and
+   "all the backgrounds look the same" is not achievable while three selectors
+   disagree about brightness.
 
    The modifier classes below still exist and no longer carry any style. They
    are markers for what a canvas sits behind, and pad-suite.js and hero-suite.js
@@ -599,9 +602,10 @@ p + p { margin-top: 16px; }
    page a counterparty lands on from it.
 
    WHAT IT COSTS BEHIND THE DRAWINGS, which is where 0.85 was expected to be too
-   hot and measurably is not. The worry is real in form: a drawing's faintest ink
-   is rgba(229,228,226,0.13) at 0.5px, translucent light laid over whatever the
-   field leaves underneath, so lifting the ground under it should cost contrast.
+   hot and measurably is not. The worry is real in form: a drawing's faintest
+   STROKE is rgba(229,228,226,0.13) at 0.5px — its faintest ink of any kind is
+   .dg-ground's 0.04 fill — translucent light laid over whatever the field
+   leaves underneath, so lifting the ground under it should cost contrast.
 
    Measured off the canvas's own pixels across the band the drawing occupies —
    not derived from the alphas, which is what made it look dangerous. Coverage is

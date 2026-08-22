@@ -301,6 +301,18 @@ console.log('\n=== it is the hero rise, and only the rise ===');
     var gas = fs.readFileSync(path.join(ROOT, 'portal', 'gas-field.js'), 'utf8');
     var hero = fs.readFileSync(path.join(ROOT, 'site', 'hero-anim.js'), 'utf8');
 
+    /* Comments stripped before the constants are compared, and this is the whole
+       point of the section rather than a detail. Both files describe their own
+       constants at length in prose — "the rule asks for 586 across the hero",
+       "alpha 0.14 + (1 - climb) * 0.5" — so matched against the raw text, a file
+       could delete the code and keep the sentence about it, and every row below
+       would still pass. The table is supposed to prove the two animations ARE
+       the same, so it has to read what runs. */
+    var stripped = function (s) {
+        return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    };
+    var gasCode = stripped(gas), heroCode = stripped(hero);
+
     var SHARED = [
         ['the platinum ink', "'229,228,226'"],
         ['the hot orange', "'247,147,26'"],
@@ -315,8 +327,8 @@ console.log('\n=== it is the hero rise, and only the rise ===');
         ['the haze flicker', 'Math.sin(t * 3.1) * 0.012']
     ];
     SHARED.forEach(function (pair) {
-        ok(pair[0] + ' matches the hero',
-           gas.indexOf(pair[1]) >= 0 && hero.indexOf(pair[1]) >= 0, pair[1]);
+        ok(pair[0] + ' matches the site',
+           gasCode.indexOf(pair[1]) >= 0 && heroCode.indexOf(pair[1]) >= 0, pair[1]);
     });
 
     /* The lattice, which this file never had and the site no longer has either.
@@ -325,12 +337,9 @@ console.log('\n=== it is the hero rise, and only the rise ===');
        Checked in both files now: site/hero-anim.js dropped it so that every
        backdrop on the site would be this same animation, and the cheap way to
        undo that by accident is to let one of the two grow it back. */
-    var stripped = function (s) {
-        return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    };
     ['nodes', 'lattice', 'NODE_GAP', 'LINK_AT', 'solve'].forEach(function (gone) {
-        ok('no lattice in the portal field: ' + gone, stripped(gas).indexOf(gone) < 0);
-        ok('  nor in the site field: ' + gone, stripped(hero).indexOf(gone) < 0);
+        ok('no lattice in the portal field: ' + gone, gasCode.indexOf(gone) < 0);
+        ok('  nor in the site field: ' + gone, heroCode.indexOf(gone) < 0);
     });
 
     /* THE ONE INTENDED DIFFERENCE, so that "the same animation" stays a claim
@@ -346,9 +355,9 @@ console.log('\n=== it is the hero rise, and only the rise ===');
        If a third value ever appears, or these two converge, it should be because
        somebody decided to — not because a constant got copied across. */
     ok('the site burns its source line on the bottom edge',
-       /sourceY = h - 2;/.test(stripped(hero)));
+       /sourceY = h - 2;/.test(heroCode));
     ok('and the portal puts its emitters below the fold',
-       /sourceY = h \+ 12;/.test(stripped(gas)));
+       /sourceY = h \+ 12;/.test(gasCode));
 
     /* shadowBlur is the single most expensive thing available on a busy canvas.
        hero-anim.js says so in its header and layers rectangles instead — and so
