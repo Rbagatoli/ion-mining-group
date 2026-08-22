@@ -161,7 +161,54 @@ console.log('\n=== acquisition rank inverts it ===');
     eq('on acquisition rank it is first', statusOf(topBy(combined, 1)[0]), 'Shutdown');
 })();
 
-// ---- 4. what must not have changed -------------------------------------------------------------
+// ---- 4. the counterparty classifier, pinned by NAME ---------------------------------------------
+//
+// This section exists because the whole suite stayed green through a defect that misclassified
+// 374 rows — the single most common owner in the dataset. Counts alone did not catch it: the
+// rows moved between two buckets that both still had plausible totals. So these assertions name
+// the actual companies, which is the only thing that would have failed.
+
+console.log('\n=== the national majors are identified by name, not by count ===');
+(function() {
+    function typeOf(owner) {
+        var r = ALL.filter(function(c) { return c.operator === owner; });
+        return { n: r.length, major: r.filter(function(c) { return c.counterpartyType === 'landfill_major'; }).length };
+    }
+
+    // LMOP rebranded. It writes "WM", not "Waste Management", and a substring regex built from
+    // the old name matched none of them.
+    var wm = typeOf('WM');
+    ok('WM is the largest owner in the dataset', wm.n > 350, wm.n + ' rows');
+    ok('and is classified as a national major', wm.major >= wm.n - 5,
+       wm.major + ' of ' + wm.n + ' — the remainder are the publicly-owned ones');
+
+    var rep = typeOf('Republic Services, Inc.');
+    ok('Republic Services likewise', rep.major === rep.n && rep.n > 200, rep.n + ' rows');
+
+    // Two letters cannot be substring-matched. These are the nine rows a /wm/i substring would
+    // have swept up, and every one of them is a municipal body.
+    var swept = ALL.filter(function(c) {
+        return c.counterpartyType === 'landfill_major' &&
+               /authority|district|county|city of|commission|township|borough|parish|municipal/i.test(c.operator || '');
+    });
+    eq('and no municipal body is called a major', swept.length, 0);
+
+    // A landfill a city co-owns with a major is not a pure major. Joint holdings must fall through
+    // to the municipal branch, which is the better counterparty and scores higher.
+    var joint = ALL.filter(function(c) { return /;/.test(c.operator || '') && /city of|county/i.test(c.operator || ''); });
+    if (joint.length) {
+        ok('a jointly-held landfill is not scored as a major',
+           joint.every(function(c) { return c.counterpartyType !== 'landfill_major'; }),
+           joint.length + ' joint holdings');
+    }
+
+    // The scoring consequence, asserted at the source rather than inferred.
+    var S = SiteOpportunity.settings().counterpartyScores;
+    ok('a municipal counterparty outranks a national major', S.landfill_public > S.landfill_major);
+    ok('and an independent private operator outranks one too', S.landfill_private > S.landfill_major);
+})();
+
+// ---- 5. what must not have changed -------------------------------------------------------------
 
 console.log('\n=== the rest of the model is undisturbed ===');
 (function() {

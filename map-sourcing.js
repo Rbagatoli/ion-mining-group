@@ -1835,6 +1835,7 @@ var MapSourcing = (function() {
 
     function renderResults() {
         if (_resView === 'table') renderTable();
+        else if (_resView === 'owners') renderOwners();
         else renderList();
     }
 
@@ -1896,6 +1897,133 @@ var MapSourcing = (function() {
         listEl.innerHTML = html;
     }
 
+    // ---- Owner rollup -------------------------------------------------------------------
+    //
+    // The same _filtered result set, grouped by who owns it. This is the third UNIT of the
+    // results, not a third layout: the list and the table both answer "which site", and neither
+    // answers "who do I call", which is the question that actually starts a deal.
+    //
+    // Measured on the shut-down landfill targets the acquisition preset surfaces: 20 owners hold
+    // 61% of them, and Republic Services (31 sites, 64.3 MW) plus WM (29 sites, 56.8 MW) hold 60
+    // of 189 between them. A third of the entire target pool is two phone calls. Working that as
+    // 189 separate approaches is the wrong shape of effort.
+    //
+    // GROUPING IS BY THE EXACT PUBLISHED STRING, and deliberately so. This looks like the banned
+    // name join and is not one: a name JOIN matches a name in one dataset against a name in a
+    // DIFFERENT dataset and infers they are the same entity, which is what got SAND POINT matched
+    // to Trident Seafoods. This is a group-by on one dataset's own field -- LMOP's own owner
+    // string against itself. No inference, nothing merged.
+    //
+    // The consequence is that "WM" and "Waste Management, Inc." would sit in separate rows if
+    // LMOP published both. That is left alone ON PURPOSE. Merging them would be exactly the
+    // inference the ban exists to prevent, and a fragmented row is visibly wrong to a reader
+    // while a wrongly merged one is invisible.
+    function ownerGroups(rows) {
+        // A plain object keyed by owner name would resolve 'constructor', 'toString' and
+        // '__proto__' up Object.prototype, so a landfill owned by a company called Constructor
+        // would land in a group whose .rows is a function. Object.create(null) has no prototype
+        // to walk into. The same trap site-opportunity.js guards with hasOwnProperty.
+        var byName = Object.create(null), order = [];
+        // Prospects with no published owner are held aside rather than given a sentinel key --
+        // any sentinel is a string a real owner could theoretically be called.
+        var anon = null;
+        for (var i = 0; i < rows.length; i++) {
+            var c = rows[i].candidate;
+            var op = operatorRecord(c);
+            var key = (op && op.operator) ? op.operator : null;
+            var g;
+            if (key === null) {
+                if (!anon) anon = { name: null, rows: [], kw: 0, states: {}, best: null, type: null };
+                g = anon;
+            } else {
+                if (!byName[key]) {
+                    byName[key] = { name: key, rows: [], kw: 0, states: {}, best: null, type: null };
+                    order.push(key);
+                }
+                g = byName[key];
+            }
+            g.rows.push(rows[i]);
+            // null capacity is unmeasured, so it adds nothing rather than adding zero. The
+            // count and the MW total are therefore different denominators, and the row says so.
+            if (c.powerPotentialKw !== null && c.powerPotentialKw !== undefined) g.kw += c.powerPotentialKw;
+            var st = (c.sourceDetail && c.sourceDetail.state) || c.iso3 || null;
+            if (st) g.states[st] = 1;
+            var comb = combinedFor(c);
+            if (comb !== null && (g.best === null || comb > g.best)) g.best = comb;
+            if (!g.type && c.counterpartyType) g.type = c.counterpartyType;
+        }
+        var out = [];
+        var all = [];
+        for (var n = 0; n < order.length; n++) all.push(byName[order[n]]);
+        if (anon) all.push(anon);
+        for (var j = 0; j < all.length; j++) {
+            var v = all[j];
+            v.stateCount = 0;
+            for (var sKey in v.states) if (Object.prototype.hasOwnProperty.call(v.states, sKey)) v.stateCount++;
+            v.measured = v.rows.filter(function(r) {
+                return r.candidate.powerPotentialKw !== null && r.candidate.powerPotentialKw !== undefined;
+            }).length;
+            out.push(v);
+        }
+        // Ranked on total capacity, which is the quantity one conversation actually puts on the
+        // table -- it weights how many sites AND how big they are, where a plain count does not.
+        // Owners with no published name sort last regardless: they are not a counterparty, they
+        // are a gap in the data, and putting them in the ranking would imply otherwise.
+        out.sort(function(a, b) {
+            if ((a.name === null) !== (b.name === null)) return a.name === null ? 1 : -1;
+            if (b.kw !== a.kw) return b.kw - a.kw;
+            return b.rows.length - a.rows.length;
+        });
+        return out;
+    }
+
+    function renderOwners() {
+        var listEl = document.getElementById('srcList');
+        var countEl = document.getElementById('srcCount');
+        if (!listEl) return;
+
+        // Grouped over the WHOLE filtered set, not the capped slice the list shows. A rollup that
+        // silently covered only the top 250 would understate every large owner by exactly the
+        // amount that makes them worth calling.
+        var groups = ownerGroups(_filtered);
+        var named = groups.filter(function(g) { return g.name !== null; });
+
+        if (countEl) {
+            countEl.textContent = fmtInt(named.length) + ' counterpart' + (named.length === 1 ? 'y' : 'ies') +
+                ' across ' + fmtInt(_filtered.length) + ' prospect' + (_filtered.length === 1 ? '' : 's');
+        }
+        var focusEl = document.getElementById('srcFocusOut');
+        if (focusEl) {
+            focusEl.innerHTML = _focused
+                ? '<button type="button" class="src-unfocus" id="srcUnfocus">&larr; All prospects</button>'
+                : '';
+        }
+        if (!_filtered.length) {
+            listEl.innerHTML = emptyStateHtml('No prospects match.');
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < groups.length; i++) {
+            var g = groups[i];
+            var anon = g.name === null;
+            var meta = fmtInt(g.rows.length) + ' site' + (g.rows.length === 1 ? '' : 's') +
+                       (g.stateCount ? ' &middot; ' + g.stateCount + ' state' + (g.stateCount === 1 ? '' : 's') : '') +
+                       (g.best === null ? '' : ' &middot; best rank ' + Math.round(g.best));
+            html += '<div class="src-ownerrow' + (anon ? ' dead' : '') + '"' +
+                (anon ? '' : ' data-owner="' + esc(g.name) + '"') + '>' +
+                '<div><div class="src-ownername">' +
+                (anon ? '<span class="src-gap">owner not published</span>' : esc(g.name)) +
+                '</div><div class="src-ownermeta">' + meta + '</div></div>' +
+                '<div><div class="src-ownermw">' + fmtKw(g.kw || null) + '</div>' +
+                // Says which denominator the MW figure came from whenever it is not all of them.
+                '<div class="src-ownersites">' +
+                (g.measured === g.rows.length ? 'total' : 'of ' + g.measured + ' measured') +
+                '</div></div></div>';
+        }
+        listEl.innerHTML = html;
+    }
+
     // Is the ranked table reachable at all? widget-settings.js writes style.display='none' INLINE
     // on a widget the user has hidden, and inline beats any stylesheet rule. Hide "Ranked
     // prospects" and then pick the Table tab and you would get a map with no results anywhere and
@@ -1921,13 +2049,15 @@ var MapSourcing = (function() {
         } else {
             bits.push(_resView === 'table'
                 ? 'every column, sortable'
+                : _resView === 'owners'
+                ? 'one row per counterparty — click an owner to see only their sites'
                 : 'a quick scan beside the map — switch to Table for scores, cost and stage');
         }
         note.textContent = bits.join(' · ');
     }
 
     function setResultsView(v, skipRender) {
-        _resView = (v === 'table') ? 'table' : 'list';
+        _resView = (v === 'table' || v === 'owners') ? v : 'list';
         document.body.setAttribute('data-res-view', _resView);
         var bar = document.getElementById('resViews');
         if (bar) {
@@ -1984,10 +2114,40 @@ var MapSourcing = (function() {
                 return;
             }
             if (e.target.closest && e.target.closest('.pf-check')) return;
+            // Owner rows render into this same container, so they are caught by this same
+            // listener rather than a second one that would have to be re-bound on every paint.
+            var owner = e.target.closest ? e.target.closest('.src-ownerrow[data-owner]') : null;
+            if (owner) {
+                drillIntoOwner(owner.getAttribute('data-owner'));
+                return;
+            }
             var row = e.target.closest('.src-row[data-id]');
             if (!row) return;
             select(row.getAttribute('data-id'));
         });
+    }
+
+    // Clicking a counterparty answers "show me everything they have" -- which is the whole point
+    // of the rollup, and is already a supported state: _companyFilter drives the map, the list,
+    // the table and the summary tiles at once, and announces itself in the Filtering by bar with
+    // its own clear button.
+    //
+    // _companyFilterId is cleared rather than looked up. It is the exact-key path used where a
+    // source publishes an operator id; LMOP publishes none, so leaving a stale id set would make
+    // applyFilters match on that id and silently return nothing.
+    //
+    // The view switches to the list because the rollup's own answer is a list of sites, and
+    // staying in Owners would leave you looking at a single-row rollup of the thing you just
+    // clicked. skipRender avoids painting the list against the pre-filter result set first.
+    function drillIntoOwner(name) {
+        if (!name) return;
+        _ignoreNextDocClick = true;
+        _companyFilter = name;
+        _companyFilterId = null;
+        setResultsView('list', true);
+        applyFilters();
+        status('Showing every prospect owned by ' + name +
+               ' — clear the Operator filter to go back to all counterparties.', '#8ac');
     }
 
     // ---- Ranked table --------------------------------------------------------------------
@@ -4063,7 +4223,10 @@ var MapSourcing = (function() {
         // a better name.
         var savedRes = null;
         try { savedRes = localStorage.getItem(RESVIEW_KEY); } catch (e) {}
-        setResultsView(savedRes === 'table' ? 'table' : 'list', true);
+        // Passed through rather than re-checked here. setResultsView is the one validator, so a
+        // fourth view added later restores itself; the old two-way ternary here would have
+        // silently dropped anything it did not already know about back to the list.
+        setResultsView(savedRes, true);
         applyFilters();
         // The detail panel is painted from the restored selection. applyFilters had to run first
         // so the table exists for the row to be highlighted in.

@@ -181,10 +181,29 @@ var LandfillSource = (function() {
     // Requiring ownershipType === Private kills them structurally rather than by adding more
     // words to a regex. Measured: 447 by name, 407 once both signals must agree.
     var MAJOR_NAME = /waste management|republic services|waste connections|gfl environmental|advanced disposal|casella/i;
+
+    // The regex above missed the largest counterparty in the dataset. LMOP does not write "Waste
+    // Management" any more -- it writes the rebranded "WM", on 374 of 1,908 rows, MORE than
+    // Republic Services' 284. Every one of them was scoring as an ordinary private operator.
+    //
+    // "WM" is two letters and cannot go in the substring regex. Measured, a /wm/i substring also
+    // matches nine municipal bodies -- Brazos Valley SWMA, Chemung County SWMD, Black Hawk County
+    // SWM Commission, and every "Solid Waste Management Authority" -- which is precisely the
+    // false-positive class the two-signal rule exists to prevent, arriving through the front door.
+    //
+    // So it is an EXACT full-string match, which is safe at any length. Verified against the
+    // artifact: "WM" occurs as that exact string and in no other form, so this needs no variants.
+    // The joint holdings like "City of Fitchburg, MA; WM" deliberately do NOT match -- a landfill
+    // a city co-owns is not a pure major, and MUNICIPAL_NAME would veto it regardless.
+    var MAJOR_EXACT = { 'wm': 1 };
     var MUNICIPAL_NAME = /authority|district|county|city of|commission|township|borough|parish|municipal|state of/i;
     function counterpartyFor(p) {
         var owner = p.owner || '';
-        if (MAJOR_NAME.test(owner) && !MUNICIPAL_NAME.test(owner) &&
+        // hasOwnProperty, not MAJOR_EXACT[key] -- an owner named "constructor" or "toString"
+        // would otherwise resolve up Object.prototype to a function and test as truthy.
+        var exact = Object.prototype.hasOwnProperty.call(
+            MAJOR_EXACT, String(owner).trim().toLowerCase());
+        if ((exact || MAJOR_NAME.test(owner)) && !MUNICIPAL_NAME.test(owner) &&
             /private/i.test(p.ownershipType || '')) {
             return 'landfill_major';
         }
