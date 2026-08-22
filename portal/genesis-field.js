@@ -31,6 +31,13 @@
        same rule hash-field.js states, and it is what stops a backdrop from
        depending on the layout it sits behind.
 
+     - THE THREE SHEETS ARE NOW THREE SIZES, and every row is snapped to a whole
+       pixel. In the app all three drew at one font size, one leading and one
+       x-origin — fine at 1-2% alpha under opaque cards, and badly wrong here:
+       near-identical glyph grids landing a few pixels apart read as doubled,
+       smeared type, and fractional row positions antialiased what was left. It
+       looked out of focus. See the SHEETS table and the note on Math.round.
+
    MOTION IS OPTIONAL, THE PICTURE IS NOT. prefers-reduced-motion draws one
    composed frame and starts no timer — somebody who asked the operating system
    to stop things moving still gets the field, just still. */
@@ -53,11 +60,35 @@
         '0b8d578a4c702b6bf11d5fac00000000';
 
     var isMobile = Math.min(window.innerWidth, window.innerHeight) < 768;
-    var FONT_SIZE = isMobile ? 10 : 11;
-    var LINE_HEIGHT = isMobile ? 14 : 15;
-    var CHAR_WIDTH = isMobile ? 6.6 : 7.3;
-    var SHEET_COUNT = 3;
     var FRAME_MS = isMobile ? 40 : 25;
+
+    /* ---------- three sheets, three SIZES ----------
+
+       The app version drew all three at one font size, one line height and one
+       x-origin, differing only in scroll offset and speed. On a dark panel under
+       opaque cards at 1-2% alpha that was fine. Full-bleed at 2-4% it is not:
+       three near-identical grids of glyphs land a few pixels apart and the eye
+       reads the overlap as doubled, smeared type. It looks like the hex is out
+       of focus, and it was the first thing anyone noticed.
+
+       Overlap is unavoidable with layers. What is avoidable is layers that look
+       the SAME. Give each its own size, leading and horizontal origin and the
+       overlap stops reading as one blurred thing and starts reading as three
+       things at different distances -- which is what the different speeds were
+       always trying to say.
+
+       Small, slow and faint reads as far away; large, fast and brighter as
+       near. That ordering is the whole illusion, so the three rows below move
+       together or not at all. */
+    var SHEETS = isMobile ? [
+        { font:  8, line: 11, char: 5.3, speed:  8, alpha: 0.020, x: 0 },
+        { font: 10, line: 14, char: 6.6, speed: 20, alpha: 0.028, x: 3 },
+        { font: 12, line: 17, char: 7.9, speed: 32, alpha: 0.034, x: 7 }
+    ] : [
+        { font:  9, line: 13, char: 6.0, speed:  8, alpha: 0.020, x: 0 },
+        { font: 11, line: 15, char: 7.3, speed: 20, alpha: 0.028, x: 4 },
+        { font: 13, line: 18, char: 8.6, speed: 32, alpha: 0.034, x: 9 }
+    ];
 
     /* Platinum. All type in this palette is platinum, and at these alphas an
        orange would be invisible anyway — the same reasoning the app version
@@ -71,23 +102,24 @@
     function build() {
         var w = window.innerWidth, h = window.innerHeight;
         var dpr = window.devicePixelRatio || 1;
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
         canvas.style.width = w + 'px';
         canvas.style.height = h + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        var charsPerRow = Math.ceil(w / CHAR_WIDTH) + 4;
-        var rowsNeeded = Math.ceil(h / LINE_HEIGHT) + 4;
-        /* Double height, so scrolling can wrap by half without a seam. */
-        var totalRows = rowsNeeded * 2;
-
         sheets = [];
-        for (var s = 0; s < SHEET_COUNT; s++) {
+        for (var s = 0; s < SHEETS.length; s++) {
+            var spec = SHEETS[s];
+            var charsPerRow = Math.ceil(w / spec.char) + 4;
+            var rowsNeeded = Math.ceil(h / spec.line) + 4;
+            /* Double height, so scrolling can wrap by half without a seam. */
+            var totalRows = rowsNeeded * 2;
+
             var rows = [];
             /* Each sheet starts at a different offset into the block, so the
-               three are visibly different text rather than the same wall
-               three times. */
+               three are visibly different text rather than the same wall three
+               times. */
             var pos = Math.floor(Math.random() * GENESIS_HEX.length);
             for (var r = 0; r < totalRows; r++) {
                 var row = '';
@@ -100,22 +132,17 @@
                 }
                 rows.push(row);
             }
+
             sheets.push({
                 rows: rows,
                 totalRows: totalRows,
                 visibleRows: rowsNeeded,
-                scrollY: Math.random() * totalRows * LINE_HEIGHT,
-                /* 8, 20, 32 px/s. Different enough to read as depth, slow
-                   enough that nothing demands attention. */
-                speed: 8 + s * 12,
-                /* 0.022 / 0.031 / 0.040.
-                   Lifted from the app's 0.010/0.016/0.022, but only about
-                   double rather than triple. The first attempt went to
-                   0.030-0.055 and the field stopped being a backdrop: at full
-                   bleed it covered a third of the pixels in a corner sample and
-                   read as texture over the form rather than behind it. The
-                   app's own alphas were too faint here, these are the middle. */
-                opacity: 0.022 + s * 0.009
+                scrollY: Math.random() * totalRows * spec.line,
+                line: spec.line,
+                font: spec.font + 'px monospace',
+                speed: spec.speed,
+                opacity: spec.alpha,
+                x: spec.x
             });
         }
     }
@@ -123,26 +150,35 @@
     function draw(dt) {
         var w = window.innerWidth, h = window.innerHeight;
         ctx.clearRect(0, 0, w, h);
-        ctx.font = FONT_SIZE + 'px monospace';
         ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
 
         for (var s = 0; s < sheets.length; s++) {
             var S = sheets[s];
             S.scrollY -= S.speed * dt;
-            var sheetHeight = S.totalRows * LINE_HEIGHT;
+            var sheetHeight = S.totalRows * S.line;
             /* Wrap by half the sheet, which is exactly one screen's worth, so
                the rows that come back are the ones that just left. */
             if (S.scrollY < 0) S.scrollY += sheetHeight / 2;
 
+            ctx.font = S.font;
             ctx.fillStyle = INK + S.opacity.toFixed(4) + ')';
-            var startRow = Math.floor(S.scrollY / LINE_HEIGHT);
-            var offsetY = -(S.scrollY % LINE_HEIGHT);
+
+            var startRow = Math.floor(S.scrollY / S.line);
+            var offsetY = -(S.scrollY % S.line);
 
             for (var r = 0; r <= S.visibleRows; r++) {
                 var idx = (startRow + r) % S.totalRows;
-                var y = offsetY + r * LINE_HEIGHT;
-                if (y < -LINE_HEIGHT || y > h + LINE_HEIGHT) continue;
-                ctx.fillText(S.rows[idx], 0, y);
+                var y = offsetY + r * S.line;
+                if (y < -S.line || y > h + S.line) continue;
+                /* SNAPPED TO A WHOLE PIXEL. offsetY is fractional by
+                   construction -- it is a scroll position modulo a line height --
+                   so without this every glyph lands on a half pixel and the
+                   rasteriser antialiases it across two rows. At 2% alpha that
+                   antialiasing IS the glyph, and the result reads as genuinely
+                   out of focus rather than faint. Rounding costs a sub-pixel
+                   stutter nobody can see at 8-32 px/s and buys crisp type. */
+                ctx.fillText(S.rows[idx], S.x, Math.round(y));
             }
         }
     }
@@ -192,7 +228,11 @@
     window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-            isMobile = Math.min(window.innerWidth, window.innerHeight) < 768;
+            /* SHEETS is chosen once at load and deliberately not re-picked here.
+               Crossing 768px mid-session would swap all three sizes at once and
+               the field would visibly jump; the metrics differ by two or three
+               pixels and are not worth that. build() re-fits the rows to the new
+               viewport either way, which is the part that actually matters. */
             build();
             draw(0);
         }, 200);
