@@ -64,13 +64,13 @@ console.log('\n=== what the pages DO load is deliberate and minimal ===');
         // An ALLOWLIST rather than a count. The first version asserted "exactly four scripts",
         // which failed the moment portal-demo.js was added and said nothing about whether the
         // fifth was dangerous — a count catches arrivals but cannot tell you what arrived.
-        // hex-rain.js draws the hex field behind the sign-in. It is on this list
+        // gas-field.js draws the rising-gas field behind the sign-in. It is on this list
         // rather than exempted from it: DOM text on a grid and one setInterval, with
         // no network, no storage and no reference to anything else — which is
         // asserted below rather than asked for on trust. What a counterparty's
         // browser loads is decided deliberately, not by whatever got added.
         var ALLOWED = [/firebase-app-compat/, /firebase-auth-compat/, /firebase-config\.js/,
-                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/hex-rain\.js/];
+                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/gas-field\.js/];
         var unexpected = srcs.filter(function(s) {
             return !ALLOWED.some(function(re) { return re.test(s); });
         });
@@ -248,76 +248,86 @@ console.log('\n=== the sample months show the cases that matter ===');
 
 console.log('\n=== the sign-in backdrop stays inert ===');
 (function () {
-    /* hex-rain.js is allowed into a counterparty's browser on the grounds that
+    /* gas-field.js is allowed into a counterparty's browser on the grounds that
        it cannot reach anything: it paints a canvas it was handed and does
        nothing else. That is the entire basis for the allowlist entry above, so
        it is checked rather than repeated. */
-    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'hex-rain.js'), 'utf8');
-    // Comments stripped, because the header explains what this REPLACED and names
-    // the old file in doing so. A rule about what the code may touch has to be
-    // checked against the code — the same trap the firestore-rules and ledger
-    // tests both record.
-    var hr = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'gas-field.js'), 'utf8');
+    // Comments stripped, because the header explains where this came FROM and
+    // names site/hero-anim.js in doing so. A rule about what the code may touch
+    // has to be checked against the code — the same trap the firestore-rules and
+    // ledger tests both record.
+    var gf = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB',
      'firebase', 'sync.js', 'shared.js', 'IonPortal', 'PORTAL_ENDPOINT'].forEach(function (bad) {
-        ok('the rain does not reference ' + bad, hr.indexOf(bad) < 0);
+        ok('the gas field does not reference ' + bad, gf.indexOf(bad) < 0);
     });
 
     /* It sizes itself from the VIEWPORT, never from the element it sits behind.
-       A backdrop that measures its container depends on the layout in front of
-       it, which is how one ends up a frame behind. */
+       hero-anim.js carries a long note about exactly this: its first version read
+       the host's border box and wrote it into a content box, and every observer
+       tick grew the canvas by the border width. */
     ['getBoundingClientRect', 'offsetWidth', 'offsetHeight', 'clientWidth']
         .forEach(function (m) {
-            ok('it does not measure any element (' + m + ')', hr.indexOf(m) < 0);
+            ok('it does not measure any element (' + m + ')', gf.indexOf(m) < 0);
         });
 
-    ok('it honours prefers-reduced-motion', /prefers-reduced-motion/.test(hr));
-    ok('and draws a still field rather than nothing', /still\(\)/.test(hr),
+    ok('it honours prefers-reduced-motion', /prefers-reduced-motion/.test(gf));
+    ok('and draws a still field rather than nothing', /still\(\)/.test(gf),
        'reduced motion means still, not absent');
-    ok('it stops on a hidden tab', /visibilitychange/.test(hr));
-    ok('and when scrolled offscreen', /IntersectionObserver/.test(hr));
+    ok('it stops on a hidden tab', /visibilitychange/.test(gf));
+    ok('and when scrolled offscreen', /IntersectionObserver/.test(gf));
 
     var pt = fs.readFileSync(path.join(ROOT, 'portal', 'index.html'), 'utf8');
-    ok('the canvas is in the markup', pt.indexOf('id="hexRain"') > 0);
+    ok('the canvas is in the markup', pt.indexOf('id="gasField"') > 0);
     ok('inside an aria-hidden backdrop',
-       /<div class="pt-bg" aria-hidden="true">[\s\S]{0,400}hexRain/.test(pt));
+       /<div class="pt-bg" aria-hidden="true">[\s\S]{0,400}gasField/.test(pt));
 })();
 
-console.log('\n=== the rain is legible, which is the whole point ===');
+console.log('\n=== it is the hero rise, and only the rise ===');
 (function () {
-    /* THE FAILURE THIS SECTION EXISTS FOR.
+    /* The point of this file is that it is the SAME animation as the marketing
+       site's hero with two of its three parts removed — not a lookalike. So the
+       constants are checked against site/hero-anim.js rather than pinned to
+       literals here: if the hero is retuned and this is not, they have drifted
+       apart and a producer arriving from the site sees two different substances. */
+    var gas = fs.readFileSync(path.join(ROOT, 'portal', 'gas-field.js'), 'utf8');
+    var hero = fs.readFileSync(path.join(ROOT, 'site', 'hero-anim.js'), 'utf8');
 
-       The version before this drew three transparent sheets of type on top of
-       one another. Three layers of glyphs at 2-4% alpha average into grey, and
-       no tuning fixes it, because the problem is that a character with two more
-       behind it is not a character. It was reported as 'blurry' and it was.
+    var SHARED = [
+        ['the platinum ink', "'229,228,226'"],
+        ['the hot orange', "'247,147,26'"],
+        ['the warm midpoint', "'255,196,107'"],
+        ['the rise speed', 'rand(18, 46)'],
+        ['the drift rate', 'rand(0.006, 0.02)'],
+        ['the drift amplitude', 'rand(3, 11)'],
+        ['the density rule', 'w * h / 2600'],
+        ['the emitter spacing', 'w / 62'],
+        ['the cooling ramp', '0.14 + (1 - climb) * 0.5'],
+        ['the haze flicker', 'Math.sin(t * 3.1) * 0.012']
+    ];
+    SHARED.forEach(function (pair) {
+        ok(pair[0] + ' matches the hero',
+           gas.indexOf(pair[1]) >= 0 && hero.indexOf(pair[1]) >= 0, pair[1]);
+    });
 
-       So: ONE layer, at an alpha somebody can read. Both are asserted, because
-       'add another sheet, it will look richer' is exactly the change somebody
-       would make later without having had to look at the mush. */
-    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'hex-rain.js'), 'utf8');
-    var hr = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    /* And the two parts that were deliberately left behind. The lattice is the
+       busiest half of the hero and the half that says 'hashrate'; this is a
+       sign-in for somebody selling gas. */
+    ['nodes', 'lattice', 'NODE_GAP', 'LINK_AT', 'solve'].forEach(function (gone) {
+        ok('no lattice: ' + gone + ' is absent',
+           gas.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').indexOf(gone) < 0);
+    });
 
-    var alphas = (hr.match(/rgba\([^)]*\)/g) || []).map(function (m) {
-        return parseFloat(m.slice(m.lastIndexOf(',') + 1));
-    }).filter(function (a) { return !isNaN(a); });
-    var inks = alphas.filter(function (a) { return a > 0.1; });
-    ok('the characters are drawn at a readable alpha', inks.length >= 2,
-       'found ' + inks.join(', ') + ' — the illegible version ran at 0.02-0.04');
-    ok('and the head is brighter than the trail',
-       Math.max.apply(null, inks) > Math.min.apply(null, inks));
+    /* shadowBlur is the single most expensive thing available on a busy canvas.
+       hero-anim.js says so in its header and layers rectangles instead — and so
+       does this file, which is why the check is against the STRIPPED source. The
+       first version read the raw text and failed on the comment forbidding it. */
+    var code = gas.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    ok('no shadowBlur', code.indexOf('shadowBlur') < 0);
 
-    /* The fade wash is the trail. It has to stay low or the screen strobes. */
-    var fade = (hr.match(/var FADE = ([0-9.]+)/) || [])[1];
-    ok('the fade wash is gentle', !!fade && parseFloat(fade) < 0.15, 'FADE = ' + fade);
-
-    /* Whole pixels. Fractional y antialiases a glyph across two rows, and that
-       blur was half of why the last one could not be read. */
-    ok('rows land on whole pixels', /Math\.round\(/.test(hr));
-
-    /* No second sheet, and no loop that would build one. */
-    ok('there is exactly one layer of type',
-       !/SHEETS|sheets\.push|SHEET_COUNT/.test(hr));
+    /* A backgrounded tab must not be able to teleport the field on return. */
+    ok('the frame delta is clamped', /MAX_DT/.test(gas) && /Math\.min\(MAX_DT/.test(gas));
 })();
 
 console.log('');

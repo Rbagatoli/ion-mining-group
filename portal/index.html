@@ -19,16 +19,15 @@
      full field before a line of script runs and the committed HTML is stable
      across rebuilds. With JS off, or blocked, this is what stays: a still
      field rather than ninety-six empty boxes. -->
-<!-- Hex rain: columns falling, characters changing as they go.
-     One layer, every glyph drawn once at an alpha somebody can read. The
-     three-sheet genesis field this replaced was three transparent layers of
-     type stacked on each other, which averages to grey mush whatever the
-     sizes and alphas -- see the note at the top of hex-rain.js.
+<!-- The gas field: the hero animation's rise, without its lattice.
+     site/hero-anim.js draws source line, rise and lattice; this is the middle
+     part only — stranded gas going up and cooling orange to platinum. Same
+     emitters, same constants, same code, so a producer arriving from the
+     marketing site sees the same substance moving the same way.
 
-     A canvas, because this is a full-viewport field repainted continuously.
      Inert: no pointer events, aria-hidden on the wrapper. -->
 <div class="pt-bg" aria-hidden="true">
-  <canvas id="hexRain"></canvas>
+  <canvas id="gasField"></canvas>
 </div>
 
 <div class="pt-wrap">
@@ -114,7 +113,7 @@
 
 <!-- No dependencies, no network, no storage: DOM text on a grid and one
      setInterval. On the allowlist in tests/portal-frontend.test.js by name. -->
-<script src="./hex-rain.js?v=338"></script>
+<script src="./gas-field.js?v=338"></script>
 
 
 <script>
