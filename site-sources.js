@@ -199,6 +199,17 @@ var SiteSources = (function() {
             // 1,908 landfills rendered "operator not identified" while their owner sat unused in
             // the artifact, and the "has an operator" filter silently discarded all of them.
             operator: raw.operator || null,
+            // Generation already standing on the site, in kW, where the source publishes it.
+            //
+            // On its own axis rather than folded into developmentStage, because it is the single
+            // largest line in a 1-2 MW build -- $600K to $1.2M of generator -- and "the stage is
+            // constructed" and "there is a genset I inherit" are not the same claim. A shutdown
+            // landfill project has one; a candidate landfill with a million tons of waste and a
+            // collection system does not.
+            //
+            // null means the source does not publish it, NOT zero. A flare has no generator and
+            // no source that would say so, so it stays null rather than claiming a measured 0.
+            existingGenerationKw: num(raw.existingGenerationKw),
             // Kilometres to the nearest electrical substation, measured offline. null means not
             // measured — either outside the covered countries or nothing within the search
             // radius — and the scorer treats that as unmeasured rather than as "far".

@@ -39,7 +39,10 @@ var SiteData = (function() {
     // Fields the satellite cannot know. Blank by default and NEVER inferred — the spec is
     // explicit about this, and a guessed H2S reading is a safety claim we have no basis for.
     var MANUAL_FIELDS = [
-        'h2s_content', 'gas_composition', 'surface_rights_status', 'road_access',
+        // siloxane_level is the landfill-gas equivalent of h2s_content: invisible until someone
+        // runs a gas analysis, and it decides the treatment cost that decides the deal. Both are
+        // blank by default and NEVER inferred.
+        'h2s_content', 'siloxane_level', 'gas_composition', 'surface_rights_status', 'road_access',
         'winter_access', 'fiber_distance_km', 'grid_distance_km',
         'producer_contacted', 'producer_response'
     ];

@@ -100,11 +100,18 @@ var LandfillSource = (function() {
             operator: p.owner || null,
             operatorSource: p.owner ? 'EPA LMOP landfill owner' : null,
             powerPotentialKw: p.powerPotentialKw,
+            // What is already standing. LMOP publishes a rated capacity for projects that were
+            // built and an actual for those that ran; either means a generator exists on site.
+            // 917 of 1,908 rows carry one, and 462 of those are SHUTDOWN projects -- built,
+            // permitted, interconnected, and now idle. That is the highest-value combination in
+            // this dataset and nothing was reading it.
+            existingGenerationKw: (p.ratedMw || p.actualMw)
+                ? Math.round((p.ratedMw || p.actualMw) * 1000) : null,
             dutyCyclePct: DUTY_CYCLE_PCT,
             firstSeen: p.projectStartDate || (p.landfillOpenedYear ? String(p.landfillOpenedYear) : null),
             lastSeen: p.projectShutdownDate || null,
             offshore: false,
-            counterpartyType: p.counterpartyType,
+            counterpartyType: counterpartyFor(p),
             developmentStage: p.developmentStage,
             offtakeState: offtakeFor(p),
             permitState: permitFor(p),
@@ -123,6 +130,14 @@ var LandfillSource = (function() {
                 value: Math.round(p.powerPotentialKw) + ' kW from ' + (p.capacityBasis || 'published data')
             }],
             sourceDetail: {
+                // How much longer the waste keeps making gas. Decomposition peaks around closure
+                // and decays over roughly 20-30 years, so a site still ACCEPTING waste is
+                // replenishing its own fuel and gets the full horizon; a closed one gets what is
+                // left of it. Stated as a horizon with its basis, never as a precise figure --
+                // the real curve depends on moisture, cover and waste composition, none of which
+                // LMOP publishes.
+                estimatedRemainingYears: remainingYears(p),
+                estimatedRemainingBasis: remainingBasis(p),
                 projectName: p.projectName,
                 projectStatus: p.projectStatus,
                 projectType: p.projectType,
@@ -152,6 +167,50 @@ var LandfillSource = (function() {
             },
             raw: null
         };
+    }
+
+    // The national waste consolidators, told apart from everyone else by TWO independent
+    // signals that must agree: the owner name, and LMOP's own ownershipType.
+    //
+    // The name alone is not safe, and this is the SAND POINT trap in miniature -- matching
+    // /waste management/ picks up "Napa-Vallejo Waste Management Authority", "Lancaster County
+    // Solid Waste Management Authority" and six more municipal bodies, and would score the very
+    // counterparty this module rates highest at 45 instead of 85. Eight false positives out of
+    // 447 is not a tuning problem, it is the wrong kind of match.
+    //
+    // Requiring ownershipType === Private kills them structurally rather than by adding more
+    // words to a regex. Measured: 447 by name, 407 once both signals must agree.
+    var MAJOR_NAME = /waste management|republic services|waste connections|gfl environmental|advanced disposal|casella/i;
+    var MUNICIPAL_NAME = /authority|district|county|city of|commission|township|borough|parish|municipal|state of/i;
+    function counterpartyFor(p) {
+        var owner = p.owner || '';
+        if (MAJOR_NAME.test(owner) && !MUNICIPAL_NAME.test(owner) &&
+            /private/i.test(p.ownershipType || '')) {
+            return 'landfill_major';
+        }
+        // Otherwise LMOP's own public/private split, which the artifact already carries.
+        return p.counterpartyType || null;
+    }
+
+    // Generation life left in the waste. LMOP publishes the closure year and the tonnage; the
+    // decay curve is not published by anyone, so this is a horizon, not a forecast.
+    var LFG_DECAY_YEARS = 25;      // typical useful life after closure, EPA LMOP guidance range 20-30
+    function remainingYears(p) {
+        if (!p.landfillClosureYear) return null;
+        // Still open: the clock has not started. Fuel is being added faster than it decays.
+        if (/open/i.test(p.landfillStatus || '')) return LFG_DECAY_YEARS;
+        var since = new Date().getFullYear() - p.landfillClosureYear;
+        if (!isFinite(since)) return null;
+        return Math.max(0, LFG_DECAY_YEARS - since);
+    }
+    function remainingBasis(p) {
+        if (!p.landfillClosureYear) return null;
+        if (/open/i.test(p.landfillStatus || '')) {
+            return 'still accepting waste, so the ' + LFG_DECAY_YEARS +
+                   '-year post-closure horizon has not started';
+        }
+        return 'closed ' + p.landfillClosureYear + ', against a typical ' + LFG_DECAY_YEARS +
+               '-year post-closure horizon';
     }
 
     function computeCapacity(p) {

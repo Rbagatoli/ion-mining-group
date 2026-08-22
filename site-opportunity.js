@@ -78,8 +78,21 @@ var SiteOpportunity = (function() {
         // to a small buyer and sign in a reasonable timeframe.
         counterpartyScores: {
             oil_gas_operator:  85,   // motivated: flaring costs them money and regulatory room
-            landfill_private:  80,   // commercial owners, used to third-party gas offtake
-            landfill_public:   55,   // municipal — procurement rules slow everything down
+            // Municipal was 55, marked down for slow procurement. That conflated two different
+            // questions: WILL they deal, and HOW LONG will it take. A county waste authority
+            // signs 15-20 year agreements, does not sell its leases and does not go bankrupt --
+            // on willingness it is the best counterparty in the dataset. Public RFPs and council
+            // approvals are a schedule problem, and this score is not a schedule.
+            //
+            // Honest limitation: the app has nowhere to PUT the schedule half yet. months_to_
+            // revenue in site-capex.js is build time, not deal time. So this fixes the score and
+            // leaves the timeline unmodelled rather than pretending the slowness does not exist.
+            landfill_public:   85,   // municipal / county waste authority — stable, signs long
+            landfill_private:  80,   // independent commercial operators, used to gas offtake
+            // The national consolidators. Not scored down for being large but for being
+            // uninterested: a 1 MW behind-the-meter deal is beneath the threshold at which their
+            // corporate development team returns a call, and the site manager cannot sign it.
+            landfill_major:    45,
             utility:           30,   // long cycles, little interest in a small counterparty
             independent_power:  60,
             unknown:           null  // unscored, NOT a low score

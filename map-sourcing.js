@@ -485,7 +485,7 @@ var MapSourcing = (function() {
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
     var SRC_FILTER_KEY = 'ionMiningProspectSources';
     var FILTER_CHECKS = ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-                         'fAcquisition'];
+                         'fAcquisition', 'fHasGen'];
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
     // on a differently-sorted table with the open site closed. Same reasoning as the filters:
     // local only, never synced.
@@ -619,6 +619,10 @@ var MapSourcing = (function() {
             acquisitionOnly: (function() {
                 var el = document.getElementById('fAcquisition');
                 return !!(el && el.checked);
+            })(),
+            hasGeneration: (function() {
+                var el = document.getElementById('fHasGen');
+                return !!(el && el.checked);
             })()
         };
     }
@@ -646,7 +650,7 @@ var MapSourcing = (function() {
         fRegion: '', fRadius: '250',
         fOnshore: true, fWorkable: true,
         fActive: false, fOperator: false, fBurning: false, fSmallOp: false,
-        fAcquisition: false
+        fAcquisition: false, fHasGen: false
     };
     var FILTER_LABELS = {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
@@ -656,6 +660,7 @@ var MapSourcing = (function() {
         fOperator: 'Only sites with a named operator',
         fBurning: 'Flare confirmed burning recently',
         fSmallOp: 'Small operators only (Alberta)',
+        fHasGen: 'Generation already on site',
         fAcquisition: 'Acquisition targets only'
     };
 
@@ -715,7 +720,7 @@ var MapSourcing = (function() {
         // fAcquisition joined this list when it stopped being a table tab. It removes more
         // prospects than anything else here and, as a tab, appeared in none of these reports.
         ['fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
-         'fAcquisition'].forEach(function(id) {
+         'fAcquisition', 'fHasGen'].forEach(function(id) {
             var e = el(id);
             if (!e || !e.checked) return;
             out.push({ key: id, label: FILTER_LABELS[id],
@@ -976,6 +981,91 @@ var MapSourcing = (function() {
         renderSaved();
     }
 
+    // The landfill shortlist, as filters rather than as a magic list.
+    //
+    // NOTE what this does NOT do: reach 10-15 sites. Measured against the real artifact, the
+    // tightest defensible combination -- shutdown project, generator already installed, landfill
+    // open or closed within five years, still flaring gas, 1-3 MW -- returns 73. Every clause
+    // beyond that starts excluding sites for reasons that are not really about quality.
+    //
+    // That is the honest shape: the shortlist is a RANKING problem, not a filter problem. Filter
+    // to the ~70 that genuinely qualify, then read the top of the ranked table, which already
+    // sorts by opportunity and caps at 250.
+    //
+    // One clause deliberately absent: collection system installed. It reads "Yes" on 1,871 of
+    // 1,908 rows -- regulatory compliance means nearly every landfill of consequence collects --
+    // so it removes 16 rows and creates a false impression of having narrowed anything.
+    function applyLandfillShortlist() {
+        _ignoreNextDocClick = true;
+        resetFilterControls();
+        // Landfill gas only.
+        _srcFilter = {};
+        _srcFilter['lmop-landfill'] = true;
+        renderSourceFilter();
+        // A generator already standing is the single largest capital line -- $600K to $1.2M of a
+        // 1-2 MW build -- and the one field that actually discriminates in this dataset.
+        var gen = document.getElementById('fHasGen');
+        if (gen) gen.checked = true;
+        // 1-3 MW: the band where a shutdown project is worth reviving and still fits behind one
+        // interconnect. The 16-26 MW sites at the top of the unfiltered list are utility-scale.
+        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
+        if (lo) lo.value = '1000';
+        if (hi) hi.value = '3000';
+        var country = document.getElementById('fCountry');
+        if (country) country.value = 'USA';      // LMOP is a US programme
+        // The filter is the universe, NOT the shortlist. It returns 336 -- because the fields that
+        // would cut it to fifteen (project shut down, still flaring, closed recently) are not
+        // filter controls, and turning them into controls would be the wrong fix anyway: every one
+        // of them excludes sites for a reason that is not about quality.
+        //
+        // The ranking is what shortlists. Measured over these same 336, sort by sort:
+        //
+        //   Persistence (the default)  null for all 336. Landfill prospects have no satellite
+        //                              history, so SiteScoring cannot score them and the default
+        //                              sort does not rank them AT ALL -- the order you see is
+        //                              purely the volume tie-break.
+        //   Recency                    null for all 336, same reason.
+        //   Overall score              89 distinct values across 336, top 8 tied. It separates a
+        //                              little, but its criteria are flare criteria.
+        //   Acquisition rank           20 of the top 20 are shut-down projects with generation
+        //                              already standing.
+        //
+        // So this is not a preference between two good sorts. Until this option existed, the side
+        // list had no sort that ranked a landfill on anything.
+        //
+        // Separately, on the OPPORTUNITY axis -- the score in the table, which asks whether the
+        // energy is worth mining against -- the best shutdown project sits at rank 141 of 336,
+        // and the top 50 are all operating plants. That is not a defect either: a running 2 MW
+        // plant genuinely is the better energy. Its gas is just already sold, which is precisely
+        // what the acquirability axis exists to say.
+        var sort = document.getElementById('fSort');
+        if (sort) sort.value = 'combined';
+        paintSizeRange();
+        renderSizeHint();
+        saveFilters();
+        saveFiltersSources();
+        applyFilters();
+        status('Landfill shortlist — ' + fmtInt(_filtered.length) +
+               ' with generation already on site, ranked by acquisition. Read the top twenty: ' +
+               'those are shut-down projects whose engines are still standing.', '#8ac');
+    }
+
+    // Every checkbox and select back to its default, without the side effects resetAllFilters
+    // carries (it re-renders and re-applies). Used by the presets, which set their own state
+    // immediately afterwards.
+    function resetFilterControls() {
+        var c = document.getElementById('fCountry');
+        if (c) c.value = '';
+        for (var id in FILTER_DEFAULTS) {
+            var e = document.getElementById(id);
+            if (!e) continue;
+            if (typeof FILTER_DEFAULTS[id] === 'boolean') e.checked = FILTER_DEFAULTS[id];
+            else e.value = FILTER_DEFAULTS[id];
+        }
+        _companyFilter = null;
+        _companyFilterId = null;
+    }
+
     function renderSaved() {
         var el = document.getElementById('srcSaved');
         if (!el) return;
@@ -1004,6 +1094,14 @@ var MapSourcing = (function() {
                  '<button type="button" class="src-savedadd" id="savedCancel">Cancel</button>';
         } else {
             h += '<button type="button" class="src-savedadd" id="savedAdd">+ Save current</button>';
+            // A built-in, visually distinct from anything you saved. Deliberately NOT seeded into
+            // the saved list: a shipped row is indistinguishable from one you made, it would sync
+            // to your other devices, and deleting it would look broken when it came back. This
+            // one applies filters and owns nothing.
+            h += '<button type="button" class="src-savedpreset" id="presetLandfill" ' +
+                 'title="Shutdown landfill projects with a generator already on site, still ' +
+                 'flaring gas, 1-3 MW. Filters to roughly 70 sites; the ranking puts the best ' +
+                 'at the top.">&#9733; Landfill shortlist</button>';
         }
         el.innerHTML = h;
         if (_naming) {
@@ -1021,6 +1119,7 @@ var MapSourcing = (function() {
             _ignoreNextDocClick = true;
             var del = e.target.getAttribute && e.target.getAttribute('data-del');
             if (del) { deleteSearch(del); return; }
+            if (e.target.id === 'presetLandfill') { applyLandfillShortlist(); return; }
             if (e.target.id === 'savedAdd')     { _naming = true;  renderSaved(); return; }
             if (e.target.id === 'savedCancel')  { _naming = false; renderSaved(); return; }
             if (e.target.id === 'savedConfirm') { commitSave(); return; }
@@ -1179,6 +1278,15 @@ var MapSourcing = (function() {
         if (f.confirmedBurning) {
             matches = matches.filter(function(c) { return c.daysSinceActive !== null; });
         }
+        // Generation already standing. A null is NOT a no: it means the source publishes nothing
+        // about generation, which is true of every flare. Filtering on this therefore excludes
+        // flares by construction, exactly as the flare-only filters exclude landfills — and the
+        // label says so rather than leaving it to be discovered.
+        if (f.hasGeneration) {
+            matches = matches.filter(function(c) {
+                return c.existingGenerationKw !== null && c.existingGenerationKw > 0;
+            });
+        }
         // Acquisition targets. Applied HERE, with the other filters, so the map, the list, the
         // table, the summary tiles and the portfolio all narrow together. While this lived inside
         // renderTable it narrowed the table alone, by thousands of rows, and said so nowhere.
@@ -1200,6 +1308,29 @@ var MapSourcing = (function() {
         }
         var sortBy = document.getElementById('fSort').value;
         _filtered = SiteScoring.rank(matches, { jurisdictions: Jurisdictions }, sortBy);
+        // 'combined' cannot live in SiteScoring: that module ranks a candidate on its published
+        // fields alone, while the combined axis needs the acquirability score, which reads
+        // SiteData for anything the user has recorded by hand. So it re-sorts here, where both
+        // are in scope, and leaves rank()'s tie-break on volume intact underneath.
+        //
+        // This is the sort that answers "what could I actually buy?". Opportunity alone ranks an
+        // OPERATING 2 MW plant top -- correctly, since it asks whether the energy is worth mining
+        // against -- but its gas is under contract, so its acquirability is near zero and the
+        // combined score collapses. Sorting here lifts the idle plants, which is the whole thesis
+        // of site-acquirability.js and was until now reachable only from the table.
+        if (sortBy === 'combined') {
+            _filtered.sort(function(a, b) {
+                var av = combinedFor(a.candidate), bv = combinedFor(b.candidate);
+                // Nulls last: a prospect missing an axis has not scored badly, it has not scored.
+                if (av === null && bv === null) return 0;
+                if (av === null) return 1;
+                if (bv === null) return -1;
+                if (bv !== av) return bv - av;
+                var ak = a.candidate.powerPotentialKw, bk = b.candidate.powerPotentialKw;
+                return (bk === null || bk === undefined ? -1 : bk) -
+                       (ak === null || ak === undefined ? -1 : ak);
+            });
+        }
         saveFilters();
         renderPortfolio();
         paintSizeRange();
@@ -1464,7 +1595,8 @@ var MapSourcing = (function() {
         renderMoreFiltersCount();
     }
     var HIDDEN_FILTER_IDS = ['fSources', 'fRegion', 'fRadius', 'fYears',
-                             'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp'];
+                             'fOnshore', 'fWorkable', 'fActive', 'fOperator', 'fBurning', 'fSmallOp',
+                             'fHasGen'];
     function renderMoreFiltersCount() {
         var el = document.getElementById('moreFiltersCount');
         if (!el) return;

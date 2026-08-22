@@ -1,0 +1,183 @@
+// Tests for the landfill acquisition shortlist — the preset's universe and the axis that ranks it.
+//
+// Against the REAL artifact, not a fixture. The claim being tested is that the ranking surfaces
+// shut-down projects whose generation is still standing, and a fixture would only prove the
+// ranker agrees with itself.
+//
+// The assertion this file replaces was wrong. The plan asked to prove a shutdown project
+// outranks "an equivalent-MW candidate without generation" — which passes trivially, because the
+// development-stage ladder already scores constructed(70) over raw_resource(20). It tests a
+// competition that does not happen. Inside the preset's universe every row already HAS
+// generation, so the only competition is shutdown against OPERATING, and on the opportunity axis
+// the shutdown project loses it 141 places deep. That is what needed pinning.
+
+var fs = require('fs'), path = require('path');
+var ROOT = path.join(__dirname, '..');
+var SiteSources       = require(path.join(ROOT, 'site-sources.js'));
+var LandfillSource    = require(path.join(ROOT, 'source-landfill.js'));
+var SiteOpportunity   = require(path.join(ROOT, 'site-opportunity.js'));
+var SiteAcquirability = require(path.join(ROOT, 'site-acquirability.js'));
+
+var pass = 0, fail = 0;
+function eq(label, actual, expected) {
+    if (actual === expected) { pass++; console.log('  PASS  ' + label); }
+    else { fail++; console.log('  FAIL  ' + label + '\n        expected ' + JSON.stringify(expected) +
+                               '\n        actual   ' + JSON.stringify(actual)); }
+}
+function ok(label, cond, note) { eq(label + (note ? '  (' + note + ')' : ''), !!cond, true); }
+
+var ROWS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'landfills.json'), 'utf8')).projects;
+// Through SiteSources.normalize, NOT the adapter alone. The shared candidate shape is a hard
+// whitelist: a key the adapter sets but the whitelist does not name is dropped in silence, with
+// no error anywhere. Testing the adapter in isolation would prove it agrees with itself while
+// existingGenerationKw never reached a single screen.
+var ALL = ROWS.map(function(p) {
+    return SiteSources.normalize(LandfillSource.adapter.normalize(p), 'lmop-landfill');
+}).filter(Boolean);
+
+function statusOf(c) { return (c.sourceDetail && c.sourceDetail.projectStatus) || null; }
+
+// The preset's discriminating clauses, in code. If the preset changes, this must change with it.
+var UNIVERSE = ALL.filter(function(c) {
+    return c.existingGenerationKw > 0 &&
+           c.powerPotentialKw >= 1000 && c.powerPotentialKw <= 3000;
+});
+
+function opp(c) { return SiteOpportunity.score(c, {}).scoreRaw; }
+function acq(c) {
+    return SiteAcquirability.score({
+        development_stage: c.developmentStage,
+        offtake_state: c.offtakeState,
+        permit_state: c.permitState,
+        distress_signals: c.distressSignals || []
+    }).scoreRaw;
+}
+function combined(c) { return SiteAcquirability.combine(opp(c), acq(c)); }
+
+function topBy(fn, n) {
+    return UNIVERSE.slice().sort(function(a, b) {
+        var av = fn(a), bv = fn(b);
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return bv - av;
+    }).slice(0, n);
+}
+function firstWithStatus(s) {
+    return UNIVERSE.filter(function(c) { return statusOf(c) === s; })[0];
+}
+
+// ---- 1. the field the whole thing rests on ----------------------------------------------------
+
+console.log('\n=== generation already standing is on the candidate shape ===');
+(function() {
+    var withGen = ALL.filter(function(c) { return c.existingGenerationKw > 0; });
+    ok('EPA publishes enough to identify it', withGen.length > 800, withGen.length + ' projects');
+    ok('and the field survives the shared-shape whitelist',
+       withGen.length === ALL.filter(function(c) {
+           return c.existingGenerationKw > 0;
+       }).length && withGen[0].source === 'lmop-landfill',
+       'an unnamed key would be dropped here in silence');
+    ok('and it is null, never 0, where EPA publishes no rating',
+       ALL.every(function(c) {
+           return c.existingGenerationKw === null || c.existingGenerationKw > 0;
+       }), 'zero would be a measurement, absent is not');
+
+    // The trap the artifact warns about: LMOP suffixes some methane columns with MW, so a
+    // misread column arrives a THOUSAND times too large. Measured, the ratio of installed
+    // generation to current gas potential is exactly 1.00x at both the median and the 90th
+    // percentile, and tops out at 24x — three orders of magnitude clear of a unit error.
+    //
+    // The tail is not noise and it is not a defect. The worst case is 11.7 MW of plant standing
+    // on a landfill now producing 0.49 MW of gas, and it is shut down. Installed capacity far
+    // above current gas IS the decline curve, and it is generally the reason the project
+    // stopped — so the bound here is deliberately loose enough to keep those rows, because they
+    // are the ones worth looking at.
+    ok('installed generation is never off by a factor of a thousand',
+       withGen.every(function(c) {
+           return c.powerPotentialKw === null || c.existingGenerationKw <= c.powerPotentialKw * 100;
+       }), 'the MW-suffixed column trap, if it ever reaches this field');
+})();
+
+// ---- 2. the universe --------------------------------------------------------------------------
+
+console.log('\n=== the preset filters to a universe, not a shortlist ===');
+(function() {
+    ok('the clauses return a workable universe', UNIVERSE.length > 200 && UNIVERSE.length < 500,
+       UNIVERSE.length + ' prospects');
+    ok('every one of them is landfill gas',
+       UNIVERSE.every(function(c) { return c.source === 'lmop-landfill'; }));
+    ok('every one has generation already on site',
+       UNIVERSE.every(function(c) { return c.existingGenerationKw > 0; }));
+    ok('and every one still carries the gas-treatment requirement',
+       UNIVERSE.every(function(c) { return (c.sourceDetail || {}).requiresGasTreatment === true; }),
+       'siloxanes do not go away because the engine is already there');
+
+    // Both statuses must be present, or the ranking assertions below prove nothing.
+    var sd = UNIVERSE.filter(function(c) { return statusOf(c) === 'Shutdown'; });
+    var op = UNIVERSE.filter(function(c) { return statusOf(c) === 'Operational'; });
+    ok('the universe genuinely contains both kinds', sd.length > 50 && op.length > 50,
+       sd.length + ' shutdown vs ' + op.length + ' operational');
+})();
+
+// ---- 3. the two axes disagree, and that is the point ------------------------------------------
+
+console.log('\n=== overall score ranks the plant you cannot buy ===');
+(function() {
+    var top = topBy(opp, 20);
+    var operating = top.filter(function(c) { return statusOf(c) === 'Operational'; }).length;
+    ok('sorted by overall score, the top 20 are running plants', operating >= 18,
+       operating + ' of 20 operational');
+
+    // Not a defect. Opportunity asks whether the energy is worth mining against, and a running
+    // 2 MW plant genuinely is. It just is not for sale.
+    eq('because EPA does not publish an operating project offtake term',
+       firstWithStatus('Operational').offtakeState, null);
+})();
+
+console.log('\n=== acquisition rank inverts it ===');
+(function() {
+    var top = topBy(combined, 20);
+    var shut = top.filter(function(c) { return statusOf(c) === 'Shutdown'; }).length;
+    ok('sorted by acquisition rank, the top 20 are shut-down projects', shut >= 18,
+       shut + ' of 20 shutdown');
+    ok('all of which still have their generation standing',
+       top.every(function(c) { return c.existingGenerationKw > 0; }),
+       'the $600K-1.2M line item already spent');
+
+    // The mechanism, asserted directly rather than inferred from the ordering.
+    eq('a shutdown offtake is over by definition', firstWithStatus('Shutdown').offtakeState, 'expired');
+    ok('so it carries acquirability evidence where a running plant carries none',
+       acq(firstWithStatus('Shutdown')) > 0 && !(acq(firstWithStatus('Operational')) > 0));
+
+    // The headline, pinned. This is the finding the preset exists to deliver.
+    var byOpp = UNIVERSE.slice().sort(function(a, b) { return opp(b) - opp(a); });
+    var firstShutdown = 0;
+    for (var i = 0; i < byOpp.length; i++) {
+        if (statusOf(byOpp[i]) === 'Shutdown') { firstShutdown = i + 1; break; }
+    }
+    ok('on overall score the best shutdown project is buried', firstShutdown > 100,
+       'rank ' + firstShutdown + ' of ' + UNIVERSE.length);
+    eq('on acquisition rank it is first', statusOf(topBy(combined, 1)[0]), 'Shutdown');
+})();
+
+// ---- 4. what must not have changed -------------------------------------------------------------
+
+console.log('\n=== the rest of the model is undisturbed ===');
+(function() {
+    ok('every landfill prospect still requires gas treatment',
+       ALL.every(function(c) { return (c.sourceDetail || {}).requiresGasTreatment === true; }),
+       'which is what drives the $250/kW adder in site-capex.js');
+    ok('remaining generation years is estimated with its basis stated',
+       ALL.filter(function(c) {
+           var d = c.sourceDetail || {};
+           return d.estimatedRemainingYears !== null && d.estimatedRemainingBasis;
+       }).length > 1500);
+    ok('capacity still prefers measured gas flow over an estimate',
+       ALL.filter(function(c) { return c.powerPotentialKw !== null; }).length > 1800);
+})();
+
+console.log('');
+console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions'
+                       : pass + ' passed, ' + fail + ' FAILED');
+process.exit(fail === 0 ? 0 : 1);

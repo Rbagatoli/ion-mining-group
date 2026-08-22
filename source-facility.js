@@ -189,6 +189,10 @@ var FacilitySource = (function() {
             // Nameplate in kW. Effective capacity is nameplate x duty cycle, applied downstream
             // by site-opportunity.js, so this stays the honest nameplate figure.
             powerPotentialKw: f.nameplateMw === null ? null : Math.round(f.nameplateMw * 1000),
+            // For an EIA plant the generator IS the asset -- nameplate capacity is by definition
+            // generation already standing. Stated explicitly rather than left for a reader to
+            // infer, so the "generation on site" filter means the same thing across all sources.
+            existingGenerationKw: f.nameplateMw === null ? null : Math.round(f.nameplateMw * 1000),
             dutyCyclePct: duty,
             // The plant's own measured record, expressed on the shared persistence scale.
             persistencePct: f.cfBaseline === null || f.cfBaseline === undefined

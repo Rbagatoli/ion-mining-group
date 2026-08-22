@@ -162,8 +162,20 @@ ok('an identical US site outranks the Canadian one', us.score > can.score, { us:
 ok('but by no more than 3 points', us.score - can.score <= 3, us.score - can.score);
 
 // ---- Counterparty ---------------------------------------------------------------------
-ok('a private landfill outranks a municipal one',
-   SO.settings().counterpartyScores.landfill_private > SO.settings().counterpartyScores.landfill_public);
+// This assertion used to read "a private landfill outranks a municipal one", and it was
+// enforcing a conflation rather than catching a bug: municipal was marked down for slow
+// procurement, which is a question about SCHEDULE, not about willingness to deal. A county waste
+// authority signs 15-20 year agreements and does not disappear. It is now scored above an
+// independent private operator, and the schedule half is simply not modelled anywhere yet --
+// which is honest, where burying it in the willingness score was not.
+ok('a municipal waste authority is the best counterparty in the dataset',
+   SO.settings().counterpartyScores.landfill_public >= SO.settings().counterpartyScores.landfill_private);
+// The national consolidators score lowest of the three: a 1 MW deal is below the threshold at
+// which their corporate development team engages, and the site manager cannot sign it.
+ok('and a national waste major is the worst',
+   SO.settings().counterpartyScores.landfill_major < SO.settings().counterpartyScores.landfill_private);
+ok('by a wide enough margin to change a ranking',
+   SO.settings().counterpartyScores.landfill_public - SO.settings().counterpartyScores.landfill_major >= 30);
 eq('an unidentified counterparty is null, not zero', comp(SO.score(site({ counterpartyType: null })), 'counterparty'), null);
 eq('an unrecognised counterparty type is null, not zero', comp(SO.score(site({ counterpartyType: 'utility' })), 'counterparty'), 30);
 

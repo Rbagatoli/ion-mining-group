@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ion Mining Group — Fleet Map</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=330">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=332">
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=330">
-    <link rel="stylesheet" href="./shared.css?v=330">
+    <link rel="stylesheet" href="./tokens.css?v=332">
+    <link rel="stylesheet" href="./shared.css?v=332">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="./theme.js?v=330"></script>
-    <script src="./chart.min.js?v=330"></script>
-    <script src="./chart-theme.js?v=330"></script>
+    <script src="./theme.js?v=332"></script>
+    <script src="./chart.min.js?v=332"></script>
+    <script src="./chart-theme.js?v=332"></script>
     <script>
     if (!localStorage.getItem('sw_clean_v222') && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(r) {
@@ -148,6 +148,12 @@
         .src-savedadd:hover { background:var(--line-btc); }
         .src-savedadd[disabled] { opacity:.4; cursor:default; }
         .src-savedhint { font-size:11px; color:var(--text-dim); }
+        /* A built-in preset, distinct from anything you saved: platinum outline rather than the
+           orange of a user action, so the two are never confused for one another. */
+        .src-savedpreset { background:transparent; border:1px solid var(--line-mid);
+                           color:var(--plat-300); border-radius:var(--radius); padding:3px 11px;
+                           font-size:11px; cursor:pointer; }
+        .src-savedpreset:hover { border-color:var(--line-hi); color:var(--plat-200); }
         .src-savedname { background:var(--panel-solid); border:1px solid var(--line-btc); color:var(--plat-100);
                          border-radius: var(--radius); padding:3px 8px; font-size:11px; width:210px; }
         .src-listcard { align-self:stretch; display:flex; flex-direction:column; }
@@ -604,6 +610,7 @@ blank on each site rather than being guessed.</p>
                 <select id="fSort">
                     <option value="persistence" selected>Persistence</option>
                     <option value="score">Overall score</option>
+                    <option value="combined">Acquisition rank</option>
                     <option value="power_potential">Size</option>
                     <option value="jurisdiction">Jurisdiction</option>
                 </select>
@@ -655,6 +662,11 @@ blank on each site rather than being guessed.</p>
             <!-- Alberta only, and the label says so: the well counts behind this come from AER
                  ST37 and there is no equivalent free source for the US states. -->
             <label title="Operators with 150 or fewer active AER well licences. Alberta only — no free US equivalent exists."><input type="checkbox" id="fSmallOp"> Small operators only (Alberta)</label>
+            <!-- Generation already standing on the site. The single largest line in a 1-2 MW
+                 build, $600K-$1.2M of generator, and the one field that actually narrows the
+                 landfill set: 917 of 1,908 LMOP rows carry one and 462 of those are SHUTDOWN
+                 projects — built, permitted, interconnected and idle. -->
+            <label title="A generator is already installed. Every EIA plant qualifies by definition; among landfills this is the shutdown and operational projects, not the candidates."><input type="checkbox" id="fHasGen"> Generation already on site</label>
             <!-- Both of these are FLARE-ONLY by nature: only the VIIRS source publishes a survey
                  year or gets checked against FIRMS. Said in the label, because ticking either one
                  in the acquisition view (which excludes raw resources, i.e. every flare) is
@@ -968,39 +980,39 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="./firebase-config.js?v=330"></script>
-<script src="./sync.js?v=330"></script>
-<script src="./auth-ui.js?v=330"></script>
-<script src="./profile-panel.js?v=330"></script>
-<script src="./shared.js?v=330"></script>
-<script src="./fleet-data.js?v=330"></script>
-<script src="./geo-data.js?v=330"></script>
+<script src="./firebase-config.js?v=332"></script>
+<script src="./sync.js?v=332"></script>
+<script src="./auth-ui.js?v=332"></script>
+<script src="./profile-panel.js?v=332"></script>
+<script src="./shared.js?v=332"></script>
+<script src="./fleet-data.js?v=332"></script>
+<script src="./geo-data.js?v=332"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.41.3/dist/globe.gl.min.js"></script>
-<script src="./price-history.js?v=330"></script>
-<script src="./network-history.js?v=330"></script>
-<script src="./calc-engine.js?v=330"></script>
-<script src="./jurisdictions.js?v=330"></script>
-<script src="./site-engine.js?v=330"></script>
-<script src="./site-flags.js?v=330"></script>
-<script src="./site-scoring.js?v=330"></script>
-<script src="./site-opportunity.js?v=330"></script>
-<script src="./site-acquirability.js?v=330"></script>
-<script src="./site-capex.js?v=330"></script>
-<script src="./site-availability.js?v=330"></script>
-<script src="./site-sources.js?v=330"></script>
-<script src="./site-model.js?v=330"></script>
-<script src="./site-catalog.js?v=330"></script>
-<script src="./source-flare-gas.js?v=330"></script>
-<script src="./permit-index.js?v=330"></script>
-<script src="./site-links.js?v=330"></script>
-<script src="./source-facility.js?v=330"></script>
-<script src="./source-landfill.js?v=330"></script>
-<script src="./prospect-store.js?v=330"></script>
-<script src="./map.js?v=330"></script>
-<script src="./map-sourcing.js?v=330"></script>
+<script src="./price-history.js?v=332"></script>
+<script src="./network-history.js?v=332"></script>
+<script src="./calc-engine.js?v=332"></script>
+<script src="./jurisdictions.js?v=332"></script>
+<script src="./site-engine.js?v=332"></script>
+<script src="./site-flags.js?v=332"></script>
+<script src="./site-scoring.js?v=332"></script>
+<script src="./site-opportunity.js?v=332"></script>
+<script src="./site-acquirability.js?v=332"></script>
+<script src="./site-capex.js?v=332"></script>
+<script src="./site-availability.js?v=332"></script>
+<script src="./site-sources.js?v=332"></script>
+<script src="./site-model.js?v=332"></script>
+<script src="./site-catalog.js?v=332"></script>
+<script src="./source-flare-gas.js?v=332"></script>
+<script src="./permit-index.js?v=332"></script>
+<script src="./site-links.js?v=332"></script>
+<script src="./source-facility.js?v=332"></script>
+<script src="./source-landfill.js?v=332"></script>
+<script src="./prospect-store.js?v=332"></script>
+<script src="./map.js?v=332"></script>
+<script src="./map-sourcing.js?v=332"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
@@ -1087,8 +1099,8 @@ commercial terms are your assumptions.</p>
     }, true);
 })();
 </script>
-<script src="./widget-settings.js?v=330"></script>
-<script src="./alerts.js?v=330"></script>
-<script src="./onboarding.js?v=330"></script>
+<script src="./widget-settings.js?v=332"></script>
+<script src="./alerts.js?v=332"></script>
+<script src="./onboarding.js?v=332"></script>
 </body>
 </html>
