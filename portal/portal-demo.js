@@ -37,13 +37,29 @@
 var PortalDemo = (function() {
     'use strict';
 
-    var SESSION = 'demo-session';
+    /* One token per portal, because there are two portals and a preview of one
+       is not a preview of the other. The kind is IN the token rather than in a
+       second localStorage key, so there is exactly one thing to clear on the way
+       out and no way to end up previewing hosting with a producer flag. */
+    var SESSIONS = { producer: 'demo-session-producer', hosting: 'demo-session-hosting' };
+    var SESSION = SESSIONS.producer;
+
+    function sessionFor(kind) { return SESSIONS[kind] || null; }
+    function isSession(tok) {
+        return tok === SESSIONS.producer || tok === SESSIONS.hosting;
+    }
+    function kindOf(tok) {
+        if (tok === SESSIONS.producer) return 'producer';
+        if (tok === SESSIONS.hosting) return 'hosting';
+        return null;
+    }
 
     // Three periods, chosen to show the behaviour that matters rather than three tidy months.
     // If every sample statement were clean, the parts of this system that exist to handle mess
     // would never be seen by anyone reviewing it.
     var SELLER = {
         seller_id: 'SEL-SAMPLE',
+        kind: 'producer',
         legal_name: 'SAMPLE COUNTY AUTHORITY (demonstration data)',
         sites: ['SAMPLE-LANDFILL-1']
     };
@@ -139,9 +155,98 @@ var PortalDemo = (function() {
 
     var STATEMENTS = { '2026-07': JUL, '2026-06': JUN, '2026-05': MAY };
 
-    function index() {
-        return Object.keys(STATEMENTS).map(function(p) {
-            var s = STATEMENTS[p];
+    /* ---- the hosting side --------------------------------------------------
+
+       A hosting client is the mirror of a producer: their machines sit on Ion's
+       power, so they OWE for metered draw rather than being owed for delivered
+       gas. site/hosting.html sets the content, not invention — "Monthly in
+       arrears on metered draw" and "Statement includes per-machine kWh, uptime,
+       and hashrate for the period".
+
+       Chosen, like the gas samples, to show the awkward cases rather than three
+       tidy months: a worker that stopped reporting mid-period has null uptime
+       and null hashrate, NOT zero — a machine nobody heard from is not a machine
+       that did no work, and the difference is the whole reason this portal
+       renders absences out loud. */
+    var HOST = {
+        seller_id: 'ACC-SAMPLE-HOST',
+        kind: 'hosting',
+        legal_name: 'SAMPLE FLEET HOLDINGS LLC (demonstration data)',
+        sites: ['SAMPLE-SITE-1']
+    };
+
+    function machine(w, kwh, up, th, seen) {
+        return { worker: w, kwh: kwh, uptime_pct: up, hashrate_th: th, last_seen: seen };
+    }
+
+    function hostBase(period, over) {
+        var st = {
+            statement_id: 'HS-SAMPLE-' + period,
+            site_id: 'SAMPLE-SITE-1', version: 1, status: 'issued',
+            issued_at: period + '-05T00:00:00Z',
+            content_hash: 'demo0000' + period.replace('-', '') + 'host0000000000000000000000',
+            period: { id: period },
+            draw: {
+                kwh: 268400,
+                coverage: { period_hours: 744, covered_hours: 744, gap_hours: 0, coverage_pct: 100 },
+                gaps: []
+            },
+            machines: [
+                machine('s21-01', 67100, 99.4, 197.2, period + '-31T23:50:00Z'),
+                machine('s21-02', 66980, 99.1, 195.8, period + '-31T23:50:00Z'),
+                machine('s21-03', 67210, 99.6, 198.0, period + '-31T23:50:00Z'),
+                machine('s21-04', 67110, 99.2, 196.4, period + '-31T23:50:00Z')
+            ],
+            charges: [{ code: 'power', label: 'Metered power',
+                        basis_text: '268,400 kWh at the contract rate',
+                        amount_usd: 18788 }],
+            adjustments: [],
+            subtotal_usd: 18788, adjustments_usd: 0, total_usd: 18788,
+            total_is_partial: false,
+            basis: { unbillable_segments: [], unresolved: [], disclosures: [],
+                     readings_included_count: 8928, engine_version: 'demo' }
+        };
+        for (var k in (over || {})) st[k] = over[k];
+        return st;
+    }
+
+    var H_JUL = hostBase('2026-07', {
+        // A meter link down for most of a day. The hours are a hole with a start
+        // and an end; the kWh in it are not estimated, so the total says so.
+        draw: {
+            kwh: 259900,
+            coverage: { period_hours: 744, covered_hours: 722, gap_hours: 22, coverage_pct: 97.0 },
+            gaps: [{ from: '2026-07-18T02:00:00Z', to: '2026-07-19T00:00:00Z',
+                     hours: 22, kind: 'unbounded', volume_kwh: null }]
+        },
+        machines: [
+            machine('s21-01', 65100, 98.9, 196.1, '2026-07-31T23:50:00Z'),
+            machine('s21-02', 64900, 98.5, 194.9, '2026-07-31T23:50:00Z'),
+            // Stopped reporting on the 12th. Nobody knows what it did after that.
+            machine('s21-03', null, null, null, '2026-07-12T06:31:00Z'),
+            machine('s21-04', 64980, 98.7, 195.5, '2026-07-31T23:50:00Z')
+        ],
+        charges: [{ code: 'power', label: 'Metered power',
+                    basis_text: '259,900 kWh measured over 722 of 744 hours',
+                    amount_usd: 18193 }],
+        subtotal_usd: 18193, total_usd: 18193, total_is_partial: true,
+        basis: {
+            unbillable_segments: [{ from: '2026-07-18T02:00:00Z', to: '2026-07-19T00:00:00Z',
+                                    reason: 'no meter reading' }],
+            unresolved: ['s21-03 stopped reporting on 2026-07-12 and has not been attributed'],
+            disclosures: ['22 hours of the period are not covered by a meter reading. ' +
+                          'No draw has been estimated for them.'],
+            readings_included_count: 8664, engine_version: 'demo'
+        }
+    });
+    var H_JUN = hostBase('2026-06');
+    var H_MAY = hostBase('2026-05');
+
+    var HOST_STATEMENTS = { '2026-07': H_JUL, '2026-06': H_JUN, '2026-05': H_MAY };
+
+    function index(map) {
+        return Object.keys(map).map(function(p) {
+            var s = map[p];
             return { site_id: s.site_id, period: p, version: 1,
                      issued_at: s.issued_at, total_usd: s.total_usd,
                      total_is_partial: s.total_is_partial };
@@ -150,18 +255,29 @@ var PortalDemo = (function() {
 
     // Answers the same paths the Worker does, with the same shapes, so the pages cannot tell the
     // difference except by the demo flag they are required to render.
-    function handle(path) {
-        if (path === '/portal/me') return { ok: true, body: withFlag(SELLER) };
-        if (path === '/portal/statements') return { ok: true, body: withFlag({ statements: index() }) };
-        var m = path.match(/^\/portal\/statements\/([^/]+)\/([0-9]{4}-[0-9]{2})$/);
+    //
+    // Which set answers depends on the session token, exactly as the real worker decides from the
+    // account record — a producer preview cannot reach a hosting path and gets the same 404 the
+    // worker gives, so the two previews are as separated as the two accounts are.
+    function handle(path, tok) {
+        var kind = kindOf(tok) || 'producer';
+        var acct = kind === 'hosting' ? HOST : SELLER;
+        var map = kind === 'hosting' ? HOST_STATEMENTS : STATEMENTS;
+        var listPath = kind === 'hosting' ? '/portal/hosting/statements' : '/portal/statements';
+
+        if (path === '/portal/me') return { ok: true, status: 200, body: withFlag(acct) };
+        if (path === listPath) {
+            return { ok: true, status: 200, body: withFlag({ statements: index(map) }) };
+        }
+        var m = path.match(new RegExp('^' + listPath + '/([^/]+)/([0-9]{4}-[0-9]{2})$'));
         if (m) {
-            var st = STATEMENTS[m[2]];
-            // Same refusal as the real worker, including for a site that is not this seller's:
+            var st = map[m[2]];
+            // Same refusal as the real worker, including for a site that is not this account's:
             // "does not exist" and "is not yours" are one answer.
-            if (!st || decodeURIComponent(m[1]) !== SELLER.sites[0]) {
+            if (!st || decodeURIComponent(m[1]) !== acct.sites[0]) {
                 return { ok: false, status: 404, body: { error: 'not found' } };
             }
-            return { ok: true, body: withFlag(st) };
+            return { ok: true, status: 200, body: withFlag(st) };
         }
         return { ok: false, status: 404, body: { error: 'not found' } };
     }
@@ -174,5 +290,11 @@ var PortalDemo = (function() {
         return out;
     }
 
-    return { SESSION: SESSION, handle: handle, seller: SELLER, statements: STATEMENTS };
+    return {
+        SESSION: SESSION, SESSIONS: SESSIONS,
+        sessionFor: sessionFor, isSession: isSession, kindOf: kindOf,
+        handle: handle,
+        seller: SELLER, statements: STATEMENTS,
+        host: HOST, hostStatements: HOST_STATEMENTS
+    };
 })();

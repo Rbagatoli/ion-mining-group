@@ -107,7 +107,7 @@ function nav(active, cta) {
            PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
            current layout, where Pages publishes the root and site/ is excluded. If the marketing
            site ever becomes the domain root, this becomes /portal/ — one line, here. -->
-      <a class="nav-signin" href="${PORTAL_HREF}">Producer Portal</a>
+      <a class="btn btn--ghost btn--sm nav-signin" href="${PORTAL_HREF}">Client portal</a>
       <a class="btn btn--primary btn--sm nav-cta" href="${cta.href}">${cta.label}</a>
     </div>
   </div>

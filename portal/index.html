@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ion Mining Group — Producer Portal</title>
+<title>Ion Mining Group — Client Portal</title>
 <!-- Not indexed. A counterparty gets the link from us; nobody needs to find it. -->
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
@@ -45,8 +45,8 @@
        inside, and here there is nothing behind it. IonAuth from firebase-config.js is the same
        authentication either way. -->
   <section id="ptAuth" class="pt-auth" style="display:none;">
-    <h1>Producer portal</h1>
-    <p class="pt-sub" id="ptAuthSub">Sign in to see your gas volumes and statements.</p>
+    <h1>Client portal</h1>
+    <p class="pt-sub" id="ptAuthSub">Sign in to see your account.</p>
 
     <form id="ptSignInForm" autocomplete="on">
       <div class="pt-field">
@@ -72,9 +72,12 @@
     <!-- Only rendered while there is no backend to sign in to. Hidden by default so it cannot
          flash up on a configured deployment before the script decides. -->
     <div class="pt-demoentry" id="ptDemoEntry" style="display:none;">
-      <button type="button" id="ptDemoStart">Preview with sample data</button>
+      <button type="button" id="ptDemoProducer">Preview as an energy producer</button>
+      <button type="button" id="ptDemoHosting">Preview as a hosting client</button>
       <p>No account needed. Nothing you see will be real &mdash; it is the portal running with
-         no backend, so it can be looked at before there is anything in it.</p>
+         no backend, so it can be looked at before there is anything in it. A real account is
+         one kind or the other and never sees this choice; the server decides which portal it
+         gets.</p>
     </div>
   </section>
 
@@ -84,7 +87,9 @@
     <p class="pt-sub" id="ptSites"></p>
     <div id="ptList"></div>
 
-    <p class="pt-foot">
+    <!-- Same discipline, different meter and different direction of payment, so the
+         wording is per kind rather than a lowest common denominator that is vague to both. -->
+    <p class="pt-foot" id="ptFootProducer" style="display:none;">
       Figures are taken from the meter at your site. Where a period is not fully covered by meter
       readings, the gap is shown as a gap &mdash; nothing is estimated or filled in. Statements
       are frozen when issued and do not change afterwards; a later correction appears as an
@@ -92,6 +97,16 @@
       <br><br>
       Questions about a figure: <a href="mailto:energy@ionmininggroup.com"
       style="color:var(--plat-400);">energy@ionmininggroup.com</a>
+    </p>
+    <p class="pt-foot" id="ptFootHosting" style="display:none;">
+      Billing is monthly in arrears on metered draw. Where a period is not fully covered by meter
+      readings, the gap is shown as a gap &mdash; no kilowatt-hours are estimated or filled in,
+      and a machine nobody heard from is shown as unmeasured rather than as idle. Statements are
+      frozen when issued and do not change afterwards; a later correction appears as an adjustment
+      on the next statement.
+      <br><br>
+      Questions about a figure: <a href="mailto:hosting@ionmininggroup.com"
+      style="color:var(--plat-400);">hosting@ionmininggroup.com</a>
     </p>
   </section>
 
@@ -181,12 +196,36 @@
         }
         P.setSession(login.body.session);
         P.status('', null);
-        await loadStatements();
+        await loadPortal();
     }
 
-    async function loadStatements() {
+    /* WHICH PORTAL THIS ACCOUNT SEES IS THE SERVER'S ANSWER, not a choice made
+       here. /portal/me returns a kind and the worker scopes every other route to
+       it, so a browser that lied about being a hosting client would be refused by
+       the routes, not merely rendered differently. This map only turns the answer
+       into a path. */
+    var LIST_PATH = { producer: '/portal/statements', hosting: '/portal/hosting/statements' };
+
+    async function loadPortal() {
         var me = await P.api('/portal/me');
         if (!me.ok) { show('auth'); return; }
+
+        var kind = me.body && me.body.kind;
+        if (!LIST_PATH[kind]) {
+            /* An account with no recognised kind has no portal. Guessing one
+               would show a counterparty the wrong shape of their own business. */
+            P.status('This account is not set up for a portal yet. Please contact us and we ' +
+                     'will finish setting it up.', 'error');
+            show('auth');
+            return;
+        }
+        document.body.setAttribute('data-kind', kind);
+        var pf = document.getElementById('ptFootProducer');
+        var hf = document.getElementById('ptFootHosting');
+        if (pf) pf.style.display = kind === 'producer' ? '' : 'none';
+        if (hf) hf.style.display = kind === 'hosting' ? '' : 'none';
+        document.getElementById('ptTitle').textContent =
+            kind === 'hosting' ? 'Your hosting statements' : 'Your statements';
 
         document.getElementById('ptWho').innerHTML =
             P.esc(me.body.legal_name || '') +
@@ -201,13 +240,29 @@
         document.getElementById('ptSites').textContent =
             sites.length === 1 ? sites[0] : sites.length + ' sites';
 
-        var list = await P.api('/portal/statements');
+        var list = await P.api(LIST_PATH[kind]);
         var el = document.getElementById('ptList');
-        var rows = (list.ok && list.body && list.body.statements) || [];
 
+        /* THREE OUTCOMES, NOT TWO. This used to collapse every failure into the
+           same empty [] and then print "No statements have been issued yet" over
+           it — so an offline fetch, a 500, or a session that expired between the
+           two calls all told a counterparty a confident fact about their account
+           that nobody had checked. An empty portal must read as empty, a broken
+           one as broken, and there is a real difference between "we have not
+           issued you a statement yet", "you are owed nothing", and "we could not
+           ask". This matters more now than it did: a hosting account ships empty,
+           so this one screen is its entire first impression. */
+        if (list.unauthorized) { show('auth'); return; }
+        if (!list.ok) {
+            el.innerHTML = '<div class="pt-empty">We could not reach the server just now, so ' +
+                'this list is not showing anything &mdash; not because there is nothing in it. ' +
+                'Please try again in a moment.</div>';
+            show('main');
+            return;
+        }
+
+        var rows = (list.body && list.body.statements) || [];
         if (!rows.length) {
-            // An empty portal must read as empty, not as zero. There is a real difference between
-            // "we have not issued you a statement yet" and "you are owed nothing".
             el.innerHTML = '<div class="pt-empty">No statements have been issued yet. ' +
                 'Your first one will appear here at the end of the first billing period.</div>';
             show('main');
@@ -219,7 +274,8 @@
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i];
             html += '<a class="pt-card pt-clickable" style="display:block;text-decoration:none;" ' +
-                'href="./statement.html?site=' + encodeURIComponent(r.site_id) +
+                'href="./statement.html?kind=' + encodeURIComponent(kind) +
+                '&site=' + encodeURIComponent(r.site_id) +
                 '&period=' + encodeURIComponent(r.period) + '">' +
                 '<table class="pt-rows"><tr>' +
                 '<td>' + P.esc(r.period) + ' &middot; ' + P.esc(r.site_id) + '<br>' +
@@ -271,19 +327,53 @@
     // sent the real link who mistypes a password must get the real refusal, not sample numbers.
     if (P.demoAvailable()) {
         document.getElementById('ptDemoEntry').style.display = '';
-        document.getElementById('ptDemoStart').addEventListener('click', async function() {
-            if (!P.startDemo()) return;
-            P.demoBanner();
-            P.status('', null);
-            await loadStatements();
+        ['producer', 'hosting'].forEach(function(k) {
+            var b = document.getElementById(k === 'producer' ? 'ptDemoProducer' : 'ptDemoHosting');
+            if (!b) return;
+            b.addEventListener('click', async function() {
+                if (!P.startDemo(k)) return;
+                P.demoBanner();
+                P.status('', null);
+                await loadPortal();
+            });
         });
     }
 
     // Already previewing. Skip Firebase entirely — there is no account to wait for, and waiting
     // for onAuthChange to report nobody would flash the sign-in form first.
+    /* A PREVIEW IS NOT A SESSION, AND ARRIVING AT THE PORTAL MEANS THE FRONT DOOR.
+
+       startDemo() writes its token to localStorage, which is right for surviving
+       a reload mid-preview and wrong for what it also did: once anybody had ever
+       clicked "Preview with sample data", every later arrival went straight past
+       the sign-in into a lobby of invented numbers. Somebody sent the portal link
+       would never see the login at all.
+
+       So the token still persists, but arriving FROM OUTSIDE THE PORTAL ends it.
+       That distinction matters because statement.html links back here — "All
+       statements" is an inside move and must not throw a previewer out — while
+       the Producer Portal button on the site is an outside one and must land on
+       the login.
+
+       No referrer at all (typed, bookmarked, opened in a new tab, or a policy
+       that strips it) counts as outside. The safe default when we cannot tell
+       where somebody came from is the sign-in screen, not the sample data. */
+    function cameFromInsidePortal() {
+        var r = document.referrer || '';
+        if (!r) return false;
+        try {
+            var u = new URL(r);
+            return u.origin === location.origin && u.pathname.indexOf('/portal/') >= 0;
+        } catch (e) { return false; }
+    }
+
+    if (P.inDemo() && !cameFromInsidePortal()) {
+        P.setSession(null);
+    }
+
     if (P.inDemo()) {
         P.demoBanner();
-        loadStatements();
+        loadPortal();
     } else {
         IonAuth.onAuthChange(function(user) {
             if (user) afterSignIn(user);

@@ -162,6 +162,10 @@ var K = {
     },
     contract: function(siteId, cid, v) { return 'ct:' + siteId + ':' + cid + ':' + pad(v, 3); },
     statement: function(siteId, period, v) { return 'st:' + siteId + ':' + period + ':' + pad(v, 3); },
+    // The hosting side of the house, in its own key family. See FAMILIES below
+    // for why these are separate keys rather than a field on one record.
+    hostStatement: function(siteId, period, v) { return 'hst:' + siteId + ':' + period + ':' + pad(v, 3); },
+    hostIssued: function(siteId, period) { return 'htx:' + siteId + ':' + period; },
     // Seller-visible index. Written ONLY at issue, which is what makes "the seller sees nothing
     // until a person decides they should" a property of the data rather than of a filter.
     issued:   function(siteId, period) { return 'stx:' + siteId + ':' + period; },
@@ -174,6 +178,37 @@ var K = {
 };
 
 var OPS_PREFIX = 'stops:';
+
+/* ---- Account kind -----------------------------------------------------------------------------
+
+   Two kinds of counterparty sign in at the same door: a PRODUCER sells Ion gas
+   or power and is owed money for it; a HOSTING client has machines on Ion's
+   power and owes money for it. They see different portals.
+
+   WHICH ONE IS A PROPERTY OF THE ACCOUNT, decided here and never asked of the
+   browser. The client is told its kind by /portal/me so it knows what to
+   render; it cannot assert one. A request carrying kind=producer from a hosting
+   account changes nothing, because nothing reads it.
+
+   THERE IS NO DEFAULT. An account whose kind is missing or unrecognised gets no
+   portal at all, rather than falling back to producer. A silent default is how
+   a misconfigured hosting account ends up looking at gas statements, and this
+   is the repo where an absent value is never quietly a value. */
+var ACCOUNT_KINDS = ['producer', 'hosting'];
+
+/* Structurally identical documents, deliberately in SEPARATE key families
+   rather than one family with a kind field.
+
+   The reason is the enumeration rule the read path already keeps: "not yours"
+   and "does not exist" have to be the same answer. If a hosting statement lived
+   under the producer prefix, a producer asking for it would be refused by a
+   different branch than one asking for a period that never existed — and a
+   difference in which refusal you get is an oracle for what exists. With
+   separate families a cross-kind request cannot even name a key. */
+var FAMILIES = {
+    producer: { prefix: 'stx:', issued: K.issued,     doc: K.statement,     view: sellerView },
+    hosting:  { prefix: 'htx:', issued: K.hostIssued, doc: K.hostStatement, view: hostingView }
+};
 
 async function rateOk(env, identity, nowMs) {
     var hour = Math.floor(nowMs / 3600000);
@@ -352,15 +387,15 @@ async function redeem(request, env, origin, nowMs) {
 }
 
 // A seller's issued statements. Scoped to their own sites, server-side, from the session.
-async function listStatements(env, sellerId, origin) {
+async function listStatements(env, sellerId, fam, origin) {
     var seller = await env.PORTAL.get(K.seller(sellerId), 'json');
     if (!seller) return absent(origin);
 
     var out = [];
     var sites = seller.sites || [];
     for (var i = 0; i < sites.length; i++) {
-        // stx: is written only at issue, so listing it cannot reveal a draft.
-        var list = await env.PORTAL.list({ prefix: 'stx:' + sites[i] + ':' });
+        // The index prefix is written only at issue, so listing it cannot reveal a draft.
+        var list = await env.PORTAL.list({ prefix: fam.prefix + sites[i] + ':' });
         for (var j = 0; j < list.keys.length; j++) {
             var ref = await env.PORTAL.get(list.keys[j].name, 'json');
             if (ref) out.push(ref);
@@ -369,17 +404,17 @@ async function listStatements(env, sellerId, origin) {
     return json({ statements: out }, 200, origin);
 }
 
-async function getStatement(env, sellerId, siteId, period, origin) {
+async function getStatement(env, sellerId, siteId, period, fam, origin) {
     var seller = await env.PORTAL.get(K.seller(sellerId), 'json');
     // "Not yours" and "does not exist" are the same answer, or this is an enumeration oracle.
     if (!seller || (seller.sites || []).indexOf(siteId) < 0) return absent(origin);
 
-    var ref = await env.PORTAL.get(K.issued(siteId, period), 'json');
+    var ref = await env.PORTAL.get(fam.issued(siteId, period), 'json');
     if (!ref) return absent(origin);
 
-    var st = await env.PORTAL.get(K.statement(siteId, period, ref.version), 'json');
+    var st = await env.PORTAL.get(fam.doc(siteId, period, ref.version), 'json');
     if (!st || st.status !== 'issued' && st.status !== 'settled') return absent(origin);
-    return json(sellerView(st), 200, origin);
+    return json(fam.view(st), 200, origin);
 }
 
 // What a seller may see of their own statement. history[] carries status and time only -- the
@@ -393,6 +428,43 @@ function sellerView(st) {
         subtotal_usd: st.subtotal_usd, adjustments_usd: st.adjustments_usd,
         total_usd: st.total_usd, total_is_partial: st.total_is_partial,
         take_or_pay: st.take_or_pay,
+        basis: st.basis ? {
+            unbillable_segments: st.basis.unbillable_segments,
+            unresolved: st.basis.unresolved,
+            disclosures: st.basis.disclosures,
+            readings_included_count: st.basis.readings_included_count,
+            engine_version: st.basis.engine_version
+        } : null,
+        history: (st.history || []).map(function(h) { return { status: h.status, at: h.at }; })
+    };
+}
+
+/* What a HOSTING client may see of their own statement. Same discipline as
+   sellerView: a whitelist, so a field added to the stored document upstream is
+   not published to a counterparty by accident.
+
+   The shape follows what site/hosting.html already promises rather than what
+   would be convenient — "Monthly in arrears on metered draw" and "Statement
+   includes per-machine kWh, uptime, and hashrate for the period". So draw is
+   the billable quantity and carries the same coverage/gaps structure the gas
+   ledger uses, because metered power has exactly the same problem: a link drops
+   and the honest answer is a hole with a start and an end, not an estimate.
+
+   machines[] is per-machine and therefore the one place a hosting statement can
+   leak more than it should — it is mapped field by field for that reason, and
+   carries no serial, no IP and no pool credential. */
+function hostingView(st) {
+    return {
+        statement_id: st.statement_id, site_id: st.site_id, version: st.version,
+        status: st.status, issued_at: st.issued_at, content_hash: st.content_hash,
+        period: st.period, draw: st.draw,
+        machines: (st.machines || []).map(function(m) {
+            return { worker: m.worker, kwh: m.kwh, uptime_pct: m.uptime_pct,
+                     hashrate_th: m.hashrate_th, last_seen: m.last_seen };
+        }),
+        charges: st.charges, adjustments: st.adjustments,
+        subtotal_usd: st.subtotal_usd, adjustments_usd: st.adjustments_usd,
+        total_usd: st.total_usd, total_is_partial: st.total_is_partial,
         basis: st.basis ? {
             unbillable_segments: st.basis.unbillable_segments,
             unresolved: st.basis.unresolved,
@@ -440,16 +512,39 @@ export default {
                 var sellerId = await sellerFor(request, env, nowMs);
                 if (!sellerId) return denied(origin);
 
+                /* The account record is read once, here, and its kind gates
+                   everything below. Nothing in the request contributes to this
+                   decision — not a header, not a query string, not a body. */
+                var s = await env.PORTAL.get(K.seller(sellerId), 'json');
+                if (!s) return absent(origin);
+                var kind = ACCOUNT_KINDS.indexOf(s.kind) >= 0 ? s.kind : null;
+                if (!kind) return denied(origin);   // no kind, no portal
+                var fam = FAMILIES[kind];
+
                 if (p === '/portal/me') {
-                    var s = await env.PORTAL.get(K.seller(sellerId), 'json');
-                    if (!s) return absent(origin);
-                    return json({ seller_id: sellerId, legal_name: s.legal_name,
+                    return json({ seller_id: sellerId, kind: kind, legal_name: s.legal_name,
                                   sites: s.sites || [] }, 200, origin);
                 }
-                if (p === '/portal/statements') return await listStatements(env, sellerId, origin);
 
-                var m = p.match(/^\/portal\/statements\/([A-Za-z0-9_-]{1,64})\/([0-9]{4}-[0-9]{2})$/);
-                if (m) return await getStatement(env, sellerId, m[1], m[2], origin);
+                /* Each kind's routes are only reachable from that kind, and the
+                   refusal for the other kind's path is the SAME 404 as for a
+                   path that does not exist at all — so the shape of the other
+                   portal cannot be mapped from this one. */
+                if (kind === 'producer') {
+                    if (p === '/portal/statements') {
+                        return await listStatements(env, sellerId, fam, origin);
+                    }
+                    var m = p.match(/^\/portal\/statements\/([A-Za-z0-9_-]{1,64})\/([0-9]{4}-[0-9]{2})$/);
+                    if (m) return await getStatement(env, sellerId, m[1], m[2], fam, origin);
+                }
+
+                if (kind === 'hosting') {
+                    if (p === '/portal/hosting/statements') {
+                        return await listStatements(env, sellerId, fam, origin);
+                    }
+                    var hm = p.match(/^\/portal\/hosting\/statements\/([A-Za-z0-9_-]{1,64})\/([0-9]{4}-[0-9]{2})$/);
+                    if (hm) return await getStatement(env, sellerId, hm[1], hm[2], fam, origin);
+                }
 
                 return absent(origin);
             }
@@ -476,13 +571,22 @@ export default {
 async function admin(request, env, origin, nowMs, p) {
     if (p === '/admin/seller' && request.method === 'POST') {
         var b = await request.json();
+        /* kind is REQUIRED and has no default. Creating an account is a
+           deliberate act by a person with the ops secret, and which portal that
+           counterparty sees is part of the act — not something to be inferred
+           later from what data happens to show up under their site id. An
+           account minted without it would be refused at every portal route
+           anyway (see the routing block), so refusing here turns a puzzling
+           silent lockout into an immediate 400. */
+        var kind = text(b.kind, 16);
+        if (ACCOUNT_KINDS.indexOf(kind) < 0) return json({ error: 'bad request' }, 400, origin);
         var id = Identity.newSellerId();
         await env.PORTAL.put(K.seller(id), JSON.stringify({
-            seller_id: id, legal_name: text(b.legal_name, 200),
+            seller_id: id, kind: kind, legal_name: text(b.legal_name, 200),
             sites: (b.sites || []).slice(0, 50).map(function(s) { return text(s, 64); }),
             created_at: new Date(nowMs).toISOString()
         }));
-        return json({ seller_id: id }, 200, origin);
+        return json({ seller_id: id, kind: kind }, 200, origin);
     }
 
     // Register a meter. index_digits and max_rate_per_hour come off the datasheet and are the

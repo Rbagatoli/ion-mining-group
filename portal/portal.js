@@ -61,14 +61,43 @@ var IonPortal = (function() {
 
     // In demo mode only when it was ASKED FOR. A counterparty who was sent the real link and
     // tries to sign in must get the real refusal, not a lobby full of invented numbers.
+    //
+    // The token carries WHICH portal is being previewed, because there are two of them and they
+    // are not interchangeable. PortalDemo owns that shape; this only asks whether a token is one
+    // of its own. Deliberately ONE demo module rather than one per portal: demoAvailable() is
+    // coupled to the name PortalDemo, so a second module under a second name would answer false
+    // here, demoBanner() would return at its first line, and sample data would render with
+    // nothing on screen saying so.
     function inDemo() {
-        return demoAvailable() && session() === PortalDemo.SESSION;
+        return demoAvailable() && PortalDemo.isSession(session());
     }
 
-    function startDemo() {
+    function demoKind() {
+        return inDemo() ? PortalDemo.kindOf(session()) : null;
+    }
+
+    function startDemo(kind) {
         if (!demoAvailable()) return false;
-        setSession(PortalDemo.SESSION);
+        var tok = PortalDemo.sessionFor(kind);
+        if (!tok) return false;
+        setSession(tok);
         return true;
+    }
+
+    /* THE DATA ARMS THE BANNER, not just localStorage.
+       Every demo response carries demo:true, and until now nothing read it — the
+       comment in portal-demo.js claimed "a page that forgets to check has still
+       been told" while no page could be told anything. It is read here, at the
+       one chokepoint every response passes through, so a sample figure cannot
+       reach a screen that is not admitting it is a sample: a stale token, a
+       mis-fenced module or a mixed state all still raise the bar. */
+    var sawDemoData = false;
+    function noteDemo(r) {
+        if (r && r.body && r.body.demo === true && !sawDemoData) {
+            sawDemoData = true;
+            if (typeof document !== 'undefined') demoBanner();
+        }
+        return r;
     }
 
     // Every call goes through here so there is one place that handles "not configured" and one
@@ -77,7 +106,7 @@ var IonPortal = (function() {
         opts = opts || {};
         var url = base() + path;
 
-        if (inDemo()) return PortalDemo.handle(path);
+        if (inDemo()) return noteDemo(PortalDemo.handle(path, session()));
 
         if (!base()) {
             return { ok: false, notConfigured: true, demoAvailable: demoAvailable() };
@@ -103,7 +132,7 @@ var IonPortal = (function() {
         }
         var body = null;
         try { body = await res.json(); } catch (e) {}
-        return { ok: res.ok, status: res.status, body: body };
+        return noteDemo({ ok: res.ok, status: res.status, body: body });
     }
 
     // ---- Rendering ---------------------------------------------------------------------------
@@ -169,15 +198,18 @@ var IonPortal = (function() {
     // "waiting for the payment to arrive". A portal that might be showing invented numbers has to
     // say so on every screen that can show them, not once at the door.
     function demoBanner() {
-        if (!inDemo()) return;
+        if (!inDemo() && !sawDemoData) return;
         if (document.getElementById('ptDemoBar')) return;
         var bar = document.createElement('div');
         bar.id = 'ptDemoBar';
         bar.className = 'pt-demobar';
+        /* Accurate for BOTH portals. It used to say "no money is owed", which is
+           only half true now: a producer is owed by Ion and a hosting client owes
+           Ion, so the banner has to deny a debt in either direction. */
         bar.innerHTML = '<strong>Sample data.</strong> Nothing on this screen is real — ' +
-            'no meter reported these volumes and no money is owed. This is the portal running ' +
-            'with no backend, so it can be looked at before there is anything in it. ' +
-            '<button type="button" id="ptDemoExit">Leave preview</button>';
+            'no meter or machine reported these figures, and no money is owed or due. This is ' +
+            'the portal running with no backend, so it can be looked at before there is ' +
+            'anything in it. <button type="button" id="ptDemoExit">Leave preview</button>';
         document.body.insertBefore(bar, document.body.firstChild);
         var btn = document.getElementById('ptDemoExit');
         if (btn) btn.addEventListener('click', function() {
@@ -190,7 +222,7 @@ var IonPortal = (function() {
         api: api, session: session, setSession: setSession, base: base,
         esc: esc, num: num, money: money, pct: pct, date: date,
         status: status, partialBanner: partialBanner,
-        demoAvailable: demoAvailable, inDemo: inDemo, startDemo: startDemo,
+        demoAvailable: demoAvailable, inDemo: inDemo, demoKind: demoKind, startDemo: startDemo,
         demoBanner: demoBanner,
         SESSION_KEY: SESSION_KEY, PORTAL_ENDPOINT: PORTAL_ENDPOINT
     };

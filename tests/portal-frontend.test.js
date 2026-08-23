@@ -186,13 +186,24 @@ console.log('\n=== the sample-data preview cannot survive a real backend ===');
     ok('with no backend, the preview is offered', open.demoAvailable());
     ok('but nobody is in it until they ask', !open.inDemo(),
        'a counterparty who mistypes a password gets the real refusal, not sample numbers');
-    ok('clicking enters it', open.startDemo() && open.inDemo());
+    ok('clicking enters it', open.startDemo('producer') && open.inDemo());
+    eq('and the preview knows which portal it is', open.demoKind(), 'producer');
+
+    /* Two portals now share the door, so entering a preview means saying WHICH.
+       startDemo() with no kind refuses rather than defaulting: a preview that
+       silently picks one shows a reviewer the wrong counterparty's business. */
+    var other = build('');
+    ok('a preview cannot be entered without naming a kind', !other.startDemo() && !other.inDemo());
+    ok('nor with a kind that does not exist', !other.startDemo('operator') && !other.inDemo());
+    ok('the hosting preview is its own', other.startDemo('hosting') && other.inDemo());
+    eq('and knows it', other.demoKind(), 'hosting');
 
     // THE ASSERTION THIS SECTION EXISTS FOR.
     var deployed = build('https://ion-portal.example.workers.dev');
     ok('once a backend is configured the preview is gone', !deployed.demoAvailable(),
        'the fence is the endpoint, not a flag somebody has to remember');
-    ok('and it cannot be entered', !deployed.startDemo() && !deployed.inDemo());
+    ok('and it cannot be entered',
+       !deployed.startDemo('producer') && !deployed.startDemo('hosting') && !deployed.inDemo());
 })();
 
 console.log('\n=== and it says so on every screen ===');
@@ -204,7 +215,7 @@ console.log('\n=== and it says so on every screen ===');
         { getItem: function(k) { return store[k] || null; },
           setItem: function(k, v) { store[k] = v; }, removeItem: function(k) { delete store[k]; } },
         { hostname: 'localhost', origin: 'http://localhost' });
-    P.startDemo();
+    P.startDemo('producer');
 
     // Both pages must call it. A banner on one screen and not the other is how orders-demo.js
     // ended up showing a fake bitcoin address with no warning on it.
@@ -215,10 +226,26 @@ console.log('\n=== and it says so on every screen ===');
 
     // Every response carries the flag, so a page that forgets to check has still been told.
     var Demo = new Function(demoSrc + '; return PortalDemo;')();
-    ok('the seller record is flagged', Demo.handle('/portal/me').body.demo === true);
-    ok('the statement list is flagged', Demo.handle('/portal/statements').body.demo === true);
+    var PS = Demo.SESSIONS.producer, HS = Demo.SESSIONS.hosting;
+    ok('the seller record is flagged', Demo.handle('/portal/me', PS).body.demo === true);
+    ok('the statement list is flagged', Demo.handle('/portal/statements', PS).body.demo === true);
     ok('and a statement is flagged',
-       Demo.handle('/portal/statements/SAMPLE-LANDFILL-1/2026-07').body.demo === true);
+       Demo.handle('/portal/statements/SAMPLE-LANDFILL-1/2026-07', PS).body.demo === true);
+    ok('the hosting account is flagged', Demo.handle('/portal/me', HS).body.demo === true);
+    ok('the hosting list is flagged',
+       Demo.handle('/portal/hosting/statements', HS).body.demo === true);
+    ok('and a hosting statement is flagged',
+       Demo.handle('/portal/hosting/statements/SAMPLE-SITE-1/2026-07', HS).body.demo === true);
+
+    /* THE FLAG IS NOW READ, not merely written. It used to be stamped on every
+       response with a comment saying "a page that forgets to check has still
+       been told", while nothing anywhere read it — the banner came from
+       localStorage alone. api() reads it at the one chokepoint every response
+       passes through, so sample data cannot reach a screen that is not
+       admitting it. */
+    ok('portal.js reads the flag it is sent',
+       /body\.demo === true/.test(mainSrc),
+       'the banner is armed by the data, not only by the session');
 
     // The sample data must be obviously not a real counterparty.
     ok('the legal name says it is a demonstration', /demonstration/i.test(Demo.seller.legal_name));
@@ -226,8 +253,30 @@ console.log('\n=== and it says so on every screen ===');
 
     // It must still refuse a site that is not the sample seller's — same answer as the worker,
     // so the preview does not teach a different behaviour than the real thing.
-    var wrong = Demo.handle('/portal/statements/SOMEONE-ELSE/2026-07');
+    var wrong = Demo.handle('/portal/statements/SOMEONE-ELSE/2026-07', PS);
     eq('another site is 404 in the preview too', wrong.status, 404);
+
+    /* The two previews are as separated as the two accounts are: asking for the
+       other kind's path gets the same 404 the worker gives, so a preview cannot
+       teach a behaviour the real thing does not have. */
+    eq('a producer preview cannot reach a hosting path',
+       Demo.handle('/portal/hosting/statements', PS).status, 404);
+    eq('and a hosting preview cannot reach a producer path',
+       Demo.handle('/portal/statements', HS).status, 404);
+
+    ok('the hosting legal name says it is a demonstration',
+       /demonstration/i.test(Demo.host.legal_name));
+    ok('and its site is named SAMPLE', /SAMPLE/.test(Demo.host.sites[0]));
+
+    /* The sample fleet carries a machine that stopped reporting, with nulls
+       rather than zeros. It is the case the whole rendering rule exists for, and
+       a reviewer should meet it in the preview rather than in production. */
+    var hst = Demo.handle('/portal/hosting/statements/SAMPLE-SITE-1/2026-07', HS).body;
+    var dark = (hst.machines || []).filter(function(m) { return m.kwh === null; });
+    ok('a machine that stopped reporting is null, not zero', dark.length === 1,
+       'a machine nobody heard from is not a machine that did no work');
+    ok('and its uptime and hashrate are null too',
+       dark.length === 1 && dark[0].uptime_pct === null && dark[0].hashrate_th === null);
 })();
 
 console.log('\n=== the sample months show the cases that matter ===');
@@ -407,6 +456,53 @@ console.log('\n=== it is the hero rise, and only the rise ===');
     /* A backgrounded tab must not be able to teleport the field on return. */
     ok('the frame delta is clamped', /MAX_DT/.test(gas) && /Math\.min\(MAX_DT/.test(gas));
 })();
+
+
+    /* ---- the sign-in is the front door ----
+
+       startDemo() persists its token so a reload mid-preview does not throw you
+       out. The cost of that was: once anybody had ever clicked "Preview with
+       sample data", every later arrival went straight past the sign-in into a
+       lobby of invented numbers, and somebody sent the portal link never saw a
+       login at all.
+
+       The rule is where you came FROM. statement.html links back to index with
+       "All statements" — an inside move, which must not end a preview — while
+       the Producer Portal button on the site is an outside one, which must land
+       on the sign-in.
+
+       The function is lifted out of the page and run here rather than grepped
+       for, because the interesting cases are the awkward ones: no referrer at
+       all, a referrer on another origin, and a same-origin page that is not the
+       portal. All three have to read as outside. */
+    (function () {
+        var page = fs.readFileSync(path.join(ROOT, 'portal', 'index.html'), 'utf8');
+
+        ok('an outside arrival ends the preview session',
+           /if \(P\.inDemo\(\) && !cameFromInsidePortal\(\)\)[\s\S]{0,60}setSession\(null\)/.test(page));
+
+        var src = page.slice(page.indexOf('function cameFromInsidePortal'));
+        src = src.slice(0, src.indexOf('\n    }') + 6);
+
+        function evalWith(referrer, href) {
+            var fn = new Function('document', 'location', 'URL',
+                                  src + '; return cameFromInsidePortal();');
+            return fn({ referrer: referrer }, { origin: 'https://ionmininggroup.com' }, URL);
+        }
+
+        var SITE = 'https://ionmininggroup.com';
+        [['', false, 'no referrer at all (typed, bookmarked, new tab)'],
+         [SITE + '/index.html', false, 'the marketing home page'],
+         [SITE + '/hardware.html', false, 'the hardware catalogue'],
+         ['https://example.com/portal/x', false, 'another origin, even at /portal/'],
+         ['not a url', false, 'a referrer that will not parse'],
+         [SITE + '/portal/statement.html', true, 'a statement, inside the portal'],
+         [SITE + '/portal/', true, 'the portal itself']
+        ].forEach(function (c) {
+            eq('referrer "' + c[2] + '" reads as ' + (c[1] ? 'inside' : 'outside'),
+               evalWith(c[0]), c[1]);
+        });
+    })();
 
 console.log('');
 console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions'

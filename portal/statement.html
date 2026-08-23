@@ -210,12 +210,134 @@
         document.getElementById('ptDoc').innerHTML = h;
     }
 
+    /* The hosting statement. Structurally the producer's mirror — a metered
+       quantity, what it covers, what could not be measured, then the money — but
+       the quantity is power DRAWN and the money runs the other way.
+
+       The per-machine table is the part site/hosting.html actually promises:
+       "Statement includes per-machine kWh, uptime, and hashrate for the period."
+       A machine that stopped reporting carries nulls, and num() renders those as
+       "not measured" rather than as zero. That distinction is the entire point:
+       a machine nobody heard from is not a machine that did no work, and a
+       hosting client is billed on metered draw. */
+    function renderHosting(st) {
+        var d = st.draw || {};
+        var cov = d.coverage || {};
+        var h = '';
+
+        h += '<h1>' + P.esc(st.period ? st.period.id : '') + '</h1>' +
+             '<p class="pt-sub">' + P.esc(st.site_id || '') + ' &middot; issued ' +
+             P.date(st.issued_at) + '</p>';
+
+        h += P.partialBanner(st);
+
+        h += '<h2>Power drawn</h2><div class="pt-card">';
+        h += rows([['Metered draw', P.num(d.kwh, 'kWh')]]);
+        h += '</div>';
+
+        h += '<h2>Meter coverage</h2><div class="pt-card">';
+        h += rows([
+            ['Period', P.num(cov.period_hours, 'hours')],
+            ['Covered by meter readings', P.num(cov.covered_hours, 'hours') +
+                ' <span class="pt-unit">(' + P.pct(cov.coverage_pct) + ')</span>'],
+            ['Not covered', P.num(cov.gap_hours, 'hours')]
+        ]);
+        var gaps = d.gaps || [];
+        if (gaps.length) {
+            h += '<div style="margin-top:14px;">';
+            for (var g = 0; g < gaps.length; g++) {
+                var gap = gaps[g];
+                h += '<div class="pt-gap"><span class="pt-gap-when">' +
+                     P.date(gap.from) + ' &ndash; ' + P.date(gap.to) +
+                     ' <span class="pt-unit">(' + P.num(gap.hours, 'h') + ')</span></span>' +
+                     '<span class="pt-gap-what">' +
+                     (gap.kind === 'bounded'
+                        ? 'draw known, timing not: ' + P.num(gap.volume_kwh, 'kWh')
+                        : 'draw unknown') +
+                     '</span></div>';
+            }
+            h += '<p class="pt-disclosure" style="margin-top:10px;">A gap is shown as a gap. ' +
+                 'No kilowatt-hours have been estimated or filled in for these periods.</p>';
+            h += '</div>';
+        }
+        h += '</div>';
+
+        h += '<h2>Your machines</h2><div class="pt-card">';
+        var ms = st.machines || [];
+        if (!ms.length) {
+            h += '<p class="pt-disclosure">No per-machine figures were recorded for this ' +
+                 'period.</p>';
+        } else {
+            h += '<table class="pt-rows">';
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i];
+                h += '<tr><td>' + P.esc(m.worker || '') +
+                     '<br><span class="pt-unit">last seen ' + P.date(m.last_seen) + '</span></td>' +
+                     '<td>' + P.num(m.kwh, 'kWh') +
+                     '<br><span class="pt-unit">' + P.pct(m.uptime_pct) + ' up &middot; ' +
+                     P.num(m.hashrate_th, 'TH/s') + '</span></td></tr>';
+            }
+            h += '</table>';
+            h += '<p class="pt-disclosure" style="margin-top:12px;">A machine that stopped ' +
+                 'reporting is shown as not measured, never as zero. Billing is on metered ' +
+                 'draw at the site, not on the sum of these.</p>';
+        }
+        h += '</div>';
+
+        h += '<h2>Amount</h2><div class="pt-card">';
+        var lines = [];
+        var charges = st.charges || [];
+        for (var c = 0; c < charges.length; c++) {
+            lines.push([P.esc(charges[c].label || charges[c].code) +
+                        '<br><span class="pt-unit">' + P.esc(charges[c].basis_text || '') + '</span>',
+                        P.money(charges[c].amount_usd)]);
+        }
+        if (!charges.length) {
+            lines.push(['<span class="pt-absent">No charge has been calculated for this period</span>', '']);
+        }
+        var adj = st.adjustments || [];
+        for (var a = 0; a < adj.length; a++) {
+            lines.push([P.esc(adj[a].label) +
+                        '<br><span class="pt-unit">' + P.esc(adj[a].relates_to_period || '') +
+                        (adj[a].reason ? ' &middot; ' + P.esc(adj[a].reason) : '') + '</span>',
+                        P.money(adj[a].amount_usd)]);
+        }
+        lines.push(['Total due' + (st.total_is_partial ? ' <span class="pt-unit">(incomplete)</span>' : ''),
+                    P.money(st.total_usd), 'pt-total']);
+        h += rows(lines);
+        h += '</div>';
+
+        var basis = st.basis || {};
+        var discl = basis.disclosures || [];
+        var unres = basis.unresolved || [];
+        if (discl.length || unres.length) {
+            h += '<h2>Basis</h2><div class="pt-card">';
+            for (var x = 0; x < discl.length; x++) {
+                h += '<p class="pt-disclosure">' + P.esc(discl[x]) + '</p>';
+            }
+            for (var y = 0; y < unres.length; y++) {
+                h += '<p class="pt-disclosure">' + P.esc(unres[y]) + '</p>';
+            }
+            h += '</div>';
+        }
+
+        document.getElementById('ptDoc').innerHTML = h;
+    }
+
     async function load() {
         var site = param('site'), period = param('period');
         if (!site || !period) { location.replace('./index.html'); return; }
 
-        var res = await P.api('/portal/statements/' + encodeURIComponent(site) + '/' +
-                              encodeURIComponent(period));
+        /* The kind comes off the link the list built, and the list got it from
+           the server. It only picks which path to ask for and which renderer to
+           use — it grants nothing. Asking for the other kind's path with an
+           account of the wrong kind gets the same 404 as a period that does not
+           exist, because the worker scopes routes by the account record. */
+        var kind = param('kind') === 'hosting' ? 'hosting' : 'producer';
+        var path = kind === 'hosting'
+            ? '/portal/hosting/statements/' + encodeURIComponent(site) + '/' + encodeURIComponent(period)
+            : '/portal/statements/' + encodeURIComponent(site) + '/' + encodeURIComponent(period);
+        var res = await P.api(path);
         if (res.notConfigured) {
             P.status('This portal is not connected to a server yet.', null);
             return;
@@ -227,7 +349,7 @@
             P.status('That statement is not available.', 'error');
             return;
         }
-        render(res.body);
+        (kind === 'hosting' ? renderHosting : render)(res.body);
     }
 
     if (!P.session()) location.replace('./index.html');
