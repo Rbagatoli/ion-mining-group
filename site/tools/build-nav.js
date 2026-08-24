@@ -81,6 +81,35 @@ const BRAND_MARK = `<svg width="26" height="26" viewBox="0 0 512 512" aria-hidde
         <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
         </svg>`;
 
+/* THE SECOND O OF PROTON.
+
+   The electron, standing in for the letter. Sized in em so it tracks the
+   wordmark instead of being pinned to a pixel size, and sat so its centre lands
+   on the optical centre of the cap height: the box is 0.92em tall, so dropping
+   it 0.11em below the baseline puts its middle 0.35em up, which is where the
+   waist of an uppercase O is.
+
+   It carries aria-hidden and no title. It is a letter, not an image, and the
+   link's accessible name is built from the text around it — an <svg role="img"
+   title="Proton"> here would have a screen reader say "Prot Proton n Mining".
+   The visible word is therefore PROT_N to a screen reader, which is why the
+   <a> keeps its own aria-label upstream.
+
+   Only the orange gradient is defined: the platinum one belonged to the ring
+   this replaced, and an unused <defs> entry is a thing that outlives its
+   reason. */
+const BRAND_O = `<svg class="brand-o" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="150" fill="url(#protonMarkNavO)"/>
+        </svg>`;
+
 /* Where the producer portal lives, relative to a page in site/.
    See the note beside the nav link for when this changes. */
 const PORTAL_HREF = '../portal/';
@@ -90,8 +119,7 @@ function nav(active, cta) {
   return `<nav class="nav">
   <div class="nav-inner">
     <a class="brand" href="./index.html">
-      ${BRAND_MARK}
-      <span class="brand-name">Proton <span>Mining</span></span>
+      <span class="brand-name">Prot${BRAND_O}n <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
