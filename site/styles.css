@@ -3950,7 +3950,18 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 @media (max-width: 720px) {
     .ph {
         white-space: normal;
+        /* THREE PROPERTIES FOR ONE JOB, and the reason is Safari.
+           overflow-wrap: anywhere is what fixes the grid, because it is the only
+           one of the three that also lowers an element's MIN-CONTENT width — and
+           a grid item's default min-width:auto is what was dragging .spec-val to
+           460px. But Safari only learned `anywhere` in 15.4, so on an older
+           iPhone that line is simply dropped and the placeholder overflows
+           exactly as it did before. word-break: break-word is the older WebKit
+           spelling and break-word is the universal fallback, so every engine
+           gets at least a wrap even where it cannot get the sizing fix. */
         overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        word-break: break-word;
     }
     .spec-key, .spec-val { min-width: 0; }
 }
@@ -3976,4 +3987,16 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .fac-grid { gap: 10px; }
     .fac-spec { margin-top: 12px; padding-top: 10px; }
     .spec-row { padding: 16px 18px; }
+}
+
+
+/* ===== no word may push a line past its box =====
+   A site-wide floor rather than a fix for one string. The known candidates are
+   the two support addresses: hello@protonminingco.com measures 280px inside a
+   280px column at 320px wide, which is not overflowing and is one notch of font
+   scaling, a longer domain, or a narrower phone away from it. break-word only
+   acts on words that would otherwise overflow, so it changes nothing anywhere
+   else. */
+body {
+    overflow-wrap: break-word;
 }
