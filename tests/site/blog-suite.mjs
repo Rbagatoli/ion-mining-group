@@ -743,10 +743,25 @@ console.log('=== the brand is Proton Mining, everywhere ===');
     eq(dirty, 0, 'no page carries any token from the old brand',
        dirty + ' occurrence(s) across ' + pages.length + ' pages');
 
-    /* The wordmark itself, as the exact rendered string across both spans. */
+    /* The wordmark itself, FLATTENED rather than matched as a literal.
+       It was pinned to the exact markup, which held until the second O became
+       its own <span> so the metallic orange could be poured into the letter.
+       The literal then failed while the wordmark was perfectly correct -- the
+       test was describing one arrangement of tags rather than the thing it
+       exists to protect, which is that the name renders as "Proton Mining" and
+       not as "Proton Mining Group". Reading the text and comparing that survives
+       any future re-nesting and still catches the leftover-word bug it was
+       written for.
+       Checked on EVERY brand-name on the page, because there are two of them --
+       the nav and the footer -- and the split-wordmark failure hit them
+       independently. */
     const home = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8');
-    ok(home.indexOf('<span class="brand-name">Proton <span>Mining</span></span>') >= 0,
-       'the wordmark reads Proton Mining across both spans');
+    const marks = [...home.matchAll(
+        /<span class="brand-name">((?:[^<]|<span[^>]*>[^<]*<\/span>)*)<\/span>/g)]
+        .map(m => m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim());
+    ok(marks.length >= 2, 'both wordmarks are found', marks.length + ' on the home page');
+    marks.forEach((t, i) => eq(t, 'Proton Mining',
+        'wordmark ' + (i + 1) + ' reads Proton Mining once the spans are flattened'));
 
     /* The origin is written in one place and everything regenerates from it. */
     const seo = fs.readFileSync(path.join(SITE, 'tools', 'build-seo.js'), 'utf8');

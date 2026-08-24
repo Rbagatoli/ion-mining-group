@@ -83,32 +83,19 @@ const BRAND_MARK = `<svg width="26" height="26" viewBox="0 0 512 512" aria-hidde
 
 /* THE SECOND O OF PROTON.
 
-   The electron, standing in for the letter. Sized in em so it tracks the
-   wordmark instead of being pinned to a pixel size, and sat so its centre lands
-   on the optical centre of the cap height: the box is 0.92em tall, so dropping
-   it 0.11em below the baseline puts its middle 0.35em up, which is where the
-   waist of an uppercase O is.
+   The LETTER, with the metallic orange poured into it -- not a circle drawn to
+   look like a letter. That is the whole of why this is a span and not an svg.
 
-   It carries aria-hidden and no title. It is a letter, not an image, and the
-   link's accessible name is built from the text around it — an <svg role="img"
-   title="Proton"> here would have a screen reader say "Prot Proton n Mining".
-   The visible word is therefore PROT_N to a screen reader, which is why the
-   <a> keeps its own aria-label upstream.
+   The svg version could not be right: it had to be sized in em and nudged onto
+   the baseline by hand, which meant it was never quite the width of the O beside
+   it and never quite sat on the same line. A glyph has none of those problems
+   because it IS the glyph -- same face, same weight, same tracking, same
+   baseline, same optical size, for free and permanently.
 
-   Only the orange gradient is defined: the platinum one belonged to the ring
-   this replaced, and an unused <defs> entry is a thing that outlives its
-   reason. */
-const BRAND_O = `<svg class="brand-o" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
-        <defs>
-          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#ffcf8a"/>
-          <stop offset="38%" stop-color="#f7a02b"/>
-          <stop offset="70%" stop-color="#ffdcae"/>
-          <stop offset="100%" stop-color="#e07f10"/>
-          </linearGradient>
-        </defs>
-        <circle cx="256" cy="256" r="150" fill="url(#protonMarkNavO)"/>
-        </svg>`;
+   --metal-btc-lit rather than --metal-btc: the flat and default ramps bottom out
+   around #a85a06 and #c06a08, which are too dark to read at 13px. The lit ramp
+   exists for exactly this case and says so where it is defined. */
+const BRAND_O = `<span class="brand-o">o</span>`;
 
 /* Where the producer portal lives, relative to a page in site/.
    See the note beside the nav link for when this changes. */
@@ -119,6 +106,7 @@ function nav(active, cta) {
   return `<nav class="nav">
   <div class="nav-inner">
     <a class="brand" href="./index.html">
+      ${BRAND_MARK}
       <span class="brand-name">Prot${BRAND_O}n <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">

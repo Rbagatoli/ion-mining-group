@@ -3917,20 +3917,28 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 }
 
 
-/* ===== the O that is the electron =====
+/* ===== the second O of PROTON =====
 
-   Selector written as .brand .brand-o, not .brand-o, because line 390 carries
-   `.brand svg { display: block; }` — a rule that existed for the standalone mark
-   this replaces. A block-level element inside a line of text forces a break on
-   either side of itself, so at one class of specificity the wordmark rendered as
-   three lines: PROT / the dot / N MINING. Two classes beats one class plus one
-   element, which is what puts the letter back in the word. */
+   The letter with the metallic orange poured into it. Written as
+   .brand .brand-o so it outranks `.brand svg { display: block; }` on the way
+   past -- and, more to the point, so nothing here has to set a size, a width or
+   a baseline at all. It is the same glyph as the O beside it, so it matches by
+   being the thing rather than by being tuned to look like it.
+
+   --metal-btc-lit, not --metal-btc: the other ramps bottom out near #a85a06,
+   which is unreadable at 13px. That token exists for small orange type and says
+   so where it is defined.
+
+   The `color` under the fill is not decoration. -webkit-text-fill-color:
+   transparent hides the glyph outright on any engine that clips the background
+   but ignores the fill property, and a wordmark reading PROT_N is worse than one
+   that is merely a flat orange. */
 .brand .brand-o {
-    display: inline-block;
-    width: 0.92em;
-    height: 0.92em;
-    vertical-align: -0.11em;
-    margin: 0 0.01em;
+    background-image: var(--metal-btc-lit);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--btc-300);
 }
 
 /* ===== mobile: the overflow, and the scrolling =====
