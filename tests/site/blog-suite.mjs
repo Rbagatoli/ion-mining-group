@@ -783,8 +783,19 @@ console.log('=== the drawings are visible on a phone ===');
     ok(!/[.]dg-wrap \{ display: none/.test(block),
        'the drawings are no longer hidden on a phone');
     ok(/overflow-x:\s*auto/.test(block), 'they get their own horizontal scroller');
-    ok(/[.]dg-wrap [.]site-diagram\s*\{[^}]*width:\s*820px/.test(block),
-       'at a width where the drawing is legible rather than fitted to the screen');
+    /* A WIDTH, NOT THE width. This pinned 820px and failed the moment that became 620 —
+       which was a deliberate change, because 820 meant 2.3 screens of swiping and the
+       owner said so. What matters is that the drawing is given a real width rather than
+       being fitted to a 350px screen at 27%, so the assertion is the range it has to be
+       in: comfortably wider than the viewport, not so wide that reading it is a chore. */
+    const dw = /[.]dg-wrap [.]site-diagram\s*\{[^}]*width:\s*((\d+)px)/.exec(block);
+    ok(!!dw, 'the drawing is given an explicit width');
+    if (dw) {
+        const px = +dw[2];
+        ok(px >= 500 && px <= 900,
+           'at a width where it is legible without being a chore to pan',
+           px + 'px');
+    }
 
     /* PANNING BELONGS TO THE BROWSER. Without this the engine's pointermove handler and the
        scroller fight over every horizontal swipe, and the drawing rotates when the reader

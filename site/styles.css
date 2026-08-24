@@ -101,6 +101,23 @@
         #d4791a 0%, #f7931a 18%, #ffd08a 38%,
         #f7931a 56%, #e07f10 76%, #ffc46b 100%);
 
+    /* The same metal, for a button that is nearly full-width.
+     *
+     * A gradient's mean lightness does not change with the box it is painted into — what
+     * changes is the physical size of each band. The desktop CTA is 145px wide, so the
+     * highlight lands at about 29px and reads as a specular shimmer. The same button on a
+     * phone is 350px, the highlight becomes 120px, and it stops reading as a highlight at all:
+     * it is a flat panel of pale peach with the brand colour either side of it. Measured, 35%
+     * of that button sits above perceived lightness 180, against a brand orange of 163.
+     *
+     * So the highlight is compressed to a tight specular line and the ramp ends deep instead
+     * of pale. Mean lightness 171 -> 147, pale area 35% -> 7%, mean saturation 0.78 -> 0.90 —
+     * which is the brand colour's own 0.895. Worst contrast against the black label is 5.20:1,
+     * so the floor the decorative gradient could not hold is still comfortably clear. */
+    --metal-btc-btn-wide: linear-gradient(135deg,
+        #bf680b 0%, #e0820f 24%, #f7931a 40%,
+        #ffbc60 47%, #f7931a 54%, #cf7310 78%, #e0820f 100%);
+
     /* Polished edge: a machined bevel catching light along its length. */
     --edge-plat: linear-gradient(90deg,
         transparent 0%, rgba(229,228,226,0.03) 20%,
@@ -2604,7 +2621,13 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-wrap--cont .site-diagram, .dg-wrap--asic .site-diagram { transform: none; }
 }
 
-@media (max-width: 900px) {
+/* max-width OR a coarse pointer. The width test alone missed every large phone held
+   sideways — 932px on a 15 Pro Max, 926 on a 14 Pro Max, 915 on a Pixel — all of which sailed
+   over a 900px line and got the desktop drawing with eight callout bubbles laid out for a
+   1280px canvas inside a viewport 430px tall. That is what "the text bubbles are cut off"
+   was. A phone turned sideways is still a phone, and pointer:coarse is the question that was
+   actually meant. */
+@media (max-width: 900px), (pointer: coarse) {
     /* ---- the drawings on a phone ----
      *
      * These used to be display:none below 900px, with the ordered list underneath standing in
@@ -2647,10 +2670,20 @@ a.fac:hover .fac-go { color: var(--btc-200); }
      * A negative margin rather than a scroll position, because setting scrollLeft would mean
      * reading layout at runtime, which this project does not do. The drawing starts where the
      * drawing starts, and the gutter is still reachable by swiping back if anybody wants it. */
+    /* 620px, not 820. At 820 the drawing was 2.3 screens wide and reading it meant three
+       deliberate swipes inside a page that also scrolls vertically — which is the "difficult
+       to manoeuvre with my fingers" complaint, and it is a fair one. 620 renders at a scale of
+       0.48, still nearly twice what fitting to the screen gives, and brings the whole drawing
+       within about one and a half screens. The margin scales with it so the reader still opens
+       on the drawing rather than on the empty callout gutter. */
     .dg-wrap .site-diagram {
-        width: 820px; max-width: none; height: auto;
-        margin-left: -250px;
+        width: 620px; max-width: none; height: auto;
+        margin-left: -190px;
     }
+    /* Vertical belongs to the page, always. Without this a swipe that is a few degrees off
+       horizontal gets eaten by the diagram and the page does not move, which reads as the
+       page being stuck. */
+    .dg-wrap { touch-action: pan-x; }
     .dg-callout { display: none; }
 
     /* THE HINT DESCRIBED A MOUSE. "Drag to rotate, hover a part to identify it, scroll to
@@ -2660,6 +2693,13 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-hint { display: none; }
 
     .dg-list { display: block; }
+
+    /* ---- the orange, on a nearly full-width button ----
+       See --metal-btc-btn-wide for why the same ramp reads pale here and rich on desktop.
+       Scoped to the buttons that actually go full-width; the small ones keep the original. */
+    .btn--primary, .nav-cta, .dg-toggle-on, .pp-seg--best {
+        background-image: var(--metal-btc-btn-wide);
+    }
     /* Two lists, and the slider still picks which one you are reading. Keyed to
        which END the slider is at rather than to the view names, so a second
        pair of views elsewhere on the site does not silently show both lists at
