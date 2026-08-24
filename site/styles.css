@@ -3919,26 +3919,43 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
 /* ===== the second O of PROTON =====
 
-   The letter with the metallic orange poured into it. Written as
-   .brand .brand-o so it outranks `.brand svg { display: block; }` on the way
-   past -- and, more to the point, so nothing here has to set a size, a width or
-   a baseline at all. It is the same glyph as the O beside it, so it matches by
-   being the thing rather than by being tuned to look like it.
+   The whole letter filled: a solid disc of metallic orange standing where the O
+   would be, not the letterform with orange in its stroke.
 
-   --metal-btc-lit, not --metal-btc: the other ramps bottom out near #a85a06,
-   which is unreadable at 13px. That token exists for small orange type and says
-   so where it is defined.
+   EVERY NUMBER BELOW WAS MEASURED, not chosen. The first two attempts at this
+   were an svg circle sized by eye, and both came out the wrong size and slightly
+   off the baseline for the same reason -- there was nothing tying them to the
+   glyph. So the face was measured with canvas TextMetrics at 400px and 800px
+   (identical ratios at both, so these are the font's real proportions):
 
-   The `color` under the fill is not decoration. -webkit-text-fill-color:
-   transparent hides the glyph outright on any engine that clips the background
-   but ignores the fill property, and a wordmark reading PROT_N is worse than one
-   that is merely a flat orange. */
+       ink            0.6875em wide by 0.7344em tall -- the O is TALLER than it
+                      is wide, so this is an ellipse and a round circle would be
+                      visibly wrong
+       advance        0.7559em
+       side bearings  0.0313em left, 0.0371em right
+       descent        0.0156em below the baseline
+
+   The margins restore the advance exactly, so the disc occupies the same
+   horizontal space the letter did and the tracking either side is unchanged.
+   vertical-align carries the descent: with overflow:hidden an inline-block's
+   baseline is its bottom margin edge, so -0.0156em puts that edge exactly where
+   the bottom of the O sat.
+
+   The letter is still in the markup and only pushed out of view, so the wordmark
+   still selects, copies and reads as "Proton Mining". A background-image cannot
+   do any of those. */
 .brand .brand-o {
+    display: inline-block;
+    width: 0.6875em;
+    height: 0.7344em;
+    margin-left: 0.0313em;
+    margin-right: 0.0371em;
+    vertical-align: -0.0156em;
+    border-radius: 50%;
     background-image: var(--metal-btc-lit);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: var(--btc-300);
+    /* Keeps the glyph for selection and screen readers while showing the disc. */
+    text-indent: -9999px;
+    overflow: hidden;
 }
 
 /* ===== mobile: the overflow, and the scrolling =====
