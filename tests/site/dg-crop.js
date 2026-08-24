@@ -78,22 +78,32 @@ function extentOf(mod) {
  *
  * — and a pattern anchored on `{` sees the second and not the first, so --now reported as
  * having no crop at all when it has exactly the same one as --ion. */
-function cropOf(cls) {
-    const want = new RegExp('\\.dg-wrap--' + cls + '\\s+\\.site-diagram\\s*(?:,|$)');
+function cropOf(cls, child) {
+    const want = new RegExp('\\.dg-wrap--' + cls + '\\s+\\.' + (child || 'site-diagram') + '\\s*(?:,|$)');
     let last = null;
     const re = /([^{}]+)\{([^{}]*)\}/g;
     let m;
     while ((m = re.exec(css)) !== null) {
         const sels = m[1].split(',').map(s => s.trim()).filter(Boolean);
-        if (sels.some(s => want.test(s + ','))) last = m[2];
+        if (!sels.some(s => want.test(s + ','))) continue;
+        /* THE RULE THAT CARRIES THE CROP, not simply the last one that matches the selector.
+           A second rule — `.dg-wrap--cont .site-diagram { transform: none }`, which kills the
+           slider's push-in on mobile — matches the same selector and declares no width, so
+           taking the last match returned a rule with no crop in it and reported both scenes as
+           having no mobile crop at all. */
+        if (!/width:\s*[\d.]+%/.test(m[2])) continue;
+        last = m[2];
     }
     if (!last) return null;
     const w = last.match(/width:\s*([\d.]+)%/);
     /* `margin: 0 -32.47%` — vertical first, then the horizontal pair that does the cropping.
-       Nothing is cropped vertically; see the note in styles.css for why that is deliberate. */
-    const mar = last.match(/margin:\s*(-?[\d.]+)(?:%|px)?\s+(-?[\d.]+)%/);
+       Nothing is cropped vertically; see the note in styles.css for why that is deliberate.
+       The gas-field canvas expresses the same crop as `left: -32.47%` instead, because it is
+       absolutely positioned rather than in the flow. */
+    const mar = last.match(/margin:\s*(-?[\d.]+)(?:%|px)?\s+(-?[\d.]+)%/) ||
+                last.match(/()left:\s*(-?[\d.]+)%/);
     if (!w || !mar) return null;
-    return { w: +w[1], vert: +mar[1], side: +mar[2] };
+    return { w: +w[1], vert: mar[1] === '' ? 0 : +mar[1], side: +mar[2] };
 }
 
 /* Invert the CSS back into the viewBox window it leaves visible.
@@ -140,6 +150,22 @@ for (const [cls, mods] of Object.entries(WRAPS)) {
     ok(fill > 0.90, '  and the drawing fills it', (fill * 100).toFixed(1) + '% of the window');
     /* Nothing may be cropped vertically — the scenes rise and fall through the sweep. */
     ok(crop.vert === 0, '  and nothing is cropped vertically', 'margin top/bottom ' + crop.vert);
+
+    /* THE GAS FIELD MUST SIT IN THE SAME BOX AS THE DRAWING.
+     *
+     * hero-anim.js paints the plant's silhouette as an occluder and maps the viewBox into the
+     * canvas with a CONTAIN fit. That is only correct if the canvas and the SVG occupy the
+     * same box: give them different boxes and the hole in the gas is cut in the wrong place
+     * and the wrong size, which is what "the background animation is not proportional" was.
+     * Since the SVG's aspect equals the viewBox's, identical boxes make the contain fit exact
+     * rather than approximate — so this is an equality, not a tolerance. */
+    const field = cropOf(cls, 'anim-field--dg');
+    ok(!!field, '  the gas field has a matching crop', field ? '' : 'no .anim-field--dg rule');
+    if (field) {
+        ok(field.w === crop.w && field.side === crop.side,
+           '  and it is the same box as the drawing',
+           'field ' + field.w + '% @ ' + field.side + '%   drawing ' + crop.w + '% @ ' + crop.side + '%');
+    }
 }
 
 console.log('');

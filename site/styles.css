@@ -2752,6 +2752,21 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-wrap--asic .site-diagram { width: 184.44%; margin: 0 -42.22%; }   /* draws x 313..967  */
     .dg-wrap--now  .site-diagram,
     .dg-wrap--ion  .site-diagram { width: 119.18%; margin: 0 -9.59%; }    /* draws x 123..1157 */
+
+    /* NO DOLLY ON A PHONE, because it unhooks the gas from the drawing.
+     *
+     * .dg-wrap--cont and --asic scale their SVG with the slider — a small push-in that sells
+     * the change of scale between a container and one machine. The gas field's occluder is
+     * matched to the SVG's LAYOUT box, and a transform does not change a layout box, so a
+     * scaled drawing sits inside a silhouette cut for its unscaled self: measured, the asic
+     * view rendered at 610x224 inside a 642x236 hole. On desktop that mismatch is hidden
+     * because the field there is the full wrap and the drawing is centred in it; here the two
+     * boxes are deliberately locked together, so the transform has to go.
+     *
+     * This sits after the base rules on purpose — a media query adds no specificity, and
+     * source order is the only reason it wins. */
+    .dg-wrap--cont .site-diagram,
+    .dg-wrap--asic .site-diagram { transform: none; }
     /* Static, so the generator's inline `top` stops applying and these flow in the grid.
        width/transform/text-align all have to come off too: --l is right-aligned and both
        sides carry translateY(-50%), which would pull the first row up out of the box. */
@@ -2775,6 +2790,105 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     /* Over the drawing rather than over the bubbles: `bottom` now resolves against a box
        three times taller, which would drop the zoom buttons into the middle of the labels. */
     .dg-controls { top: 8px; bottom: auto; }
+
+    /* THE GAS FIELD BELONGS BEHIND THE DRAWING, NOT BEHIND THE LABELS.
+     *
+     * .anim-field is position:absolute; inset:0, so when the window became a 643px-tall grid
+     * the canvas grew with it and the rise ran up behind the text cards. Worse, hero-anim.js
+     * draws the plant's silhouette as an OCCLUDER — the gas is erased where the plant is — and
+     * maps the 1280x470 viewBox into the canvas with a CONTAIN fit:
+     *
+     *     var s = Math.min(w / vbW, h / vbH);
+     *
+     * At 348x642 that is s = 0.272, painting a 348x128 silhouette centred VERTICALLY in a
+     * 642px box, while the real drawing is ~577px wide, cropped, and sits at the top. So the
+     * hole in the gas was in the wrong place and the wrong size: gas erased where there is no
+     * plant, gas rising straight through the plant that is there.
+     *
+     * Giving the canvas the SAME box as the SVG fixes both at once. The crop percentages are
+     * the ones from the .site-diagram rules above, and because the SVG's aspect equals the
+     * viewBox's, a contain fit of that box is an exact match rather than an approximation.
+     * aspect-ratio does the height, so the two boxes stay locked at every width without
+     * anything measuring anything. */
+    .anim-field--dg {
+        top: 0;
+        right: auto;
+        bottom: auto;
+        height: auto;
+        aspect-ratio: 1280 / 470;
+    }
+    .dg-wrap--site .anim-field--dg { width: 166.23%; left: -33.12%; }
+    .dg-wrap--cont .anim-field--dg { width: 164.95%; left: -32.47%; }
+    .dg-wrap--asic .anim-field--dg { width: 184.44%; left: -42.22%; }
+    .dg-wrap--now  .anim-field--dg,
+    .dg-wrap--ion  .anim-field--dg { width: 119.18%; left: -9.59%; }
+
+    /* ONE SET OF LABELS AT A TIME.
+     *
+     * The two views of a comparison share one grid cell and crossfade on opacity. That was
+     * fine while the callouts were hidden on mobile — only the drawings dissolved into each
+     * other. Now that the bubbles are the labels, both sets rendered at once: at the middle of
+     * the slider each sat at opacity 0.5, 973 characters of text stacked word over word, which
+     * is the "large text appears over the entire rendering" that was reported.
+     *
+     * Keyed to .is-on, which site.js flips at --d 0.5, so the labels swap once at the midpoint
+     * while the drawings still dissolve. Reading two things at 50% opacity is not a comparison
+     * of anything.
+     *
+     * The note goes with them. It is the other piece of text the wrap owns, and leaving it
+     * behind put the machine's spec line ("Modelled on an Antminer S21 Pro...") straight
+     * across the container view's third row of cards — the same defect one element down. */
+    .dg-views > .dg-wrap:not(.is-on) .dg-callout,
+    .dg-views > .dg-wrap:not(.is-on) .dg-note { display: none; }
+
+    /* THE SPEC NOTE STOPS BEING AN OVERLAY.
+     *
+     * .dg-note is absolutely positioned at left:21%, max-width:58% — clear of the artwork in
+     * the desktop gutter, but 203px of text printed across the middle of the drawing at this
+     * width. It is a caption, so on a phone it becomes one: in the flow, full width, directly
+     * under the drawing and above the labels. */
+    .dg-wrap .site-diagram { order: 0; }
+    .dg-note {
+        position: static;
+        order: 1;
+        grid-column: 1 / -1;
+        max-width: none;
+        margin: 2px 0 0;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        line-height: 1.65;
+    }
+    .dg-callout { order: 2; }
+
+    /* THE COMPARISON SLIDER, FOR A THUMB.
+     *
+     * Measured on a 390px phone: the track was 124px wide on hosting and 80px on energy,
+     * 26px tall, with a 13px thumb. The end labels take 109px and 124px of a 350px row, so the
+     * control the whole interaction depends on got whatever was left — a 13x26px target inside
+     * an 80px runway. That is the "difficult to use" complaint and it is unarguable.
+     *
+     * The track takes its own full-width row and the two ends sit beneath it, which turns 80px
+     * of travel into ~350px. The thumb goes to 24x40 inside a 44px input, which is the
+     * standing touch-target floor. */
+    .dg-scale {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 12px;
+        margin-top: 30px;
+    }
+    .dg-scale-track { grid-column: 1 / -1; order: -1; }
+    .dg-scale-input { height: 44px; }
+    .dg-scale-input::-webkit-slider-thumb { width: 24px; height: 40px; margin-top: -18px; }
+    .dg-scale-input::-moz-range-thumb     { width: 24px; height: 40px; }
+    .dg-scale-end[data-end="lo"] { text-align: left; }
+    .dg-scale-end[data-end="hi"] { text-align: right; }
+
+    /* THE TYPE FLOOR, WHICH THIS FIGURE HAS BEEN UNDER THE WHOLE TIME.
+       Measured at 390px: .dg-scale-hint and .dg-toggle-on render at 9.5px, .dg-scale-end and
+       .dg-note at 10px. The site holds a 10.5px minimum everywhere else. */
+    .dg-scale-end,
+    .dg-scale-hint,
+    .dg-toggle-on { font-size: 10.5px; }
     /* Vertical belongs to the page, always. Without this a swipe that is a few degrees off
        horizontal gets eaten by the diagram and the page does not move, which reads as the
        page being stuck. */

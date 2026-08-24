@@ -842,6 +842,38 @@ console.log('=== the drawings are visible on a phone ===');
     ok(/[.]dg-c-title \{ font-size: (1[0-9]|[2-9][0-9])(\.\d+)?px/.test(block),
        '  and their type clears the 10.5px floor at this width');
 
+    /* ONE VIEW'S LABELS AT A TIME. Two wraps share a grid cell and crossfade on opacity; with
+       the bubbles visible that rendered both sets stacked, 973 characters of text word over
+       word at the midpoint of the slider. The note has to swap with them or the machine's spec
+       line prints across the container view's cards. */
+    ok(/[.]dg-views > [.]dg-wrap:not\([.]is-on\) [.]dg-callout/.test(block),
+       'only the view you are on shows its labels');
+    ok(/[.]dg-views > [.]dg-wrap:not\([.]is-on\) [.]dg-note/.test(block),
+       '  and its spec note goes with them');
+
+    /* THE NOTE IS A CAPTION, NOT AN OVERLAY. Absolutely positioned at left:21% it printed
+       across the middle of the drawing at this width. */
+    ok(/[.]dg-note \{[^}]*position: static/.test(block),
+       'the spec note joins the flow instead of lying over the drawing');
+    ok(/[.]dg-note \{[^}]*font-size: (1[0-9]|[2-9][0-9])(\.\d+)?px/.test(block),
+       '  at a size above the 10.5px floor');
+
+    /* THE SLIDER IS THE WHOLE INTERACTION AND IT WAS 13x26px INSIDE AN 80px RUNWAY.
+       Measured on energy.html at 390px, where the two end labels took 233px of a 350px row. */
+    ok(/[.]dg-scale-track \{[^}]*grid-column: 1 \/ -1/.test(block),
+       'the slider track gets a full-width row instead of what the labels leave over');
+    const inputH = block.match(/[.]dg-scale-input \{ height: (\d+)px/);
+    ok(!!inputH && +inputH[1] >= 44,
+       '  and a 44px touch target', inputH ? inputH[1] + 'px' : 'no height set');
+    const thumbH = block.match(/::-webkit-slider-thumb \{ width: (\d+)px; height: (\d+)px/);
+    ok(!!thumbH && +thumbH[1] >= 20,
+       '  with a thumb wide enough to grab', thumbH ? thumbH[1] + 'x' + thumbH[2] : 'unchanged');
+
+    /* The rest of the figure's chrome was under the floor too: 9.5px on the hint and the
+       segmented control, 10px on the scale ends. */
+    ok(/[.]dg-scale-end,\s*[.]dg-scale-hint,\s*[.]dg-toggle-on \{ font-size: 10\.5px/.test(block),
+       'the scale ends, the drag hint and the segmented control all clear 10.5px');
+
     /* Every page carrying a drawing carries the list for it, or the labels are simply gone. */
     ['index.html', 'energy.html', 'hosting.html'].forEach(f => {
         const h = fs.readFileSync(path.join(SITE, f), 'utf8');
