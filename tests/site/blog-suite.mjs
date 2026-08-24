@@ -782,26 +782,28 @@ console.log('=== the drawings are visible on a phone ===');
 
     ok(!/[.]dg-wrap \{ display: none/.test(block),
        'the drawings are no longer hidden on a phone');
-    ok(/overflow-x:\s*auto/.test(block), 'they get their own horizontal scroller');
-    /* A WIDTH, NOT THE width. This pinned 820px and failed the moment that became 620 —
-       which was a deliberate change, because 820 meant 2.3 screens of swiping and the
-       owner said so. What matters is that the drawing is given a real width rather than
-       being fitted to a 350px screen at 27%, so the assertion is the range it has to be
-       in: comfortably wider than the viewport, not so wide that reading it is a chore. */
-    const dw = /[.]dg-wrap [.]site-diagram\s*\{[^}]*width:\s*((\d+)px)/.exec(block);
-    ok(!!dw, 'the drawing is given an explicit width');
-    if (dw) {
-        const px = +dw[2];
-        ok(px >= 500 && px <= 900,
-           'at a width where it is legible without being a chore to pan',
-           px + 'px');
-    }
 
-    /* PANNING BELONGS TO THE BROWSER. Without this the engine's pointermove handler and the
-       scroller fight over every horizontal swipe, and the drawing rotates when the reader
-       meant to scroll it. */
-    ok(/touch-action:\s*pan-x/.test(block),
-       'and a swipe scrolls it rather than rotating it');
+    /* FIT, NOT PAN. This went through three shapes — an 820px scroller, a 620px one,
+       and finally no scroller at all — and the last was reached by accident when a flex
+       rule let the drawing shrink to the box. It was better than either: the whole mine,
+       centred, nothing to swipe. Panning a wide drawing inside a page that also scrolls
+       is fiddly at every width, and the owner said so twice. */
+    ok(/[.]dg-wrap [.]site-diagram\s*\{[^}]*width:\s*100%/.test(block),
+       'the drawing fits the screen rather than needing to be panned');
+    ok(!/overflow-x:\s*auto/.test(block), 'so there is no horizontal scroller to fight');
+
+    /* Vertical belongs to the page. Without this a swipe a few degrees off horizontal is
+       eaten by the diagram and the page does not move, which reads as being stuck. */
+    ok(/touch-action:\s*pan-y/.test(block),
+       'and a vertical swipe still scrolls the page');
+
+    /* A PINCH IS NOT A SCROLL. Every browser reports pinch as a burst of wheel events
+       with ctrlKey set; each one was multiplying zoom by 1.12, so two fingers drove the
+       model to its limits and back and looked like the drawing was glitching. */
+    const eng = fs.readFileSync(path.join(SITE, 'diagram-engine.js'), 'utf8');
+    const wheel = eng.slice(eng.indexOf("addEventListener('wheel'"));
+    ok(/if \(e\.ctrlKey\) return;/.test(wheel.slice(0, 1200)),
+       'and a pinch does not drive the zoom');
 
     /* The callouts come off and the list stays: the drawing is the picture, the <ol> is the
        labels. Losing the list too would leave the drawing unlabelled. */

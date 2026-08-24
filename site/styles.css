@@ -2651,9 +2651,16 @@ a.fac:hover .fac-go { color: var(--btc-200); }
      * drawing is the picture; the list is the labels. */
     .dg-wrap {
         display: block;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
+        /* NO SCROLLER. Three rounds of this ended here and the last one arrived by accident:
+           `display:flex` for centring let flex-shrink pull the 620px drawing back down to the
+           350px box, and the result — the whole mine, centred, nothing to swipe — was better
+           than either width the scroller had been set to. Panning a wide drawing inside a page
+           that also scrolls is fiddly at every width; not having to pan is not.
+
+           The drawing is smaller this way. The numbered list under it carries the detail, and
+           the +/- buttons zoom for anyone who wants a closer look, which is a tap rather than
+           a gesture. */
+        overflow: hidden;
         /* Panning belongs to the browser. Without this the engine's pointermove handler and
            the scroller fight over every horizontal swipe, and the drawing rotates when you
            meant to scroll it. Drag-to-rotate is a mouse affordance and it stays one. */
@@ -2676,14 +2683,19 @@ a.fac:hover .fac-go { color: var(--btc-200); }
        0.48, still nearly twice what fitting to the screen gives, and brings the whole drawing
        within about one and a half screens. The margin scales with it so the reader still opens
        on the drawing rather than on the empty callout gutter. */
-    .dg-wrap .site-diagram {
-        width: 620px; max-width: none; height: auto;
-        margin-left: -190px;
-    }
+    /* CENTRED, by auto margins on a flex child. A negative margin put the drawing at a fixed
+       offset, which is only centred at one viewport width and was off at every other — the
+       reader saw it sitting to one side. `margin: auto` on an overflowing flex item is the one
+       construction that centres it AND leaves both ends reachable by scrolling; text-align and
+       justify-content both centre it and then make the left end unscrollable. */
+    .dg-wrap .site-diagram { width: 100%; max-width: none; height: auto; margin: 0; }
     /* Vertical belongs to the page, always. Without this a swipe that is a few degrees off
        horizontal gets eaten by the diagram and the page does not move, which reads as the
        page being stuck. */
-    .dg-wrap { touch-action: pan-x; }
+    /* Vertical belongs to the page and two fingers belong to the browser. What is left {d} a
+       horizontal drag {d} reaches the engine, so a sideways swipe turns the model, which is the
+       one gesture worth having here. */
+    .dg-wrap { touch-action: pan-y pinch-zoom; }
     .dg-callout { display: none; }
 
     /* THE HINT DESCRIBED A MOUSE. "Drag to rotate, hover a part to identify it, scroll to

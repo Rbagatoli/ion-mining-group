@@ -653,6 +653,17 @@
                    same way once it will not zoom any further and the page moves
                    on. There is no state to get stuck in. --- */
             wrap.addEventListener('wheel', function (e) {
+                /* A PINCH IS NOT A SCROLL, and the browser reports it as one. Every engine
+                   sends pinch gestures — trackpad and touchscreen alike — as wheel events
+                   with ctrlKey set, and a single pinch produces dozens of them in a burst.
+                   Each was multiplying zoom by 1.12, so two fingers on a phone drove the model
+                   to its limits and back in a fraction of a second: it looked like the drawing
+                   was glitching, and it was doing exactly what it was told.
+
+                   Ignored on both platforms deliberately. On a desktop ctrl+wheel is the
+                   browser's own zoom and hijacking it is worse than not handling it; on a
+                   phone the page's pinch-zoom is what a reader expects two fingers to do. */
+                if (e.ctrlKey) return;
                 var z = getView().zoom;
                 var next = z * (e.deltaY < 0 ? 1.12 : 1 / 1.12);
                 // Already pinned at the limit and still pushing that way: the
