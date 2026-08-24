@@ -74,7 +74,18 @@ function expected(area) {
         const abs = path.join(ROOT, area.dir, rel);
         if (!fs.existsSync(abs)) continue;      // not in the repo; nothing to hash
         h.update(rel);                          // a rename is a change
-        h.update(fs.readFileSync(abs));
+        /* LINE ENDINGS NORMALISED BEFORE HASHING, and this is not cosmetic.
+           This hashed raw bytes, so the stamp depended on the line endings of whoever ran it.
+           With core.autocrlf=true on Windows the working copy is CRLF and the repository is
+           LF, so every stamp committed from a Windows machine was one that no Linux checkout
+           could ever reproduce — including CI, which failed the deploy with a hash mismatch
+           and no other symptom.
+
+           The stamp exists to change when the CONTENT changes. CRLF against LF is not a
+           content change for that purpose, and the bytes actually served come from whatever
+           the deploy checks out, not from a contributor's disk. Normalising makes the stamp
+           the same everywhere and still moves whenever the file really does. */
+        h.update(fs.readFileSync(abs, 'utf8').replace(/\r\n/g, '\n'));
         hashed++;
     }
     return { stamp: h.digest('hex').slice(0, 8), hashed, assets };

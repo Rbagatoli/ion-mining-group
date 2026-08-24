@@ -52,8 +52,16 @@ function run(file, args) {
     } catch (e) {
         /* Suites report their own detail on stdout; keep the tail so a failure
            says something without burying the summary. */
+        /* THE FAILING ASSERTIONS FIRST, then the tail — in that order, because the tail alone
+           was useless. A suite prints its FAIL lines wherever they occur and its summary at the
+           end, so keeping only the last six lines showed six passing assertions and a count.
+           When CI failed a deploy on an asset-hash mismatch, the log said "1 FAILED" followed
+           by four lines of "ok", and the actual reason sat in the middle where nothing showed
+           it. Diagnosing it needed a local clone with different line endings. */
         const out = ((e.stdout || '') + '' + (e.stderr || '')).trim().split('\n');
-        return out.slice(-6).join('\n');
+        const fails = out.filter(function (l) { return /^\s*FAIL\b/.test(l); });
+        const tail = out.slice(-4);
+        return (fails.length ? fails.slice(0, 8).join('\n') + '\n' : '') + tail.join('\n');
     }
 }
 
