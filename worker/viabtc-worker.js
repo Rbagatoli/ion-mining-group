@@ -1,9 +1,9 @@
-// Ion Mining Group — ViaBTC Pool Proxy (Cloudflare Worker)
-// Deploy: wrangler deploy --name ion-viabtc
+// Proton Mining — ViaBTC Pool Proxy (Cloudflare Worker)
+// Deploy: wrangler deploy --name proton-viabtc
 // Secrets: wrangler secret put VIABTC_API_KEY
 //
 // wrangler.toml:
-// name = "ion-viabtc"
+// name = "proton-viabtc"
 // main = "viabtc-worker.js"
 // compatibility_date = "2024-01-01"
 //

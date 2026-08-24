@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Diagram engine =====
+/* ===== PROTON MINING — Diagram engine =====
    Scene-agnostic machinery for the interactive 3D cutaways: projection,
    back-face culling, the seven paint layers, depth-sorted slots, hover regions,
    and the whole interaction layer (drag, zoom, hover, keyboard, controls).

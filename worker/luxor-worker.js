@@ -1,9 +1,9 @@
-// Ion Mining Group — Luxor Mining Pool Proxy (Cloudflare Worker)
-// Deploy: wrangler deploy --name ion-luxor
+// Proton Mining — Luxor Mining Pool Proxy (Cloudflare Worker)
+// Deploy: wrangler deploy --name proton-luxor
 // Secrets: wrangler secret put LUXOR_API_KEY
 //
 // wrangler.toml:
-// name = "ion-luxor"
+// name = "proton-luxor"
 // main = "luxor-worker.js"
 // compatibility_date = "2024-01-01"
 

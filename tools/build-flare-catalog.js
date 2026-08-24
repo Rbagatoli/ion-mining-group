@@ -91,7 +91,7 @@ function download(url, dest, redirects) {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         var tmp = dest + '.part';
         var file = fs.createWriteStream(tmp);
-        https.get(url, { headers: { 'User-Agent': 'ion-mining-group/flare-catalog' } }, function(res) {
+        https.get(url, { headers: { 'User-Agent': 'proton-mining/flare-catalog' } }, function(res) {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 file.close();
                 try { fs.unlinkSync(tmp); } catch (e) {}

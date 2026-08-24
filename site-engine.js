@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Site Evaluation Engine =====
+// ===== PROTON MINING — Site Evaluation Engine =====
 // Pure evaluation math for a single site — a sourced energy prospect or a vendor's offer.
 // Same downstream math either way; only the origin of `usable_kw` differs.
 //

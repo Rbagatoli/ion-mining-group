@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Site Red-Flag Rules =====
+// ===== PROTON MINING — Site Red-Flag Rules =====
 // A registry, not a hardcoded list. Every rule is an independent object with a `test`, so a new
 // rule is one register() call and never an edit to site-engine.js. That separation is the point:
 // the math and the judgement about the math evolve at different speeds.

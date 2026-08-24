@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — the energy-seller portal =====
+// ===== PROTON MINING — the energy-seller portal =====
 //
 // A landfill or flare site owner logs in and sees how much gas was taken from their site and what
 // they are owed. Read-only: this worker shows money and never moves it.
@@ -21,7 +21,7 @@
 //            nothing else. Holds no Firebase token and has no path to any other route.
 //   SELLER   a counterparty. Firebase -> session -> exactly ONE seller_id, resolved server-side.
 //            Cannot express which seller it wants, so it cannot ask for another one.
-//   OPS      Ion. Bearer OPS_SECRET, constant-time, and CLOSED when the secret is unset.
+//   OPS      Proton. Bearer OPS_SECRET, constant-time, and CLOSED when the secret is unset.
 //
 // Not nested: a device token can never reach a seller route, a seller session can never reach
 // ingest, and neither can reach ops. Anything unmatched is refused.
@@ -67,8 +67,8 @@ var Statement = globalThis.PortalStatement;
 var Identity = globalThis.PortalIdentity;
 
 var ALLOWED_ORIGINS = [
-    'https://ionmininggroup.com',
-    'https://www.ionmininggroup.com',
+    'https://protonminingco.com',
+    'https://www.protonminingco.com',
     'https://rbagatoli.github.io',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
@@ -105,7 +105,7 @@ function corsHeaders(origin) {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0],
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Ion-Device, X-Ion-Signature',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Proton-Device, X-Proton-Signature',
         'Cache-Control': 'no-store'
     };
 }
@@ -148,6 +148,13 @@ async function sha256(str) {
 // Padded so lexicographic order equals numeric order, and ISO-8601 UTC sorts correctly.
 function pad(n, w) { var s = String(n); while (s.length < w) s = '0' + s; return s; }
 
+/* Both are dual-mode modules (module.exports and a global), the same shape ledger.js uses, so
+   they are testable under Node and importable here. */
+import './series.js';
+import './pool.js';
+var Series = globalThis.PortalSeries;
+var Pool = globalThis.PortalPool;
+
 var K = {
     seller:   function(id) { return 'seller:' + id; },
     site:     function(siteId) { return 'site:' + siteId; },
@@ -166,6 +173,29 @@ var K = {
     // for why these are separate keys rather than a field on one record.
     hostStatement: function(siteId, period, v) { return 'hst:' + siteId + ':' + period + ':' + pad(v, 3); },
     hostIssued: function(siteId, period) { return 'htx:' + siteId + ':' + period; },
+    // The live fleet view for a hosting site. Last writer wins; it is a snapshot
+    // of what the pool last said, not a ledger.
+    rigs: function(siteId) { return 'rigs:' + siteId; },
+
+    /* ---- daily history ----
+       BUCKETED BY MONTH, NOT BY DAY, and that is a decision about read cost rather than tidiness.
+       A key per day means the 12-month view does 365 reads for the pool series and 365 more for
+       energy before it can answer, which is both slow and billed. One key per site per month is
+       fourteen reads for the same range.
+
+       The trade is a read-modify-write on the current month every time a poll lands. That is safe
+       here because there is exactly ONE writer — the scheduled pull — and it is not safe the
+       moment anything else writes these keys, because KV has no compare-and-swap. If a second
+       writer ever appears this becomes a Durable Object; saying so now is cheaper than working it
+       out from a month of quietly lost samples later. */
+    hostDaily:   function(siteId, ym) { return 'hsr:' + siteId + ':' + ym; },
+    hostKwh:     function(siteId, ym) { return 'hkw:' + siteId + ':' + ym; },
+    // The producer side of the same idea: a month of daily gas, one key.
+    gasDaily:    function(siteId, ym) { return 'gas:' + siteId + ':' + ym; },
+    // The raw polls for one day, kept so a day can be recomputed if the rollup changes.
+    poolSamples: function(siteId, day) { return 'hps:' + siteId + ':' + day; },
+    // Which pool a site's machines report to, and the wrapped read-only key.
+    poolLink:    function(siteId) { return 'pool:' + siteId; },
     // Seller-visible index. Written ONLY at issue, which is what makes "the seller sees nothing
     // until a person decides they should" a property of the data rather than of a filter.
     issued:   function(siteId, period) { return 'stx:' + siteId + ':' + period; },
@@ -181,8 +211,8 @@ var OPS_PREFIX = 'stops:';
 
 /* ---- Account kind -----------------------------------------------------------------------------
 
-   Two kinds of counterparty sign in at the same door: a PRODUCER sells Ion gas
-   or power and is owed money for it; a HOSTING client has machines on Ion's
+   Two kinds of counterparty sign in at the same door: a PRODUCER sells Proton gas
+   or power and is owed money for it; a HOSTING client has machines on Proton's
    power and owes money for it. They see different portals.
 
    WHICH ONE IS A PROPERTY OF THE ACCOUNT, decided here and never asked of the
@@ -223,7 +253,7 @@ async function rateOk(env, identity, nowMs) {
 // ---- DEVICE tier -----------------------------------------------------------------------------
 
 async function ingestReadings(request, env, origin, nowMs) {
-    var deviceId = text(request.headers.get('X-Ion-Device'), 64);
+    var deviceId = text(request.headers.get('X-Proton-Device'), 64);
     var rawBody = await request.text();
 
     // Everything below returns the SAME denied() — unknown device, revoked key, bad signature,
@@ -234,13 +264,13 @@ async function ingestReadings(request, env, origin, nowMs) {
     var dev = await env.PORTAL.get(K.device(deviceId), 'json');
     if (!dev || dev.disabled) return denied(origin);
 
-    var sig = Device.parseSignature(request.headers.get('X-Ion-Signature'));
+    var sig = Device.parseSignature(request.headers.get('X-Proton-Signature'));
     if (!sig.kid) return denied(origin);
     var keyRec = await env.PORTAL.get(K.devKey(deviceId, sig.kid), 'json');
 
     var v = await Device.verify({
         rootKey: env.DEVICE_ROOT_KEY, deviceId: deviceId,
-        signatureHeader: request.headers.get('X-Ion-Signature'),
+        signatureHeader: request.headers.get('X-Proton-Signature'),
         rawBody: rawBody, nowMs: nowMs,
         keyState: keyRec ? keyRec.state : null
     });
@@ -439,6 +469,309 @@ function sellerView(st) {
     };
 }
 
+/* The live fleet a hosting client may see. A whitelist again, and a tighter one
+   than the statement's: this is the only route that publishes anything about an
+   individual machine outside a billing document.
+
+   NO SERIAL, NO IP, NO POOL CREDENTIAL, and no field a pool cannot actually
+   supply. Every pool proxy in this repo normalises a worker to {worker_name,
+   hashrate, status}; board temperature, fan speed and per-machine power draw are
+   not obtainable from a pool at all, because a pool observes share submissions
+   rather than sensors. They are therefore absent here rather than published as
+   permanent nulls.
+
+   `reported` is deliberately named that rather than `status`: it is what the
+   pool CLAIMS, and the portal decides what to show from it together with
+   last_seen. Two of the pool proxies mark a worker online when its decaying
+   hourly hashrate is merely non-zero, so a machine dead fifty minutes still
+   reports up — see rigState() in portal/portal.js. */
+/* GET /portal/hosting/series?from=YYYY-MM-DD&to=YYYY-MM-DD
+ *
+ * Two independent sources joined on the day: the client's pool for hashrate, uptime, workers and
+ * bitcoin, and Proton's meter for energy. series.js does the joining and owns every rule about what
+ * a missing day means; this function's whole job is to fetch the right buckets and hand them over.
+ *
+ * DEFAULTS TO 90 DAYS rather than to everything. An unbounded default is the kind of thing that
+ * looks fine against a demo account with four hundred days in it and turns into a slow endpoint
+ * the first time somebody has three years.
+ */
+async function hostingSeries(env, siteIds, url, origin) {
+    var to = url.searchParams.get('to') || Series.dayOf(Date.now());
+    var from = url.searchParams.get('from');
+    if (!from) {
+        var toMs = Series.parseDay(to);
+        if (toMs === null) return json({ error: 'bad range' }, 400, origin);
+        from = Series.dayOf(toMs - 89 * 86400000);
+    }
+
+    var days = Series.daysBetween(from, to);
+    /* daysBetween returns [] for a backwards range, a date that does not exist, and a range over
+       the cap. All three are the caller asking for something impossible, so all three are a 400
+       rather than an empty chart that looks like an account with no history. */
+    if (!days.length) return json({ error: 'bad range' }, 400, origin);
+
+    var months = {};
+    for (var i = 0; i < days.length; i++) months[days[i].slice(0, 7)] = true;
+    var yms = Object.keys(months).sort();
+
+    /* Per site, then combined. THE COMBINING IS DONE HERE rather than in the browser, because
+       it is the ratio arithmetic — uptime is the ratio of the totals, efficiency is summed as
+       watts — and that is not something to have a second implementation of on the client where
+       it cannot be tested against the first. The browser gets both and chooses which to draw. */
+    var bySite = {};
+    for (var i = 0; i < siteIds.length; i++) {
+        var siteId = siteIds[i];
+        var pool = {}, energy = {};
+        await Promise.all(yms.map(async function (ym) {
+            var a = await env.PORTAL.get(K.hostDaily(siteId, ym), 'json');
+            var b = await env.PORTAL.get(K.hostKwh(siteId, ym), 'json');
+            var d;
+            for (d in (a || {})) pool[d] = a[d];
+            for (d in (b || {})) energy[d] = b[d];
+        }));
+        bySite[siteId] = Series.build(days, pool, energy);
+    }
+
+    var combined = siteIds.length > 1 ? Series.combine(bySite) : bySite[siteIds[0]];
+    return json({
+        bucket: 'day',
+        sites: siteIds.map(function (id) { return { site_id: id, points: bySite[id] }; }),
+        combined: combined,
+        sources: Series.sourcesOf(combined)
+    }, 200, origin);
+}
+
+/* GET /portal/series?from=&to=  — a gas producer's daily history.
+ *
+ * Deliberately the same shape as the hosting one: per site, plus a combined series when the
+ * account has more than one. A producer with two landfills has exactly the question a hosting
+ * client with two facilities has.
+ *
+ * Combining is a plain sum for the quantities and a coverage-weighted figure for heating value,
+ * which is the same rule as everywhere else in this file: quantities add, rates do not.
+ */
+async function producerSeries(env, siteIds, url, origin) {
+    var to = url.searchParams.get('to') || Series.dayOf(Date.now());
+    var from = url.searchParams.get('from');
+    if (!from) {
+        var toMs = Series.parseDay(to);
+        if (toMs === null) return json({ error: 'bad range' }, 400, origin);
+        from = Series.dayOf(toMs - 89 * 86400000);
+    }
+    var days = Series.daysBetween(from, to);
+    if (!days.length) return json({ error: 'bad range' }, 400, origin);
+
+    var months = {};
+    for (var i = 0; i < days.length; i++) months[days[i].slice(0, 7)] = true;
+    var yms = Object.keys(months).sort();
+
+    var bySite = {};
+    for (var j = 0; j < siteIds.length; j++) {
+        var siteId = siteIds[j];
+        var gas = {};
+        await Promise.all(yms.map(async function (ym) {
+            var g = await env.PORTAL.get(K.gasDaily(siteId, ym), 'json');
+            for (var d in (g || {})) gas[d] = g[d];
+        }));
+        bySite[siteId] = Series.buildGas(days, gas);
+    }
+
+    var combined = siteIds.length > 1 ? combineGas(bySite) : bySite[siteIds[0]];
+    return json({
+        bucket: 'day',
+        sites: siteIds.map(function (id) { return { site_id: id, points: bySite[id] }; }),
+        combined: combined,
+        sources: Series.gasSourcesOf(combined)
+    }, 200, origin);
+}
+
+/* Two landfills added together. Volumes and money add. HEATING VALUE DOES NOT — it is a
+   property of the gas, so it is weighted by the volume it describes, and a site delivering a
+   tenth of the gas must not pull the average a tenth of the way to its own figure.
+   Coverage is weighted the same way, by hours rather than by site. */
+function combineGas(bySite) {
+    var ids = Object.keys(bySite);
+    var days = {};
+    ids.forEach(function (id) {
+        (bySite[id] || []).forEach(function (p) { days[p.date] = true; });
+    });
+    return Object.keys(days).sort().map(function (date) {
+        var mcf = 0, mcfSeen = false, mmbtu = 0, mmbtuSeen = false;
+        var usd = 0, usdSeen = false, cov = 0, covSeen = false, sites = 0;
+        var btuW = 0, btuV = 0;
+        ids.forEach(function (id) {
+            var p = (bySite[id] || []).filter(function (x) { return x.date === date; })[0];
+            if (!p) return;
+            var contributed = false;
+            if (typeof p.mcf === 'number') { mcf += p.mcf; mcfSeen = true; contributed = true; }
+            if (typeof p.mmbtu === 'number') { mmbtu += p.mmbtu; mmbtuSeen = true; contributed = true; }
+            if (typeof p.usd === 'number') { usd += p.usd; usdSeen = true; contributed = true; }
+            if (typeof p.hours_covered === 'number') { cov += p.hours_covered; covSeen = true; contributed = true; }
+            if (typeof p.btu_scf === 'number' && typeof p.mcf === 'number') {
+                btuW += p.btu_scf * p.mcf; btuV += p.mcf;
+            }
+            if (contributed) sites++;
+        });
+        return {
+            date: date,
+            mcf: mcfSeen ? Math.round(mcf * 1000) / 1000 : null,
+            mmbtu: mmbtuSeen ? Math.round(mmbtu * 1000) / 1000 : null,
+            btu_scf: btuV > 0 ? Math.round(btuW / btuV) : null,
+            hours_covered: covSeen ? cov : null,
+            coverage_pct: covSeen && sites > 0
+                ? Math.round(Math.min(cov / (sites * 24), 1) * 10000) / 100 : null,
+            usd: usdSeen ? Math.round(usd * 100) / 100 : null,
+            sites_reporting: sites,
+            sites_total: ids.length
+        };
+    });
+}
+
+/* One poll, recorded. Appends to the day's raw samples, recomputes that day from ALL of them, and
+ * writes the result into the month bucket.
+ *
+ * RECOMPUTED FROM THE WHOLE DAY, not merged into yesterday's answer. The day's bitcoin is the
+ * difference between the first and last cumulative reading, so it cannot be updated incrementally
+ * without keeping the running state somewhere — and the version of this that tried would have
+ * added each poll's total to the day, which turns a running balance into an income statement and
+ * multiplies the client's earnings by the number of polls.
+ */
+async function recordPoll(env, siteId, sample) {
+    var day = sample.at.slice(0, 10);
+    var ym = day.slice(0, 7);
+
+    var raw = (await env.PORTAL.get(K.poolSamples(siteId, day), 'json')) || [];
+    raw.push(sample);
+    /* A bounded list. At one poll every ten minutes a day holds 144; the cap is generous enough
+       to never bite in normal running and low enough that a stuck retry loop cannot grow a value
+       past what KV will store. */
+    if (raw.length > 400) raw = raw.slice(raw.length - 400);
+    await env.PORTAL.put(K.poolSamples(siteId, day), JSON.stringify(raw),
+                         { expirationTtl: 60 * 60 * 24 * 40 });
+
+    var month = (await env.PORTAL.get(K.hostDaily(siteId, ym), 'json')) || {};
+    month[day] = Series.rollupDay(raw);
+    await env.PORTAL.put(K.hostDaily(siteId, ym), JSON.stringify(month));
+    return month[day];
+}
+
+/* The scheduled pull. One tick asks every linked site's pool for its current state and records it.
+ *
+ * A SITE THAT FAILS MUST NOT STOP THE OTHERS, so each is caught on its own. A failed pull records
+ * NOTHING rather than an empty sample: an empty workers array means "the pool answered and no
+ * machine reported", which is a site-wide outage, and a network error is not evidence of one.
+ */
+async function pullAllPools(env, nowMs) {
+    if (!env.POOL_KEY_WRAP) return { skipped: 'no POOL_KEY_WRAP' };
+    var at = new Date(nowMs).toISOString();
+    var list = await env.PORTAL.list({ prefix: 'pool:' });
+    var done = 0, failed = 0;
+
+    for (var i = 0; i < list.keys.length; i++) {
+        var siteId = list.keys[i].name.slice('pool:'.length);
+        try {
+            var link = await env.PORTAL.get(K.poolLink(siteId), 'json');
+            if (!link || !link.provider || !link.key_wrapped) continue;
+            var key = await Pool.unwrapKey(env.POOL_KEY_WRAP, link.key_wrapped);
+            var sample = await Pool.pull(link.provider, link.account, key, at);
+            await recordPoll(env, siteId, sample);
+            done++;
+        } catch (e) {
+            /* Nothing about the failure is written anywhere a counterparty can read, and the key
+               is never in the message. */
+            failed++;
+        }
+    }
+    return { polled: done, failed: failed };
+}
+
+/* One fleet summary across every site the client has.
+ *
+ * SUMS ARE SUMMED; THE ONE RATIO IS WEIGHTED. machines, online, hashrate and draw all add up.
+ * uptime_pct_30d does not: it is a percentage, and the mean of two percentages weights a
+ * four-machine site the same as a hundred-machine one. It is weighted by machine count, which is
+ * the closest honest thing to the ratio of the totals when the underlying counts are not stored.
+ *
+ * `period` is NOT combined. Two sites bill on their own meters with their own coverage, and a
+ * single "hours covered" spanning both would describe neither — it stays on the per-site
+ * entries, which is where a client can act on it.
+ */
+function combinedSummary(views) {
+    var withSummary = views.filter(function (v) { return v && v.summary; });
+    if (!withSummary.length) return null;
+
+    var out = { machines: 0, online: 0, hashrate_th: 0, draw_kw: 0, uptime_pct_30d: null,
+                sites: views.length, sites_reporting: withSummary.length, period: null };
+    var upWeighted = 0, upMachines = 0;
+
+    withSummary.forEach(function (v) {
+        var m = v.summary;
+        if (typeof m.machines === 'number') out.machines += m.machines;
+        if (typeof m.online === 'number') out.online += m.online;
+        if (typeof m.hashrate_th === 'number') out.hashrate_th += m.hashrate_th;
+        if (typeof m.draw_kw === 'number') out.draw_kw += m.draw_kw;
+        if (typeof m.uptime_pct_30d === 'number' && typeof m.machines === 'number') {
+            upWeighted += m.uptime_pct_30d * m.machines;
+            upMachines += m.machines;
+        }
+    });
+
+    out.hashrate_th = Math.round(out.hashrate_th * 10) / 10;
+    out.draw_kw = Math.round(out.draw_kw * 10) / 10;
+    if (upMachines > 0) out.uptime_pct_30d = Math.round(upWeighted / upMachines * 100) / 100;
+
+    /* THE PERIOD IS COMBINED, and it has to be, because leaving it null rendered "not measured"
+       over the energy card — which is false. The energy is measured; it is measured twice, at
+       two meters. kWh adds. Coverage is a ratio and is taken as the ratio of the TOTALS, the
+       same rule as uptime above, not the mean of two percentages.
+
+       Only when the sites are billing the same period. Two meters on different months cannot be
+       added into one figure, and a client with that arrangement is better served by the per-site
+       cards than by a number spanning both. */
+    var pids = withSummary.map(function (v) { return v.summary.period && v.summary.period.id; });
+    var samePeriod = pids.length && pids.every(function (p) { return p && p === pids[0]; });
+    if (samePeriod) {
+        var kwh = 0, cov = 0, ela = 0;
+        withSummary.forEach(function (v) {
+            var pd = v.summary.period;
+            if (typeof pd.kwh_to_date === 'number') kwh += pd.kwh_to_date;
+            if (typeof pd.hours_covered === 'number') cov += pd.hours_covered;
+            if (typeof pd.hours_elapsed === 'number') ela += pd.hours_elapsed;
+        });
+        out.period = { id: pids[0], kwh_to_date: kwh,
+                       hours_covered: cov, hours_elapsed: ela };
+    }
+
+    return out;
+}
+
+function rigsView(doc) {
+    return {
+        site_id: doc.site_id,
+        as_of: doc.as_of,
+        summary: doc.summary ? {
+            machines: doc.summary.machines,
+            online: doc.summary.online,
+            hashrate_th: doc.summary.hashrate_th,
+            // Metered for the cage, never divided by machine count.
+            draw_kw: doc.summary.draw_kw,
+            uptime_pct_30d: doc.summary.uptime_pct_30d,
+            // What the next statement is being built from, so far.
+            period: doc.summary.period ? {
+                id: doc.summary.period.id,
+                kwh_to_date: doc.summary.period.kwh_to_date,
+                hours_covered: doc.summary.period.hours_covered,
+                hours_elapsed: doc.summary.period.hours_elapsed
+            } : null
+        } : null,
+        rigs: (doc.rigs || []).map(function(r) {
+            return { worker: r.worker, hashrate_th: r.hashrate_th,
+                     hashrate_24h_th: r.hashrate_24h_th,
+                     last_seen: r.last_seen, reported: r.reported };
+        })
+    };
+}
+
 /* What a HOSTING client may see of their own statement. Same discipline as
    sellerView: a whitelist, so a field added to the stored document upstream is
    not published to a counterparty by accident.
@@ -491,7 +824,7 @@ export default {
 
         try {
             // --- open ---
-            if (p === '/ping') return json({ ok: true, worker: 'ion-portal' }, 200, origin);
+            if (p === '/ping') return json({ ok: true, worker: 'proton-portal' }, 200, origin);
             // So a device with a dead clock can discipline before signing anything.
             if (p === '/time') return json({ server_time: new Date(nowMs).toISOString() }, 200, origin);
 
@@ -531,6 +864,14 @@ export default {
                    path that does not exist at all — so the shape of the other
                    portal cannot be mapped from this one. */
                 if (kind === 'producer') {
+                    /* The same daily history the hosting portal has, for a gas site. A producer
+                       was given a list of frozen monthly statements and nothing in between —
+                       no way to see a bad week while it was still a bad week. */
+                    if (p === '/portal/series') {
+                        var psites = s.sites || [];
+                        if (!psites.length) return absent(origin);
+                        return await producerSeries(env, psites, url, origin);
+                    }
                     if (p === '/portal/statements') {
                         return await listStatements(env, sellerId, fam, origin);
                     }
@@ -539,6 +880,35 @@ export default {
                 }
 
                 if (kind === 'hosting') {
+                    /* The live fleet, scoped the same way a statement is: the
+                       account's sites, and nothing outside them. */
+                    if (p === '/portal/hosting/rigs') {
+                        var sites = s.sites || [];
+                        if (!sites.length) return absent(origin);
+                        /* EVERY SITE, not sites[0]. A client can hold machines at more than one
+                           facility — the account record has always been a list, listStatements
+                           has always walked all of it, and this route quietly read the first
+                           entry. The effect was a dashboard showing 104 machines beside
+                           statements charging for 134, with nothing on the page admitting the
+                           other site existed. */
+                        var docs = [];
+                        for (var si = 0; si < sites.length; si++) {
+                            var d = await env.PORTAL.get(K.rigs(sites[si]), 'json');
+                            /* A site with no fleet document yet is named with nothing in it,
+                               rather than dropped. "We have not heard from Blue Nile" and "you
+                               have no Blue Nile" are different facts. */
+                            docs.push(d ? rigsView(d) : { site_id: sites[si], as_of: null,
+                                                          summary: null, rigs: [] });
+                        }
+                        return json({ sites: docs, summary: combinedSummary(docs) }, 200, origin);
+                    }
+                    /* The daily history behind the chart. Read-only, scoped to this
+                       account's own site exactly as the rigs route is. */
+                    if (p === '/portal/hosting/series') {
+                        var hsites = s.sites || [];
+                        if (!hsites.length) return absent(origin);
+                        return await hostingSeries(env, hsites, url, origin);
+                    }
                     if (p === '/portal/hosting/statements') {
                         return await listStatements(env, sellerId, fam, origin);
                     }
@@ -562,6 +932,20 @@ export default {
 
         // Default deny. Anything not named above is refused rather than falling through.
         return json({ error: 'blocked' }, 404, origin);
+    },
+
+    /* The pool pull, on a cron. See wrangler.toml for the schedule.
+     *
+     * WHY A CRON AND NOT A PULL ON PAGE LOAD. Uptime is the share of polls in which a machine
+     * reported, so the sampling has to be regular and independent of whether anyone is looking:
+     * a series gathered when the client happens to open the page would show its best uptime on
+     * the days they cared enough to check. It also keeps a counterparty's page load off the
+     * critical path of somebody else's API.
+     *
+     * ctx.waitUntil is not needed here — unlike a fetch handler, a scheduled handler is allowed
+     * to await its work, and the runtime keeps the invocation alive until the promise settles. */
+    async scheduled(event, env, ctx) {
+        await pullAllPools(env, Date.now());
     }
 };
 
@@ -736,6 +1120,37 @@ async function admin(request, env, origin, nowMs, p) {
         return json({ ok: true, issued_at: stRec.issued_at }, 200, origin);
     }
 
+    /* Link a site to its client's pool account.
+     *
+     * OPS-ONLY, AND ON PURPOSE. The obvious design is a field in the portal where the client pastes
+     * their own key, and it is the wrong one for now: it puts a credential-shaped input box on a
+     * page reached by a shared invite link, with no way to tell the client what scope the key needs
+     * beyond text nobody reads. Ops taking the key through the same channel that already sets up a
+     * site keeps one fewer credential surface on the public internet. The key is wrapped before it
+     * is written, so it is not in the clear even here.
+     */
+    if (p === '/admin/pool' && request.method === 'POST') {
+        if (!env.POOL_KEY_WRAP) return json({ error: 'not configured' }, 503, origin);
+        var pb = await request.json();
+        if (!pb || !pb.site_id || !pb.provider || !pb.api_key) {
+            return json({ error: 'bad request' }, 400, origin);
+        }
+        if (Pool.providers().indexOf(pb.provider) < 0) {
+            /* Refusing an unwired provider here rather than at pull time means the failure lands
+               on the person who can fix it, at the moment they are doing the thing, instead of
+               silently producing a site that never gathers any history. */
+            return json({ error: 'unknown provider', known: Pool.providers() }, 400, origin);
+        }
+        await env.PORTAL.put(K.poolLink(pb.site_id), JSON.stringify({
+            provider: pb.provider,
+            account: String(pb.account || ''),
+            key_wrapped: await Pool.wrapKey(env.POOL_KEY_WRAP, pb.api_key),
+            linked_at: new Date(nowMs).toISOString()
+        }));
+        // The key is never echoed, not even truncated.
+        return json({ ok: true, site_id: pb.site_id, provider: pb.provider }, 200, origin);
+    }
+
     if (p === '/admin/invite' && request.method === 'POST') {
         var i = await request.json();
         var sellerId = text(i.seller_id, 64);
@@ -747,7 +1162,7 @@ async function admin(request, env, origin, nowMs, p) {
             expires_at: new Date(nowMs + Identity.INVITE_TTL_SEC * 1000).toISOString(),
             redeemed_at: null
         }), { expirationTtl: Identity.INVITE_TTL_SEC });
-        // Returned once. Ion sends it; it is never displayed again.
+        // Returned once. Proton sends it; it is never displayed again.
         return json({ invite: tok }, 200, origin);
     }
 

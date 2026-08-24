@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the checkout, working with no backend =====
+/* ===== PROTON MINING — the checkout, working with no backend =====
 
    A browser-side stand-in for the orders service, so the whole purchase path can
    be clicked through with any static file server, or straight off the

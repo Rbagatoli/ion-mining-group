@@ -23,3 +23,12 @@ exclude:
   - tests/
   - worker/
   - worker-strike/
+  - worker-orders/
+  # Added 24 Aug 2026. worker-portal/ was created on the 22nd and never added here, so its
+  # source was live at rbagatoli.github.io/proton-mining/worker-portal/ - index.mjs and
+  # wrangler.toml both returned 200. No literal secrets in it, but the route surface and the
+  # key-derivation scheme of a client portal are not things to publish.
+  #
+  # Nothing loads from here: grepped portal/ and site/ for imports and fetches of it and there
+  # are none, only prose references in comments. Excluding it cannot break a page.
+  - worker-portal/

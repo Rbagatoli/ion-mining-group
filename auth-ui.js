@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Auth UI Module =====
+// ===== PROTON MINING — Auth UI Module =====
 // Modal overlay with Sign In / Sign Up / Reset Password views.
 // Loaded on every page. Injects modal HTML, handles Firebase auth flows.
 
@@ -236,7 +236,7 @@
         }
 
         setLoading('authSignInBtn', true);
-        IonAuth.signInWithEmail(email, password).then(function() {
+        ProtonAuth.signInWithEmail(email, password).then(function() {
             // Reset before hiding — otherwise re-opening the modal (e.g. after signing out
             // without a reload) shows a permanently disabled "Please wait…" button.
             setLoading('authSignInBtn', false);
@@ -270,7 +270,7 @@
         }
 
         setLoading('authSignUpBtn', true);
-        IonAuth.signUpWithEmail(email, password, name).then(function() {
+        ProtonAuth.signUpWithEmail(email, password, name).then(function() {
             setLoading('authSignUpBtn', false);
             hideModal();
             if (typeof window.handlePostAuth === 'function') window.handlePostAuth();
@@ -291,7 +291,7 @@
         }
 
         setLoading('authResetBtn', true);
-        IonAuth.sendPasswordReset(email).then(function() {
+        ProtonAuth.sendPasswordReset(email).then(function() {
             setLoading('authResetBtn', false);
             showSuccess('Reset link sent! Check your inbox.');
         }).catch(function(err) {
@@ -303,7 +303,7 @@
 
     function handleGoogleSignIn() {
         clearMessages();
-        IonAuth.signInWithGoogle().then(function() {
+        ProtonAuth.signInWithGoogle().then(function() {
             hideModal();
             if (typeof window.handlePostAuth === 'function') window.handlePostAuth();
         }).catch(function(err) {
@@ -316,7 +316,7 @@
     injectAuthModal();
 
     // ===== PUBLIC API =====
-    window.IonAuthUI = {
+    window.ProtonAuthUI = {
         show: showModal,
         hide: hideModal,
         showError: showError,

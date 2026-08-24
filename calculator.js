@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Calculator Engine =====
+// ===== PROTON MINING — Calculator Engine =====
 
 // One-time migration: clear old settings so new defaults take effect
 try {
@@ -58,7 +58,7 @@ function getWalletTotalBTC() {
         var totalBTC = 0;
 
         // 1. Get cold wallet balances from localStorage
-        var walletData = localStorage.getItem('ionMiningWallet');
+        var walletData = localStorage.getItem('protonMiningWallet');
         if (walletData) {
             var parsed = JSON.parse(walletData);
             if (parsed && parsed.addresses && Array.isArray(parsed.addresses)) {
@@ -69,7 +69,7 @@ function getWalletTotalBTC() {
         }
 
         // 2. Add Strike BTC balance if available
-        var strikeBalance = localStorage.getItem('ionMiningStrikeBtcBalance');
+        var strikeBalance = localStorage.getItem('protonMiningStrikeBtcBalance');
         if (strikeBalance) {
             totalBTC += parseFloat(strikeBalance) || 0;
         }
@@ -759,7 +759,7 @@ function renderComparison() {
 // which is why the projection math had to be extracted from recalculate() first.
 
 var ScenarioData = (function() {
-    var KEY = 'ionMiningScenarios';
+    var KEY = 'protonMiningScenarios';
 
     function defaultData() { return { _v: 1, scenarios: [] }; }
 
@@ -1231,8 +1231,8 @@ window.onCurrencyChange = function() {
 // Chart colours are baked in at construction time, so rebuild on theme change.
 
 // Restore fleet toggle state
-var ionSettings = FleetData.getSettings();
-if (ionSettings.useFleetData) {
+var protonSettings = FleetData.getSettings();
+if (protonSettings.useFleetData) {
     useFleetToggle.checked = true;
     applyFleetData();
 }

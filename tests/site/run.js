@@ -33,7 +33,13 @@ const SUITES = [
     'calc-suite.js', 'asic-suite.js', 'host-suite.js', 'dg-regress.js',
     'pad-suite.js', 'landfill-copy-suite.js',
     'hardware-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js',
-    'orders-suite.mjs', 'pay-suite.mjs', 'stripe-suite.mjs',
+    'orders-suite.mjs', 'pay-suite.mjs', 'stripe-suite.mjs', 'facility-suite.mjs',
+    'blog-suite.mjs',
+    /* The deploy tree. It asserts that every sitemap url resolves to a real file and every
+       canonical points at the page it is on — the launch-day failure the /site/ topology
+       would have caused on all twelve pages, silently. --check builds it, verifies it, and
+       removes it, so running the suite leaves no _site/ behind. */
+    'deploy-check.js',
 ];
 
 const MUTATORS = ['mutate-landfill.js', 'mutate-copy.js', 'mutate-econ.js'];

@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Statement — Ion Mining Group</title>
+<title>Statement — Proton Mining</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../tokens.css?v=338">
-<link rel="stylesheet" href="./portal.css?v=338">
+<link rel="stylesheet" href="../tokens.css?v=6010a4fa">
+<link rel="stylesheet" href="./portal.css?v=6010a4fa">
 </head>
-<body>
+<!-- Always a signed-in page, so it is always paper. -->
+<body class="pt-app">
 
 <!-- The same gas field as the rest of the portal and the marketing site. A
      statement is the page a producer stares at longest, so it gets the column
@@ -26,10 +27,10 @@
   <header class="pt-head">
     <div class="pt-brand">
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" fill="none" stroke="#e5e4e2" stroke-width="1.4"/>
+        <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="1.4"/>
         <circle cx="16" cy="16" r="4.2" fill="#f7931a"/>
       </svg>
-      <span class="pt-wordmark">Ion Mining Group</span>
+      <span class="pt-wordmark">Proton Mining</span>
     </div>
     <div class="pt-who"><a href="./index.html" style="color:var(--plat-400);font-size:11px;">&larr; All statements</a></div>
   </header>
@@ -41,16 +42,16 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="../firebase-config.js?v=338"></script>
-<script src="./portal.js?v=338"></script>
-<script src="./portal-demo.js?v=338"></script>
-<script src="./gas-field.js?v=338"></script>
+<script src="../firebase-config.js?v=6010a4fa"></script>
+<script src="./portal.js?v=6010a4fa"></script>
+<script src="./portal-demo.js?v=6010a4fa"></script>
+<script src="./gas-field.js?v=6010a4fa"></script>
 <script>
 /* The statement, rendered as a document rather than a dashboard.
    No sync.js, no shared.js — see the note in index.html. */
 (function() {
     'use strict';
-    var P = IonPortal;
+    var P = ProtonPortal;
 
     function param(n) {
         var m = location.search.match(new RegExp('[?&]' + n + '=([^&]+)'));
@@ -134,7 +135,7 @@
                 ['Adjusted minimum', P.num(top.adjusted_minimum)],
                 ['Delivered', P.num(top.delivered)],
                 top.ion_curtailed_available
-                    ? ['Available but not taken by Ion', P.num(top.ion_curtailed_available)] : null,
+                    ? ['Available but not taken by Proton', P.num(top.ion_curtailed_available)] : null,
                 ['Shortfall', top.pending_attribution
                     ? '<span class="pt-absent">pending &mdash; see below</span>'
                     : P.num(top.shortfall)]
@@ -204,8 +205,8 @@
         h += '</div>';
 
         h += '<p class="pt-foot">Questions about any figure here: ' +
-             '<a href="mailto:energy@ionmininggroup.com" style="color:var(--plat-400);">' +
-             'energy@ionmininggroup.com</a></p>';
+             '<a href="mailto:energy@protonminingco.com" style="color:var(--plat-400);">' +
+             'energy@protonminingco.com</a></p>';
 
         document.getElementById('ptDoc').innerHTML = h;
     }

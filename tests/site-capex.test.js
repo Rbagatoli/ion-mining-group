@@ -132,9 +132,9 @@ SC.reset();
     ok('owning it yourself costs real money', comp(selfOwned, 'generation_equipment').usd > 1000000,
        comp(selfOwned, 'generation_equipment').usd);
 
-    // The regression this gate prevents: Ion's real Alberta deals price at ~$450/kW, and charging
+    // The regression this gate prevents: Proton's real Alberta deals price at ~$450/kW, and charging
     // generation unconditionally would assert those deals are impossible.
-    // Site-side only: exclude miners and the acquisition price, because Ion's real ~$450/kW
+    // Site-side only: exclude miners and the acquisition price, because Proton's real ~$450/kW
     // quote is for the site buildout. It should now be $450/kW of mining infrastructure plus
     // permitting, which the old flat figure never priced separately.
     var mn = comp(producerOwned, 'miners').usd;

@@ -3,22 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bitcoin Miner Hosting &amp; Colocation — Ion Mining Group</title>
-<meta name="description" content="Host your ASICs with Ion Mining Group. Metered all-in power, air and hydro-cooled capacity, per-machine telemetry, and payouts straight from your pool to your wallet.">
-<link rel="canonical" href="https://ionmininggroup.com/hosting.html">
+<title>Bitcoin Miner Hosting &amp; Colocation — Proton Mining</title>
+<meta name="description" content="Host your ASICs with Proton Mining. Metered all-in power, air and hydro-cooled capacity, per-machine telemetry, and payouts straight from your pool to your wallet.">
+<link rel="canonical" href="https://protonminingco.com/hosting.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Bitcoin Miner Hosting &amp; Colocation — Ion Mining Group">
+<meta property="og:title" content="Bitcoin Miner Hosting &amp; Colocation — Proton Mining">
 <meta property="og:description" content="Your machines. Our power. Your bitcoin. Metered all-in hosting at sites built on stranded energy.">
-<meta property="og:url" content="https://ionmininggroup.com/hosting.html">
+<meta property="og:url" content="https://protonminingco.com/hosting.html">
 <meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=174e6fdc">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
-<meta property="og:image" content="https://ionmininggroup.com/og/hosting.png">
+<meta property="og:image" content="https://protonminingco.com/og/hosting.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://ionmininggroup.com/og/hosting.png">
+<meta name="twitter:image" content="https://protonminingco.com/og/hosting.png">
 <!-- ===== /SHARE CARD ===== -->
 </head>
 <body>
@@ -28,7 +30,7 @@
     <a class="brand" href="./index.html">
       <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
         <defs>
-          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#5c5b58"/>
           <stop offset="13%" stop-color="#b5b4b1"/>
           <stop offset="25%" stop-color="#ffffff"/>
@@ -39,18 +41,18 @@
           <stop offset="89%" stop-color="#a2a19e"/>
           <stop offset="100%" stop-color="#6b6a67"/>
           </linearGradient>
-          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#ffcf8a"/>
           <stop offset="38%" stop-color="#f7a02b"/>
           <stop offset="70%" stop-color="#ffdcae"/>
           <stop offset="100%" stop-color="#e07f10"/>
           </linearGradient>
         </defs>
-        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
-        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
-        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
         </svg>
-      <span class="brand-name">Ion <span>Mining Group</span></span>
+      <span class="brand-name">Proton <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -67,7 +69,14 @@
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html">Calculator</a>
-      <a href="./index.html#operate">How We Operate</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
       <a href="./contact.html">Contact</a>
       <!-- The order, when there is one. Hidden at zero rather than showing
            a 0, because an empty cart does not deserve a place in the nav.
@@ -82,7 +91,7 @@
            current layout, where Pages publishes the root and site/ is excluded. If the marketing
            site ever becomes the domain root, this becomes /portal/ — one line, here. -->
       <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
-      <a class="btn btn--primary btn--sm nav-cta" href="./contact.html?topic=hosting">Request a quote</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./hardware.html">Start mining</a>
     </div>
   </div>
 </nav>
@@ -95,71 +104,147 @@
     <h1 class="h-display">Your machines.<br>Our power.<br>Your bitcoin.</h1>
     <p class="lede">Ship us your ASICs and we handle everything from the pad to the pool: metered power, cooling, network, security, and hands on site. Your hashrate points where you tell it to, and payouts never touch our wallet.</p>
     <div class="btn-row">
-      <a class="btn btn--primary" href="./contact.html?topic=hosting">Request a quote</a>
+      <a class="btn btn--primary" href="./hardware.html">Start mining</a>
       <a class="btn btn--ghost" href="#terms">See commercial terms</a>
     </div>
+    <!-- The hero now sends people to the catalogue, so the other half of the audience needs
+         somewhere to go. This page is written throughout for someone who already owns machines
+         — "ship us your ASICs", "send us the machine list" — and losing their route to a
+         quote in order to gain one to the shop would trade one funnel for another rather than
+         adding one. A line of text rather than a third button: three primary-looking choices in
+         a hero is how a reader ends up making none of them. -->
+    <p class="hero-alt">Already own machines?
+      <a href="./contact.html?topic=hosting">Request a hosting quote</a>.</p>
   </div>
 </header>
 
-<!-- ===== INCLUDED ===== -->
-<section class="band">
+<!-- ===== FACILITIES =====
+
+     WHAT IS REAL HERE AND WHAT IS NOT, because a marketing page is read by people
+     deciding where to send five-figure orders.
+
+     The regions and the energy stories are real: the Permian flares associated gas
+     for want of a pipeline, Alberta vents solution gas, Ethiopia has hydro running
+     ahead of its transmission, and the Niger Delta is one of the largest flaring
+     regions on earth. Those are facts about geography, not claims about Proton.
+
+     Every figure that WOULD be a claim about Proton — capacity, power price, whether a
+     site exists at all — is a visible [PLACEHOLDER], the same convention
+     contact.html uses for [STREET ADDRESS] and energy.html for [NOISE LIMIT]. A
+     capacity invented to make the grid look full is the one thing on this page a
+     customer could act on and be wrong about. -->
+<section class="band" id="facilities">
   <div class="wrap">
-    <div class="reveal" style="margin-bottom:36px">
-      <div class="eyebrow">What you get</div>
-      <h2 class="h-section">Everything between the pad and the pool.</h2>
-      <p class="lede" style="margin-top:20px">One rate covers the whole stack. No separate line items for racking, reboots, or replacing a dead PSU.</p>
+    <div class="reveal" style="margin-bottom:40px">
+      <div class="eyebrow">Where you can mine</div>
+      <h2 class="h-section">Pick a site.</h2>
+      <p class="lede" style="margin-top:20px">Every site sits on energy that had nowhere else to go &mdash; gas being burned off, or generation built ahead of the wires to carry it. You choose the region; we handle the pad, the power and the hands on site.</p>
     </div>
 
-    <div class="spec reveal">
-      <div class="spec-row">
-        <div class="spec-key">Power</div>
-        <div class="spec-val">Metered at the PDU, billed on actual draw &mdash; not nameplate.
-          <small>Generation on site, sized per location. <span class="ph">[REDUNDANCY / UTILITY BACKUP DETAIL]</span></small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Cooling</div>
-        <div class="spec-val">Air-cooled containers, plus hydro-cooled capacity for supported models.
-          <small>Intake managed to <span class="ph">[XX]</span>&ndash;<span class="ph">[XX]</span>&deg;C. Hydro available for <span class="ph">[SUPPORTED MODELS]</span>.</small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Network</div>
-        <div class="spec-val">Redundant uplink with automatic failover; your pool endpoints and stratum ports open by default.
-          <small><span class="ph">[FIBER / LTE / STARLINK DETAIL]</span>. Static addressing per container.</small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Monitoring</div>
-        <div class="spec-val">Per-machine hashrate, board temperature, fan speed, and power draw, sampled continuously and alerted on 24/7.
-          <small>Run on the same operations software we use for our own fleet.</small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Remote hands</div>
-        <div class="spec-val">Reboots, reseats, firmware, fan and PSU swaps, and hashboard replacement from on-site spares &mdash; included, not billed hourly.
-          <small>Target response: <span class="ph">[X]</span> business hours. Parts at cost.</small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Security</div>
-        <div class="spec-val">Fenced and gated perimeter, camera coverage, and logged access. Your units are asset-tagged and inventoried on arrival.
-          <small><span class="ph">[STAFFING / PATROL / ALARM DETAIL]</span></small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Firmware &amp; tuning</div>
-        <div class="spec-val">Optional efficiency profiles, underclocking, and curtailment-aware tuning &mdash; only with your written approval.
-          <small>Stock firmware stays stock unless you ask otherwise.</small>
-        </div>
-      </div>
-      <div class="spec-row">
-        <div class="spec-key">Payouts</div>
-        <div class="spec-val">Straight from your pool account to your wallet. We are never in the custody path.
-          <small>You hold the keys and the pool credentials. We only need read access for reporting.</small>
-        </div>
-      </div>
+    <div class="fac-grid reveal">
+      <!-- facilities:begin -->
+        <a class="card card--hover fac fac--wait" href="./hardware.html?site=permian">
+          <div class="fac-place">Texas, USA</div>
+          <h3 class="h-card">Permian Basin</h3>
+          <p class="fac-fuel">Flared associated gas</p>
+          <p>Gas that is burned at the wellhead because there is no pipeline to take it.</p>
+          <dl class="fac-spec">
+            <div class="fac-row"><dt>Capacity</dt><dd>18 MW</dd></div>
+            <div class="fac-row"><dt>Power price</dt><dd>7.1¢/kWh</dd></div>
+            <div class="fac-row"><dt>Status</dt><dd>Fully occupied</dd></div>
+          </dl>
+          <span class="arrow-link fac-go">Join the waitlist
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+        <a class="card card--hover fac fac--wait" href="./hardware.html?site=bakken">
+          <div class="fac-place">North Dakota, USA</div>
+          <h3 class="h-card">Bakken</h3>
+          <p class="fac-fuel">Flared associated gas</p>
+          <p>Oil came out faster than pipelines were built to take the gas with it.</p>
+          <dl class="fac-spec">
+            <div class="fac-row"><dt>Capacity</dt><dd>14 MW</dd></div>
+            <div class="fac-row"><dt>Power price</dt><dd>6.8¢/kWh</dd></div>
+            <div class="fac-row"><dt>Status</dt><dd>Fully occupied</dd></div>
+          </dl>
+          <span class="arrow-link fac-go">Join the waitlist
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+        <a class="card card--hover fac fac--wait" href="./hardware.html?site=alberta">
+          <div class="fac-place">Alberta, Canada</div>
+          <h3 class="h-card">Western Sedimentary Basin</h3>
+          <p class="fac-fuel">Vented and flared gas</p>
+          <p>Solution gas from oil batteries, and landfill gas from municipal sites nearby.</p>
+          <dl class="fac-spec">
+            <div class="fac-row"><dt>Capacity</dt><dd>12 MW</dd></div>
+            <div class="fac-row"><dt>Power price</dt><dd>7.4¢/kWh</dd></div>
+            <div class="fac-row"><dt>Status</dt><dd>Fully occupied</dd></div>
+          </dl>
+          <span class="arrow-link fac-go">Join the waitlist
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+        <a class="card card--hover fac fac--wait" href="./hardware.html?site=cold-lake">
+          <div class="fac-place">Alberta, Canada</div>
+          <h3 class="h-card">Cold Lake</h3>
+          <p class="fac-fuel">Solution gas</p>
+          <p>Heavy oil batteries making gas with no line to take it, in a climate that does the cooling.</p>
+          <dl class="fac-spec">
+            <div class="fac-row"><dt>Capacity</dt><dd>9 MW</dd></div>
+            <div class="fac-row"><dt>Power price</dt><dd>7.7¢/kWh</dd></div>
+            <div class="fac-row"><dt>Status</dt><dd>Fully occupied</dd></div>
+          </dl>
+          <span class="arrow-link fac-go">Join the waitlist
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+        <a class="card card--hover fac fac--wait" href="./hardware.html?site=niger-delta">
+          <div class="fac-place">Nigeria</div>
+          <h3 class="h-card">Niger Delta</h3>
+          <p class="fac-fuel">Flared associated gas</p>
+          <p>One of the largest flaring regions in the world, with no local offtake.</p>
+          <dl class="fac-spec">
+            <div class="fac-row"><dt>Capacity</dt><dd>8 MW</dd></div>
+            <div class="fac-row"><dt>Power price</dt><dd>6.5¢/kWh</dd></div>
+            <div class="fac-row"><dt>Status</dt><dd>Fully occupied</dd></div>
+          </dl>
+          <span class="arrow-link fac-go">Join the waitlist
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      <!-- facilities:end -->
     </div>
+
+    <!-- The prepay ladder, as a strip across the foot of the picker. DISCOUNTS ONLY: they are
+         the same at every site, which is what makes them showable here. The RATES are not —
+         five sites have five of them — so those wait until a site is chosen and appear on the
+         catalogue page priced for it. Generated from site/prepay.js. -->
+    <div class="pp-bar reveal">
+      <!-- prepaybar:begin -->
+        <div class="pp-bar-lead">Prepay your electricity</div>
+        <div class="pp-bar-track">
+        <div class="pp-seg" style="flex:16.67 1 0">
+          <span class="pp-seg-off">4% off</span>
+          <span class="pp-seg-yrs">12 months prepaid</span>
+        </div>
+        <div class="pp-seg" style="flex:33.33 1 0">
+          <span class="pp-seg-off">8% off</span>
+          <span class="pp-seg-yrs">24 months prepaid</span>
+        </div>
+        <div class="pp-seg pp-seg--best" style="flex:50.00 1 0">
+          <span class="pp-seg-off">12% off</span>
+          <span class="pp-seg-yrs">36 months prepaid</span>
+        </div>
+        </div>
+        <div class="pp-bar-foot">Prepaying fixes the discount, not the rate. Power is indexed to gas and CPI, and the discount applies to whatever the prevailing rate is when you are billed. Prepay covers electricity only &mdash; hosting, pad and maintenance are billed monthly throughout the term.</div>
+      <!-- prepaybar:end -->
+    </div>
+
+    <p class="fac-note reveal">Capacity, power price and availability are
+      <span class="fac-ph">indicative</span> and are confirmed on your hosting agreement. Power is
+      quoted all-in at the meter. Ask us for the current position on any region and we will tell
+      you exactly where it stands.</p>
   </div>
 </section>
 
@@ -347,6 +432,69 @@
     </ol>
   </div>
 </section>
+<!-- ===== /INSIDE A HOSTED CONTAINER ===== -->
+
+<!-- ===== INCLUDED ===== -->
+<section class="band">
+  <div class="wrap">
+    <div class="reveal" style="margin-bottom:36px">
+      <div class="eyebrow">What you get</div>
+      <h2 class="h-section">Everything between the pad and the pool.</h2>
+      <p class="lede" style="margin-top:20px">One rate covers the whole stack. No separate line items for racking, reboots, or replacing a dead PSU.</p>
+    </div>
+
+    <div class="spec reveal">
+      <div class="spec-row">
+        <div class="spec-key">Power</div>
+        <div class="spec-val">Metered at the PDU, billed on actual draw &mdash; not nameplate.
+          <small>Generation on site, sized per location. <span class="ph">[REDUNDANCY / UTILITY BACKUP DETAIL]</span></small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Cooling</div>
+        <div class="spec-val">Air-cooled containers, plus hydro-cooled capacity for supported models.
+          <small>Intake managed to <span class="ph">[XX]</span>&ndash;<span class="ph">[XX]</span>&deg;C. Hydro available for <span class="ph">[SUPPORTED MODELS]</span>.</small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Network</div>
+        <div class="spec-val">Redundant uplink with automatic failover; your pool endpoints and stratum ports open by default.
+          <small><span class="ph">[FIBER / LTE / STARLINK DETAIL]</span>. Static addressing per container.</small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Monitoring</div>
+        <div class="spec-val">Per-machine hashrate, board temperature, fan speed, and power draw, sampled continuously and alerted on 24/7.
+          <small>Run on the same operations software we use for our own fleet.</small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Remote hands</div>
+        <div class="spec-val">Reboots, reseats, firmware, fan and PSU swaps, and hashboard replacement from on-site spares &mdash; included, not billed hourly.
+          <small>Target response: <span class="ph">[X]</span> business hours. Parts at cost.</small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Security</div>
+        <div class="spec-val">Fenced and gated perimeter, camera coverage, and logged access. Your units are asset-tagged and inventoried on arrival.
+          <small><span class="ph">[STAFFING / PATROL / ALARM DETAIL]</span></small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Firmware &amp; tuning</div>
+        <div class="spec-val">Optional efficiency profiles, underclocking, and curtailment-aware tuning &mdash; only with your written approval.
+          <small>Stock firmware stays stock unless you ask otherwise.</small>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-key">Payouts</div>
+        <div class="spec-val">Straight from your pool account to your wallet. We are never in the custody path.
+          <small>You hold the keys and the pool credentials. We only need read access for reporting.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ===== TERMS ===== -->
 <section class="band" id="terms">
@@ -490,7 +638,7 @@
     <div class="faq reveal" style="margin-top:40px">
       <details>
         <summary>Who holds the bitcoin?</summary>
-        <p>You do. Your machines mine to your pool account under your credentials, and the pool pays your wallet directly. Ion never takes custody of mined bitcoin at any point, and we do not need your withdrawal keys to run your fleet. The only access we ask for is a read-only pool API key so reporting can reconcile.</p>
+        <p>You do. Your machines mine to your pool account under your credentials, and the pool pays your wallet directly. Proton never takes custody of mined bitcoin at any point, and we do not need your withdrawal keys to run your fleet. The only access we ask for is a read-only pool API key so reporting can reconcile.</p>
       </details>
       <details>
         <summary>What happens when a machine fails?</summary>
@@ -529,7 +677,7 @@
         <p class="lede" style="margin-top:18px">Model, quantity, and when you want them running. We will come back with a site, a rate, and a date.</p>
         <div class="btn-row">
           <a class="btn btn--primary" href="./contact.html?topic=hosting">Request a quote</a>
-          <a class="btn btn--ghost" href="mailto:hosting@ionmininggroup.com">hosting@ionmininggroup.com</a>
+          <a class="btn btn--ghost" href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>
         </div>
       </div>
     </div>
@@ -544,7 +692,7 @@
         <a class="brand" href="./index.html">
           <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
             <defs>
-              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#5c5b58"/>
               <stop offset="13%" stop-color="#b5b4b1"/>
               <stop offset="25%" stop-color="#ffffff"/>
@@ -555,18 +703,18 @@
               <stop offset="89%" stop-color="#a2a19e"/>
               <stop offset="100%" stop-color="#6b6a67"/>
               </linearGradient>
-              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#ffcf8a"/>
               <stop offset="38%" stop-color="#f7a02b"/>
               <stop offset="70%" stop-color="#ffdcae"/>
               <stop offset="100%" stop-color="#e07f10"/>
               </linearGradient>
             </defs>
-            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
-            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
-            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
             </svg>
-          <span class="brand-name">Ion <span>Mining Group</span></span>
+          <span class="brand-name">Proton <span>Mining</span></span>
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
@@ -580,7 +728,7 @@
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
-        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
       </div>
       <div class="footer-col">
         <h4>Legal</h4>
@@ -589,18 +737,18 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
       <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
     </div>
   </div>
 </footer>
 
-<script src="./site.js"></script>
-<script src="./cart.js"></script>
-<script src="./diagram-engine.js"></script>
-<script src="./hero-anim.js"></script>
-<script src="./scene-hosting.js"></script>
-<script src="./scene-asic.js"></script>
+<script src="./site.js?v=174e6fdc"></script>
+<script src="./cart.js?v=174e6fdc"></script>
+<script src="./diagram-engine.js?v=174e6fdc"></script>
+<script src="./hero-anim.js?v=174e6fdc"></script>
+<script src="./scene-hosting.js?v=174e6fdc"></script>
+<script src="./scene-asic.js?v=174e6fdc"></script>
 
 
 

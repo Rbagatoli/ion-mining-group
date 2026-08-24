@@ -1,9 +1,9 @@
-// ===== ION MINING GROUP — Alerts Module =====
+// ===== PROTON MINING — Alerts Module =====
 // Slide-out sidebar with miner offline, hashrate drop, price, and difficulty alerts.
 // Loaded on every page. Injects sidebar HTML, polls for changes, fires browser notifications.
 
 // ===== CONSTANTS =====
-var ALERTS_KEY = 'ionMiningAlerts';
+var ALERTS_KEY = 'protonMiningAlerts';
 var POLL_ACTIVE = 5 * 60 * 1000;   // 5 min when visible
 var POLL_BG = 15 * 60 * 1000;      // 15 min when backgrounded
 var MAX_ALERTS = 50;
@@ -763,7 +763,7 @@ async function checkDifficultyEpoch() {
 // --- Wallet Payout Received + Balance Threshold ---
 async function checkWalletAlerts() {
     try {
-        var walletRaw = localStorage.getItem('ionMiningWallet');
+        var walletRaw = localStorage.getItem('protonMiningWallet');
         if (!walletRaw) return;
         var walletData = JSON.parse(walletRaw);
         if (!walletData || !walletData.addresses || walletData.addresses.length === 0) return;

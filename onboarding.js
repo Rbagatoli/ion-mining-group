@@ -1,10 +1,10 @@
-// ===== ION MINING GROUP — Onboarding Wizard =====
+// ===== PROTON MINING — Onboarding Wizard =====
 // 9-step guided tour across all pages. Shows once per user account.
 // Progress stored in Firestore user settings so it syncs across devices.
 
 (function initOnboarding() {
-    var ONBOARDED_KEY = 'ionMiningOnboarded';
-    var STEP_KEY = 'ionMiningStep';
+    var ONBOARDED_KEY = 'protonMiningOnboarded';
+    var STEP_KEY = 'protonMiningStep';
     var onboardingStarted = false;
 
     function startOnboarding() {
@@ -12,7 +12,7 @@
         onboardingStarted = true;
 
         // ===== NEW: Check Firestore for user-based onboarding status =====
-        var currentUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+        var currentUser = (typeof ProtonAuth !== 'undefined') ? ProtonAuth.getUser() : null;
         if (!currentUser) {
             console.log('[Onboarding] No user signed in, skipping onboarding');
             return;
@@ -34,7 +34,7 @@
 
     var steps = [
         {
-            title: 'Welcome to Ion Mining',
+            title: 'Welcome to Proton Mining',
             body: 'Your all-in-one BTC mining dashboard. Track your fleet, monitor earnings, manage wallets, and analyze profitability \u2014 all in one place.',
             target: null,
             page: 'index.html'
@@ -120,7 +120,7 @@
 
     function highlightNavTab(page) {
         // Remove previous highlights
-        var tabs = document.querySelectorAll('.ion-nav-tabs a');
+        var tabs = document.querySelectorAll('.proton-nav-tabs a');
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('onboard-highlight');
         }
@@ -198,7 +198,7 @@
         localStorage.setItem(ONBOARDED_KEY, '1'); // Keep for backward compatibility
         localStorage.removeItem(STEP_KEY);
         // Remove nav highlight
-        var tabs = document.querySelectorAll('.ion-nav-tabs a');
+        var tabs = document.querySelectorAll('.proton-nav-tabs a');
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('onboard-highlight');
         }
@@ -220,13 +220,13 @@
     }
 
     // Wait for Firebase auth to initialize before checking onboarding status
-    if (typeof IonAuth !== 'undefined') {
-        IonAuth.onAuthChange(function(user) {
+    if (typeof ProtonAuth !== 'undefined') {
+        ProtonAuth.onAuthChange(function(user) {
             if (user) {
                 startOnboarding();
             }
         });
     } else {
-        console.warn('[Onboarding] IonAuth not available');
+        console.warn('[Onboarding] ProtonAuth not available');
     }
 })();

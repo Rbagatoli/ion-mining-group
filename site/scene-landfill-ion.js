@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Energy page scene, LANDFILL state two: with us =====
+/* ===== PROTON MINING — Energy page scene, LANDFILL state two: with us =====
 
    The same collection system with our kit on it. The flare comes down to a
    pilot, and the gas the blower was sending to it goes through treatment, into

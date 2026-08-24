@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — the seller statement =====
+// ===== PROTON MINING — the seller statement =====
 //
 // Turns a ledger window plus a contract into the document a counterparty is paid on. Pure: every
 // input arrives as an argument, so a statement recomputed next year from the same inputs is
@@ -8,7 +8,7 @@
 // STRUCTURE 01 ONLY — gas or power purchase, volume x rate, with an optional take-or-pay minimum.
 //
 // Structures 02 (revenue share) and 03 (lease + royalty) are deliberately NOT implemented, and
-// this is a scope decision rather than an oversight. Both settle on Ion's own mining revenue
+// this is a scope decision rather than an oversight. Both settle on Proton's own mining revenue
 // attributed to a specific site: 02 splits it after agreed opex, 03 takes a percentage of gross
 // production. Today nothing attributes revenue to a site at all -- payout records carry no site,
 // miner or worker, and electricity is one fleet-wide nameplate estimate. Until that exists, any
@@ -27,7 +27,7 @@
 //    contains no numeric heating-value literal, and returns a null MMBtu when no heating-value
 //    record is in force. A test asserts all three.
 //
-// 2. THE DIRECTION OF TAKE-OR-PAY. site-engine.js models take_or_pay_pct as a floor on ION'S
+// 2. THE DIRECTION OF TAKE-OR-PAY. site-engine.js models take_or_pay_pct as a floor on PROTON'S
 //    COST, on a power basis. Here it is money owed TO THE SELLER, on an energy basis. Same
 //    economics, opposite beneficiary. Reusing that field would invert who owes whom, so this file
 //    reads the contract record and never the prospect assumptions.
@@ -86,8 +86,8 @@
     //
     // The one number in this system telemetry cannot produce.
     //
-    // A meter reading of zero looks identical whether the seller's wells were down, Ion's engines
-    // were down, or Ion curtailed on economics. Only the last of those obliges Ion to pay for gas
+    // A meter reading of zero looks identical whether the seller's wells were down, Proton's engines
+    // were down, or Proton curtailed on economics. Only the last of those obliges Proton to pay for gas
     // it did not take. So the shortfall depends on a SECOND, human-authored series -- curtailment
     // events with attribution -- and when that attribution has not been made, the answer is
     // PENDING, not zero.
@@ -107,21 +107,21 @@
         for (var i = 0; i < events.length; i++) {
             var e = events[i];
             // An event nobody has attributed yet cannot be counted either way. Guessing in
-            // Ion's favour underpays; guessing in the seller's overpays. So: pending.
+            // Proton's favour underpays; guessing in the seller's overpays. So: pending.
             if (!e.attribution) { pending = true; continue; }
             if (excusedCodes.indexOf(e.attribution) >= 0) {
-                // A SELLER-side failure (or force majeure) excuses the minimum: Ion cannot be
+                // A SELLER-side failure (or force majeure) excuses the minimum: Proton cannot be
                 // made to pay for gas that was never available to take.
                 if (isNum(e.quantity)) excused += e.quantity; else pending = true;
             } else if (e.attribution === 'ion_economic' || e.attribution === 'ion_maintenance') {
-                // ION-side curtailment. Recorded for the record and shown on the statement, but
-                // it does NOT reduce what Ion owes.
+                // PROTON-side curtailment. Recorded for the record and shown on the statement, but
+                // it does NOT reduce what Proton owes.
                 //
                 // The first version subtracted this from the shortfall, on the reading that gas
-                // Ion refused "counts toward the minimum". That inverts the clause. Take-or-pay
-                // exists precisely so that when Ion declines gas the seller made available, the
+                // Proton refused "counts toward the minimum". That inverts the clause. Take-or-pay
+                // exists precisely so that when Proton declines gas the seller made available, the
                 // seller is paid anyway -- so netting it out made the clause pay ZERO in exactly
-                // the month it exists for. Verified: minimum 800, delivered 0, 800 refused by Ion
+                // the month it exists for. Verified: minimum 800, delivered 0, 800 refused by Proton
                 // produced a $0 statement where the seller was owed the full minimum.
                 if (isNum(e.available_quantity)) ionCurtailed += e.available_quantity;
             }
@@ -140,7 +140,7 @@
             // the period is not fully covered by meter readings, the delivered figure is a floor
             // rather than a measurement -- so the difference is not a shortfall, it is partly the
             // size of the hole in the data. Charging it firm would bill the seller's meter outage
-            // to Ion, or the reverse, depending on which way the contract runs.
+            // to Proton, or the reverse, depending on which way the contract runs.
             delivered_is_firm: deliveredIsFirm !== false
         };
         if (pending || !isNum(deliveredQty) || out.delivered_is_firm === false) return out;
@@ -251,7 +251,7 @@
                     code: 'take_or_pay_shortfall',
                     label: 'Take-or-pay shortfall',
                     basis_text: 'Minimum ' + top.adjusted_minimum + ' less delivered ' +
-                                top.delivered + ' and Ion-curtailed ' + top.ion_curtailed_available,
+                                top.delivered + ' and Proton-curtailed ' + top.ion_curtailed_available,
                     quantity: top.shortfall, unit: unitLabel(basisUnit),
                     rate: isNum(rate) ? rate : null, rate_unit: terms.price_basis || null,
                     amount_usd: isNum(rate) ? money(top.shortfall * rate) : null,

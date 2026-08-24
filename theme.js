@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — the palette, JS side =====
+// ===== PROTON MINING — the palette, JS side =====
 //
 // tokens.css is the source of truth. This is its mirror for everywhere var() cannot reach:
 // <canvas> (Chart.js axis labels, tooltips, the tech-lines field), WebGL (the globe's atmosphere
@@ -14,7 +14,7 @@
 //
 // If you change a value here, change tokens.css to match. The test fails otherwise.
 
-var IonTheme = (function() {
+var ProtonTheme = (function() {
 
     // ---- the three materials -------------------------------------------------------------
     var black    = '#000000';
@@ -98,4 +98,4 @@ var IonTheme = (function() {
     };
 })();
 
-if (typeof module !== 'undefined' && module.exports) module.exports = IonTheme;
+if (typeof module !== 'undefined' && module.exports) module.exports = ProtonTheme;

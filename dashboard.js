@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Dashboard =====
+// ===== PROTON MINING — Dashboard =====
 
 // ===== STATE =====
 var useMockData = false;
@@ -177,7 +177,7 @@ function renderProfitability(fleetCapex, totalPowerKW, dailyBTC) {
     var totalRevenue = 0;
     var payoutCount = 0;
     try {
-        var raw = localStorage.getItem('ionMiningPayouts');
+        var raw = localStorage.getItem('protonMiningPayouts');
         if (raw) {
             var payoutData = JSON.parse(raw);
             var payouts = payoutData && payoutData.payouts ? payoutData.payouts : [];
@@ -191,7 +191,7 @@ function renderProfitability(fleetCapex, totalPowerKW, dailyBTC) {
     // Total Electricity — sum of all electricity bills
     var totalElec = 0;
     try {
-        var elecRaw = localStorage.getItem('ionMiningElectricity');
+        var elecRaw = localStorage.getItem('protonMiningElectricity');
         if (elecRaw) {
             var elecEntries = JSON.parse(elecRaw);
             if (Array.isArray(elecEntries)) {
@@ -975,11 +975,11 @@ function updatePoolPanelState() {
 
     // Dynamic labels and placeholders per pool
     var labels = {
-        f2pool:  { url: 'Proxy Worker URL', urlPh: 'https://ion-f2pool.yourname.workers.dev', user: 'F2Pool Username', userPh: 'Your F2Pool mining username' },
-        luxor:   { url: 'Proxy Worker URL', urlPh: 'https://ion-luxor.yourname.workers.dev', user: '', userPh: '' },
-        braiins: { url: 'Proxy Worker URL', urlPh: 'https://ion-braiins.yourname.workers.dev', user: 'Braiins Username', userPh: 'Your Braiins Pool username' },
-        viabtc:  { url: 'Proxy Worker URL', urlPh: 'https://ion-viabtc.yourname.workers.dev', user: 'ViaBTC Sub-account', userPh: 'Your ViaBTC sub-account name' },
-        antpool: { url: 'Proxy Worker URL', urlPh: 'https://ion-antpool.yourname.workers.dev', user: 'Antpool User ID', userPh: 'Your Antpool user ID' }
+        f2pool:  { url: 'Proxy Worker URL', urlPh: 'https://proton-f2pool.yourname.workers.dev', user: 'F2Pool Username', userPh: 'Your F2Pool mining username' },
+        luxor:   { url: 'Proxy Worker URL', urlPh: 'https://proton-luxor.yourname.workers.dev', user: '', userPh: '' },
+        braiins: { url: 'Proxy Worker URL', urlPh: 'https://proton-braiins.yourname.workers.dev', user: 'Braiins Username', userPh: 'Your Braiins Pool username' },
+        viabtc:  { url: 'Proxy Worker URL', urlPh: 'https://proton-viabtc.yourname.workers.dev', user: 'ViaBTC Sub-account', userPh: 'Your ViaBTC sub-account name' },
+        antpool: { url: 'Proxy Worker URL', urlPh: 'https://proton-antpool.yourname.workers.dev', user: 'Antpool User ID', userPh: 'Your Antpool user ID' }
     };
     var lbl = labels[type] || labels.f2pool;
     if (labelWorkerUrl) labelWorkerUrl.textContent = lbl.url;

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Home page scene =====
+/* ===== PROTON MINING — Home page scene =====
    A whole deployment: gas conditioning, a two-bay genset skid, a transformer,
    and two 40ft containers side by side, each cut away to show its ASIC racks.
    One gas skid, one genset and one transformer feed both.

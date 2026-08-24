@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Cross-Device Sync Engine =====
+// ===== PROTON MINING — Cross-Device Sync Engine =====
 
 var SyncEngine = (function() {
 
@@ -10,31 +10,31 @@ var SyncEngine = (function() {
     // Firestore collection/doc mapping
     // Each key maps to: users/{uid}/data/{key}
     var SYNC_KEYS = {
-        fleet:       { lsKey: 'ionMiningFleet' },
-        wallet:      { lsKey: 'ionMiningWallet' },
-        payouts:     { lsKey: 'ionMiningPayouts' },
-        electricity: { lsKey: 'ionMiningElectricity' },
+        fleet:       { lsKey: 'protonMiningFleet' },
+        wallet:      { lsKey: 'protonMiningWallet' },
+        payouts:     { lsKey: 'protonMiningPayouts' },
+        electricity: { lsKey: 'protonMiningElectricity' },
         calculator:  { lsKey: 'btcMinerCalcSettings' },
-        settings:    { lsKey: 'ionMiningSettings' },
-        alerts:      { lsKey: 'ionMiningAlerts' },
-        currency:    { lsKey: 'ionMiningCurrency' },
+        settings:    { lsKey: 'protonMiningSettings' },
+        alerts:      { lsKey: 'protonMiningAlerts' },
+        currency:    { lsKey: 'protonMiningCurrency' },
         // theme: RETIRED. The app is dark only. The Firestore document is deliberately left
         // in place rather than deleted -- a user still on the old build who synced afterwards
         // would read null, fall back to 'dark', and have their theme change under them.
-        scenarios:   { lsKey: 'ionMiningScenarios' },
-        sites:       { lsKey: 'ionMiningSites' },
+        scenarios:   { lsKey: 'protonMiningScenarios' },
+        sites:       { lsKey: 'protonMiningSites' },
         // Deal state, not view state — a shortlisted portfolio and a saved pricing scenario are
         // work, and work belongs on every device. Deliberately NOT added: the filter selection,
         // table view and panel open/closed state. Where you happen to be looking should not
         // follow you between machines. Those are still covered by the export, which now walks
-        // every ionMining* key rather than this list.
-        prospectPortfolio: { lsKey: 'ionMiningProspectPortfolio' },
-        prospectScenario:  { lsKey: 'ionMiningProspectScenario' },
+        // every protonMining* key rather than this list.
+        prospectPortfolio: { lsKey: 'protonMiningProspectPortfolio' },
+        prospectScenario:  { lsKey: 'protonMiningProspectScenario' },
         // A named search is on the work side of that line, not the view side: it is a
         // deliberately composed set of criteria, and having to rebuild it on the laptop after
         // composing it on the desktop is the friction the feature exists to remove. The
         // last-used filters above stay local for exactly the opposite reason.
-        prospectSearches:  { lsKey: 'ionMiningProspectSearches' }
+        prospectSearches:  { lsKey: 'protonMiningProspectSearches' }
     };
 
     function getDb() {
@@ -45,14 +45,14 @@ var SyncEngine = (function() {
     function getUserDocRef(key) {
         var db = getDb();
         if (!db) return null;
-        var user = IonAuth.getUser();
+        var user = ProtonAuth.getUser();
         if (!user) return null;
         return db.collection('users').doc(user.uid).collection('data').doc(key);
     }
 
     // Save data to Firestore (debounced)
     function save(key, data) {
-        if (!IonAuth.isSignedIn()) return;
+        if (!ProtonAuth.isSignedIn()) return;
         if (!SYNC_KEYS[key]) return;
 
         // Mark as recently saved so listener ignores our own writes
@@ -80,7 +80,7 @@ var SyncEngine = (function() {
 
     // Listen for remote changes on a key
     function listen(key, callback) {
-        if (!IonAuth.isSignedIn()) return;
+        if (!ProtonAuth.isSignedIn()) return;
         if (!SYNC_KEYS[key]) return;
 
         // Unsubscribe previous listener if any
@@ -150,10 +150,10 @@ var SyncEngine = (function() {
 
     // Pull all data from Firestore on sign-in
     function pullAll(callback) {
-        if (!IonAuth.isSignedIn()) return;
+        if (!ProtonAuth.isSignedIn()) return;
         var db = getDb();
         if (!db) return;
-        var user = IonAuth.getUser();
+        var user = ProtonAuth.getUser();
         if (!user) return;
 
         var ref = db.collection('users').doc(user.uid).collection('data');
@@ -187,7 +187,7 @@ var SyncEngine = (function() {
 
     // Push all local data to Firestore (on first sign-in when cloud is empty)
     function pushAll() {
-        if (!IonAuth.isSignedIn()) return;
+        if (!ProtonAuth.isSignedIn()) return;
 
         Object.keys(SYNC_KEYS).forEach(function(key) {
             var lsKey = SYNC_KEYS[key].lsKey;

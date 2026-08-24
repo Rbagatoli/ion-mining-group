@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Energy page scene, LANDFILL state one: today =====
+/* ===== PROTON MINING — Energy page scene, LANDFILL state one: today =====
 
    A collection system as it stands: wells punched into a capped cell, a header
    main pulling them together, a blower holding the field under vacuum, and a

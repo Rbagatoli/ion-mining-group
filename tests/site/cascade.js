@@ -73,7 +73,11 @@ function selectorMatches(sel, el, state) {
     if (!compoundMatches(last, el, state)) return false;
     // every earlier compound must match some ancestor, in order
     let i = 0;
-    for (const anc of el.ancestors) {
+    /* `|| []` because an element at the top of the page genuinely has no ancestors, and a
+       descriptor that omits the key is describing exactly that — not making a mistake.
+       Every descriptor in this repo happened to carry one until a body-level <p> was
+       checked, and this threw rather than reporting anything. */
+    for (const anc of el.ancestors || []) {
         if (i >= parts.length - 1) break;
         if (compoundMatches(parts[i], anc, [])) i++;
     }

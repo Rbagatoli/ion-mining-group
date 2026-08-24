@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Fleet Map (Choropleth + Globe) =====
+// ===== PROTON MINING — Fleet Map (Choropleth + Globe) =====
 initNav('map');
 
 // Always start on globe view (no localStorage persistence for default)
@@ -176,7 +176,7 @@ function buildPieChart(currentA2) {
         slices.push({ label: currentA2, value: curHash, isCurrent: true });
     }
 
-    var mutedColors = IonTheme.seriesMuted;
+    var mutedColors = ProtonTheme.seriesMuted;
     var cx = 50, cy = 50, r = 38;
     var startAngle = -Math.PI / 2;
     var paths = '';

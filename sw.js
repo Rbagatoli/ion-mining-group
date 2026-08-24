@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ion-mining-v338';
+const CACHE_NAME = 'proton-mining-v339';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -22,6 +22,7 @@ const ASSETS = [
   './shared.css',
 
   // JavaScript
+  './brand-migrate.js',
   './theme.js',
   './chart-theme.js',
   './shared.js',

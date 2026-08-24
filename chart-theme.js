@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Chart.js defaults =====
+// ===== PROTON MINING — Chart.js defaults =====
 //
 // Before this file, there were ZERO Chart.defaults anywhere in the repo and 24 `new Chart(...)`
 // calls each repeating its own legend colour, tooltip colours, tick colours and grid colours —
@@ -18,12 +18,12 @@
         // Not an error on pages with no charts. Only worth saying something where one is expected.
         return;
     }
-    if (typeof IonTheme === 'undefined') {
+    if (typeof ProtonTheme === 'undefined') {
         console.warn('[chart-theme] theme.js must load before this file — charts will fall back ' +
                      'to Chart.js light defaults.');
         return;
     }
-    var T = IonTheme;
+    var T = ProtonTheme;
 
     // ---- type ---------------------------------------------------------------------------
     // Mono at 11px, matching the site's treatment of labels: uppercase-ish, technical, and
@@ -87,10 +87,10 @@
     // type is large, and a createLinearGradient per text run is affordable here in a way it is
     // not for axis labels redrawn on every tick.
     Chart.register({
-        id: 'ionCenterText',
+        id: 'protonCenterText',
         beforeDraw: function(chart) {
             var o = chart.config.options && chart.config.options.plugins &&
-                    chart.config.options.plugins.ionCenterText;
+                    chart.config.options.plugins.protonCenterText;
             if (!o || !o.text) return;
             var ctx = chart.ctx;
             var area = chart.chartArea;

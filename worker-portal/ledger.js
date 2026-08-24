@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — the gas metering ledger =====
+// ===== PROTON MINING — the gas metering ledger =====
 //
 // Pure functions over readings. No KV, no fetch, no clock — everything comes in as an argument so
 // this file can be tested in node without a Worker, and so a statement computed today from the

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the order status page =====
+/* ===== PROTON MINING — the order status page =====
 
    Looks an order up by its reference and shows where it has got to, including
    the steps that are a person rather than a machine.
@@ -119,7 +119,23 @@
         if (!el) return;
         var d = order.destination || {};
         if (d.kind === 'ion') {
-            el.textContent = 'An Ion facility — we host them for you. We will confirm which site has capacity for a fleet this size.';
+            /* NAME THE SITE THEY CHOSE. The generic line below is the right thing to say to
+               somebody who left it to us, and a flat contradiction to somebody who picked
+               Texas on the way in and has just paid for it — this is the last screen in the
+               purchase, and it is the one they screenshot.
+
+               The site is looked up from the id on the order rather than from anything held in
+               this browser: the order is the record, and it is what ops will ship against. */
+            var site = (typeof Facilities !== 'undefined' && d.site_id)
+                ? Facilities.byId(d.site_id) : null;
+            if (site) {
+                el.textContent = 'An Proton facility ' + String.fromCharCode(8212) + ' ' +
+                    site.name + ', ' + site.region + '. Power ' + Facilities.powerLabel(site) +
+                    ', indicative and confirmed on your hosting agreement. ' +
+                    'Your machines are delivered straight to the site that will run them.';
+                return;
+            }
+            el.textContent = 'An Proton facility — we host them for you. We will confirm which site has capacity for a fleet this size.';
             return;
         }
         var parts = [d.facility, d.street, d.city, d.region, d.postcode, d.country]
@@ -196,7 +212,7 @@
             return;
         }
         if (!ordersBase()) {
-            fail('Order tracking is not switched on yet. Email hosting@ionmininggroup.com with reference ' +
+            fail('Order tracking is not switched on yet. Email hosting@protonminingco.com with reference ' +
                  ref + ' and we will tell you where it stands.');
             return;
         }

@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Profile Panel =====
+// ===== PROTON MINING — Profile Panel =====
 // Slide-out panel with account info, data export, sign out, and account management.
 
 (function() {
@@ -71,13 +71,13 @@
     }
 
     async function renderUserInfo() {
-        var user = IonAuth.getUser();
+        var user = ProtonAuth.getUser();
         if (!user) return;
 
         // ===== NEW: Reload user from Firebase to get fresh verification status =====
         try {
             await user.reload();
-            user = IonAuth.getUser(); // Get refreshed user object
+            user = ProtonAuth.getUser(); // Get refreshed user object
         } catch (err) {
             console.warn('[Profile] Failed to reload user:', err);
         }
@@ -130,7 +130,7 @@
                 e.preventDefault();
                 resendLink.textContent = 'Sending...';
                 resendLink.style.pointerEvents = 'none';
-                IonAuth.resendVerification().then(function() {
+                ProtonAuth.resendVerification().then(function() {
                     resendLink.textContent = 'Sent! Check inbox & spam.';
                     resendLink.style.color = '#4ade80';
                 }).catch(function(err) {
@@ -167,7 +167,7 @@
     // Prefix-driven rather than a list, so a key added later is covered without anyone
     // remembering to add it here. The export is keyed by the REAL localStorage key so a restore
     // needs no translation table.
-    var EXPORT_PREFIXES = ['ionMining', 'btcMinerCalc'];
+    var EXPORT_PREFIXES = ['protonMining', 'btcMinerCalc'];
 
     function exportableKeys() {
         var out = [];
@@ -194,7 +194,7 @@
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
-        a.download = 'ion-mining-data-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.download = 'proton-mining-data-' + new Date().toISOString().slice(0, 10) + '.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -204,7 +204,7 @@
     function deleteCloudData() {
         if (!confirm('Delete all your cloud data? Your local data will be kept.')) return;
 
-        var user = IonAuth.getUser();
+        var user = ProtonAuth.getUser();
         if (!user || typeof firebase === 'undefined') return;
 
         var db = firebase.firestore();
@@ -229,7 +229,7 @@
         if (!confirm('Sign out of sync?\n\nYour data stays on this device. Changes made while ' +
                      'signed out will not reach your other devices until you sign back in.')) return;
         SyncEngine.stopAll();
-        IonAuth.signOut();
+        ProtonAuth.signOut();
         hidePanel();
     }
 
@@ -237,7 +237,7 @@
         if (!confirm('Permanently delete your account and all cloud data? This cannot be undone.')) return;
         if (!confirm('Are you sure? This action is permanent.')) return;
 
-        var user = IonAuth.getUser();
+        var user = ProtonAuth.getUser();
         if (!user || typeof firebase === 'undefined') return;
 
         var db = firebase.firestore();
@@ -248,7 +248,7 @@
             return batch.commit();
         }).then(function() {
             SyncEngine.stopAll();
-            return IonAuth.deleteAccount();
+            return ProtonAuth.deleteAccount();
         }).then(function() {
             hidePanel();
             alert('Account deleted.');
@@ -273,7 +273,7 @@
     });
 
     // ===== PUBLIC API =====
-    window.IonProfile = {
+    window.ProtonProfile = {
         show: showPanel,
         hide: hidePanel
     };

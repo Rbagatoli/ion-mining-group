@@ -1,4 +1,4 @@
-name = "ion-portal"
+name = "proton-portal"
 main = "index.mjs"
 compatibility_date = "2024-12-01"
 
@@ -7,6 +7,12 @@ compatibility_date = "2024-12-01"
 [[kv_namespaces]]
 binding = "PORTAL"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# The pool pull. Every ten minutes: often enough that uptime is a meaningful share of samples,
+# infrequent enough to stay inside a pool's rate limit with room for every site on one account.
+# If this is absent the portal still serves history, it just stops gaining any.
+[triggers]
+crons = ["*/10 * * * *"]
 
 [vars]
 # Not a secret — the same public project id the browser already carries in firebase-config.js.
@@ -17,6 +23,14 @@ FIREBASE_PROJECT_ID = "ion-mining"
 #
 #   OPS_SECRET        bearer token for the owner-only routes. If it is UNSET those routes are
 #                     CLOSED, not open — see isOwner(). Do not "temporarily" leave it out.
+#
+#   POOL_KEY_WRAP     wraps every hosting client's read-only pool key before it is written to KV,
+#                     with AES-GCM under SHA-256(POOL_KEY_WRAP). A KV dump on its own therefore
+#                     leaks no client credential. If it is UNSET the pool routes are CLOSED and
+#                     the cron does nothing, rather than falling back to storing keys in clear.
+#                     Same trade-off as DEVICE_ROOT_KEY below: losing it compromises every stored
+#                     pool key at once, and rotating it means re-wrapping them all while the old
+#                     value is still known.
 #
 #   DEVICE_ROOT_KEY   every field meter's signing secret is derived from this as
 #                     HMAC(root, device_id + ':' + kid), so no per-device secret is ever stored

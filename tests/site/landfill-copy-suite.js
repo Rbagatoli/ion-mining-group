@@ -61,7 +61,7 @@ const index = fs.readFileSync(D + 'index.html', 'utf8');
 /* The four-fuel grid on energy.html: landfill's card comes first. */
 const energy = fs.readFileSync(D + 'energy.html', 'utf8');
 const LFION = require(D + 'scene-landfill-ion.js');
-const ION   = require(D + 'scene-pad-ion.js');
+const PROTON   = require(D + 'scene-pad-ion.js');
 const cards = [...energy.matchAll(/<h3 class="h-card">([^<]+)<\/h3>/g)].map(m => m[1]);
 const iLandCard = cards.findIndex(c => /landfill/i.test(c));
 const iFlareCard = cards.findIndex(c => /flared/i.test(c));
@@ -150,7 +150,7 @@ lfAlts.forEach((a, i) => {
    Counted off the scene module rather than written down, so the two cannot
    drift again. */
 const WORD = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six' };
-[['landfill', LFION, /landfill/i], ['wellpad', ION, /wellpad/i]].forEach(([name, scene, which]) => {
+[['landfill', LFION, /landfill/i], ['wellpad', PROTON, /wellpad/i]].forEach(([name, scene, which]) => {
     const boxes = scene.objects().filter(o => /^cont/.test(o.id)).length;
     const alt = alts.filter(a => which.test(a) && /container/.test(a))[0] || '';
     ok(boxes > 0, '  the ' + name + ' scene draws containers', boxes + ' of them');

@@ -1,11 +1,11 @@
-// ===== ION MINING GROUP — client portal =====
+// ===== PROTON MINING — client portal =====
 //
 // A landfill or flare site owner signs in and sees what was taken from their site and what they
 // are owed. Read-only: nothing here moves money or changes a record.
 //
 // DELIBERATELY NOT LOADED: sync.js. Every other authenticated page in this app loads it, so this
 // is the first auth-without-sync page in the repo — and that is the point. SYNC_KEYS covers
-// fleet, wallet, payouts and banking, all of which are Ion's. A counterparty's browser has no
+// fleet, wallet, payouts and banking, all of which are Proton's. A counterparty's browser has no
 // business holding the operator's sync engine, and the surest way to guarantee it never does is
 // not to ship it.
 //
@@ -20,7 +20,7 @@
 // and it would be undone here by a template that prints an empty string. So every figure goes
 // through num()/money(), which render an absent value as an explicit, visible "not measured".
 
-var IonPortal = (function() {
+var ProtonPortal = (function() {
     'use strict';
 
     // Empty in the repo, exactly as site/orders-api.js keeps ORDERS_ENDPOINT empty: the deployed
@@ -29,7 +29,7 @@ var IonPortal = (function() {
     // no CORS preflight in development.
     var PORTAL_ENDPOINT = '';
 
-    var SESSION_KEY = 'ionPortalSession';
+    var SESSION_KEY = 'protonPortalSession';
 
     function isLocal() {
         return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -41,8 +41,23 @@ var IonPortal = (function() {
         return '';
     }
 
+    /* The rebrand moved this key from ionPortalSession to protonPortalSession,
+       and a counterparty who was signed in before the rename has their token
+       under the old name. Read the old one as a fallback rather than logging
+       them out.
+
+       Done inline rather than by loading the app's brand-migrate.js, because
+       every script this page pulls into a counterparty's browser has to earn its
+       place on the allowlist in tests/portal-frontend.test.js, and one key does
+       not justify a file. It never writes the old name, so the migration is a
+       one-way read that disappears the next time setSession runs. */
+    var LEGACY_SESSION_KEY = 'ionPortalSession';
+
     function session() {
-        try { return localStorage.getItem(SESSION_KEY) || null; } catch (e) { return null; }
+        try {
+            return localStorage.getItem(SESSION_KEY) ||
+                   localStorage.getItem(LEGACY_SESSION_KEY) || null;
+        } catch (e) { return null; }
     }
     function setSession(t) {
         try { if (t) localStorage.setItem(SESSION_KEY, t); else localStorage.removeItem(SESSION_KEY); }
@@ -165,6 +180,40 @@ var IonPortal = (function() {
         return esc(v.toFixed(1)) + '%';
     }
 
+    /* ---- Is this machine actually up? --------------------------------------
+
+       THE PORTAL DECIDES THIS, NOT THE POOL, and that is the whole point of the
+       function existing.
+
+       Every pool proxy in this repo normalises a worker to {worker_name,
+       hashrate, status}, and two of them derive that status with a fallback of
+       the form `w.status === 'active' || w.is_active || w.hashrate > 0`. The
+       hashrate there is a decaying average over the last hour, so a machine that
+       died fifty minutes ago still carries a non-zero one and reports Online. On
+       an operator's own screen that is a nuisance. On a hosting customer's
+       screen it is a false statement about their property.
+
+       So a reported status can move a machine to 'offline', but it can never on
+       its own hold one at 'online'. If nothing has been heard within the window,
+       the answer is STALE — a third state the operator dashboard does not have,
+       and the one a hosting client most needs, because "we have not heard from
+       it" is a different fact from "it is down" and neither is "it is fine".
+
+       Absent timestamp means unknown, never fine. */
+    var FRESH_MS = 20 * 60 * 1000;
+
+    function rigState(lastSeen, reported, nowMs) {
+        if (reported === 'offline') return 'offline';
+        var t = lastSeen ? Date.parse(lastSeen) : NaN;
+        if (!isFinite(t)) return 'stale';
+        var age = (typeof nowMs === 'number' ? nowMs : Date.now()) - t;
+        if (age > FRESH_MS) return 'stale';
+        return reported === 'online' ? 'online' : 'stale';
+    }
+
+    var STATE_WORD = { online: 'Mining', stale: 'Not reporting', offline: 'Down' };
+    function stateWord(s) { return STATE_WORD[s] || 'Not reporting'; }
+
     function date(iso) {
         if (!iso) return '<span class="pt-absent">--</span>';
         var d = new Date(iso);
@@ -181,7 +230,7 @@ var IonPortal = (function() {
     }
 
     // The banner that must never be subtle. A partial total means a figure the seller may be owed
-    // has been left out because Ion has not finished attributing a curtailment — so it is stated
+    // has been left out because Proton has not finished attributing a curtailment — so it is stated
     // at the top of the statement in its own box, not as a footnote.
     function partialBanner(st) {
         if (!st.total_is_partial) return '';
@@ -204,8 +253,8 @@ var IonPortal = (function() {
         bar.id = 'ptDemoBar';
         bar.className = 'pt-demobar';
         /* Accurate for BOTH portals. It used to say "no money is owed", which is
-           only half true now: a producer is owed by Ion and a hosting client owes
-           Ion, so the banner has to deny a debt in either direction. */
+           only half true now: a producer is owed by Proton and a hosting client owes
+           Proton, so the banner has to deny a debt in either direction. */
         bar.innerHTML = '<strong>Sample data.</strong> Nothing on this screen is real — ' +
             'no meter or machine reported these figures, and no money is owed or due. This is ' +
             'the portal running with no backend, so it can be looked at before there is ' +
@@ -222,6 +271,7 @@ var IonPortal = (function() {
         api: api, session: session, setSession: setSession, base: base,
         esc: esc, num: num, money: money, pct: pct, date: date,
         status: status, partialBanner: partialBanner,
+        rigState: rigState, stateWord: stateWord, FRESH_MS: FRESH_MS,
         demoAvailable: demoAvailable, inDemo: inDemo, demoKind: demoKind, startDemo: startDemo,
         demoBanner: demoBanner,
         SESSION_KEY: SESSION_KEY, PORTAL_ENDPOINT: PORTAL_ENDPOINT

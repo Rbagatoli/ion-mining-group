@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — talking to the orders service =====
+/* ===== PROTON MINING — talking to the orders service =====
 
    Where the service is, and what to say when it is not there.
 

@@ -1,4 +1,4 @@
-// Ion Mining Group — QuickBooks OAuth Proxy (Cloudflare Worker)
+// Proton Mining — QuickBooks OAuth Proxy (Cloudflare Worker)
 // Multi-user OAuth 2.0 with Firebase auth + per-user token storage
 // Deploy: wrangler deploy --config wrangler-qbo.toml
 //

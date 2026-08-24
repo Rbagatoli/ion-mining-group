@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — meter authentication =====
+// ===== PROTON MINING — meter authentication =====
 //
 // A METER IS NOT A USER. It gets no Firebase token, no session, and no path to any seller or ops
 // route. It has exactly one thing it may do: append readings for the meters it is bound to.
@@ -8,7 +8,7 @@
 // repo, one thing to get right, one place to audit. constantEquals, hex and parseSignature below
 // are that code, restated here because a Worker cannot import across directories.
 //
-//     X-Ion-Signature: t=<unix-seconds>,kid=<key-id>,v1=<hex hmac-sha256>
+//     X-Proton-Signature: t=<unix-seconds>,kid=<key-id>,v1=<hex hmac-sha256>
 //     MAC input:       t + "." + device_id + "." + rawBody
 //
 // THE device_id IS INSIDE THE MAC INPUT, and that is not decoration. Without it, a body captured

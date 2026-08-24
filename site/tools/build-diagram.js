@@ -105,8 +105,8 @@ const PAGES = {
     fuels: [
       {
         key: 'landfill', label: 'Landfill gas', link: 'landfill',
-        scale: { lo: 'Your site today', hi: 'With Ion on it',
-                 label: 'Your landfill as it is today, or the same site with Ion on it' },
+        scale: { lo: 'Your site today', hi: 'With Proton on it',
+                 label: 'Your landfill as it is today, or the same site with Proton on it' },
         views: [
           { key: 'now', name: 'landfillnow', module: '../scene-landfill-now.js',
             script: 'scene-landfill-now.js', prefix: 'l-',
@@ -116,21 +116,21 @@ const PAGES = {
             alt: 'Interactive drawing of a landfill gas collection system as it operates today: a capped cell with extraction wells across it, a header main gathering them, a blower holding the field under vacuum, and an enclosed flare burning everything it brings up. Drag to rotate, scroll to zoom.' },
           { key: 'ion', name: 'landfillion', module: '../scene-landfill-ion.js',
             script: 'scene-landfill-ion.js', prefix: 'li-',
-            alt: 'The same landfill with Ion on it: the flare down to a pilot, and a tie-in downstream of the blower running gas through a treatment skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
+            alt: 'The same landfill with Proton on it: the flare down to a pilot, and a tie-in downstream of the blower running gas through a treatment skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
             note: 'The flare stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
         ],
       },
       {
         key: 'flare', label: 'Flared gas', link: 'pad',
-        scale: { lo: 'Your pad today', hi: 'With Ion on it',
-                 label: 'Your pad as it is today, or the same pad with Ion on it' },
+        scale: { lo: 'Your pad today', hi: 'With Proton on it',
+                 label: 'Your pad as it is today, or the same pad with Proton on it' },
         views: [
           { key: 'now', name: 'padnow', module: '../scene-pad-now.js',
             script: 'scene-pad-now.js', prefix: '',
             alt: 'Interactive drawing of a wellpad as it operates today: wellhead, separator, tank battery, and a lit flare stack burning the gas that has no customer. Drag to rotate, scroll to zoom.' },
           { key: 'ion', name: 'padion', module: '../scene-pad-ion.js',
             script: 'scene-pad-ion.js', prefix: 'i-',
-            alt: 'The same wellpad with Ion on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and two containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
+            alt: 'The same wellpad with Proton on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and two containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
             note: 'The flare stack stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
         ],
       },
@@ -147,7 +147,7 @@ const ARROW_BACK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" 
    partner owns the land, we own the plant standing on it.
 
    It is a true nesting, not a figure of speech — the energy drawing's "with
-   Ion" state is built from site-kit.js, so it contains the very gas skid,
+   Proton" state is built from site-kit.js, so it contains the very gas skid,
    genset, transformer and container shells the home page draws, which in turn
    contains the one container the hosting page opens up.
 
@@ -277,9 +277,45 @@ function splice(cfg, section, scripts) {
     console.error(`anchor not found in ${cfg.target}`);
     process.exit(1);
   }
+  /* THIS GENERATOR OWNS ITS OWN SECTION AND NOTHING ELSE.
+
+     It used to splice from its opening marker all the way to `insertBefore`, which meant it
+     silently deleted anything a person put between the two. That is not hypothetical: a
+     "what you get" section and a prepaid-pricing section were both written into that gap and
+     both vanished on the next generator run, with no error and no diff anybody was watching.
+     The page simply had less in it than before.
+
+     Now it replaces from its opening marker to its own CLOSING marker. Anything after that
+     marker is somebody else's and is left alone.
+
+     The fallback matters as much as the rule. A page generated before the closing marker
+     existed does not have one, and falling back to the old
+     "delete everything up to insertBefore" would eat a neighbour on exactly the run that was
+     supposed to fix this. So it falls back to the end of the section ELEMENT instead: the first
+     `</section>` that starts a line after the marker, which is how this generator has always
+     closed its own block. */
+  const close = `<!-- ===== /${cfg.marker} ===== -->`;
   const start = html.indexOf(open);
-  if (start >= 0) html = html.slice(0, start) + section + html.slice(html.indexOf(cfg.insertBefore));
-  else html = html.replace(cfg.insertBefore, section + cfg.insertBefore);
+
+  if (start >= 0) {
+    let endAt = html.indexOf(close, start);
+    if (endAt >= 0) {
+      endAt += close.length;
+    } else {
+      const tag = html.indexOf('\n</section>', start);
+      if (tag < 0) {
+        console.error(`${cfg.target}: cannot find the end of the ${cfg.marker} section`);
+        process.exit(1);
+      }
+      endAt = tag + '\n</section>'.length;
+    }
+    /* Keep whatever separated the block from what follows it. */
+    let tail = html.slice(endAt);
+    tail = tail.replace(/^\s*/, '\n');
+    html = html.slice(0, start) + section.replace(/\s*$/, '\n') + tail;
+  } else {
+    html = html.replace(cfg.insertBefore, section + cfg.insertBefore);
+  }
 
   /* The engine goes in ONCE, however many scenes a page carries. Two copies
      would mean two module instances, two separate link registries, and a
@@ -482,6 +518,7 @@ function build(key) {
     </div>${toggle}${fuelOf(cfg, groups)}${panes}
   </div>
 </section>
+<!-- ===== /${cfg.marker} ===== -->
 
 `;
 

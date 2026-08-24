@@ -213,12 +213,28 @@ ok(js.indexOf('getBoundingClientRect') < 0 && js.indexOf('offsetWidth') < 0 &&
    js.indexOf('innerHeight') < 0 && js.indexOf('getScreenCTM') < 0,
    'nothing measures the page', 'a layout read crept in');
 
+/* THE VERSION IS PART OF THE URL NOW. Local assets carry ?v=<hash> so a browser cannot
+   serve a stale copy — see tools/build-asset-stamp.js, which exists because a whole pricing
+   section once shipped invisibly behind a cached page. These checks are asking "does this page
+   load X", which is true with or without a version on it, so they match the path and let the
+   query string be whatever it is. */
+/* The version is STRIPPED ONCE rather than allowed for in every pattern. Building a regex per
+   lookup means escaping a filename into it, and every layer that gets it slightly wrong produces
+   a regex that silently matches nothing. Removing ?v=<hash> from a copy of the page leaves the
+   literal checks below saying exactly what they always said. */
+var htmlPlain = html.replace(/\?v=[0-9a-f]+/g, '');
+function loadsScript(page, src) { return htmlPlain.indexOf('src="' + src + '"') >= 0; }
 ['./site.js', './miner-db.js', './calc-engine.js', './calculator.js'].forEach(function (src) {
-    ok(html.indexOf('src="' + src + '"') >= 0, 'loads ' + src, 'script tag missing');
+    ok(loadsScript(html, src), 'loads ' + src, 'script tag missing');
 });
-ok(html.indexOf('src="./calc-engine.js"') < html.indexOf('src="./calculator.js"'),
+/* Position of a script tag, tolerant of the cache-busting version local assets now carry.
+   See tools/build-asset-stamp.js — it exists because a section once shipped invisibly behind a
+   cached page, and the fix put ?v=<hash> on every local URL. Load ORDER is still the thing being
+   asserted; the version is not part of that question. */
+function srcAt(page, file) { return htmlPlain.indexOf('src="./' + file + '"'); }
+ok(srcAt(html, 'calc-engine.js') < srcAt(html, 'calculator.js'),
    'the engine loads before the controller', 'CalcEngine would be undefined');
-ok(html.indexOf('src="./miner-db.js"') < html.indexOf('src="./calculator.js"'),
+ok(srcAt(html, 'miner-db.js') < srcAt(html, 'calculator.js'),
    'the miner database loads before the controller', 'order is wrong');
 ok(html.indexOf('<nav class="nav">') >= 0 && html.indexOf('<h4>Company</h4>') >= 0,
    'the generator markers are present', 'build-nav.js could not splice this page');

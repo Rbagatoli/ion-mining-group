@@ -270,7 +270,7 @@ const TYPES = {
     }).listen(PORT, () => {
         const line = (s) => console.log('  ' + s);
         console.log('');
-        line('Ion Mining Group — site + orders, running locally');
+        line('Proton Mining — site + orders, running locally');
         console.log('');
         line('  Catalogue   http://localhost:' + PORT + '/hardware.html');
         line('  Checkout    http://localhost:' + PORT + '/cart.html');

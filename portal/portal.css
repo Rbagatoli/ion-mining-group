@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — client portal =====
+/* ===== PROTON MINING — client portal =====
 
    Its own stylesheet, not shared.css. shared.css is 2,000 lines of operator chrome — nav tabs,
    widget settings, chart panels, map controls — none of which exists here, and all of which would
@@ -36,7 +36,14 @@ body {
     border-bottom: 1px solid var(--line);
 }
 .pt-brand { display: flex; align-items: center; gap: 10px; }
-.pt-brand svg { width: 26px; height: 26px; display: block; }
+/* THE RING FOLLOWS THE THEME. It was stroke="#e5e4e2" in the markup — a literal platinum,
+   which is the one thing a page that switches grounds cannot contain. On black it was correct;
+   on the old white theme it was barely there; on the dimmed one it disappeared completely and
+   the mark rendered as a lone orange dot with no ring around it.
+
+   currentColor in the markup plus a token here means it is right in both themes and will stay
+   right in a third. */
+.pt-brand svg { width: 26px; height: 26px; display: block; color: var(--plat-300); }
 .pt-wordmark { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--plat-200); }
 .pt-who { font-size: 11px; color: var(--plat-400); text-align: right; line-height: 1.4; }
 .pt-signout {
@@ -45,17 +52,91 @@ body {
 }
 .pt-signout:hover { color: var(--btc-300); }
 
-h1 { font-size: 21px; font-weight: 600; color: var(--plat-100); margin: 0 0 4px; }
-.pt-sub { font-size: 12px; color: var(--plat-400); margin: 0 0 26px; }
+/* The page title carries the orange dash the marketing site uses on every eyebrow. It is the
+   one piece of brand furniture the portal was missing, it costs nothing, and it puts the accent
+   at the top of the page where the eye starts rather than only next to a number near the end. */
+h1 {
+    font-size: 27px; font-weight: 600; color: var(--plat-100);
+    margin: 0 0 6px; letter-spacing: -0.015em; line-height: 1.15;
+}
+h1::before {
+    content: ""; display: block; width: 30px; height: 2px;
+    background: var(--btc-300); margin-bottom: 14px;
+}
+.pt-sub { font-size: 13px; color: var(--plat-400); margin: 0 0 30px; }
 h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 12px; }
 
 /* ---- cards ---- */
 .pt-card {
     background: var(--surface); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px;
+    border-radius: var(--radius); padding: 22px 24px; margin-bottom: 12px;
 }
 .pt-card.pt-clickable { cursor: pointer; }
 .pt-card.pt-clickable:hover { border-color: var(--line-btc); }
+
+/* ---- the facility switcher ----
+   Shown only when there is more than one site. Tabs rather than a <select>, because with two or
+   three facilities every option is worth seeing at once, and the current one being visible
+   matters more than saving the width. */
+.pt-sites { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+.pt-site {
+    background: none; border: 1px solid var(--line-mid); color: var(--plat-400);
+    border-radius: var(--radius); font: inherit; font-size: 11.5px; padding: 6px 12px;
+    cursor: pointer; white-space: nowrap;
+}
+.pt-site:hover { border-color: var(--line-btc); color: var(--plat-200); }
+.pt-site.is-on {
+    border-color: var(--btc-300); background: var(--btc-300); color: #ffffff;
+}
+
+/* Which facility a machine is at. Only rendered in the combined view — on a single site it
+   would repeat the same word down every card. */
+.pt-rig-site {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--plat-500);
+}
+
+/* ---- a statement in a list ----
+
+   The amount is the reason the page exists, so it is the largest thing on the row. Everything
+   else is context for it: which month, which site, whether it is final.
+
+   Laid out as when-left / how-much-right, which is how an invoice reads and how the eye scans a
+   column of them — all the amounts land on one line down the right and can be compared without
+   reading a word. */
+.pt-stmt {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 20px; text-decoration: none;
+}
+.pt-stmt-period {
+    font-size: 17px; font-weight: 600; color: var(--plat-100); line-height: 1.25;
+}
+.pt-stmt-meta { font-size: 11.5px; color: var(--plat-500); margin-top: 4px; }
+.pt-stmt-amt { text-align: right; flex-shrink: 0; }
+.pt-stmt-money {
+    font-size: 25px; color: var(--plat-100); line-height: 1.1;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+
+/* ---- status pills ----
+   A word in grey type is something you read; a pill is something you see. Which of these
+   statements is still moving is a glance, not a sentence. */
+.pt-pill {
+    display: inline-block; margin-top: 7px;
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line-mid); color: var(--plat-500);
+    border-radius: var(--radius);
+}
+/* SOLID, NOT A WASH. Orange text on an orange wash cannot be made to work in this palette:
+   --btc-300 is the most chromatic orange that clears 4.5:1 on pure white, so it sits just above
+   the floor and ANY tint behind it drops it under. Measured at five alphas from 18% down to 6%
+   and the best of them still only reached 4.37:1.
+
+   Filling it instead puts white on the orange, which reads at 4.58:1 — and a solid orange pill
+   is a far better answer to "the orange is hard to see" than a tinted one was. */
+.pt-pill--part {
+    border-color: var(--btc-300); background: var(--btc-300); color: #ffffff;
+}
 
 /* ---- the figure table ---- */
 .pt-rows { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -63,7 +144,27 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 .pt-rows tr:last-child td { border-bottom: none; }
 .pt-rows td:first-child { color: var(--plat-400); padding-right: 20px; }
 .pt-rows td:last-child { text-align: right; color: var(--plat-200); font-variant-numeric: tabular-nums; }
-.pt-total td { border-top: 1px solid var(--line-mid); font-size: 15px; color: var(--btc-300); padding-top: 12px; }
+/* THE TOTAL HAS NEVER BEEN ORANGE, and the rule that was supposed to make it
+   orange has been here the whole time. `.pt-total td` is (0,1,1); the two
+   rules directly above it are `.pt-rows td:first-child` and
+   `.pt-rows td:last-child`, both (0,2,1). A pseudo-class counts as a class,
+   so those win on specificity no matter what order they appear in, and the
+   colour was silently discarded while the border, size and padding on the
+   same rule all applied — which is exactly why nobody spotted it: the row
+   looked like a total, so the missing accent read as a design choice.
+
+   Measured, before and after, in both themes: it was rgb(229,228,226) on
+   black and rgb(38,38,31) on paper, i.e. ordinary body text both times.
+
+   Both selectors are kept. The qualified one at (0,2,2) wins inside a
+   .pt-rows table, which is every total in the portal today; the bare one
+   still covers a .pt-total used outside one. This is the same trap as
+   `.nav-links a` beating `.btn` on the marketing site. */
+.pt-total td,
+.pt-rows tr.pt-total td {
+    border-top: 1px solid var(--line-mid); font-size: 15px;
+    color: var(--btc-300); padding-top: 12px;
+}
 .pt-unit { color: var(--plat-500); font-size: 11px; }
 
 /* An absent value is rendered, never blank. A blank cell reads as zero; this does not. */
@@ -75,7 +176,9 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
     border-radius: var(--radius); padding: 13px 15px; margin-bottom: 18px;
     font-size: 12px; color: var(--plat-200); line-height: 1.5;
 }
+/* On the wash, so it takes the deeper orange — see --btc-on-wash. */
 .pt-partial strong { color: var(--btc-300); }
+body.pt-app .pt-partial strong { color: var(--btc-on-wash); }
 
 /* ---- disclosures: coverage, gaps, what could not be billed ---- */
 .pt-disclosure {
@@ -173,7 +276,7 @@ h2 { font-size: 13px; font-weight: 600; color: var(--plat-200); margin: 30px 0 1
 
    The same field that runs behind every backdrop on the marketing site: gas
    rising off a source and cooling orange to platinum. A producer arriving here
-   has just come from ionmininggroup.com, and the portal looking like a
+   has just come from protonminingco.com, and the portal looking like a
    different company's software is a small thing that costs trust at exactly the
    wrong moment.
 
@@ -256,3 +359,490 @@ body.pt-signin .pt-bg::after {
     height: 100%;
 }
 
+
+
+/* ===== the history chart =====
+
+   Written entirely in tokens, so it arrives on paper with everything else and
+   there is no second set of chart colours to keep in step. The only rules in
+   the light block below are the two that cannot be expressed as a token: the
+   hole shading and the area fill, which are alpha over a ground and therefore
+   depend on which ground.
+
+   SQUARE, like the rest of the portal — --radius is 0 by policy, and that
+   includes the buttons here. */
+
+.fc-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px 16px; margin-bottom: 14px;
+}
+.fc-ranges, .fc-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.fc-range, .fc-toggle {
+    background: none; border: 1px solid var(--line-mid); color: var(--plat-400);
+    border-radius: var(--radius); font: inherit; font-size: 11px; padding: 5px 10px;
+    cursor: pointer; white-space: nowrap;
+}
+.fc-range:hover, .fc-toggle:hover { border-color: var(--line-btc); color: var(--plat-200); }
+/* Same pairing, same fix: the selected timeframe is filled rather than tinted. It is also the
+   control the eye needs to find first on that panel. */
+.fc-range.is-on {
+    border-color: var(--btc-300); background: var(--btc-300); color: #ffffff;
+}
+
+/* A metric that is ON is stated by more than colour: the border thickens on the
+   left into a marker. Five toggles distinguished only by tint is a state a
+   colour-blind reader cannot read, and this is the control that decides what is
+   on the chart at all. */
+.fc-toggle.is-on {
+    color: var(--plat-100); border-color: var(--line-mid);
+    border-left: 4px solid var(--plat-400);
+}
+.fc-toggle--accent.is-on { border-left-color: var(--btc-300); color: var(--btc-300); }
+
+/* ---- the period figures ---- */
+.fc-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+}
+.fc-stat {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px 14px;
+}
+.fc-stat-v {
+    font-size: 18px; color: var(--plat-100); line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.fc-stat-l {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--plat-500); margin-top: 5px;
+}
+/* How many days the figure is actually an average of. An average over 88 of 90
+   days is a different claim from an average, and the missing two are the
+   interesting ones. */
+.fc-stat-s { font-size: 10.5px; color: var(--plat-600); margin-top: 2px; }
+
+/* ---- the crosshair readout ---- */
+.fc-readout {
+    display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline;
+    min-height: 34px; padding: 8px 0;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--plat-200); font-variant-numeric: tabular-nums;
+}
+.fc-r-date { font-size: 12px; color: var(--plat-100); font-weight: 600; min-width: 96px; }
+.fc-r-l { color: var(--plat-500); font-size: 11px; }
+.fc-idle { color: var(--plat-500); font-size: 11.5px; }
+
+/* min-height above is NOT decoration. The readout is empty until the pointer is
+   on the chart, and without a reserved line the whole chart jumps up and down by
+   its height as the pointer enters and leaves — which moves the thing being
+   pointed at, out from under the pointer. */
+
+/* ---- the plot ---- */
+.fc-svg { display: block; width: 100%; height: auto; margin-top: 6px; }
+.fc-svg:focus { outline: 1px solid var(--line-btc); outline-offset: 2px; }
+
+.fc-grid { stroke: var(--line); stroke-width: 1; }
+.fc-grid--base { stroke: var(--line-mid); }
+.fc-ylab {
+    fill: var(--plat-500); font-size: 10.5px; text-anchor: end;
+    dominant-baseline: middle; font-variant-numeric: tabular-nums;
+}
+.fc-xlab { fill: var(--plat-500); font-size: 10.5px; text-anchor: middle; }
+.fc-band-label { fill: var(--plat-200); font-size: 11px; }
+.fc-band-unit { fill: var(--plat-600); font-size: 10.5px; }
+.fc-band-label, .fc-xlab, .fc-ylab { dominant-baseline: alphabetic; }
+.fc-ylab { dominant-baseline: middle; }
+.fc-empty, .fc-nodata {
+    fill: var(--plat-500); font-size: 12px; text-anchor: middle;
+}
+
+.fc-line {
+    fill: none; stroke: var(--plat-300); stroke-width: 1.8;
+    stroke-linejoin: round; stroke-linecap: round;
+}
+.fc-line--accent { stroke: var(--btc-300); stroke-width: 2.1; }
+.fc-dot { fill: var(--plat-300); }
+.fc-dot--accent { fill: var(--btc-300); }
+
+.fc-area { fill: rgba(229, 228, 226, 0.07); stroke: none; }
+.fc-area--accent { fill: rgba(247, 147, 26, 0.10); stroke: none; }
+
+/* A DAY NOBODY REPORTED. Shaded, not blank and not zero, so the eye reads "no
+   information here" rather than "a low reading here". The line stops at its
+   edge; nothing is drawn across it. */
+.fc-hole { fill: rgba(229, 228, 226, 0.05); }
+
+.fc-hit { fill: transparent; }
+.fc-cross { stroke: var(--btc-300); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+
+/* ===== the signed-in portal: paper, not screen =====
+
+   The sign-in is a front door and looks like the company. What is behind it is
+   a document — statements, volumes, money owed — and a producer may well print
+   one or read it beside a paper invoice. Dark chrome is right for the first job
+   and wrong for the second.
+
+   IT IS THE SAME COMPONENTS, NOT A SECOND STYLESHEET. Every rule above is
+   written against tokens, so the light theme redefines the tokens under one
+   class and the cards, tables, rules and badges follow. Anything added later
+   inherits it for free; a parallel set of .pt-light-* rules would not, and
+   would drift the first time somebody edited one and not the other.
+
+   tokens.css is NOT touched. It is a byte-identical copy of the site's palette
+   with tests/theme.test.js asserting so, and the app at the root shares it. */
+
+/* The page scrollbar is painted from the ROOT element's colour-scheme, not the
+   body's, so the declaration inside the body rule is not enough on its own:
+   without this, white paper scrolls on a dark bar. :has() is the only way to
+   reach the root from a class the page sets on the body. Where it is
+   unsupported the result is a dark scrollbar beside a white page — untidy,
+   and nothing more. */
+:root:has(body.pt-app) { color-scheme: light; }
+
+body.pt-app {
+    /* WHITE, WITH THE CARDS DEFINED BY LINE RATHER THAN BY FILL.
+
+       Two earlier attempts are worth recording, because the obvious fixes are the ones that were
+       tried. First was a white page with #f6f6f4 cards — the cards ended up DARKER than the
+       page, so nothing sat on top of anything and the whole screen read as one flat sheet.
+       Second was dimming the page to a warm grey so the cards lifted off it; that worked, and
+       was not what was wanted.
+
+       So the page is white again and the separation comes from the border weight instead. A
+       white card on a white page with a crisp rule around it reads as a document, which is what
+       this is. Nothing here is fighting the accent for attention, which is the actual problem
+       both earlier versions had. */
+    background: #ffffff;
+    color-scheme: light;
+
+    /* Ink, in the same steps the dark set uses, so a rule asking for --plat-400
+       still gets "the quieter one" and not a colour that means something else.
+
+       MEASURED ON THE PAGE, WHICH IS NOW THE DARKER OF THE TWO GROUNDS. It used
+       to be the card, back when the page was white; darkening the page moved the
+       worst case onto it, and every step of the ramp had to come down with it or
+       the bottom three fell below AA. That is the part that is easy to miss when
+       a background is dimmed: the text does not stay legible by itself.
+
+       Ratios on the page: 16.6, 13.0, 9.5, 6.3, 5.4, 4.7.
+       On a card they are about 12% better again.
+
+       The bottom of the ramp is TIGHTER THAN THE DARK SET, and that is the
+       honest shape of it: black has room for a step at 3.5:1 that still reads
+       as a colour, and paper does not. Every use of --plat-600 in this
+       stylesheet is body text — the footer, an absent value, the demo caption
+       — so on paper it is the quietest legible ink, not a mark. */
+    --text:      #14140f;
+    --plat-100:  #14140f;
+    --plat-200:  #1f1f1a;
+    --plat-300:  #37372f;
+    --plat-400:  #52514b;
+    --plat-500:  #5c5b55;
+    --plat-600:  #65645e;
+
+    /* THE LINES ARE THE STRUCTURE. With no fill difference between a card and the page,
+       every edge in the layout is carried by these two values, so they are drawn a little
+       firmer than a decorative hairline would be. */
+    --line:      rgba(20, 20, 15, 0.13);
+    --line-mid:  rgba(20, 20, 15, 0.22);
+
+    /* --surface-2 is the card, and it is WHITE. --surface is the half-step used for a hover,
+       so lifting a card warms it very slightly rather than doing nothing (both were white in
+       the first version, which is why hovering a statement felt dead). */
+    --surface:   #fbfaf8;
+    --surface-2: #ffffff;
+
+    /* THE ORANGE HAD TO MOVE, and this is the one substantive change.
+
+       #f7931a is 2.30:1 on white and 2.12:1 on a card. It is a brand colour,
+       not a legible one, and the TOTAL — the figure the whole statement
+       exists to deliver — is set in it. #a65c00 is the same orange carried
+       down until it clears on the ground it actually lands on: 4.67:1 on a
+       card, 5.06:1 on white.
+
+       It was found by walking #f7931a toward black and keeping the LIGHTEST
+       value that cleared, so it stays as close to the brand colour as
+       legibility allows. Scaling the original channels proportionally gave
+       #a26011, which measures the same and reads brown; chroma is worth
+       choosing deliberately, because a desaturated total stops looking like an
+       accent and starts looking like a mistake.
+
+       The bright original stays where it is a SHAPE rather than a word: the
+       hairline on a hover, the wash behind a notice. That is the "here and
+       there" of it — a document with an orange rule and an orange figure on
+       it, not an orange interface. */
+    /* AS CHROMATIC AS AN ORANGE CAN BE AND STILL BE READ ON WHITE.
+
+       #f7931a is 2.30:1 here, so it cannot carry text. Walking it down until it clears 4.5:1
+       gives #b36000 at 4.58:1, which keeps 0.70 of the brand orange's 0.87 chroma — measured
+       against eight candidates, this is the most saturated one that passes. The previous value
+       was #955300, chosen for a grey ground and needlessly brown now the ground is white again.
+
+       The BORDERS AND WASHES keep the full brand orange, because a border is not text and does
+       not have to clear 4.5:1. That is where the colour actually reads: at 0.85 a hairline is a
+       real orange line rather than a tinted grey. */
+    --btc-300:   #b36000;
+    --line-btc:  rgba(247, 147, 26, 0.85);
+    --btc-wash:  rgba(247, 147, 26, 0.18);
+    /* A SECOND ORANGE, FOR ORANGE TEXT THAT SITS ON THE WASH.
+       --btc-300 is sized to just clear 4.5:1 on pure white, so it has no headroom left: on the
+       wash (#feecd6) it falls to 3.96:1. Anywhere the accent is set on its own tint needs to go
+       a step deeper, and #9e5200 reads at 4.97:1 there. Named for the job rather than numbered,
+       so nobody reaches for it as "the darker orange" and puts it somewhere it is not needed. */
+    --btc-on-wash: #9e5200;
+
+    /* Red at the same treatment: legible on paper rather than glowing. */
+    --neg:       #b3241a;
+    --neg-line:  rgba(179, 36, 26, 0.32);
+
+    /* AND THE GREEN, which is the one that would have shipped broken.
+
+       --pos is #4ade80, tuned to glow on black, and it measures 1.61:1 on a
+       card. The four rig dots are 7px swatches and they are how a hosting
+       client answers their first question, which is whether their machines are
+       running. On paper the three states that mean SOMETHING IS WRONG all came
+       out clearly visible — stale 4.67, offline 6.10, unknown 4.73 — and the
+       one meaning "fine" came out at 1.61, i.e. invisible.
+
+       That is the signal inverted. A fleet with nothing wrong with it would
+       have rendered as a row of blank cards, and the natural reading of a blank
+       card is not "healthy", it is "this page is broken".
+
+       #18813d is 4.57:1, which puts the good state in the same band as its
+       three siblings so the four read as one set. A swatch only needs 3:1
+       (WCAG 1.4.11, non-text), but matching the band matters more here than
+       meeting the floor. */
+    --pos:       #18813d;
+}
+
+/* The field is a dark-ground effect — a lattice of light on black. There is no
+   version of it that belongs on paper, so it does not run here rather than
+   being faded until it nearly does not. */
+body.pt-app .pt-bg { display: none; }
+
+/* Cards were panels floating on black; on paper they are ruled blocks. The
+   token swap alone leaves them almost invisible, because a 0.11 hairline on
+   white is much quieter than the same alpha on black. */
+body.pt-app .pt-card {
+    background: var(--surface-2);
+    border: 1px solid var(--line-mid);
+}
+/* Hover lifts toward the lighter surface rather than to white, so the whole set does not
+   flash back to the brightness the theme just came down from. */
+body.pt-app .pt-card.pt-clickable:hover {
+    background: var(--surface);
+    border-color: var(--line-btc);
+}
+
+/* The dashboard's tiles are the same problem as the cards, and they are easy to
+   miss because their rule looks correct in isolation: `background: var(--surface)`
+   is #0a0a0a on black, which reads as a panel, and #ffffff on white, which reads
+   as nothing at all. Same ground and same rule as .pt-card, so a metric tile and
+   a statement card are the same object on the page. */
+body.pt-app .pt-metric,
+body.pt-app .pt-rig {
+    background: var(--surface-2);
+    border: 1px solid var(--line-mid);
+}
+/* Except where the border is carrying MEANING — a rig nobody has heard from,
+   or one that is down. Those two keep their own colour and must not be flattened
+   back to the neutral rule above, which is why they are restated here. */
+body.pt-app .pt-rig--stale   { border-color: var(--line-btc); }
+body.pt-app .pt-rig--offline { border-color: var(--neg-line); }
+
+/* The chart's three translucent fills are alpha over a ground, so they are the
+   only part of it that cannot be a token. On black a 5% platinum wash reads as a
+   faint lift; on paper the same wash is invisible, and the hole shading in
+   particular has a job to do — it is how a day nobody reported is told apart
+   from a day with a low reading. */
+body.pt-app .fc-area        { fill: rgba(20, 20, 15, 0.055); }
+body.pt-app .fc-area--accent { fill: rgba(247, 147, 26, 0.16); }
+body.pt-app .fc-hole        { fill: rgba(20, 20, 15, 0.06); }
+
+/* Tiles again: var(--surface) is #ffffff on paper, i.e. invisible against the
+   page. Same treatment as .pt-card and .pt-metric. */
+body.pt-app .fc-stat {
+    background: var(--surface-2);
+    border: 1px solid var(--line-mid);
+}
+
+/* ---- where the accent actually shows ----
+   The complaint was not that there is too little orange in the stylesheet, it is that none of
+   it survived the white. These three are the places a reader's eye already goes, so they are
+   where the accent is worth spending. */
+
+/* Section labels. Small, uppercase, and repeated down the page {d} orange here threads the
+   accent through the whole document instead of leaving it stranded on one total. */
+body.pt-app .pt-section-label { color: var(--btc-300); }
+
+/* The metric a hosting client is billed on, and the chart band for it, already use the accent.
+   The statement total does too. What was missing was a mark on the card that CARRIES the
+   total, so the eye finds it before reading a single figure. */
+body.pt-app .pt-card:has(.pt-total) { border-left: 3px solid var(--btc-300); }
+
+/* The demo bar is unchanged and stays the bright brand orange {d} see its own rule below. */
+
+/* THE MASTHEAD RULE IS ORANGE, and it is the single most effective place to spend the accent
+   on a white page: full width, above the fold, and the first thing under the company's own name.
+   A grey hairline there was structure; this is structure that also says whose page it is.
+
+   2px rather than 1: at a single pixel a saturated colour on white reads as a smudge of grey.
+   It is the brand orange at full strength rather than the ink orange, because a rule is not text
+   and has no contrast floor to meet. */
+body.pt-app .pt-head { border-bottom: 2px solid #f7931a; }
+
+/* THE DEMO BAR KEEPS THE BRIGHT ORANGE, and it is the only thing that does.
+
+   It is a warning that every figure on screen is invented, it is sticky, and it
+   has no dismiss — the one element here whose job is to be louder than the
+   document. Everything else got quieter on paper; this must not.
+
+   It needs its own rule because it would otherwise change silently. The bar is
+   declared `background: var(--btc-300)`, and --btc-300 is exactly the token the
+   light theme darkens, so it would have dimmed to the ink orange and dropped
+   its black label from 9.14:1 to 4.15:1 — a warning made quieter and harder
+   to read by a change that was about statements.
+
+   (The rule that used to sit here targeted `.pt-banner`, which does not exist
+   anywhere in the portal. It was styling nothing.) */
+body.pt-app .pt-demobar {
+    background: #f7931a;
+    color: var(--black);
+}
+
+/* ===== the hosting dashboard =====
+
+   A hosting client's first question is not "what is my invoice", it is "are my
+   machines running". So this is the operator's Fleet Dashboard re-created for
+   one customer's own rigs — summary first, then a card per machine, then the
+   statements underneath.
+
+   RE-CREATED RATHER THAN REUSED. The operator dashboard's classes live in
+   shared.css, and tests/portal-frontend.test.js exists to stop shared.css ever
+   reaching a counterparty's browser: it carries the operator nav and its auth
+   plumbing. tokens.css is already loaded here, so the palette is shared even
+   though the rules are not — that is the whole of the duplication. */
+
+.pt-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+}
+.pt-metric {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 16px;
+}
+.pt-metric-value {
+    font-size: 21px; color: var(--plat-100); line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.pt-metric-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--plat-500); margin-top: 5px;
+}
+/* The one figure a hosting client is billed on. */
+.pt-metric--draw .pt-metric-value { color: var(--btc-300); }
+
+.pt-rigs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+}
+.pt-rig {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 13px 15px;
+}
+/* Not reporting is a WARNING, not a neutral state — a machine nobody has heard
+   from is the thing a hosting client most needs to notice. Down is worse. */
+.pt-rig--stale   { border-color: var(--line-btc); }
+.pt-rig--offline { border-color: var(--neg-line); }
+
+.pt-rig-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 11px;
+}
+.pt-rig-name { font-size: 13px; color: var(--plat-100); font-weight: 600; }
+.pt-rig-state { font-size: 10.5px; color: var(--plat-400); white-space: nowrap; }
+
+/* Square, like everything else here: --radius is 0 by policy. */
+.pt-dot {
+    display: inline-block; width: 7px; height: 7px; margin-right: 6px;
+    background: var(--plat-600); vertical-align: baseline;
+}
+.pt-dot--online  { background: var(--pos); }
+.pt-dot--stale   { background: var(--btc-300); }
+.pt-dot--offline { background: var(--neg); }
+
+.pt-rig-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
+.pt-rig-stat .pt-stat-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--plat-500);
+}
+.pt-rig-stat .pt-stat-value {
+    font-size: 12.5px; color: var(--plat-200); font-variant-numeric: tabular-nums;
+}
+.pt-rig-stat .pt-stat-value .pt-absent { font-size: 11px; }
+
+/* Where each figure came from. The repo's rule is that sourced and typed values
+   are never shown with the same authority; on this page the equivalent is that a
+   pool-reported number and a metered one are not the same kind of fact. */
+.pt-provenance {
+    font-size: 11px; color: var(--plat-600); line-height: 1.6;
+    margin: 14px 0 26px;
+}
+
+
+/* The section label above each block of the hosting dashboard, matching the
+   operator app's own "Fleet Overview" / "Miners" headings. A label rather than
+   an h2 because it titles a grid rather than opening a document section, and
+   the portal's h2 is already carrying the statement headings. */
+.pt-section-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--plat-500); margin: 26px 0 10px;
+}
+.pt-section-label:first-child { margin-top: 0; }
+
+
+/* ---- a fleet that does not fit on a screen ----
+   One card per machine works to about a dozen. A hosting customer with a
+   container has a hundred, so above that only the machines needing attention
+   keep a card and the rest go into this table. */
+.pt-attention {
+    font-size: 12px; color: var(--btc-300); margin: 0 0 10px;
+}
+.pt-allgood {
+    font-size: 12.5px; color: var(--plat-400); margin: 0 0 10px;
+}
+.pt-fleet-toggle {
+    background: none; border: 1px solid var(--line-mid); color: var(--plat-300);
+    font: inherit; font-size: 11.5px; padding: 7px 13px; cursor: pointer;
+    border-radius: var(--radius); margin-top: 12px;
+}
+.pt-fleet-toggle:hover { border-color: var(--line-btc); color: var(--btc-300); }
+
+.pt-filter {
+    width: 100%; box-sizing: border-box; margin: 12px 0 4px;
+    background: var(--surface-2); border: 1px solid var(--line-mid);
+    border-radius: var(--radius); color: var(--text); font: inherit;
+    font-size: 12.5px; padding: 8px 10px;
+}
+.pt-filter:focus { outline: none; border-color: var(--btc-300); }
+
+/* The table scrolls inside its own box rather than pushing the page sideways. */
+.pt-table-wrap { overflow-x: auto; margin-top: 8px; }
+.pt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pt-table th {
+    text-align: left; font-weight: 600; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--plat-500); padding: 7px 10px 7px 0;
+    border-bottom: 1px solid var(--line-mid); white-space: nowrap;
+}
+.pt-table td {
+    padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line);
+    color: var(--plat-200); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pt-table tr:last-child td { border-bottom: none; }
+/* The same meaning the card borders carry, at row scale. */
+.pt-row--stale   td:first-child { box-shadow: inset 2px 0 0 var(--btc-300); padding-left: 8px; }
+.pt-row--offline td:first-child { box-shadow: inset 2px 0 0 var(--neg); padding-left: 8px; }

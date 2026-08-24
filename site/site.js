@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Public site behaviour =====
+/* ===== PROTON MINING — Public site behaviour =====
    No dependencies. Everything degrades gracefully without JS:
    the nav links are real links, and the forms fall back to the
    plain mailto address printed beside them. */
@@ -192,7 +192,7 @@
                 lines.push(key + ': ' + (el.value || '—'));
             });
 
-            var body = lines.join('\n') + '\n\n— Sent from ionmininggroup.com\n';
+            var body = lines.join('\n') + '\n\n— Sent from protonminingco.com\n';
             window.location.href = 'mailto:' + to +
                 '?subject=' + encodeURIComponent(subject) +
                 '&body=' + encodeURIComponent(body);
@@ -211,11 +211,11 @@
     var topicSelect = document.querySelector('[data-topic-select]');
     if (topicSelect) {
         var routes = {
-            hosting:     { to: 'hosting@ionmininggroup.com', subject: 'Hosting enquiry via ionmininggroup.com' },
-            energy:      { to: 'energy@ionmininggroup.com',  subject: 'Site / energy enquiry via ionmininggroup.com' },
-            partnership: { to: 'hello@ionmininggroup.com',   subject: 'Partnership enquiry via ionmininggroup.com' },
-            media:       { to: 'hello@ionmininggroup.com',   subject: 'Media enquiry via ionmininggroup.com' },
-            other:       { to: 'hello@ionmininggroup.com',   subject: 'Enquiry via ionmininggroup.com' }
+            hosting:     { to: 'hosting@protonminingco.com', subject: 'Hosting enquiry via protonminingco.com' },
+            energy:      { to: 'energy@protonminingco.com',  subject: 'Site / energy enquiry via protonminingco.com' },
+            partnership: { to: 'hello@protonminingco.com',   subject: 'Partnership enquiry via protonminingco.com' },
+            media:       { to: 'hello@protonminingco.com',   subject: 'Media enquiry via protonminingco.com' },
+            other:       { to: 'hello@protonminingco.com',   subject: 'Enquiry via protonminingco.com' }
         };
 
         var applyRoute = function () {

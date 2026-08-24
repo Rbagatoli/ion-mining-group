@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the wellpad, shared by both states =====
+/* ===== PROTON MINING — the wellpad, shared by both states =====
 
    The energy page draws one pad twice: as it is today with the flare lit, and
    with our kit on it. Everything in THIS file appears in both, identically, and

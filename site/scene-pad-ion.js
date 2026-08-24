@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Energy page scene, state TWO: the pad with us =====
+/* ===== PROTON MINING — Energy page scene, state TWO: the pad with us =====
 
    The same pad, the same camera, the same everything underneath — imported from
    pad-geometry.js rather than declared again, so that when the slider moves the

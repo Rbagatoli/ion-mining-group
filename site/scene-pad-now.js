@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Energy page scene, state ONE: the pad today =====
+/* ===== PROTON MINING — Energy page scene, state ONE: the pad today =====
 
    A partner's wellpad as it stands: gas comes up, goes through the separator,
    and the part nobody has a customer for goes to the stack and burns. The

@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Mining Projection Engine =====
+// ===== PROTON MINING — Mining Projection Engine =====
 // Pure projection math, extracted from calculator.js so it can be:
 //   1. called for scenarios that are NOT currently in the DOM (side-by-side comparison), and
 //   2. regression-tested directly in node with no browser.

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// ===== ION MINING GROUP — Firestore authorization =====
+// ===== PROTON MINING — Firestore authorization =====
 //
 // WHY THIS FILE EXISTS, AND WHY IT DID NOT BEFORE.
 //

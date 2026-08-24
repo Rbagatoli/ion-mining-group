@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Cycle Page =====
+// ===== PROTON MINING — Cycle Page =====
 // Valuation and cycle-position indicators built on the shared price history.
 //
 // FRAMING RULE: nothing here predicts price. Every reading is phrased as historical context
@@ -292,7 +292,7 @@ function renderValuationChart(range) {
             labels: labels,
             datasets: [
                 { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.08)', fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 },
-                { label: '200-day avg', data: m200, borderColor: IonTheme.seriesAt(1), backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
+                { label: '200-day avg', data: m200, borderColor: ProtonTheme.seriesAt(1), backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
                 { label: '200-week avg', data: m1400, borderColor: '#4ade80', backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0, spanGaps: false }
             ]
         },
@@ -393,7 +393,7 @@ function renderCyclesChart() {
     var idxs = sampleIdx(maxLen, 400);
     var labels = idxs.map(function(i) { return 'Day ' + i; });
 
-    var colors = [IonTheme.seriesAt(1), IonTheme.seriesAt(2), IonTheme.seriesAt(0)];
+    var colors = [ProtonTheme.seriesAt(1), ProtonTheme.seriesAt(2), ProtonTheme.seriesAt(0)];
     var datasets = tracks.map(function(t, n) {
         var data = idxs.map(function(i) { return t.points[i] ? +t.points[i].value.toFixed(2) : null; });
         var isCurrent = (n === tracks.length - 1);
@@ -507,7 +507,7 @@ function renderFngChart(range) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Fear & Greed', data: fng, borderColor: IonTheme.seriesAt(2), backgroundColor: IonTheme.alpha(IonTheme.seriesAt(2), 0.10), fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y' },
+                { label: 'Fear & Greed', data: fng, borderColor: ProtonTheme.seriesAt(2), backgroundColor: ProtonTheme.alpha(ProtonTheme.seriesAt(2), 0.10), fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y' },
                 { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y1', spanGaps: true }
             ]
         },

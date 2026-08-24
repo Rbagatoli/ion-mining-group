@@ -83,7 +83,7 @@ console.log('\n--- the export covers every key, not just the synced ones ---');
 (function() {
     // The export is prefix-driven so a key added later is covered without anyone remembering.
     // Reproduced here rather than imported, because profile-panel.js needs a DOM to load.
-    var PREFIXES = ['ionMining', 'btcMinerCalc'];
+    var PREFIXES = ['protonMining', 'btcMinerCalc'];
     function exportable(store) {
         var out = [];
         for (var i = 0; i < store.length; i++) {
@@ -98,17 +98,17 @@ console.log('\n--- the export covers every key, not just the synced ones ---');
 
     var st = makeStorage();
     // A representative spread: synced keys, unsynced keys, and one that must NOT be exported.
-    ['ionMiningSites', 'ionMiningFleet', 'ionMiningWallet',
-     'ionMiningProspectPortfolio', 'ionMiningProspectScenario', 'ionMiningProspectFilters',
-     'ionMiningWidgets_banking', 'ionMiningStrikeBtcBalance', 'btcMinerCalcSettings',
+    ['protonMiningSites', 'protonMiningFleet', 'protonMiningWallet',
+     'protonMiningProspectPortfolio', 'protonMiningProspectScenario', 'protonMiningProspectFilters',
+     'protonMiningWidgets_banking', 'protonMiningStrikeBtcBalance', 'btcMinerCalcSettings',
      'sw_clean_v222', 'someOtherAppKey'].forEach(function(k) { st.setItem(k, '{}'); });
 
     var got = exportable(st);
-    eq('every ionMining/btcMinerCalc key is exported', got.length, 9);
+    eq('every protonMining/btcMinerCalc key is exported', got.length, 9);
     ok('including the prospect portfolio — unsynced, and destroyed by the old sign-out',
-       got.indexOf('ionMiningProspectPortfolio') >= 0);
-    ok('including widget layouts', got.indexOf('ionMiningWidgets_banking') >= 0);
-    ok('including the Strike balance', got.indexOf('ionMiningStrikeBtcBalance') >= 0);
+       got.indexOf('protonMiningProspectPortfolio') >= 0);
+    ok('including widget layouts', got.indexOf('protonMiningWidgets_banking') >= 0);
+    ok('including the Strike balance', got.indexOf('protonMiningStrikeBtcBalance') >= 0);
     ok('the service-worker bootstrap key is NOT exported', got.indexOf('sw_clean_v222') < 0);
     ok('and neither is an unrelated key', got.indexOf('someOtherAppKey') < 0);
 
@@ -116,7 +116,7 @@ console.log('\n--- the export covers every key, not just the synced ones ---');
     // iterating it, this fails.
     // Read out of sync.js rather than hand-copied. The list used to be duplicated here, which
     // meant it went stale the moment a key was added or retired -- it still claimed
-    // ionMiningTheme long after the theme stopped syncing. Parsing the real SYNC_KEYS makes this
+    // protonMiningTheme long after the theme stopped syncing. Parsing the real SYNC_KEYS makes this
     // a live check instead of a fixture that agrees with a past version of the code.
     var SYNC_SRC = fs.readFileSync(path.join(ROOT, 'sync.js'), 'utf8');
     var SYNC_BLOCK = SYNC_SRC.slice(SYNC_SRC.indexOf('var SYNC_KEYS'),
@@ -128,7 +128,7 @@ console.log('\n--- the export covers every key, not just the synced ones ---');
        'found ' + SYNCED.length + ' synced keys in sync.js');
     // The theme key retired with the light theme. Asserting its absence here is what stops it
     // being quietly re-added.
-    ok('the theme key no longer syncs', SYNCED.indexOf('ionMiningTheme') < 0);
+    ok('the theme key no longer syncs', SYNCED.indexOf('protonMiningTheme') < 0);
     var unsyncedButExported = got.filter(function(k) { return SYNCED.indexOf(k) < 0; });
     ok('the export is strictly wider than what syncs', unsyncedButExported.length > 0,
        'exported ' + got.length + ', of which ' + unsyncedButExported.length + ' never sync');
@@ -143,7 +143,7 @@ console.log('\n--- payouts are priced from the day they were paid ---');
     var DAY = 86400;
     var d1 = Date.UTC(2026, 5, 1) / 1000;
     var d2 = Date.UTC(2026, 5, 2) / 1000;
-    global.localStorage.setItem('ionMiningPriceHistory', JSON.stringify({
+    global.localStorage.setItem('protonMiningPriceHistory', JSON.stringify({
         v: 1, d: [[d1, 40000], [d2, 90000]]
     }));
 

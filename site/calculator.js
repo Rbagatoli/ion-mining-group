@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Public mining calculator =====
+/* ===== PROTON MINING — Public mining calculator =====
 
    The arithmetic is NOT reimplemented here. calc-engine.js is a byte-for-byte
    copy of the engine the internal software runs, so a number a prospect sees on
@@ -12,7 +12,7 @@
                 Volume converts to kW and then to a machine count, and from
                 there it is the same projection.
 
-   The gas conversion is Ion's own, lifted from site-engine.js: 1,000 BTU per
+   The gas conversion is Proton's own, lifted from site-engine.js: 1,000 BTU per
    cubic foot, 10,000 BTU per kWh, i.e. 1 Mcf ~ 100 kWh and 1 MMcf/day ~ 4 MW.
    Both constants are exposed as inputs because the internal engine exposes
    them too — heat rate moves materially with genset model and altitude.
@@ -35,7 +35,7 @@
         'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
     ];
 
-    /* Ion's gas->power constants, matching site-engine.js. Defaults only; the
+    /* Proton's gas->power constants, matching site-engine.js. Defaults only; the
        two inputs above override them. */
     var GAS_BTU_PER_CF = 1000;
     var HEAT_RATE_BTU_PER_KWH = 10000;
@@ -756,7 +756,7 @@
         setText('outHeldValue', money(r.heldBtcValue));
         setText('outFinalPrice', money(r.finalBtcPrice));
 
-        // Benchmark. Not an Ion claim — just the obvious alternative use of the
+        // Benchmark. Not an Proton claim — just the obvious alternative use of the
         // same money, which the engine already computes.
         setSigned('outBenchmark', money(r.buyHoldFinalNet), r.buyHoldFinalNet);
         setSigned('outAdvantage', money(r.miningAdvantage), r.miningAdvantage);

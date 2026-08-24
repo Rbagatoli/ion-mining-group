@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ion Mining Group — Dashboard</title>
+    <title>Proton Mining — Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./tokens.css?v=338">
@@ -17,14 +17,15 @@
         });
     }
     </script>
-    <script src="./theme.js?v=338"></script>
+    <script src="./brand-migrate.js?v=338"></script>
+<script src="./theme.js?v=338"></script>
     <script src="./chart.min.js?v=338"></script>
     <script src="./chart-theme.js?v=338"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
 
-<nav id="ion-nav"></nav>
+<nav id="proton-nav"></nav>
 
 <header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;">Fleet Dashboard</h1>
@@ -221,7 +222,7 @@
                 <div class="input-group">
                     <label id="labelWorkerUrl">Proxy Worker URL</label>
                     <div class="input-wrapper">
-                        <input type="text" id="fmWorkerUrl" placeholder="https://ion-f2pool.yourname.workers.dev">
+                        <input type="text" id="fmWorkerUrl" placeholder="https://proton-f2pool.yourname.workers.dev">
                     </div>
                 </div>
                 <div class="input-group" id="usernameGroup">
@@ -352,7 +353,7 @@
 </main>
 
 <footer>
-    Ion Mining Group &mdash; Fleet Dashboard<br>
+    Proton Mining &mdash; Fleet Dashboard<br>
     <span style="font-size:11px; color:#555;">Data updates when you refresh. Connect F2Pool API for live data.</span>
 </footer>
 

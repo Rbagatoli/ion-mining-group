@@ -1,9 +1,9 @@
-// Ion Mining Group — Braiins Pool Proxy (Cloudflare Worker)
-// Deploy: wrangler deploy --name ion-braiins
+// Proton Mining — Braiins Pool Proxy (Cloudflare Worker)
+// Deploy: wrangler deploy --name proton-braiins
 // Secrets: wrangler secret put BRAIINS_API_KEY
 //
 // wrangler.toml:
-// name = "ion-braiins"
+// name = "proton-braiins"
 // main = "braiins-worker.js"
 // compatibility_date = "2024-01-01"
 //

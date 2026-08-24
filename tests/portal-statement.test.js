@@ -124,15 +124,15 @@ console.log('\n=== an unattributed curtailment makes the shortfall PENDING, not 
     eq('no shortfall charge was invented', s.charges.length, 1);
 })();
 
-console.log('\n=== gas Ion refused does NOT reduce what Ion owes ===');
+console.log('\n=== gas Proton refused does NOT reduce what Proton owes ===');
 (function() {
     // THIS SECTION PREVIOUSLY ASSERTED THE OPPOSITE, and the assertion was wrong rather than the
-    // code being right. It read "gas Ion refused still counts toward the minimum" and expected the
+    // code being right. It read "gas Proton refused still counts toward the minimum" and expected the
     // refusal to shrink the shortfall.
     //
-    // That inverts the clause. Take-or-pay exists so that when Ion declines gas the seller made
+    // That inverts the clause. Take-or-pay exists so that when Proton declines gas the seller made
     // available, the seller is paid anyway. Netting it out made the clause pay ZERO in exactly the
-    // month it exists for: minimum 800, delivered 0, 800 refused by Ion produced a $0 statement
+    // month it exists for: minimum 800, delivered 0, 800 refused by Proton produced a $0 statement
     // when the seller was owed the full minimum.
     var c = contract();
     c.terms.take_or_pay = { minimum_per_period: 800, excused_events: ['seller_outage'] };
@@ -140,15 +140,15 @@ console.log('\n=== gas Ion refused does NOT reduce what Ion owes ===');
     var s = Statement.compute({ site_id: 'S1', contract: c, built: built(1000),
         curtailments: [{ attribution: 'ion_economic', available_quantity: 200 }] });
     eq('delivered 500 against a minimum of 800 is a shortfall of 300', s.take_or_pay.shortfall, 300);
-    eq('and Ion refusing 200 does not shrink it', s.take_or_pay.ion_curtailed_available, 200);
+    eq('and Proton refusing 200 does not shrink it', s.take_or_pay.ion_curtailed_available, 200);
 
     // The case the old test could not have caught, because it netted to zero.
     var worst = Statement.compute({ site_id: 'S1', contract: c, built: built(0),
         curtailments: [{ attribution: 'ion_economic', available_quantity: 800 }] });
-    eq('Ion refusing the entire minimum still owes the entire minimum', worst.take_or_pay.shortfall, 800);
+    eq('Proton refusing the entire minimum still owes the entire minimum', worst.take_or_pay.shortfall, 800);
     ok('and it is charged', worst.total_usd > 0, '$' + worst.total_usd);
 
-    // A SELLER-side failure is the opposite case: Ion cannot be made to pay for gas that was
+    // A SELLER-side failure is the opposite case: Proton cannot be made to pay for gas that was
     // never available to take, so it reduces the minimum rather than being owed.
     var excused = Statement.compute({ site_id: 'S1', contract: c, built: built(1000),
         curtailments: [{ attribution: 'seller_outage', quantity: 300 }] });

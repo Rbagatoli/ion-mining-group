@@ -236,7 +236,7 @@ function sortKeys(obj) {
 // ---- http -----------------------------------------------------------------------------
 function fetchText(url) {
     return new Promise(function(resolve, reject) {
-        https.get(url, { headers: { 'User-Agent': 'ion-mining-group/firms-liveness' } }, function(res) {
+        https.get(url, { headers: { 'User-Agent': 'proton-mining/firms-liveness' } }, function(res) {
             var chunks = [];
             res.on('data', function(c) { chunks.push(c); });
             res.on('end', function() {

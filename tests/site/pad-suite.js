@@ -11,7 +11,7 @@
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
 const NOW = require(REPO_ROOT + 'site/scene-pad-now.js');
-const ION = require(REPO_ROOT + 'site/scene-pad-ion.js');
+const PROTON = require(REPO_ROOT + 'site/scene-pad-ion.js');
 const LFNOW = require(REPO_ROOT + 'site/scene-landfill-now.js');
 const LFION = require(REPO_ROOT + 'site/scene-landfill-ion.js');
 
@@ -29,7 +29,7 @@ const LAND = require(REPO_ROOT + 'site/landfill-geometry.js');
    stack that is not in it, and reports a number that means nothing either way. */
 const SCENES = [
     ['now',    NOW,   PAD],
-    ['ion',    ION,   PAD],
+    ['ion',    PROTON,   PAD],
     ['lf-now', LFNOW, LAND],
     ['lf-ion', LFION, LAND],
 ];
@@ -44,8 +44,8 @@ const ok = (cond, label, detail) => {
 };
 const sweep = n => Array.from({ length: n + 1 }, (_, i) => Math.PI * 2 * (i / n));
 
-console.log(`pad: ${NOW.CALLOUTS.length} + ${ION.CALLOUTS.length} callouts, ` +
-            `${NOW.SLOTS} + ${ION.SLOTS} slots, ${PAD.TANK_X.length} tanks, ` +
+console.log(`pad: ${NOW.CALLOUTS.length} + ${PROTON.CALLOUTS.length} callouts, ` +
+            `${NOW.SLOTS} + ${PROTON.SLOTS} slots, ${PAD.TANK_X.length} tanks, ` +
             `${PAD.FLARE_H}m stack`);
 console.log('');
 
@@ -58,7 +58,7 @@ console.log('');
    applied to one file and not the other would look like nothing at all. */
 const VIEW = ['BASE_SCALE', 'PERIOD', 'ZOOM_MIN', 'ZOOM_MAX', 'PITCH_MIN', 'PITCH_MAX'];
 const PAIRS = [
-    ['pad',      NOW,   ION,   PAD,
+    ['pad',      NOW,   PROTON,   PAD,
      [[0, 0, 0], [PAD.WELL.x, PAD.WELL_H, PAD.WELL.z],
       [PAD.FLARE.x, PAD.FLARE_H, PAD.FLARE.z], [PAD.TANK_X[2], PAD.TANK_H, PAD.TANK_Z]]],
     ['landfill', LFNOW, LFION, LAND,
@@ -107,7 +107,7 @@ ok(fs.readFileSync(D + 'scene-landfill-now.js', 'utf8').indexOf('var CELL') < 0 
    Everything the partner already owns — the cap, the wellfield, the header, the
    leachate compound, the blower, the flare — has to appear in both states,
    because the promise the section makes is that it all stays exactly where it
-   is. Kit that showed up only in the "with Ion" state would be claiming we
+   is. Kit that showed up only in the "with Proton" state would be claiming we
    built their leachate tank.
 
    landfill-geometry.js has a buildShared() that exists precisely to stop the
@@ -120,16 +120,16 @@ ok(fs.readFileSync(D + 'scene-landfill-now.js', 'utf8').indexOf('var CELL') < 0 
     const SHARED = ['buildPad', 'buildCell', 'buildWells',
                     'buildHeader', 'buildPlant', 'buildYard'];
     const nowSrc = fs.readFileSync(D + 'scene-landfill-now.js', 'utf8');
-    const ionSrc = fs.readFileSync(D + 'scene-landfill-ion.js', 'utf8');
+    const protonSrc = fs.readFileSync(D + 'scene-landfill-ion.js', 'utf8');
     const calls = src => SHARED.filter(fn => src.indexOf('G.' + fn + '(') >= 0);
-    const inNow = calls(nowSrc), inIon = calls(ionSrc);
+    const inNow = calls(nowSrc), inIon = calls(protonSrc);
 
     ok(inNow.length === SHARED.length,
        'the "today" landfill scene draws every shared builder',
        inNow.length === SHARED.length ? SHARED.length + ' of ' + SHARED.length
          : 'MISSING: ' + SHARED.filter(f => inNow.indexOf(f) < 0).join(', '));
     ok(inIon.join() === inNow.join(),
-       'and the "with Ion" scene draws exactly the same ones',
+       'and the "with Proton" scene draws exactly the same ones',
        inIon.join() === inNow.join() ? 'both: ' + inIon.join(', ')
          : 'now=[' + inNow.join(',') + '] ion=[' + inIon.join(',') + ']');
 
@@ -170,7 +170,7 @@ ok(viewSrc('scene-pad-now.js') === viewSrc('scene-pad-ion.js'),
    different ones the bubbles would jump as the slider moved, which reads as a
    glitch rather than a change of state. */
 const ys = d => d.CALLOUTS.map(c => c.side + c.y).sort().join(',');
-ok(ys(NOW) === ys(ION),
+ok(ys(NOW) === ys(PROTON),
    'the label boxes sit at the same places in both, so they dissolve rather than jump',
    ys(NOW));
 
@@ -183,7 +183,7 @@ function flameLen(d, yaw) {
 let litMin = 1e9, pilotMax = 0;
 for (const yaw of sweep(24)) {
     litMin = Math.min(litMin, flameLen(NOW, yaw));
-    pilotMax = Math.max(pilotMax, flameLen(ION, yaw));
+    pilotMax = Math.max(pilotMax, flameLen(PROTON, yaw));
 }
 ok(litMin > 0, 'the lit state has a flame at every angle', litMin + ' chars at worst');
 ok(pilotMax > 0, 'and the other keeps a pilot, rather than going dark and unlit',
@@ -192,8 +192,8 @@ ok(litMin > pilotMax * 2,
    'the flame collapses to a fraction of itself when the slider moves',
    litMin + ' vs ' + pilotMax);
 const nowSrc = fs.readFileSync(D + 'scene-pad-now.js', 'utf8');
-const ionSrc = fs.readFileSync(D + 'scene-pad-ion.js', 'utf8');
-ok(nowSrc.indexOf('buildFlareStack') >= 0 && ionSrc.indexOf('buildFlareStack') >= 0,
+const protonSrc = fs.readFileSync(D + 'scene-pad-ion.js', 'utf8');
+ok(nowSrc.indexOf('buildFlareStack') >= 0 && protonSrc.indexOf('buildFlareStack') >= 0,
    'both states draw the stack itself');
 
 /* ---------- 4b. The flame is attached to the stack ----------
@@ -336,16 +336,16 @@ const SITE = require(D + 'scene-site.js');
 [['gas conditioning', 'gas', 'GAS'], ['genset', 'genset', 'GEN'],
  ['transformer', 'xfmr', 'XFMR']].forEach(([label, modelKey, kitKey]) => {
     const home = SITE.MODEL[modelKey], k = KIT[kitKey];
-    const ion = ION[kitKey];
+    const ion = PROTON[kitKey];
     ok(home.w === k.w && home.h === k.h && home.d === k.d,
        '  the home page takes its ' + label + ' from the kit',
        k.w + ' x ' + k.h + ' x ' + k.d);
     ok(ion && ion.w === k.w && ion.h === k.h && ion.d === k.d,
        '  and so does the pad', ion ? ion.w + ' x ' + ion.h + ' x ' + ion.d : 'MISSING');
 });
-ok(ION.CONTAINERS && ION.CONTAINERS.every(c =>
+ok(PROTON.CONTAINERS && PROTON.CONTAINERS.every(c =>
        c.w === KIT.CONT.w && c.h === KIT.CONT.h && c.d === KIT.CONT.d),
-   '  the containers match too', ION.CONTAINERS.length + ' on the pad');
+   '  the containers match too', PROTON.CONTAINERS.length + ' on the pad');
 
 /* Neither page may declare its own sizes any more, which is the part that
    actually prevents a repeat. */
@@ -356,9 +356,9 @@ ok(ION.CONTAINERS && ION.CONTAINERS.every(c =>
 });
 
 /* And the same builders, so the DETAIL matches and not merely the box. */
-const ionSrcKit = fs.readFileSync(D + 'scene-pad-ion.js', 'utf8');
+const protonSrcKit = fs.readFileSync(D + 'scene-pad-ion.js', 'utf8');
 ['KIT.gas(', 'KIT.gen(', 'KIT.xfmr(', 'KIT.container('].forEach(c => {
-    ok(ionSrcKit.indexOf(c) >= 0, '  the pad draws it with ' + c + '), not its own version');
+    ok(protonSrcKit.indexOf(c) >= 0, '  the pad draws it with ' + c + '), not its own version');
 });
 
 /* ---------- 4f. The plant stands out from the ground ----------
@@ -494,7 +494,7 @@ ok(sec.indexOf('data-link="pad"') !== sec.indexOf('data-link="landfill"'),
    'and the two pairs do not share a camera');
 
 ok((sec.match(/class="dg-callout/g) || []).length ===
-   NOW.CALLOUTS.length + ION.CALLOUTS.length + LFNOW.CALLOUTS.length + LFION.CALLOUTS.length,
+   NOW.CALLOUTS.length + PROTON.CALLOUTS.length + LFNOW.CALLOUTS.length + LFION.CALLOUTS.length,
    'every callout rendered');
 
 /* ---- the fuel switch ---- */
@@ -646,7 +646,13 @@ ok(flames.some(m => m[2].length > 100), 'the lit flare has real path data',
 ok(flames.some(m => m[2].length > 0 && m[2].length < 100), 'and the pilot has its own, smaller');
 
 /* Load order: the shared module has to run before the scenes that read it. */
-const order = [...html.matchAll(/<script src="\.\/([a-z-]+\.js)"><\/script>/g)].map(m => m[1]);
+/* THE VERSION IS PART OF THE URL NOW. Local assets carry ?v=<hash> so a browser cannot
+   serve a stale copy — see tools/build-asset-stamp.js, which exists because a whole pricing
+   section once shipped invisibly behind a cached page. These checks are asking "does this page
+   load X", which is true with or without a version on it, so they match the path and let the
+   query string be whatever it is. */
+const order = [...html.matchAll(/<script src="\.\/([a-z-]+\.js)(?:\?v=[0-9a-f]+)?"><\/script>/g)]
+    .map(m => m[1]);
 const iGeo = order.indexOf('pad-geometry.js');
 ok(iGeo >= 0 && iGeo < order.indexOf('scene-pad-now.js') &&
    iGeo < order.indexOf('scene-pad-ion.js'),

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — indicative hardware prices =====
+/* ===== PROTON MINING — indicative hardware prices =====
 
    The one place a quotable price is written. Separated from miner-db.js on
    purpose: that file is the app's SPEC table, and hashrate and draw do not
@@ -13,7 +13,7 @@
    times and never reconciled. The per-TH figure is written beside each row so
    the outliers are visible while that work is done.
 
-   SO IT IS PRESENTED AS INDICATIVE, AND THE PAGE SAYS SO. Ion brokers rather
+   SO IT IS PRESENTED AS INDICATIVE, AND THE PAGE SAYS SO. Proton brokers rather
    than holds stock, so a price is confirmed against a distributor per order
    anyway; nothing here is a commitment. hardware.html states ASOF beside the
    catalogue, and hardware-suite.js fails if that date is missing or does not

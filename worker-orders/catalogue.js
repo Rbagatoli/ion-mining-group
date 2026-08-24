@@ -44,3 +44,27 @@ export const CATALOGUE = {
     "Whatsminer M66S+": { hashrate: 318, power: 5.406, efficiency: 17, usd: 11500 },
     "Whatsminer M66S++": { hashrate: 348, power: 5.394, efficiency: 15.5, usd: 12500 }
 };
+
+/* The sites a customer may have machines shipped to.
+
+   IDS ONLY, and that is the point. The browser names a site; the Worker decides what that
+   site IS. Capacity and power price are never sent by the browser and never stored from it
+   — same rule as the prices above, for the same reason: a figure the customer can edit is
+   not a figure anyone can be held to.
+
+   A site absent from this list is refused rather than accepted-and-ignored, so a mistyped
+   or stale link cannot produce a paid order with no destination on it. */
+export const SITE_IDS = ["permian","bakken","alberta","cold-lake","niger-delta"];
+
+/* Sites that can actually receive machines today. A customer may hold a link to a site that
+   has since filled up or has not been energised yet, and taking money against it would be
+   selling space that does not exist. */
+export const SITE_OPEN = [];
+
+/* Prepaid electricity terms a customer may commit to.
+
+   IDS ONLY, like the sites above. The browser names a term; the Worker decides what that
+   term IS — how many years and what discount. A prepay is a multi-year commitment worth
+   five figures, so the one thing a browser must never be able to do is name its own
+   discount. */
+export const PREPAY_TERMS = ["12m","24m","36m"];

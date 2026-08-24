@@ -3,7 +3,7 @@
    Two things here are unlike the rest of the site. The specs are somebody
    else's facts, so the page must not restate them — it must read them from
    miner-db.js and be caught if it drifts. And the prices are a commercial
-   number on a public page, so they must never read as firm: Ion brokers rather
+   number on a public page, so they must never read as firm: Proton brokers rather
    than holds stock, and a price binds only on the quote.
 
    Drives the real page through the DOM stub calc-live.js already carries. */
@@ -222,6 +222,51 @@ ok(dear && dear[6].indexOf('hw-loss') > 0,
 ok(dear && econStrip(dear[7]) === '',
    '  and its payback is blank, not a number of years nobody will wait',
    dear ? '"' + econStrip(dear[7]) + '"' : 'no row');
+
+
+/* ---------- "Run the numbers" must be reachable without scrolling ----------
+
+   The three economics columns took the catalogue from seven columns to ten and
+   pushed the table 111px past its container, which put the calculator link
+   almost entirely off the right edge — reachable only by finding a horizontal
+   scrollbar first. Two things fix it and both are load-bearing, because they
+   fix different halves:
+
+     - trimmed cell padding, which makes the table fit at desktop widths, so
+       there is no scrollbar to find in the common case;
+     - a PINNED last column, which keeps the link on screen at the widths where
+       the table still cannot fit.
+
+   The padding alone would quietly stop working the next time a column is added.
+   The pin alone would leave the link floating over scrolling text with nothing
+   behind it. */
+
+var sheet = fs.readFileSync(S + 'styles.css', 'utf8');
+
+/* The pin itself. */
+var pinBlock = sheet.slice(sheet.indexOf('.hw-table th:last-child,'));
+pinBlock = pinBlock.slice(0, pinBlock.indexOf('}') + 1);
+
+ok(/position:\s*sticky/.test(pinBlock), '  the last column is pinned');
+ok(/right:\s*0/.test(pinBlock), '  pinned to the right edge');
+
+/* An opaque background is not decoration here: without it the scrolling cells
+   show through the pinned one, which is worse than not pinning at all. */
+ok(/background:\s*var\(--black\)|background:\s*#000/.test(pinBlock),
+   '  and it is opaque, so cells cannot scroll through it');
+
+/* The scroll container must actually scroll, or position:sticky has no
+   scrollport to stick within and silently does nothing. */
+ok(/\.calc-table-scroll\s*\{[^}]*overflow-x:\s*auto/.test(sheet),
+   '  and its scroll container still scrolls');
+
+/* The padding half. If a future column pushes the table over again, the pin
+   still saves the link — but this is the line that keeps the common case free
+   of a scrollbar, so it is worth stating what it is for. */
+var padMatch = /\.hw-table td \{ padding: (\d+)px (\d+)px/.exec(sheet);
+ok(padMatch && Number(padMatch[2]) <= 16,
+   '  cell padding is trimmed enough for ten columns to fit',
+   padMatch ? padMatch[2] + 'px each side' : 'no padding rule found');
 
 /* ---- every machine reaches the page ---- */
 
@@ -483,7 +528,7 @@ ok(js.indexOf('.cost') < 0, 'the catalogue never reads a price from the specs ta
 var sendBlock = html.slice(html.indexOf('hw-send'));
 ok(sendBlock.indexOf('nothing is sent until you send it') >= 0,
    'the form says it only opens a draft', 'it implies the order is sent');
-ok(sendBlock.indexOf('mailto:hosting@ionmininggroup.com') >= 0,
+ok(sendBlock.indexOf('mailto:hosting@protonminingco.com') >= 0,
    'and prints the address for when no mail client opens', 'no fallback address');
 ok(html.indexOf('id="hwCopy"') >= 0, 'and offers the order for copying', 'no copy button');
 /* Nothing should claim a send happened. */
@@ -504,12 +549,31 @@ ok(html.indexOf('border-radius') < 0, 'no inline radii', 'the no-radii rule was 
 
 /* ---- the scripts load in an order that works ---- */
 
+/* THE VERSION IS PART OF THE URL NOW. Local assets carry ?v=<hash> so a browser cannot
+   serve a stale copy — see tools/build-asset-stamp.js, which exists because a whole pricing
+   section once shipped invisibly behind a cached page. These checks are asking "does this page
+   load X", which is true with or without a version on it, so they match the path and let the
+   query string be whatever it is. */
+/* The cache-busting version is STRIPPED ONCE rather than allowed for in every pattern. Local
+   assets carry ?v=<hash> so a browser cannot serve a stale copy (tools/build-asset-stamp.js);
+   what these checks ask is which scripts the page loads and in what order, and the version is no
+   part of that. Removing it from a copy of the page leaves the literal checks below saying
+   exactly what they always said — and this file's neighbours already record why a regex per
+   lookup is a bad idea here: a backslash lost on the way in produces a pattern that matches
+   nothing and reports a pass. */
+var htmlPlain = html.replace(/\?v=[0-9a-f]+/g, '');
+function loadsScript(page, src) { return htmlPlain.indexOf('src="' + src + '"') >= 0; }
 ['./site.js', './miner-db.js', './price-list.js', './hardware.js'].forEach(function (src) {
-    ok(html.indexOf('src="' + src + '"') >= 0, 'loads ' + src, 'missing');
+    ok(loadsScript(html, src), 'loads ' + src, 'missing');
 });
-ok(html.indexOf('src="./price-list.js"') < html.indexOf('src="./hardware.js"'),
+/* Position of a script tag, tolerant of the cache-busting version local assets now carry.
+   See tools/build-asset-stamp.js — it exists because a section once shipped invisibly behind a
+   cached page, and the fix put ?v=<hash> on every local URL. Load ORDER is still the thing being
+   asserted; the version is not part of that question. */
+function srcAt(page, file) { return htmlPlain.indexOf('src="./' + file + '"'); }
+ok(srcAt(html, 'price-list.js') < srcAt(html, 'hardware.js'),
    'the price list loads before the catalogue', 'PriceList would be undefined');
-ok(html.indexOf('src="./miner-db.js"') < html.indexOf('src="./hardware.js"'),
+ok(srcAt(html, 'miner-db.js') < srcAt(html, 'hardware.js'),
    'and so does the database', 'MinerDB would be undefined');
 
 /* ---- nothing measures the page ---- */

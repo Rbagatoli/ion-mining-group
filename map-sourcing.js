@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Prospects mode on the Map page =====
+// ===== PROTON MINING — Prospects mode on the Map page =====
 // Renders the global flare catalog into the SAME globe and Leaflet map the fleet view uses.
 // map.js keeps ownership of those objects; everything here goes through MapBridge.
 //
@@ -27,7 +27,7 @@ var MapSourcing = (function() {
 
     // Assumptions used to price a prospect. NOT vendor quotes — nobody has quoted these sites —
     // so they are editable and labelled as assumptions wherever they feed a number. Defaults
-    // come from Ion's own Alberta deals ($450/kW usable, ~$0.035/kWh).
+    // come from Proton's own Alberta deals ($450/kW usable, ~$0.035/kWh).
     var _assume = { costPerKw: 450, powerRate: 0.035 };
 
     function fmtUsd(v) {
@@ -170,11 +170,11 @@ var MapSourcing = (function() {
     // `_live` holds the real market; `_scn` holds whatever the user has overridden. Keeping
     // them apart is what lets "Reset to live" work and lets the UI say honestly whether the
     // numbers on screen are current or hypothetical.
-    var SCN_KEY = 'ionMiningProspectScenario';
+    var SCN_KEY = 'protonMiningProspectScenario';
     var _live = null;
     var _scn = {};              // sparse: only the fields actually overridden
     var _portfolio = {};        // id -> true
-    var PF_KEY = 'ionMiningProspectPortfolio';
+    var PF_KEY = 'protonMiningProspectPortfolio';
 
     var SCN_FIELDS = [
         { id: 'scnBtc',   key: 'btcPriceUsd',       live: function() { return _live.btcPriceUsd; } },
@@ -475,7 +475,7 @@ var MapSourcing = (function() {
     // Mid-hunt that is worse than the stale assets it fixes, so the view state is saved and
     // restored. Local only, never synced: this is where YOU are looking right now, not data,
     // and having it jump on another device would be its own bug.
-    var FILTER_KEY = 'ionMiningProspectFilters';
+    var FILTER_KEY = 'protonMiningProspectFilters';
     // fRegion and fRadius are deliberately ABSENT. "I need power near Y" is a search you perform,
     // not a standing preference like your home country — and persisting it did real damage: a
     // region saved in one session overrode the country on the next load, the reconcile then saved
@@ -483,7 +483,7 @@ var MapSourcing = (function() {
     // anchor starts at "Anywhere" every session, which makes that failure impossible rather than
     // merely unlikely.
     var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
-    var SRC_FILTER_KEY = 'ionMiningProspectSources';
+    var SRC_FILTER_KEY = 'protonMiningProspectSources';
     // The four scope controls were removed from this list IN THE SAME CHANGE that removed the
     // markup, deliberately. searchKey() builds its key from FILTER_CHECKS on both sides: leave an
     // id here with no control and captureSearch() skips it, so the key part becomes fWorkable=0
@@ -493,7 +493,7 @@ var MapSourcing = (function() {
     // Filters survived a reload but the rest of the view did not, so a refresh still landed you
     // on a differently-sorted table with the open site closed. Same reasoning as the filters:
     // local only, never synced.
-    var VIEW_KEY = 'ionMiningProspectView';
+    var VIEW_KEY = 'protonMiningProspectView';
 
     function saveView() {
         try {
@@ -599,7 +599,7 @@ var MapSourcing = (function() {
 
     // ---- Operating scope ------------------------------------------------------------------
     //
-    // Ion operates in mainland USA and Canada. That is a business fact, not a search preference,
+    // Proton operates in mainland USA and Canada. That is a business fact, not a search preference,
     // so it is a constant here rather than four checkboxes the user has to keep set correctly.
     //
     // Measured against the shipped artifacts, this is what the scope is worth:
@@ -828,7 +828,7 @@ var MapSourcing = (function() {
     //
     // These DO sync: unlike the last-used filters — which are where you happen to be looking and
     // should not jump between devices — a saved search is a considered piece of work.
-    var SEARCH_KEY = 'ionMiningProspectSearches';
+    var SEARCH_KEY = 'protonMiningProspectSearches';
     var MAX_SEARCHES = 40;
     var _searches = [];
     var _naming = false;              // the inline name field is open
@@ -1707,7 +1707,7 @@ var MapSourcing = (function() {
 
     // Collapsed by default: it is reference material at the foot of the page, and expanding it
     // is one click. The choice is remembered so it does not have to be made twice.
-    var PROV_KEY = 'ionMiningProvOpen';
+    var PROV_KEY = 'protonMiningProvOpen';
     // ---- Disclosure --------------------------------------------------------------------
     //
     // One implementation for every collapsible section on this page: the provenance panel, the
@@ -1757,7 +1757,7 @@ var MapSourcing = (function() {
     // actually doing something, so a filter that is off-screen is never also out of mind. The
     // "Filtering by" bar underneath names them individually — this is the second of two
     // statements, not the only one.
-    var MOREF_KEY = 'ionMiningProspectMoreFilters';
+    var MOREF_KEY = 'protonMiningProspectMoreFilters';
     function wireMoreFilters() {
         disclosure('moreFiltersToggle', 'moreFilters', MOREF_KEY, false);
         renderMoreFiltersCount();
@@ -1775,7 +1775,7 @@ var MapSourcing = (function() {
             });
         }
     }
-    var REFINE_KEY = 'ionMiningProspectRefine';
+    var REFINE_KEY = 'protonMiningProspectRefine';
     var _refine = null;
 
     // Open the drawer whenever something inside it is actually filtering. A collapsed panel is
@@ -2155,7 +2155,7 @@ var MapSourcing = (function() {
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
-                a.download = 'ion-prospects-' + (_wlStage === 'all' ? 'all' : _wlStage) + '.csv';
+                a.download = 'proton-prospects-' + (_wlStage === 'all' ? 'all' : _wlStage) + '.csv';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -2171,7 +2171,7 @@ var MapSourcing = (function() {
     // like the same data twice, so exactly one is painted at a time and the other is not in the
     // DOM's way. Each reads _filtered at the moment it paints, so a stale surface is impossible
     // rather than merely unlikely.
-    var RESVIEW_KEY = 'ionMiningProspectResultsView';
+    var RESVIEW_KEY = 'protonMiningProspectResultsView';
     var _resView = 'list';
     // How many prospects the acquisition filter removed on the last pass, so the results bar can
     // report it. Set in applyFilters, which is the only place that filter is applied.
@@ -3180,7 +3180,7 @@ var MapSourcing = (function() {
         try { saved = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) { return; }
         if (!saved || saved._v !== 1) return;
         // saved.view is deliberately ignored. Acquisition targets is a filter now and rides in
-        // ionMiningProspectFilters with the rest; restoring it from here too would give one
+        // protonMiningProspectFilters with the rest; restoring it from here too would give one
         // control two sources of truth that can disagree after an update.
         if (saved.sort && typeof saved.sort.key === 'string' &&
             (saved.sort.dir === 1 || saved.sort.dir === -1)) _tableSort = saved.sort;
@@ -4298,7 +4298,7 @@ var MapSourcing = (function() {
 
         // Each group remembers its own state, so the ones actually used stay open.
         ['terms', 'scores', 'capacity', 'econ', 'evidence'].forEach(function(g) {
-            disclosure('dg_' + g + '_btn', 'dg_' + g, 'ionMiningDetailGroup_' + g, false,
+            disclosure('dg_' + g + '_btn', 'dg_' + g, 'protonMiningDetailGroup_' + g, false,
                 // The survey-year chart lives in the economics group. Chart.js measures its
                 // container, so drawing it while that group is collapsed produces a 0x0 canvas.
                 g === 'econ' ? function(isOpen) { if (isOpen) renderTrend(c); } : null);
@@ -4568,7 +4568,7 @@ var MapSourcing = (function() {
                    errs.map(function(e) { return e.source; }).join(', '), '#f55');
         }
 
-        // Only the countries Ion operates in. The catalog still holds all 30,361 prospects and
+        // Only the countries Proton operates in. The catalog still holds all 30,361 prospects and
         // ProspectStore.countries() still reports every one of them -- this narrows the CONTROL to
         // the scope, so the select is two entries rather than a list of eighty, most of which
         // return nothing because SCOPE_ISO3 excludes them anyway. A select offering choices that
@@ -4633,12 +4633,12 @@ var MapSourcing = (function() {
         var colourSel = document.getElementById('scnColour');
         if (colourSel) colourSel.addEventListener('change', function() {
             _colourBy = this.value;
-            try { localStorage.setItem('ionMiningProspectColour', _colourBy); } catch (e) {}
+            try { localStorage.setItem('protonMiningProspectColour', _colourBy); } catch (e) {}
             syncScenarioInputs();
             renderMapLayer();
         });
         try {
-            var savedColour = localStorage.getItem('ionMiningProspectColour');
+            var savedColour = localStorage.getItem('protonMiningProspectColour');
             if (savedColour === 'margin' || savedColour === 'persistence') {
                 _colourBy = savedColour;
                 if (colourSel) colourSel.value = savedColour;

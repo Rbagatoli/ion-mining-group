@@ -1,12 +1,12 @@
-// Ion Mining Group — Antpool Proxy (Cloudflare Worker)
-// Deploy: wrangler deploy --name ion-antpool
+// Proton Mining — Antpool Proxy (Cloudflare Worker)
+// Deploy: wrangler deploy --name proton-antpool
 // Secrets:
 //   wrangler secret put ANTPOOL_API_KEY
 //   wrangler secret put ANTPOOL_API_SECRET
 //   wrangler secret put ANTPOOL_USER_ID
 //
 // wrangler.toml:
-// name = "ion-antpool"
+// name = "proton-antpool"
 // main = "antpool-worker.js"
 // compatibility_date = "2024-01-01"
 //

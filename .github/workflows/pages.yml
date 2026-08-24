@@ -1,0 +1,116 @@
+# Assemble what GitHub Pages serves, instead of serving the repository verbatim.
+#
+# WHY THIS EXISTS
+# Every canonical, every og:url and all twelve sitemap <loc>s in site/ say
+# https://protonminingco.com/<page>.html — the origin ROOT. But the launch instruction written
+# into _config.yml is "delete the - site/ line", which publishes the marketing site at /site/.
+# Do that and every canonical points at a URL that 404s, the sitemap is rejected, site/404.html
+# never fires because Pages only honours a 404 at the publish root, and the homepage of the
+# company website is the internal operator dashboard.
+#
+# The fix is not to rewrite forty URLs to match an awkward tree. It is to build the tree the
+# URLs already describe:
+#
+#     /                 the marketing site      (from site/)
+#     /portal/          the client portal       (from portal/)
+#     /app/             the operator app        (from the repo root)
+#     /app/data/        the data the app fetches
+#
+# The app's every internal path is relative — its one runtime fetch pattern is './data/*.json'
+# and its service worker registers './sw.js' — so it relocates to /app/ without a single edit,
+# and the worker's scope narrows to /app/ correctly. site/tools/build-nav.js emits '../portal/'
+# for the portal link, which resolves to /portal/ from a root page: RFC 3986 §5.2.4 discards
+# '..' segments that would climb above root.
+#
+# NOTHING HAPPENS UNTIL YOU SWITCH THE SOURCE
+# Adding this file changes nothing on its own. Pages keeps serving the repo from a branch until
+# you go to Settings → Pages → Build and deployment → Source and choose "GitHub Actions". That
+# is the one manual step, and it is also the undo: switch back to "Deploy from a branch" and
+# the old behaviour returns.
+#
+# WHAT CHANGES FOR PEOPLE WHO ALREADY USE THE APP
+# The operator app moves from the Pages root to /app/. Existing bookmarks break. That is the
+# cost of the marketing site owning the root, which is what its URLs have always claimed.
+
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. cancel-in-progress is false on purpose: cancelling a half-finished
+# deployment is a worse outcome than queueing behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ---- gate on the things that would ship broken ----
+      #
+      # Only the site suite runs. tests/ at the repo root includes portal-e2e.mjs, which needs
+      # a dev server on 127.0.0.1:8090, and two known failures unrelated to anything published
+      # here — gating a deploy on those would mean the site stops deploying for reasons that
+      # have nothing to do with the site.
+      - name: Site test suite
+        run: node tests/site/run.js
+
+      # The generated output is committed, so it can go stale. Re-run every generator and fail
+      # if anything changes: a page whose cache-busting stamp does not match its own CSS, or a
+      # sitemap missing a post, is exactly the kind of thing nobody notices in review.
+      - name: Generated output is current
+        run: |
+          node site/tools/build-nav.js
+          node site/tools/build-diagram.js
+          node site/tools/build-facilities.js
+          node site/tools/build-blog.js
+          node site/tools/build-seo.js
+          node site/tools/build-og.js
+          node tools/build-order-catalogue.js
+          node tools/build-asset-stamp.js
+          if ! git diff --quiet; then
+            echo "::error::Generated files are stale. Run the generators and commit the result."
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+      # ---- assemble ----
+      #
+      # One line, because the assembly lives in tools/build-pages.js where it can be run and
+      # tested. A pile of rsync --exclude flags inside a workflow file is only ever exercised
+      # on a runner, which means the first time anyone learns it is wrong is a broken deploy.
+      # That script builds the tree, then asserts it: every file that must exist, every file
+      # that must NOT be published, every sitemap <loc> resolving to a real file, and every
+      # canonical pointing at the page it is actually on. It exits non-zero if any of that
+      # fails, which fails this job before anything is uploaded.
+      - name: Assemble and verify the site tree
+        run: node tools/build-pages.js
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

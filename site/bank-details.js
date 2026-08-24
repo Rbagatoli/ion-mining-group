@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — where a wire goes =====
+/* ===== PROTON MINING — where a wire goes =====
 
    The one place bank details are written. Every field is a visible placeholder
    until somebody fills it in, and the payment page renders them exactly as they

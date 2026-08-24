@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ion Mining Group — Banking</title>
+    <title>Proton Mining — Banking</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./tokens.css?v=338">
@@ -25,14 +25,15 @@
         });
     }
     </script>
-    <script src="./theme.js?v=338"></script>
+    <script src="./brand-migrate.js?v=338"></script>
+<script src="./theme.js?v=338"></script>
     <script src="./chart.min.js?v=338"></script>
     <script src="./chart-theme.js?v=338"></script>
 </head>
 <body>
 <canvas id="techLinesCanvas"></canvas>
 
-<nav id="ion-nav"></nav>
+<nav id="proton-nav"></nav>
 
 <header class="banking-header">
     <div class="banking-header-content">
@@ -115,8 +116,8 @@
     <div id="signInPrompt" style="display:none;">
         <div class="card" style="padding:24px; margin-bottom:16px; border-color:rgba(247,147,26,0.3); background:rgba(247,147,26,0.04); text-align:center;">
             <h4 style="margin:0 0 8px; color:#f7931a;">Sign In to Access Your Wallet</h4>
-            <p style="font-size:13px; color:#aaa; margin:0 0 16px;">Sign in with your Ion Mining account to view balances, send BTC, and manage your wallet.</p>
-            <button class="btn btn-primary" onclick="if(typeof IonAuthUI!=='undefined')IonAuthUI.show('signin');" style="width:100%;">Sign In</button>
+            <p style="font-size:13px; color:#aaa; margin:0 0 16px;">Sign in with your Proton Mining account to view balances, send BTC, and manage your wallet.</p>
+            <button class="btn btn-primary" onclick="if(typeof ProtonAuthUI!=='undefined')ProtonAuthUI.show('signin');" style="width:100%;">Sign In</button>
             <div id="signInError" style="font-size:12px; color:#ef4444; margin-top:10px;"></div>
         </div>
     </div>
@@ -953,7 +954,7 @@
                 <div class="input-group">
                     <label>Strike Proxy URL</label>
                     <div class="input-wrapper">
-                        <input type="text" id="walletStrikeProxyUrl" placeholder="https://ion-strike-proxy.your-name.workers.dev">
+                        <input type="text" id="walletStrikeProxyUrl" placeholder="https://proton-strike-proxy.your-name.workers.dev">
                     </div>
                 </div>
             </div>
@@ -969,7 +970,7 @@
 </main>
 
 <footer>
-    Ion Mining Group &mdash; Banking<br>
+    Proton Mining &mdash; Banking<br>
     <span style="font-size:11px; color:#555;">Wallet, payouts, and accounting. Not financial advice.</span>
 </footer>
 

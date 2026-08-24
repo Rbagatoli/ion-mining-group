@@ -117,7 +117,7 @@ var ProspectStore = (function() {
             var c = list[i];
             if (f.onshoreOnly && c.offshore !== false) continue;
             if (f.iso3 && c.iso3 !== f.iso3) continue;
-            // The operating scope: a set of countries rather than a single one. Ion works in
+            // The operating scope: a set of countries rather than a single one. Proton works in
             // mainland USA and Canada, so this is applied whenever no single country is chosen.
             // Kept as its own facet rather than folded into iso3 so that a caller asking for one
             // country still means exactly that country, and so a test can exercise either alone.

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the landfill, shared by both states =====
+/* ===== PROTON MINING — the landfill, shared by both states =====
 
    The counterpart to pad-geometry.js, and it exists for exactly the same reason:
    the energy page draws one site twice — as it is today with the gas going to a
@@ -566,7 +566,7 @@
 
        Shared, so BOTH states carry it. That is the whole point — this is the
        partner's existing plant, and the promise the page makes is that it stays
-       exactly where it is. Kit that appeared only in the "with Ion" state would
+       exactly where it is. Kit that appeared only in the "with Proton" state would
        be saying we built their leachate tank. */
     function buildYard(H, yaw, L) {
         var y = 0.55;

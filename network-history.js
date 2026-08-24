@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Network History (shared) =====
+// ===== PROTON MINING — Network History (shared) =====
 // Real network difficulty history plus the math for grounding projections in what actually
 // happened, instead of a guessed growth rate.
 //
@@ -16,7 +16,7 @@
 var NetworkHistory = (function() {
 
     var DAY = 86400;
-    var CACHE_KEY = 'ionMiningDifficultyHistory';
+    var CACHE_KEY = 'protonMiningDifficultyHistory';
     var CACHE_VERSION = 2;                   // v2 added the hashrate series
     var CACHE_TTL_MS = 6 * 60 * 60 * 1000;   // retargets are ~2 weeks apart; 6h is ample
 

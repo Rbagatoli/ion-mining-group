@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ion Mining Group — Client Portal</title>
+<title>Proton Mining — Client Portal</title>
 <!-- Not indexed. A counterparty gets the link from us; nobody needs to find it. -->
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../tokens.css?v=338">
-<link rel="stylesheet" href="./portal.css?v=338">
+<link rel="stylesheet" href="../tokens.css?v=6010a4fa">
+<link rel="stylesheet" href="./portal.css?v=6010a4fa">
 </head>
 <body>
 
@@ -29,10 +29,10 @@
   <header class="pt-head">
     <div class="pt-brand">
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" fill="none" stroke="#e5e4e2" stroke-width="1.4"/>
+        <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="1.4"/>
         <circle cx="16" cy="16" r="4.2" fill="#f7931a"/>
       </svg>
-      <span class="pt-wordmark">Ion Mining Group</span>
+      <span class="pt-wordmark">Proton Mining</span>
     </div>
     <div class="pt-who" id="ptWho"></div>
   </header>
@@ -42,7 +42,7 @@
   <!-- ===== SIGN IN =====
        The portal's whole first screen is sign-in, so it is the page rather than a modal over it.
        auth-ui.js is deliberately not loaded: its modal is built to overlay an app you are already
-       inside, and here there is nothing behind it. IonAuth from firebase-config.js is the same
+       inside, and here there is nothing behind it. ProtonAuth from firebase-config.js is the same
        authentication either way. -->
   <section id="ptAuth" class="pt-auth" style="display:none;">
     <h1>Client portal</h1>
@@ -65,7 +65,7 @@
     </div>
 
     <p class="pt-foot">
-      Accounts are created by Ion Mining Group and sent to you by invitation. There is no public
+      Accounts are created by Proton Mining and sent to you by invitation. There is no public
       sign-up. If you have an invitation link, open it and it will set your account up.
     </p>
 
@@ -85,6 +85,71 @@
   <section id="ptMain" style="display:none;">
     <h1 id="ptTitle">Your statements</h1>
     <p class="pt-sub" id="ptSites"></p>
+
+    <!-- ===== HOSTING: the fleet =====
+         A hosting client's first question is "are my machines running", so this
+         sits above the statements. Absent for a producer, who has no machines
+         here. -->
+    <section id="ptFleet" style="display:none;">
+      <!-- Only rendered when there IS more than one site. A switcher over a single facility
+           is a control that can only be set one way, which reads as something being missing. -->
+      <div class="pt-sites" id="ptSiteTabs" role="group" aria-label="Facility"></div>
+
+      <div class="pt-section-label">Fleet overview</div>
+      <div class="pt-metrics" id="ptMetrics"></div>
+      <div class="pt-section-label">Machines</div>
+      <div id="ptRigs"></div>
+      <p class="pt-provenance" id="ptProvenance"></p>
+    </section>
+
+    <!-- ===== PRODUCER: the site =====
+         A producer had a list of frozen monthly statements and nothing in between. This is the
+         same overview a hosting client gets, for a gas site: what left the site, what it was
+         worth, and how much of the period the meter actually saw.
+
+         DERIVED FROM THE SERIES, not from a second endpoint. One fetch means the figures here
+         and the chart below cannot disagree, which they would the first time two calls landed
+         either side of a meter reading. -->
+    <section id="ptGas" style="display:none;">
+      <div class="pt-section-label">Last 30 days</div>
+      <div class="pt-metrics" id="ptGasMetrics"></div>
+      <p class="pt-provenance" id="ptGasProvenance"></p>
+    </section>
+
+    <!-- Shared by both portals: the chart is the same component with a different metric set. -->
+    <section id="ptHistorySec" style="display:none;">
+      <!-- ===== HISTORY =====
+           The snapshot above answers "are my machines running". This answers "are
+           they getting better or worse", which is the question the snapshot cannot
+           reach and which nothing in this portal could answer before.
+
+           Bands rather than one overlaid plot: five metrics, five units, and no
+           honest way to share an axis between TH/s, BTC, J/TH, % and kWh. They
+           share the x-axis and one crosshair instead, so a date reads straight
+           down. See the header of fleet-chart.js. -->
+      <div class="pt-section-label">History</div>
+      <div id="ptHistory">
+        <div class="fc-bar">
+          <div class="fc-ranges" id="fcRanges" role="group" aria-label="Timeframe"></div>
+          <div class="fc-legend" id="fcLegend" role="group" aria-label="Metrics shown"></div>
+        </div>
+
+        <div class="fc-stats" id="fcStats"></div>
+
+        <!-- The readout is HTML, not SVG text: it has to stay at a readable size
+             whatever the viewBox scales to, and it is what a screen reader gets
+             when the chart is focused. -->
+        <div class="fc-readout" id="fcReadout" aria-live="polite"></div>
+
+        <svg id="fcChart" class="fc-svg" tabindex="0" role="img"
+             preserveAspectRatio="xMidYMid meet"
+             aria-label="Daily history for this site. Focus and use the arrow keys to read any day."></svg>
+
+        <p class="pt-provenance" id="fcSources"></p>
+      </div>
+    </section>
+
+    <h2 id="ptListHead" style="display:none;">Statements</h2>
     <div id="ptList"></div>
 
     <!-- Same discipline, different meter and different direction of payment, so the
@@ -95,8 +160,8 @@
       are frozen when issued and do not change afterwards; a later correction appears as an
       adjustment on the next statement, so you can always see why a figure differs.
       <br><br>
-      Questions about a figure: <a href="mailto:energy@ionmininggroup.com"
-      style="color:var(--plat-400);">energy@ionmininggroup.com</a>
+      Questions about a figure: <a href="mailto:energy@protonminingco.com"
+      style="color:var(--plat-400);">energy@protonminingco.com</a>
     </p>
     <p class="pt-foot" id="ptFootHosting" style="display:none;">
       Billing is monthly in arrears on metered draw. Where a period is not fully covered by meter
@@ -105,8 +170,8 @@
       frozen when issued and do not change afterwards; a later correction appears as an adjustment
       on the next statement.
       <br><br>
-      Questions about a figure: <a href="mailto:hosting@ionmininggroup.com"
-      style="color:var(--plat-400);">hosting@ionmininggroup.com</a>
+      Questions about a figure: <a href="mailto:hosting@protonminingco.com"
+      style="color:var(--plat-400);">hosting@protonminingco.com</a>
     </p>
   </section>
 
@@ -114,26 +179,32 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="../firebase-config.js?v=338"></script>
-<script src="./portal.js?v=338"></script>
+<script src="../firebase-config.js?v=6010a4fa"></script>
+<script src="./portal.js?v=6010a4fa"></script>
 <!-- The stand-in. Loaded on every visit, but it can only DO anything while
      PORTAL_ENDPOINT is empty, and only when somebody clicks for it. -->
-<script src="./portal-demo.js?v=338"></script>
+<script src="./portal-demo.js?v=6010a4fa"></script>
 
 <!-- No dependencies, no network, no storage: DOM text on a grid and one
      setInterval. On the allowlist in tests/portal-frontend.test.js by name. -->
-<script src="./gas-field.js?v=338"></script>
+<script src="./gas-field.js?v=6010a4fa"></script>
+
+<!-- The history chart. Like gas-field.js this is on the allowlist in
+     tests/portal-frontend.test.js rather than exempt from it: it draws an SVG
+     from an array it is handed, and has no network, no storage and no reference
+     to anything else, which the test asserts rather than takes on trust. -->
+<script src="./fleet-chart.js?v=6010a4fa"></script>
 
 
 <script>
 /* NOTE ON WHAT IS *NOT* ON THIS PAGE.
    No sync.js, no shared.js, no firestore-compat. Every other authenticated page in this app loads
-   all three; this one loads none. SYNC_KEYS covers Ion's fleet, wallet, payouts and banking, and
+   all three; this one loads none. SYNC_KEYS covers Proton's fleet, wallet, payouts and banking, and
    the surest way to guarantee a counterparty's browser never holds that engine is not to ship it.
    There is a test asserting this file references none of them. */
 (function() {
     'use strict';
-    var P = IonPortal;
+    var P = ProtonPortal;
 
     function show(which) {
         document.getElementById('ptAuth').style.display = which === 'auth' ? '' : 'none';
@@ -144,6 +215,10 @@
              and wants a column. Every figure sits on an opaque card either way,
              so the field is never behind a number. */
           document.body.classList.toggle('pt-signin', which === 'auth');
+          /* And which SURFACE. The sign-in is the company; behind it is a
+             document, and a document is set on paper. One class, so every
+             component below flips with it rather than being restyled twice. */
+          document.body.classList.toggle('pt-app', which === 'main');
     }
 
     // An invitation link: ?invite=INV-XXXX. The holder still has to sign in or create the
@@ -206,6 +281,629 @@
        into a path. */
     var LIST_PATH = { producer: '/portal/statements', hosting: '/portal/hosting/statements' };
 
+    /* The live fleet. Everything here is what a POOL can actually report --
+       worker name, hashrate, and when it last submitted a share. Board
+       temperature, fan speed and per-machine power draw are not shown because
+       they cannot be obtained from a pool at all: a pool observes share
+       submissions, not sensors. Power is metered for the cage and shown at site
+       level rather than divided by machine count, which would be an allocation
+       dressed up as a measurement. */
+    /* "2026-07" is a database key. A statement is a document about a month, and a person
+       reading one thinks "July", so that is what it says. Falls back to the raw value rather
+       than guessing if it is ever handed something that is not a period. */
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+    function monthName(period) {
+        var m = /^(\d{4})-(\d{2})$/.exec(String(period || ''));
+        if (!m) return String(period || '');
+        var i = parseInt(m[2], 10) - 1;
+        return MONTHS[i] ? MONTHS[i] + ' ' + m[1] : String(period);
+    }
+
+    /* ===== history =====
+
+       RANGES ARE ASKED FOR, NOT SLICED FROM ONE BIG FETCH. The endpoint takes
+       from/to and the client sends them, so switching to "7 days" transfers
+       seven points rather than four hundred. It also means the same request the
+       browser makes is the one a support engineer can make with curl.
+
+       `all` sends no bounds at all and takes whatever the account has, which is
+       what makes this work on an account three weeks old as well as one three
+       years old. */
+    var RANGES = [
+        { id: '7d',  days: 7,   label: '7 days' },
+        { id: '30d', days: 30,  label: '30 days' },
+        { id: '90d', days: 90,  label: '90 days' },
+        { id: '12m', days: 365, label: '12 months' },
+        { id: 'all', days: null, label: 'All' }
+    ];
+    var histRange = '90d';
+    /* WHICH METRICS, and which endpoint, depend on which portal this is. The chart itself does
+       not know or care — it is handed a set and an array. */
+    var HIST = {
+        hosting: {
+            path: '/portal/hosting/series',
+            set: 'hosting',
+            shown: ['hashrate_th', 'btc', 'efficiency_j_th', 'uptime_pct']
+        },
+        producer: {
+            path: '/portal/series',
+            set: 'producer',
+            /* Volume, money and coverage on by default. Energy and heating value are the
+               explanation for the first two rather than the headline, so they start off. */
+            shown: ['mcf', 'usd', 'coverage_pct']
+        }
+    };
+    var histKind = 'hosting';
+    function histCfg() { return HIST[histKind] || HIST.hosting; }
+    function histSet() { return FleetChart.SETS[histCfg().set]; }
+
+    var histShown = HIST.hosting.shown.slice();
+    var histPoints = [];
+    var histDoc = null;
+    var histAt = -1;
+
+    /* The series for whatever the switcher is on. The COMBINED one comes from the server: its
+       uptime is the ratio of the totals and its efficiency is summed as watts, and neither is
+       something to recompute in a page where nothing can check the arithmetic. */
+    function histSeriesFor() {
+        if (!histDoc) return [];
+        if (fleetSite === null) return histDoc.combined || [];
+        var one = (histDoc.sites || []).filter(function (v) {
+            return v.site_id === fleetSite;
+        })[0];
+        return one ? (one.points || []) : [];
+    }
+
+    function dayString(ms) { return new Date(ms).toISOString().slice(0, 10); }
+
+    function rangeQuery(id) {
+        var r = RANGES.filter(function (x) { return x.id === id; })[0];
+        if (!r || !r.days) return '';
+        var todayMs = Date.parse(dayString(Date.now()) + 'T00:00:00Z');
+        /* Inclusive of today, so "7 days" is seven points and not eight. */
+        var from = dayString(todayMs - (r.days - 1) * 86400000);
+        return '?from=' + from + '&to=' + dayString(todayMs);
+    }
+
+    function drawRanges() {
+        document.getElementById('fcRanges').innerHTML = RANGES.map(function (r) {
+            return '<button type="button" class="fc-range' +
+                   (r.id === histRange ? ' is-on' : '') + '" data-range="' + r.id +
+                   '" aria-pressed="' + (r.id === histRange) + '">' + r.label + '</button>';
+        }).join('');
+    }
+
+    function drawLegend() {
+        document.getElementById('fcLegend').innerHTML = histSet().map(function (m) {
+            var on = histShown.indexOf(m.key) >= 0;
+            return '<button type="button" class="fc-toggle' + (on ? ' is-on' : '') +
+                   (m.accent ? ' fc-toggle--accent' : '') + '" data-metric="' + m.key +
+                   '" aria-pressed="' + on + '">' + P.esc(m.label) + '</button>';
+        }).join('');
+    }
+
+    /* The four figures a client asks for by name, over exactly the range on
+       screen. Each one says how many days it is an average OF, because an
+       average over 88 of 90 days is a different claim from an average, and the
+       days that are missing are the interesting ones. */
+    /* The figures above the chart, built from the metric set rather than named one by one —
+       which is what lets the producer portal have this at all without a second copy of it.
+
+       Each says how many days it is made of. An average over 88 of 90 days is a different claim
+       from an average, and the missing days are the interesting ones. */
+    function drawStats() {
+        var set = histSet();
+        var s = FleetChart.summarise(histPoints, set);
+        var f = FleetChart.fmt;
+        document.getElementById('fcStats').innerHTML = set.map(function (m) {
+            var e = s.by[m.key];
+            var body;
+            if (e.value === null) {
+                body = '<span class="pt-absent">not reported</span>';
+            } else {
+                var mag = Math.abs(e.value);
+                body = f(e.value * m.scale(mag), m.dp(mag)) +
+                       ' <span class="pt-unit">' + P.esc(m.unit(mag)) + '</span>';
+            }
+            return '<div class="fc-stat"><div class="fc-stat-v">' + body + '</div>' +
+                   '<div class="fc-stat-l">' + P.esc(m.label) +
+                       (m.agg === 'sum' ? '' : ', average') + '</div>' +
+                   '<div class="fc-stat-s">' + e.days + ' of ' + s.days + ' days</div></div>';
+        }).join('');
+    }
+
+    var READOUT_IDLE = '<span class="fc-idle">Hover the chart, or focus it and use the ' +
+                       'arrow keys, to read any day exactly.</span>';
+
+    function drawReadout(i) {
+        var el = document.getElementById('fcReadout');
+        if (i < 0 || i >= histPoints.length) { el.innerHTML = READOUT_IDLE; return; }
+        var p = histPoints[i];
+        var f = FleetChart.fmt;
+        var bits = histSet().filter(function (m) {
+            return histShown.indexOf(m.key) >= 0;
+        }).map(function (m) {
+            var v = p[m.key];
+            /* An unknown day says so in words. This is the readout for the gap the
+               chart draws as a gap, and the two have to agree. */
+            var shown = (typeof v !== 'number' || !isFinite(v))
+                ? '<span class="pt-absent">not reported</span>'
+                : f(v * m.scale(Math.abs(v)), m.dp(Math.abs(v))) +
+                  ' <span class="pt-unit">' + m.unit(Math.abs(v)) + '</span>';
+            return '<span class="fc-r"><span class="fc-r-l">' + P.esc(m.label) +
+                   '</span> ' + shown + '</span>';
+        }).join('');
+        el.innerHTML = '<span class="fc-r-date">' + FleetChart.longDate(p.date) + '</span>' + bits;
+    }
+
+    function drawChart() {
+        FleetChart.render(document.getElementById('fcChart'), histPoints, histShown, histSet());
+        drawStats();
+        drawGasOverview();
+        drawReadout(-1);
+        histAt = -1;
+    }
+
+    function moveCross(i) {
+        var svg = document.getElementById('fcChart');
+        var cross = svg.querySelector('#fcCross');
+        var hit = svg.querySelector('.fc-hit[data-i="' + i + '"]');
+        if (!cross || !hit) return;
+        /* The x comes off the hit column, which already knows where it is. Nothing
+           is measured and nothing is converted. */
+        var x = parseFloat(hit.getAttribute('x')) + parseFloat(hit.getAttribute('width')) / 2;
+        cross.setAttribute('x1', x);
+        cross.setAttribute('x2', x);
+        cross.style.display = '';
+    }
+
+    function hideCross() {
+        var c = document.getElementById('fcChart').querySelector('#fcCross');
+        if (c) c.style.display = 'none';
+    }
+
+    async function loadHistory() {
+        var res = await P.api(histCfg().path + rangeQuery(histRange));
+        if (res.unauthorized) return;
+        var sources = document.getElementById('fcSources');
+        if (!res.ok) {
+            /* Same rule as the fleet and the statements list: could-not-ask is not
+               nothing-there. An empty chart with no explanation reads as "you had
+               no machines", which is a claim nobody made. */
+            histPoints = [];
+            drawChart();
+            sources.textContent = 'We could not load the history just now, so the chart is ' +
+                'empty \u2014 not because nothing was recorded.';
+            return;
+        }
+        /* Kept whole, so switching facility redraws from what is already here rather than
+           going back to the network for a view of data the browser is holding. */
+        histDoc = res.body || {};
+        histPoints = histSeriesFor();
+        drawChart();
+
+        var src = res.body.sources || {};
+        sources.innerHTML = histKind === 'producer'
+            ? ('Every figure here is read from the meter at your site. Volume and heating value ' +
+               'are what the meter recorded; the amount is that energy at your contract rate. ' +
+               '<br>Over ' + (src.days || 0) + ' days the meter reported on ' +
+               (src.meter_days || 0) + '. Days it did not are drawn as gaps and left out of the ' +
+               'averages rather than counted as zero — an unmetered hour is an unbilled hour, ' +
+               'not an hour with no gas in it.')
+            : ('Hashrate, uptime and bitcoin come from your pool account, read only. ' +
+               'Energy is metered by Proton at the cage. Efficiency is the second divided by ' +
+               'the first, so it is a cross-check between two independent sources rather ' +
+               'than a figure derived from one of them. ' +
+               '<br>Over ' + (src.days || 0) + ' days: the pool answered on ' +
+               (src.pool_days || 0) + ', the meter on ' + (src.meter_days || 0) +
+               '. Days nobody reported are drawn as gaps and left out of the averages ' +
+               'rather than counted as zero.');
+    }
+
+    /* ---- the producer's site overview ----
+       Built from the SAME series the chart draws, over the last 30 days of it. One fetch, so the
+       cards and the chart cannot disagree — which they would the first time two requests landed
+       either side of a meter reading. */
+    function drawGasOverview() {
+        var el = document.getElementById('ptGasMetrics');
+        if (!el || histKind !== 'producer') return;
+        var last30 = histPoints.slice(-30);
+        var set = FleetChart.SETS.producer;
+        var s = FleetChart.summarise(last30, set);
+        var f = FleetChart.fmt;
+
+        function card(m, cls) {
+            var e = s.by[m.key];
+            var body = e.value === null
+                ? '<span class="pt-absent">not reported</span>'
+                : f(e.value * m.scale(Math.abs(e.value)), m.dp(Math.abs(e.value))) +
+                  ' <span class="pt-unit">' + P.esc(m.unit(Math.abs(e.value))) + '</span>';
+            return '<div class="pt-metric' + (cls || '') + '">' +
+                   '<div class="pt-metric-value">' + body + '</div>' +
+                   '<div class="pt-metric-label">' + P.esc(m.label) +
+                   (m.agg === 'sum' ? '' : ', average') + '</div></div>';
+        }
+
+        /* THE METER IS THIS PORTAL'S MACHINE STATUS. A hosting client asks whether their machines
+           are running; a producer asks whether the meter is recording, and for the same reason:
+           the answer decides what they get paid. Days with no reading are counted and named
+           rather than being left to be inferred from a dip in the chart. */
+        var missing = last30.filter(function (p) { return p.mcf === null; }).length;
+        var partial = last30.filter(function (p) {
+            return p.mcf !== null && typeof p.coverage_pct === 'number' && p.coverage_pct < 100;
+        }).length;
+        var meter = missing === 0 && partial === 0
+            ? '<div class="pt-metric"><div class="pt-metric-value">Recording</div>' +
+              '<div class="pt-metric-label">Meter, 30 days</div></div>'
+            : '<div class="pt-metric"><div class="pt-metric-value">' +
+              (missing ? missing + ' <span class="pt-unit">day' + (missing === 1 ? '' : 's') +
+                         ' missed</span>' : partial + ' <span class="pt-unit">part day' +
+                         (partial === 1 ? '' : 's') + '</span>') +
+              '</div><div class="pt-metric-label">Meter, 30 days</div></div>';
+
+        el.innerHTML =
+            card(set[0]) + card(set[1], ' pt-metric--draw') + card(set[3]) + card(set[4]) + meter;
+
+        var prov = document.getElementById('ptGasProvenance');
+        if (prov) {
+            prov.textContent = 'Volume and heating value are what the meter at your site ' +
+                'recorded. The amount is that energy at your contract rate, before any ' +
+                'take-or-pay adjustment, which is settled on the statement.';
+        }
+    }
+
+    function wireHistory() {
+        var ranges = document.getElementById('fcRanges');
+        var legend = document.getElementById('fcLegend');
+        var svg = document.getElementById('fcChart');
+        if (!ranges || !svg) return;
+
+        ranges.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('.fc-range');
+            if (!b) return;
+            histRange = b.getAttribute('data-range');
+            drawRanges();
+            loadHistory();
+        });
+
+        legend.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('.fc-toggle');
+            if (!b) return;
+            var k = b.getAttribute('data-metric');
+            var at = histShown.indexOf(k);
+            /* The last metric cannot be switched off. An empty chart is not a state
+               anybody chooses on purpose, and getting back out of it is a puzzle. */
+            if (at >= 0 && histShown.length > 1) histShown.splice(at, 1);
+            else if (at < 0) histShown.push(k);
+            drawLegend();
+            drawChart();
+        });
+
+        svg.addEventListener('mouseover', function (e) {
+            var hit = e.target.closest && e.target.closest('.fc-hit');
+            if (!hit) return;
+            histAt = parseInt(hit.getAttribute('data-i'), 10);
+            moveCross(histAt);
+            drawReadout(histAt);
+        });
+        svg.addEventListener('mouseleave', function () {
+            histAt = -1; hideCross(); drawReadout(-1);
+        });
+
+        /* A chart that only answers a mouse is a chart half the people who need
+           the number cannot use. Arrow keys walk it; Home and End jump. */
+        svg.addEventListener('focus', function () {
+            if (histPoints.length && histAt < 0) {
+                histAt = histPoints.length - 1; moveCross(histAt); drawReadout(histAt);
+            }
+        });
+        svg.addEventListener('blur', function () { hideCross(); drawReadout(-1); });
+        svg.addEventListener('keydown', function (e) {
+            if (!histPoints.length) return;
+            var n = histPoints.length, next = histAt;
+            if (e.key === 'ArrowRight') next = Math.min(n - 1, histAt + 1);
+            else if (e.key === 'ArrowLeft') next = Math.max(0, histAt - 1);
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = n - 1;
+            else return;
+            e.preventDefault();
+            histAt = next; moveCross(histAt); drawReadout(histAt);
+        });
+    }
+
+    /* WHICH FACILITY IS ON SCREEN. null means all of them, which is the default: the first
+       question a client with two sites has is about their whole fleet, and the second is about
+       one of them. Held here rather than in the URL because it is a view preference, not a
+       thing worth linking to. */
+    var fleetSite = null;
+    var fleetDoc = null;
+
+    function siteLabel(id) { return id; }
+
+    function drawSiteTabs() {
+        var el = document.getElementById('ptSiteTabs');
+        if (!el) return;
+        var sites = (fleetDoc && fleetDoc.sites) || [];
+        /* One site needs no chooser. */
+        if (sites.length < 2) { el.innerHTML = ''; return; }
+        var tabs = [{ id: null, label: 'All sites' }].concat(sites.map(function (v) {
+            return { id: v.site_id, label: siteLabel(v.site_id) };
+        }));
+        el.innerHTML = tabs.map(function (t) {
+            var on = t.id === fleetSite;
+            return '<button type="button" class="pt-site' + (on ? ' is-on' : '') +
+                   '" data-site="' + P.esc(t.id === null ? '' : t.id) + '" aria-pressed="' +
+                   on + '">' + P.esc(t.label) + '</button>';
+        }).join('');
+    }
+
+    /* The document the rest of the page renders from: one site, or every site added together.
+       The combined summary comes from the SERVER rather than being added up here — it carries
+       a weighted uptime, and a browser recomputing that would be a second implementation of the
+       arithmetic with nothing checking it against the first. */
+    function fleetView() {
+        if (!fleetDoc) return { summary: {}, rigs: [], as_of: null };
+        if (fleetSite === null) {
+            var rigs = [];
+            (fleetDoc.sites || []).forEach(function (v) {
+                (v.rigs || []).forEach(function (r) {
+                    /* Which site a machine is at only matters when looking at all of them. */
+                    var copy = {}; for (var k in r) copy[k] = r[k];
+                    copy.site_id = v.site_id;
+                    rigs.push(copy);
+                });
+            });
+            var first = (fleetDoc.sites || [])[0] || {};
+            return { summary: fleetDoc.summary || {}, rigs: rigs, as_of: first.as_of };
+        }
+        var one = (fleetDoc.sites || []).filter(function (v) {
+            return v.site_id === fleetSite;
+        })[0];
+        return one || { summary: {}, rigs: [], as_of: null };
+    }
+
+    function wireSiteTabs() {
+        var el = document.getElementById('ptSiteTabs');
+        if (!el) return;
+        el.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('.pt-site');
+            if (!b) return;
+            var id = b.getAttribute('data-site');
+            fleetSite = id === '' ? null : id;
+            drawSiteTabs();
+            renderFleet();
+            histPoints = histSeriesFor();
+            drawChart();
+        });
+    }
+
+    async function loadFleet() {
+        var sec = document.getElementById('ptFleet');
+        var res = await P.api('/portal/hosting/rigs');
+
+        if (res.unauthorized) return;
+        if (!res.ok) {
+            // Same rule as the statements list: could-not-ask is not nothing-there.
+            sec.style.display = '';
+            document.getElementById('ptMetrics').innerHTML = '';
+            document.getElementById('ptRigs').innerHTML =
+                '<div class="pt-empty">We could not reach the site just now, so the machine ' +
+                'status below is not showing &mdash; not because nothing is running.</div>';
+            document.getElementById('ptProvenance').textContent = '';
+            return;
+        }
+
+        fleetDoc = res.body || {};
+        drawSiteTabs();
+        wireSiteTabs();
+        renderFleet();
+    }
+
+    function renderFleet() {
+        var sec = document.getElementById('ptFleet');
+        var d = fleetView();
+        var sum = d.summary || {};
+        var rigs = d.rigs || [];
+        var nowMs = d.as_of ? Date.parse(d.as_of) : Date.now();
+        if (!isFinite(nowMs)) nowMs = Date.now();
+
+        /* Counted HERE from the derived state, not taken from summary.online.
+           The upstream count is whatever the pool claimed, and the whole point of
+           rigState() is that the pool's claim is not good enough to put in front
+           of a paying customer. */
+        var live = 0, quiet = 0;
+        for (var i = 0; i < rigs.length; i++) {
+            var st0 = P.rigState(rigs[i].last_seen, rigs[i].reported, nowMs);
+            if (st0 === 'online') live++; else quiet++;
+        }
+
+        function metric(value, label, cls) {
+            return '<div class="pt-metric' + (cls ? ' ' + cls : '') + '">' +
+                   '<div class="pt-metric-value">' + value + '</div>' +
+                   '<div class="pt-metric-label">' + label + '</div></div>';
+        }
+
+        /* Derived figures, each of which stays ABSENT when either input is.
+           num() renders that as "not measured", so a division by a missing
+           hashrate can never surface as a confident 0 J/TH. */
+        function ratio(a, b, mult) {
+            if (typeof a !== 'number' || typeof b !== 'number' || !isFinite(a) ||
+                !isFinite(b) || b === 0) return null;
+            return a * (mult || 1) / b;
+        }
+        var per = ratio(sum.hashrate_th, live);
+        var eff = ratio(sum.draw_kw, sum.hashrate_th, 1000);
+        var pd = sum.period || {};
+        var coverage = ratio(pd.hours_covered, pd.hours_elapsed, 100);
+
+        /* The operator's Fleet Overview carries ten cards. Five of them cannot
+           honestly appear here and are left out rather than estimated:
+             Est. daily earnings  -- a hosting client's payouts go from the pool
+                                     straight to their own wallet, so Proton neither
+                                     holds nor pays them and has no business
+                                     asserting a figure for them.
+             Avg cost / miner, Fleet ROI, Total cost
+                                  -- Proton does not know what the client paid for
+                                     their machines.
+             Avg power / miner    -- dividing a cage meter by machine count is an
+                                     allocation dressed up as a measurement, which
+                                     is what worker-portal/statement.js refuses to
+                                     do for revenue.
+           The two that replace them are the ones a hosting client actually needs:
+           what the meter has recorded this period, and how much of the period it
+           actually covered. */
+        document.getElementById('ptMetrics').innerHTML =
+            metric(live + ' <span class="pt-unit">of ' + rigs.length + '</span>', 'Machines mining') +
+            metric(P.num(sum.hashrate_th, 'TH/s'), 'Total hashrate') +
+            metric(P.num(per === null ? null : Math.round(per * 10) / 10, 'TH/s'),
+                   'Average per machine') +
+            metric(P.num(sum.draw_kw, 'kW'), 'Site draw, metered', 'pt-metric--draw') +
+            metric(P.num(eff === null ? null : Math.round(eff * 10) / 10, 'J/TH'),
+                   'All-in efficiency') +
+            metric(P.pct(sum.uptime_pct_30d), 'Uptime, 30 days') +
+            metric(P.num(pd.kwh_to_date, 'kWh'),
+                   'Energy this period' + (pd.id ? ' (' + P.esc(pd.id) + ')' : ''),
+                   'pt-metric--draw') +
+            metric(P.pct(coverage), 'Metered coverage');
+
+        /* ONE CARD PER MACHINE DOES NOT SCALE, and a hosting customer with a
+           container has a hundred of them. A hundred cards is a wall, and the
+           one fact worth having -- which machine is broken -- is buried
+           somewhere in the middle of it.
+
+           So the exceptions come out of the list and go on top. Below a dozen
+           machines the whole fleet is still cards, because a wall of twelve is
+           not a wall and a table of twelve is worse than the cards. Above that,
+           only the machines needing attention get a card and everything else
+           goes into a compact table that starts collapsed. */
+        var CARD_LIMIT = 12;
+        var MAX_ROWS = 400;
+        var RANK = { offline: 0, stale: 1, online: 2 };
+
+        var all = rigs.map(function(g) {
+            return { g: g, state: P.rigState(g.last_seen, g.reported, nowMs) };
+        });
+        // Worst first, then by name, so the order is stable between refreshes.
+        all.sort(function(a, b) {
+            if (RANK[a.state] !== RANK[b.state]) return RANK[a.state] - RANK[b.state];
+            return String(a.g.worker).localeCompare(String(b.g.worker));
+        });
+        var attention = all.filter(function(x) { return x.state !== 'online'; });
+
+        function card(x) {
+            var g = x.g;
+            return '<div class="pt-rig pt-rig--' + x.state + '">' +
+                '<div class="pt-rig-head">' +
+                    '<span class="pt-rig-name">' + P.esc(g.worker || '') +
+                        /* Only when looking at every site at once. On one site it would repeat
+                           the same word down a hundred cards. */
+                        (fleetSite === null && g.site_id
+                            ? '<br><span class="pt-rig-site">' + P.esc(g.site_id) + '</span>'
+                            : '') +
+                    '</span>' +
+                    '<span class="pt-rig-state"><span class="pt-dot pt-dot--' + x.state + '"></span>' +
+                        P.esc(P.stateWord(x.state)) + '</span>' +
+                '</div>' +
+                '<div class="pt-rig-stats">' +
+                    '<div class="pt-rig-stat"><div class="pt-stat-label">Hashrate</div>' +
+                        '<div class="pt-stat-value">' + P.num(g.hashrate_th, 'TH/s') + '</div></div>' +
+                    '<div class="pt-rig-stat"><div class="pt-stat-label">24h average</div>' +
+                        '<div class="pt-stat-value">' + P.num(g.hashrate_24h_th, 'TH/s') + '</div></div>' +
+                    '<div class="pt-rig-stat"><div class="pt-stat-label">Last share</div>' +
+                        '<div class="pt-stat-value">' + P.date(g.last_seen) + '</div></div>' +
+                '</div></div>';
+        }
+
+        function row(x) {
+            var g = x.g;
+            return '<tr class="pt-row pt-row--' + x.state + '" data-worker="' +
+                P.esc(String(g.worker || '').toLowerCase()) + '">' +
+                '<td>' + P.esc(g.worker || '') + '</td>' +
+                '<td><span class="pt-dot pt-dot--' + x.state + '"></span>' +
+                    P.esc(P.stateWord(x.state)) + '</td>' +
+                '<td>' + P.num(g.hashrate_th, 'TH/s') + '</td>' +
+                '<td>' + P.num(g.hashrate_24h_th, 'TH/s') + '</td>' +
+                '<td>' + P.date(g.last_seen) + '</td></tr>';
+        }
+
+        var out;
+        if (!all.length) {
+            out = '<div class="pt-empty">No machines are reporting for this site yet.</div>';
+        } else if (all.length <= CARD_LIMIT) {
+            out = '<div class="pt-rigs">' + all.map(card).join('') + '</div>';
+        } else {
+            out = attention.length
+                ? '<div class="pt-attention">' + attention.length + ' of ' + all.length +
+                  ' machines need attention</div><div class="pt-rigs">' +
+                  attention.map(card).join('') + '</div>'
+                : '<div class="pt-allgood">All ' + all.length + ' machines are mining.</div>';
+
+            /* No silent truncation: if the table is capped, the page says by how
+               much rather than quietly showing a subset that reads as the whole
+               fleet. */
+            var shown = all.slice(0, MAX_ROWS);
+            var capped = all.length > MAX_ROWS
+                ? '<p class="pt-disclosure">Showing the first ' + MAX_ROWS + ' of ' +
+                  all.length + ' machines.</p>'
+                : '';
+            out += '<button type="button" class="pt-fleet-toggle" id="ptShowAll">' +
+                   'Show all ' + all.length + ' machines</button>' +
+                   '<div id="ptAll" style="display:none;">' +
+                   '<input type="search" class="pt-filter" id="ptFilter" ' +
+                   'placeholder="Find a machine by name" aria-label="Find a machine by name">' +
+                   capped +
+                   '<div class="pt-table-wrap"><table class="pt-table"><thead><tr>' +
+                   '<th>Machine</th><th>State</th><th>Hashrate</th><th>24h average</th>' +
+                   '<th>Last share</th></tr></thead><tbody id="ptRows">' +
+                   shown.map(row).join('') + '</tbody></table></div></div>';
+        }
+        document.getElementById('ptRigs').innerHTML = out;
+
+        var showAll = document.getElementById('ptShowAll');
+        if (showAll) {
+            showAll.addEventListener('click', function() {
+                var box = document.getElementById('ptAll');
+                var open = box.style.display !== 'none';
+                box.style.display = open ? 'none' : '';
+                showAll.textContent = (open ? 'Show all ' : 'Hide the ') + all.length + ' machines';
+                if (!open) { var f = document.getElementById('ptFilter'); if (f) f.focus(); }
+            });
+        }
+        var filter = document.getElementById('ptFilter');
+        if (filter) {
+            filter.addEventListener('input', function() {
+                var q = this.value.trim().toLowerCase();
+                var rows = document.getElementById('ptRows').rows;
+                for (var i = 0; i < rows.length; i++) {
+                    var name = rows[i].getAttribute('data-worker') || '';
+                    rows[i].style.display = (!q || name.indexOf(q) >= 0) ? '' : 'none';
+                }
+            });
+        }
+
+        /* Where each figure comes from, in the same spirit as the repo's rule
+           that a sourced value and a typed one are never shown with the same
+           authority. Here the distinction is pool-reported versus metered. */
+        var quietLine = quiet
+            ? ' ' + quiet + ' of ' + rigs.length + ' have not reported recently and are shown as ' +
+              'not reporting rather than as idle, because nobody knows what they are doing.'
+            : '';
+        document.getElementById('ptProvenance').innerHTML =
+            'Hashrate and last share come from the mining pool, which reports shares rather than ' +
+            'hardware &mdash; so board temperature, fan speed and per-machine power draw are not ' +
+            'shown here, because a pool cannot measure them. Site draw is metered at the rack for ' +
+            'the whole cage and is the figure you are billed on; it is not divided between ' +
+            'machines &mdash; so all-in efficiency covers cooling too, and reads worse when a ' +
+            'machine is drawing power without reporting work. Average per machine is over the ' +
+            'ones actually reporting, not over all of them. A machine counts as mining only if ' +
+            'it has been heard from in the last ' +
+            (P.FRESH_MS / 60000) + ' minutes.' + P.esc(quietLine) +
+            ' As of ' + P.date(d.as_of) + '.';
+
+        sec.style.display = '';
+    }
+
     async function loadPortal() {
         var me = await P.api('/portal/me');
         if (!me.ok) { show('auth'); return; }
@@ -224,21 +922,50 @@
         var hf = document.getElementById('ptFootHosting');
         if (pf) pf.style.display = kind === 'producer' ? '' : 'none';
         if (hf) hf.style.display = kind === 'hosting' ? '' : 'none';
+        /* Read from the response, NOT from the `sites` local — that is declared further down
+           this same function, so `var` hoisting makes it undefined right here and `sites.length`
+           throws. The throw aborted loadPortal() before the fleet was ever fetched, so the whole
+           hosting view came up empty with the title still on its producer default. A one-word
+           change to a heading took the page down, and it did it silently: no red, just nothing. */
+        var siteCount = (me.body.sites || []).length;
+        /* "Your statements" was right when statements were the whole page. A producer now gets
+           a site overview and a history above them, so both portals are a view of a site. */
         document.getElementById('ptTitle').textContent =
-            kind === 'hosting' ? 'Your hosting statements' : 'Your statements';
+            siteCount > 1 ? 'Your sites' : 'Your site';
+        var lh = document.getElementById('ptListHead');
+        if (lh) lh.style.display = kind === 'hosting' ? '' : 'none';
+        var fl = document.getElementById('ptFleet');
+        if (fl && kind !== 'hosting') fl.style.display = 'none';
 
         document.getElementById('ptWho').innerHTML =
             P.esc(me.body.legal_name || '') +
             '<br><button type="button" class="pt-signout" id="ptSignOut">Sign out</button>';
         document.getElementById('ptSignOut').addEventListener('click', function() {
             P.setSession(null);
-            if (typeof IonAuth !== 'undefined') IonAuth.signOut();
+            if (typeof ProtonAuth !== 'undefined') ProtonAuth.signOut();
             location.reload();
         });
 
         var sites = me.body.sites || [];
         document.getElementById('ptSites').textContent =
             sites.length === 1 ? sites[0] : sites.length + ' sites';
+
+        /* BOTH PORTALS GET A HISTORY. It used to be hosting only, so a producer had a list of
+           frozen monthly statements and no way to see a bad week while it was still one. The
+           chart is the same component; only the metric set and the endpoint differ. */
+        histKind = kind === 'producer' ? 'producer' : 'hosting';
+        histShown = histCfg().shown.slice();
+
+        if (kind === 'hosting') await loadFleet();
+        if (kind === 'producer') document.getElementById('ptGas').style.display = '';
+        document.getElementById('ptHistorySec').style.display = '';
+
+        /* Controls are drawn before the fetch so the timeframe buttons are there while the
+           history is still loading, rather than appearing under the pointer a moment later. */
+        drawRanges();
+        drawLegend();
+        wireHistory();
+        await loadHistory();
 
         var list = await P.api(LIST_PATH[kind]);
         var el = document.getElementById('ptList');
@@ -273,16 +1000,29 @@
         var html = '';
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i];
-            html += '<a class="pt-card pt-clickable" style="display:block;text-decoration:none;" ' +
+            /* NOT A TABLE. This was a .pt-rows table inside a card, which meant the amount
+               inherited `.pt-rows td:last-child` and rendered at 12.5px in body grey — the one
+               figure the whole page exists to deliver, styled as a spreadsheet cell. No amount
+               of adjusting the background was ever going to fix that; the hierarchy was flat.
+
+               A row now says what it is: when, on the left, and how much, on the right, at a
+               size that matches what it means. */
+            html += '<a class="pt-card pt-clickable pt-stmt" ' +
                 'href="./statement.html?kind=' + encodeURIComponent(kind) +
                 '&site=' + encodeURIComponent(r.site_id) +
                 '&period=' + encodeURIComponent(r.period) + '">' +
-                '<table class="pt-rows"><tr>' +
-                '<td>' + P.esc(r.period) + ' &middot; ' + P.esc(r.site_id) + '<br>' +
-                '<span class="pt-unit">issued ' + P.date(r.issued_at) + '</span></td>' +
-                '<td>' + P.money(r.total_usd) +
-                (r.total_is_partial ? '<br><span class="pt-unit">incomplete</span>' : '') +
-                '</td></tr></table></a>';
+                '<div class="pt-stmt-when">' +
+                  '<div class="pt-stmt-period">' + P.esc(monthName(r.period)) + '</div>' +
+                  '<div class="pt-stmt-meta">' + P.esc(r.site_id) +
+                    ' &middot; issued ' + P.date(r.issued_at) + '</div>' +
+                '</div>' +
+                '<div class="pt-stmt-amt">' +
+                  '<div class="pt-stmt-money">' + P.money(r.total_usd) + '</div>' +
+                  (r.total_is_partial
+                      ? '<span class="pt-pill pt-pill--part">Incomplete</span>'
+                      : '<span class="pt-pill">Issued</span>') +
+                '</div>' +
+                '</a>';
         }
         el.innerHTML = html;
         show('main');
@@ -294,7 +1034,7 @@
         var btn = document.getElementById('ptSignIn');
         btn.disabled = true;
         try {
-            await IonAuth.signInWithEmail(
+            await ProtonAuth.signInWithEmail(
                 document.getElementById('ptEmail').value.trim(),
                 document.getElementById('ptPassword').value);
         } catch (err) {
@@ -307,7 +1047,7 @@
         var email = document.getElementById('ptEmail').value.trim();
         if (!email) { P.status('Enter your email address first, then press this again.', null); return; }
         try {
-            await IonAuth.sendPasswordReset(email);
+            await ProtonAuth.sendPasswordReset(email);
             // Deliberately does not confirm whether the address exists.
             P.status('If that address has an account, a reset link is on its way.', 'ok');
         } catch (e) {
@@ -375,7 +1115,7 @@
         P.demoBanner();
         loadPortal();
     } else {
-        IonAuth.onAuthChange(function(user) {
+        ProtonAuth.onAuthChange(function(user) {
             if (user) afterSignIn(user);
             else {
                 // Clears the session on sign-out — but NOT a preview session, or the preview

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — Hosting page scene =====
+/* ===== PROTON MINING — Hosting page scene =====
    Inside one hosted container, seen close: the customer's machines racked
    against the far wall, with the things hosting actually provides called out —
    filtered intake, cold aisle, metered PDU, network, telemetry, spares, and the

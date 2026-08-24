@@ -1,4 +1,4 @@
-// Ion Mining Group — F2Pool API Proxy (Cloudflare Worker)
+// Proton Mining — F2Pool API Proxy (Cloudflare Worker)
 
 const F2POOL_BASE = 'https://api.f2pool.com/v2';
 const ALLOWED_ORIGINS = [

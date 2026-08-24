@@ -53,7 +53,7 @@ function kv() {
     };
 }
 
-const ORIGIN = 'https://ionmininggroup.com';
+const ORIGIN = 'https://protonminingco.com';
 
 async function call(env, method, urlPath, body, headers) {
     const req = new Request('https://orders.example' + urlPath, {
@@ -316,12 +316,12 @@ for (const [label, lines] of BAD_LINES) {
     ok(short.error, 'an address with no street or city is refused', JSON.stringify(short));
 
     const ion = T.readDestination({ kind: 'ion' });
-    ok(!ion.error && !ion.street, 'an Ion destination needs no address', JSON.stringify(ion));
+    ok(!ion.error && !ion.street, 'an Proton destination needs no address', JSON.stringify(ion));
 
     /* An unrecognised kind must not become a third-party shipment with no
-       address — it falls back to Ion, which is the one that needs nothing. */
+       address — it falls back to Proton, which is the one that needs nothing. */
     const junk = T.readDestination({ kind: 'somewhere-else' });
-    ok(junk.kind === 'ion', 'an unknown destination kind falls back to Ion', junk.kind);
+    ok(junk.kind === 'ion', 'an unknown destination kind falls back to Proton', junk.kind);
 })();
 
 (function () {

@@ -60,7 +60,7 @@ ok(html.indexOf('hero-atom') < 0 && css.indexOf('.ha-') < 0,
 /* ---------- 4. Ids ---------- */
 /* The nav mark and the footer mark are the only two on the page now, and they
    carry different id prefixes so neither can borrow the other's paint. */
-const ids = [...html.matchAll(/id="(ionMark[A-Za-z]+)"/g)].map(m => m[1]);
+const ids = [...html.matchAll(/id="(protonMark[A-Za-z]+)"/g)].map(m => m[1]);
 ok(ids.length === new Set(ids).size,
    'every gradient id on the page is unique',
    ids.length + ' ids, ' + new Set(ids).size + ' distinct');

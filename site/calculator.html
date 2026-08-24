@@ -3,22 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mining Calculator — Ion Mining Group</title>
-<meta name="description" content="Model a bitcoin mining operation on your own numbers: your machines or your available energy, your power cost, your assumptions. The same projection engine Ion Mining Group runs internally.">
-<link rel="canonical" href="https://ionmininggroup.com/calculator.html">
+<title>Bitcoin Mining Calculator — Proton Mining</title>
+<meta name="description" content="A bitcoin mining calculator that models difficulty growth, halvings, tax and hardware wear — and compares a fleet against simply buying the coin.">
+<link rel="canonical" href="https://protonminingco.com/calculator.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Mining Calculator — Ion Mining Group">
+<meta property="og:title" content="Bitcoin Mining Calculator — Proton Mining">
 <meta property="og:description" content="Run a full mining projection on your own fleet or your own stranded energy.">
-<meta property="og:url" content="https://ionmininggroup.com/calculator.html">
+<meta property="og:url" content="https://protonminingco.com/calculator.html">
 <meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=174e6fdc">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
-<meta property="og:image" content="https://ionmininggroup.com/og/home.png">
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://ionmininggroup.com/og/home.png">
+<meta name="twitter:image" content="https://protonminingco.com/og/home.png">
 <!-- ===== /SHARE CARD ===== -->
 </head>
 <body>
@@ -28,7 +30,7 @@
     <a class="brand" href="./index.html">
       <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
         <defs>
-          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#5c5b58"/>
           <stop offset="13%" stop-color="#b5b4b1"/>
           <stop offset="25%" stop-color="#ffffff"/>
@@ -39,18 +41,18 @@
           <stop offset="89%" stop-color="#a2a19e"/>
           <stop offset="100%" stop-color="#6b6a67"/>
           </linearGradient>
-          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#ffcf8a"/>
           <stop offset="38%" stop-color="#f7a02b"/>
           <stop offset="70%" stop-color="#ffdcae"/>
           <stop offset="100%" stop-color="#e07f10"/>
           </linearGradient>
         </defs>
-        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
-        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
-        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
         </svg>
-      <span class="brand-name">Ion <span>Mining Group</span></span>
+      <span class="brand-name">Proton <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -67,7 +69,14 @@
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html" class="active">Calculator</a>
-      <a href="./index.html#operate">How We Operate</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
       <a href="./contact.html">Contact</a>
       <!-- The order, when there is one. Hidden at zero rather than showing
            a 0, because an empty cart does not deserve a place in the nav.
@@ -93,7 +102,13 @@
   <div class="wrap">
     <div class="calc-head">
       <p class="eyebrow">Mining calculator</p>
-      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Run the numbers<br>on your own setup.</h1>
+      <!-- THE H1 NAMES THE PAGE. It read "Run the numbers on your own setup." which is better
+           writing and tells a search engine nothing about what this is. The line survives as the
+           strapline underneath, where it does the job it was doing without being the only
+           heading on a page whose subject is otherwise invisible: strip the scripts and the SVGs
+           and a crawler sees 778 words, nearly all of them form labels. -->
+      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Bitcoin mining<br>calculator.</h1>
+      <p class="calc-strap">Run the numbers on your own setup.</p>
       <p class="lede">This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you already own, or from energy you already have and want to put to work. Every assumption below is yours to change.</p>
     </div>
   </div>
@@ -499,6 +514,65 @@
         <a class="btn btn--ghost" href="./energy.html">If you have the energy</a>
       </div>
     </div>
+
+    <!-- WHAT IT MODELS. Written because the page had nothing for a reader to read — but it
+         is not filler: every item below is a thing most mining calculators leave out, and each
+         one was checked against site/calc-engine.js before it was written down. A page that
+         lists capabilities it does not have is worse than a page with no text at all. -->
+    <div class="calc-models">
+      <h2 class="h-section">What this models that most calculators do not.</h2>
+      <p class="calc-models-lede">Most bitcoin mining calculators answer one question: at
+        today—s price and today—s difficulty, what does this machine earn per day? That number
+        is true for about a fortnight. These are the things that decide whether a machine pays
+        for itself, and they are the ones usually left out.</p>
+
+      <div class="calc-models-grid">
+        <div class="cm">
+          <h3>Buying the machines against buying the coin</h3>
+          <p>The comparison nobody runs. It plots what a fleet does against putting the same
+            money into bitcoin on day one and holding it, and tells you which period the two
+            cross over in — if they do. Both sides are figured after tax, which matters,
+            because mined coins are income when they are mined and held coins are not.</p>
+        </div>
+        <div class="cm">
+          <h3>Difficulty growth as an input, not an assumption</h3>
+          <p>Your share of the network shrinks every time somebody else plugs in, whether or not
+            you do anything. Most models leave this at zero, which quietly assumes the network
+            stops growing. Set it to what you actually believe, including negative — network
+            difficulty fell about 15% over the first eight months of 2026.</p>
+        </div>
+        <div class="cm">
+          <h3>Halvings, on their projected dates</h3>
+          <p>The block subsidy is stepped down on projected halving dates rather than held flat,
+            out to 2100. Over any horizon longer than about three years that is the difference
+            between a projection and a straight line.</p>
+        </div>
+        <div class="cm">
+          <h3>The machine wearing out</h3>
+          <p>Hardware has a lifespan, a salvage value, and a date it stops being economic that
+            arrives before the date it breaks. You can set all three, choose whether retired
+            machines are replaced, and choose whether the proceeds are reinvested or taken out.</p>
+        </div>
+        <div class="cm">
+          <h3>Tax on both sides, separately</h3>
+          <p>Mining income and capital gains are different taxes at different rates on different
+            events. They are modelled as two figures rather than one blended number, because the
+            comparison against simply holding bitcoin is meaningless if only one side is taxed.</p>
+        </div>
+        <div class="cm">
+          <h3>Sizing from energy instead of from machines</h3>
+          <p>If you have gas rather than hardware, start from the gas. Enter volume in mcf per
+            day with your own heat rate and BTU content, and it works out the load that supports
+            and the fleet that fills it. That is the question a flare owner actually has, and it
+            is the reverse of the one every other calculator answers.</p>
+        </div>
+      </div>
+
+      <p class="calc-models-foot">Pool fee, uptime, infrastructure cost, scheduled additions and
+        an existing bitcoin treasury are all inputs too. Nothing is assumed on your behalf, and
+        the scenario travels in the address bar — the URL is the whole state, so you can send
+        it to somebody and they will see exactly what you saw.</p>
+    </div>
   </div>
 </section>
 
@@ -510,7 +584,7 @@
         <a class="brand" href="./index.html">
           <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
             <defs>
-              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#5c5b58"/>
               <stop offset="13%" stop-color="#b5b4b1"/>
               <stop offset="25%" stop-color="#ffffff"/>
@@ -521,18 +595,18 @@
               <stop offset="89%" stop-color="#a2a19e"/>
               <stop offset="100%" stop-color="#6b6a67"/>
               </linearGradient>
-              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#ffcf8a"/>
               <stop offset="38%" stop-color="#f7a02b"/>
               <stop offset="70%" stop-color="#ffdcae"/>
               <stop offset="100%" stop-color="#e07f10"/>
               </linearGradient>
             </defs>
-            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
-            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
-            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
             </svg>
-          <span class="brand-name">Ion <span>Mining Group</span></span>
+          <span class="brand-name">Proton <span>Mining</span></span>
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
@@ -546,7 +620,7 @@
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
-        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
       </div>
       <div class="footer-col">
         <h4>Legal</h4>
@@ -555,17 +629,17 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
       <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
     </div>
   </div>
 </footer>
 
-<script src="./site.js"></script>
-<script src="./hero-anim.js"></script>
-<script src="./cart.js"></script>
-<script src="./miner-db.js"></script>
-<script src="./calc-engine.js"></script>
-<script src="./calculator.js"></script>
+<script src="./site.js?v=174e6fdc"></script>
+<script src="./hero-anim.js?v=174e6fdc"></script>
+<script src="./cart.js?v=174e6fdc"></script>
+<script src="./miner-db.js?v=174e6fdc"></script>
+<script src="./calc-engine.js?v=174e6fdc"></script>
+<script src="./calculator.js?v=174e6fdc"></script>
 </body>
 </html>

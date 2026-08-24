@@ -137,7 +137,7 @@ const MUTATIONS = [
       from: 'var LEVEL_S = [1.000, 0.845, 0.755, 0.600, 0.510, 0.355];',
       to:   'var LEVEL_S = [1.000, 0.845, 0.845, 0.600, 0.600, 0.355];', by: snap },
     // ---- the shared yard must land in BOTH scenes ----
-    { file: S + 'scene-landfill-ion.js', why: 'the yard added to one scene only, so kit appears when Ion arrives',
+    { file: S + 'scene-landfill-ion.js', why: 'the yard added to one scene only, so kit appears when Proton arrives',
       from: '        G.buildYard(H, yaw, L);', to: '', by: suite },
 
     { file: S + 'landfill-geometry.js', why: 'the leachate compound moved onto the capped cell',

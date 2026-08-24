@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the gas field =====
+/* ===== PROTON MINING — the gas field =====
 
    Stranded gas rising and cooling, behind the producer sign-in.
 
@@ -11,7 +11,7 @@
    heat haze below are lifted from that file rather than reinvented, down to the
    constants: vy of 18-46 px/s, drift 0.006-0.02, amplitude 3-11, one pixel in
    four at double size, alpha 0.14 + (1 - climb) * 0.5, and the same particle
-   cap. A producer arriving from ionmininggroup.com should see the same substance
+   cap. A producer arriving from protonminingco.com should see the same substance
    moving the same way, because it is the same code — tests/portal-frontend.test.js
    checks the constants against that file rather than pinning them here, so the
    two cannot drift apart quietly.

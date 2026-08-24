@@ -69,7 +69,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 function getText(url, opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
-        var req = https.get(url, { headers: { 'User-Agent': 'ion-mining-group/site-quality' } }, function (res) {
+        var req = https.get(url, { headers: { 'User-Agent': 'proton-mining/site-quality' } }, function (res) {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 res.destroy();
                 return resolve(getText(new URL(res.headers.location, url).href, opts));

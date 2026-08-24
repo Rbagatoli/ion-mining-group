@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — portal identity =====
+// ===== PROTON MINING — portal identity =====
 //
 // Firebase ID token -> verified uid -> portal session -> ONE seller.
 //
@@ -12,7 +12,7 @@
 //
 // INVITE-ONLY, AND WHAT THAT BUYS.
 //
-// There is no self-serve signup. An account exists only because Ion minted an invite bound to a
+// There is no self-serve signup. An account exists only because Proton minted an invite bound to a
 // specific seller, so:
 //   - there is no signup surface to attack and no rate limiting to get right on one
 //   - there are no unverified or orphaned accounts to reconcile

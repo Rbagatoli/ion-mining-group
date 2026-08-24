@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why own miners — Proton Mining</title>
+<meta name="description" content="Depreciation on mining equipment, and when a fleet beats simply buying bitcoin with the same money. The conditions, stated.">
+<link rel="canonical" href="https://protonminingco.com/why-mining.html">
+<meta property="og:title" content="Why own miners — Proton Mining">
+<meta property="og:description" content="Depreciation on mining equipment, and when a fleet beats simply buying bitcoin with the same money. The conditions, stated.">
+<meta property="og:url" content="https://protonminingco.com/why-mining.html">
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=174e6fdc">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I deduct the whole cost of my miners in the first year?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sometimes, through §179 or bonus depreciation or a combination. It depends on whether the activity is a trade or business, whether the machines were placed in service that year, how much taxable business income you have, and the current percentages. Any of those can reduce a first-year deduction to a fraction of what was expected, or to nothing."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does hosting my machines with you change the tax treatment?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You still own the equipment, which is the fact the depreciation rules turn on. What hosting can affect is whether your participation is material or passive, and that affects how losses can be used. It is a real question and it is one for your accountant, not for us."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is buying miners better than buying bitcoin?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It depends on your power price, your view on difficulty growth, your holding period and your tax position. Mining tends to win with genuinely cheap power and a rising price; simply holding tends to win with ordinary power and a flat price. Run both with your own numbers rather than trusting ours."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "I am not a US taxpayer. Does any of this apply?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The specifics do not. Most jurisdictions have some form of capital allowance for business equipment, but the rates, the timing and the conditions are different everywhere. Our sites are planned in Canada and Nigeria as well as the United States, and we do not publish guidance for any of them."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "When are the placeholder figures on this page going to be filled in?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "When a professional has confirmed them against the current year. The numbers move annually and a stale figure on a page like this is worse than a visible gap, so they stay as placeholders until somebody qualified signs off."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html" class="active">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./hardware.html">Start mining</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <section class="section section--tight">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Owning the machine</div>
+        <h1>Why own miners rather than coins</h1>
+        <p class="lede">Two arguments, and the conditions each one depends on.</p>
+      </div>
+      <!-- ===== WHY BODY ===== -->
+      <div class="wm-layout">
+      <div class="wm-body reveal">
+
+        <!-- THE ANSWER FIRST, THEN THE ARGUMENT. Both questions answered in about 40 words
+             each, with jumps to the part that matters to you. Somebody who already knows what
+             they think can leave; somebody who does not can read on. The old intro said the
+             page was going to be conditional, which is a paragraph about a page rather than
+             an answer to a question. -->
+        <div class="wm-tldr">
+          <div class="wm-tldr-cell">
+            <p class="wm-tldr-k">Machines or coins</p>
+            <p>Mining wins on genuinely cheap power and a rising price. Buying the coin wins at
+              a retail power rate, or if the price goes sideways while difficulty climbs.</p>
+            <div class="wm-tldr-go">
+              <a href="#machines-win">When machines win</a>
+              <a href="#coin-wins">When coins win</a>
+            </div>
+          </div>
+          <div class="wm-tldr-cell">
+            <p class="wm-tldr-k">The tax case</p>
+            <p>A miner is depreciable equipment; a held coin is not. Three mechanisms turn on
+              that, and every one is gated on running a real business and on the machines being
+              switched on that year.</p>
+            <div class="wm-tldr-go">
+              <a href="#business">Is it a business?</a>
+              <a href="#mechanisms">The three mechanisms</a>
+              <a href="#gates">The two gates</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ 1. MINERS VS BUYING THE COIN ============ -->
+
+        <h2 id="versus">Machines against simply buying bitcoin</h2>
+
+        <p>If I have a hundred thousand dollars, do I buy machines or do I buy bitcoin? Anybody
+          who answers that with one number, without asking your power price, is selling you
+          something. Buying the coin fixes your bitcoin on day one and everything after that is
+          the price. Buying machines gives you a <em>stream</em> of coins, bought at a cost your
+          electricity sets, and a machine worth less every year.</p>
+
+        <!-- SIDE BY SIDE, because it is a comparison. Two stacked lists make the reader hold
+             the first three points in their head while reading the next three; two columns let
+             them read across. Stacks again below 720px, where there is no room to read across
+             and the scroll is the lesser cost. -->
+        <div class="wm-vs">
+        <div class="wm-vs-col">
+        <h3 id="machines-win">When machines win</h3>
+        <ul>
+          <li><strong>Your power is genuinely cheap.</strong> This is the whole argument. Mining
+            is a way of buying bitcoin at your marginal cost of production; if that cost is
+            below the market price, you are buying at a discount, every day, without timing
+            anything.</li>
+          <li><strong>The price rises.</strong> A fleet is leveraged to the price in a way a
+            coin is not: the coins you have not mined yet are also worth more.</li>
+          <li><strong>You can use the depreciation.</strong> The second half of this page. It is
+            worth real money and it is worth nothing if you do not qualify.</li>
+        </ul>
+        </div>
+        <div class="wm-vs-col">
+        <h3 id="coin-wins">When buying the coin wins</h3>
+        <ul>
+          <li><strong>The price goes sideways and difficulty keeps climbing.</strong> Your output
+            falls every fortnight whether or not you do anything, and the coin holder’s
+            position does not.</li>
+          <li><strong>Your power is ordinary.</strong> At a retail rate the discount disappears
+            and you are buying bitcoin at roughly the market price, with extra steps and a
+            depreciating asset attached.</li>
+          <li><strong>You want the money back next year.</strong> Coins sell in an afternoon. A
+            fleet is equipment, and equipment sells slowly and at a discount.</li>
+        </ul>
+        </div>
+        </div>
+
+        <div class="wm-note">
+          <p><strong>We are not going to print a crossover number here.</strong> It moves with
+            your power price, your view on difficulty, your horizon and your tax rate, and a
+            single figure on a sales page would be a figure chosen to flatter the thing being
+            sold. The calculator runs both positions side by side from your own assumptions and
+            tells you which period they cross in, if they do.</p>
+          <a class="btn btn--primary"
+             href="./calculator.html?machineCount=10&amp;taxAdjustment=1">Compare the two</a>
+          <p class="wm-note-sub">Opens with tax modelling switched on and a ten-machine fleet.
+            Set your own power price, difficulty growth and horizon — those are the three
+            inputs that decide the answer.</p>
+        </div>
+
+        <!-- ============ 2. THE TAX CASE ============ -->
+
+        <h2 id="tax">The tax case, and what it depends on</h2>
+
+        <div class="wm-warn">
+          <p><strong>This is not tax advice, and we are not tax advisers.</strong> Proton Mining
+            Group sells hosting and hardware. What follows describes how depreciation rules
+            generally work so that you can have a useful conversation with a professional. It
+            is not a statement that you qualify for anything, and you should not buy equipment
+            on the strength of a web page.</p>
+          <p><strong>It describes United States federal rules only.</strong> Our sites are
+            planned in Canada and Nigeria as well as the United States, and the treatment of
+            equipment differs between them in ways that matter. If you are not a US taxpayer, essentially none of the specifics
+            below apply to you.</p>
+        </div>
+
+        <p>The genuine difference between a machine and a coin is this: <strong>a miner is
+          equipment used in a business, and bitcoin is property you hold.</strong> Equipment can
+          be depreciated. Property you hold cannot. That single distinction is where every tax
+          argument for buying machines comes from, and it is also why every one of those
+          arguments collapses if the activity is not really a business.</p>
+
+        <p>Every figure below renders as an orange placeholder. That is deliberate and it is the
+          convention this whole site uses: these numbers change annually, and we would rather
+          show you an obvious gap than a confident number that was right two years ago.</p>
+
+        <h3 id="business">The threshold question: is it a business?</h3>
+
+        <p>Nothing else on this page matters until this one is answered. Deductions for
+          equipment are available to a <em>trade or business</em>. An activity carried on
+          without a genuine profit motive is a hobby, and a hobby deducts nothing — the
+          expenses are simply not deductible, while the income is still taxable.</p>
+
+        <p>The tests are facts-and-circumstances rather than a checkbox, and they look at things
+          like whether you keep books, whether you have expertise or take advice, the time you
+          put in, and whether the activity has ever made money. Buying machines and having
+          somebody else run them does not by itself decide this either way, but it is exactly
+          the fact pattern where the question gets asked.</p>
+
+        <div class="wm-block">
+          <div class="wm-block-h">Passive, active, and why hosting complicates it</div>
+          <p>Even inside a real business, losses can be limited if your participation is
+            <em>passive</em>. Material participation is measured in hours and by tests with
+            specific thresholds — broadly <span class="ph">[MATERIAL PARTICIPATION HOURS]</span>
+            hours a year, among several alternatives. Hosted machines are the awkward case:
+            somebody else racks them, cools them and fixes them. That is the service you are
+            buying from us, and it is also the fact a professional will focus on.</p>
+          <p class="wm-block-note">We are flagging this because it is the condition most often
+            left out of the sales pitch, not because it makes hosting a bad idea.</p>
+        </div>
+
+        <h3 id="mechanisms">The three mechanisms</h3>
+
+                <div class="wm-mechs">
+
+          <details class="wm-mech">
+            <summary class="wm-mech-sum">
+              <span class="wm-mech-n">01</span>
+              <span class="wm-mech-tt">
+                <h4>§179 expensing</h4>
+                <span class="wm-mech-gate">capped, and limited by your taxable business income</span>
+              </span>
+            </summary>
+            <div class="wm-mech-body">
+              <p class="wm-claim">Deduct the cost of qualifying equipment in the year it is
+                placed in service, instead of spreading it over the asset’s life.</p>
+              <dl class="wm-cond">
+                <div><dt>Annual cap</dt><dd><span class="ph">[§179 ANNUAL CAP]</span></dd></div>
+                <div><dt>Phase-out begins at</dt><dd><span class="ph">[PHASE-OUT THRESHOLD]</span></dd></div>
+                <div><dt>Hard limit</dt><dd>Cannot exceed your business’s taxable income for
+                  the year. It cannot create a loss.</dd></div>
+                <div><dt>Disqualifies you</dt><dd>Equipment not used in a trade or business;
+                  spending above the phase-out range; no taxable business income to absorb it.</dd></div>
+              </dl>
+              <p class="wm-mech-note">The income limit is the one that catches people. A first-year
+                buyer with a large purchase and little business income often cannot use most of
+                it in year one.</p>
+            </div>
+          </details>
+
+          <details class="wm-mech">
+            <summary class="wm-mech-sum">
+              <span class="wm-mech-n">02</span>
+              <span class="wm-mech-tt">
+                <h4>Bonus depreciation</h4>
+                <span class="wm-mech-gate">a percentage, and it is keyed to acquisition dates</span>
+              </span>
+            </summary>
+            <div class="wm-mech-body">
+              <p class="wm-claim">A percentage of the cost deducted immediately, applied after
+                §179 and without §179’s income limit — so unlike §179 it
+                <em>can</em> create a loss.</p>
+              <dl class="wm-cond">
+                <div><dt>Current percentage</dt><dd><span class="ph">[BONUS DEPRECIATION %]</span></dd></div>
+                <div><dt>Depends on</dt><dd>When the property was <em>acquired</em> and when it
+                  was placed in service. The percentage has changed repeatedly and is tied to
+                  dates, not to the tax year alone.</dd></div>
+                <div><dt>Disqualifies you</dt><dd>Property acquired outside the qualifying
+                  window; property not of a qualifying class.</dd></div>
+              </dl>
+              <p class="wm-mech-note">This is the figure most likely to be quoted at you out of
+                date, by us or by anyone else. Ask what date the percentage is keyed to.</p>
+            </div>
+          </details>
+
+          <details class="wm-mech">
+            <summary class="wm-mech-sum">
+              <span class="wm-mech-n">03</span>
+              <span class="wm-mech-tt">
+                <h4>MACRS, the ordinary schedule</h4>
+                <span class="wm-mech-gate">the fallback, spread over the asset’s class life</span>
+              </span>
+            </summary>
+            <div class="wm-mech-body">
+              <p class="wm-claim">If nothing is accelerated, the cost is recovered over the
+                asset’s class life on a fixed schedule.</p>
+              <dl class="wm-cond">
+                <div><dt>Class life used for mining hardware</dt>
+                  <dd><span class="ph">[MACRS CLASS LIFE]</span></dd></div>
+                <div><dt>Worth knowing</dt><dd>The schedule may outlast the machine. Hardware
+                  that stops being economic in three years can still be carrying basis.</dd></div>
+              </dl>
+            </div>
+          </details>
+
+        </div>
+
+        <h3 id="gates">Two conditions that gate all three</h3>
+
+        <div class="wm-gates">
+          <div class="wm-gate">
+            <h4>Placed in service, not ordered</h4>
+            <p>The deduction attaches to the year equipment is <em>ready and available for its
+              intended use</em> — not the year you paid a deposit, not the year you signed,
+              and not the year it shipped. A machine sitting in a crate in December is not
+              placed in service in December.</p>
+            <p class="wm-gate-note">This is the single most common way a year-end purchase fails
+              to do what the buyer expected. If the timing is the point of the purchase, get the
+              energisation date in writing before you pay.</p>
+          </div>
+          <div class="wm-gate">
+            <h4>Recapture on the way out</h4>
+            <p>Depreciation lowers your basis in the machine. When you sell it, the gain up to
+              the depreciation you took is generally recaptured and taxed as ordinary income
+              rather than as a capital gain.</p>
+            <p class="wm-gate-note">Depreciation is a deferral, not a discount. That is not an
+              argument against it — money now is worth more than money later — but a
+              comparison that treats it as free money is overstating the case.</p>
+          </div>
+        </div>
+
+        <h3 id="income">And the part nobody mentions</h3>
+
+        <p>Mined bitcoin is generally income when it is mined, at that day’s value, whether
+          or not you sell it. That value becomes your basis, and gains above it are capital
+          gains later. So a miner has a tax event on the way in that a coin buyer simply does
+          not have — the coin buyer’s only event is on exit.</p>
+
+        <p>This cuts against the argument on this page, which is why it is on it. Depreciation
+          is a real advantage; income recognition on every coin mined is a real cost, and the
+          honest version of the comparison carries both. The calculator models both sides after
+          tax, which is the only way the comparison means anything.</p>
+
+        <!-- ============ FAQ ============ -->
+
+        <h2 id="faq">Questions we actually get</h2>
+
+        <div class="faq wm-faq">
+          <details>
+            <summary>Can I deduct the whole cost of my miners in the first year?</summary>
+            <p>Sometimes, through §179 or bonus depreciation or a combination. It depends on
+              whether the activity is a trade or business, whether the machines were placed in
+              service that year, how much taxable business income you have, and the current
+              percentages. Any of those can reduce a first-year deduction to a fraction of what
+              was expected, or to nothing.</p>
+          </details>
+          <details>
+            <summary>Does hosting my machines with you change the tax treatment?</summary>
+            <p>You still own the equipment, which is the fact the depreciation rules turn on.
+              What hosting can affect is whether your participation is material or passive, and
+              that affects how losses can be used. It is a real question and it is one for your
+              accountant, not for us.</p>
+          </details>
+          <details>
+            <summary>Is buying miners better than buying bitcoin?</summary>
+            <p>It depends on your power price, your view on difficulty growth, your holding
+              period and your tax position. Mining tends to win with genuinely cheap power and a
+              rising price; simply holding tends to win with ordinary power and a flat price.
+              <a href="./calculator.html?machineCount=10&amp;taxAdjustment=1">Run both</a> with
+              your own numbers rather than trusting ours.</p>
+          </details>
+          <details>
+            <summary>I am not a US taxpayer. Does any of this apply?</summary>
+            <p>The specifics do not. Most jurisdictions have some form of capital allowance for
+              business equipment, but the rates, the timing and the conditions are different
+              everywhere. Our sites are planned in Canada and Nigeria as well as the United
+              States, and we do not publish guidance for any of them.</p>
+          </details>
+          <details>
+            <summary>When are the placeholder figures on this page going to be filled in?</summary>
+            <p>When a professional has confirmed them against the current year. The numbers move
+              annually and a stale figure on a page like this is worse than a visible gap, so
+              they stay as placeholders until somebody qualified signs off.</p>
+          </details>
+        </div>
+
+        <div class="wm-next">
+          <h2>Where to go next</h2>
+          <div class="wm-next-links">
+            <a class="btn btn--primary" href="./hardware.html">See the machines</a>
+            <a class="btn btn--ghost" href="./hosting.html">See where they would run</a>
+            <a class="btn btn--ghost" href="./blog.html">Notes and analysis</a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- The rail. Generated from site/posts/ by build-blog.js, so it cannot list a post that
+           does not exist or miss one that does. Marked <aside> because it is not part of the
+           argument: a screen reader can skip it, and a crawler can tell it from the body. -->
+      <aside class="wm-rail" aria-label="Recent notes">
+        <!-- notesrail:begin -->
+        <div class="wm-rail-head">Notes</div>
+        <a class="wm-rail-item" href="./alberta-grid-queue-is-full-your-gas-is-not-in-it.html">
+          <span class="wm-rail-date">24 August 2026</span>
+          <span class="wm-rail-title">Alberta’s grid queue is full. Your gas is not in it.</span>
+        </a>
+        <a class="wm-rail-item" href="./who-carries-which-risk-in-a-stranded-gas-deal.html">
+          <span class="wm-rail-date">24 August 2026</span>
+          <span class="wm-rail-title">Who carries which risk in a stranded-gas deal</span>
+        </a>
+        <a class="wm-rail-item" href="./difficulty-has-fallen-15-this-year-and-it-cuts-both-ways.html">
+          <span class="wm-rail-date">23 August 2026</span>
+          <span class="wm-rail-title">Difficulty has fallen 15% this year, and it cuts both ways</span>
+        </a>
+        <a class="wm-rail-item" href="./three-questions-before-you-buy-a-miner.html">
+          <span class="wm-rail-date">23 August 2026</span>
+          <span class="wm-rail-title">Three questions before you buy a miner</span>
+        </a>
+        <a class="wm-rail-all" href="./blog.html">All notes</a>
+        <!-- notesrail:end -->
+      </aside>
+      </div>
+      <!-- ===== /WHY BODY ===== -->
+    </div>
+  </section>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <a href="./hosting.html">Hosting &amp; colocation</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js?v=174e6fdc"></script>
+<script src="./cart.js?v=174e6fdc"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the gas field =====
+/* ===== PROTON MINING — the gas field =====
    Stranded energy combusting and rising, drawn bottom to top:
 
      source line   flare, landfill, curtailed power — energy with no customer
@@ -8,7 +8,7 @@
    same density and the same brightness: the home hero, each page header, and
    the canvas behind each engineering drawing. portal/gas-field.js is the same
    animation again for the producer sign-in, sized to a viewport instead of to
-   an element. A producer arriving from ionmininggroup.com sees one substance
+   an element. A producer arriving from protonminingco.com sees one substance
    moving one way on every screen, because it is one piece of code.
 
    WHAT USED TO BE HERE. A third part: a lattice across the top, where hashrate

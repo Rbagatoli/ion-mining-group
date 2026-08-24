@@ -345,7 +345,7 @@ ok(cartSrc.indexOf('DEPOSIT_RATE') >= 0 && ckSrc.indexOf('depositRate') >= 0,
        'missing name="' + n + '"');
 });
 ok(html.indexOf('id="ckAddr" hidden') >= 0,
-   'with the address hidden until somewhere other than an Ion site is picked');
+   'with the address hidden until somewhere other than an Proton site is picked');
 
 /* ---- placing the order with the service ---- */
 
@@ -443,7 +443,19 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
     var b = ckSrc.indexOf('/* Deposit unless they asked');
     ok(a >= 0 && b > a, 'the payload builder can be located');
     if (a < 0) return;
-    var body = ckSrc.slice(a, b);
+    /* COMMENTS STRIPPED BEFORE THE SCAN. The rule is about what the payload SENDS, and the
+       words below are ordinary English that any honest explanation of the rule will use: a
+       comment saying "the browser never sends a price" failed the check for the word "price".
+
+       That is not a hypothetical tidy-up. It happened the moment somebody documented why the
+       destination carries a site id and not a power rate, and the suite reported a price in the
+       payload of a function that has never contained one. A test that punishes explaining
+       itself gets the explanations deleted, which is the opposite of what it is for — and it
+       is the same trap portal-frontend.test.js records for gas-field.js, where the header names
+       the very things the file is asserted not to touch. */
+    var body = ckSrc.slice(a, b)
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/\/\/[^\n]*/g, ' ');
     ok(body.indexOf('model: l.model') >= 0 && body.indexOf('qty: l.qty') >= 0,
        'the payload carries the model and the count');
     ['usd', 'each', 'deposit', 'balance', 'total', 'price'].forEach(function (k) {
@@ -464,7 +476,7 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
     var body = ckSrc.slice(a, ckSrc.indexOf('function init()', a));
     ok(body.indexOf('was not placed') >= 0,
        'and says the order was not placed rather than implying it was');
-    ok(body.indexOf('hosting@ionmininggroup.com') >= 0,
+    ok(body.indexOf('hosting@protonminingco.com') >= 0,
        'and names an address to use instead');
     /* Named, never opened. A checkout that pops a mail window instead of
        taking payment is the exact behaviour this page was rebuilt to stop. */
@@ -553,7 +565,9 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
 ['index.html', 'hosting.html', 'energy.html', 'hardware.html', 'calculator.html',
  'contact.html', 'privacy.html', '404.html', 'cart.html'].forEach(function (f) {
     var t = fs.readFileSync(S + f, 'utf8');
-    ok(t.indexOf('<script src="./cart.js"></script>') >= 0,
+    /* Version-tolerant: local assets now carry ?v=<hash> so a browser cannot serve a stale
+       copy. What matters here is that the page loads the cart at all. */
+    ok(/<script src="\.\/cart\.js(\?v=[0-9a-f]+)?"><\/script>/.test(t),
        f + ' loads the cart, so its nav can show the order', 'no cart.js');
     ok(t.indexOf('id="navCart"') >= 0, '  and carries the badge', 'no navCart');
 });
@@ -571,7 +585,11 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
        comment hundreds of lines above where it is actually loaded, and matching
        that made this assertion compare a comment against a script tag. */
     var t = fs.readFileSync(S + 'cart.html', 'utf8');
-    function at(f) { return t.indexOf('<script src="./' + f + '"></script>'); }
+    /* Tolerant of the ?v=<hash> local assets now carry; the question is the ORDER. */
+    /* Version stripped once, then the literal lookup below is unchanged. Local assets carry
+       ?v=<hash> (tools/build-asset-stamp.js) and the question here is load ORDER. */
+    var plain = t.replace(/\?v=[0-9a-f]+/g, '');
+    function at(f) { return plain.indexOf('<script src="./' + f + '"></script>'); }
     var db = at('miner-db.js'), pl = at('price-list.js'),
         cart = at('cart.js'), ck = at('checkout.js');
     ok(db >= 0 && pl >= 0 && cart >= 0 && ck >= 0,

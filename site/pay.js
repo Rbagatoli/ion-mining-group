@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the payment page =====
+/* ===== PROTON MINING — the payment page =====
 
    Asks the orders service to raise an invoice, shows what to send and where, and
    watches for it to settle.
@@ -358,7 +358,7 @@
             var missing = BankDetails.unfilled();
             warn.textContent = missing.length
                 ? 'These bank details are not filled in yet (' + missing.join(', ') +
-                  '). Do not send anything against them — email hosting@ionmininggroup.com ' +
+                  '). Do not send anything against them — email hosting@protonminingco.com ' +
                   'and we will send the real ones.'
                 : '';
             warn.hidden = missing.length === 0;
@@ -396,7 +396,7 @@
             return;
         }
         if (!ordersBase()) {
-            fail('Online payment is not switched on yet. Email hosting@ionmininggroup.com with your reference and we will send instructions.');
+            fail('Online payment is not switched on yet. Email hosting@protonminingco.com with your reference and we will send instructions.');
             return;
         }
         $('payRef').textContent = ref;

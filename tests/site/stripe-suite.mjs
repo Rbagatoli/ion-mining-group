@@ -101,7 +101,7 @@ function kv() {
     };
 }
 
-const ORIGIN = 'https://ionmininggroup.com';
+const ORIGIN = 'https://protonminingco.com';
 const OPS = { Authorization: 'Bearer test-ops' };
 const WEBHOOK_SECRET = 'whsec_test_secret';
 

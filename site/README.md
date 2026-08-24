@@ -1,4 +1,4 @@
-# Ion Mining Group — public website
+# Proton Mining — public website
 
 The company-facing marketing site. Completely separate from the app that lives at the
 repo root — no shared CSS, no dependencies. Six pages plus an error page, one stylesheet,
@@ -37,7 +37,7 @@ site/
   og/             Generated share cards
   robots.txt      Generated
   sitemap.xml     Generated
-  favicon.svg     Ion mark, matching manifest.json
+  favicon.svg     Proton mark, matching manifest.json
 ```
 
 ## Preview locally
@@ -62,7 +62,7 @@ Every unverified fact is wrapped in `<span class="ph">[LIKE THIS]</span>` and re
 
 | Placeholder | What it needs |
 |---|---|
-| `[REGISTERED ENTITY NAME]` | Legal entity, e.g. "Ion Mining Group LLC" |
+| `[REGISTERED ENTITY NAME]` | Legal entity, e.g. "Proton Mining LLC" |
 | `[CITY, JURISDICTION]` | Where the entity is registered |
 
 ### `index.html`
@@ -108,9 +108,9 @@ response-time commitment.
 
 Three addresses are referenced throughout and **need to exist before launch**:
 
-- `hosting@ionmininggroup.com`
-- `energy@ionmininggroup.com`
-- `hello@ionmininggroup.com`
+- `hosting@protonminingco.com`
+- `energy@protonminingco.com`
+- `hello@protonminingco.com`
 
 They are hardcoded in the HTML and in the `routes` map at the top of the topic handler in
 `site.js`. If you use different addresses, update both.
@@ -129,21 +129,21 @@ to it. Keep the mailto path as the no-JS fallback.
 ## Deployment
 
 The repo publishes to GitHub Pages from the root, so this would land at
-`https://<user>.github.io/ion-mining-group/site/` — except that it does not, yet.
+`https://<user>.github.io/proton-mining/site/` — except that it does not, yet.
 
 **[`_config.yml`](../_config.yml) excludes `site/` from the build**, deliberately, until the
 placeholders are filled and the canonicals point somewhere real. Publishing is deleting the
 `- site/` line. Everything below describes the state after that.
 
 **The `<link rel="canonical">` and `og:url` tags on all five pages point at
-`https://ionmininggroup.com/`.** That is correct once the custom domain is attached and
+`https://protonminingco.com/`.** That is correct once the custom domain is attached and
 serving this directory, and wrong until then — pointing search engines at a URL that does
 not serve the page. Either attach the domain before announcing the site, or update those
 tags to the github.io path in the meantime.
 
 Two options for the custom domain:
 
-1. **Subdirectory** — point `ionmininggroup.com` at the Pages site and link `/site/`.
+1. **Subdirectory** — point `protonminingco.com` at the Pages site and link `/site/`.
    Simple, but the app is then the thing at the apex, which is backwards for a public site.
 2. **Marketing site at the apex** (recommended once the copy is final) — move these files
    to the repo root and relocate the app to `/app/`. That touches the nav links in
@@ -229,7 +229,7 @@ Per-page differences it handles: which item gets `.active`, and each page's own 
 the result as a quote request. Hosting was bring-your-own — "send us the machine list" — which loses
 the customer who has decided to mine but owns nothing yet.
 
-**It is not a checkout, and that is a business fact rather than a missing feature.** Ion brokers
+**It is not a checkout, and that is a business fact rather than a missing feature.** Proton brokers
 rather than holds stock, so price and delivery are confirmed against a distributor per order. Taking
 money at the moment someone clicks would be promising something not yet sourced. An order builder
 that produces a quote is the same conversion step without that exposure. Cart persistence, payment
@@ -343,7 +343,7 @@ pattern to copy.
 used to live in the DOM of `hardware.html`, so picking eight machines and then following a link threw
 the whole order away.
 
-**It stops at a deposit, and does not take money.** Ion sources per order rather than holding stock,
+**It stops at a deposit, and does not take money.** Proton sources per order rather than holding stock,
 so price and lead time are confirmed against a distributor per order. The checkout produces an order
 and says, in as many words, that nothing is charged on the page — you send it, we quote it, the
 deposit reserves it, the balance falls due before shipping. Card rails, BNPL, refunds and tax
@@ -425,8 +425,8 @@ the order is emptied.
 
 ### Where the machines go
 
-The destination is the point of the checkout: an Ion facility, the customer's own site, or a
-third-party facility. Picking anything but Ion reveals the delivery address, and `required` is added
+The destination is the point of the checkout: an Proton facility, the customer's own site, or a
+third-party facility. Picking anything but Proton reveals the delivery address, and `required` is added
 and removed with it — a hidden required field blocks submission with a validation message pointing at
 something nobody can see. The page says plainly that ASICs arrive as palletised freight and need
 somebody able to receive them, and that cross-border orders carry duty and clearance.
@@ -607,7 +607,7 @@ address and a card button together invites paying twice, and only one of those r
 ### Cards are capped to the deposit, in the Worker
 
 ~2.9% is about **$381 on a $13,140 deposit** and **$1,525 on a $52,560 order paid in full**, and the
-whole of it stays chargeback-exposed after machines have shipped to a facility Ion does not control.
+whole of it stays chargeback-exposed after machines have shipped to a facility Proton does not control.
 So cards take the deposit; the balance comes by wire or bitcoin at no fee.
 
 **The cap lives in `METHODS` in the Worker, not in the page that hides the button.** A rail the

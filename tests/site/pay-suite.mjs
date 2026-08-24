@@ -103,7 +103,7 @@ function kv() {
     };
 }
 
-const ORIGIN = 'https://ionmininggroup.com';
+const ORIGIN = 'https://protonminingco.com';
 const OPS = { Authorization: 'Bearer test-ops-secret' };
 
 async function call(env, method, urlPath, body, headers) {

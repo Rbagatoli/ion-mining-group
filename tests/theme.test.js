@@ -8,7 +8,7 @@
 //   - tokens.css does not exist yet
 //   - var(--card-bg) is used at map.html:35 and defined nowhere
 //   - nine tokens are defined and never read, so editing them changes nothing
-//   - the light theme still exists (data-theme, isLightMode, ionMiningTheme)
+//   - the light theme still exists (data-theme, isLightMode, protonMiningTheme)
 //   - 1,866 colour literals are still hardcoded
 //   - radii and shadows are still literal, not tokenised
 //   - four pages still define their own :root
@@ -132,15 +132,15 @@ console.log('\n=== dark only, by choice ===');
     // not a survivor -- so it is exempted by shape (removeItem only), which still fails if
     // anything starts READING or WRITING the key again.
     var themeKey = FILES.filter(function(f2) {
-        if (!/ionMiningTheme/.test(f2.text)) return false;
+        if (!/protonMiningTheme/.test(f2.text)) return false;
         // Split rather than regex: the line-matching pattern needed an escaped newline
         // class, and this reads the same without one.
         var uses = f2.text.split(String.fromCharCode(10)).filter(function(u) {
-            return u.indexOf('ionMiningTheme') >= 0;
+            return u.indexOf('protonMiningTheme') >= 0;
         });
         return uses.some(function(u) { return u.indexOf('removeItem') < 0; });
     }).map(function(f2) { return f2.rel; });
-    eq('nothing reads or writes ionMiningTheme', themeKey.join(', ') || 'none', 'none');
+    eq('nothing reads or writes protonMiningTheme', themeKey.join(', ') || 'none', 'none');
     eq('no prefers-color-scheme', hits(/prefers-color-scheme/).join(', ') || 'none', 'none');
 
     // The theme name was synced to Firestore. It must stop being written before the key retires.
@@ -250,7 +250,7 @@ console.log('\n=== the JS palette mirrors the CSS ===');
     ok('theme.js exists', THEME !== null);
     if (!THEME || !TOKENS) return;
 
-    // IonTheme holds literals rather than reading getComputedStyle: it has to work inside canvas,
+    // ProtonTheme holds literals rather than reading getComputedStyle: it has to work inside canvas,
     // on the globe, and in Node. That means it CAN drift from tokens.css, so a test enforces what
     // the runtime cannot.
     var mod = require(path.join(ROOT, 'theme.js'));
@@ -271,7 +271,7 @@ console.log('\n=== the JS palette mirrors the CSS ===');
         var v = tokenValue(c[1], 0);
         return v === null || String(mod[c[0]]).toLowerCase() !== v.toLowerCase();
     }).map(function(c) { return c[0]; });
-    eq('IonTheme matches tokens.css', drift.join(', ') || 'none', 'none');
+    eq('ProtonTheme matches tokens.css', drift.join(', ') || 'none', 'none');
 })();
 
 // ---- 7. things that must not change -------------------------------------------------------------

@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — hardware catalogue =====
+/* ===== PROTON MINING — hardware catalogue =====
 
    Browse the machines and set quantities. What is chosen goes into cart.js,
    which is shared with the checkout and survives leaving the page — quantities
@@ -6,7 +6,7 @@
    a link threw the whole order away.
 
    NOT a checkout, and that is a business fact rather than a missing feature.
-   Ion sources per order rather than holding stock, so a price and a delivery
+   Proton sources per order rather than holding stock, so a price and a delivery
    date are confirmed against a distributor per order. Taking money at the moment
    someone clicks would be promising something not yet sourced. cart.html carries
    the order to a deposit and stops there.
@@ -268,6 +268,53 @@
         });
     }
 
+    /* Where it goes and what the power costs, appended to the pasted order.
+     *
+     * THIS BLOCK IS WHY THE ORDER HAS TO RE-RENDER ON A TERM CHANGE. Until now the copyable
+     * summary was hardware only, so nothing in it could go stale; the moment it names a rate and
+     * a total it has to be rebuilt whenever either moves. The checkout has printed the same
+     * lines for a while — the catalogue page not printing them meant a customer who copied
+     * their order here and mailed it to their finance team sent a fleet with no destination.
+     *
+     * Same order and wording as the checkout's block on purpose. Two pastes of the same order
+     * that read differently is how a finance team ends up asking which one is real. */
+    function orderExtras(t) {
+        if (typeof Facilities === 'undefined') return '';
+        var site = Facilities.chosen();
+        if (!site) return '';
+
+        var out = ['Destination: ' + site.name + ', ' + site.region];
+        var term = (typeof Prepay !== 'undefined') ? Prepay.chosen() : null;
+
+        /* THE LIST RATE IS LABELLED AS ONE once a term is discounting it. Printing "6.8c/kWh"
+           over an electricity line worked out at 5.44c reads as a contradiction rather than as
+           a before and after. */
+        out.push('  power: ' + Facilities.powerLabel(site) +
+                 (term ? ' list (indicative)' : ' (indicative)'));
+        out.push('  status: ' + site.status);
+
+        if (term) {
+            var power = Prepay.totalFor(site, term, t.kw);
+            out.push('  electricity: ' + term.label + ' at ' + Prepay.rateLabel(site, term) +
+                     ' (indicative)');
+            if (power !== null) {
+                out.push('  electricity total: ' + money(power) +
+                         ', due when the hosting agreement is signed');
+                /* Stated the same way it is on screen. A pasted order that adds the two up
+                   without saying they are paid apart is the one place the breakdown could still
+                   mislead somebody. */
+                out.push('  both together: ' + money(t.usd + power) +
+                         ' (not a single payment)');
+            }
+        }
+
+        if (Facilities.isFull(site)) {
+            out.push('  NOTE: this site is fully occupied. Machines ordered now hold a place ' +
+                     'on its waitlist; a date is confirmed before shipping.');
+        }
+        return out.join('\n') + '\n';
+    }
+
     /* ---------- the order ---------- */
 
     function renderOrder() {
@@ -283,6 +330,8 @@
         $('hwPower').textContent = empty ? '—' : dec(t.kw, 2) + ' kW';
         /* Indicative, and only for the lines that have a price on file. */
         $('hwCost').textContent = empty ? '—' : money(t.usd);
+
+        renderItemised(t);
 
         var note = $('hwUnpriced');
         if (note) {
@@ -303,6 +352,7 @@
             'Total: ' + t.units + ' machines, ' + dec(t.th, 0) + ' TH/s, ' + dec(t.kw, 2) + ' kW\n' +
             'Indicative hardware: ' + money(t.usd) +
             (t.unpriced ? ' (excludes ' + t.unpriced + ' machines priced on request)' : '') + '\n' +
+            orderExtras(t) +
             'Prices indicative as of ' + (typeof PriceList !== 'undefined' ? PriceList.ASOF : '') +
             ', confirmed on quote.';
 
@@ -394,8 +444,13 @@
         /* One subscription drives everything: the totals, and the inputs
            themselves, so a change made in another tab or on the checkout lands
            here too. */
-        Cart.onChange(function () { syncInputs(); renderOrder(); });
+        /* The prepaid totals are priced against the draw in the order, so they have to move
+           when the order does — otherwise a customer adds three machines and the ladder is
+           still quoting the sum for the two they had a moment ago. */
+        Cart.onChange(function () { syncInputs(); renderOrder(); renderPrepay(); });
 
+        renderFacility();
+        wirePrepay();
         wireCopy();
         syncInputs();
         renderOrder();
@@ -407,8 +462,215 @@
         if (elecField) elecField.addEventListener('input', function () {
             buildCatalogue();
             syncInputs();
+            /* Emptying the box is how a customer asks for the site rate back — the alternative
+               was a "reset" link, which is a second control for something the field can express
+               on its own. */
+            if (elecField.value === '') {
+                autoElec = null;
+                renderFacility();
+            } else {
+                var note = $('hwEconNote');
+                if (note && autoElec !== null && elecField.value !== autoElec) {
+                    renderFacility();
+                }
+            }
         });
         fetchMarket();
+    }
+
+    /* ---- the site these machines are being bought for ----
+
+       Arrives as ?site= from a facility card and is remembered from there on, so the customer
+       sees the same site named on the catalogue, in the cart and on the order. The three figures
+       come from facilities.js rather than being written here: the number on this page and the
+       number on the card have to be the same number, not two copies that agree today.
+
+       SILENT WHEN NOTHING WAS CHOSEN. Most people reach the catalogue from the nav without going
+       through the picker, and an empty box reading "no site selected" above a shop is noise that
+       makes the page look broken. */
+    function renderFacility() {
+        var slot = document.getElementById('hwFacility');
+        if (!slot || typeof Facilities === 'undefined') return;
+        var site = Facilities.chosen();
+        /* The chosen term goes in, so the power price on the banner is the one the customer
+           will actually pay rather than the list rate. */
+        var term = (typeof Prepay !== 'undefined') ? Prepay.chosen() : null;
+        slot.innerHTML = site ? Facilities.bannerHtml(site, 'hardware', term) : '';
+        renderPrepay();
+        fillPowerPrice(site, term);
+
+        /* AND THE ORDER ITSELF. Choosing a term is not a note pinned to the order, it changes
+           what the order costs: the electricity line, the sum beside it and the pasted summary
+           are all priced against the term. Re-rendering the ladder and the banner but not the
+           box they sit next to left the order quoting the term before last — the same class of
+           bug as the banner keeping a stale rate, one box further down the page. */
+        renderOrder();
+    }
+
+    /* The two costs, named separately. Built by prepay.js so the catalogue and the checkout
+       cannot end up quoting different figures for the same order. */
+    function renderItemised(t) {
+        var slot = $('hwItemised');
+        if (!slot || typeof Prepay === 'undefined' || typeof Facilities === 'undefined') return;
+        if (!t || !t.units) { slot.innerHTML = ''; return; }
+        slot.innerHTML = Prepay.itemisedHtml({
+            site: Facilities.chosen(),
+            term: Prepay.chosen(),
+            hardwareUsd: t.usd,
+            kw: t.kw,
+            units: t.units,
+            depositRate: t.depositRate
+        });
+    }
+
+    /* ---- the power price fills itself in ----
+
+       This field decides the last two columns of the table, and until now it started empty with
+       a note explaining that power is "the one figure only you know". That was true of somebody
+       who walked in off the catalogue. It is not true of somebody who has just chosen a site and
+       a prepaid term: at that point we know their rate exactly, and asking them to look it up
+       and retype it is asking them to copy a number off the banner directly above.
+
+       THE CUSTOMER STILL OWNS THE FIELD. `autoElec` remembers what was last written on their
+       behalf. If the value in the box is still that, it is ours and may be updated when the term
+       changes; the moment it differs, they have typed something and it is never touched again.
+       A field that fights back while you are typing in it is worse than one that starts empty. */
+    var autoElec = null;
+
+    function fillPowerPrice(site, term) {
+        var f = $('hwElec');
+        var note = $('hwEconNote');
+        if (!f) return;
+
+        if (!site || typeof Prepay === 'undefined') {
+            /* No site: leave whatever is there. Clearing it would throw away a figure the
+               visitor typed before they went to pick one. */
+            return;
+        }
+
+        var cents = term ? Prepay.rateFor(site, term) : site.powerCents;
+        if (typeof cents !== 'number' || !isFinite(cents)) return;
+        var usd = Math.round(cents / 100 * 1e6) / 1e6;
+        var next = String(usd);
+
+        var mine = (f.value === '' || (autoElec !== null && f.value === autoElec));
+        if (mine && f.value !== next) {
+            f.value = next;
+            autoElec = next;
+            /* Setting .value does not fire `input`, so the table has to be told. */
+            if (typeof buildCatalogue === 'function') { buildCatalogue(); syncInputs(); }
+        } else if (mine) {
+            autoElec = next;
+        }
+
+        if (note) {
+            note.innerHTML = mine
+                ? 'Filled in from <strong>' + esc(site.name) + '</strong>' +
+                  (term ? ' on the ' + esc(term.label) + ' rate' : '') +
+                  '. Change it to model a different price &mdash; nothing here is locked, and ' +
+                  'the last two columns follow whatever is in the box.'
+                : 'Using the price you entered rather than ' + esc(site.name) +
+                  '&rsquo;s. Clear the box to go back to the site rate.';
+        }
+    }
+
+    /* ---- prepaid electricity, priced for this site ----
+
+       THE LADDER IS THE SAME EVERYWHERE; THE RATES ARE NOT. One commercial policy — 4%, 12%,
+       30% — applied to whichever site the customer chose on the way in. That is why this lives
+       here rather than on the hosting page: there, with no site chosen, every figure would have
+       to be a "from" price. Here it is the actual number for the actual site.
+
+       Nothing is rendered at all without a site. A discount ladder floating above a catalogue
+       with nothing to apply it to is a decoration that invites a customer to work out which of
+       five rates it means. */
+    function renderPrepay() {
+        var slot = document.getElementById('hwPrepay');
+        if (!slot || typeof Prepay === 'undefined' || typeof Facilities === 'undefined') return;
+
+        var site = Facilities.chosen();
+        if (!site) { slot.innerHTML = ''; return; }
+
+        var picked = Prepay.chosen();
+        /* The draw the customer is actually buying, so the prepaid sum is THEIR number rather
+           than an example. Zero until there is something in the order, in which case only the
+           rate is shown — a total of nothing is not a useful figure. */
+        var kw = 0;
+        try { kw = (Cart.totals() || {}).kw || 0; } catch (e) { kw = 0; }
+
+        var cards = Prepay.all().map(function (t) {
+            var on = picked && picked.id === t.id;
+            var total = kw > 0 ? Prepay.totalFor(site, t, kw) : null;
+            var saved = kw > 0 ? Prepay.savingFor(site, t, kw) : null;
+
+            return '<button type="button" class="pp-tier pp-tier--pick' +
+                    /* The flag on the term, not a duration read off it. See TERMS. */
+                    (on ? ' is-on' : '') + (t.featured ? ' pp-tier--best' : '') +
+                    '" data-term="' + esc(t.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                '<span class="pp-head">' + esc(t.label) + '</span>' +
+                '<span class="pp-body">' +
+                    '<span class="pp-pct">' + esc(Prepay.pctLabel(t)) + ' off &middot; ' +
+                        esc(t.note) + '</span>' +
+                    '<span class="pp-rate">' + esc(Prepay.rateLabel(site, t)) + '</span>' +
+                    '<span class="pp-from">at ' + esc(site.name) + '</span>' +
+                    (total !== null
+                        ? '<span class="pp-total">' + money(total) +
+                          ' up front<br><span class="pp-saved">saves ' + money(saved) +
+                          ' over ' + t.months + ' months at today&rsquo;s rate</span></span>'
+                        : '<span class="pp-total pp-total--empty">Add machines to price the term</span>') +
+                '</span>' +
+                '<span class="pp-pick">' + (on ? 'Selected' : 'Choose this term') + '</span>' +
+            '</button>';
+        }).join('');
+
+        slot.innerHTML =
+            '<div class="pp-sec">' +
+              '<div class="pp-sec-head">' +
+                '<div>' +
+                  '<div class="pp-sec-eyebrow">Prepaid electricity</div>' +
+                  '<div class="pp-sec-title">Pay for power up front, pay less for it</div>' +
+                '</div>' +
+                (picked
+                    ? '<button type="button" class="pp-clear">Pay monthly instead</button>'
+                    : '') +
+              '</div>' +
+              '<div class="pp-grid">' + cards + '</div>' +
+              '<p class="pp-note">' + esc(Prepay.INDICATIVE_NOTE) + '</p>' +
+            '</div>';
+    }
+
+    function money(v) {
+        if (typeof v !== 'number' || !isFinite(v)) return '&mdash;';
+        return '$' + Math.round(v).toLocaleString('en-US');
+    }
+
+    function esc(v) {
+        return String(v === undefined || v === null ? '' : v)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function wirePrepay() {
+        var slot = document.getElementById('hwPrepay');
+        if (!slot) return;
+        slot.addEventListener('click', function (e) {
+            /* renderFacility(), NOT renderPrepay(). Choosing a term changes three things and
+               the ladder is only one of them: the banner's power price is now that term's rate,
+               and the box that drives the last two columns of the table has to follow it too.
+               Re-rendering just the tiers left both of those showing the previous term — the
+               ladder said one number and the banner above it said another. */
+            var clear = e.target.closest && e.target.closest('.pp-clear');
+            if (clear) { Prepay.clearChoice(); renderFacility(); return; }
+            var b = e.target.closest && e.target.closest('.pp-tier--pick');
+            if (!b) return;
+            var id = b.getAttribute('data-term');
+            /* Clicking the term already selected turns it OFF. Otherwise a customer who changes
+               their mind about prepaying at all has no way back to paying monthly except by
+               finding the small button, and the ladder becomes a one-way door. */
+            var cur = Prepay.chosen();
+            Prepay.choose(cur && cur.id === id ? null : id);
+            renderFacility();
+        });
     }
 
     if (document.readyState === 'loading') {

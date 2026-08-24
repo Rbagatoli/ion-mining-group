@@ -101,7 +101,7 @@ const sig = await sign(SECRET, 'DEV-PW1', payload, t);
 
 const ingest = await fetch(B + '/telemetry/readings', {
     method: 'POST', body: payload,
-    headers: { 'Content-Type': 'application/json', 'X-Ion-Device': 'DEV-PW1', 'X-Ion-Signature': sig }
+    headers: { 'Content-Type': 'application/json', 'X-Proton-Device': 'DEV-PW1', 'X-Proton-Signature': sig }
 });
 const ing = await ingest.json();
 eq('all 25 readings accepted', (ing.accepted || []).length, 25);
@@ -109,7 +109,7 @@ eq('all 25 readings accepted', (ing.accepted || []).length, 25);
 // A meter retries. It must be a no-op, not a double count.
 const again = await fetch(B + '/telemetry/readings', {
     method: 'POST', body: payload,
-    headers: { 'Content-Type': 'application/json', 'X-Ion-Device': 'DEV-PW1', 'X-Ion-Signature': sig }
+    headers: { 'Content-Type': 'application/json', 'X-Proton-Device': 'DEV-PW1', 'X-Proton-Signature': sig }
 });
 const ag = await again.json();
 eq('a full retry is all duplicates', (ag.duplicate || []).length, 25);
@@ -117,7 +117,7 @@ eq('and accepts nothing new', (ag.accepted || []).length, 0);
 
 // An unsigned post, and one signed for another device.
 const unsigned = await fetch(B + '/telemetry/readings', { method: 'POST', body: payload,
-    headers: { 'Content-Type': 'application/json', 'X-Ion-Device': 'DEV-PW1' } });
+    headers: { 'Content-Type': 'application/json', 'X-Proton-Device': 'DEV-PW1' } });
 eq('an unsigned post is refused', unsigned.status, 401);
 
 console.log('\n=== ops closes and issues the period ===');

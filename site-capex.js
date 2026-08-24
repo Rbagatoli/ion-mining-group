@@ -33,7 +33,7 @@ var SiteCapex = (function() {
     // ---- Rates -------------------------------------------------------------------------
     // All editable. These are ASSUMPTIONS, and the UI must label them as such.
     var DEFAULT_RATES = {
-        // Ion's own Alberta figure, kept WHOLE and unsplit. Its provenance is documented in
+        // Proton's own Alberta figure, kept WHOLE and unsplit. Its provenance is documented in
         // map-sourcing.js, and critically it has never included a generator: three of the four
         // quoted validation sites are generator_ownership 'producer'. It is the mining-side
         // buildout — pad, containers, transformer and switchgear for the mining load, comms,
@@ -129,7 +129,7 @@ var SiteCapex = (function() {
 
     var DEFAULT_SETTINGS = {
         // Who owns the generator when the record does not say. 'producer' for raw resource is
-        // Ion's actual deal structure and the reason $450/kW never included a genset; 'client'
+        // Proton's actual deal structure and the reason $450/kW never included a genset; 'client'
         // from constructed onward, because acquiring a plant means acquiring its generator.
         ownGenerationRawResource: 'producer',
         ownGenerationBuilt: 'client',
@@ -215,10 +215,10 @@ var SiteCapex = (function() {
         return 0;
     }
 
-    // Who owns the generation. This gate is what keeps the flare economics honest: Ion's real
+    // Who owns the generation. This gate is what keeps the flare economics honest: Proton's real
     // Alberta deals price at ~$450/kW with the PRODUCER owning the genset, its cost sitting in
     // the $/kWh rather than in capital. Charging generation unconditionally would push a 2 MW
-    // flare development from ~$900K to ~$3.1M and assert that Ion's actual deals are impossible.
+    // flare development from ~$900K to ~$3.1M and assert that Proton's actual deals are impossible.
     function generationOwnership(rec, stage) {
         var v = pick(rec, 'generator_ownership', 'generatorOwnership');
         if (v) return String(v).trim().toLowerCase();
@@ -329,7 +329,7 @@ var SiteCapex = (function() {
         //
         // If the producer owns and operates the generator, they own its grid tie and its startup
         // too. Charging those to the miner produced $740/kW for a producer-owned flare against
-        // Ion's real quoted ~$450/kW site cost, which would have asserted that the company's
+        // Proton's real quoted ~$450/kW site cost, which would have asserted that the company's
         // actual deals are mispriced. The gate covers the whole generation asset, not just the
         // engine.
         var genOwnedByOther = (own === 'producer' || own === 'operator');

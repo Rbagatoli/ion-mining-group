@@ -1,8 +1,8 @@
-// ===== ION MINING GROUP — Fleet Data Module =====
+// ===== PROTON MINING — Fleet Data Module =====
 
 var FleetData = (function() {
-    var FLEET_KEY = 'ionMiningFleet';
-    var SETTINGS_KEY = 'ionMiningSettings';
+    var FLEET_KEY = 'protonMiningFleet';
+    var SETTINGS_KEY = 'protonMiningSettings';
 
     function generateId() {
         return 'miner_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -184,7 +184,7 @@ var FleetData = (function() {
             _v: 2,
             pools: [],
             useFleetData: false,
-            strike: { proxyUrl: 'https://ion-strike-proxy.ion-mining.workers.dev', enabled: false, lastSync: null }
+            strike: { proxyUrl: 'https://proton-strike-proxy.proton-mining.workers.dev', enabled: false, lastSync: null }
         };
     }
 

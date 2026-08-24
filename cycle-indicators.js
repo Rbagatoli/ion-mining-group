@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Cycle & Valuation Indicators =====
+// ===== PROTON MINING — Cycle & Valuation Indicators =====
 // Pure math over a price series. No DOM, no network, no globals beyond the export — so this
 // file can be regression-tested directly in node against known historical extremes.
 //

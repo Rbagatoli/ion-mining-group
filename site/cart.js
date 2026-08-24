@@ -1,11 +1,11 @@
-/* ===== ION MINING GROUP — the order, kept between pages =====
+/* ===== PROTON MINING — the order, kept between pages =====
 
    One store, shared by the catalogue and the checkout. Quantities used to live
    in the DOM of hardware.html, which meant choosing eight machines and then
    following a link threw the whole order away.
 
    THIS IS NOT A CHECKOUT AND DOES NOT TAKE MONEY. It carries an order to the
-   point where a deposit is agreed, and stops. Ion sources per order rather than
+   point where a deposit is agreed, and stops. Proton sources per order rather than
    holding stock, so the price that binds is the one on the quote — see
    price-list.js, which is dated and indicative and says so on the page. Charging
    a card against the list as it stands would be committing to numbers that span

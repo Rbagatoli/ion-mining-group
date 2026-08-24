@@ -1,4 +1,4 @@
-// Ion Mining Group — Orders (Cloudflare Worker)
+// Proton Mining — Orders (Cloudflare Worker)
 //
 // Takes a hardware order from the public site, prices it SERVER-SIDE, and holds
 // it through a lifecycle that ends in machines arriving somewhere.
@@ -16,13 +16,14 @@
 // purchase order is a person, and the lifecycle says so rather than pretending
 // otherwise.
 
-import { CATALOGUE, DEPOSIT_RATE, ASOF } from './catalogue.js';
+import { CATALOGUE, DEPOSIT_RATE, ASOF, SITE_IDS, SITE_OPEN, PREPAY_TERMS }
+    from './catalogue.js';
 import * as Strike from './strike.js';
 import * as Stripe from './stripe.js';
 
 var ALLOWED_ORIGINS = [
-    'https://ionmininggroup.com',
-    'https://www.ionmininggroup.com',
+    'https://protonminingco.com',
+    'https://www.protonminingco.com',
     'https://rbagatoli.github.io',
     'http://localhost',
     'http://127.0.0.1'
@@ -170,6 +171,43 @@ function readDestination(raw) {
     var kind = text(raw.kind, 12);
     if (kind !== 'ion' && kind !== 'own' && kind !== 'third') kind = 'ion';
     var d = { kind: kind };
+
+    /* WHICH Proton site. Checked against the Worker's own list, never taken on the browser's word:
+       this is a shipping instruction, and an unrecognised id here means a pallet of ASICs with
+       nowhere to go. Absent is fine — most orders arrive without one and ops assigns a site
+       — but a value that is present and wrong is refused rather than dropped, because silently
+       discarding it would let a customer pay believing they had chosen Texas. */
+    if (kind === 'ion' && raw.site_id !== undefined && raw.site_id !== null && raw.site_id !== '') {
+        var sid = text(raw.site_id, 32);
+        if (SITE_IDS.indexOf(sid) < 0) return { error: 'unknown site' };
+        d.site_id = sid;
+
+        /* FULL IS NOT A REFUSAL. Every site is currently at capacity, and refusing the order
+           would turn somebody trying to buy hardware into somebody who cannot. They are buying
+           machines; the site is a preference, and a full one means a place on that site's
+           waitlist rather than a truck next week.
+
+           The flag is set HERE, from the Worker's own list, and never from anything the browser
+           sent — same rule as the prices. Ops needs to know which orders are waiting on space
+           before they are shipped, and a customer-supplied boolean is not that. */
+        d.waitlisted = SITE_OPEN.indexOf(sid) < 0;
+
+        /* The prepaid electricity term, if one was chosen. Checked against the Worker's own list
+           for the same reason the site is: this is a commitment of years and five figures, and
+           the browser gets to NAME a term, never to describe one. What '3y' means — how long
+           and how much off — is Proton's to say.
+
+           Absent is a real answer: it means paying monthly, which is what a customer who did not
+           choose has chosen. A value that is present and unrecognised is refused rather than
+           dropped, because silently ignoring it would let somebody pay believing they had locked
+           a rate. */
+        if (raw.prepay_term !== undefined && raw.prepay_term !== null && raw.prepay_term !== '') {
+            var pt = text(raw.prepay_term, 8);
+            if (PREPAY_TERMS.indexOf(pt) < 0) return { error: 'unknown prepay term' };
+            d.prepay_term = pt;
+        }
+    }
+
     if (kind !== 'ion') {
         d.facility = text(raw.facility);
         d.attention = text(raw.attention);

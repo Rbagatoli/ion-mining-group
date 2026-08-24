@@ -153,7 +153,7 @@ var vm = require('vm');
     ok(code.indexOf('qrserver') < 0 && payHtml.indexOf('qrserver') < 0,
        'the payment page does not send the address to a QR service');
     var outbound = (code.match(/https?:\/\/[a-z0-9.-]+/gi) || [])
-        .filter(function (u) { return u.indexOf('ionmininggroup.com') < 0; });
+        .filter(function (u) { return u.indexOf('protonminingco.com') < 0; });
     /* localhost is not a third party — it is the dev fallback, and it cannot
        be reached from a public host. Everything else is disallowed, which is
        the check that matters. */
@@ -164,7 +164,7 @@ var vm = require('vm');
     ok(outbound.every(function (u) {
            return u.indexOf('http://localhost') === 0 || u.indexOf('http://127.0.0.1') === 0;
        }),
-       'the only non-Ion host it names is the local dev service', outbound.join(', '));
+       'the only non-Proton host it names is the local dev service', outbound.join(', '));
 })();
 
 /* ---- the dev fallback cannot reach production ---- */

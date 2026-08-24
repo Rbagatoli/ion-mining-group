@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — BTC Price History (shared) =====
+// ===== PROTON MINING — BTC Price History (shared) =====
 // CryptoCompare's keyless min-api was retired (it now answers 401 "API key required").
 // Coinbase Exchange serves the same daily candles with no key, but caps a response at 300
 // candles — so full history is paged once, cached in localStorage, and thereafter only the
@@ -15,7 +15,7 @@ var PriceHistory = (function() {
     var DAY_SECONDS = 86400;
     var CANDLE_PAGE_LIMIT = 300;                      // Coinbase hard cap per response
     var COINBASE_HISTORY_START = Date.UTC(2015, 0, 1) / 1000;
-    var PRICE_CACHE_KEY = 'ionMiningPriceHistory';
+    var PRICE_CACHE_KEY = 'protonMiningPriceHistory';
     var PRICE_CACHE_VERSION = 1;
 
     // Actual halving dates (UTC). Estimating block height as daysSinceGenesis * 144 lagged

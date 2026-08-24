@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Charts Page =====
+// ===== PROTON MINING — Charts Page =====
 
 initNav('charts');
 
@@ -959,7 +959,7 @@ var poolDataCache = {};
 // with no inherent order, and separating them by LUMINANCE rather than by hue means the
 // doughnut stays readable in greyscale and under every form of colour blindness -- which a
 // blue/green/red/purple/pink wheel does not.
-var poolColors = IonTheme.series;
+var poolColors = ProtonTheme.series;
 
 async function loadPoolDominance(timeframe) {
     if (poolDataCache[timeframe]) {
@@ -1075,7 +1075,7 @@ async function loadFeeRateHistory(timeframe) {
 // Keep local snapshots as supplementary data / offline fallback
 function loadFeeHistory() {
     try {
-        var raw = localStorage.getItem('ionMiningFeeHistory');
+        var raw = localStorage.getItem('protonMiningFeeHistory');
         if (!raw) return [];
         return JSON.parse(raw);
     } catch(e) { return []; }
@@ -1088,7 +1088,7 @@ function saveFeeHistory(data) {
         for (var i = 0; i < data.length; i++) {
             if (data[i].timestamp > cutoff) filtered.push(data[i]);
         }
-        localStorage.setItem('ionMiningFeeHistory', JSON.stringify(filtered));
+        localStorage.setItem('protonMiningFeeHistory', JSON.stringify(filtered));
     } catch(e) {}
 }
 

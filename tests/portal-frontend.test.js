@@ -2,7 +2,7 @@
 //
 // These are containment tests. The portal is served from the same origin as the operator app and
 // shares its palette, which makes it very easy for somebody to "helpfully" add shared.js to get
-// the nav, or sync.js to get the sign-in plumbing — and either would put Ion's own fleet, wallet,
+// the nav, or sync.js to get the sign-in plumbing — and either would put Proton's own fleet, wallet,
 // payouts and banking data into a counterparty's browser.
 //
 // So the rule is asserted rather than remembered.
@@ -19,8 +19,37 @@ function eq(label, actual, expected) {
 }
 function ok(label, cond, note) { eq(label + (note ? '  (' + note + ')' : ''), !!cond, true); }
 
-var PAGES = fs.readdirSync(PORTAL).filter(function(f) { return /\.html$/.test(f); });
-var SCRIPTS = fs.readdirSync(PORTAL).filter(function(f) { return /\.js$/.test(f); });
+/* WHAT SHIPS, not what is on this disk.
+//
+// Enumerated from git rather than from readdirSync, because those are different
+// sets and only one of them reaches a counterparty. A scratch file dropped into
+// portal/ during development — a stylesheet preview, a probe — is not a page
+// anyone can load from the deployed site, and enrolling it here produces
+// failures that say "_probe.html does not load firebase", which is true,
+// meaningless, and teaches people that a red suite is normal.
+//
+// The exemption cannot be used to smuggle anything in: the moment such a file is
+// committed it ships, and the moment it ships git lists it and every rule below
+// applies to it. There is no state in which a file is both reachable and
+// exempt. */
+function tracked(ext) {
+    try {
+        var out = require('child_process')
+            .execSync('git ls-files portal', { cwd: ROOT, encoding: 'utf8' });
+        return out.split('\n')
+            .map(function(l) { return l.trim().replace(/^portal\//, ''); })
+            .filter(function(f) { return f && f.indexOf('/') < 0 && ext.test(f); });
+    } catch (e) {
+        // No git (a tarball, a CI image without it). Fall back to the disk and
+        // say so, rather than silently checking nothing.
+        console.log('  NOTE  git unavailable; falling back to the working directory');
+        return fs.readdirSync(PORTAL).filter(function(f) { return ext.test(f); });
+    }
+}
+
+var PAGES = tracked(/\.html$/);
+
+var SCRIPTS = tracked(/\.js$/);
 
 // ---- 1. what must never be loaded ---------------------------------------------------------------
 
@@ -29,13 +58,13 @@ console.log('\n=== the operator app is not shipped to a counterparty ===');
     ok('there are pages to check', PAGES.length > 0, PAGES.join(', '));
 
     var BANNED = [
-        ['sync.js', 'SYNC_KEYS covers Ion fleet, wallet, payouts and banking'],
+        ['sync.js', 'SYNC_KEYS covers Proton fleet, wallet, payouts and banking'],
         ['shared.js', 'builds the operator nav and its auth plumbing'],
         ['firestore-compat', 'the portal never talks to Firestore directly'],
-        ['banking.js', 'Ion accounting'],
-        ['fleet-data.js', 'Ion miners'],
-        ['map-sourcing.js', 'Ion acquisition pipeline'],
-        ['site-model.js', 'Ion prospect records']
+        ['banking.js', 'Proton accounting'],
+        ['fleet-data.js', 'Proton miners'],
+        ['map-sourcing.js', 'Proton acquisition pipeline'],
+        ['site-model.js', 'Proton prospect records']
     ];
 
     PAGES.forEach(function(p) {
@@ -73,8 +102,15 @@ console.log('\n=== what the pages DO load is deliberate and minimal ===');
         // browser has to describe the file that is actually there.) What a
         // counterparty's browser loads is decided deliberately, not by whatever
         // got added.
+        // fleet-chart.js draws the hosting client's daily history. It is on this list on
+        // exactly the same terms as gas-field.js: it renders an SVG from an array it is
+        // handed and touches nothing else — no network, no storage, no reference to any
+        // other module — which is asserted at the bottom of this file rather than taken
+        // on trust. It is also the file that would be most tempting to let fetch its own
+        // data "just for the chart", which is why the assertion exists before anybody tries.
         var ALLOWED = [/firebase-app-compat/, /firebase-auth-compat/, /firebase-config\.js/,
-                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/gas-field\.js/];
+                       /\.\/portal\.js/, /\.\/portal-demo\.js/, /\.\/gas-field\.js/,
+                       /\.\/fleet-chart\.js/];
         var unexpected = srcs.filter(function(s) {
             return !ALLOWED.some(function(re) { return re.test(s); });
         });
@@ -112,7 +148,7 @@ console.log('\n=== an absent value renders as absent, not as zero ===');
 
     // Load it and check the behaviour rather than the source.
     var sandbox = { localStorage: null, location: { hostname: 'localhost', origin: 'http://x' } };
-    var fn = new Function('localStorage', 'location', portalJs + '; return IonPortal;');
+    var fn = new Function('localStorage', 'location', portalJs + '; return ProtonPortal;');
     var P = fn(sandbox.localStorage, sandbox.location);
 
     ok('null quantity says so', /not measured/.test(P.num(null)));
@@ -137,7 +173,7 @@ console.log('\n=== an absent value renders as absent, not as zero ===');
 console.log('\n=== the incomplete-total warning cannot be missed ===');
 (function() {
     var portalJs = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
-    var P = new Function(portalJs + '; return IonPortal;')();
+    var P = new Function(portalJs + '; return ProtonPortal;')();
 
     var partial = P.partialBanner({ total_is_partial: true });
     ok('a partial total produces a banner', partial.length > 0);
@@ -152,7 +188,7 @@ console.log('\n=== the incomplete-total warning cannot be missed ===');
 console.log('\n=== values from the server are escaped ===');
 (function() {
     var portalJs = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
-    var P = new Function(portalJs + '; return IonPortal;')();
+    var P = new Function(portalJs + '; return ProtonPortal;')();
     eq('angle brackets are escaped', P.esc('<script>'), '&lt;script&gt;');
     eq('quotes are escaped', P.esc('a"b'), 'a&quot;b');
     eq('ampersands first, so escaping is not double-applied',
@@ -174,7 +210,7 @@ console.log('\n=== the sample-data preview cannot survive a real backend ===');
                                       "var PORTAL_ENDPOINT = '" + endpoint + "';");
         var store = {};
         var fn = new Function('localStorage', 'location',
-            demoSrc + ';' + patched + '; return IonPortal;');
+            demoSrc + ';' + patched + '; return ProtonPortal;');
         return fn(
             { getItem: function(k) { return store[k] || null; },
               setItem: function(k, v) { store[k] = v; },
@@ -199,7 +235,7 @@ console.log('\n=== the sample-data preview cannot survive a real backend ===');
     eq('and knows it', other.demoKind(), 'hosting');
 
     // THE ASSERTION THIS SECTION EXISTS FOR.
-    var deployed = build('https://ion-portal.example.workers.dev');
+    var deployed = build('https://proton-portal.example.workers.dev');
     ok('once a backend is configured the preview is gone', !deployed.demoAvailable(),
        'the fence is the endpoint, not a flag somebody has to remember');
     ok('and it cannot be entered',
@@ -211,7 +247,7 @@ console.log('\n=== and it says so on every screen ===');
     var demoSrc = fs.readFileSync(path.join(PORTAL, 'portal-demo.js'), 'utf8');
     var mainSrc = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
     var store = {};
-    var P = new Function('localStorage', 'location', demoSrc + ';' + mainSrc + '; return IonPortal;')(
+    var P = new Function('localStorage', 'location', demoSrc + ';' + mainSrc + '; return ProtonPortal;')(
         { getItem: function(k) { return store[k] || null; },
           setItem: function(k, v) { store[k] = v; }, removeItem: function(k) { delete store[k]; } },
         { hostname: 'localhost', origin: 'http://localhost' });
@@ -312,7 +348,7 @@ console.log('\n=== the sign-in backdrop stays inert ===');
     // ledger tests both record.
     var gf = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB',
-     'firebase', 'sync.js', 'shared.js', 'IonPortal', 'PORTAL_ENDPOINT'].forEach(function (bad) {
+     'firebase', 'sync.js', 'shared.js', 'ProtonPortal', 'PORTAL_ENDPOINT'].forEach(function (bad) {
         ok('the gas field does not reference ' + bad, gf.indexOf(bad) < 0);
     });
 
@@ -487,10 +523,10 @@ console.log('\n=== it is the hero rise, and only the rise ===');
         function evalWith(referrer, href) {
             var fn = new Function('document', 'location', 'URL',
                                   src + '; return cameFromInsidePortal();');
-            return fn({ referrer: referrer }, { origin: 'https://ionmininggroup.com' }, URL);
+            return fn({ referrer: referrer }, { origin: 'https://protonminingco.com' }, URL);
         }
 
-        var SITE = 'https://ionmininggroup.com';
+        var SITE = 'https://protonminingco.com';
         [['', false, 'no referrer at all (typed, bookmarked, new tab)'],
          [SITE + '/index.html', false, 'the marketing home page'],
          [SITE + '/hardware.html', false, 'the hardware catalogue'],
@@ -503,6 +539,296 @@ console.log('\n=== it is the hero rise, and only the rise ===');
                evalWith(c[0]), c[1]);
         });
     })();
+
+
+console.log('\n=== a machine is only "mining" if we have actually heard from it ===');
+(function() {
+    var demoSrc = fs.readFileSync(path.join(PORTAL, 'portal-demo.js'), 'utf8');
+    var mainSrc = fs.readFileSync(path.join(PORTAL, 'portal.js'), 'utf8');
+    var P = new Function('localStorage', 'location', mainSrc + '; return ProtonPortal;')(
+        null, { hostname: 'x', origin: 'y' });
+
+    /* THE ASSERTION THIS SECTION EXISTS FOR.
+
+       Two of the pool proxies in this repo decide a worker is online with a
+       fallback of the form `w.status === 'active' || w.is_active || w.hashrate > 0`,
+       where that hashrate is a decaying hourly average. A machine that died fifty
+       minutes ago still carries a non-zero one and reports Online. On the
+       operator's own dashboard that is a nuisance; on a hosting customer's screen
+       it is a false statement about their property.
+
+       So the portal derives the state itself. A reported status can move a
+       machine DOWN, but can never on its own hold one UP. */
+    var now = Date.parse('2026-08-01T12:00:00Z');
+    var fresh = '2026-08-01T11:55:00Z';   // 5 minutes
+    var old = '2026-08-01T10:00:00Z';     // 2 hours
+
+    eq('heard from recently and reported up', P.rigState(fresh, 'online', now), 'online');
+    eq('reported down is down whatever the clock says', P.rigState(fresh, 'offline', now), 'offline');
+    eq('reported UP but not heard from is NOT up', P.rigState(old, 'online', now), 'stale',
+       'this is the pool fallback that reports a dead machine as online');
+    eq('no timestamp at all is not up either', P.rigState(null, 'online', now), 'stale');
+    eq('nor an unparseable one', P.rigState('not-a-date', 'online', now), 'stale');
+
+    /* The three states have distinct words. The operator dashboard has only two
+       and cannot say "we have not heard from it", which is the state a hosting
+       client most needs distinguished from a confirmed failure. */
+    var words = ['online', 'stale', 'offline'].map(function(k) { return P.stateWord(k); });
+    ok('the three states read differently', new Set(words).size === 3, words.join(' / '));
+    ok('and an unknown state does not read as fine',
+       P.stateWord('wat') === P.stateWord('stale'),
+       'an unrecognised state must never fall through to "mining"');
+
+    /* The sample fleet carries the awkward case, so a reviewer meets it in the
+       preview rather than in production. */
+    var Demo = new Function(demoSrc + '; return PortalDemo;')();
+    var fleet = Demo.handle('/portal/hosting/rigs', Demo.SESSIONS.hosting).body;
+    ok('the sample fleet is flagged as sample', fleet.demo === true);
+
+    /* THE ROUTE ANSWERS WITH SITES NOW, not one fleet. A hosting client can hold machines at
+       more than one facility — the account record was always a list and listStatements always
+       walked all of it, while this route and the history route quietly read sites[0]. The sample
+       has two sites so that the case is the one a reviewer meets. */
+    ok('the sample has more than one facility', (fleet.sites || []).length > 1,
+       (fleet.sites || []).length + ' sites');
+    ok('and a combined summary across them', !!fleet.summary);
+
+    /* Flattened, because the assertions below are about the fleet a client owns, not about how
+       it is split. */
+    var all = [];
+    (fleet.sites || []).forEach(function(v) {
+        (v.rigs || []).forEach(function(g) { all.push(g); });
+    });
+    fleet = { rigs: all, sites: fleet.sites, summary: fleet.summary, demo: fleet.demo };
+
+    var states = {};
+    fleet.rigs.forEach(function(g) {
+        var st = P.rigState(g.last_seen, g.reported);
+        (states[st] = states[st] || []).push(g);
+    });
+
+    /* The sample is a CONTAINER, not a handful: a hosting customer with 104
+       machines is the case that breaks a one-card-per-machine design, and a
+       four-machine sample is how nobody notices. */
+    ok('the sample fleet is a realistic size', fleet.rigs.length > 100,
+       fleet.rigs.length + ' machines');
+
+    ok('some are mining', (states.online || []).length > 0);
+    ok('one is confirmed down', (states.offline || []).length === 1);
+    ok('and several are reported up but not actually heard from',
+       (states.stale || []).length >= 2,
+       'the pool fallback case, which is the one worth meeting in a preview');
+    ok('every machine the pool claims is up but we cannot confirm says so',
+       (states.stale || []).every(function(g) { return g.reported === 'online'; }));
+
+    var quiet = (states.stale || []).concat(states.offline || []);
+    ok('and none of them reports a hashrate of zero',
+       quiet.length > 0 && quiet.every(function(g) { return g.hashrate_th === null; }),
+       'a machine nobody has heard from is not a machine doing no work');
+
+    /* Deterministic, so two people reviewing the preview are looking at the same
+       fleet and can say "s21-033" and mean the same machine. */
+    /* Comment-stripped, because the generator documents its own determinism by
+       saying "no Math.random" -- matched against the raw file this assertion
+       fails on the sentence promising the thing it is checking for. Fourth time
+       this repo has recorded that trap. */
+    var demoCode = demoSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    ok('the sample fleet is deterministic', !/Math\.random/.test(demoCode),
+       'a preview that reshuffles cannot be discussed');
+
+    // A producer preview must not reach it, same as the real worker.
+    eq('a producer preview cannot see a fleet',
+       Demo.handle('/portal/hosting/rigs', Demo.SESSIONS.producer).status, 404);
+})();
+
+console.log('\n=== the dashboard says where each figure came from ===');
+(function() {
+    var page = fs.readFileSync(path.join(PORTAL, 'index.html'), 'utf8');
+
+    /* site/hosting.html promises "per-machine hashrate, board temperature, fan
+       speed, and power draw". Exactly one of those four is obtainable: every pool
+       proxy in this repo normalises a worker to {worker_name, hashrate, status},
+       and a pool observes share submissions rather than sensors. So the portal
+       must not display the other three, and must say why rather than showing
+       three columns of permanent blanks. */
+    ['board temperature', 'fan speed'].forEach(function(t) {
+        ok('the page explains that ' + t + ' is not available', page.indexOf(t) > 0);
+    });
+    ok('and says a pool cannot measure them', /a pool cannot measure them/.test(page));
+    ok('site draw is labelled as metered, not per-machine',
+       /metered at the rack/.test(page) && /not divided between/.test(page),
+       'dividing a cage meter by machine count is an allocation, not a measurement');
+    ok('the freshness window is stated to the reader, not just applied',
+       /heard from in the last/.test(page));
+
+    /* Counted from the derived state rather than trusting summary.online, or the
+       headline figure would carry the pool's claim while the cards below
+       disagreed with it. */
+    ok('the machines-mining count is derived, not taken from the payload',
+       /P\.rigState\(rigs\[i\]\.last_seen/.test(page),
+       'the summary and the cards must not be able to disagree');
+})();
+
+
+
+
+console.log('\n=== the fleet overview shows only what Proton can actually know ===');
+(function() {
+    var raw = fs.readFileSync(path.join(PORTAL, 'index.html'), 'utf8');
+    /* Comments stripped, because the code that EXCLUDES those five cards
+       explains itself by naming them -- "Est. daily earnings", "Fleet ROI",
+       "Avg power / miner" all appear in the block arguing for their absence.
+       Matched against the raw file every one of these checks fails on its own
+       justification. Same trap this file records twice already. */
+    var page = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+    ok('there is a fleet overview', /Fleet overview/.test(page));
+    ok('and the machines are their own labelled block', /pt-section-label">Machines/.test(page));
+
+    /* The operator's own Fleet Overview carries ten cards. Five of them cannot
+       honestly appear on a hosting client's screen, and the reason differs per
+       card, so they are asserted absent individually rather than as one grep.
+
+       Earnings is the important one. A hosting client's payouts go from the pool
+       straight to their own wallet -- Proton neither holds nor pays them. A daily
+       earnings estimate from Proton would be Proton asserting a figure about money it
+       never touches, on a page whose whole claim is that every number is
+       measured. */
+    ok('no earnings estimate', !/Daily Earnings|Est\. Daily|dailyUSD|dailyBTC/i.test(page),
+       'their payouts go pool to wallet; Proton does not hold or pay them');
+    ok('no ROI', !/\bROI\b/.test(page), 'Proton does not know what they paid for the machines');
+    ok('no per-machine power', !/Avg Power|avgPower/i.test(page),
+       'dividing a cage meter by machine count is an allocation, not a measurement');
+
+    /* Every derived figure goes through one guard that returns null when either
+       input is missing, so a division by an absent hashrate renders "not
+       measured" rather than a confident 0 J/TH. A bare division in a metric is
+       the bug this prevents. */
+    ok('derived metrics are guarded', /function ratio\(/.test(page));
+    ok('and the guard refuses a missing or zero denominator',
+       /typeof a !== 'number' \|\| typeof b !== 'number'/.test(page) && /b === 0/.test(page));
+
+    /* Average per machine divides by the machines actually REPORTING. Dividing
+       by the total would quietly report a lower average whenever a machine went
+       quiet, which reads as every machine slowing down rather than as one
+       machine missing. */
+    ok('average per machine is over the reporting ones',
+       /ratio\(sum\.hashrate_th, live\)/.test(page),
+       'live is the count derived from rigState, not summary.online');
+    ok('and the page says so', /ones actually reporting/.test(page),
+       'the sentence is built by concatenation, so match a fragment of one piece');
+
+    /* All-in efficiency is derived from a cage meter, so it includes cooling and
+       it degrades when a machine draws without producing. Saying that is the
+       difference between a number and a misleading number. */
+    ok('all-in efficiency is labelled all-in', /All-in efficiency/.test(page));
+    ok('and its basis is explained',
+       /covers cooling too/.test(page) && /drawing power without reporting work/.test(page),
+       'a number from a cage meter is misleading unless its scope is stated');
+})();
+
+
+console.log('\n=== a hundred machines do not become a hundred cards ===');
+(function() {
+    var raw = fs.readFileSync(path.join(PORTAL, 'index.html'), 'utf8');
+    var page = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+    /* THE PROBLEM THIS SOLVES. One card per machine is fine for a handful and a
+       wall for a container. With a hundred machines the single fact worth having
+       -- which one is broken -- ends up somewhere in the middle of a hundred
+       identical tiles. So the exceptions come out of the list and go on top, and
+       the rest goes into a table that starts collapsed. */
+    ok('there is a size at which cards stop', /CARD_LIMIT/.test(page));
+    ok('and a table for the rest', /pt-table/.test(page) && /<tbody id="ptRows">/.test(page));
+    ok('the machines needing attention are lifted out',
+       /attention = all\.filter/.test(page) && /pt-attention/.test(page));
+    ok('and a healthy fleet says so rather than showing nothing',
+       /pt-allgood/.test(page) && /machines are mining/.test(page));
+
+    /* Worst first. A hundred rows in pool order buries the broken one; a
+       hundred rows worst-first puts it on the first line. Sorted by name within
+       a state so the order does not shuffle between refreshes. */
+    ok('rows are ordered worst first', /RANK = \{ offline: 0, stale: 1, online: 2 \}/.test(page));
+    ok('and stably within a state', /localeCompare/.test(page));
+
+    /* The repo's rule about silent caps: if coverage is bounded, say by how
+       much, or a subset reads as the whole fleet. */
+    ok('the table cap is stated, not silent',
+       /MAX_ROWS/.test(page) && /Showing the first/.test(page));
+
+    ok('a large fleet is searchable by name', /ptFilter/.test(page) && /data-worker=/.test(page));
+})();
+
+console.log('\n=== the history chart stays inert too ===');
+(function () {
+    /* Same basis as the gas field, and the same check. This one matters more: a chart is
+       the natural place for somebody to add "just a quick fetch" for its own data, and the
+       portal's whole containment argument is that a counterparty's browser loads nothing
+       that can reach Proton's side. The data arrives as an argument or it does not arrive. */
+    var raw = fs.readFileSync(path.join(ROOT, 'portal', 'fleet-chart.js'), 'utf8');
+    var fc = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+    ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB',
+     'firebase', 'sync.js', 'shared.js', 'PortalDemo', 'PORTAL_ENDPOINT'
+    ].forEach(function (bad) {
+        ok('the chart does not reference ' + bad, fc.indexOf(bad) < 0);
+    });
+
+    /* NOTHING MAY MEASURE THE PAGE. The whole drawing is a viewBox and the pointer lands on
+       a hit column that carries its own index, so there is nothing to convert. Every one of
+       these would work, and every one of them reintroduces the layout-thrash class of bug
+       this project has already paid for once. */
+    ['getBoundingClientRect', 'offsetWidth', 'offsetHeight', 'clientWidth', 'clientHeight',
+     'ResizeObserver', 'innerWidth', 'innerHeight', 'getScreenCTM'
+    ].forEach(function (bad) {
+        ok('the chart does not measure with ' + bad, fc.indexOf(bad) < 0);
+    });
+
+    ok('it is loaded by index.html',
+       fs.readFileSync(path.join(PORTAL, 'index.html'), 'utf8').indexOf('fleet-chart.js') >= 0);
+})();
+
+console.log(String.fromCharCode(10) + '=== the cache stamp matches what it is stamping ===');
+(function () {
+    /* THE FAILURE THIS CATCHES HAS NO SYMPTOMS.
+
+       Every portal asset is requested as `?v=<stamp>`. When the stamp does not change, a browser
+       that has the old file does not ask for the new one — so the deploy succeeds, the server
+       holds the right bytes, every test here passes, and the person looking at the page sees the
+       previous version. There is nothing to debug, because nothing is broken. The browser was
+       told the URL had not changed and believed it.
+
+       It happened: the portal was restyled end to end, verified in headless Chrome (a fresh
+       profile every run, hence always a cold cache, hence never this bug), and reported as
+       finished. The answer was "nothing changed", and that was the truth.
+
+       The stamp is now a hash of the assets, so this asserts the committed pages carry the hash
+       of the committed files. It deliberately RECOMPUTES rather than regenerating: a check that
+       fixed the stamp in order to check it would report success while the repo still held the
+       stale one. */
+    /* One stamper for every area now. It began portal-only and the marketing site then went
+       stale in exactly the same way — a new pricing section invisible because the page and its
+       stylesheet were both cached and neither carried a version at all. Two tools doing one job
+       is two tools to forget, so there is one. */
+    var stamper = require(path.join(ROOT, 'tools', 'build-asset-stamp.js'));
+    var area = stamper.AREAS.filter(function (a) { return a.name === 'portal'; })[0];
+    ok('the portal is an area the stamper knows about', !!area);
+    var want = stamper.expected(area);
+    var have = stamper.current(area);
+
+    ok('the portal hashes some assets', want.hashed > 0, want.hashed + ' files');
+    eq('every page carries one stamp, not several', have.length, 1);
+    eq('and it is the hash of what they load', have[0], want.stamp);
+
+    /* A stamp is only worth having on things a browser caches hard. If a script or stylesheet
+       ever ships unstamped, it is the one that will go stale. */
+    ['index.html', 'statement.html'].forEach(function (page) {
+        var src = fs.readFileSync(path.join(PORTAL, page), 'utf8');
+        var local = (src.match(/(?:src|href)="(?:\.\/|\.\.\/)[^"]+\.(?:js|css)[^"]*"/g) || []);
+        var bare = local.filter(function (u) { return u.indexOf('?v=') < 0; });
+        eq(page + ': no local asset ships unstamped', bare.join(' '), '');
+    });
+})();
 
 console.log('');
 console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions'

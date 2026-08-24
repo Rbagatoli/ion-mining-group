@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ion Mining Group — Fleet Map</title>
+    <title>Proton Mining — Fleet Map</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./tokens.css?v=338">
     <link rel="stylesheet" href="./shared.css?v=338">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-    <script src="./theme.js?v=338"></script>
+    <script src="./brand-migrate.js?v=338"></script>
+<script src="./theme.js?v=338"></script>
     <script src="./chart.min.js?v=338"></script>
     <script src="./chart-theme.js?v=338"></script>
     <script>
@@ -481,7 +482,7 @@
 <body>
 <canvas id="techLinesCanvas"></canvas>
 
-<nav id="ion-nav"></nav>
+<nav id="proton-nav"></nav>
 
 <header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;" id="mapPageTitle">Fleet Map</h1>
@@ -1036,7 +1037,7 @@ commercial terms are your assumptions.</p>
 </main>
 
 <footer>
-    Ion Mining Group &mdash; Fleet Map<br>
+    Proton Mining &mdash; Fleet Map<br>
     <span style="font-size:11px; color:var(--text-dim);">Powered by Leaflet &amp; CartoDB &mdash; Miner locations from fleet data.</span>
 </footer>
 
@@ -1100,7 +1101,7 @@ commercial terms are your assumptions.</p>
 
         document.getElementById('mapPageTitle').textContent = TITLES[mode][0];
         document.getElementById('mapPageSub').textContent = TITLES[mode][1];
-        document.title = 'Ion Mining Group — ' + TITLES[mode][0];
+        document.title = 'Proton Mining — ' + TITLES[mode][0];
 
         if (mode === 'prospects') {
             MapSourcing.boot().then(function() { MapSourcing.renderMapLayer(); });
@@ -1118,7 +1119,7 @@ commercial terms are your assumptions.</p>
         setMode(b.dataset.mode);
         // Remember the mode across reloads. shared.js reloads the page whenever the service
         // worker activates a new build, which used to drop you back on Fleet mid-search.
-        try { localStorage.setItem('ionMiningMapMode', b.dataset.mode); } catch (err) {}
+        try { localStorage.setItem('protonMiningMapMode', b.dataset.mode); } catch (err) {}
     });
 
     // Switching to the flat map reveals a container that was 0x0 until now. Leaflet cannot
@@ -1136,7 +1137,7 @@ commercial terms are your assumptions.</p>
     }
 
     var saved = null;
-    try { saved = localStorage.getItem('ionMiningMapMode'); } catch (e) {}
+    try { saved = localStorage.getItem('protonMiningMapMode'); } catch (e) {}
     if (saved === 'prospects') {
         // Paint the mode immediately so the fleet layout never flashes on the way to prospects.
         document.body.setAttribute('data-map-mode', 'prospects');

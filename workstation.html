@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ion Mining Group — Workstation</title>
+    <title>Proton Mining — Workstation</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
     <link rel="stylesheet" href="./tokens.css?v=338">
     <link rel="manifest" href="./manifest.json">
@@ -167,10 +167,10 @@
         font-size: 14px;
     }
     .ws-narrow-msg a { color: var(--accent); }
-    .ion-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: var(--radius); background: rgba(255,255,255,0.03); border: 1px solid var(--line); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
-    .ion-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
-    .ion-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
-    .ion-nav-sparkline-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; white-space: nowrap; min-width: 52px; text-align: right; }
+    .proton-nav-sparkline { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: var(--radius); background: rgba(255,255,255,0.03); border: 1px solid var(--line); cursor: pointer; transition: background 0.2s; text-decoration: none; color: inherit; }
+    .proton-nav-sparkline:hover { background: rgba(255,255,255,0.06); }
+    .proton-nav-sparkline canvas { display: block; width: 70px; height: 24px; }
+    .proton-nav-sparkline-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; white-space: nowrap; min-width: 52px; text-align: right; }
     </style>
 </head>
 <body>
@@ -181,7 +181,7 @@
         </a>
         <div class="ws-pane-selectors" id="paneSelectors"></div>
         <div class="ws-actions">
-            <a href="./charts.html" class="ion-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="ion-nav-sparkline-price" id="navSparklinePrice">--</span></a>
+            <a href="./charts.html" class="proton-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="proton-nav-sparkline-price" id="navSparklinePrice">--</span></a>
             <select id="wsCurrency"></select>
             <a href="./index.html" class="ws-exit-btn" title="Exit Workstation">Exit</a>
         </div>
@@ -203,8 +203,8 @@
         { id: 'banking',    label: 'Banking',     file: 'banking.html' }
     ];
 
-    var STORAGE_KEY = 'ionMiningWorkstation';
-    var CURRENCY_KEY = 'ionMiningCurrency';
+    var STORAGE_KEY = 'protonMiningWorkstation';
+    var CURRENCY_KEY = 'protonMiningCurrency';
     var CURRENCIES = { usd: 'USD', eur: 'EUR', gbp: 'GBP', cad: 'CAD', aud: 'AUD', jpy: 'JPY' };
 
 
@@ -248,7 +248,7 @@
         var iframes = document.querySelectorAll('.ws-pane iframe');
         for (var i = 0; i < iframes.length; i++) {
             try {
-                iframes[i].contentWindow.postMessage({ ionMining: true, type: type, value: value }, '*');
+                iframes[i].contentWindow.postMessage({ protonMining: true, type: type, value: value }, '*');
             } catch(e) {}
         }
     }
@@ -380,6 +380,7 @@
     render();
 })();
 </script>
+<script src="./brand-migrate.js?v=338"></script>
 <script src="./theme.js?v=338"></script>
 <script src="./shared.js?v=338"></script>
 <script>startNavSparkline();</script>

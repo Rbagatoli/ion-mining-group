@@ -65,7 +65,7 @@ function progress(m) {
 // ---- http ----------------------------------------------------------------------------
 function request(url, opts, redirects) {
     return new Promise(function(resolve, reject) {
-        https.get(url, Object.assign({ headers: { 'User-Agent': 'ion-mining-group/operator-index' } }, opts || {}), function(res) {
+        https.get(url, Object.assign({ headers: { 'User-Agent': 'proton-mining/operator-index' } }, opts || {}), function(res) {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 res.resume();
                 if ((redirects || 0) > 5) return reject(new Error('too many redirects'));
@@ -92,7 +92,7 @@ function request(url, opts, redirects) {
 
 function head(url, redirects) {
     return new Promise(function(resolve, reject) {
-        https.request(url, { method: 'HEAD', headers: { 'User-Agent': 'ion-mining-group/operator-index' } }, function(res) {
+        https.request(url, { method: 'HEAD', headers: { 'User-Agent': 'proton-mining/operator-index' } }, function(res) {
             res.resume();
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 if ((redirects || 0) > 5) return reject(new Error('too many redirects'));

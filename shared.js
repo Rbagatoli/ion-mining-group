@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Shared Module =====
+// ===== PROTON MINING — Shared Module =====
 
 // --- Embed Mode Detection (for Workstation multi-pane) ---
 window.ION_EMBED = (new URLSearchParams(window.location.search)).get('embed') === '1';
@@ -101,7 +101,7 @@ var CURRENCY_CONFIG = {
     aud: { symbol: 'A$', name: 'AUD', decimals: 2 },
     jpy: { symbol: '\u00a5', name: 'JPY', decimals: 0 }
 };
-window.selectedCurrency = localStorage.getItem('ionMiningCurrency') || 'usd';
+window.selectedCurrency = localStorage.getItem('protonMiningCurrency') || 'usd';
 window.liveBtcPrices = {};
 window.onCurrencyChange = null;
 
@@ -127,7 +127,7 @@ function getCurrencyMultiplier() {
 function switchCurrency(code) {
     if (!CURRENCY_CONFIG[code]) return;
     window.selectedCurrency = code;
-    localStorage.setItem('ionMiningCurrency', code);
+    localStorage.setItem('protonMiningCurrency', code);
     if (typeof SyncEngine !== 'undefined') SyncEngine.save('currency', code);
     if (window.liveBtcPrices[code]) {
         window.liveBtcPrice = window.liveBtcPrices[code];
@@ -140,18 +140,18 @@ function switchCurrency(code) {
 
 // --- Nav Renderer ---
 function initNav(activePage) {
-    const nav = document.getElementById('ion-nav');
+    const nav = document.getElementById('proton-nav');
     if (!nav) return;
     if (window.ION_EMBED) { nav.style.display = 'none'; return; }
-    nav.className = 'ion-nav';
+    nav.className = 'proton-nav';
     var mobile = window.innerWidth < 600;
     var labels = mobile ? ['Data', 'Cycle', 'Calc', 'Home', 'Map', 'Bank'] : ['Data', 'Cycle', 'Calculator', 'Dashboard', 'Map', 'Banking'];
     nav.innerHTML =
-        '<a class="ion-nav-brand" href="./index.html">' +
-            '<span class="icon"><svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="ionMarkP" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5c5b58"/><stop offset="13%" stop-color="#b5b4b1"/><stop offset="25%" stop-color="#ffffff"/><stop offset="34%" stop-color="#d0cfcd"/><stop offset="50%" stop-color="#83827f"/><stop offset="65%" stop-color="#e8e7e5"/><stop offset="76%" stop-color="#ffffff"/><stop offset="89%" stop-color="#a2a19e"/><stop offset="100%" stop-color="#6b6a67"/></linearGradient><linearGradient id="ionMarkO" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="38%" stop-color="#f7a02b"/><stop offset="70%" stop-color="#ffdcae"/><stop offset="100%" stop-color="#e07f10"/></linearGradient></defs><circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkP)" stroke-width="26"/><circle cx="256" cy="256" r="52" fill="url(#ionMarkP)"/><circle cx="373" cy="106" r="42" fill="url(#ionMarkO)"/></svg></span>' +
-            '<span class="name">Ion <span>Mining Group</span></span>' +
+        '<a class="proton-nav-brand" href="./index.html">' +
+            '<span class="icon"><svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="protonMarkP" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5c5b58"/><stop offset="13%" stop-color="#b5b4b1"/><stop offset="25%" stop-color="#ffffff"/><stop offset="34%" stop-color="#d0cfcd"/><stop offset="50%" stop-color="#83827f"/><stop offset="65%" stop-color="#e8e7e5"/><stop offset="76%" stop-color="#ffffff"/><stop offset="89%" stop-color="#a2a19e"/><stop offset="100%" stop-color="#6b6a67"/></linearGradient><linearGradient id="protonMarkO" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="38%" stop-color="#f7a02b"/><stop offset="70%" stop-color="#ffdcae"/><stop offset="100%" stop-color="#e07f10"/></linearGradient></defs><circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkP)" stroke-width="26"/><circle cx="256" cy="256" r="52" fill="url(#protonMarkP)"/><circle cx="373" cy="106" r="42" fill="url(#protonMarkO)"/></svg></span>' +
+            '<span class="name">Proton <span>Mining</span></span>' +
         '</a>' +
-        '<div class="ion-nav-tabs">' +
+        '<div class="proton-nav-tabs">' +
             '<a href="./charts.html" class="' + (activePage === 'charts' ? 'active' : '') + '">' + labels[0] + '</a>' +
             '<a href="./cycle.html" class="' + (activePage === 'cycle' ? 'active' : '') + '">' + labels[1] + '</a>' +
             '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">' + labels[2] + '</a>' +
@@ -159,10 +159,10 @@ function initNav(activePage) {
             '<a href="./map.html" class="' + (activePage === 'map' ? 'active' : '') + '">' + labels[4] + '</a>' +
             '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[5] + '</a>' +
         '</div>' +
-        '<div class="ion-nav-actions">' +
-            '<a href="./charts.html" class="ion-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="ion-nav-sparkline-price" id="navSparklinePrice">--</span></a>' +
-            (!mobile ? '<a href="./workstation.html" class="ion-nav-ws-link" title="Workstation (multi-pane view)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="3" x2="8" y2="17"/><line x1="16" y1="3" x2="16" y2="17"/><line x1="2" y1="21" x2="22" y2="21"/></svg></a>' : '') +
-            '<select class="ion-currency-select" id="currencySelect">' +
+        '<div class="proton-nav-actions">' +
+            '<a href="./charts.html" class="proton-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="proton-nav-sparkline-price" id="navSparklinePrice">--</span></a>' +
+            (!mobile ? '<a href="./workstation.html" class="proton-nav-ws-link" title="Workstation (multi-pane view)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="3" x2="8" y2="17"/><line x1="16" y1="3" x2="16" y2="17"/><line x1="2" y1="21" x2="22" y2="21"/></svg></a>' : '') +
+            '<select class="proton-currency-select" id="currencySelect">' +
                 (function() {
                     var opts = '';
                     for (var k in CURRENCY_CONFIG) {
@@ -171,11 +171,11 @@ function initNav(activePage) {
                     return opts;
                 })() +
             '</select>' +
-            '<button class="ion-nav-bell" onclick="window.toggleAlertSidebar && window.toggleAlertSidebar()">' +
+            '<button class="proton-nav-bell" onclick="window.toggleAlertSidebar && window.toggleAlertSidebar()">' +
                 '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
-                '<span class="ion-nav-bell-badge" id="alertBellBadge" style="display:none">0</span>' +
+                '<span class="proton-nav-bell-badge" id="alertBellBadge" style="display:none">0</span>' +
             '</button>' +
-            '<button class="ion-nav-sync-btn" id="syncBtn" title="Sign in to sync across devices">' +
+            '<button class="proton-nav-sync-btn" id="syncBtn" title="Sign in to sync across devices">' +
                 '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
             '</button>' +
         '</div>';
@@ -189,7 +189,7 @@ function initNav(activePage) {
     // change under them for no reason we could explain.
     try {
         if (!localStorage.getItem('theme_retired_v318')) {
-            localStorage.removeItem('ionMiningTheme');
+            localStorage.removeItem('protonMiningTheme');
             localStorage.setItem('theme_retired_v318', '1');
         }
     } catch (e) { /* private mode */ }
@@ -197,8 +197,8 @@ function initNav(activePage) {
     // Auth button handler
     var syncBtn = document.getElementById('syncBtn');
     var _wasSignedIn = false;
-    if (syncBtn && typeof IonAuth !== 'undefined') {
-        IonAuth.onAuthChange(function(user) {
+    if (syncBtn && typeof ProtonAuth !== 'undefined') {
+        ProtonAuth.onAuthChange(function(user) {
             if (user) {
                 _wasSignedIn = true;
                 // The account-switch guard that replaces the sign-out wipe. Clearing here is
@@ -207,7 +207,7 @@ function initNav(activePage) {
                 // cloud, and the previous owner can retrieve theirs by signing back in. On the
                 // same-uid path — the overwhelmingly common one — nothing is touched.
                 try {
-                    var lastUid = localStorage.getItem('ionMiningLastUid');
+                    var lastUid = localStorage.getItem('protonMiningLastUid');
                     if (lastUid && user.uid && lastUid !== user.uid) {
                         var keepKeys = ['sw_clean_v222'];
                         var keep = {};
@@ -218,12 +218,12 @@ function initNav(activePage) {
                         localStorage.clear();
                         for (var rk in keep) localStorage.setItem(rk, keep[rk]);
                     }
-                    if (user.uid) localStorage.setItem('ionMiningLastUid', user.uid);
+                    if (user.uid) localStorage.setItem('protonMiningLastUid', user.uid);
                 } catch (e) { /* private mode — the guard degrades, nothing is destroyed */ }
                 var initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
-                syncBtn.innerHTML = '<span class="ion-nav-avatar">' + initial + '</span>';
+                syncBtn.innerHTML = '<span class="proton-nav-avatar">' + initial + '</span>';
                 syncBtn.title = 'Signed in as ' + (user.displayName || user.email) + ' — click to sign out';
-                syncBtn.className = 'ion-nav-sync-btn signed-in';
+                syncBtn.className = 'proton-nav-sync-btn signed-in';
                 // Start listening for remote changes
                 Object.keys(SyncEngine.SYNC_KEYS).forEach(function(key) {
                     SyncEngine.listen(key, function() {
@@ -250,7 +250,7 @@ function initNav(activePage) {
             } else {
                 syncBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
                 syncBtn.title = 'Sign in to sync across devices';
-                syncBtn.className = 'ion-nav-sync-btn';
+                syncBtn.className = 'proton-nav-sync-btn';
                 SyncEngine.stopAll();
                 if (_wasSignedIn) {
                     _wasSignedIn = false;
@@ -290,20 +290,20 @@ function initNav(activePage) {
         };
 
         syncBtn.addEventListener('click', function() {
-            if (IonAuth.isSignedIn()) {
-                if (typeof IonProfile !== 'undefined') {
-                    IonProfile.show();
+            if (ProtonAuth.isSignedIn()) {
+                if (typeof ProtonProfile !== 'undefined') {
+                    ProtonProfile.show();
                 } else {
                     if (confirm('Sign out of sync? Your data stays on this device.')) {
                         SyncEngine.stopAll();
-                        IonAuth.signOut();
+                        ProtonAuth.signOut();
                     }
                 }
             } else {
-                if (typeof IonAuthUI !== 'undefined') {
-                    IonAuthUI.show('signin');
+                if (typeof ProtonAuthUI !== 'undefined') {
+                    ProtonAuthUI.show('signin');
                 } else {
-                    IonAuth.signIn().then(function() {
+                    ProtonAuth.signIn().then(function() {
                         window.handlePostAuth();
                     }).catch(function(err) {
                         if (err.code !== 'auth/popup-closed-by-user') {
@@ -603,7 +603,7 @@ async function fetchLiveMarketData() {
 //
 // The field is painted to a canvas, so var() cannot reach it -- this is the CSS/JS boundary
 // tokens.css warns about in its header, and a named constant is the JS-side answer. When
-// theme.js lands these move onto IonTheme with the rest of the JS palette.
+// theme.js lands these move onto ProtonTheme with the rest of the JS palette.
 //
 // RECORDED EXCEPTION to "orange is an accent, never a surface". A full-viewport particle field
 // is not one of the four things orange is supposed to mark. Taken deliberately: the strokes are
@@ -921,15 +921,15 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 
                 try {
                     // Get or create session token
-                    var sessionToken = localStorage.getItem('ionStrikeSession') || '';
+                    var sessionToken = localStorage.getItem('protonStrikeSession') || '';
 
                     if (!sessionToken) {
                         // Need to exchange Firebase ID token for session token first
                         var fbUser = null;
                         if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
                             fbUser = firebase.auth().currentUser;
-                        } else if (typeof IonAuth !== 'undefined') {
-                            fbUser = IonAuth.getUser();
+                        } else if (typeof ProtonAuth !== 'undefined') {
+                            fbUser = ProtonAuth.getUser();
                         }
 
                         if (!fbUser) {
@@ -941,7 +941,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                         var idToken = await fbUser.getIdToken(true);
 
                         // Exchange Firebase token for session token
-                        var loginRes = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/firebase-login', {
+                        var loginRes = await fetch('https://proton-strike-proxy.proton-mining.workers.dev/auth/firebase-login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ idToken: idToken })
@@ -955,13 +955,13 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                         }
 
                         sessionToken = loginData.token;
-                        localStorage.setItem('ionStrikeSession', sessionToken);
+                        localStorage.setItem('protonStrikeSession', sessionToken);
                         if (loginData.user) {
-                            localStorage.setItem('ionStrikeUser', JSON.stringify(loginData.user));
+                            localStorage.setItem('protonStrikeUser', JSON.stringify(loginData.user));
                         }
                     }
 
-                    var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/connect-strike', {
+                    var response = await fetch('https://proton-strike-proxy.proton-mining.workers.dev/auth/connect-strike', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -976,10 +976,10 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                     if (data && data.ok) {
                         // Update user data in localStorage
                         try {
-                            var user = JSON.parse(localStorage.getItem('ionStrikeUser') || '{}');
+                            var user = JSON.parse(localStorage.getItem('protonStrikeUser') || '{}');
                             user.strikeConnected = true;
                             user.hasOwnKey = true;
-                            localStorage.setItem('ionStrikeUser', JSON.stringify(user));
+                            localStorage.setItem('protonStrikeUser', JSON.stringify(user));
                         } catch(e) {}
 
                         if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
@@ -1019,14 +1019,14 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 
                 try {
                     // Get session token (should already exist from Strike connection)
-                    var sessionToken = localStorage.getItem('ionStrikeSession') || '';
+                    var sessionToken = localStorage.getItem('protonStrikeSession') || '';
 
                     if (!sessionToken) {
                         if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
                         return;
                     }
 
-                    var response = await fetch('https://ion-strike-proxy.ion-mining.workers.dev/auth/set-pin', {
+                    var response = await fetch('https://proton-strike-proxy.proton-mining.workers.dev/auth/set-pin', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1040,9 +1040,9 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                     if (data && data.ok) {
                         // Update user data in localStorage
                         try {
-                            var user = JSON.parse(localStorage.getItem('ionStrikeUser') || '{}');
+                            var user = JSON.parse(localStorage.getItem('protonStrikeUser') || '{}');
                             user.hasPin = true;
-                            localStorage.setItem('ionStrikeUser', JSON.stringify(user));
+                            localStorage.setItem('protonStrikeUser', JSON.stringify(user));
                         } catch(e) {}
 
                         if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">PIN saved! Strike is now connected.</span>';
@@ -1085,7 +1085,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 
 if (window.ION_EMBED) {
     window.addEventListener('message', function(e) {
-        if (!e.data || !e.data.ionMining) return;
+        if (!e.data || !e.data.protonMining) return;
         if (e.data.type === 'currencyChange' && typeof switchCurrency === 'function') {
             switchCurrency(e.data.value);
         }

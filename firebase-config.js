@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Firebase Configuration =====
+// ===== PROTON MINING — Firebase Configuration =====
 
 (function() {
     // Initialize Firebase
@@ -16,7 +16,7 @@
     }
 
     // Auth helper
-    window.IonAuth = {
+    window.ProtonAuth = {
         _listeners: [],
 
         getUser: function() {

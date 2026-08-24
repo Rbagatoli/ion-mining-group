@@ -46,10 +46,10 @@ function allowedOn(hostname, protocol, configuredEndpoint) {
     return sandbox.OrdersAPI.demoAllowed();
 }
 
-[['ionmininggroup.com', 'https:'],
- ['www.ionmininggroup.com', 'https:'],
+[['protonminingco.com', 'https:'],
+ ['www.protonminingco.com', 'https:'],
  ['rbagatoli.github.io', 'https:'],
- ['ionmininggroup.com.evil.test', 'https:'],
+ ['protonminingco.com.evil.test', 'https:'],
  ['localhost.evil.test', 'https:'],
  ['notlocalhost', 'https:'],
  ['192.168.1.40', 'http:'],
@@ -67,7 +67,7 @@ function allowedOn(hostname, protocol, configuredEndpoint) {
 });
 
 /* A configured endpoint disables it outright, wherever you are. */
-ok(allowedOn('localhost', 'http:', 'https://ion-orders.workers.dev') === false,
+ok(allowedOn('localhost', 'http:', 'https://proton-orders.workers.dev') === false,
    'and never once a real service is configured, even on localhost');
 
 /* ---- it cannot be mistaken for the real thing ---- */

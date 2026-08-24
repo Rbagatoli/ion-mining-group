@@ -8,7 +8,7 @@
 //
 // The CSS/JS distinction is the load-bearing part. var() only works in CSS. A literal that ends
 // up in ctx.fillStyle, in a three.js call, or in map-sourcing.js's fade() must become an
-// IonTheme constant instead -- and fade() returns its input UNCHANGED for anything that is not
+// ProtonTheme constant instead -- and fade() returns its input UNCHANGED for anything that is not
 // six hex digits, so getting this wrong fails silently at the WebGL layer with no console error.
 //
 //   node tools/colour-census.js            summary
@@ -28,7 +28,7 @@ var RE = /(?<!&)#[0-9a-fA-F]{3,8}\b|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s
 // Where a literal is going. Everything not listed here reports as UNMAPPED, which is the point --
 // the census must never quietly accept a colour nobody has decided about.
 var MAP = {
-    '#f7931a': '--btc-300 / IonTheme.btc',
+    '#f7931a': '--btc-300 / ProtonTheme.btc',
     '#e8e8e8': '--text',
     '#888':    '--text-mid',
     '#555':    '--text-dim',

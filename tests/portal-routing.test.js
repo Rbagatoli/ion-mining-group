@@ -1,6 +1,6 @@
 // Two counterparty kinds behind one door.
 //
-// A PRODUCER sells Ion gas and is owed money for it. A HOSTING client has machines on Ion's power
+// A PRODUCER sells Proton gas and is owed money for it. A HOSTING client has machines on Proton's power
 // and owes money for it. They sign in at the same URL and see different portals, and this file is
 // about the one thing that makes that safe: WHICH portal an account sees is decided by the server
 // from the stored account record, and nothing in the request contributes to it.
@@ -168,6 +168,45 @@ console.log('\n=== creating an account without a kind is refused ===');
     eq('an unknown kind is too', await mint({ kind: 'operator', legal_name: 'X', sites: [] }), 400);
     eq('producer is accepted', await mint({ kind: 'producer', legal_name: 'X', sites: [] }), 200);
     eq('hosting is accepted', await mint({ kind: 'hosting', legal_name: 'X', sites: [] }), 200);
+}
+
+
+console.log('\n=== the live fleet is scoped and whitelisted like everything else ===');
+{
+    var envR = { PORTAL: world() };
+    await envR.PORTAL.put('rigs:SITE-H', JSON.stringify({
+        site_id: 'SITE-H', as_of: FUTURE,
+        summary: { machines: 2, online: 1, hashrate_th: 200, draw_kw: 30, uptime_pct_30d: 98 },
+        rigs: [{ worker: 'w1', hashrate_th: 100, hashrate_24h_th: 101,
+                 last_seen: FUTURE, reported: 'online',
+                 // Things a counterparty must never receive.
+                 ip: '10.0.0.5', serial: 'SN-123', pool_password: 'x' }]
+    }));
+
+    var r = await call(envR, '/portal/hosting/rigs', TOK.hosting);
+    eq('a hosting client can see its own fleet', r.status, 200);
+    /* ONE ENTRY PER SITE. The account record is a list, and this route used to read sites[0]
+       and drop the rest — silently, while listStatements walked all of them and the client was
+       billed for all of them. The whitelist assertions below are unchanged and still the point:
+       what a counterparty receives per machine has not widened. */
+    eq('one entry per site on the account', r.body.sites.length, 1);
+    eq('named', r.body.sites[0].site_id, 'SITE-H');
+    ok('and a combined summary alongside them', !!r.body.summary);
+
+    var rigs0 = r.body.sites[0].rigs;
+    eq('with its machines', rigs0.length, 1);
+    ok('the pool-reported flag is passed through as REPORTED, not as status',
+       rigs0[0].reported === 'online' && rigs0[0].status === undefined,
+       'naming it status invites the client to render it directly');
+    ['ip', 'serial', 'pool_password'].forEach(function(f) {
+        ok('and no ' + f, rigs0[0][f] === undefined);
+    });
+
+    var nonsense2 = await call(envR, '/portal/nothing-here', TOK.hosting);
+    eq('a producer cannot see a fleet',
+       (await call(envR, '/portal/hosting/rigs', TOK.producer)).status, nonsense2.status);
+    eq('nor an account with no kind',
+       (await call(envR, '/portal/hosting/rigs', TOK.nokind)).status, 401);
 }
 
 console.log('');

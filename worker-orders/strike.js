@@ -7,7 +7,7 @@
 // seam means the order logic is testable against a stub, and this file is the
 // only thing that needs a live key pointed at it before it can take money.
 //
-// WHY NOT CALL THE EXISTING ion-strike-proxy. That Worker is built for the
+// WHY NOT CALL THE EXISTING proton-strike-proxy. That Worker is built for the
 // owner's dashboard: per-user Strike keys, Firebase sessions, TOTP, send caps.
 // A customer paying an invoice is none of those things, and routing through it
 // would mean inventing a machine-to-machine auth path into a surface designed

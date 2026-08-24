@@ -3,22 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your order — Ion Mining Group</title>
+<title>Your order — Proton Mining</title>
 <meta name="description" content="Review your machines, choose where they ship, and send the order. A deposit reserves it; the price is confirmed on your quote.">
-<link rel="canonical" href="https://ionmininggroup.com/cart.html">
+<link rel="canonical" href="https://protonminingco.com/cart.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Your order — Ion Mining Group">
+<meta property="og:title" content="Your order — Proton Mining">
 <meta property="og:description" content="Review the fleet, choose a destination, and send the order for a firm quote.">
-<meta property="og:url" content="https://ionmininggroup.com/cart.html">
+<meta property="og:url" content="https://protonminingco.com/cart.html">
 <meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=174e6fdc">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
-<meta property="og:image" content="https://ionmininggroup.com/og/home.png">
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://ionmininggroup.com/og/home.png">
+<meta name="twitter:image" content="https://protonminingco.com/og/home.png">
 <!-- ===== /SHARE CARD ===== -->
 </head>
 <body>
@@ -28,7 +30,7 @@
     <a class="brand" href="./index.html">
       <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
         <defs>
-          <linearGradient id="ionMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#5c5b58"/>
           <stop offset="13%" stop-color="#b5b4b1"/>
           <stop offset="25%" stop-color="#ffffff"/>
@@ -39,18 +41,18 @@
           <stop offset="89%" stop-color="#a2a19e"/>
           <stop offset="100%" stop-color="#6b6a67"/>
           </linearGradient>
-          <linearGradient id="ionMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#ffcf8a"/>
           <stop offset="38%" stop-color="#f7a02b"/>
           <stop offset="70%" stop-color="#ffdcae"/>
           <stop offset="100%" stop-color="#e07f10"/>
           </linearGradient>
         </defs>
-        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkNavP)" stroke-width="26"/>
-        <circle cx="256" cy="256" r="52" fill="url(#ionMarkNavP)"/>
-        <circle cx="373" cy="106" r="42" fill="url(#ionMarkNavO)"/>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
         </svg>
-      <span class="brand-name">Ion <span>Mining Group</span></span>
+      <span class="brand-name">Proton <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -67,7 +69,14 @@
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
       <a href="./calculator.html">Calculator</a>
-      <a href="./index.html#operate">How We Operate</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
       <a href="./contact.html">Contact</a>
       <!-- The order, when there is one. Hidden at zero rather than showing
            a 0, because an empty cart does not deserve a place in the nav.
@@ -163,6 +172,12 @@
           <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="ckCost">&mdash;</span></div>
         </div>
         <p class="calc-explain" id="ckUnpriced" hidden></p>
+        <!-- Two costs, named separately, because they are two purchases: hardware Proton buys
+             on the customer's behalf, and electricity bought forward under the hosting
+             agreement. They are paid at different moments to different schedules, so a single
+             "total" with no breakdown would be the least useful true number on the page. -->
+        <div id="ckItemised"></div>
+
 
         <!-- The deposit split. Indicative for the same reason the prices are: it
              is a share of a total that is itself confirmed per order. -->
@@ -192,14 +207,20 @@
         <div class="field">
           <label for="ck-dest">Destination</label>
           <select id="ck-dest" name="destination">
-            <option value="ion">An Ion facility &mdash; host them for me</option>
+            <option value="ion">An Proton facility &mdash; host them for me</option>
             <option value="own">My own site</option>
             <option value="third">A third-party facility</option>
           </select>
         </div>
 
-        <!-- Shown for an Ion destination. Which site depends on what has power
-             free when the order lands, so the page does not promise one. -->
+        <!-- Shown for an Proton destination.
+             TWO CASES, and they say different things. If the customer picked a site on the
+             way in, it is named here with the same three figures they saw on the card —
+             the whole point of carrying the choice through checkout is that nothing about
+             it changes between deciding and paying. If they came straight to the catalogue
+             and never chose, the original wording stands: we do not promise a site we have
+             not agreed. checkout.js swaps between them. -->
+        <div id="ckFacility"></div>
         <p class="calc-hint" id="ckIonNote">We will confirm which of our sites has capacity for a fleet this size, and quote hosting on the same order. You do not arrange freight &mdash; the machines are delivered straight to the facility that will run them.</p>
 
         <!-- Shown for anywhere else. A pallet of ASICs cannot simply be posted:
@@ -305,7 +326,7 @@
         <a class="brand" href="./index.html">
           <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
             <defs>
-              <linearGradient id="ionMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#5c5b58"/>
               <stop offset="13%" stop-color="#b5b4b1"/>
               <stop offset="25%" stop-color="#ffffff"/>
@@ -316,18 +337,18 @@
               <stop offset="89%" stop-color="#a2a19e"/>
               <stop offset="100%" stop-color="#6b6a67"/>
               </linearGradient>
-              <linearGradient id="ionMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#ffcf8a"/>
               <stop offset="38%" stop-color="#f7a02b"/>
               <stop offset="70%" stop-color="#ffdcae"/>
               <stop offset="100%" stop-color="#e07f10"/>
               </linearGradient>
             </defs>
-            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ionMarkFootP)" stroke-width="26"/>
-            <circle cx="256" cy="256" r="52" fill="url(#ionMarkFootP)"/>
-            <circle cx="373" cy="106" r="42" fill="url(#ionMarkFootO)"/>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
             </svg>
-          <span class="brand-name">Ion <span>Mining Group</span></span>
+          <span class="brand-name">Proton <span>Mining</span></span>
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
@@ -341,7 +362,7 @@
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
-        <a href="mailto:hello@ionmininggroup.com">hello@ionmininggroup.com</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
       </div>
       <div class="footer-col">
         <h4>Legal</h4>
@@ -350,18 +371,20 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <div>&copy; <span data-year>2026</span> Ion Mining Group. All rights reserved.</div>
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
       <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
     </div>
   </div>
 </footer>
 
-<script src="./site.js"></script>
-<script src="./miner-db.js"></script>
-<script src="./price-list.js"></script>
-<script src="./cart.js"></script>
-<script src="./orders-demo.js"></script>
-<script src="./orders-api.js"></script>
-<script src="./checkout.js"></script>
+<script src="./site.js?v=174e6fdc"></script>
+<script src="./miner-db.js?v=174e6fdc"></script>
+<script src="./price-list.js?v=174e6fdc"></script>
+<script src="./facilities.js?v=174e6fdc"></script>
+<script src="./prepay.js?v=174e6fdc"></script>
+<script src="./cart.js?v=174e6fdc"></script>
+<script src="./orders-demo.js?v=174e6fdc"></script>
+<script src="./orders-api.js?v=174e6fdc"></script>
+<script src="./checkout.js?v=174e6fdc"></script>
 </body>
 </html>

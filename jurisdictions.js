@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Jurisdictions =====
+// ===== PROTON MINING — Jurisdictions =====
 // Per-country operating context: how workable a place is, what currency it quotes in, and what
 // a normal power rate looks like there.
 //
@@ -108,7 +108,7 @@ var Jurisdictions = (function() {
     // Sparse on purpose: a benchmark that does not exist must read as absent, so the rule
     // stays silent rather than comparing against a made-up number.
     var DEFAULT_BENCHMARKS = {
-        'CA-AB': 0.035,   // Alberta behind-the-meter gas — the band Ion's own sites sit in
+        'CA-AB': 0.035,   // Alberta behind-the-meter gas — the band Proton's own sites sit in
         CAN: 0.045,
         USA: 0.045
     };
@@ -182,7 +182,7 @@ var Jurisdictions = (function() {
     }
 
     // Alberta — the only sub-national entry shipped, because it is the one place we have real
-    // operating figures for. Its benchmark comes from Ion's own quoted sites ($0.03-$0.04/kWh).
+    // operating figures for. Its benchmark comes from Proton's own quoted sites ($0.03-$0.04/kWh).
     register('CA-AB', {
         label: 'Alberta, Canada',
         tier: 'preferred',

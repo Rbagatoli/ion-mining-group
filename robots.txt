@@ -1,0 +1,41 @@
+# The repository root is the INTERNAL OPERATOR APP, and GitHub Pages is serving it publicly
+# right now at rbagatoli.github.io/proton-mining/. It returns 200. Nothing here was written
+# to be found in a search result: banking.html, accounting.html, payouts.html and the rest are
+# tools for people who already have an account.
+#
+# The data behind them is gated by Firebase auth. The pages, their titles and their structure
+# are not, and "Proton Mining — Banking" appearing in Google under the company's own name is
+# not a thing anybody chose.
+#
+# DISALLOW RATHER THAN noindex, deliberately. A noindex meta tag has to be crawled to be seen,
+# so the two mechanisms conflict: disallowing a page stops Google reading the very tag that
+# would de-index it. For a private app with no inbound links, disallowing crawling is both
+# sufficient and the one that does not require editing fourteen app pages.
+#
+# AT LAUNCH THIS FILE CHANGES. The marketing site in site/ is excluded from Pages today
+# (_config.yml) and is meant to be found. When it ships, one of two things has to happen:
+#
+#   - if site/ is served at /site/, add "Allow: /site/" below and point the sitemap line at
+#     /site/sitemap.xml;
+#   - if site/ becomes the domain root, this file is replaced by the one build-seo.js
+#     generates, which allows everything and names the sitemap.
+#
+# Leaving it as-is on launch day would hide the marketing site from every search engine, which
+# is the exact opposite of what it is for. site/tools/build-seo.js writes site/robots.txt and
+# does not touch this one.
+
+User-agent: *
+Disallow: /
+
+# /portal/ is the exception, and for the same reason the rest is disallowed rather than against
+# it. portal/index.html and portal/statement.html ALREADY carry
+# <meta name="robots" content="noindex, nofollow">. A disallowed page is never fetched, so that
+# tag is never read - and the marketing nav links "Client portal" from every single page, so
+# once the site is live the portal has inbound links from an indexed origin. A URL that is
+# linked and disallowed can still surface as a bare result; a URL that is crawled and noindexed
+# cannot. Allowing the crawl is what makes the tag do its job.
+Allow: /portal/
+
+# Sitemap: deliberately absent. There is nothing here that should be found. The marketing
+# site's own sitemap is named in site/robots.txt, which build-seo.js generates and which
+# becomes the live one at launch.

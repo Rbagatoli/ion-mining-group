@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Site Data Model =====
+// ===== PROTON MINING — Site Data Model =====
 // CRUD and persistence for sites: a sourced energy prospect, or a vendor's offer. Same record
 // either way — only the origin of usable_kw differs, which is what lets both run through the
 // same evaluation engine.
@@ -9,7 +9,7 @@
 // does not load sync.js.
 
 var SiteData = (function() {
-    var KEY = 'ionMiningSites';
+    var KEY = 'protonMiningSites';
     var VERSION = 1;
 
     var STATUSES = ['prospect', 'evaluating', 'owned', 'rejected'];

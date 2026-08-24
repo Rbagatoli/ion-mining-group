@@ -1,13 +1,13 @@
-// ===== ION MINING GROUP — Widget Settings =====
+// ===== PROTON MINING — Widget Settings =====
 // Show/hide and drag-to-reorder page sections (all pages).
-// Storage: ionMiningWidgets_<page> in localStorage (per-page).
+// Storage: protonMiningWidgets_<page> in localStorage (per-page).
 
 (function initWidgets() {
 
     // Detect page from filename
     var path = window.location.pathname.split('/').pop() || 'index.html';
     var page = path.replace('.html', '') || 'index';
-    var WIDGET_KEY = 'ionMiningWidgets_' + page;
+    var WIDGET_KEY = 'protonMiningWidgets_' + page;
     var WIDGET_VERSION_KEY = WIDGET_KEY + '_v';
     // Per PAGE, not global. The saved order already lives under a per-page key, but the version
     // was one number for the whole app -- so moving one section on one page reset every page's
@@ -23,10 +23,10 @@
 
     // Migrate old dashboard key (one-time backward compat)
     if (page === 'index') {
-        var old = localStorage.getItem('ionMiningWidgets');
+        var old = localStorage.getItem('protonMiningWidgets');
         if (old && !localStorage.getItem(WIDGET_KEY)) {
             localStorage.setItem(WIDGET_KEY, old);
-            localStorage.removeItem('ionMiningWidgets');
+            localStorage.removeItem('protonMiningWidgets');
         }
     }
 

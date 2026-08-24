@@ -35,11 +35,30 @@ ok(!!BASE && BASE.indexOf('https://') === 0, 'the generator names one origin', S
 var robots = fs.readFileSync(S + 'robots.txt', 'utf8');
 var sitemap = fs.readFileSync(S + 'sitemap.xml', 'utf8');
 
-ok(robots.indexOf('Sitemap: ' + BASE + '/sitemap.xml') >= 0,
-   'robots.txt points crawlers at the sitemap', 'the sitemap line is missing or wrong');
+/* THE LAUNCH HOLD CHANGES WHAT IS CORRECT, so the suite reads the flag rather than assuming
+   one state. While the hold is on the site is live and every page carries noindex, so robots
+   must NOT name the sitemap: advertising pages you have asked not to index is the same
+   contradiction 404.html is kept out of the sitemap for. When the hold lifts, the sitemap is
+   named and the noindex tags are gone. Both are correct; which one is correct is a one-line
+   flag, and a suite that only knew one of them would fail on launch day. */
+var LAUNCH = require(S + 'tools/launch.js');
+
+if (LAUNCH.INDEXABLE) {
+    ok(robots.indexOf('Sitemap: ' + BASE + '/sitemap.xml') >= 0,
+       'robots.txt points crawlers at the sitemap', 'the sitemap line is missing or wrong');
+} else {
+    ok(robots.indexOf('Sitemap:') < 0,
+       'robots.txt withholds the sitemap while the site is on the launch hold',
+       'it advertises pages that carry noindex');
+    ok(/Sitemap withheld/.test(robots), 'and says why, in the file itself');
+}
 ok(robots.indexOf('Allow: /') >= 0, 'and does not block the site', 'nothing is allowed');
-/* A stray Disallow here would quietly delist the whole site. */
-ok(robots.indexOf('Disallow: /') < 0, 'and carries no blanket Disallow',
+/* A BLANKET disallow, not any disallow. `Disallow: /` on its own line delists the whole site
+   silently; `Disallow: /app/` is the operator app being kept out of the index, which is the
+   point. indexOf('Disallow: /') could not tell those apart — it matched the prefix of every
+   possible path, so the moment one directory was excluded the suite reported the entire site
+   was asking not to be indexed. */
+ok(!/^Disallow:\s*\/\s*$/m.test(robots), 'and carries no blanket Disallow',
    'the site is asking not to be indexed');
 
 /* ---- the sitemap and the nav agree on what pages exist ---- */
@@ -74,7 +93,25 @@ var exempt = navPages.filter(isNoindex);
 ok(exempt.indexOf('404.html') >= 0, 'the error page is noindex', exempt.join(', '));
 ok(exempt.length >= 1, 'and the noindex pages are found by reading them, not by a list',
    exempt.join(', '));
-var expected = navPages.filter(function (p) { return !isNoindex(p); });
+/* While the hold is on, EVERY page is noindex, so "belongs in the sitemap exactly when it is
+   not noindex" would empty the expected list and report all ten as inventions. The rule is
+   right; it is just about the post-launch state. During the hold the generator's list is
+   checked against the pages that will be indexable once the tags come off — which is every
+   page that does not carry a noindex of its own for its own reason. */
+function isOwnNoindex(page) {
+    var p = S + page;
+    if (!fs.existsSync(p)) return false;
+    var h = fs.readFileSync(p, 'utf8');
+    /* 404, pay and order each carry one because of what they are, not because of the hold.
+       The hold's tag is the one immediately after theme-color. */
+    var withoutHold = h.replace(
+        /<meta name="theme-color" content="#000000">\s*<meta name="robots" content="noindex, nofollow">/,
+        '<meta name="theme-color" content="#000000">');
+    return /<meta\s+name="robots"\s+content="[^"]*noindex/i.test(withoutHold);
+}
+var expected = navPages.filter(function (p) {
+    return LAUNCH.INDEXABLE ? !isNoindex(p) : !isOwnNoindex(p);
+});
 var missing = expected.filter(function (p) { return seoPages.indexOf(p) < 0; });
 var extra = seoPages.filter(function (p) { return expected.indexOf(p) < 0; });
 ok(missing.length === 0, 'every real page is in the sitemap generator',
@@ -114,6 +151,21 @@ ok(disagree.length === 0, 'every canonical shares the generator origin',
 
 /* ---- structured data ---- */
 
+/* THE PLACEHOLDER SHAPE, NOT ANY BRACKET.
+
+   The previous detector was `String(parsed[k]).indexOf('[') >= 0` over top-level keys, and it
+   failed in both directions at once. `String([{a:1}])` is the literal text '[object Object]',
+   which contains a bracket — so any array or object value would have been reported as a leak
+   the moment one was added. And a placeholder nested one level down was invisible to it,
+   because only top-level values were stringified.
+
+   This matches the convention's actual shape: capitals, digits and punctuation inside square
+   brackets, which is what `class="ph"` spans contain and what ordinary JSON never does. It
+   runs over the serialised document, so depth does not matter.
+
+   {1,} rather than {2,}: [X] is a live placeholder in the markup. */
+var LEAK = /\[[A-Z0-9 _,.:%$\u00a7+#()\/-]{1,}\]/;
+
 var home = fs.readFileSync(S + 'index.html', 'utf8');
 var li = home.indexOf('application/ld+json');
 ok(li >= 0, 'the home page carries structured data', 'none injected');
@@ -125,18 +177,15 @@ if (li >= 0) {
     ok(!!parsed, 'and it is valid JSON', 'JSON.parse threw');
     if (parsed) {
         ok(parsed['@type'] === 'Organization', 'describing an Organization', parsed['@type']);
-        ok(parsed.name === 'Ion Mining Group', 'named correctly', parsed.name);
+        ok(parsed.name === 'Proton Mining', 'named correctly', parsed.name);
         ok(String(parsed.url).indexOf(BASE) === 0, 'pointing at the same origin', parsed.url);
 
-        /* The whole point of the placeholder convention is that nothing
-           unverified ships. JSON-LD is where a false claim would be repeated
-           back as fact by a search engine, so it is the last place a bracket
-           should ever appear. */
-        var leaked = Object.keys(parsed).filter(function (k) {
-            return String(parsed[k]).indexOf('[') >= 0;
-        });
-        ok(leaked.length === 0, 'and asserts nothing still unfilled',
-           'placeholder text in: ' + leaked.join(', '));
+        /* The whole point of the placeholder convention is that nothing unverified ships,
+           and JSON-LD is where a false claim gets repeated back as fact by a search engine.
+           The page-wide version of this check is below — this one only covers the home page's
+           Organization block, which is what the assertions around it are about. */
+        ok(!LEAK.test(JSON.stringify(parsed)), 'and asserts nothing still unfilled',
+           'placeholder text in the Organization block');
 
         /* These are all still [PLACEHOLDER] spans in the markup; they belong
            here only once they are real. */
@@ -148,7 +197,54 @@ if (li >= 0) {
 
 /* Markers, so re-running replaces the block instead of stacking copies. */
 ok((home.split('application/ld+json').length - 1) === 1,
-   'exactly one structured-data block', 'the generator appended instead of replacing');
+   'exactly one structured-data block on the home page',
+   'the generator appended instead of replacing');
+
+/* ---- EVERY page's structured data, not just the home page's ----
+
+   Everything above this line reads index.html. Four pages carry JSON-LD — the home page, the
+   two blog posts and why-mining.html — so three quarters of the site's machine-readable
+   claims were unguarded.
+
+   That is not hypothetical. why-mining.html's FAQPage asserted "We host in Canada and Nigeria
+   as well as the United States" while facilities.js says in capitals that PROTON HAS NOT
+   CONTRACTED THESE SITES and every record carries indicative:true. A present-tense claim about
+   where a company operates, in a section about tax residency, in the one format a search engine
+   repeats verbatim. Nothing could have caught it, because nothing was looking. */
+function ldBlocks(html) {
+    var out = [], i = 0;
+    while ((i = html.indexOf('application/ld+json', i)) >= 0) {
+        var open = html.indexOf('>', i) + 1;
+        var close = html.indexOf('</' + 'script>', open);
+        if (close < 0) break;
+        out.push(html.slice(open, close));
+        i = close;
+    }
+    return out;
+}
+
+var ldPages = 0, ldTotal = 0;
+fs.readdirSync(S).filter(function (f) { return /\.html$/.test(f); }).sort().forEach(function (f) {
+    var blocks = ldBlocks(fs.readFileSync(S + f, 'utf8'));
+    if (!blocks.length) return;
+    ldPages++;
+    blocks.forEach(function (raw, n) {
+        ldTotal++;
+        var doc = null;
+        try { doc = JSON.parse(raw); } catch (e) { /* reported next */ }
+        ok(!!doc, f + ' block ' + (n + 1) + ' is valid JSON', 'JSON.parse threw');
+        if (!doc) return;
+        var flat = JSON.stringify(doc);
+        ok(!LEAK.test(flat), f + ' block ' + (n + 1) + ' asserts nothing still unfilled',
+           (flat.match(LEAK) || [''])[0]);
+        ok(String(doc['@context']).indexOf('schema.org') >= 0,
+           f + ' block ' + (n + 1) + ' declares a schema.org context', doc['@context']);
+        ok(typeof doc['@type'] === 'string' && doc['@type'].length > 0,
+           f + ' block ' + (n + 1) + ' declares a type', doc['@type']);
+    });
+});
+ok(ldPages >= 4, 'structured data was found and checked on every page carrying it',
+   ldPages + ' page(s), ' + ldTotal + ' block(s)');
 
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  seo-suite: ALL OK');
 process.exit(fail ? 1 : 0);

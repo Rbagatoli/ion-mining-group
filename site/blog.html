@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes — Proton Mining</title>
+<meta name="description" content="Short pieces on bitcoin mining economics, energy markets and hardware, from the team building sites on stranded energy.">
+<link rel="canonical" href="https://protonminingco.com/blog.html">
+<meta property="og:title" content="Notes — Proton Mining">
+<meta property="og:description" content="Short pieces on bitcoin mining economics, energy markets and hardware, from the team building sites on stranded energy.">
+<meta property="og:url" content="https://protonminingco.com/blog.html">
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=174e6fdc">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html" class="active">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./why-mining.html">Why own machines</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <section class="section section--tight">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Notes</div>
+        <h1>What we are reading, and what it means for a fleet</h1>
+        <p class="lede">Short pieces on mining economics, energy markets and hardware. Nothing
+          here is a price quote or tax advice; where a post needs a number it links to the
+          calculator so you can put your own assumptions in.</p>
+      </div>
+
+      <!-- Cards are generated from site/posts/*.md by site/tools/build-blog.js. Drafts are
+           deliberately absent: a post is not in this list, the sitemap, or anywhere else that
+           leads to it until its front matter says published. -->
+      <div class="bl-grid reveal">
+      <!-- blog:begin -->
+      <a class="bc" href="./alberta-grid-queue-is-full-your-gas-is-not-in-it.html">
+        <div class="bc-top">
+          <span class="bc-date">24 August 2026</span>
+          <span class="bc-read">9 min</span>
+        </div>
+        <h3 class="bc-title">Alberta’s grid queue is full. Your gas is not in it.</h3>
+        <p class="bc-sum">Alberta’s 1,200 MW large-load allocation is gone and the process replacing it is not open. A load that never takes transmission service is not in that queue.</p>
+        <div class="bc-tags"><span class="bp-tag">energy-owner</span><span class="bp-tag">alberta</span><span class="bp-tag">flare-gas</span></div>
+        <span class="bc-go">Read<span aria-hidden="true"> &rarr;</span></span>
+      </a>
+      <a class="bc" href="./who-carries-which-risk-in-a-stranded-gas-deal.html">
+        <div class="bc-top">
+          <span class="bc-date">24 August 2026</span>
+          <span class="bc-read">17 min</span>
+        </div>
+        <h3 class="bc-title">Who carries which risk in a stranded-gas deal</h3>
+        <p class="bc-sum">Gas purchase, revenue share and lease plus royalty are not three prices for the same thing. They are three answers to who carries the loss.</p>
+        <div class="bc-tags"><span class="bp-tag">energy-owner</span><span class="bp-tag">deal-structure</span></div>
+        <span class="bc-go">Read<span aria-hidden="true"> &rarr;</span></span>
+      </a>
+      <a class="bc" href="./difficulty-has-fallen-15-this-year-and-it-cuts-both-ways.html">
+        <div class="bc-top">
+          <span class="bc-date">23 August 2026</span>
+          <span class="bc-read">3 min</span>
+        </div>
+        <h3 class="bc-title">Difficulty has fallen 15% this year, and it cuts both ways</h3>
+        <p class="bc-sum">Network difficulty is down about 15% since January. That is good for a machine bought today, and it is good for a reason nobody buying should be pleased about.</p>
+        <div class="bc-tags"><span class="bp-tag">difficulty</span><span class="bp-tag">economics</span></div>
+        <span class="bc-go">Read<span aria-hidden="true"> &rarr;</span></span>
+      </a>
+      <a class="bc" href="./three-questions-before-you-buy-a-miner.html">
+        <div class="bc-top">
+          <span class="bc-date">23 August 2026</span>
+          <span class="bc-read">3 min</span>
+        </div>
+        <h3 class="bc-title">Three questions before you buy a miner</h3>
+        <p class="bc-sum">Hashrate is the number on the box and the least useful one. The three that decide whether a machine pays are power, difficulty and where it sits.</p>
+        <div class="bc-tags"><span class="bp-tag">economics</span><span class="bp-tag">hardware</span></div>
+        <span class="bc-go">Read<span aria-hidden="true"> &rarr;</span></span>
+      </a>
+    <!-- blog:end -->
+      </div>
+
+      <div class="bl-foot reveal">
+        <h2>The argument that does not change</h2>
+        <p>News moves. The case for owning machines rather than coins does not, so it lives on
+          its own page rather than scrolling away down this one.</p>
+        <a class="btn btn--primary" href="./why-mining.html">Why own machines</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Services</h4>
+        <a href="./hosting.html">Hosting &amp; colocation</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js?v=174e6fdc"></script>
+<script src="./cart.js?v=174e6fdc"></script>
+</body>
+</html>

@@ -105,7 +105,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 function getJson(url, attempt) {
     attempt = attempt || 1;
     return new Promise(function (resolve) {
-        var req = https.get(url, { headers: { 'User-Agent': 'ion-mining-group/permit-index' } }, function (res) {
+        var req = https.get(url, { headers: { 'User-Agent': 'proton-mining/permit-index' } }, function (res) {
             var s = '';
             res.on('data', function (d) { s += d; });
             res.on('end', function () {
@@ -256,7 +256,7 @@ function downloadBinary(url, dest) {
         if (fs.existsSync(dest) && fs.statSync(dest).size > 1000000) return resolve(dest);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         var tmp = dest + '.part', file = fs.createWriteStream(tmp);
-        https.get(url, { headers: { 'User-Agent': 'ion-mining-group/permit-index' } }, function (res) {
+        https.get(url, { headers: { 'User-Agent': 'proton-mining/permit-index' } }, function (res) {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 file.close(); try { fs.unlinkSync(tmp); } catch (e) {}
                 return resolve(downloadBinary(new URL(res.headers.location, url).href, dest));

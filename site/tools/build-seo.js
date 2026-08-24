@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SITE = path.join(__dirname, '..');
-const BASE = 'https://ionmininggroup.com';
+const BASE = 'https://protonminingco.com';
 
 /* Which pages belong in the sitemap, and how much of the site each one is.
    404.html is deliberately absent: it carries <meta name="robots" content
@@ -33,6 +33,11 @@ const PAGES = {
   /* Low: a step inside a purchase, not a page anyone should land on cold.
      Listed rather than excluded so it is not treated as an orphan. */
   'cart.html':       { priority: '0.2', changefreq: 'monthly' },
+  /* The evergreen page is the one meant to rank for a question somebody types into a search
+     box, so it is weighted with the two audience pages rather than below them. The index
+     changes whenever a post lands; the posts themselves do not change once written. */
+  'why-mining.html': { priority: '0.9', changefreq: 'monthly' },
+  'blog.html':       { priority: '0.6', changefreq: 'weekly' },
   'contact.html':    { priority: '0.7', changefreq: 'yearly' },
   'privacy.html':    { priority: '0.3', changefreq: 'yearly' },
 };
@@ -43,14 +48,70 @@ function urlFor(file) {
   return file === 'index.html' ? BASE + '/' : BASE + '/' + file;
 }
 
+/* ---------- blog posts ----------
+
+   READ FROM site/posts/, not listed in PAGES above. Posts arrive faster than anybody remembers
+   to edit a registry, and a post that is live but absent from the sitemap is a page nobody
+   finds — which is the entire point of writing it.
+
+   PUBLISHED ONLY. A draft carries noindex, and advertising a page you have asked not to be
+   indexed is the same contradiction 404.html is kept out of the sitemap for.
+
+   build-blog.js is required rather than reimplemented, so there is one front-matter parser and
+   one definition of what "published" means. It exports without generating anything. */
+function postUrls() {
+  let posts = [];
+  try {
+    posts = require('./build-blog.js').readPosts();
+  } catch (e) {
+    console.error('build-seo.js: could not read posts — ' + e.message);
+    process.exit(1);
+  }
+  return posts
+    .filter((p) => p.meta.status === 'published')
+    .map((p) => ({
+      loc: BASE + '/' + p.meta.slug + '.html',
+      /* The post's own date, not the file's mtime. Regenerating a page does not revise what it
+         says, and telling a crawler it did is how a sitemap stops being believed. */
+      lastmod: p.meta.date,
+      changefreq: 'yearly',
+      priority: '0.5'
+    }));
+}
+
 /* ---------- robots.txt ---------- */
+
+/* THIS becomes the live robots.txt once the marketing site is served at the origin root. The
+   one at the repository root is a different file for a different situation — it covers the
+   period while the operator app is what Pages serves, and it disallows everything.
+
+   /app/ is disallowed because .github/workflows/pages.yml puts the operator app and the 18MB
+   of prospecting data it loads at that path. /portal/ is deliberately NOT disallowed: both its
+   pages already carry noindex, the marketing nav links it from every page, and a page that is
+   never fetched is a page whose noindex is never read. */
+const { INDEXABLE } = require('./launch.js');
 
 const robots = [
   '# ' + BASE,
   'User-agent: *',
   'Allow: /',
   '',
-  'Sitemap: ' + BASE + '/sitemap.xml',
+  '# The operator app, and the prospecting data it fetches at runtime. Neither was written',
+  '# to be found in a search result.',
+  'Disallow: /app/',
+  '',
+  '# Crawlable on purpose — see above.',
+  'Allow: /portal/',
+  '',
+  /* THE SITEMAP IS NAMED ONLY WHEN THE SITE IS INDEXABLE. While the launch hold is on, every
+     page carries noindex, and advertising a list of pages you have asked not to be indexed is
+     the same contradiction 404.html and draft posts are kept out of the sitemap for. The file
+     is still generated and stays current; it is simply not pointed at yet. */
+  ...(INDEXABLE
+      ? ['Sitemap: ' + BASE + '/sitemap.xml']
+      : ['# Sitemap withheld: the site is live but not finished, and every page currently',
+         '# carries noindex. See site/tools/launch.js. Crawling stays allowed so that tag',
+         '# can actually be read.']),
   '',
 ].join('\n');
 
@@ -74,6 +135,14 @@ const sitemap = [
     '    <priority>' + PAGES[f].priority + '</priority>',
     '  </url>',
   ].join('\n')),
+  ...postUrls().map(u => [
+    '  <url>',
+    '    <loc>' + u.loc + '</loc>',
+    '    <lastmod>' + u.lastmod + '</lastmod>',
+    '    <changefreq>' + u.changefreq + '</changefreq>',
+    '    <priority>' + u.priority + '</priority>',
+    '  </url>',
+  ].join('\n')),
   '</urlset>',
   '',
 ].join('\n');
@@ -90,13 +159,13 @@ const sitemap = [
 const LD = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Ion Mining Group',
+  name: 'Proton Mining',
   url: BASE + '/',
   logo: BASE + '/favicon.svg',
   description: 'Bitcoin mining sites built on landfill gas, flared gas, and ' +
                'curtailed power. We finance, build, and operate the interruptible ' +
                'load that turns stranded energy into revenue, and host third-party fleets.',
-  email: 'hello@ionmininggroup.com',
+  email: 'hello@protonminingco.com',
 };
 
 const LD_BLOCK = '<script type="application/ld+json">\n' +
@@ -126,7 +195,8 @@ fs.writeFileSync(path.join(SITE, 'robots.txt'), robots);
 console.log('robots.txt: ' + Object.keys(PAGES).length + ' pages allowed, sitemap pointed at ' + BASE);
 
 fs.writeFileSync(path.join(SITE, 'sitemap.xml'), sitemap);
-console.log('sitemap.xml: ' + Object.keys(PAGES).length + ' urls');
+console.log('sitemap.xml: ' + Object.keys(PAGES).length + ' pages + ' +
+            postUrls().length + ' published post(s)');
 
 const homePath = path.join(SITE, 'index.html');
 const before = fs.readFileSync(homePath, 'utf8');

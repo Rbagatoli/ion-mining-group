@@ -402,9 +402,9 @@ SiteSources.register({
     eq('list() is empty again', SiteData.list().length, 0);
 
     // Corrupt storage must degrade to empty, never throw.
-    _store['ionMiningSites'] = '{not json';
+    _store['protonMiningSites'] = '{not json';
     eq('corrupt localStorage returns the default', SiteData.list().length, 0);
-    _store['ionMiningSites'] = JSON.stringify({ _v: 1, sites: 'nope' });
+    _store['protonMiningSites'] = JSON.stringify({ _v: 1, sites: 'nope' });
     eq('wrong-shape localStorage returns the default', SiteData.list().length, 0);
 
     // ================================================================================

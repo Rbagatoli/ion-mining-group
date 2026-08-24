@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Candidate Scoring =====
+// ===== PROTON MINING — Candidate Scoring =====
 // A weighted registry of independent criteria. Adding "score by fiber distance" later is one
 // register() call — never an edit to site-engine.js.
 //
@@ -153,7 +153,7 @@ var SiteScoring = (function() {
     });
 
     // Power potential, on a log scale. Linear scaling would let one 140 MW refinery flare
-    // compress every site Ion can actually use into the bottom of the range — and the target
+    // compress every site Proton can actually use into the bottom of the range — and the target
     // here is deliberately the small, persistent flares nobody else bothers with.
     // 30 kW scores ~0, 10 MW scores 1.
     register({

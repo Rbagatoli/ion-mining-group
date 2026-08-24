@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Geo Data Module =====
+// ===== PROTON MINING — Geo Data Module =====
 // Country list, state/province lists, and centroid coordinates.
 // Shared by dashboard.js (dropdowns) and map.js (marker placement).
 

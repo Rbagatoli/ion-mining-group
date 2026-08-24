@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Miner Hardware Database =====
+// ===== PROTON MINING — Miner Hardware Database =====
 
 var MinerDB = (function() {
 

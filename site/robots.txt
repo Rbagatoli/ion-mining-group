@@ -1,5 +1,14 @@
-# https://ionmininggroup.com
+# https://protonminingco.com
 User-agent: *
 Allow: /
 
-Sitemap: https://ionmininggroup.com/sitemap.xml
+# The operator app, and the prospecting data it fetches at runtime. Neither was written
+# to be found in a search result.
+Disallow: /app/
+
+# Crawlable on purpose — see above.
+Allow: /portal/
+
+# Sitemap withheld: the site is live but not finished, and every page currently
+# carries noindex. See site/tools/launch.js. Crawling stays allowed so that tag
+# can actually be read.

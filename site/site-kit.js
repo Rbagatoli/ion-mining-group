@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — the kit, shared by every drawing of it =====
+/* ===== PROTON MINING — the kit, shared by every drawing of it =====
 
    Gas conditioning, a genset, a transformer and a container of machines. The
    home page draws them as the mine; the energy page draws the same four things

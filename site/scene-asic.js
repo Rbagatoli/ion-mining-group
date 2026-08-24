@@ -1,4 +1,4 @@
-/* ===== ION MINING GROUP — One machine, an Antminer S21 Pro =====
+/* ===== PROTON MINING — One machine, an Antminer S21 Pro =====
    The far end of the hosting page's detail slider.
 
    Proportioned from Bitmain's own figure: 450 x 219 x 293 mm, length being the

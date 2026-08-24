@@ -1,4 +1,4 @@
-// Ion Mining Group — Strike API Proxy (Cloudflare Worker)
+// Proton Mining — Strike API Proxy (Cloudflare Worker)
 // Firebase auth + per-user session tokens, TOTP, caps, rate limits.
 // Each user connects their own Strike API key. Owner key used as fallback.
 

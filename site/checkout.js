@@ -1,8 +1,8 @@
-/* ===== ION MINING GROUP — the checkout page =====
+/* ===== PROTON MINING — the checkout page =====
 
    Renders what cart.js is holding, takes a destination, and produces an order a
    human can read. It does NOT take money, and that is a business fact rather
-   than a missing feature: Ion sources per order rather than holding stock, so
+   than a missing feature: Proton sources per order rather than holding stock, so
    price and lead time are confirmed against a distributor per order. A deposit
    reserves the order once that quote is agreed — the page says so and charges
    nothing.
@@ -106,6 +106,31 @@
             out.push('');
             var label = dest.options[dest.selectedIndex];
             out.push('Destination: ' + (label ? label.textContent : dest.value));
+            /* Named in the copyable order too. This block is what a customer pastes into an
+               email to their finance team, and a fleet's destination is the first thing that
+               gets asked about. */
+            var pickedT = dest.value === 'ion' ? chosenSite() : null;
+            if (pickedT) {
+                out.push('  site: ' + pickedT.name + ', ' + pickedT.region);
+                /* LABELLED AS THE LIST RATE once a term is discounting it, exactly as on
+                   the catalogue page. "6.8c/kWh" printed above an electricity line worked out
+                   at 5.44c reads as a contradiction rather than as a before and after. */
+                out.push('  power: ' + Facilities.powerLabel(pickedT) +
+                         (chosenTerm() ? ' list (indicative)' : ' (indicative)'));
+                out.push('  status: ' + pickedT.status);
+                /* On the pasted order as well as on screen. This block is what a customer sends
+                   to their finance team, and "when do they ship" is the first question it gets
+                   asked — the answer has to travel with it. */
+                var termT = chosenTerm();
+                if (termT) {
+                    out.push('  electricity: ' + termT.label + ' at ' +
+                             Prepay.rateLabel(pickedT, termT) + ' (indicative)');
+                }
+                if (typeof Facilities !== 'undefined' && Facilities.isFull(pickedT)) {
+                    out.push('  NOTE: this site is fully occupied. Machines ordered now hold a ' +
+                             'place on its waitlist; a date is confirmed before shipping.');
+                }
+            }
             if (dest.value !== 'ion') {
                 ['facility', 'attention', 'street', 'city', 'region', 'postcode', 'country']
                 .forEach(function (name) {
@@ -151,6 +176,23 @@
         if (rate) rate.textContent = t.depositRate === null ? '' : '(' + pct(t.depositRate) + ')';
         $('ckDeposit').textContent = money(t.deposit);
         $('ckBalance').textContent = money(t.balance);
+
+        /* THE ITEMISATION IS SCOPED TO AN PROTON DESTINATION. A customer shipping to their own
+           site is buying hardware from us and nothing else — inventing an electricity line
+           for power they buy from their own utility would be inventing a charge. */
+        var itSlot = $('ckItemised');
+        if (itSlot && typeof Prepay !== 'undefined' && typeof Facilities !== 'undefined') {
+            var destSel = $('ck-dest');
+            var isIon = !destSel || destSel.value === 'ion';
+            itSlot.innerHTML = Prepay.itemisedHtml({
+                site: isIon ? chosenSite() : null,
+                term: isIon ? chosenTerm() : null,
+                hardwareUsd: t.usd,
+                kw: t.kw,
+                units: t.units,
+                depositRate: t.depositRate
+            });
+        }
 
         var unpriced = $('ckUnpriced');
         if (unpriced) {
@@ -221,6 +263,21 @@
         });
     }
 
+    /* The site chosen back on the hosting page, if there was one and facilities.js is loaded.
+       Guarded rather than assumed: checkout.js is also loaded by pages that do not carry the
+       facility module, and a ReferenceError here would take the whole checkout down. */
+    function chosenSite() {
+        if (typeof Facilities === 'undefined') return null;
+        return Facilities.chosen();
+    }
+
+    /* The prepaid term picked back on the catalogue page, if any. Guarded the same way: this
+       file is loaded by pages that do not carry the prepay module. */
+    function chosenTerm() {
+        if (typeof Prepay === 'undefined') return null;
+        return Prepay.chosen();
+    }
+
     function wireDestination() {
         var dest = $('ck-dest');
         if (!dest) return;
@@ -228,7 +285,34 @@
             var ion = dest.value === 'ion';
             var addr = $('ckAddr'), note = $('ckIonNote');
             if (addr) addr.hidden = ion;
-            if (note) note.hidden = !ion;
+
+            /* THE NAMED SITE REPLACES THE GENERIC NOTE, it does not sit above it. The note says
+               "we will confirm which of our sites has capacity", which is the right thing to say
+               to somebody who has not chosen and a contradiction printed under the name of the
+               site they did choose. */
+            var picked = ion ? chosenSite() : null;
+            var slot = $('ckFacility');
+            if (slot) {
+                /* THE TERM IS SHOWN WITH ITS RATE AND ITS SUM, not just its name. "3-year
+                   prepaid" is a label; what a customer is agreeing to is a number of dollars
+                   at a number of cents, and this is the last screen before they send it. */
+                var term = picked ? chosenTerm() : null;
+                var html = picked ? Facilities.bannerHtml(picked, 'cart', term) : '';
+                if (term) {
+                    /* THE TERM AND ITS RATE, BUT NOT THE SUM. The dollars live once, in the
+                       itemised box above, which states them beside when they are due. Printing
+                       the same figure here as well is how a page ends up with two numbers that
+                       have to be kept in step by hand. */
+                    html += '<div class="fac-prepay">' +
+                        '<strong>' + esc(term.label) + '</strong> at ' +
+                        esc(Prepay.rateLabel(picked, term)) +
+                        ' &mdash; itemised with the order above' +
+                        '<br><span class="fac-prepay-note">' +
+                        esc(Prepay.INDICATIVE_NOTE) + '</span></div>';
+                }
+                slot.innerHTML = html;
+            }
+            if (note) note.hidden = !ion || !!picked;
             /* Required only once the fields are on screen — a hidden required
                field blocks submission with a message pointing at nothing. */
             ['ck-facility', 'ck-street', 'ck-city', 'ck-country'].forEach(function (id) {
@@ -295,6 +379,22 @@
         var dest = $('ck-dest');
         var kind = dest ? dest.value : 'ion';
         var destination = { kind: kind };
+
+        /* WHICH Proton site, when the customer picked one. This is a shipping instruction, so it
+           goes on the order rather than living only on screen: the machines are delivered to the
+           facility that will run them, and "an Proton facility" is not an address.
+
+           Only the ID is sent. The capacity and the rate shown next to it are Proton's own data and
+           the service reads them from its own copy — the same rule the money already follows,
+           where the browser sends models and counts and never a price. A browser that could name
+           its own power rate on an order is a browser that can negotiate with itself. */
+        if (kind === 'ion') {
+            var picked = chosenSite();
+            if (picked) destination.site_id = picked.id;
+            /* Only the term ID. What it means is the service's, exactly as with the site. */
+            var term = chosenTerm();
+            if (term) destination.prepay_term = term.id;
+        }
         if (kind !== 'ion') {
             ['facility', 'attention', 'street', 'city', 'region', 'postcode', 'country']
             .forEach(function (name) {
@@ -408,7 +508,7 @@
                     note.textContent = isLocal()
                         ? 'Your order was not placed. ' + OrdersAPI.explain(err)
                         : 'Your order was not placed (' + why + '). Nothing was charged. ' +
-                          'Copy the order above and email it to hosting@ionmininggroup.com ' +
+                          'Copy the order above and email it to hosting@protonminingco.com ' +
                           'and we will pick it up from there.';
                     note.hidden = false;
                 }

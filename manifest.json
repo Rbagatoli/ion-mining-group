@@ -1,7 +1,7 @@
 {
-  "name": "Ion Mining Group",
-  "short_name": "Ion Mining",
-  "description": "Fleet dashboard and mining profitability calculator for Ion Mining Group",
+  "name": "Proton Mining",
+  "short_name": "Proton Mining",
+  "description": "Fleet dashboard and mining profitability calculator for Proton Mining",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",

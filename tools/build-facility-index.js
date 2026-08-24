@@ -72,7 +72,7 @@ function download(url, dest, redirects) {
         if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return resolve(dest);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         var tmp = dest + '.part', file = fs.createWriteStream(tmp);
-        https.get(url, { headers: { 'User-Agent': 'ion-mining-group/facility-index' } }, function (res) {
+        https.get(url, { headers: { 'User-Agent': 'proton-mining/facility-index' } }, function (res) {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 file.close(); try { fs.unlinkSync(tmp); } catch (e) {}
                 if ((redirects || 0) > 5) return reject(new Error('too many redirects'));

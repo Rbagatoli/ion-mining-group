@@ -1,7 +1,7 @@
-// ===== ION MINING GROUP — Banking (Wallet + Income + Accounting) =====
+// ===== PROTON MINING — Banking (Wallet + Income + Accounting) =====
 
 // Strike proxy URL - hardcoded infrastructure configuration
-var STRIKE_PROXY_URL = 'https://ion-strike-proxy.ion-mining.workers.dev';
+var STRIKE_PROXY_URL = 'https://proton-strike-proxy.proton-mining.workers.dev';
 
 // ===== SECTION 0: UNIFIED STATE =====
 var liveBtcPrice = null;
@@ -137,7 +137,7 @@ function validateBtcAddress(addr) {
 
 // ===== WALLET DATA MODULE =====
 var WalletData = (function() {
-    var KEY = 'ionMiningWallet';
+    var KEY = 'protonMiningWallet';
 
     function getData() {
         try {
@@ -203,7 +203,7 @@ var WalletData = (function() {
 
 // ===== PAYOUT DATA MODULE =====
 var PayoutData = (function() {
-    var PAYOUT_KEY = 'ionMiningPayouts';
+    var PAYOUT_KEY = 'protonMiningPayouts';
 
     function getData() {
         try {
@@ -308,7 +308,7 @@ var PayoutData = (function() {
 
 // ===== ELECTRICITY DATA MODULE =====
 var ElectricityData = (function() {
-    var ELEC_KEY = 'ionMiningElectricity';
+    var ELEC_KEY = 'protonMiningElectricity';
 
     function getData() {
         try {
@@ -371,8 +371,8 @@ var ElectricityData = (function() {
 
 // ===== STRIKE AUTH MODULE =====
 var StrikeAuth = (function() {
-    var SESSION_KEY = 'ionStrikeSession';
-    var USER_KEY = 'ionStrikeUser';
+    var SESSION_KEY = 'protonStrikeSession';
+    var USER_KEY = 'protonStrikeUser';
 
     function getToken() {
         return localStorage.getItem(SESSION_KEY) || '';
@@ -437,7 +437,7 @@ async function autoLoginWithFirebase() {
     }
 
     // Need Firebase user to get an ID token
-    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+    var fbUser = (typeof ProtonAuth !== 'undefined') ? ProtonAuth.getUser() : null;
     if (!fbUser) {
         showSignInPrompt();
         return;
@@ -459,7 +459,7 @@ async function autoLoginWithFirebase() {
         // Also auth with QB worker (if Strike succeeded, this creates parallel session for QB)
         if (data && data.ok) {
             try {
-                var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
+                var authUrl = 'https://proton-quickbooks.proton-mining.workers.dev';
                 var qbRes = await fetch(authUrl + '/auth/firebase-login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -527,7 +527,7 @@ var StrikeAPI = (function() {
         if (res.status === 401) {
             StrikeAuth.clearSession();
             // Try to re-auth with Firebase, or show sign-in prompt
-            if (typeof IonAuth !== 'undefined' && IonAuth.isSignedIn()) {
+            if (typeof ProtonAuth !== 'undefined' && ProtonAuth.isSignedIn()) {
                 autoLoginWithFirebase();
             } else {
                 showSignInPrompt();
@@ -756,7 +756,7 @@ function showAuthenticatedUI() {
         var nameEl = document.getElementById('authUsername');
         if (nameEl) {
             // Show Firebase display name or email
-            var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+            var fbUser = (typeof ProtonAuth !== 'undefined') ? ProtonAuth.getUser() : null;
             if (fbUser) {
                 nameEl.textContent = fbUser.displayName || fbUser.email || 'User';
             } else {
@@ -1122,7 +1122,7 @@ function renderWallet() {
 
         // Store Strike BTC balance in localStorage for calculator access
         try {
-            localStorage.setItem('ionMiningStrikeBtcBalance', strikeBtc.toString());
+            localStorage.setItem('protonMiningStrikeBtcBalance', strikeBtc.toString());
         } catch(e) {
             console.warn('[Banking] Could not store Strike balance:', e);
         }
@@ -1498,8 +1498,8 @@ window.addEventListener('beforeunload', function() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
             // Sign out of Firebase — the onAuthChange listener will clear wallet state
-            if (typeof IonAuth !== 'undefined') {
-                IonAuth.signOut();
+            if (typeof ProtonAuth !== 'undefined') {
+                ProtonAuth.signOut();
             } else {
                 clearAllWalletState();
             }
@@ -1986,9 +1986,9 @@ if (cancel2FA) {
 document.getElementById('btnGenerate2FA').addEventListener('click', function() {
     var secret = generateBase32Secret(16);
     // Use Firebase email for 2FA label
-    var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+    var fbUser = (typeof ProtonAuth !== 'undefined') ? ProtonAuth.getUser() : null;
     var label = fbUser ? (fbUser.email || fbUser.displayName || 'user') : 'user';
-    var otpauthUri = 'otpauth://totp/IonMining:' + label + '?secret=' + secret + '&issuer=IonMining';
+    var otpauthUri = 'otpauth://totp/ProtonMining:' + label + '?secret=' + secret + '&issuer=ProtonMining';
 
     document.getElementById('twofa-secret-display').textContent = secret;
     document.getElementById('twofa-setup-content').style.display = 'none';
@@ -2190,7 +2190,7 @@ function startInvoicePoll(invoiceId) {
 async function fetchStrikeOnchainAddress() {
     if (strikeOnchainAddress) return strikeOnchainAddress;
     try {
-        var cached = JSON.parse(localStorage.getItem('ionStrikeOnchainAddr') || 'null');
+        var cached = JSON.parse(localStorage.getItem('protonStrikeOnchainAddr') || 'null');
         if (cached && cached.address && cached.ts && (Date.now() - cached.ts < 86400000)) {
             strikeOnchainAddress = cached.address;
             return cached.address;
@@ -2200,7 +2200,7 @@ async function fetchStrikeOnchainAddress() {
         var data = await StrikeAPI.getOnchainAddress();
         if (data && data.ok && data.address) {
             strikeOnchainAddress = data.address;
-            try { localStorage.setItem('ionStrikeOnchainAddr', JSON.stringify({ address: data.address, ts: Date.now() })); } catch(e) {}
+            try { localStorage.setItem('protonStrikeOnchainAddr', JSON.stringify({ address: data.address, ts: Date.now() })); } catch(e) {}
             return data.address;
         }
     } catch(e) {}
@@ -3204,7 +3204,7 @@ document.getElementById('btnApplyCustom').addEventListener('click', function() {
 
 // ===== QBO CONNECTION (OAUTH) =====
 function getQboProxyUrl() {
-    return 'https://ion-quickbooks.ion-mining.workers.dev';
+    return 'https://proton-quickbooks.proton-mining.workers.dev';
 }
 
 async function connectQuickBooks() {
@@ -3215,7 +3215,7 @@ async function connectQuickBooks() {
     var token = StrikeAuth.getToken();
     if (!token) {
         // No session - try to create one using Firebase
-        var fbUser = (typeof IonAuth !== 'undefined') ? IonAuth.getUser() : null;
+        var fbUser = (typeof ProtonAuth !== 'undefined') ? ProtonAuth.getUser() : null;
         if (!fbUser) {
             alert('Please sign in with Google first (top right corner)');
             return;
@@ -3224,7 +3224,7 @@ async function connectQuickBooks() {
         try {
             // Exchange Firebase ID token for session token
             var idToken = await fbUser.getIdToken(true);
-            var authUrl = 'https://ion-quickbooks.ion-mining.workers.dev';
+            var authUrl = 'https://proton-quickbooks.proton-mining.workers.dev';
             var authRes = await fetch(authUrl + '/auth/firebase-login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3364,8 +3364,8 @@ async function disconnectStrike() {
         strikeBalances = null;
         strikeTransactions = [];
         strikeOnchainAddress = null;
-        try { localStorage.removeItem('ionStrikeOnchainAddr'); } catch(e) {}
-        try { localStorage.removeItem('ionMiningStrikeBtcBalance'); } catch(e) {}
+        try { localStorage.removeItem('protonStrikeOnchainAddr'); } catch(e) {}
+        try { localStorage.removeItem('protonMiningStrikeBtcBalance'); } catch(e) {}
 
         // Clear Strike accounting data
         strikeAcctData = { deposits: [], payouts: [], receives: [] };
@@ -3902,10 +3902,10 @@ function renderAssetsOverview() {
     if (assetsWidget && !isWidgetHidden('assets-overview')) assetsWidget.style.display = '';
 }
 
-// Widget visibility is owned by widget-settings.js (localStorage: ionMiningWidgets_banking)
+// Widget visibility is owned by widget-settings.js (localStorage: protonMiningWidgets_banking)
 function isWidgetHidden(key) {
     try {
-        var cfg = JSON.parse(localStorage.getItem('ionMiningWidgets_banking') || '{}');
+        var cfg = JSON.parse(localStorage.getItem('protonMiningWidgets_banking') || '{}');
         return !!(cfg.hidden && cfg.hidden.indexOf(key) >= 0);
     } catch (e) { return false; }
 }
@@ -4182,7 +4182,7 @@ function updateExpenseDoughnut(pnl) {
     // Expense categories are categorical, not semantic -- an expense is not "bad" the way a
     // negative P&L is -- so this uses the luminance ramp rather than the red/green/amber that
     // carry meaning elsewhere in the app.
-    var palette = IonTheme.series;
+    var palette = ProtonTheme.series;
     var colors = catLabels.map(function(_, i) { return palette[i % palette.length]; });
 
     if (expenseDoughnutChart) expenseDoughnutChart.destroy();
@@ -4293,7 +4293,7 @@ function exportCSV(startDate, endDate) {
     var header = rows[0];
     var body = rows.slice(1).sort(function(a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
     rows = [header].concat(body);
-    downloadCSVFile(rows, 'ion-mining-payouts-' + startDate + '-to-' + endDate + '.csv');
+    downloadCSVFile(rows, 'proton-mining-payouts-' + startDate + '-to-' + endDate + '.csv');
 }
 
 // ===== TAX REPORT EXPORT =====
@@ -4357,7 +4357,7 @@ function exportTaxReport(startDate, endDate) {
     rows.push(['', 'Total Equipment Purchases', '', '', '-' + totalCapex.toFixed(2), '', '', '']);
     rows.push(['', 'Net Taxable Income', '', '', netTaxable.toFixed(2), '', '', '']);
 
-    downloadCSVFile(rows, 'ion-mining-tax-report-' + startDate + '-to-' + endDate + '.csv');
+    downloadCSVFile(rows, 'proton-mining-tax-report-' + startDate + '-to-' + endDate + '.csv');
 }
 
 // ===== FULL REPORT (with QBO expenses) =====
@@ -4435,7 +4435,7 @@ function exportFullReport(startDate, endDate) {
     rows.push(['', 'Total Equipment Purchases', '', '', '-' + totalCapex.toFixed(2), '', '', '']);
     rows.push(['', 'Net Taxable Income', '', '', netTaxable.toFixed(2), '', '', '']);
 
-    downloadCSVFile(rows, 'ion-mining-full-report-' + startDate + '-to-' + endDate + '.csv');
+    downloadCSVFile(rows, 'proton-mining-full-report-' + startDate + '-to-' + endDate + '.csv');
 }
 
 // ===== CSV DOWNLOAD HELPER =====
@@ -4489,7 +4489,7 @@ initNav('banking');
     // the day they were paid. Runs once, after price history has been fetched, and reports what
     // it did rather than repairing silently — this edits your cost-basis record, so the count of
     // rows it could NOT price matters as much as the count it fixed.
-    var REPRICE_FLAG = 'ionMiningPayoutRepriceV1';
+    var REPRICE_FLAG = 'protonMiningPayoutRepriceV1';
     try {
         if (!localStorage.getItem(REPRICE_FLAG) && typeof PriceHistory !== 'undefined') {
             await PriceHistory.fetchPriceHistory();
@@ -4525,8 +4525,8 @@ initNav('banking');
 
     // Wallet init
     loadStrikeSettings();
-    if (typeof IonAuth !== 'undefined') {
-        IonAuth.onAuthChange(function(fbUser) {
+    if (typeof ProtonAuth !== 'undefined') {
+        ProtonAuth.onAuthChange(function(fbUser) {
             _walletAuthResolved = true;
             if (fbUser) {
                 autoLoginWithFirebase();

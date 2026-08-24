@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Flare Catalog (browser) =====
+// ===== PROTON MINING — Flare Catalog (browser) =====
 // Loads the pre-built catalog artifact and turns its compact positional rows into the common
 // candidate shape from site-sources.js, so everything downstream — scoring, flags, the
 // evaluation engine, the map — is agnostic about where a candidate came from.

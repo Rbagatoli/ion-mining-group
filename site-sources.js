@@ -1,4 +1,4 @@
-// ===== ION MINING GROUP — Site Discovery Sources =====
+// ===== PROTON MINING — Site Discovery Sources =====
 // The energy-source-agnostic seam.
 //
 // Sites will not always be flare gas. Nothing above this layer knows what a flare is: every

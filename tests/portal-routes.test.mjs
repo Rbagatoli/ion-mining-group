@@ -169,7 +169,7 @@ console.log('\n=== a seller cannot reach another seller by guessing ===');
     ok('and the two responses are identical, so this is not an existence oracle',
        theirs.raw === nowhere.raw, JSON.stringify(theirs.raw));
 
-    // A statement that is computed but not yet issued belongs to nobody outside Ion.
+    // A statement that is computed but not yet issued belongs to nobody outside Proton.
     var draft = await call('/portal/statements/SITE-A/2027-04', { headers: bearer(SESSION_A) });
     eq('a closed-but-unissued statement is invisible', draft.status, 404);
     eq('identically so', draft.raw, nowhere.raw);
@@ -239,7 +239,7 @@ console.log('\n=== a seller session cannot reach ops, and vice versa ===');
 console.log('\n=== a meter cannot reach anything but ingest ===');
 {
     var unsigned = await call('/telemetry/readings', {
-        method: 'POST', headers: { 'X-Ion-Device': 'DEV1' },
+        method: 'POST', headers: { 'X-Proton-Device': 'DEV1' },
         env: { DEVICE_ROOT_KEY: 'root' }, body: '{"meter_id":"MTR-A","readings":[]}' });
     eq('an unsigned post is refused', unsigned.status, 401);
 
@@ -249,12 +249,12 @@ console.log('\n=== a meter cannot reach anything but ingest ===');
     eq('identically', noDevice.raw, unsigned.raw);
 
     var unknownDev = await call('/telemetry/readings', {
-        method: 'POST', headers: { 'X-Ion-Device': 'GHOST' },
+        method: 'POST', headers: { 'X-Proton-Device': 'GHOST' },
         env: { DEVICE_ROOT_KEY: 'root' }, body: '{}' });
     eq('an unknown device is the same 401, not a different error', unknownDev.raw, unsigned.raw);
 
     // A device is not a seller and must not be able to become one.
-    var devToPortal = await call('/portal/me', { headers: { 'X-Ion-Device': 'DEV1' } });
+    var devToPortal = await call('/portal/me', { headers: { 'X-Proton-Device': 'DEV1' } });
     eq('a device header is not a session', devToPortal.status, 401);
 }
 

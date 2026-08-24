@@ -55,7 +55,7 @@ const MUTATIONS = [
 
     { file: S + 'tools/build-diagram.js', gen: true,
       why: 'the two landfill drawings given the same alt text',
-      from: "alt: 'The same landfill with Ion on it: the flare down to a pilot, and a tie-in downstream of the blower running gas through a treatment skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.'",
+      from: "alt: 'The same landfill with Proton on it: the flare down to a pilot, and a tie-in downstream of the blower running gas through a treatment skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.'",
       to:   "alt: 'Interactive drawing of a landfill gas collection system as it operates today: a capped cell with extraction wells across it, a header main gathering them, a blower holding the field under vacuum, and an enclosed flare burning everything it brings up. Drag to rotate, scroll to zoom.'" },
 
     { file: S + 'energy.html',

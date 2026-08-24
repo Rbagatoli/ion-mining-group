@@ -28,6 +28,10 @@ const SITE = path.join(ROOT, 'site');
 */
 const DB_PATH = process.argv[2] || path.join(SITE, 'miner-db.js');
 const PRICE_PATH = process.argv[3] || path.join(SITE, 'price-list.js');
+/* Not overridable: there is one facility list and the Worker must not be pointed at
+   a different one, because this is what decides where a paid-for pallet is sent. */
+const Facilities = require(path.join(SITE, 'facilities.js'));
+const Prepay = require(path.join(SITE, 'prepay.js'));
 const OUT = process.argv[4] || path.join(ROOT, 'worker-orders', 'catalogue.js');
 
 const MinerDB = require(path.resolve(DB_PATH));
@@ -78,6 +82,31 @@ const out = [
     'export const CATALOGUE = {',
     entries.join(',\n'),
     '};',
+    '',
+    '/* The sites a customer may have machines shipped to.',
+    '',
+    '   IDS ONLY, and that is the point. The browser names a site; the Worker decides what that',
+    '   site IS. Capacity and power price are never sent by the browser and never stored from it',
+    '   — same rule as the prices above, for the same reason: a figure the customer can edit is',
+    '   not a figure anyone can be held to.',
+    '',
+    '   A site absent from this list is refused rather than accepted-and-ignored, so a mistyped',
+    '   or stale link cannot produce a paid order with no destination on it. */',
+    'export const SITE_IDS = ' + JSON.stringify(Facilities.all().map(s => s.id)) + ';',
+    '',
+    '/* Sites that can actually receive machines today. A customer may hold a link to a site that',
+    '   has since filled up or has not been energised yet, and taking money against it would be',
+    '   selling space that does not exist. */',
+    'export const SITE_OPEN = ' +
+        JSON.stringify(Facilities.all().filter(Facilities.acceptsMachines).map(s => s.id)) + ';',
+    '',
+    '/* Prepaid electricity terms a customer may commit to.',
+    '',
+    '   IDS ONLY, like the sites above. The browser names a term; the Worker decides what that',
+    '   term IS — how many years and what discount. A prepay is a multi-year commitment worth',
+    '   five figures, so the one thing a browser must never be able to do is name its own',
+    '   discount. */',
+    'export const PREPAY_TERMS = ' + JSON.stringify(Prepay.all().map(t => t.id)) + ';',
     ''
 ].join('\n');
 
