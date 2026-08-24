@@ -766,6 +766,48 @@ console.log('=== the brand is Proton Mining, everywhere ===');
        'stored attribution values are untouched, so records already in KV still read');
 }
 
+console.log('=== the drawings are visible on a phone ===');
+{
+    /* They were display:none below 900px, with the ordered list standing in for them — so
+       most visitors, who are on a phone, got a bullet list where everybody else got a cutaway.
+
+       Unhiding alone was not the fix and this is the number that says why: the viewBox is
+       1280x470, which fitted to a 390px screen renders at 348x128, a scale of 0.272. It now
+       sits in its own horizontal scroller at 820px, a scale of 0.641. Measured in a real
+       browser at 390x844 on all three pages that carry one. */
+    const css = fs.readFileSync(path.join(SITE, 'styles.css'), 'utf8');
+    const i = css.indexOf('@media (max-width: 900px)');
+    ok(i > 0, 'the mobile diagram block exists');
+    const block = css.slice(i, css.indexOf('\n}', i));
+
+    ok(!/[.]dg-wrap \{ display: none/.test(block),
+       'the drawings are no longer hidden on a phone');
+    ok(/overflow-x:\s*auto/.test(block), 'they get their own horizontal scroller');
+    ok(/[.]dg-wrap [.]site-diagram\s*\{[^}]*width:\s*820px/.test(block),
+       'at a width where the drawing is legible rather than fitted to the screen');
+
+    /* PANNING BELONGS TO THE BROWSER. Without this the engine's pointermove handler and the
+       scroller fight over every horizontal swipe, and the drawing rotates when the reader
+       meant to scroll it. */
+    ok(/touch-action:\s*pan-x/.test(block),
+       'and a swipe scrolls it rather than rotating it');
+
+    /* The callouts come off and the list stays: the drawing is the picture, the <ol> is the
+       labels. Losing the list too would leave the drawing unlabelled. */
+    ok(/[.]dg-callout \{ display: none/.test(block), 'the pinned callout bubbles come off');
+    ok(/[.]dg-list \{ display: block/.test(block), 'and the ordered list stays as the labels');
+
+    /* Every page carrying a drawing carries the list for it, or the labels are simply gone. */
+    ['index.html', 'energy.html', 'hosting.html'].forEach(f => {
+        const h = fs.readFileSync(path.join(SITE, f), 'utf8');
+        const wraps = (h.match(/class="dg-wrap/g) || []).length;
+        const lists = (h.match(/class="dg-list/g) || []).length;
+        ok(wraps > 0 && lists >= wraps,
+           f + ': every drawing has a list to label it',
+           wraps + ' drawings, ' + lists + ' lists');
+    });
+}
+
 console.log('\n  ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
 console.log('  blog-suite: ALL OK');

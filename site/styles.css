@@ -2605,7 +2605,60 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 }
 
 @media (max-width: 900px) {
-    .dg-wrap { display: none; }
+    /* ---- the drawings on a phone ----
+     *
+     * These used to be display:none below 900px, with the ordered list underneath standing in
+     * for them. That was a defensible call and the wrong one: the drawings are the most
+     * distinctive thing on the site, and a visitor on a phone — which is most of them — was
+     * getting a bullet list where everybody else got a cutaway.
+     *
+     * WHY THEY COULD NOT SIMPLY BE UNHIDDEN. The viewBox is 1280x470. Fitted to a 390px screen
+     * that renders at 348x128, a scale of 0.272: a letterbox strip four times smaller than the
+     * drawing was designed to be read at, with eight 16px callout bubbles pinned over it. Every
+     * one of those numbers is measured, and together they are why hiding it looked reasonable.
+     *
+     * So the drawing gets its own horizontal scroller at a width where it is legible — 820px,
+     * a scale of 0.641, which is 2.4x what fitting to the screen gives — and you swipe it. That
+     * is the convention the rest of this site already uses for content wider than the screen,
+     * and it keeps the page itself from ever scrolling sideways.
+     *
+     * THE CALLOUT BUBBLES COME OFF, and the list stays. Eight bubbles over a drawing that is
+     * now partly off-screen would be unreadable and would land on nothing. The <ol> below says
+     * the same eight things, in the same order, at a size somebody can actually read. The
+     * drawing is the picture; the list is the labels. */
+    .dg-wrap {
+        display: block;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        /* Panning belongs to the browser. Without this the engine's pointermove handler and
+           the scroller fight over every horizontal swipe, and the drawing rotates when you
+           meant to scroll it. Drag-to-rotate is a mouse affordance and it stays one. */
+        touch-action: pan-x pan-y;
+    }
+    /* SHIFTED LEFT BY THE WIDTH OF THE CALLOUT GUTTER.
+     *
+     * Measuring said the drawing was legible. Looking at a screenshot said it was not the
+     * thing on screen: the left third of the viewBox is empty space that exists to hold the
+     * callout bubbles, and with those hidden the reader's first view was a blank field with
+     * the mine off the right edge. A scroller that opens on nothing is a scroller nobody
+     * swipes.
+     *
+     * A negative margin rather than a scroll position, because setting scrollLeft would mean
+     * reading layout at runtime, which this project does not do. The drawing starts where the
+     * drawing starts, and the gutter is still reachable by swiping back if anybody wants it. */
+    .dg-wrap .site-diagram {
+        width: 820px; max-width: none; height: auto;
+        margin-left: -250px;
+    }
+    .dg-callout { display: none; }
+
+    /* THE HINT DESCRIBED A MOUSE. "Drag to rotate, hover a part to identify it, scroll to
+       zoom" is three things a phone cannot do: dragging now scrolls, there is no hover, and
+       there is no wheel. It also overlapped the zoom buttons at this width. The buttons stay
+       — they work by tapping — and the sentence goes. */
+    .dg-hint { display: none; }
+
     .dg-list { display: block; }
     /* Two lists, and the slider still picks which one you are reading. Keyed to
        which END the slider is at rather than to the view names, so a second
