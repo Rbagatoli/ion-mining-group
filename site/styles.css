@@ -2688,15 +2688,100 @@ a.fac:hover .fac-go { color: var(--btc-200); }
        reader saw it sitting to one side. `margin: auto` on an overflowing flex item is the one
        construction that centres it AND leaves both ends reachable by scrolling; text-align and
        justify-content both centre it and then make the left end unscrollable. */
-    .dg-wrap .site-diagram { width: 100%; max-width: none; height: auto; margin: 0; }
+    /* THE WINDOW GROWS TO FIT THE BUBBLES, which is the whole change here.
+     *
+     * Measured, the figure on a 390px phone was a 350x129px box holding a drawing 213px
+     * wide, because the viewBox is 1280 units across and 500 of those — the outer 250 each
+     * side — are empty space that exists only to hold callout bubbles. So a third of the
+     * width was reserved for bubbles that were then set to display:none, and the drawing was
+     * squeezed into what was left. Postage-stamp sized, with the labels moved to a list
+     * underneath.
+     *
+     * Two fixes, and they pay for each other:
+     *
+     * WIDTH 164%, MARGIN -32%. 1280/780 = 1.641, and 780 units is exactly the drawing's own
+     * extent (it spans x 248..1033). At 164% with the overhang split evenly, the visible
+     * window lands on viewBox x 250..1030 — the empty gutters are cropped by the wrap's
+     * existing overflow:hidden, and the drawing grows from 213px to the full 350px. That is
+     * a 64% increase in linear size, for free, with no change to the scene or the engine.
+     *
+     * THE WRAP BECOMES A TWO-COLUMN GRID. The drawing spans both columns, and the eight
+     * callouts follow it as ordinary grid items, four rows of two. They stop being absolutely
+     * positioned, so the inline top:12.77% the generator writes simply does not apply, and
+     * the box grows to whatever height the bubbles need instead of being locked to the
+     * drawing's aspect ratio. Full-width bubbles at half the window each are ~165px wide,
+     * against the 60px they would have had flanking the drawing at 17.2%.
+     *
+     * The arithmetic that forced this: a readable bubble is about 130px, two of them 260px,
+     * and the drawing needs 250px of the same 350px. Flanking bubbles and a legible drawing
+     * cannot coexist at this width, so the bubbles go below and the window gets taller. */
+    .dg-wrap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        padding-bottom: 7px;
+    }
+    /* Base: no crop. A scene with no rule below renders whole rather than guessed at, so
+       adding a scene can never silently slice its edge off. */
+    .dg-wrap .site-diagram {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
+        max-width: none;
+        height: auto;
+    }
+    /* THE CROP, PER SCENE, FROM MEASURED GEOMETRY.
+     *
+     * Each scene draws inside a band of its 1280-unit viewBox and reserves the rest for
+     * bubbles that are no longer there. The windows below come from sweeping each scene
+     * through a full revolution in Node and taking the union of every path it emits —
+     * tests/site/dg-crop.js does exactly that and fails if a window stops containing its
+     * scene. Every scene turned out to be centred in its viewBox, so all four crops are
+     * symmetric, and each carries 20 units of padding beyond the widest angle.
+     *
+     *   width  = 1280 / span            margin = -(edge / span)
+     *
+     * VERTICALLY NOTHING IS CROPPED, and that is a measurement, not an oversight. The first
+     * version cut the void under the container, because at the yaw I screenshotted the
+     * drawing sat in a band with obvious dead space below it. Swept properly, --cont spans
+     * y 56..427 of 470 — the drawing rises and falls as it turns, and a crop fitted to one
+     * frame clips it at every other. Scaling up horizontally enlarges it vertically anyway,
+     * which is what the void was really asking for. */
+    .dg-wrap--site .site-diagram { width: 166.23%; margin: 0 -33.12%; }   /* draws x 275..1005 */
+    .dg-wrap--cont .site-diagram { width: 164.95%; margin: 0 -32.47%; }   /* draws x 272..1008 */
+    .dg-wrap--asic .site-diagram { width: 184.44%; margin: 0 -42.22%; }   /* draws x 313..967  */
+    .dg-wrap--now  .site-diagram,
+    .dg-wrap--ion  .site-diagram { width: 119.18%; margin: 0 -9.59%; }    /* draws x 123..1157 */
+    /* Static, so the generator's inline `top` stops applying and these flow in the grid.
+       width/transform/text-align all have to come off too: --l is right-aligned and both
+       sides carry translateY(-50%), which would pull the first row up out of the box. */
+    .dg-callout {
+        display: block;
+        position: static;
+        width: auto;
+        transform: none;
+        text-align: left;
+    }
+    /* Leaders and nodes ran from each part out to x=250 and x=1030 — the two lines the
+       bubbles used to butt against. Those are now the cropped edges of the window and the
+       bubbles are underneath, so the leaders point off the side of the picture at nothing.
+       The drawing reads better small without them. */
+    .dg-lead, .dg-node { display: none; }
+    /* The type floor. .dg-c-title clamps to 9px and .dg-c-desc to 10.5px at this viewport,
+       and 9px is under the floor this site holds everywhere else. In the gutters they were
+       captions; at full width they are the labels themselves. */
+    .dg-c-title { font-size: 10.5px; }
+    .dg-c-desc  { font-size: 12.5px; }
+    /* Over the drawing rather than over the bubbles: `bottom` now resolves against a box
+       three times taller, which would drop the zoom buttons into the middle of the labels. */
+    .dg-controls { top: 8px; bottom: auto; }
     /* Vertical belongs to the page, always. Without this a swipe that is a few degrees off
        horizontal gets eaten by the diagram and the page does not move, which reads as the
        page being stuck. */
-    /* Vertical belongs to the page and two fingers belong to the browser. What is left {d} a
-       horizontal drag {d} reaches the engine, so a sideways swipe turns the model, which is the
+    /* Vertical belongs to the page and two fingers belong to the browser. What is left — a
+       horizontal drag — reaches the engine, so a sideways swipe turns the model, which is the
        one gesture worth having here. */
     .dg-wrap { touch-action: pan-y pinch-zoom; }
-    .dg-callout { display: none; }
 
     /* THE HINT DESCRIBED A MOUSE. "Drag to rotate, hover a part to identify it, scroll to
        zoom" is three things a phone cannot do: dragging now scrolls, there is no hover, and
@@ -2704,7 +2789,11 @@ a.fac:hover .fac-go { color: var(--btc-200); }
        — they work by tapping — and the sentence goes. */
     .dg-hint { display: none; }
 
-    .dg-list { display: block; }
+    /* THE LIST STAYS OFF NOW THAT THE BUBBLES ARE BACK. Both are generated from the same
+       CALLOUTS array in scene-site.js, so showing both put every label on the screen twice,
+       word for word. The bubbles win because they carry data-region: tapping one lights the
+       part it names, which is the thing the list could never do. */
+    .dg-list { display: none; }
 
     /* ---- the orange, on a nearly full-width button ----
        See --metal-btc-btn-wide for why the same ramp reads pale here and rich on desktop.

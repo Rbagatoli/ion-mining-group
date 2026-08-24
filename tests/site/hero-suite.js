@@ -328,6 +328,57 @@ ok(code.indexOf('occlude();') >= 0 &&
    code.indexOf('occlude();') > code.indexOf('sourceY + 1'),
    '  and erases last, so the plant covers the source line and haze too');
 
+/* ---------- the reveal observer cannot be made unreachable by height ----------
+
+   A published post rendered as a blank black page on a phone. The cause was a RATIO
+   threshold on the reveal observer: threshold 0.06 asks that 6% of the element fit inside
+   the root, the root is the viewport shrunk by its bottom margin, and on a phone that is
+   about 776px — so no element taller than roughly 12,900px could ever satisfy it. The post
+   was 15,385px. Every one of its 20,642 characters sat at opacity 0 permanently.
+
+   Nothing failed. The page was served, indexed, and empty. It survived because
+   prefers-reduced-motion resets .reveal to opacity 1, so it looked correct to anyone
+   testing with reduced motion on.
+
+   The invariant is that reveal must not depend on element height at all, and threshold 0 is
+   what delivers that: any part crossing the root is enough. These assertions pin it, and
+   the arithmetic below is the reason, kept next to the number it justifies. */
+/* Match the OPTIONS OBJECT, not the constructor call. A lazy match from
+   `new IntersectionObserver(` to the first `});` stops at the callback's own closing `});`
+   and never reaches the options at all — which reads as "no threshold found" and fails
+   whatever the code actually says. A guard that cannot see the thing it guards is worse
+   than no guard, because it fails for the wrong reason and gets loosened. */
+const revealIO = js.match(/\},\s*\{([^{}]*rootMargin[^{}]*)\}\s*\)\s*;/);
+ok(!!revealIO, 'the reveal observer options are readable');
+if (revealIO) {
+    const opts = revealIO[1];
+    const thr = opts.match(/threshold:\s*([\d.]+)/);
+    ok(!!thr && parseFloat(thr[1]) === 0,
+       'reveal uses threshold 0, so an element can never be too tall to reveal',
+       thr ? 'threshold: ' + thr[1] : 'no threshold found');
+
+    /* If a ratio threshold ever comes back, say out loud how tall a block may then be
+       before it goes permanently dark — on the shortest phone the site targets. */
+    const marg = opts.match(/rootMargin:\s*'0px 0px (-?[\d.]+)% 0px'/);
+    ok(!!marg, '  and a readable rootMargin', marg ? marg[1] + '%' : 'none');
+    if (thr && marg && parseFloat(thr[1]) > 0) {
+        const root = 667 * (1 + parseFloat(marg[1]) / 100);   /* iPhone SE, the shortest */
+        ok(false, '  RATIO THRESHOLD IS BACK: blocks over ' +
+           Math.round(root / parseFloat(thr[1])) + 'px would never reveal');
+    }
+}
+
+/* .reveal starts invisible, which is what makes the above load-bearing rather than
+   cosmetic. If that ever stops being true the guard above can be relaxed; while it is
+   true, a block that never gets .in is a block nobody can read. */
+ok(/\.reveal\s*\{[^}]*opacity:\s*0/.test(css),
+   '  .reveal starts at opacity 0, so failing to reveal means unreadable, not just unanimated');
+
+/* The reduced-motion escape hatch is why this hid for so long. Keep it — it is correct —
+   but keep knowing it is there. */
+ok(/prefers-reduced-motion[\s\S]{0,400}\.reveal[^}]*opacity:\s*1/.test(css),
+   '  reduced motion still shows everything (and still masks this class of bug in testing)');
+
 console.log('');
 console.log(fail ? fail + ' FAILED' : 'ALL OK');
 process.exitCode = fail ? 1 : 0;

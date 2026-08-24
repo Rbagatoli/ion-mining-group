@@ -31,7 +31,7 @@ const SUITES = [
     'seo-suite.js', 'og-suite.js', 'hero-suite.js', 'dg-suite.js',
     'dupe-ids.js', 'cascade.js', 'contrast.js', 'verify.js',
     'calc-suite.js', 'asic-suite.js', 'host-suite.js', 'dg-regress.js',
-    'pad-suite.js', 'landfill-copy-suite.js',
+    'pad-suite.js', 'landfill-copy-suite.js', 'dg-crop.js',
     'hardware-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js',
     'orders-suite.mjs', 'pay-suite.mjs', 'stripe-suite.mjs', 'facility-suite.mjs',
     'blog-suite.mjs',

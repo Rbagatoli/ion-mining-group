@@ -805,10 +805,42 @@ console.log('=== the drawings are visible on a phone ===');
     ok(/if \(e\.ctrlKey\) return;/.test(wheel.slice(0, 1200)),
        'and a pinch does not drive the zoom');
 
-    /* The callouts come off and the list stays: the drawing is the picture, the <ol> is the
-       labels. Losing the list too would leave the drawing unlabelled. */
-    ok(/[.]dg-callout \{ display: none/.test(block), 'the pinned callout bubbles come off');
-    ok(/[.]dg-list \{ display: block/.test(block), 'and the ordered list stays as the labels');
+    /* THE LABELS MUST SURVIVE, whichever of the two carries them.
+     *
+     * This used to read the other way round — bubbles off, list on — because eight bubbles
+     * pinned into 17.2%-wide gutters are 60px across on a phone and unreadable. The window
+     * is now a two-column grid: the drawing spans the top, the bubbles follow underneath at
+     * 171px each, and the <ol> that stood in for them is redundant.
+     *
+     * The invariant is not which one shows. It is that EXACTLY ONE does. Showing both put
+     * every label on the page twice, word for word, from the same CALLOUTS array; showing
+     * neither leaves an unlabelled drawing, which is what makes this worth a test at all. */
+    /* Named for what is SHOWN, both of them, because the first version of this compared
+       "bubbles hidden" against "list shown" — two different polarities — and read as a
+       failure on the arrangement it was written to describe. */
+    const bubblesShown = !/[.]dg-callout \{[^}]*display: none/.test(block);
+    const listShown    = /[.]dg-list \{ display: block/.test(block);
+    ok(bubblesShown !== listShown,
+       'exactly one of the bubbles and the list carries the labels',
+       'bubbles ' + (bubblesShown ? 'shown' : 'hidden') + ', list ' + (listShown ? 'shown' : 'hidden'));
+    ok(bubblesShown,
+       '  and it is the bubbles, which carry data-region and can light the part they name');
+    /* Every route into the highlight used to be a hover affordance — pointerenter on the
+       bubble, pointerover on the hit shapes, focus — and a phone has no hover. Now that the
+       bubbles ARE the labels on mobile, a tap has to reach it. Verified working on index and
+       hosting; energy's two stacked wraps do not respond and are an open item. */
+    const engSrc = fs.readFileSync(path.join(SITE, 'diagram-engine.js'), 'utf8');
+    ok(/b\.addEventListener\('click', function \(\) \{ setHover\(c\.id\); \}\);/.test(engSrc),
+       '  and a tap reaches it, rather than only a hover');
+    ok(!/setHover\(hover === c\.id \? null : c\.id\)/.test(engSrc),
+       '  set, not toggled — the synthesized pointerenter would undo a toggle');
+    /* Static positioning is what lets the window grow to fit them. Left absolute, they keep
+       the generator's inline top:12.77% and stack back on top of each other in the corner. */
+    ok(/[.]dg-callout \{[^}]*position: static/.test(block),
+       '  they flow in the grid rather than being pinned over the drawing');
+    /* Under the floor this site holds everywhere else, .dg-c-title clamps to 9px here. */
+    ok(/[.]dg-c-title \{ font-size: (1[0-9]|[2-9][0-9])(\.\d+)?px/.test(block),
+       '  and their type clears the 10.5px floor at this width');
 
     /* Every page carrying a drawing carries the list for it, or the labels are simply gone. */
     ['index.html', 'energy.html', 'hosting.html'].forEach(f => {

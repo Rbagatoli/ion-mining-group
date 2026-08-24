@@ -672,7 +672,7 @@ body.pt-app .fc-stat {
    it survived the white. These three are the places a reader's eye already goes, so they are
    where the accent is worth spending. */
 
-/* Section labels. Small, uppercase, and repeated down the page {d} orange here threads the
+/* Section labels. Small, uppercase, and repeated down the page — orange here threads the
    accent through the whole document instead of leaving it stranded on one total. */
 body.pt-app .pt-section-label { color: var(--btc-300); }
 
@@ -681,7 +681,7 @@ body.pt-app .pt-section-label { color: var(--btc-300); }
    total, so the eye finds it before reading a single figure. */
 body.pt-app .pt-card:has(.pt-total) { border-left: 3px solid var(--btc-300); }
 
-/* The demo bar is unchanged and stays the bright brand orange {d} see its own rule below. */
+/* The demo bar is unchanged and stays the bright brand orange — see its own rule below. */
 
 /* THE MASTHEAD RULE IS ORANGE, and it is the single most effective place to spend the accent
    on a white page: full width, above the fold, and the first thing under the company's own name.

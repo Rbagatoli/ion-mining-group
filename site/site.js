@@ -43,7 +43,24 @@
                     entry.target.classList.add('in');
                     io.unobserve(entry.target);
                 });
-            }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+            /* THRESHOLD 0, NOT 0.06, AND THIS IS NOT A TUNING PREFERENCE.
+
+               A ratio threshold asks what FRACTION of an element is inside the root. The root
+               here is the viewport shrunk 8%, so on a phone it is about 776px tall, and 6% of
+               an element can only ever fit inside 776px if the element is under ~12,900px.
+               Anything taller can never satisfy it at any scroll position: it stays at
+               opacity 0 permanently, and .reveal starts at opacity 0.
+
+               That is not hypothetical. who-carries-which-risk-in-a-stranded-gas-deal.html is
+               one .bp.reveal 15,385px tall, and every one of its 20,642 characters was
+               invisible on a phone — a published page rendering nothing but a nav and a
+               footer. It only escaped notice because prefers-reduced-motion resets .reveal to
+               opacity 1, so anyone testing with reduced motion saw a correct page.
+
+               With threshold 0 an element reveals the instant any part of it crosses the root,
+               so its height can never make the trigger unreachable. The bottom margin goes to
+               -12% to hold the trigger point for short elements roughly where it was. */
+            }, { rootMargin: '0px 0px -12% 0px', threshold: 0 });
             targets.forEach(function (el) { io.observe(el); });
         }
     }

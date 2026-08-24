@@ -693,10 +693,45 @@
             CALLOUTS.forEach(function (c) {
                 var b = bubbles[c.id];
                 if (!b) return;
-                b.addEventListener('pointerenter', function () { setHover(c.id); });
-                b.addEventListener('pointerleave', function () { setHover(null); });
+                b.addEventListener('pointerenter', function (e) {
+                    /* Only a real hover. A tap fires pointerenter too, immediately followed by
+                       pointerleave, which would light the part and put it out again before
+                       anyone saw it — the click handler below owns touch. */
+                    if (e.pointerType === 'touch') return;
+                    setHover(c.id);
+                });
+                b.addEventListener('pointerleave', function (e) {
+                    if (e.pointerType === 'touch') return;
+                    setHover(null);
+                });
                 b.addEventListener('focus', function () { setHover(c.id); });
                 b.addEventListener('blur', function () { setHover(null); });
+
+                /* TAPPING A BUBBLE HAS TO LIGHT ITS PART, and until this existed it did not.
+                   Every route into setHover was a hover affordance — pointerenter, pointerover
+                   on the hit shapes, focus — and a phone has no hover. On mobile the bubbles
+                   are the labels now, sitting under the drawing where they are wide enough to
+                   read, and a label you can tap that does nothing is worse than the plain list
+                   it replaced. The same mouse-only assumption that put "hover a part to
+                   identify it" in the hint.
+
+                   A PLAIN SET, NOT A TOGGLE, and that distinction cost an hour. After a tap
+                   Chrome synthesizes a full mouse sequence — pointerenter, mousedown, mouseup,
+                   click — with pointerType 'mouse', so the enter lights the part a moment
+                   before the click arrives. A toggle then sees hover === c.id and puts it
+                   straight back out, and every tap looked like it did nothing.
+
+                   Setting it is idempotent, so it survives whatever order the events arrive
+                   in. Tapping the drawing is what clears it. */
+                b.addEventListener('click', function () { setHover(c.id); });
+            });
+            /* Tapping the drawing itself clears the selection, so a reader is never stuck with
+               one part lit and no obvious way out. */
+            svg.addEventListener('click', function (e) {
+                if (drag) return;
+                var id = e.target && e.target.getAttribute &&
+                         e.target.getAttribute('data-region');
+                if (!id) setHover(null);
             });
 
             /* --- Keyboard --- */
