@@ -356,12 +356,79 @@ var MapBridge = (function() {
 
         globe: function() { return typeof _globeRef === 'function' ? _globeRef() : null; },
         leaflet: function() { return leafletMap || null; },
+
+        /* NEITHER RENDERER FOLLOWS ITS CONTAINER.
+         *
+         * globe.gl is handed an explicit .width()/.height() at construction,
+         * read once from getBoundingClientRect(), and nothing ever revises it.
+         * Leaflet measures on creation and needs to be told. Before this there
+         * was no resize listener and no ResizeObserver anywhere in map.js,
+         * map-sourcing.js or map.html -- so resizing the browser window left the
+         * globe at whatever size it was built at, permanently: a fixed-size
+         * canvas in a box that no longer matches, with pointer coordinates
+         * landing in the wrong place because the canvas and its container had
+         * drifted apart.
+         *
+         * That was survivable while the map lived in a fixed 420px column. It is
+         * not survivable now the column can change width, so the size is a thing
+         * that can be asked for rather than a thing decided once.
+         *
+         * Zero dimensions are ignored rather than applied. A container inside a
+         * closed disclosure or a display:none widget measures 0x0, and writing
+         * that into the globe collapses it with nothing to collapse back from.
+         */
+        resize: function() {
+            var g = (typeof _globeRef === 'function') ? _globeRef() : null;
+            var host = document.getElementById('fleetGlobe');
+            if (g && host) {
+                var r = host.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    if (g.width() !== r.width) g.width(r.width);
+                    if (g.height() !== r.height) g.height(r.height);
+                }
+            }
+            if (leafletMap) leafletMap.invalidateSize();
+        },
         geoLayer: function() { return leafletGeoLayer || null; },
         showGlobePopup: function(html, lat, lng, evt) {
             if (typeof _showGlobePopupRef === 'function') _showGlobePopupRef(html, lat, lng, evt);
         }
     };
 })();
+
+/* WATCHED, NOT TIMED. A window resize is only one of the ways this container
+   changes width: switching mode swaps the layout, opening a disclosure reveals a
+   pane that measured 0x0, the widget reorder rewrites display, and the globe
+   itself is built lazily -- so any fixed timeout is a guess about which happened
+   first, and the guess was wrong (a resize scheduled 60ms after a mode change
+   fired before the globe existed, leaving it at 1166px in a 418px box).
+   A ResizeObserver on the container answers the actual question: the box
+   changed, so tell the renderers. Debounced because a drag-resize emits
+   continuously and rebuilding a render target every frame is what makes a page
+   stutter. */
+(function() {
+    var t = null;
+    function ping() {
+        clearTimeout(t);
+        t = setTimeout(function() { MapBridge.resize(); }, 140);
+    }
+    window.addEventListener('resize', ping);
+
+    function watch() {
+        if (typeof ResizeObserver === 'undefined') return;
+        var ro = new ResizeObserver(ping);
+        ['fleetGlobe', 'fleetMap'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) ro.observe(el);
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', watch);
+    } else {
+        watch();
+    }
+})();
+
 (function() {
     var map = L.map('fleetMap', {
         center: [20, 0],

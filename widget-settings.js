@@ -18,7 +18,10 @@
     //    detail panels were promoted above the worklist. A saved order from 6 would keep the old
     //    layout and strand a widget id that no longer exists.
     // 8 (calculator): Inputs moved directly beneath Charts.
-    var WIDGET_VERSIONS = { calculator: 8 };
+    // 8 (map): prospect-detail stopped being a widget — it moved beside the results list,
+    //    inside the map widget, the same move prospect-filters made at 7. A saved order from
+    //    7 would still be holding a slot for a data-widget id that no longer exists.
+    var WIDGET_VERSIONS = { calculator: 8, map: 8 };
     var WIDGET_VERSION = WIDGET_VERSIONS[page] || 7;
 
     // Migrate old dashboard key (one-time backward compat)

@@ -142,49 +142,25 @@ var MapSourcing = (function() {
     // geometry keeps the fill locked to the handles.
     var THUMB_PX = 16;                  // must match the thumb width in map.html
 
-    /* MW IN THE BOXES, kW IN THE CHAIN.
+    /* THE THUMBS NO LONGER CROSS.
      *
-     * Every filter, every starting point, every saved search and the whole
-     * save/restore path speak kW, and changing that would mean touching all of
-     * them for a units preference. So the two visible boxes convert instead: they
-     * are the only thing that knows about megawatts.
-     *
-     * BLANK MEANS UNBOUNDED, at either end, which is the thing a dual slider
-     * could not say. An empty maximum is not five megawatts, it is no maximum —
-     * the old track's top thumb meant that too, but only a label said so.
+     * sizeBounds() reads the pair with Math.min/Math.max, so dragging the minimum
+     * past the maximum did not error -- it silently swapped which input meant
+     * which. On screen the thumb under your finger stopped moving and the other
+     * one started, which is the single most disorienting thing a dual slider can
+     * do. Pushing the other thumb along instead is what every well-behaved range
+     * control does, and it keeps the invariant the rest of the code assumes.
      */
-    function mwFromKw(kw, isMax) {
-        var v = parseFloat(kw);
-        if (!isFinite(v)) return '';
-        if (isMax && v >= SIZE_MAX_KW) return '';      // open top
-        if (!isMax && v <= 0) return '';               // open bottom
-        /* Trailing zeros dropped: 1 MW rather than 1.0, and 0.9 rather than 0.90.
-           A box that reformats what you typed into the same number wearing
-           different digits reads as the app arguing with you. */
-        return String(Math.round((v / 1000) * 100) / 100);
-    }
-
-    function syncSizeInputs() {
+    function clampThumbs(movedId) {
         var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
-        var loMw = document.getElementById('fMinMw'), hiMw = document.getElementById('fMaxMw');
-        if (!lo || !hi || !loMw || !hiMw) return;
-        /* Never while it is being typed in. Rewriting the field under the cursor
-           turns "1.5" into "1" the instant the decimal point is pressed. */
-        if (document.activeElement !== loMw) loMw.value = mwFromKw(lo.value, false);
-        if (document.activeElement !== hiMw) hiMw.value = mwFromKw(hi.value, true);
-    }
-
-    function pushSizeInputs() {
-        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
-        var loMw = document.getElementById('fMinMw'), hiMw = document.getElementById('fMaxMw');
-        if (!lo || !hi || !loMw || !hiMw) return;
-        var a = parseFloat(loMw.value), b = parseFloat(hiMw.value);
-        lo.value = String(isFinite(a) && a > 0 ? Math.round(a * 1000) : 0);
-        hi.value = String(isFinite(b) && b > 0 ? Math.round(b * 1000) : SIZE_MAX_KW);
+        if (!lo || !hi) return;
+        var a = parseFloat(lo.value), b = parseFloat(hi.value);
+        if (!isFinite(a) || !isFinite(b) || a <= b) return;
+        if (movedId === 'fMinKw') hi.value = String(a);
+        else lo.value = String(b);
     }
 
     function paintSizeRange() {
-        syncSizeInputs();
         var fill = document.getElementById('sizeFill');
         var wrap = document.getElementById('sizeRange');
         if (!fill || !wrap) return;
@@ -1968,7 +1944,21 @@ var MapSourcing = (function() {
     function wireMoreFilters() {
         // The one drawer. Closed by default -- the starting points above are
         // meant to be enough on their own, and now say so when they have been.
-        _refine = disclosure('refineToggle', 'refinePanel', REFINE_KEY, false);
+        /* THE FOURTH GLITCH, and the one with no visible cause. paintSizeRange()
+           positions the orange fill from the track's clientWidth, and a panel
+           inside a closed disclosure measures ZERO -- so the paint that runs at
+           boot returns early and nothing ever runs it again. Open the drawer and
+           the fill was stuck at the far left regardless of where the thumbs were,
+           until you happened to drag one and it snapped into place.
+           disclosure() has always taken an onChange for exactly this reason; the
+           trend chart uses it because a canvas cannot be measured inside
+           display:none either. The slider needed it for the same reason and was
+           never given it. */
+        _refine = disclosure('refineToggle', 'refinePanel', REFINE_KEY, false, function(open) {
+            if (!open) return;
+            paintSizeRange();
+            renderSizeHint();
+        });
         renderRefineCount();
         wireSearchHead();
 
@@ -2673,7 +2663,10 @@ var MapSourcing = (function() {
         // Leaflet measured its container at the old width. Without this the tiles stay laid out
         // for a 340 px narrower map and the markers sit in the wrong place.
         var lm = (typeof MapBridge !== 'undefined' && MapBridge.leaflet) ? MapBridge.leaflet() : null;
-        if (lm) setTimeout(function() { try { lm.invalidateSize(); } catch (e) {} }, 80);
+        /* MapBridge.resize() rather than a bare invalidateSize: switching result
+           view changes the grid's columns, and the globe has to be told as well as
+           Leaflet. */
+        if (lm) setTimeout(function() { try { MapBridge.resize(); } catch (e) {} }, 80);
         if (!skipRender) renderResults();
     }
 
@@ -3414,6 +3407,11 @@ var MapSourcing = (function() {
     // you do not lose the site you were reading.
     function exitFocus(skipCamera) {
         _focused = false;
+        /* Leaving focus is the deselect. _selectedId is deliberately NOT cleared —
+           the table keeps its highlighted row and restoreView still knows what you
+           were reading — but the pane stops taking a column, because you are
+           looking at the whole map again. */
+        document.body.removeAttribute('data-detail');
         renderMapLayer();
         renderResults();
         var globe = MapBridge.globe();
@@ -3430,6 +3428,12 @@ var MapSourcing = (function() {
         var c = ProspectStore.get(id);
         if (!c) return;
         _selectedId = id;
+        /* The detail pane is beside the results now, so it needs a way to not be
+           there. Its markup carries a static "Select a prospect" placeholder, and
+           a 420px column of placeholder parked permanently beside the list is the
+           kind of furniture that teaches people to stop looking at that part of
+           the screen. Set here, cleared in exitFocus, read by CSS. */
+        document.body.setAttribute('data-detail', '1');
         // The click that caused this selection is still travelling up to document, where the
         // dismiss handler lives. Without this it would immediately undo the focus it just set.
         _ignoreNextDocClick = true;
@@ -3474,7 +3478,14 @@ var MapSourcing = (function() {
             if (!_focused) return;
             if (_ignoreNextDocClick) { _ignoreNextDocClick = false; return; }
             if (e.target.closest('#srcTableBody')) return;       // selecting another prospect
-            if (e.target.closest('#dBody')) return;               // reading / filling the detail
+            /* THE WHOLE PANE, not just #dBody. The heading row holding #dTitle and
+               #dScore sits outside #dBody, as does the card's own padding — so a
+               click on the panel's own title used to exit focus, un-narrow the map
+               and repaint the list. That was a rare misclick while the detail was
+               five sections down the page. Docked beside the list it is a click
+               you would make on purpose. #dBody stays in the selector so the guard
+               still holds if the pane id is ever dropped. */
+            if (e.target.closest('#srcDetailPane, #dBody')) return;
             if (e.target.closest('.src-filters, .src-checks')) return;
             exitFocus();
         });
@@ -4965,36 +4976,40 @@ var MapSourcing = (function() {
         // happening at all. Snapshotting means this stays right if the shipped defaults change.
         captureFilterBaseline();
 
-        ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
+        /* fMinKw and fMaxKw are NOT in this list. A range input fires 'change' on
+           every thumb release as well as streaming 'input' while dragging, so
+           they were re-ranking 30,361 rows twice per drag: once from the debounce
+           below, once from here the moment the mouse came up. The second one
+           always landed on the same values as the first. */
+        ['fCountry', 'fYears', 'fSort', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             // The id, not the Event — reconcileGeo has to know WHICH of the two geographic
             // controls the user just moved to decide which one yields.
             if (el) el.addEventListener('change', function() { applyFilters(id); });
         });
-        // Dragging fires continuously, so the track repaints every frame for responsiveness
-        // while the expensive re-rank is debounced.
+        // Dragging fires continuously, so the track repaints every frame for
+        // responsiveness while the expensive re-rank is debounced.
         var sizeTimer = null;
-        ['fMinMw', 'fMaxMw'].forEach(function(id) {
+        ['fMinKw', 'fMaxKw'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('input', function() {
-                pushSizeInputs();
-                renderSizeHint();
-                /* Longer than the slider's 160ms. A slider emits a value per
-                   frame and wants to feel live; a number box emits one per
-                   keystroke, and re-ranking 30,361 rows between "1" and "1.5"
-                   ranks a search nobody asked for. */
-                clearTimeout(sizeTimer);
-                sizeTimer = setTimeout(applyFilters, 320);
-            });
-            // Leaving the field settles it: 1.5 typed and abandoned still applies.
-            el.addEventListener('change', function() {
-                pushSizeInputs();
+                clampThumbs(id);
+                paintSizeRange();
                 renderSizeHint();
                 clearTimeout(sizeTimer);
-                applyFilters();
+                sizeTimer = setTimeout(applyFilters, 160);
             });
         });
+        /* The fill is positioned in pixels against the track's measured width, so
+           anything that changes that width leaves it stale — and the width changes
+           on every reflow of a responsive column, not just on a window resize.
+           Observed rather than timed, for the same reason the map's renderers are. */
+        if (typeof ResizeObserver !== 'undefined') {
+            var sizeEl = document.getElementById('sizeRange');
+            if (sizeEl) new ResizeObserver(function() { paintSizeRange(); }).observe(sizeEl);
+        }
+
         paintSizeRange();
         loadScenario();
         syncScenarioInputs();

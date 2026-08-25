@@ -37,6 +37,12 @@
 */
 
 :root {
+    /* Native widgets the app does not draw itself -- select popups, number
+       spinners, the default focus ring, text selection -- take their palette from
+       here. Without it every one of them paints in light mode on a black page,
+       which is why an open <select> flashes white. The portal and the marketing
+       site both already declare this; the app never did. */
+    color-scheme: dark;
     /* ---- Inherited from site/styles.css. Byte-identical. Do not edit here. ---- */
     --black: #000000;
     --surface: #0a0a0a;

@@ -146,69 +146,109 @@
             .src-head-acts { margin-left:0; width:100%; }
         }
 
-        /* Dual-thumb range. There is no native two-handle slider, so two <input type=range>
-           are stacked and only their thumbs are interactive; the bar itself is the divs below.
-           pointer-events:none on the input with :auto on the thumb is what lets the lower
-           thumb stay grabbable when the two overlap. */
+        /* The dual-range styles that used to sit here are further down the sheet, rewritten. Two copies shipped for a while -- the markup was replaced by number boxes without removing its CSS, and restoring the slider added a second, fixed copy below. The later one won on order, so the fixes were live, but a stale block that still inherited the padding bug was one reorder away from coming back. */
         .src-field-wide { grid-column:1 / -1; }
-        .range-dual { position:relative; height:30px; margin-top:6px; }
-        .range-track, .range-fill {
-            position:absolute; top:13px; height:4px; border-radius: var(--radius); pointer-events:none;
-        }
-        .range-track { left:0; right:0; background:var(--line-mid); }
-        .range-fill  { background:var(--btc-300); }
-        .range-dual input[type=range] {
-            position:absolute; left:0; top:0; width:100%; height:30px; margin:0;
-            background:none; pointer-events:none; -webkit-appearance:none; appearance:none;
-        }
-        .range-dual input[type=range]:focus { outline:none; }
-        .range-dual input[type=range]::-webkit-slider-runnable-track { background:none; border:none; }
-        .range-dual input[type=range]::-moz-range-track { background:none; border:none; }
-        .range-dual input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance:none; appearance:none; pointer-events:auto; cursor:grab;
-            width:16px; height:16px; border-radius: var(--knob); margin-top:7px;
-            background:var(--btc-300); border:2px solid var(--surface); box-shadow: var(--shadow-card);
-        }
-        .range-dual input[type=range]::-webkit-slider-thumb:active { cursor:grabbing; }
-        .range-dual input[type=range]::-moz-range-thumb {
-            pointer-events:auto; cursor:grab; width:16px; height:16px; border-radius: var(--knob);
-            background:var(--btc-300); border:2px solid var(--surface); box-shadow: var(--shadow-card);
-        }
-        .range-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--btc-300);
-                      font-weight:600; margin-top:-2px; }
         .src-srcfilter { display:flex; flex-wrap:wrap; gap:6px; }
+        /* font-family:inherit because these are <button>s, and a button does not
+           inherit the page's font — it takes the OS default. The new .src-chk
+           labels beside them DO inherit, so without this the two rows of chips
+           are set in two different typefaces at the same size, which is exactly
+           the kind of mismatch you can see without being able to name. */
         .src-srcbtn { background:var(--panel-hover); border:1px solid var(--line-mid);
-                      color:var(--plat-300); border-radius: var(--radius); padding:4px 10px; font-size:11px; cursor:pointer; }
+                      color:var(--plat-300); border-radius: var(--radius); padding:4px 10px;
+                      font-size:11px; cursor:pointer; font-family:inherit; }
         .src-srcbtn:hover { border-color:var(--line-btc); color:var(--plat-100); }
         .src-srcbtn.on { background:var(--btc-wash); border-color:var(--btc-300); color:var(--btc-300); }
         .src-srcbtn .n { color:var(--text-mid); margin-left:5px; }
         .src-srcbtn.on .n { color:var(--btc-300); }
 
-        .src-checks { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:12px; color:var(--plat-300); }
-        .src-checks label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+        /* TOGGLE CHIPS, matching .src-srcbtn directly above them.
+           These were native <input type=checkbox> with sentence-long labels,
+           sitting immediately under a row of pill-shaped source chips — an OS
+           control drawing its own square in its own blue on a page where every
+           other control is a bordered pill in the app's own tokens. That is the
+           whole of why they read as foreign.
+           The input is still there and still the thing JS reads and writes; it is
+           moved off-screen rather than display:none, so it keeps its place in the
+           tab order and still announces its checked state. The chip is the label,
+           so clicking anywhere on it toggles as before. */
+        .src-checks { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+        .src-chk { display:inline-flex; align-items:center; cursor:pointer;
+                   background:var(--panel-hover); border:1px solid var(--line-mid);
+                   color:var(--plat-300); border-radius: var(--radius);
+                   padding:4px 10px; font-size:11px; line-height:1.2; }
+        .src-chk:hover { border-color:var(--line-btc); color:var(--plat-100); }
+        /* Off-screen, not hidden: a display:none input is unreachable by keyboard
+           and invisible to a screen reader. */
+        .src-chk input { position:absolute; width:1px; height:1px; opacity:0;
+                         margin:0; pointer-events:none; }
+        .src-chk:has(input:checked) { background:var(--btc-wash);
+                                      border-color:var(--btc-300); color:var(--btc-300); }
+        /* Keyboard focus has to be visible on the chip, because the thing that
+           actually holds focus is a pixel somewhere off-screen. */
+        .src-chk:has(input:focus-visible) { outline:2px solid var(--btc-300);
+                                            outline-offset:2px; }
+        /* Fallback for anything without :has() — the colour still changes, so a
+           ticked chip is never indistinguishable from an unticked one. */
+        /* Only where :has() is missing. Written as a fallback but scoped to
+           nothing, this applied everywhere — giving these chips a bold on-state no
+           other chip on the page has, and reflowing the row by a pixel or two on
+           every toggle. */
+        @supports not selector(:has(*)) {
+            .src-chk input:checked + span { color:var(--btc-300); }
+        }
+        /* The survey year is a number annexed to a chip label, which this page
+           already answers two rules up with .src-srcbtn .n. Same treatment. */
+        #fActiveYear { color:var(--text-mid); margin-left:4px; }
+        .src-chk:has(input:checked) #fActiveYear { color:var(--btc-300); }
 
         /* Fleet mode: map full width. Prospects mode: map left, scan list right — but only in the
            List view. In the Table view the list is gone and the map takes the width back, so the
            two result surfaces are never on screen together. */
         .map-with-list { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
-        /* THE RESULTS ARE THE POINT, and the map is how you look at them. This was
-           the other way round: a map on 1fr with the list in a fixed 340px
-           sidebar, which is why the list read as an afterthought bolted to the
-           side of the real content. The list now takes the flexible column and
-           the map takes the fixed one.
+        /* MAP ACROSS THE TOP, RESULTS UNDERNEATH.
+           Row 1 is the map at the full width of the page. Row 2 is the list with
+           the detail pane beside it. The map was a fixed 420px column next to the
+           list, which made it too small to read a country on and left the detail
+           marooned five sections down the page.
 
-           Order, not DOM position, so the map keeps its place in the markup —
-           Leaflet and globe.gl both measure their container on creation and the
-           widget reorder writes to these same elements. */
+           Explicit placement rather than order/auto-flow, because there are three
+           children in two rows and auto-placement would put the detail wherever
+           the map happened not to be. */
         body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
         body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list {
-            /* A FIXED second column, not minmax(0,420px). The map sizes its canvas
-               FROM its container, so a column allowed to shrink to zero collapses
-               it to nothing and then keeps it there — measured at 0px wide before
-               this was pinned. The original 340px worked for exactly this reason. */
             grid-template-columns:minmax(0,1fr) 420px; }
+        body[data-map-mode="prospects"][data-res-view="list"] .map-pane,
+        body[data-map-mode="prospects"][data-res-view="owners"] .map-pane {
+            grid-column:1 / -1; grid-row:1; }
         body[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
-        body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard { order:-1; }
+        body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard {
+            grid-column:1; grid-row:2; }
+        body[data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
+        body[data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
+            grid-column:2; grid-row:2; min-width:0; }
+
+        /* NOTHING SELECTED, NOTHING TO SHOW. The pane holds a static "Select a
+           prospect" placeholder, and a 420px column of placeholder permanently
+           parked beside the results is the kind of furniture that trains people
+           to stop looking at that part of the screen. body[data-detail] is set on
+           selection and cleared on deselect, and until then the list has the
+           whole width. */
+        .src-detailpane { display:none; }
+        body[data-detail][data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
+        body[data-detail][data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
+            display:block; }
+        body:not([data-detail])[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
+        body:not([data-detail])[data-map-mode="prospects"][data-res-view="owners"] #srcListCard {
+            grid-column:1 / -1; }
+        /* TABLE VIEW HAS NO LIST TO SIT BESIDE. #srcListCard is hidden there and
+           the ranked table takes the full width in its own widget below, so the
+           pane spans instead of vanishing — without this, selecting a row in the
+           table rendered the detail into a display:none column and showed you
+           nothing at all, anywhere. */
+        body[data-detail][data-map-mode="prospects"][data-res-view="table"] .src-detailpane {
+            display:block; grid-column:1 / -1; grid-row:2; }
+        .src-detailpane .card { margin-bottom:0; }
         body[data-map-mode="prospects"][data-res-view="table"] .map-with-list { grid-template-columns:1fr; }
         /* The count line carries the ordering now, so it is a heading rather than
            a footnote under the map. */
@@ -226,11 +266,25 @@
         @media (max-width:900px) {
             body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
             body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list { grid-template-columns:1fr; }
-            /* Stacked, the list still leads — that is the whole point of the
-               order above, and it survives the columns collapsing. */
+            /* One column: map, then list, then detail under it. Every explicit
+               placement above has to be undone or the detail would be asked for a
+               column 2 that no longer exists. */
+            body[data-map-mode="prospects"][data-res-view="list"] .map-pane,
+            body[data-map-mode="prospects"][data-res-view="owners"] .map-pane,
+            body[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
+            body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard,
+            body[data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
+            body[data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
+                grid-column:1; grid-row:auto; }
+            body[data-map-mode="prospects"] .map-pane #fleetMap,
+            body[data-map-mode="prospects"] .map-pane #fleetGlobe { height:380px; }
             .src-list { max-height:520px; }
         }
         .map-pane { min-width:0; }
+        /* Taller now it has the width. 500px in a 420px column was a porthole; the
+           same height across 1168px is a map you can find a county on. */
+        body[data-map-mode="prospects"] .map-pane #fleetMap,
+        body[data-map-mode="prospects"] .map-pane #fleetGlobe { height:560px; }
         /* Owner rollup rows. Same 340 px column as the scan list, so no layout branch. */
         .src-ownerrow { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
             padding:9px 10px; border-bottom:1px solid var(--line); cursor:pointer; }
@@ -315,14 +369,69 @@
            controls above it rather than as another field. */
         .src-morerow { margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
         .src-filters--more { padding-top:2px; }
-        /* Capped. Two number boxes stretched across half the page to hold "2" and
-           "3" look like a mistake, and the grid column they sit in is sized for a
-           select. */
-        .src-sizepair { display:flex; align-items:center; gap:8px; max-width:230px; }
-        .src-sizepair input { width:100%; min-width:0; background:var(--black);
-            border:1px solid var(--line-mid); color:var(--plat-200);
-            border-radius:var(--radius); padding:7px 9px; font:inherit; font-size:12px; }
-        .src-sizeto { font-size:11px; color:var(--plat-500); flex:0 0 auto; }
+        /* Dual-thumb range. There is no native two-handle slider, so two <input type=range>
+           are stacked and only their thumbs are interactive; the bar itself is the divs below.
+           pointer-events:none on the input with :auto on the thumb is what lets the lower
+           thumb stay grabbable when the two overlap. */
+        .range-dual { position:relative; height:30px; margin-top:6px; }
+        .range-track, .range-fill {
+            position:absolute; top:13px; height:4px; border-radius: var(--radius); pointer-events:none;
+        }
+        .range-track { left:0; right:0; background:var(--line-mid); }
+        .range-fill  { background:var(--btc-300); }
+        .range-dual input[type=range] {
+            position:absolute; left:0; top:0; width:100%; height:30px; margin:0;
+            background:none; pointer-events:none; -webkit-appearance:none; appearance:none;
+            /* THE ONE THAT MADE THE FILL NEVER LINE UP. These inputs sit inside a
+               .src-field, so they were picking up `padding:6px 8px` and a 1px
+               border from the generic `.src-field select, .src-field input` rule
+               eleven declarations up the sheet. A range input's thumb travels
+               inside its CONTENT box, so 9px of inset per side meant the thumb
+               could not reach either end of the bar drawn behind it — while
+               paintSizeRange() positions that bar assuming zero inset. The orange
+               fill and the knobs disagreed by a growing margin across the track,
+               permanently, and no amount of correcting the pixel maths would have
+               fixed it because the maths was not what was wrong. */
+            padding:0; border:0; box-shadow:none;
+        }
+        /* THE ONE THAT MADE IT FEEL BROKEN. Both inputs span the full width and
+           only their thumbs take pointer events, so where the two thumbs overlap
+           the one painted last wins every grab — and the maximum is painted last.
+           Drag them together and the minimum became impossible to pick up again,
+           which reads as the control jamming.
+           The minimum is lifted above its sibling once it is no longer at the far
+           left, so the thumb you are reaching for is the one you get. */
+        .range-dual input#fMinKw { z-index:2; }
+        .range-dual input#fMaxKw { z-index:1; }
+        /* And the same generic rule's :focus flashed an orange border and a card
+           shadow around the whole 30px full-width input every time a thumb was
+           grabbed — a rectangle the size of the control lighting up on mousedown,
+           which is most of what "glitchy" described. The affordance belongs on
+           the thumb, which is what focus-visible does below. */
+        .range-dual input[type=range]:focus { outline:none; border:0; box-shadow:none; }
+        .range-dual input[type=range]:focus-visible::-webkit-slider-thumb {
+            outline:2px solid var(--btc-300); outline-offset:2px; }
+        .range-dual input[type=range]::-webkit-slider-runnable-track { background:none; border:none; }
+        .range-dual input[type=range]::-moz-range-track { background:none; border:none; }
+        .range-dual input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance:none; appearance:none; pointer-events:auto; cursor:grab;
+            width:16px; height:16px; border-radius: var(--knob); margin-top:7px;
+            /* box-sizing so the 2px border is INSIDE the 16px. Without it the thumb
+               is 20px on the screen while the fill is positioned as though it were
+               16px, and the orange bar sits a couple of pixels off the knob at
+               both ends -- small, constant, and exactly the kind of wrongness that
+               makes a control feel cheap. */
+            box-sizing:border-box;
+            background:var(--btc-300); border:2px solid var(--surface); box-shadow: var(--shadow-card);
+        }
+        .range-dual input[type=range]::-webkit-slider-thumb:active { cursor:grabbing; }
+        .range-dual input[type=range]::-moz-range-thumb {
+            pointer-events:auto; cursor:grab; width:16px; height:16px; border-radius: var(--knob);
+            box-sizing:border-box;
+            background:var(--btc-300); border:2px solid var(--surface); box-shadow: var(--shadow-card);
+        }
+        .range-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--btc-300);
+                      font-weight:600; margin-top:-2px; }
 
         /* ---- routes to a contact ---- */
         .src-routes { margin:14px 0 16px; padding:12px 14px; background:var(--panel-hover);
@@ -410,7 +519,8 @@
         .src-views { display:flex; align-items:center; gap:8px; padding:8px 10px;
                      border-bottom:1px solid var(--line); flex-wrap:wrap; }
         .src-view { background:var(--panel-hover); border:1px solid var(--line-mid);
-                    color:var(--plat-300); border-radius: var(--radius); padding:4px 11px; font-size:11px; cursor:pointer; }
+                    color:var(--plat-300); border-radius: var(--radius); padding:4px 11px;
+                    font-size:11px; cursor:pointer; font-family:inherit; }
         .src-view:hover { border-color:var(--line-btc); color:var(--plat-100); }
         .src-view.active { background:var(--btc-wash); border-color:var(--btc-300); color:var(--btc-300); }
         .src-viewnote { font-size:11px; color:var(--text-dim); margin-left:4px; }
@@ -773,27 +883,17 @@ blank on each site rather than being guessed.</p>
         <div id="refinePanel" hidden>
         <div class="src-filters">
 <div class="src-field src-field-wide">
-                <label for="fMinMw">Site size (MW)</label>
-                <!-- TWO BOXES, NOT A DUAL SLIDER. Dragging two thumbs that can cross
-                     each other, on a track whose top end means "no maximum" rather
-                     than 5 MW, is a fiddly way to express "at least two megawatts" —
-                     and "at least two megawatts" is what people actually want. These
-                     are typed, keyboard-reachable, and blank means unbounded at
-                     either end.
-
-                     The kW pair below stays as the value the filter chain reads.
-                     Every starting point, every saved search and the whole
-                     save/restore path speak kW, so the boxes convert rather than
-                     the chain changing units. -->
-                <div class="src-sizepair">
-                    <input type="number" id="fMinMw" min="0" step="0.1" placeholder="any"
-                           inputmode="decimal" aria-label="Smallest site, MW">
-                    <span class="src-sizeto">to</span>
-                    <input type="number" id="fMaxMw" min="0" step="0.1" placeholder="any"
-                           inputmode="decimal" aria-label="Largest site, MW">
+                <label>Site size</label>
+                <div class="range-dual" id="sizeRange">
+                    <div class="range-track"></div>
+                    <div class="range-fill" id="sizeFill"></div>
+                    <!-- Two overlaid sliders: the track is drawn by the divs above, the inputs
+                         contribute only their thumbs. 5 MW on the upper thumb means NO MAXIMUM,
+                         so the top of the scale is open rather than a hard ceiling. -->
+                    <input type="range" id="fMinKw" min="0" max="5000" step="25" value="0" aria-label="Minimum site size">
+                    <input type="range" id="fMaxKw" min="0" max="5000" step="25" value="5000" aria-label="Maximum site size">
                 </div>
-                <input type="hidden" id="fMinKw" value="0">
-                <input type="hidden" id="fMaxKw" value="5000">
+                <div class="range-ends"><span id="sizeMinLabel">0</span><span id="sizeMaxLabel">5 MW+</span></div>
             </div>
 <div class="src-field">
                 <label for="fSort">Rank by</label>
@@ -846,14 +946,14 @@ blank on each site rather than being guessed.</p>
                  is TICKED stays visible regardless — hiding a live filter is worse
                  than showing an irrelevant one. -->
             <div class="src-checks" id="srcFlareChecks">
-            <label><input type="checkbox" id="fOperator"> Only sites with a named operator</label>
+            <label class="src-chk" title="Excludes sites where no company is named in a public filing."><input type="checkbox" id="fOperator"><span>Named operator only</span></label>
             <!-- Both of these are FLARE-ONLY by nature: only the VIIRS source publishes a survey
                  year or gets checked against FIRMS. Said in the label, because ticking either one
                  in the acquisition view (which excludes raw resources, i.e. every flare) is
                  guaranteed to return nothing and used to do so silently. The year is filled in
                  from the catalog at boot so it cannot drift from the data again. -->
-            <label title="Flare-gas prospects only — the other sources publish no survey year."><input type="checkbox" id="fActive"> Flare seen in the latest survey<span id="fActiveYear"></span></label>
-            <label title="Flare-gas prospects only — checked against NASA FIRMS."><input type="checkbox" id="fBurning"> Flare confirmed burning recently (satellite)</label>
+            <label class="src-chk" title="Flare-gas prospects only — the other sources publish no survey year."><input type="checkbox" id="fActive"><span>Seen in the latest survey<span id="fActiveYear"></span></span></label>
+            <label class="src-chk" title="Flare-gas prospects only — checked against NASA FIRMS. Confirmed within the last 90 days."><input type="checkbox" id="fBurning"><span>Confirmed burning</span></label>
             <p class="src-note src-gap" id="srcFlareChecksNote"></p>
         </div>
 
@@ -901,8 +1001,11 @@ blank on each site rather than being guessed.</p>
              the map, the list and the summary tiles all went on showing the wider set, and it
              appeared in none of the places that report active filters. It is a filter, so it now
              sits with the other filter state and narrows everything at once. -->
-        <label class="src-acqtoggle" title="Prospects whose physical asset exists — constructed stage or later. Excludes anything with no recorded stage, since an unrecorded stage is missing data rather than a raw resource.">
-            <input type="checkbox" id="fAcquisition"> Acquisition targets only
+        <!-- Chipped for the same reason as the three flare filters: it sits in a
+             row of .src-view chips and was the last native OS checkbox left on the
+             page, drawing its own square in its own blue. -->
+        <label class="src-chk src-acqtoggle" title="Prospects whose physical asset exists — constructed stage or later. Excludes anything with no recorded stage, since an unrecorded stage is missing data rather than a raw resource.">
+            <input type="checkbox" id="fAcquisition"><span>Acquisition targets only</span>
         </label>
         <span class="src-viewnote" id="resNote"></span>
     </div>
@@ -929,6 +1032,23 @@ blank on each site rather than being guessed.</p>
           </div>
           <div class="src-list" id="srcList"></div>
       </aside>
+
+      <!-- NOT a .widget-section and NOT inside #srcList. widget-settings.js only
+           ever touches .widget-section, so a plain container keeps its styles;
+           and renderList() replaces #srcList's innerHTML on every selection,
+           which would delete this on the first click. -->
+      <div class="src-detailpane prospects-only" id="srcDetailPane">
+    <div class="card" style="margin-bottom:20px;">
+        <div class="chart-title-row">
+            <h3 id="dTitle">Select a prospect</h3>
+            <span class="chart-live-value btc-orange" id="dScore"></span>
+        </div>
+        <div id="dBody">
+            <p class="src-empty">Pick a prospect from the list or the map to see satellite evidence,
+            derived capacity, economics and who operates the well.</p>
+        </div>
+    </div>
+      </div>
     </div>
 
     <div id="globePopup" class="globe-popup" style="display:none;">
@@ -984,19 +1104,17 @@ blank on each site rather than being guessed.</p>
     </div>
 
     <!-- ===== PROSPECT DETAIL (prospects mode) ===== -->
-    <div class="widget-section prospects-only" data-widget="prospect-detail" style="display:none;">
-    <div class="section-label">Site Detail</div>
-    <div class="card" style="margin-bottom:20px;">
-        <div class="chart-title-row">
-            <h3 id="dTitle">Select a prospect</h3>
-            <span class="chart-live-value btc-orange" id="dScore"></span>
-        </div>
-        <div id="dBody">
-            <p class="src-empty">Pick a prospect from the list or the map to see satellite evidence,
-            derived capacity, economics and who operates the well.</p>
-        </div>
-    </div>
-    </div>
+    <!-- The Site Detail widget used to sit here, five sections down the page, and
+         clicking a marker rebuilt it out of sight with nothing to say it had
+         happened. It is now a pane beside the results list, inside the map
+         widget — the same move this page already made for the prospect filters,
+         and for the same reason: it is one control surface with the map and the
+         list, not an independently reorderable section.
+
+         Consequence, stated because it is real: hiding the map widget in the gear
+         popover now hides the detail too, and "Site Detail" no longer appears
+         there as its own entry. WIDGET_VERSIONS.map is bumped so a saved order
+         from before this does not leave a hole. -->
 
     <!-- ===== OUTREACH WORKLIST (prospects mode) =====
          Everything saved to the CRM, grouped by pipeline stage. The ranked table is for FINDING
@@ -1256,9 +1374,12 @@ commercial terms are your assumptions.</p>
         } else {
             MapSourcing.clearMapLayer();
         }
-        // Leaflet measures its container on creation; a pane revealed after that needs a nudge.
-        var lm = MapBridge.leaflet();
-        if (lm) setTimeout(function() { lm.invalidateSize(); }, 60);
+        /* Both renderers measure their container on creation, and switching mode
+           changes the layout under them -- the prospects view puts the map in a
+           column of a different width from the fleet view's full-width pane.
+           Measured before this: the globe was built at 1166px wide and left
+           sitting in a 418px box, which is why it rendered clipped. */
+        setTimeout(function() { MapBridge.resize(); }, 60);
     }
 
     // Switching to the flat map reveals a container that was 0x0 until now. Leaflet cannot
@@ -1268,8 +1389,7 @@ commercial terms are your assumptions.</p>
     if (viewToggle) {
         viewToggle.addEventListener('click', function() {
             setTimeout(function() {
-                var lm = MapBridge.leaflet();
-                if (lm) lm.invalidateSize();
+                MapBridge.resize();
                 if (MapBridge.mode() === 'prospects') MapSourcing.renderMapLayer();
             }, 120);
         });
