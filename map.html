@@ -98,20 +98,53 @@
 
         /* Starting points. Sized so five fit on a laptop row and stack to one column on a phone,
            where the whole point is reaching a real result set with one thumb. */
-        .src-startrow { margin-bottom:12px; }
-        .src-starters { display:grid; gap:8px; margin-top:8px;
-            grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-        .src-starter { display:flex; flex-direction:column; gap:3px; text-align:left; cursor:pointer;
+        /* THE QUESTION IS THE PAGE, until it has been answered. Five cards at the
+           size of a real choice, not a strip of chips competing with a dozen
+           controls -- someone opening this cold has one question and these are
+           its answers. Once one is picked the whole block is replaced by the
+           header below, which is what keeps the screen from getting denser every
+           time it is used. */
+        .src-startrow { margin-bottom:14px; }
+        .src-startrow .section-label { font-size:14px; color:var(--plat-100);
+            letter-spacing:0; text-transform:none; font-weight:600; }
+        .src-starters { display:grid; gap:10px; margin-top:12px;
+            grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); }
+        .src-starter { display:flex; flex-direction:column; gap:5px; text-align:left; cursor:pointer;
             background:var(--panel-hover); border:1px solid var(--line); border-radius:var(--radius);
-            padding:10px 11px; font:inherit; min-height:66px; }
+            padding:14px 15px; font:inherit; min-height:104px;
+            transition:border-color .15s, background .15s; }
         .src-starter:hover { border-color:var(--line-btc); background:var(--btc-wash); }
         .src-starter.active { border-color:var(--line-btc); background:var(--btc-wash); }
-        .src-startlabel { font-size:11.5px; color:var(--plat-200); line-height:1.3; }
+        .src-startlabel { font-size:13px; color:var(--plat-100); line-height:1.35;
+            font-weight:500; }
         .src-starter.active .src-startlabel { color:var(--btc-300); }
-        .src-starthint { font-size:10.5px; color:var(--plat-400); line-height:1.35; }
-        .src-startcount { font-size:10.5px; color:var(--plat-500); margin-top:auto;
+        .src-starthint { font-size:11.5px; color:var(--plat-400); line-height:1.45; }
+        /* The size of the pool, before you commit to it. */
+        .src-startcount { font-size:11.5px; color:var(--btc-200); margin-top:auto;
+            padding-top:8px; font-variant-numeric:tabular-nums; }
+        body[data-src-picked="1"] .src-startrow { display:none; }
+
+        /* ---- the running search, in one line ---- */
+        .src-head { display:none; }
+        body[data-src-picked="1"] .src-head { display:flex; align-items:center; gap:10px;
+            flex-wrap:wrap; margin:0 0 12px; padding:11px 14px; background:var(--panel-hover);
+            border:1px solid var(--line-btc); border-radius:var(--radius); }
+        .src-head-eye { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--plat-500); }
+        .src-head-what { font-size:13.5px; color:var(--plat-100); font-weight:500; }
+        .src-head-count { font-size:12px; color:var(--btc-300);
             font-variant-numeric:tabular-nums; }
-        @media (max-width:560px) { .src-starters { grid-template-columns:1fr; } }
+        .src-head-acts { margin-left:auto; display:flex; gap:8px; }
+        .src-head-btn { background:transparent; border:1px solid var(--line-mid);
+            color:var(--plat-300); border-radius:var(--radius); padding:5px 12px;
+            font:inherit; font-size:11.5px; cursor:pointer; }
+        .src-head-btn:hover { color:var(--plat-100); border-color:var(--plat-500); }
+
+        @media (max-width:560px) {
+            .src-starters { grid-template-columns:1fr; }
+            .src-starter { min-height:0; }
+            .src-head-acts { margin-left:0; width:100%; }
+        }
 
         /* Dual-thumb range. There is no native two-handle slider, so two <input type=range>
            are stacked and only their thumbs are interactive; the bar itself is the divs below.
@@ -259,7 +292,7 @@
         /* The More filters row: a quiet divider so the drawer reads as secondary to the three
            controls above it rather than as another field. */
         .src-morerow { margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
-        #moreFilters { padding-top:10px; }
+        .src-filters--more { padding-top:2px; }
         .src-activebar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
         .src-activebar:empty { display:none; }
         .src-activelabel { font-size:10px; text-transform:uppercase; letter-spacing:.06em;
@@ -596,7 +629,16 @@
 
     <!-- ===== FLEET MAP ===== -->
     <div class="widget-section" data-widget="fleet-map">
-    <div class="sec-head"><div class="section-label">Map</div><button class="info-btn prospects-only" type="button" data-info="globe" aria-label="What is this?" aria-expanded="false">i</button></div>
+    <!-- The heading says what the section is FOR, and that differs by mode. In
+         prospects mode this widget opens with a question and ends with results;
+         calling the whole thing "Map" made the first thing under it read as
+         "Map -> What are you looking for?". The fleet keeps "Map", because there
+         it really is only a map. -->
+    <div class="sec-head">
+        <div class="section-label fleet-only">Map</div>
+        <div class="section-label prospects-only">Find sites</div>
+        <button class="info-btn prospects-only" type="button" data-info="globe" aria-label="What is this?" aria-expanded="false">i</button>
+    </div>
     <div class="info-panel" id="infoPanel-globe">
 <h4>How these sites were found — from orbit</h4>
 <p>Nobody surveyed these on the ground. Every site here was spotted by satellite, and the size figures are
@@ -640,17 +682,6 @@ H₂S content, road or winter access, or whether anyone will sell it to you. Vol
 site burning through 2022 is very likely still burning, but this cannot confirm today. Those gaps stay
 blank on each site rather than being guessed.</p>
     </div>
-    <!-- The My Fleet / Prospects toggle used to live here. It is the tab bar now:
-         two maps that answer different questions do not belong behind one control
-         that remembers which you saw last. Globe / Map stays -- that is how you
-         look at whichever map you are on, not which map it is. -->
-    <div class="map-mode-row">
-        <div class="map-view-toggle">
-            <button class="map-toggle-btn" id="btnGlobeView" data-view="globe">Globe</button>
-            <button class="map-toggle-btn" id="btnMapView" data-view="map">Map</button>
-        </div>
-    </div>
-
     <!-- ===== PROSPECT FILTERS =====
          Lives INSIDE the map widget rather than beside it as its own .widget-section. The two
          are one control surface — the filters decide what the map draws — and as separate
@@ -659,6 +690,11 @@ blank on each site rather than being guessed.</p>
          is not direct-children-only, so a nested one would be treated as a sibling and moved
          out of the map on the first reorder. -->
     <div class="src-filterbar prospects-only">
+        <!-- WHAT YOU ARE LOOKING AT, in a sentence. Once a search is running this
+             replaces the five cards entirely: the cards answered the question, and
+             leaving them up afterwards means the question and its answer compete
+             for the same attention forever. Change brings them back. -->
+        <div class="src-head" id="srcHead"></div>
         <!-- PRIMARY. Only the three controls that get changed most often. The other nine used to
              sit here too, so twelve inputs stood between the page and its map on every load.
              Hiding them is only honest because the "Filtering by" bar below is always visible and
@@ -684,7 +720,7 @@ blank on each site rather than being guessed.</p>
             <button type="button" class="prov-toggle" id="refineToggle"
                     aria-expanded="false" aria-controls="refinePanel">
                 <span class="prov-caret" aria-hidden="true">&#9656;</span>
-                <span class="section-label">Refine this search</span>
+                <span class="section-label">Adjust this search</span>
                 <span class="prov-hint" id="refineCount"></span>
             </button>
         </div>
@@ -720,19 +756,13 @@ blank on each site rather than being guessed.</p>
         </div>
         <div class="src-sizehint" id="srcSizeHint"></div>
 
-        <!-- SECONDARY, behind a disclosure. The button carries a count when anything inside is
-             non-default, so a hidden active filter is never silent — stated here, and again in
-             the bar below. -->
-        <div class="src-morerow">
-            <button type="button" class="prov-toggle" id="moreFiltersToggle"
-                    aria-expanded="false" aria-controls="moreFilters">
-                <span class="prov-caret" aria-hidden="true">&#9656;</span>
-                <span class="section-label">More filters</span>
-                <span class="prov-hint" id="moreFiltersCount"></span>
-            </button>
-        </div>
-        <div id="moreFilters" hidden>
-            <div class="src-filters">
+        <!-- These were behind a SECOND disclosure nested inside this one. Two doors
+             to reach a checkbox, and both opening themselves whenever a filter went
+             non-default — which is how a page that starts as five cards ends up as
+             thirty controls without anybody choosing that. One door now; the
+             "Filtering by" bar below still names everything that is excluding
+             something. -->
+            <div class="src-filters src-filters--more">
 <div class="src-field src-field-wide">
                 <label>Source</label>
                 <!-- Populated from whatever adapters actually returned prospects, so a new
@@ -774,7 +804,6 @@ blank on each site rather than being guessed.</p>
             <label title="Flare-gas prospects only — the other sources publish no survey year."><input type="checkbox" id="fActive"> Flare seen in the latest survey<span id="fActiveYear"></span></label>
             <label title="Flare-gas prospects only — checked against NASA FIRMS."><input type="checkbox" id="fBurning"> Flare confirmed burning recently (satellite)</label>
         </div>
-        </div>
 
         <!-- SAVED SEARCHES. A named filter combination, recalled by clicking its chip.
              Applied ONLY by an explicit click, never restored at boot — that rule is the whole
@@ -787,6 +816,17 @@ blank on each site rather than being guessed.</p>
         <!-- ALWAYS visible, inside or outside the disclosure. This is what makes collapsing the
              controls safe. -->
         <div class="src-activebar" id="srcActiveBar"></div>
+    </div>
+
+    <!-- The My Fleet / Prospects toggle used to live here. It is the tab bar now:
+         two maps that answer different questions do not belong behind one control
+         that remembers which you saw last. Globe / Map stays -- that is how you
+         look at whichever map you are on, not which map it is. -->
+    <div class="map-mode-row">
+        <div class="map-view-toggle">
+            <button class="map-toggle-btn" id="btnGlobeView" data-view="globe">Globe</button>
+            <button class="map-toggle-btn" id="btnMapView" data-view="map">Map</button>
+        </div>
     </div>
 
     <div id="srcStatus" class="src-status"></div>

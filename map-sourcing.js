@@ -505,7 +505,14 @@ var MapSourcing = (function() {
 
     function saveFilters() {
         try {
-            var out = { _v: 1, company: _companyFilter };
+            /* NOT A DOM CONTROL, so the loops below cannot see it and it used to be
+               dropped on every reload. That silently turned "Landfill gas with the
+               engine still standing" -- which is DEFINED by the engine still
+               standing -- into "landfill gas in this size band", nearly double the
+               rows, including every site with no generator on it. The saved-search
+               path has always carried it as s.hasGen; the last-used path did not.
+               Same field name, so the two agree. */
+            var out = { _v: 1, company: _companyFilter, hasGen: !!_hasGenFilter };
             FILTER_FIELDS.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) out[id] = el.value;
@@ -541,6 +548,9 @@ var MapSourcing = (function() {
             if (el && saved[id] !== undefined) el.checked = !!saved[id];
         });
         _companyFilter = saved.company || null;
+        /* undefined reads as off, which is right for a search saved before this
+           was persisted -- the clause was not recorded, so it cannot be claimed. */
+        _hasGenFilter = !!saved.hasGen;
         return true;
     }
 
@@ -1140,8 +1150,9 @@ var MapSourcing = (function() {
         _applyingStarter = true;
         try { applyFilters(); } finally { _applyingStarter = false; }
         renderStarters();
+        renderSearchHead();
         status(s.label + ' — ' + fmtInt(_filtered.length) + ' prospects, best first. ' +
-               'Open Refine to narrow it.', '#8ac');
+               'Adjust to narrow it.', '#8ac');
     }
 
     // How many each one returns, without applying it.
@@ -1168,6 +1179,15 @@ var MapSourcing = (function() {
         // resetFilterControls() also clears the operator drill-down, which is NOT one of the ids
         // above and would otherwise be silently discarded by the act of counting.
         var savedSrc = _srcFilter, savedCo = _companyFilter, savedCoId = _companyFilterId;
+        /* _hasGenFilter belongs on this list for exactly the reason the comment
+           above gives for the drill-down: resetFilterControls() clears it, it is
+           not one of the ids, and counting must not change the search. Without
+           it, the last starter counted decided the clause -- and the last one
+           does not set it, so merely DRAWING the cards switched "the engine is
+           still standing" off. The count on screen stayed right, because matches
+           are computed before the cards are drawn; every filter change after that
+           silently returned a different search. */
+        var savedGen = _hasGenFilter;
         var out = {};
         try {
             for (i = 0; i < STARTERS.length; i++) {
@@ -1190,9 +1210,76 @@ var MapSourcing = (function() {
         _srcFilter = savedSrc;
         _companyFilter = savedCo;
         _companyFilterId = savedCoId;
+        _hasGenFilter = savedGen;
         renderSourceFilter();
         _starterCounts = out;
         return out;
+    }
+
+    /* ===== The search, stated in a sentence =====
+     *
+     * A wall of controls cannot tell you what it is currently doing. The five
+     * starting points answer "what am I looking for", and the moment one is
+     * chosen they have done their job — leaving them up means the question and
+     * its answer compete for the same attention forever, and every later filter
+     * change happens somewhere the eye no longer is.
+     *
+     * So a running search replaces the cards with one line: what it is, how many
+     * it found, and the only two things you might want next. Change goes back to
+     * the question. Adjust opens the drawer. Everything that is actually
+     * excluding something is still named individually in the bar below, which is
+     * what makes hiding the controls honest rather than merely tidier.
+     */
+    function renderSearchHead() {
+        var el = document.getElementById('srcHead');
+        if (!el) return;
+        var st = _activeStarter ? starterById(_activeStarter) : null;
+        /* A search nobody started from a card is still a search. It gets the same
+           line, named as the user's own, so the cards are never the only way to
+           be in a state worth describing. */
+        var custom = !st && hasNonDefaultFilters();
+        var picked = !!(st || custom);
+
+        document.body.setAttribute('data-src-picked', picked ? '1' : '0');
+        if (!picked) { el.innerHTML = ''; return; }
+
+        var n = _filtered ? _filtered.length : 0;
+        el.innerHTML =
+            '<span class="src-head-eye">' + (st ? 'Looking for' : 'Your own search') + '</span>' +
+            (st ? '<span class="src-head-what">' + esc(st.label) + '</span>'
+                : '<span class="src-head-what">built from the filters below</span>') +
+            '<span class="src-head-count">' + fmtInt(n) +
+                (n === 1 ? ' site' : ' sites') + '</span>' +
+            '<span class="src-head-acts">' +
+                '<button type="button" class="src-head-btn" data-act="change">' +
+                    (st ? 'Change' : 'Start over') + '</button>' +
+                '<button type="button" class="src-head-btn" data-act="adjust">Adjust</button>' +
+            '</span>';
+    }
+
+    function wireSearchHead() {
+        var el = document.getElementById('srcHead');
+        if (!el) return;
+        el.addEventListener('click', function(e) {
+            var b = e.target.closest ? e.target.closest('[data-act]') : null;
+            if (!b) return;
+            if (b.getAttribute('data-act') === 'change') {
+                _activeStarter = null;
+                /* Back to a blank page, not back to the last thing before this
+                   one. "Change" is asked by somebody who wants the question
+                   again, and a half-cleared search would answer a question they
+                   did not ask. */
+                resetAllFilters();
+                if (_refine) _refine.set(false);
+                renderSearchHead();
+                return;
+            }
+            if (_refine) _refine.set(true);
+            var panel = document.getElementById('refinePanel');
+            if (panel && panel.scrollIntoView) {
+                panel.scrollIntoView({ block: 'nearest' });
+            }
+        });
     }
 
     function renderStarters() {
@@ -1508,6 +1595,7 @@ var MapSourcing = (function() {
         // the user's own, so the card stops claiming credit for it.
         if (!_applyingStarter) _activeStarter = null;
         renderStarters();
+        renderSearchHead();
         renderSummary(matches);
         renderResults();
         renderResultsNote();
@@ -1759,13 +1847,11 @@ var MapSourcing = (function() {
     // statements, not the only one.
     var MOREF_KEY = 'protonMiningProspectMoreFilters';
     function wireMoreFilters() {
-        disclosure('moreFiltersToggle', 'moreFilters', MOREF_KEY, false);
-        renderMoreFiltersCount();
-
-        // The outer drawer. Closed by default -- the starting
-        // points above are meant to be enough on their own.
+        // The one drawer. Closed by default -- the starting points above are
+        // meant to be enough on their own, and now say so when they have been.
         _refine = disclosure('refineToggle', 'refinePanel', REFINE_KEY, false);
         renderRefineCount();
+        wireSearchHead();
 
         var wrap = document.getElementById('srcStarters');
         if (wrap) {
@@ -1818,9 +1904,19 @@ var MapSourcing = (function() {
         return !!_companyFilter;
     }
 
+    /* NO LONGER OPENS ITSELF. This used to spring the drawer open whenever any
+       filter was non-default, on the reasoning that a live filter behind a closed
+       panel is a search silently returning fewer rows than the page appears to
+       ask for. That reasoning was sound when the page had nothing else to say —
+       but it meant the screen got permanently denser the more it was used, and a
+       returning user never saw the simple version again.
+       Two things now carry that duty without unfolding anything: the header
+       states the search and its count, and the "Filtering by" bar names every
+       filter that is excluding something, each with its own remove button. Kept
+       as a function because the boot sequence calls it and the honest answer to
+       "reveal it?" is now "no". */
     function revealRefineIfFiltering() {
-        if (!_refine || _refine.isOpen()) return;
-        if (hasNonDefaultFilters()) _refine.set(true);
+        renderSearchHead();
     }
 
     function renderRefineCount() {
