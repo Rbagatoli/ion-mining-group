@@ -593,5 +593,131 @@ ok(sheet.indexOf('.ct-val--btc { color: var(--btc-300); }') >= 0,
     });
 })();
 
+
+/* ---- PRE-TAX CAPITAL: which side of the comparison the tax comes off ------
+ *
+ * The question this answers is "I earn 200k — do I buy miners with it or buy
+ * bitcoin with it", and the two are not the same size of bet. Miners are
+ * equipment, so a first-year write-off deducts the cost against that income and
+ * the whole amount goes to work. Buying bitcoin deducts nothing, so the income
+ * is taxed first and only what is left buys coins.
+ *
+ * WITHOUT THIS the benchmark bought bitcoin with the full pre-tax figure and
+ * paid no income tax on it, while the mining side paid income tax on every coin
+ * it produced. At 20% on $198,660 that handed the alternative $39,732 — nearly
+ * four tenths of a coin at $100k — and it was enough to flip which side won.
+ *
+ * The page has claimed since it was written that "a comparison against simply
+ * holding bitcoin is meaningless if only one side is taxed". This is the input
+ * that makes that true when the money is income rather than savings. */
+var PT = {
+    btcPrice: 100000, priceChange: 0, difficulty: 127.48, diffChange: 0,
+    hashrate: 270, power: 3.645, elecCost: 0.05, poolFee: 1, uptime: 100,
+    capex: 3010, machineCount: 66, infrastructureCost: 0,
+    investPeriod: 12, periodLength: 'month', minerLifespan: 60,
+    salvageValue: 0, autoReplace: false, reinvest: false, hodlRatio: 100,
+    startDate: '2026-01-01',
+    taxAdjustment: true, miningIncomeTaxRate: 20, capitalGainsTaxRate: 20
+};
+function pt(extra) {
+    var o = {}; for (var k in PT) o[k] = PT[k];
+    for (var j in (extra || {})) o[j] = extra[j];
+    return SiteEngine.computeProjection(o);
+}
+
+var ptOff = pt({}), ptOn = pt({ preTaxCapital: true });
+
+ok(Math.abs(ptOff.buyHoldSpend - ptOff.totalInitialInvestment) < 0.01,
+   'savings: the benchmark buys with the whole investment',
+   ptOff.buyHoldSpend + ' vs ' + ptOff.totalInitialInvestment);
+
+ok(Math.abs(ptOn.buyHoldSpend - ptOff.totalInitialInvestment * 0.8) < 0.01,
+   'pre-tax income: the benchmark buys with what the income tax leaves',
+   'expected ' + (ptOff.totalInitialInvestment * 0.8).toFixed(2) +
+   ', got ' + ptOn.buyHoldSpend.toFixed(2));
+
+ok(ptOn.buyHoldBtcAmount < ptOff.buyHoldBtcAmount,
+   'so it holds fewer coins than the untaxed version did',
+   ptOn.buyHoldBtcAmount.toFixed(4) + ' vs ' + ptOff.buyHoldBtcAmount.toFixed(4));
+
+/* THE MINING SIDE MUST NOT MOVE. capex has never been taxed in this model,
+   which is exactly what a first-year write-off means — so switching the flag on
+   changes the benchmark and nothing else. If this ever fails, the deduction is
+   being applied twice. */
+ok(ptOn.totalPL === ptOff.totalPL && ptOn.cumulBtcMined === ptOff.cumulBtcMined,
+   'and the mining side is untouched by the flag',
+   'P/L ' + ptOff.totalPL + ' -> ' + ptOn.totalPL);
+
+/* At a flat price the whole difference IS the income tax: the benchmark's loss
+   is exactly what it paid to get in. */
+ok(Math.abs(ptOn.buyHoldFinalNet + ptOff.totalInitialInvestment * 0.2) < 1,
+   'at a flat price the benchmark is out exactly the tax it paid',
+   ptOn.buyHoldFinalNet.toFixed(2) + ', tax was ' +
+   (ptOff.totalInitialInvestment * 0.2).toFixed(2));
+
+ok((ptOff.totalPL - ptOff.buyHoldFinalNet) < 0 &&
+   (ptOn.totalPL - ptOn.buyHoldFinalNet) > 0,
+   'which is enough to flip which side of the comparison wins',
+   'savings ' + Math.round(ptOff.totalPL - ptOff.buyHoldFinalNet) +
+   ', pre-tax ' + Math.round(ptOn.totalPL - ptOn.buyHoldFinalNet));
+
+/* A pre-tax investment with no tax model is a contradiction — it would shrink
+   the benchmark by a rate that is not being applied anywhere else on the page. */
+/* ASSERTED ON normalise(), NOT ON THE OUTPUT, because the output cannot tell
+   you. With the tax model off the income rate is already 0, so multiplying the
+   benchmark's spend by (1 - 0) leaves it alone whether the flag is gated or not
+   — the first version of this assertion passed with the gate deleted, which is
+   the definition of proving nothing. This reads the decision itself. */
+ok(SiteEngine.normalise({ preTaxCapital: true, taxAdjustment: false })
+       .preTaxCapital === false,
+   'the flag is refused outright when the tax model is switched off',
+   'a pre-tax investment with no tax model would shrink the benchmark by a rate ' +
+   'that is not applied anywhere else');
+ok(SiteEngine.normalise({ preTaxCapital: true, taxAdjustment: true })
+       .preTaxCapital === true,
+   'and accepted when it is on');
+
+/* Both engines, because there are two calculators and one implementation. */
+ok(JSON.stringify(RootEngine.computeProjection(
+       Object.assign({}, PT, { preTaxCapital: true }))) ===
+   JSON.stringify(ptOn),
+   'and the app engine agrees with the site engine on all of it');
+
+/* A CONTROL THAT EXISTS BUT DOES NOTHING is the failure this catches, because
+   it is the one that happened. The site page sweeps an id list and re-renders on
+   any of them, so adding the id was enough. The app wires a listener per control,
+   so the checkbox rendered, ticked, and changed no number at all until one was
+   added - and every engine assertion above passed the whole time. */
+var siteJs = fs.readFileSync(S + 'calculator.js', 'utf8');
+var appJs = fs.readFileSync(D + 'calculator.js', 'utf8');
+ok(/'preTaxCapital'/.test(siteJs),
+   'the site calculator sweeps preTaxCapital with its other inputs');
+ok(/preTaxCapital[\s\S]{0,200}?addEventListener\(\s*'change'/.test(appJs),
+   'the app calculator listens to preTaxCapital and re-renders',
+   'without this the box ticks and nothing on the page moves');
+ok(/preTaxCapital/.test(appJs.split('recalculate')[0] +
+   appJs) && /s\.preTaxCapital|settings\.preTaxCapital/.test(appJs),
+   'and the app reads it into the settings it hands the engine');
+
+/* THE CLAIM ON THE PAGE. A tax deferral described as an escape would be the
+   kind of thing this repo exists to not ship, so the caveat travels with the
+   control on both calculators and points at the page that explains it. */
+var siteCalc = fs.readFileSync(S + 'calculator.html', 'utf8');
+var appCalc = fs.readFileSync(D + 'calculator.html', 'utf8');
+[[siteCalc, 'site'], [appCalc, 'app']].forEach(function (pair) {
+    /* Whitespace collapsed first. These assertions are about what the page SAYS,
+       and a phrase that happens to wrap between two words is still the phrase --
+       both of these failed on their first run for no better reason than that. */
+    var html = pair[0].replace(/\s+/g, ' '), where = pair[1];
+    ok(html.indexOf('id="preTaxCapital"') >= 0,
+       where + ' calculator carries the pre-tax control');
+    ok(/recaptur/i.test(html) && /trade or business/i.test(html),
+       where + ' calculator says it is a deferral, not an escape');
+    ok(/why-mining\.html#tax/.test(html),
+       where + ' calculator links to what it depends on');
+    ok(/not tax advice/i.test(html),
+       where + ' calculator says it is not tax advice');
+});
+
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  calc-suite: ALL OK');
 process.exit(fail ? 1 : 0);

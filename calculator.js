@@ -146,6 +146,7 @@ function saveSettings() {
     settings.savingsElec = savingsElecToggle.checked;
     settings.autoReplace = autoReplaceToggle.checked;
     settings.taxAdjustment = taxAdjustmentToggle.checked;
+    settings.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
     settings.miningIncomeTaxRate = miningIncomeTaxRateInput.value;
     settings.capitalGainsTaxRate = capitalGainsTaxRateInput.value;
     settings._v = 3;
@@ -424,6 +425,7 @@ function currentSettings() {
     s.savingsElec = savingsElecToggle.checked;
     s.autoReplace = autoReplaceToggle.checked;
     s.taxAdjustment = taxAdjustmentToggle.checked;
+    s.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
     s.miningIncomeTaxRate = miningIncomeTaxRateInput.value;
     s.capitalGainsTaxRate = capitalGainsTaxRateInput.value;
     s._v = 3;
@@ -578,6 +580,14 @@ taxAdjustmentToggle.addEventListener('change', () => {
     taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';
     recalculate();
 });
+/* The app wires a listener per control rather than sweeping an id list the way
+   the site page does, so a new checkbox is inert until this line exists. It was:
+   the box appeared, could be ticked, and changed nothing until something else
+   forced a re-render. Looked up rather than referenced directly, because an
+   older cached page will not have the element. */
+var preTaxCapitalToggle = document.getElementById('preTaxCapital');
+if (preTaxCapitalToggle) preTaxCapitalToggle.addEventListener('change', recalculate);
+
 miningIncomeTaxRateInput.addEventListener('input', recalculate);
 capitalGainsTaxRateInput.addEventListener('input', recalculate);
 hodlSlider.addEventListener('input', () => {
@@ -1013,6 +1023,8 @@ function loadScenario(id) {
     savingsElecToggle.checked = !!v.savingsElec;
     autoReplaceToggle.checked = v.autoReplace !== false;
     taxAdjustmentToggle.checked = !!v.taxAdjustment;
+    var ptc = document.getElementById('preTaxCapital');
+    if (ptc) ptc.checked = !!v.preTaxCapital;
     if (v.miningIncomeTaxRate !== undefined) miningIncomeTaxRateInput.value = v.miningIncomeTaxRate;
     if (v.capitalGainsTaxRate !== undefined) capitalGainsTaxRateInput.value = v.capitalGainsTaxRate;
 

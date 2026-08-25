@@ -33,6 +33,7 @@
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
+        'preTaxCapital',
     ];
 
     /* Proton's gas->power constants, matching site-engine.js. Defaults only; the
@@ -223,6 +224,7 @@
             reinvest: !!el.reinvest.checked,
             savingsElec: !!el.savingsElec.checked,
             taxAdjustment: !!el.taxAdjustment.checked,
+            preTaxCapital: !!(el.preTaxCapital && el.preTaxCapital.checked),
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),
             capitalGainsTaxRate: num(el.capitalGainsTaxRate.value, 0),
         };

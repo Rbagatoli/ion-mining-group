@@ -374,7 +374,22 @@
                 </div>
                 <div class="input-group" style="margin-top:12px;">
                     <label>Capital Gains Tax Rate</label>
-                    <div class="input-wrapper">
+                    <div style="margin-top:14px">
+                        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+                          <input type="checkbox" id="preTaxCapital" style="margin-top:3px">
+                          <span>
+                            <strong>This is pre-tax income</strong><br>
+                            <span style="color:var(--plat-500);font-size:12px;line-height:1.5">
+                              Miners are equipment, so a first-year write-off puts the whole amount
+                              to work; buying bitcoin is not deductible, so the income is taxed
+                              first. A deferral, not an escape &mdash; it needs an active trade or
+                              business, and depreciation is recaptured on sale.
+                              <a href="../why-mining.html#tax">What this depends on</a>. Not tax advice.
+                            </span>
+                          </span>
+                        </label>
+                      </div>
+                      <div class="input-wrapper">
                         <input type="number" id="capitalGainsTaxRate" value="15" min="0" max="100" step="1">
                         <span class="suffix">%</span>
                     </div>

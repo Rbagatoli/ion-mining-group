@@ -103,6 +103,24 @@ var CalcEngine = (function() {
             reinvestMode: !!s.reinvest,
             deductAdditionCapex: s.additionCapex !== false,
             taxAdjustmentEnabled: !!s.taxAdjustment,
+            /* WHERE THE MONEY CAME FROM, which the comparison was silently
+               assuming an answer to.
+
+               Off (the old behaviour, and still the default): the investment is
+               capital you already hold. Both sides start from the same figure,
+               which is right - tax on how you earned it was paid long ago and is
+               not part of this decision.
+
+               On: the investment is income you have not been taxed on yet. Then
+               the two sides are NOT the same size. Miners are equipment, so a
+               first-year write-off deducts the cost against that income and the
+               whole figure goes to work. Buying bitcoin deducts nothing, so the
+               income is taxed first and only what is left buys coins.
+
+               Gated on taxAdjustmentEnabled, because a pre-tax investment with no
+               tax model is a contradiction: it would shrink the benchmark using a
+               rate that is not being applied anywhere else. */
+            preTaxCapital: !!(s.taxAdjustment && s.preTaxCapital),
             // These were the only two ratios in this function still using `|| 0` -- the exact
             // idiom the NOTE above warns against -- and the only two left unclamped. Typing 350
             // produced a 350% tax and turned a profitable site into a $7.7M loss; typing -40
@@ -154,11 +172,29 @@ var CalcEngine = (function() {
         var additionAccum = 0;
         var totalScheduledAdded = 0;
 
-        // Buy & hold: CGT applies to the GAIN on exit, never to the money put in.
-        var buyHoldBtcAmount = totalInitialInvestment > 0 ? (totalInitialInvestment / p.btcPrice0) : 0;
+        /* Buy & hold: CGT applies to the GAIN on exit, never to the money put in.
+
+           WHAT IT HAS TO SPEND is the part that used to be assumed. On pre-tax
+           income, buying bitcoin is not deductible, so the income tax comes off
+           first and the alternative starts smaller - at 20% on $198,660 that is
+           $158,928, which is 1.5893 BTC at $100k instead of 1.9866. Nearly four
+           tenths of a coin, and it was being handed to the alternative for free.
+
+           The mining side needs no matching adjustment: capex has never been
+           taxed in this model, which is exactly what a first-year write-off
+           means. The asymmetry was only ever on this side. */
+        var buyHoldSpend = p.preTaxCapital
+            ? totalInitialInvestment * (1 - p.miningIncomeTaxRate)
+            : totalInitialInvestment;
+        var buyHoldBtcAmount = buyHoldSpend > 0 ? (buyHoldSpend / p.btcPrice0) : 0;
         function buyHoldNetGain(price) {
+            /* Measured against the PRE-TAX figure, so the income tax paid to get
+               into bitcoin shows up as the cost it is. Netting it against the
+               smaller number would quietly forgive it. */
             var gain = (buyHoldBtcAmount * price) - totalInitialInvestment;
-            return (p.taxAdjustmentEnabled && gain > 0) ? gain * (1 - p.capitalGainsTaxRate) : gain;
+            var appreciation = (buyHoldBtcAmount * price) - buyHoldSpend;
+            if (!p.taxAdjustmentEnabled || appreciation <= 0) return gain;
+            return gain - (appreciation * p.capitalGainsTaxRate);
         }
         // Mined coins are taxed as income at the price they were mined at, so that price
         // becomes their cost basis; gains above it are capital gains.
@@ -361,6 +397,8 @@ var CalcEngine = (function() {
             breakEvenPeriod: breakEvenPeriod,
 
             buyHoldBtcAmount: buyHoldBtcAmount,
+            buyHoldSpend: buyHoldSpend,
+            preTaxCapital: p.preTaxCapital,
             buyHoldFinalValue: buyHoldFinalValue,
             buyHoldFinalNet: buyHoldFinalNet,
             miningAdvantage: miningAdvantage,
