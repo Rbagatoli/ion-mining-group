@@ -389,9 +389,12 @@ SiteSources.register({
     SiteData.update(added.id, { status: 'definitely-buying' });
     eq('an invalid status falls back rather than being stored', SiteData.get(added.id).status, 'prospect');
 
-    eq('setStage accepts a valid stage', SiteData.setStage(added.id, 'negotiating').stage, 'negotiating');
+    /* The pipeline vocabulary changed when the CRM landed -- negotiating and
+       acquired became the configured stage list in crm-config.js. Same contract,
+       current names. */
+    eq('setStage accepts a valid stage', SiteData.setStage(added.id, 'in_discussion').stage, 'in_discussion');
     eq('setStage rejects an invalid stage', SiteData.setStage(added.id, 'nope'), null);
-    eq('stage survives the rejection', SiteData.get(added.id).stage, 'negotiating');
+    eq('stage survives the rejection', SiteData.get(added.id).stage, 'in_discussion');
 
     var blank = SiteData.blankSite();
     var allManualNull = SiteData.MANUAL_FIELDS.every(function(f) { return blank[f] === null; });

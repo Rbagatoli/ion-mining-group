@@ -35,7 +35,7 @@ var ProspectNav = (function () {
     /* Views whose page does not exist yet render disabled rather than as a link
        to a 404. A dead nav item is worse than a greyed one: it teaches people the
        section is broken. */
-    var BUILT = { today: true, board: true, map: true, table: true };
+    var BUILT = { today: true, board: true, map: true, table: true, analytics: true };
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)

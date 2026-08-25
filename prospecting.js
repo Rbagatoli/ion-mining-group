@@ -28,7 +28,7 @@
            modal means the back button works and a prospect can be linked to,
            which matters the moment you want to send yourself one. */
         if (h.indexOf('p/') === 0) return 'detail';
-        return (h === 'board' || h === 'today') ? h : 'today';
+        return (h === 'board' || h === 'today' || h === 'analytics') ? h : 'today';
     }
 
     function idFromHash() {
@@ -41,6 +41,7 @@
     var todaySection = document.getElementById('todaySection');
     var boardSection = document.getElementById('boardSection');
     var detailSection = document.getElementById('detailSection');
+    var analyticsSection = document.getElementById('analyticsSection');
 
     /* list(), not all(). SiteData exposes list() -- the first draft of this called
        all() and threw on a page where nothing had been saved yet, which is exactly
@@ -178,9 +179,16 @@
         todaySection.hidden = (v !== 'today');
         boardSection.hidden = (v !== 'board');
         detailSection.hidden = (v !== 'detail');
+        analyticsSection.hidden = (v !== 'analytics');
         if (v === 'board') draw();
         else if (v === 'detail') drawDetail();
+        else if (v === 'analytics') drawAnalytics();
         else drawToday();
+    }
+
+    function drawAnalytics() {
+        if (typeof ProspectAnalytics === 'undefined') return;
+        ProspectAnalytics.render('panalytics');
     }
 
     function drawDetail() {

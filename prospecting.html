@@ -210,6 +210,85 @@
                    border-radius:2px; overflow:hidden; }
         .pb-ebar span { display:block; height:100%; background:var(--btc-300); }
         .pb-epct { font-family:var(--mono); font-size:9.5px; color:var(--plat-500); }
+
+        /* ---- analytics ---- */
+        /* Every number on this screen is computed from too little data to be a
+           number yet, and will be for months. So the styling's whole job is to
+           make a thin figure look like what it is. */
+        .pa-caveat { margin:0 0 18px; padding:9px 12px; font-size:11.5px; line-height:1.5;
+                     color:var(--plat-400); background:var(--panel);
+                     border:1px solid var(--line); border-left:2px solid var(--btc-200);
+                     border-radius:var(--radius); }
+        .pa-sec { margin:0 0 22px; background:var(--panel); border:1px solid var(--line);
+                  border-radius:var(--radius); padding:14px 16px 12px; }
+        .pa-head { display:flex; align-items:baseline; justify-content:space-between;
+                   gap:12px; margin:0 0 12px; }
+        .pa-head h2 { margin:0; font-size:12px; letter-spacing:.05em; text-transform:uppercase;
+                      color:var(--plat-300); font-weight:600; }
+        .pa-n { font-family:var(--mono); font-size:11px; color:var(--plat-500); }
+        .pa-none { margin:0; font-size:12px; line-height:1.55; color:var(--plat-500); }
+        .pa-thin { margin:10px 0 0; font-size:11px; color:var(--plat-600); }
+        .pa-foot { margin:11px 0 0; font-size:11px; line-height:1.55; color:var(--plat-600); }
+        .pa-absent { font-size:11px; font-style:italic; color:var(--plat-600); }
+        .pa-unit { font-size:10px; color:var(--plat-500); }
+
+        .pa-bars { list-style:none; margin:0; padding:0; }
+        /* Capped, because a two-count bar stretched across a 1440px page reads as
+           a big number. The bar's length is the comparison; the page width is not
+           part of the data. */
+        .pa-bars li { display:flex; align-items:center; gap:10px; padding:3px 0;
+                      max-width:660px; }
+        .pa-bl { flex:0 0 132px; font-size:12px; color:var(--plat-200); }
+        .pa-bar { flex:1 1 auto; height:8px; background:var(--black);
+                  border-radius:2px; overflow:hidden; }
+        .pa-bar > span { display:block; height:100%; background:var(--btc-300); }
+        /* Deaths with no reason recorded are a gap in the record, not a cause.
+           Shown, because hiding them would make the ranked reasons look complete. */
+        .pa-bars li.is-unrecorded .pa-bl,
+        .pa-bars li.is-unrecorded .pa-bv { color:var(--plat-600); font-style:italic; }
+        .pa-bars li.is-unrecorded .pa-bar > span { background:var(--line-mid); }
+        .pa-bv { flex:0 0 74px; text-align:right; font-family:var(--mono); font-size:11px;
+                 color:var(--plat-300); }
+        .pa-bv em { font-style:normal; color:var(--plat-500); }
+
+        .pa-table { width:100%; max-width:780px; border-collapse:collapse; font-size:12px; }
+        /* Two columns spread over a full page put the figure so far from its stage
+           that the eye loses the row. */
+        .pa-table--two { max-width:440px; }
+        .pa-table th { text-align:right; font-weight:500; font-size:10.5px;
+                       letter-spacing:.04em; text-transform:uppercase;
+                       color:var(--plat-600); padding:0 0 6px; border-bottom:1px solid var(--line); }
+        .pa-table th:first-child { text-align:left; }
+        .pa-table td { padding:5px 0; border-bottom:1px solid var(--line); }
+        .pa-table tr:last-child td { border-bottom:0; }
+        .pa-stage { color:var(--plat-200); }
+        .pa-stage.t-active   { color:var(--btc-300); }
+        .pa-stage.t-warm     { color:var(--btc-200); }
+        .pa-stage.t-positive { color:var(--pos); }
+        .pa-stage.t-negative { color:var(--neg); }
+        .pa-num { text-align:right; font-family:var(--mono); color:var(--plat-200);
+                  white-space:nowrap; }
+        .pa-of  { text-align:right; font-size:10.5px; color:var(--plat-600);
+                  padding-left:12px; white-space:nowrap; }
+        /* An empty row is still a row -- the stage exists and nothing is in it. */
+        .pa-table tr.is-zero td, .pa-table tr.is-zero .pa-stage { color:var(--plat-600); }
+
+        /* A thin figure keeps its value but loses its authority, and carries the
+           count it was computed from right beside it. */
+        .pa-fig.is-thin { color:var(--plat-500); }
+        .pa-basis { font-family:var(--mono); font-size:10px; color:var(--plat-600); }
+
+        .pa-stats { list-style:none; display:flex; flex-wrap:wrap; gap:10px;
+                    margin:0; padding:0; }
+        .pa-stats li { flex:1 1 118px; background:var(--black); border:1px solid var(--line);
+                       border-radius:var(--radius); padding:9px 11px; }
+        .pa-sv { display:block; font-family:var(--mono); font-size:17px; color:var(--plat-100); }
+        .pa-sl { display:block; margin-top:3px; font-size:10.5px; color:var(--plat-500); }
+
+        @media (max-width: 620px) {
+            .pa-bl { flex-basis:96px; font-size:11px; }
+            .pa-sec { padding:12px 12px 10px; }
+        }
     </style>
 </head>
 <body>
@@ -227,6 +306,10 @@
 
     <section id="detailSection" hidden>
         <div id="pdetail"></div>
+    </section>
+
+    <section id="analyticsSection" hidden>
+        <div id="panalytics"></div>
     </section>
 
     <section id="boardSection" hidden>
@@ -253,6 +336,7 @@
 <script src="./prospect-board.js?v=340"></script>
 <script src="./prospect-today.js?v=340"></script>
 <script src="./prospect-detail.js?v=340"></script>
+<script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospecting.js?v=340"></script>
 </body>
 </html>
