@@ -144,6 +144,17 @@ var CrmConfig = (function () {
         { key: 'bounced',  label: 'Bounced',  tone: 'negative' }
     ];
 
+    /* SCALARS, kept apart from the lists above because they are a different kind
+       of thing: a list is a vocabulary the UI offers, and these are thresholds
+       that decide when the app says something is wrong. Both belong in config for
+       the same reason -- they are guesses, and a guess hardcoded in three places
+       is a guess nobody can revise. */
+    var DEFAULT_SETTINGS = {
+        /* How long a checked phone number or email stays believable. No evidence
+           behind 365 beyond "a year is a long time in a county office". */
+        contactVerifyDays: 365
+    };
+
     function defaults() {
         return {
             _v: VERSION,
@@ -152,7 +163,8 @@ var CrmConfig = (function () {
             outcomes: DEFAULT_OUTCOMES.map(clone),
             checklists: cloneChecklists(DEFAULT_CHECKLISTS),
             enrichStatuses: DEFAULT_ENRICH_STATUSES.map(clone),
-            documentKinds: DEFAULT_DOCUMENT_KINDS.map(clone)
+            documentKinds: DEFAULT_DOCUMENT_KINDS.map(clone),
+            settings: clone(DEFAULT_SETTINGS)
         };
     }
 
@@ -200,6 +212,16 @@ var CrmConfig = (function () {
                 }
                 if (parsed && Array.isArray(parsed.documentKinds) && parsed.documentKinds.length) {
                     d.documentKinds = parsed.documentKinds.filter(function (x) { return x && x.key; });
+                }
+                /* Merged key by key rather than replaced, so a stored config
+                   written before a setting existed does not erase its default. */
+                if (parsed && parsed.settings && typeof parsed.settings === 'object') {
+                    for (var sk in DEFAULT_SETTINGS) {
+                        if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, sk)) continue;
+                        if (Object.prototype.hasOwnProperty.call(parsed.settings, sk)) {
+                            d.settings[sk] = parsed.settings[sk];
+                        }
+                    }
                 }
             }
         } catch (e) { /* defaults stand */ }
@@ -332,6 +354,21 @@ var CrmConfig = (function () {
         return write(cfg);
     }
 
+    function setting(key) {
+        var st = read().settings || {};
+        return Object.prototype.hasOwnProperty.call(st, key) ? st[key] : null;
+    }
+
+    function setSetting(key, value) {
+        if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) {
+            return { ok: false, err: 'Unknown setting: ' + key };
+        }
+        var cfg = read();
+        if (!cfg.settings) cfg.settings = clone(DEFAULT_SETTINGS);
+        cfg.settings[key] = value;
+        return write(cfg);
+    }
+
     function documentKinds() { return read().documentKinds.map(clone); }
 
     function documentKindLabel(key) {
@@ -401,6 +438,8 @@ var CrmConfig = (function () {
         checklistFor: checklistFor,
         checklistTypes: checklistTypes,
         setChecklist: setChecklist,
+        setting: setting,
+        setSetting: setSetting,
         documentKinds: documentKinds,
         documentKindLabel: documentKindLabel,
         setDocumentKinds: setDocumentKinds,

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proton Mining — Contacts</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=340">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./tokens.css?v=340">
+    <link rel="stylesheet" href="./shared.css?v=340">
+    <script src="./brand-migrate.js?v=340"></script>
+    <script src="./theme.js?v=340"></script>
+    <style>
+        /* ---- the section's own nav ----
+           Duplicated from prospecting.html rather than shared, matching what
+           map.html already does: these three pages each carry the bar's styles so
+           none of them depends on a stylesheet edit landing first. */
+        .psec-nav { display:flex; gap:2px; flex-wrap:wrap; border-bottom:1px solid var(--line);
+                    margin: 0 0 20px; }
+        .psec-tab { padding:9px 14px; font-size:12px; letter-spacing:.04em; color:var(--plat-400);
+                    text-decoration:none; border-bottom:2px solid transparent; }
+        .psec-tab:hover { color:var(--plat-200); }
+        .psec-tab.is-on { color:var(--btc-300); border-bottom-color:var(--btc-300); }
+        .psec-tab.is-soon { color:var(--plat-600); cursor:default; }
+
+        .p-empty { max-width:520px; padding:28px 0; }
+        .p-empty h2 { margin:0 0 10px; font-size:16px; color:var(--plat-100); }
+        .p-empty p { margin:0 0 12px; font-size:13px; line-height:1.6; color:var(--plat-400); }
+        .p-golink { color:var(--btc-300); text-decoration:none; font-size:13px; }
+
+        /* ---- what is wrong, before the list of names ---- */
+        .pc-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 16px; }
+        .pc-total { font-size:12px; color:var(--plat-400); margin-right:4px; }
+        .pc-flag { background:var(--panel); border:1px solid var(--line-mid); color:var(--plat-300);
+                   border-radius:var(--radius); padding:5px 11px; font-size:11.5px;
+                   cursor:pointer; font-family:inherit; }
+        .pc-flag:hover { color:var(--plat-100); border-color:var(--plat-500); }
+        .pc-flag.is-on { color:var(--btc-300); border-color:var(--btc-300); }
+        .pc-flag.t-neg { color:var(--neg); border-color:var(--neg-line, var(--line-mid)); }
+        .pc-flag.t-neg.is-on { border-color:var(--neg); }
+        .pc-clean { font-size:11.5px; color:var(--plat-500); }
+
+        .pc-tools { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+        .pc-tools input[type="search"], .pc-tools select {
+            background:var(--black); border:1px solid var(--line-mid); color:var(--plat-200);
+            border-radius:var(--radius); padding:7px 10px; font:inherit; font-size:12px; }
+        .pc-tools input[type="search"] { flex:1 1 260px; }
+
+        .pc-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+        .pc-table th { text-align:left; font-weight:500; font-size:10.5px; letter-spacing:.04em;
+                       text-transform:uppercase; color:var(--plat-600);
+                       padding:0 10px 7px 0; border-bottom:1px solid var(--line); }
+        /* text-align is restated because shared.css:417 right-aligns every tbody td
+           in the app -- a bare element selector for the financial tables, which
+           this is not. Without it the headers sit left and the content sits right. */
+        .pc-table td { padding:8px 10px 8px 0; border-bottom:1px solid var(--line);
+                       vertical-align:top; text-align:left; color:inherit; }
+        .pc-table tbody tr:hover { background:var(--panel); }
+        .pc-table tbody tr.is-open { background:var(--panel); }
+        .pc-name { color:var(--plat-100); cursor:pointer; }
+        .pc-title { display:block; font-size:11px; color:var(--plat-500); }
+        .pc-org { color:var(--plat-300); }
+        .pc-role { color:var(--plat-400); }
+        .pc-absent { font-style:italic; color:var(--plat-600); font-size:11.5px; }
+
+        .pc-mail, .pc-phone { display:block; font-family:var(--mono); font-size:11px;
+                              color:var(--plat-300); text-decoration:none; }
+        .pc-mail:hover { color:var(--btc-300); }
+        /* Not a styling flourish: the opportunity score reads contactability, so
+           an unreachable contact is a prospect scoring lower with no visible
+           reason why. This screen is where that becomes legible. */
+        .pc-reach.t-none { color:var(--neg); font-size:11.5px; }
+
+        .pc-plink { display:block; color:var(--btc-300); text-decoration:none; font-size:11.5px; }
+        .pc-plink:hover { text-decoration:underline; }
+        .pc-orphan { color:var(--plat-600); font-style:italic; font-size:11.5px; }
+        /* A link left behind by a deleted prospect. Shown struck rather than
+           dropped, because a link that cannot be seen cannot be cleaned up. */
+        .pc-dead { display:block; color:var(--plat-600); font-size:11.5px;
+                   text-decoration:line-through; }
+
+        .pc-verified { white-space:nowrap; }
+        .pc-ver { font-family:var(--mono); font-size:11px; color:var(--plat-400); }
+        .pc-ver.is-stale { color:var(--warn); }
+        .pc-check { margin-left:8px; background:none; border:1px solid var(--line-mid);
+                    color:var(--plat-500); border-radius:var(--radius); padding:2px 7px;
+                    font-size:10.5px; cursor:pointer; font-family:inherit; }
+        .pc-check:hover { color:var(--plat-100); border-color:var(--plat-500); }
+        .pc-none { margin:14px 0 0; font-size:12px; color:var(--plat-500); }
+
+        /* ---- the editor ---- */
+        .pc-edit { margin:16px 0 0; background:var(--panel); border:1px solid var(--line);
+                   border-radius:var(--radius); padding:16px 18px; }
+        .pc-edit h2 { margin:0 0 12px; font-size:12px; letter-spacing:.05em;
+                      text-transform:uppercase; color:var(--plat-300); font-weight:600; }
+        .pc-frow { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 10px; }
+        .pc-frow label { display:flex; flex-direction:column; gap:4px; flex:1 1 150px;
+                         font-size:10.5px; letter-spacing:.03em; text-transform:uppercase;
+                         color:var(--plat-500); }
+        .pc-frow .pc-grow { flex:2 1 240px; }
+        .pc-frow input, .pc-frow select, .pc-frow textarea {
+            background:var(--black); border:1px solid var(--line-mid); color:var(--plat-200);
+            border-radius:var(--radius); padding:7px 9px; font:inherit; font-size:12px;
+            text-transform:none; letter-spacing:normal; }
+        .pc-btn { background:var(--panel); border:1px solid var(--line-mid); color:var(--plat-200);
+                  border-radius:var(--radius); padding:7px 14px; font:inherit; font-size:12px;
+                  cursor:pointer; }
+        .pc-btn:hover { border-color:var(--plat-500); color:var(--plat-100); }
+        .pc-btn--go { border-color:var(--btc-300); color:var(--btc-300); }
+        .pc-btn--rm { color:var(--plat-500); }
+        .pc-btn--rm:hover { color:var(--neg); border-color:var(--neg); }
+        .pc-actions { display:flex; gap:10px; align-items:center; }
+        .pc-actions .pc-btn--rm { margin-left:auto; }
+        .pc-links-edit { list-style:none; margin:0 0 10px; padding:0; display:flex;
+                         gap:8px; flex-wrap:wrap; }
+        .pc-links-edit li { display:flex; align-items:center; gap:6px; background:var(--black);
+                            border:1px solid var(--line-mid); border-radius:var(--radius);
+                            padding:4px 6px 4px 10px; font-size:11.5px; color:var(--plat-200); }
+        .pc-unlink { background:none; border:0; color:var(--plat-600); cursor:pointer;
+                     font-size:14px; line-height:1; padding:0 2px; }
+        .pc-unlink:hover { color:var(--neg); }
+        .pc-hint { margin:8px 0 0; font-size:11px; color:var(--plat-600); }
+        .pc-hint.is-err { color:var(--neg); }
+
+        @media (max-width: 720px) {
+            /* The table becomes cards. Six columns at 390px is four characters
+               each, which is not a table, it is a wall. */
+            .pc-table thead { display:none; }
+            .pc-table, .pc-table tbody, .pc-table tr, .pc-table td { display:block; width:100%; }
+            .pc-table tr { border:1px solid var(--line); border-radius:var(--radius);
+                           padding:10px 12px; margin:0 0 10px; }
+            .pc-table td { border-bottom:0; padding:2px 0; }
+            .pc-name { font-size:14px; }
+        }
+    </style>
+</head>
+<body>
+<nav id="proton-nav"></nav>
+
+<main class="page-wrap">
+    <header style="margin:0 0 4px">
+        <h1 style="margin:0;font-size:18px;color:var(--plat-100)">Prospecting</h1>
+    </header>
+    <div id="prospectNav"></div>
+
+    <div class="pc-tools">
+        <input type="search" id="pcSearch" placeholder="Search a name, an organisation, a site">
+        <select id="pcSort">
+            <option value="name">By name</option>
+            <option value="reach">By how reachable they are</option>
+            <option value="verified">By how long since checked</option>
+            <option value="linked">By how many prospects</option>
+        </select>
+        <button type="button" class="pc-btn pc-btn--go" id="pcNew">Add a contact</button>
+    </div>
+
+    <div id="pcontacts"></div>
+    <div id="pcEditor"></div>
+</main>
+
+<script src="./firebase-config.js?v=340"></script>
+<script src="./sync.js?v=340"></script>
+<script src="./auth-ui.js?v=340"></script>
+<script src="./profile-panel.js?v=340"></script>
+<script src="./shared.js?v=340"></script>
+<script src="./site-model.js?v=340"></script>
+<!-- Before anything reads a stage: publish() pushes the configured list into
+     site-model.js. -->
+<script src="./crm-config.js?v=346"></script>
+<script src="./crm-log.js?v=340"></script>
+<script src="./crm-contacts.js?v=340"></script>
+<script src="./crm-interactions.js?v=340"></script>
+<script src="./prospect-nav.js?v=346"></script>
+<script src="./prospect-contacts.js?v=346"></script>
+<script src="./contacts.js?v=346"></script>
+</body>
+</html>

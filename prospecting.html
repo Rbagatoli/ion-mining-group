@@ -367,7 +367,10 @@
         .pa-table th:first-child { text-align:left; }
         .pa-table td { padding:5px 0; border-bottom:1px solid var(--line); }
         .pa-table tr:last-child td { border-bottom:0; }
-        .pa-stage { color:var(--plat-200); }
+        /* Explicit, not inherited from tbody td:first-child in shared.css. These
+           columns read left today because the stage happens to be first; a column
+           inserted before it would silently right-align every stage name. */
+        .pa-stage { color:var(--plat-200); text-align:left; }
         .pa-stage.t-active   { color:var(--btc-300); }
         .pa-stage.t-warm     { color:var(--btc-200); }
         .pa-stage.t-positive { color:var(--pos); }
