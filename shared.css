@@ -1266,7 +1266,7 @@ footer {
 .sync-toast button.sync-toast-dismiss {
     background: transparent; color: var(--plat-400); font-weight: 500; padding: 4px 6px;
 }
-.sync-toast button.sync-toast-dismiss:hover { color: #ddd; }
+.sync-toast button.sync-toast-dismiss:hover { color: var(--plat-300); }
 .proton-nav-bell-badge {
     position: absolute;
     top: 2px; right: 2px;

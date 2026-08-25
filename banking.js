@@ -1182,7 +1182,7 @@ function renderAddressCards(data) {
                     }
                     return '<div class="miner-card-stat" style="grid-column:1/-1;">' +
                         '<div class="stat-label">Deposit Address</div>' +
-                        '<div class="stat-value" style="font-size:10px; color:#666;">Add via + Add Address (label it &quot;Strike&quot;)</div>' +
+                        '<div class="stat-value" style="font-size:10px; color:var(--text-dim);">Add via + Add Address (label it &quot;Strike&quot;)</div>' +
                     '</div>';
                 })() +
             '</div>' +
@@ -1261,7 +1261,7 @@ function renderAddressCards(data) {
 // ===== RENDER TRANSACTION HISTORY =====
 function renderEmptyTxTable() {
     document.getElementById('txHistoryBody').innerHTML =
-        '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No addresses added yet</td></tr>';
+        '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No addresses added yet</td></tr>';
 }
 
 // Helper function to find address label by address
@@ -1336,7 +1336,7 @@ async function renderTransactionHistory() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">Loading transactions...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">Loading transactions...</td></tr>';
 
     var allTxs = [];
 
@@ -1436,7 +1436,7 @@ async function renderTransactionHistory() {
 
         var typeCol;
         if (t.type === 'strike') {
-            typeCol = '<span style="font-size:11px; color:#888;">' + (t.strikeType || 'Transfer') + '</span>';
+            typeCol = '<span style="font-size:11px; color:var(--plat-500);">' + (t.strikeType || 'Transfer') + '</span>';
         } else {
             var txShort = t.txid.substring(0, 10) + '...';
             typeCol = '<a href="https://mempool.space/tx/' + t.txid + '" target="_blank" rel="noopener" style="color:#f7931a; text-decoration:none; font-family:monospace; font-size:11px;" title="' + t.txid + '">' + txShort + '</a>';
@@ -1455,11 +1455,11 @@ async function renderTransactionHistory() {
         var toCol;
         if (t.type === 'on-chain' && t.receivingAddr) {
             var addrShort = t.receivingAddr.substring(0, 8) + '...' + t.receivingAddr.substring(t.receivingAddr.length - 4);
-            toCol = '<span style="font-family:monospace; font-size:10px; color:#aaa;" title="' + t.receivingAddr + '">' + addrShort + '</span>';
+            toCol = '<span style="font-family:monospace; font-size:10px; color:var(--plat-400);" title="' + t.receivingAddr + '">' + addrShort + '</span>';
         } else if (t.type === 'strike') {
-            toCol = '<span style="font-size:11px; color:#888;">' + (t.strikeType || '-') + '</span>';
+            toCol = '<span style="font-size:11px; color:var(--plat-500);">' + (t.strikeType || '-') + '</span>';
         } else {
-            toCol = '<span style="color:#555;">-</span>';
+            toCol = '<span style="color:var(--plat-600);">-</span>';
         }
 
         html += '<tr>' +
@@ -1476,7 +1476,7 @@ async function renderTransactionHistory() {
         var emptyMsg = selectedTransactionTab !== 'all'
             ? 'No transactions found for this filter'
             : 'No transactions found';
-        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">' + emptyMsg + '</td></tr>';
+        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">' + emptyMsg + '</td></tr>';
     }
     tbody.innerHTML = html;
 }
@@ -1571,7 +1571,7 @@ document.getElementById('testWalletStrike').addEventListener('click', async func
     var result = document.getElementById('walletStrikeTestResult');
     if (!url) { result.innerHTML = '<span style="color:var(--neg);">Enter a proxy URL</span>'; return; }
 
-    result.innerHTML = '<span style="color:#888;">Testing connection...</span>';
+    result.innerHTML = '<span style="color:var(--plat-500);">Testing connection...</span>';
 
     var settings = FleetData.getSettings();
     if (!settings.strike) settings.strike = {};
@@ -1808,7 +1808,7 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
     if (!dest) { result.innerHTML = '<span style="color:var(--neg);">Enter a destination</span>'; return; }
     if (!amt) { result.innerHTML = '<span style="color:var(--neg);">Enter an amount</span>'; return; }
 
-    result.innerHTML = '<span style="color:#888;">Getting quote...</span>';
+    result.innerHTML = '<span style="color:var(--plat-500);">Getting quote...</span>';
 
     var quoteData;
     if (type === 'lightning') {
@@ -1821,7 +1821,7 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
         var tierSelect = document.getElementById('sendTier');
         var tier = tierSelect.value;
         if (!tier) {
-            result.innerHTML = '<span style="color:#888;">Loading fee tiers...</span>';
+            result.innerHTML = '<span style="color:var(--plat-500);">Loading fee tiers...</span>';
             await loadOnchainTiers();
             tier = tierSelect.value;
             if (tier) {
@@ -1863,7 +1863,7 @@ function showQuoteConfirmation(quote, type, dest) {
     var destShort = dest.length > 30 ? dest.substring(0, 15) + '...' + dest.substring(dest.length - 15) : dest;
 
     var html = '<div><strong>Type:</strong> ' + (type === 'lightning' ? 'Lightning' : 'On-chain') + '</div>';
-    html += '<div><strong>To:</strong> <span style="word-break:break-all; color:#aaa;">' + destShort + '</span></div>';
+    html += '<div><strong>To:</strong> <span style="word-break:break-all; color:var(--plat-400);">' + destShort + '</span></div>';
     html += '<div><strong>Total:</strong> <span style="color:#f7931a;">' + totalAmt + '</span></div>';
     html += '<div><strong>Fee:</strong> ' + totalFee + '</div>';
     if (quote.conversionRate) {
@@ -2015,7 +2015,7 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
     if (!secret) { resultEl.innerHTML = '<span style="color:var(--neg);">Generate a secret first.</span>'; return; }
     if (!code || code.length !== 6) { resultEl.innerHTML = '<span style="color:var(--neg);">Enter the 6-digit code from your authenticator.</span>'; return; }
 
-    resultEl.innerHTML = '<span style="color:#888;">Saving...</span>';
+    resultEl.innerHTML = '<span style="color:var(--plat-500);">Saving...</span>';
     this.disabled = true;
 
     var data = await StrikeAPI.apiPost('/auth/setup-totp', { secret: secret, code: code });
@@ -2100,7 +2100,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
         return;
     }
 
-    resultEl.innerHTML = '<span style="color:#888;">Creating invoice...</span>';
+    resultEl.innerHTML = '<span style="color:var(--plat-500);">Creating invoice...</span>';
     this.disabled = true;
 
     var body = { correlationId: 'inv_' + Date.now().toString(36), description: desc || 'Payment', amount: { amount: amt, currency: cur } };
@@ -2113,7 +2113,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
     }
 
     // Step 2: Generate quote to get the bolt11 payment request
-    resultEl.innerHTML = '<span style="color:#888;">Generating Lightning invoice...</span>';
+    resultEl.innerHTML = '<span style="color:var(--plat-500);">Generating Lightning invoice...</span>';
     var quote = await StrikeAPI.createInvoiceQuote(data.invoiceId);
     this.disabled = false;
 
@@ -2137,7 +2137,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
     var shareStatusEl = document.getElementById('invoiceStatus');
     if (shareLinkEl) {
         shareLinkEl.style.display = 'none';
-        shareStatusEl.innerHTML = '<span style="color:#888;">Generating share link...</span>';
+        shareStatusEl.innerHTML = '<span style="color:var(--plat-500);">Generating share link...</span>';
         try {
             var shareData = await StrikeAPI.shareInvoice({ amount: amt, currency: cur, description: desc || 'Payment' });
             if (shareData && shareData.shareId) {
@@ -2243,7 +2243,7 @@ async function renderOnchainReceiveTab() {
     }
 
     if (allAddresses.length === 0) {
-        container.innerHTML = '<div style="padding:20px; color:#888; font-size:13px;">' +
+        container.innerHTML = '<div style="padding:20px; color:var(--plat-500); font-size:13px;">' +
             'No on-chain addresses available.<br><br>' +
             '<button class="btn btn-primary" onclick="document.getElementById(\'btnAddAddress\').click(); document.getElementById(\'receiveBtcPanel\').classList.remove(\'open\');">+ Add Address</button>' +
             '</div>';
@@ -2261,9 +2261,9 @@ async function renderOnchainReceiveTab() {
     html += '</select></div></div>';
     html += '<div id="onchainAddrBadge" style="margin-bottom:8px; text-align:center;"></div>';
     html += '<div style="margin:12px 0;"><img id="onchainAddrQR" width="200" height="200" style="border-radius:var(--radius); background:#fff; padding:8px;"></div>';
-    html += '<div style="font-size:12px; color:#aaa; margin-bottom:6px;">Bitcoin Address:</div>';
+    html += '<div style="font-size:12px; color:var(--plat-400); margin-bottom:6px;">Bitcoin Address:</div>';
     html += '<div style="position:relative;">' +
-        '<div id="onchainAddrText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius:var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
+        '<div id="onchainAddrText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius:var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
         '<button class="btn btn-secondary" id="btnCopyOnchainAddr" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>' +
     '</div>';
 
@@ -2325,7 +2325,7 @@ function showOnchainAddress(address) {
 
             if (!apiKey) { resultEl.innerHTML = '<span style="color:var(--neg);">Enter your Strike API key</span>'; return; }
 
-            resultEl.innerHTML = '<span style="color:#888;">Connecting to Strike...</span>';
+            resultEl.innerHTML = '<span style="color:var(--plat-500);">Connecting to Strike...</span>';
             saveBtn.disabled = true;
 
             var data = await StrikeAPI.connectStrike(apiKey);
@@ -2388,7 +2388,7 @@ function showOnchainAddress(address) {
                 resultEl.innerHTML = '<span style="color:var(--neg);">PINs do not match.</span>'; return;
             }
 
-            resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
+            resultEl.innerHTML = '<span style="color:var(--plat-500);">Saving PIN...</span>';
             pinBtn.disabled = true;
 
             var data = await StrikeAPI.setPin(pin);
@@ -2442,7 +2442,7 @@ function showOnchainAddress(address) {
             var sendsPerHour = parseInt(document.getElementById('settingsSendsPerHour').value) || 5;
             var resultEl = document.getElementById('settingsResult');
 
-            resultEl.innerHTML = '<span style="color:#888;">Saving...</span>';
+            resultEl.innerHTML = '<span style="color:var(--plat-500);">Saving...</span>';
             saveBtn.disabled = true;
 
             var data = await StrikeAPI.updateSettings({ maxSendUsd: maxSend, maxSendsPerHour: sendsPerHour });
@@ -2744,7 +2744,7 @@ function renderElectricityTable() {
     var tbody = document.getElementById('elecTableBody');
 
     if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No electricity bills logged yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No electricity bills logged yet</td></tr>';
         return;
     }
 
@@ -2785,7 +2785,7 @@ function renderPayoutTable() {
     var tbody = document.getElementById('payoutTableBody');
 
     if (data.payouts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#555;">No payouts logged yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--plat-600);">No payouts logged yet</td></tr>';
         return;
     }
 
@@ -3209,7 +3209,7 @@ function getQboProxyUrl() {
 
 async function connectQuickBooks() {
     var result = document.getElementById('qboTestResult');
-    if (result) result.innerHTML = '<span style="color:#888;">Authenticating...</span>';
+    if (result) result.innerHTML = '<span style="color:var(--plat-500);">Authenticating...</span>';
 
     // Check if we have a session token
     var token = StrikeAuth.getToken();
@@ -3264,7 +3264,7 @@ async function connectQuickBooks() {
     }
 
     var proxyUrl = getQboProxyUrl();
-    if (result) result.innerHTML = '<span style="color:#888;">Starting OAuth...</span>';
+    if (result) result.innerHTML = '<span style="color:var(--plat-500);">Starting OAuth...</span>';
 
     try {
         var initRes = await fetch(proxyUrl + '/auth/qbo/initiate', {
@@ -3285,7 +3285,7 @@ async function connectQuickBooks() {
             'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
 
         if (!popup) throw new Error('Popup blocked');
-        if (result) result.innerHTML = '<span style="color:#888;">Authorize in popup...</span>';
+        if (result) result.innerHTML = '<span style="color:var(--plat-500);">Authorize in popup...</span>';
 
         var handler = function(event) {
             if (event.data && event.data.type === 'qbo-oauth-success') {
@@ -3577,7 +3577,7 @@ if (testStrikeAcct) {
 
         var url = urlInput.value.trim();
         if (!url) { result.innerHTML = '<span style="color:var(--neg);">Enter a proxy URL</span>'; return; }
-        result.innerHTML = '<span style="color:#888;">Testing...</span>';
+        result.innerHTML = '<span style="color:var(--plat-500);">Testing...</span>';
         var settings = FleetData.getSettings();
         if (!settings.strike) settings.strike = {};
         var oldUrl = settings.strike.proxyUrl;
@@ -3956,7 +3956,7 @@ function renderBankAccounts() {
 function renderRevenueTable(entries) {
     var tbody = document.getElementById('revenueTableBody');
     if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No revenue in this period</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No revenue in this period</td></tr>';
         return;
     }
     var mult = getCurrencyMultiplier();
@@ -3999,7 +3999,7 @@ function renderRevenueTable(entries) {
 function renderExpenseTable(entries) {
     var tbody = document.getElementById('expenseTableBody');
     if (entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No expenses in this period</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--plat-600);">No expenses in this period</td></tr>';
         return;
     }
     // Entries are stored in USD; the P&L summary above converts, so this table must too

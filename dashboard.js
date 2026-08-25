@@ -771,7 +771,7 @@ document.getElementById('testAPI').addEventListener('click', async function() {
         return;
     }
     apiStatusText.textContent = 'Testing connection to ' + (poolCfg ? poolCfg.name : poolType) + '...';
-    apiStatusText.style.color = '#888';
+    apiStatusText.style.color = 'var(--plat-500)';
     apiStatusEl.style.display = '';
     try {
         var pingUrl = workerUrl + '/ping';

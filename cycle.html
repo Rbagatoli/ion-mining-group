@@ -24,12 +24,12 @@
     <script src="./chart-theme.js?v=338"></script>
     <style>
         /* Reading line under each indicator card — plain-language "what this means" */
-        .cycle-reading { font-size: 11px; line-height: 1.45; margin-top: 6px; color: var(--text-mid, #888); }
+        .cycle-reading { font-size: 11px; line-height: 1.45; margin-top: 6px; color: var(--text-mid, var(--plat-500)); }
         .cycle-pct { font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; opacity: 0.75; }
         /* Percentile bar, reusing the halving progress bar look */
-        .cycle-bar { height: 4px; border-radius: var(--radius); background: rgba(255,255,255,0.07); overflow: hidden; margin-top: 6px; }
+        .cycle-bar { height: 4px; border-radius: var(--radius); background: var(--line); overflow: hidden; margin-top: 6px; }
         .cycle-bar-fill { height: 100%; border-radius: var(--radius); transition: width 0.5s ease; }
-        .cycle-disclaimer { font-size: 11px; color: #777; text-align: center; padding: 0 16px 4px; max-width: 760px; margin: 0 auto; line-height: 1.5; }
+        .cycle-disclaimer { font-size: 11px; color: var(--text-dim); text-align: center; padding: 0 16px 4px; max-width: 760px; margin: 0 auto; line-height: 1.5; }
         .dca-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
     </style>
 </head>
@@ -38,15 +38,15 @@
 
 <nav id="proton-nav"></nav>
 
-<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;">Cycle</h1>
-    <p style="color:#888; font-size:12px;">Where today sits relative to Bitcoin&rsquo;s own history</p>
+    <p style="color:var(--plat-500); font-size:12px;">Where today sits relative to Bitcoin&rsquo;s own history</p>
 </header>
 <div class="cycle-disclaimer">
     These are historical-context measures, not predictions. They show whether current conditions are
     unusual compared with the past &mdash; nothing here forecasts price.
 </div>
-<div id="cycleStatus" style="font-size:12px; color:#555; text-align:center; padding:4px 0;"></div>
+<div id="cycleStatus" style="font-size:12px; color:var(--plat-600); text-align:center; padding:4px 0;"></div>
 
 <main>
 
@@ -115,7 +115,7 @@
         <div class="earnings-chart-container">
             <canvas id="valuationChart"></canvas>
         </div>
-        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
             Log scale. The 200-week average has historically acted as a cycle floor &mdash; it needs
             1,400 days of data, so it begins in May 2019.
         </p>
@@ -138,7 +138,7 @@
         <div class="earnings-chart-container">
             <canvas id="mayerChart"></canvas>
         </div>
-        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
             Price divided by its 200-day average. Readings below 0.8 have historically coincided with
             deeply discounted periods; above 2.4 with overheated ones.
         </p>
@@ -156,7 +156,7 @@
         <div class="earnings-chart-container">
             <canvas id="drawdownChart"></canvas>
         </div>
-        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
             How far price sits below its running all-time high. Lets you compare today directly with
             every previous bear market in the record.
         </p>
@@ -174,7 +174,7 @@
         <div class="earnings-chart-container">
             <canvas id="cyclesChart"></canvas>
         </div>
-        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
             Each line starts at 100 on its halving date. Past cycles are shown for context only &mdash;
             they are not a template for the current one. Data begins in 2015, so the 2012 halving is absent.
         </p>
@@ -197,7 +197,7 @@
         <div class="earnings-chart-container">
             <canvas id="fngChart"></canvas>
         </div>
-        <p style="font-size:11px; color:#777; margin-top:10px; line-height:1.5;">
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
             Crowd sentiment scored 0 (extreme fear) to 100 (extreme greed), from alternative.me.
             Extremes in either direction have historically been more interesting than the middle.
         </p>
@@ -209,7 +209,7 @@
     <div class="section-label">Recurring Buy Backtest</div>
     <div class="card">
         <h3>What Regular Buying Would Have Done</h3>
-        <p style="font-size:12px; color:#888; margin-bottom:14px;">
+        <p style="font-size:12px; color:var(--plat-500); margin-bottom:14px;">
             Backtest a fixed recurring buy against real history. This is a record of what happened,
             not a projection.
         </p>
@@ -250,7 +250,7 @@
 
 <footer>
     Proton Mining &mdash; Cycle<br>
-    <span style="font-size:11px; color:#555;">Historical context only. Not financial advice, and not a forecast.</span>
+    <span style="font-size:11px; color:var(--plat-600);">Historical context only. Not financial advice, and not a forecast.</span>
 </footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

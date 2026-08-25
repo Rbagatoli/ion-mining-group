@@ -671,7 +671,7 @@ function initMinerComparison() {
             if (results.length === 0) { dropdown.style.display = 'none'; return; }
             var html = '';
             for (var i = 0; i < results.length; i++) {
-                html += '<div class="miner-dropdown-item" data-idx="' + i + '">' + results[i].model + ' <span style="color:#888; font-size:11px;">' + results[i].hashrate + ' TH/s | ' + results[i].power + ' kW</span></div>';
+                html += '<div class="miner-dropdown-item" data-idx="' + i + '">' + results[i].model + ' <span style="color:var(--plat-500); font-size:11px;">' + results[i].hashrate + ' TH/s | ' + results[i].power + ' kW</span></div>';
             }
             dropdown.innerHTML = html;
             dropdown.style.display = 'block';
@@ -730,7 +730,7 @@ function renderComparison() {
             if (higherBetter) { if (valA > valB) aWin = ' style="color:var(--pos)"'; else if (valB > valA) bWin = ' style="color:var(--pos)"'; }
             else { if (valA < valB) aWin = ' style="color:var(--pos)"'; else if (valB < valA) bWin = ' style="color:var(--pos)"'; }
         }
-        return '<tr><td style="color:#888;">' + label + '</td>' +
+        return '<tr><td style="color:var(--plat-500);">' + label + '</td>' +
             '<td' + aWin + '>' + (a ? formatVal(label, valA) : '--') + '</td>' +
             '<td' + bWin + '>' + (b ? formatVal(label, valB) : '--') + '</td></tr>';
     }

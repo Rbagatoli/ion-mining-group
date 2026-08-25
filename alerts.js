@@ -191,7 +191,7 @@ function injectAlertSidebar() {
                 '</div>' +
             '</div>' +
             // --- Profitability section ---
-            '<div style="margin:16px 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px">Profitability</div>' +
+            '<div style="margin:16px 0 8px;font-size:12px;color:var(--plat-500);text-transform:uppercase;letter-spacing:0.5px">Profitability</div>' +
             // Daily Profit Alert
             '<div class="alert-setting-row">' +
                 '<label class="toggle-switch"><input type="checkbox" id="asProfitAlert"><span class="slider"></span></label>' +

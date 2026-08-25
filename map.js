@@ -597,8 +597,8 @@ var MapBridge = (function() {
         overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#555;flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
         overlay.innerHTML =
             '<div style="font-size:36px;opacity:0.4;">&#127758;</div>' +
-            '<p style="font-size:14px;color:#888;">No miners with locations assigned</p>' +
-            '<p style="font-size:12px;color:#555;">Add a country and state when creating miners on the Dashboard</p>';
+            '<p style="font-size:14px;color:var(--plat-500);">No miners with locations assigned</p>' +
+            '<p style="font-size:12px;color:var(--plat-600);">Add a country and state when creating miners on the Dashboard</p>';
         var mapContainer = document.getElementById('fleetMap');
         mapContainer.style.position = 'relative';
         mapContainer.appendChild(overlay);
@@ -963,8 +963,8 @@ var _globeRef = null, _showGlobePopupRef = null;
             overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#555;flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
             overlay.innerHTML =
                 '<div style="font-size:36px;opacity:0.4;">&#127758;</div>' +
-                '<p style="font-size:14px;color:#888;">No miners with locations assigned</p>' +
-                '<p style="font-size:12px;color:#555;">Add a country and state when creating miners on the Dashboard</p>';
+                '<p style="font-size:14px;color:var(--plat-500);">No miners with locations assigned</p>' +
+                '<p style="font-size:12px;color:var(--plat-600);">Add a country and state when creating miners on the Dashboard</p>';
             globeContainer.style.position = 'relative';
             globeContainer.appendChild(overlay);
         }

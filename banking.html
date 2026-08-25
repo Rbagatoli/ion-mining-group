@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="./shared.css?v=338">
     <style>
         /* Transaction filter tabs */
-        .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid rgba(255,255,255,0.05); padding-bottom:8px; }
-        .tx-tab { background:transparent; border:none; color:#888; padding:8px 16px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-10px; transition:all 0.2s ease; }
-        .tx-tab:hover { color:#aaa; background:rgba(255,255,255,0.03); }
+        .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid var(--panel-hover); padding-bottom:8px; }
+        .tx-tab { background:transparent; border:none; color:var(--plat-500); padding:8px 16px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-10px; transition:all 0.2s ease; }
+        .tx-tab:hover { color:var(--plat-400); background:var(--panel); }
         .tx-tab.active { color:#f7931a; border-bottom-color:#f7931a; }
     </style>
     <script>
@@ -38,7 +38,7 @@
 <header class="banking-header">
     <div class="banking-header-content">
         <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;">Banking</h1>
-        <p style="color:#888; font-size:12px; margin:0;">Wallet, income tracking, and accounting</p>
+        <p style="color:var(--plat-500); font-size:12px; margin:0;">Wallet, income tracking, and accounting</p>
     </div>
 
     <div class="banking-connections">
@@ -91,7 +91,7 @@
     <div id="userAuthBar" style="display:none; padding:8px 16px; margin-bottom:8px; background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.15); border-radius: var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:13px;">
-                <span style="color:#888;">Logged in as</span>
+                <span style="color:var(--plat-500);">Logged in as</span>
                 <strong id="authUsername" style="color:#f7931a; margin:0 4px;"></strong>
             </div>
             <button class="btn btn-secondary" id="btnLogout" style="padding:4px 12px; font-size:11px;">Logout</button>
@@ -102,8 +102,8 @@
     <div id="connectStrikePrompt">
         <div class="card" style="padding:24px; margin-bottom:16px; border-color:rgba(247,147,26,0.3); background:rgba(247,147,26,0.04);">
             <h4 style="margin:0 0 8px; color:#f7931a;">&#9889; Connect Your Strike Account</h4>
-            <p style="font-size:13px; color:#aaa; margin:0 0 16px;">Connect your personal Strike account with your API key to send and receive Bitcoin.</p>
-            <div style="font-size:13px; color:#ccc; margin-bottom:16px; line-height:1.8;">
+            <p style="font-size:13px; color:var(--plat-400); margin:0 0 16px;">Connect your personal Strike account with your API key to send and receive Bitcoin.</p>
+            <div style="font-size:13px; color:var(--plat-300); margin-bottom:16px; line-height:1.8;">
                 <div style="margin-bottom:6px;"><strong style="color:#f7931a;">1.</strong> Go to <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">dashboard.strike.me/developer</a></div>
                 <div style="margin-bottom:6px;"><strong style="color:#f7931a;">2.</strong> Create an API key (enable <em>Balances</em> and <em>Payments</em> permissions)</div>
                 <div><strong style="color:#f7931a;">3.</strong> Paste it below</div>
@@ -116,7 +116,7 @@
     <div id="signInPrompt" style="display:none;">
         <div class="card" style="padding:24px; margin-bottom:16px; border-color:rgba(247,147,26,0.3); background:rgba(247,147,26,0.04); text-align:center;">
             <h4 style="margin:0 0 8px; color:#f7931a;">Sign In to Access Your Wallet</h4>
-            <p style="font-size:13px; color:#aaa; margin:0 0 16px;">Sign in with your Proton Mining account to view balances, send BTC, and manage your wallet.</p>
+            <p style="font-size:13px; color:var(--plat-400); margin:0 0 16px;">Sign in with your Proton Mining account to view balances, send BTC, and manage your wallet.</p>
             <button class="btn btn-primary" onclick="if(typeof ProtonAuthUI!=='undefined')ProtonAuthUI.show('signin');" style="width:100%;">Sign In</button>
             <div id="signInError" style="font-size:12px; color:var(--neg); margin-top:10px;"></div>
         </div>
@@ -194,7 +194,7 @@
                     </tr>
                 </thead>
                 <tbody id="txHistoryBody">
-                    <tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No addresses added yet</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No addresses added yet</td></tr>
                 </tbody>
             </table>
         </div>
@@ -207,7 +207,7 @@
     <div class="slide-panel" id="setup2FAPanel">
         <div class="panel-inner">
             <h4>Setup Google Authenticator</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Adds a second factor to send operations. You'll need Google Authenticator (or any TOTP app) on your phone.</p>
+            <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Adds a second factor to send operations. You'll need Google Authenticator (or any TOTP app) on your phone.</p>
             <div id="twofa-setup-content">
                 <button class="btn btn-primary" id="btnGenerate2FA" style="width:100%;">Generate 2FA Secret</button>
             </div>
@@ -215,8 +215,8 @@
                 <div style="text-align:center; margin:12px 0;">
                     <img id="twofa-qr" style="border-radius: var(--radius); background:#fff; padding:8px; width:200px; height:200px;" alt="Scan with authenticator app">
                 </div>
-                <div style="font-size:12px; color:#aaa; margin-bottom:8px;">Or enter this key manually in your authenticator app:</div>
-                <div style="background:rgba(255,255,255,0.05); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
+                <div style="font-size:12px; color:var(--plat-400); margin-bottom:8px;">Or enter this key manually in your authenticator app:</div>
+                <div style="background:var(--panel-hover); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
                 <div style="font-size:12px; color:var(--pos); margin-bottom:8px; padding:10px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius: var(--radius);">
                     <strong>Verify & Activate:</strong> Enter the code from your authenticator app to activate 2FA on your account.
                 </div>
@@ -241,7 +241,7 @@
     <div class="slide-panel" id="accountSettingsPanel">
         <div class="panel-inner">
             <h4>Account Settings</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Manage your send limits and Strike connection.</p>
+            <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Manage your send limits and Strike connection.</p>
             <div class="panel-form-grid">
                 <div class="input-group">
                     <label>Max Send per Transaction (USD)</label>
@@ -261,9 +261,9 @@
                 <button class="btn btn-primary" id="saveAccountSettings">Save Settings</button>
             </div>
             <div id="settingsResult" style="margin-top:10px; font-size:12px;"></div>
-            <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--line);">
                 <button class="btn btn-secondary" id="btnDisconnectStrikeKey" style="width:100%; color:var(--neg); border-color:var(--neg-line);">Disconnect Strike API Key</button>
-                <div style="font-size:11px; color:#666; margin-top:6px; text-align:center;">You can reconnect anytime with a new key.</div>
+                <div style="font-size:11px; color:var(--text-dim); margin-top:6px; text-align:center;">You can reconnect anytime with a new key.</div>
             </div>
         </div>
     </div>
@@ -307,7 +307,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="sendConversion" style="font-size:12px; color:#888; padding:2px 0 0 4px; min-height:18px;"></div>
+                        <div id="sendConversion" style="font-size:12px; color:var(--plat-500); padding:2px 0 0 4px; min-height:18px;"></div>
                     </div>
                     <div class="input-group" id="sendTierGroup" style="display:none;">
                         <label>Fee Speed</label>
@@ -326,8 +326,8 @@
 
             <!-- Step 2: Quote Confirmation -->
             <div id="sendStep2" style="display:none;">
-                <div class="card" style="background:rgba(255,255,255,0.03); padding:14px; margin-bottom:12px;">
-                    <div style="font-size:13px; color:#aaa; margin-bottom:8px;">Quote Details</div>
+                <div class="card" style="background:var(--panel); padding:14px; margin-bottom:12px;">
+                    <div style="font-size:13px; color:var(--plat-400); margin-bottom:8px;">Quote Details</div>
                     <div id="quoteDetails" style="font-size:13px; line-height:1.8;"></div>
                     <div id="quoteExpiry" style="font-size:11px; color:#f7931a; margin-top:8px;"></div>
                 </div>
@@ -336,14 +336,14 @@
                     <div class="input-wrapper">
                         <input type="password" id="sendPinCode" placeholder="4-digit PIN" maxlength="6" inputmode="numeric" style="letter-spacing:6px; font-size:18px; text-align:center;">
                     </div>
-                    <div style="font-size:11px; color:#888; margin-top:4px;">Enter your send PIN</div>
+                    <div style="font-size:11px; color:var(--plat-500); margin-top:4px;">Enter your send PIN</div>
                 </div>
                 <div class="input-group" id="totpGroup" style="display:none;">
                     <label>Authenticator Code</label>
                     <div class="input-wrapper">
                         <input type="text" id="sendTotpCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="letter-spacing:4px; font-size:18px; text-align:center;">
                     </div>
-                    <div style="font-size:11px; color:#888; margin-top:4px;">Enter the code from Google Authenticator</div>
+                    <div style="font-size:11px; color:var(--plat-500); margin-top:4px;">Enter the code from Google Authenticator</div>
                 </div>
                 <div class="panel-actions">
                     <button class="btn btn-secondary" id="cancelQuote">Back</button>
@@ -381,7 +381,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="receiveConversion" style="font-size:12px; color:#888; padding:2px 0 0 4px; min-height:18px;"></div>
+                        <div id="receiveConversion" style="font-size:12px; color:var(--plat-500); padding:2px 0 0 4px; min-height:18px;"></div>
                     </div>
                     <div class="input-group">
                         <label>Description (optional)</label>
@@ -395,19 +395,19 @@
                     <div style="text-align:center; margin-bottom:10px;">
                         <img id="lnInvoiceQR" width="200" height="200" style="border-radius: var(--radius); background:#fff; padding:8px;">
                     </div>
-                    <div style="font-size:12px; color:#aaa; margin-bottom:6px;">Lightning Invoice:</div>
+                    <div style="font-size:12px; color:var(--plat-400); margin-bottom:6px;">Lightning Invoice:</div>
                     <div style="position:relative;">
-                        <div id="lnInvoiceText" style="background:rgba(255,255,255,0.05); padding:10px 40px 10px 14px; border-radius: var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a; max-height:80px; overflow-y:auto;"></div>
+                        <div id="lnInvoiceText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius: var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a; max-height:80px; overflow-y:auto;"></div>
                         <button class="btn btn-secondary" id="btnCopyInvoice" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                     </div>
-                    <div id="invoiceStatus" style="font-size:12px; margin-top:8px; color:#888;"></div>
+                    <div id="invoiceStatus" style="font-size:12px; margin-top:8px; color:var(--plat-500);"></div>
                     <div id="invoiceShareLink" style="display:none; margin-top:12px; padding:12px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius: var(--radius);">
                         <div style="font-size:12px; color:var(--pos); margin-bottom:6px; font-weight:500;">Client Payment Link:</div>
                         <div style="position:relative;">
-                            <div id="shareUrlText" style="background:rgba(255,255,255,0.05); padding:8px 40px 8px 12px; border-radius: var(--radius); font-size:11px; word-break:break-all; color:var(--pos); line-height:1.5;"></div>
+                            <div id="shareUrlText" style="background:var(--panel-hover); padding:8px 40px 8px 12px; border-radius: var(--radius); font-size:11px; word-break:break-all; color:var(--pos); line-height:1.5;"></div>
                             <button class="btn btn-secondary" id="btnCopyShareLink" style="position:absolute; top:4px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                         </div>
-                        <div style="font-size:10px; color:#666; margin-top:6px;">Send this link to your client — no app download needed</div>
+                        <div style="font-size:10px; color:var(--text-dim); margin-top:6px;">Send this link to your client — no app download needed</div>
                     </div>
                 </div>
             </div>
@@ -497,7 +497,7 @@
         <button class="btn btn-secondary" onclick="switchBankingTab('accounting')">Tax Exports &rarr; Accounting</button>
     </div>
 
-    <div id="f2poolSyncStatus" style="text-align:center; color:#555; font-size:12px; margin-top:8px;"></div>
+    <div id="f2poolSyncStatus" style="text-align:center; color:var(--plat-600); font-size:12px; margin-top:8px;"></div>
     </div>
 
     <!-- ===== ELECTRICITY COST SUMMARY ===== -->
@@ -550,7 +550,7 @@
                     </tr>
                 </thead>
                 <tbody id="payoutTableBody">
-                    <tr><td colspan="7" style="text-align:center; padding:20px; color:#555;">No payouts logged yet</td></tr>
+                    <tr><td colspan="7" style="text-align:center; padding:20px; color:var(--plat-600);">No payouts logged yet</td></tr>
                 </tbody>
             </table>
         </div>
@@ -574,7 +574,7 @@
                     </tr>
                 </thead>
                 <tbody id="elecTableBody">
-                    <tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No electricity bills logged yet</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No electricity bills logged yet</td></tr>
                 </tbody>
             </table>
         </div>
@@ -586,7 +586,7 @@
     <div class="card">
         <h3>Cumulative Payouts Over Time</h3>
         <div class="earnings-chart-container" style="position:relative;">
-            <div id="chartEmptyMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:#555; z-index:2;">Add payouts to see the chart</div>
+            <div id="chartEmptyMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--plat-600); z-index:2;">Add payouts to see the chart</div>
             <canvas id="earningsOverTimeChart"></canvas>
         </div>
     </div>
@@ -597,7 +597,7 @@
     <div class="card">
         <h3>Revenue vs Electricity Costs</h3>
         <div class="earnings-chart-container" style="position:relative;">
-            <div id="revCostEmptyMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:#555; z-index:2;">Add payouts and electricity bills to see the chart</div>
+            <div id="revCostEmptyMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--plat-600); z-index:2;">Add payouts and electricity bills to see the chart</div>
             <canvas id="revVsCostChart"></canvas>
         </div>
     </div>
@@ -756,7 +756,7 @@
     <div class="card">
         <h3>Revenue vs Expenses</h3>
         <div class="combo-chart-container" style="position:relative;">
-            <div id="pnlChartEmpty" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:#555; z-index:2;">Add payouts and expenses to see the chart</div>
+            <div id="pnlChartEmpty" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--plat-600); z-index:2;">Add payouts and expenses to see the chart</div>
             <canvas id="pnlBarChart"></canvas>
         </div>
     </div>
@@ -767,7 +767,7 @@
     <div class="card">
         <h3>Expense Breakdown</h3>
         <div class="earnings-chart-container" style="position:relative;">
-            <div id="expenseChartEmpty" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:#555; z-index:2;">Add expenses to see the breakdown</div>
+            <div id="expenseChartEmpty" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; color:var(--plat-600); z-index:2;">Add expenses to see the breakdown</div>
             <canvas id="expenseDoughnut"></canvas>
         </div>
     </div>
@@ -811,7 +811,7 @@
                     </tr>
                 </thead>
                 <tbody id="revenueTableBody">
-                    <tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No revenue data</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--plat-600);">No revenue data</td></tr>
                 </tbody>
             </table>
         </div>
@@ -834,7 +834,7 @@
                     </tr>
                 </thead>
                 <tbody id="expenseTableBody">
-                    <tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No expense data</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--plat-600);">No expense data</td></tr>
                 </tbody>
             </table>
         </div>
@@ -857,7 +857,7 @@
                     </tr>
                 </thead>
                 <tbody id="invoiceTableBody">
-                    <tr><td colspan="5" style="text-align:center; padding:20px; color:#555;">No invoices</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--plat-600);">No invoices</td></tr>
                 </tbody>
             </table>
         </div>
@@ -923,13 +923,13 @@
     <div class="slide-panel" id="qboConnectPanel">
         <div class="panel-inner">
             <h4>QuickBooks Connection</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 15px;">Connect your QuickBooks company to sync accounting data.</p>
+            <p style="font-size:12px; color:var(--plat-500); margin:0 0 15px;">Connect your QuickBooks company to sync accounting data.</p>
 
             <div id="qboNotConnected">
                 <button class="btn btn-primary" id="connectQbo" style="width:100%;margin-bottom:10px;">
                     Connect QuickBooks
                 </button>
-                <p style="color:#888;font-size:11px;margin-top:10px;">
+                <p style="color:var(--plat-500);font-size:11px;margin-top:10px;">
                     Sign in with Google first (top right) before connecting QuickBooks.
                 </p>
             </div>
@@ -937,7 +937,7 @@
             <div id="qboConnected" style="display:none;">
                 <div style="background:var(--pos-wash);border:1px solid var(--pos-line);border-radius: var(--radius);padding:12px;margin-bottom:15px;">
                     <div style="font-size:14px;color:var(--pos);margin-bottom:5px;">✓ Connected</div>
-                    <div style="font-size:12px;color:#888;" id="qboCompanyName">Company Name</div>
+                    <div style="font-size:12px;color:var(--plat-500);" id="qboCompanyName">Company Name</div>
                 </div>
                 <button class="btn btn-secondary" id="disconnectQbo" style="width:100%;">Disconnect</button>
             </div>
@@ -949,7 +949,7 @@
     <div class="slide-panel" id="strikeConnectPanel">
         <div class="panel-inner">
             <h4>Connect Strike Proxy</h4>
-            <p style="font-size:12px; color:#888; margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
+            <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
             <div class="panel-form-grid">
                 <div class="input-group">
                     <label>Strike Proxy URL</label>
@@ -971,7 +971,7 @@
 
 <footer>
     Proton Mining &mdash; Banking<br>
-    <span style="font-size:11px; color:#555;">Wallet, payouts, and accounting. Not financial advice.</span>
+    <span style="font-size:11px; color:var(--plat-600);">Wallet, payouts, and accounting. Not financial advice.</span>
 </footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

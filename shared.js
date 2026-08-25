@@ -861,7 +861,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 <div class="slide-panel" id="strikeApiKeyPanel">\
     <div class="panel-inner">\
         <h4>Connect Strike API Key</h4>\
-        <p style="font-size:12px; color:#888; margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>\
+        <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>\
         <div class="panel-form-grid">\
             <div class="input-group">\
                 <label>API Key</label>\
@@ -875,7 +875,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
             <button class="btn btn-primary" id="saveStrikeKey">Connect</button>\
         </div>\
         <div id="strikeKeyResult" style="margin-top:10px; font-size:12px;"></div>\
-        <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">\
+        <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">\
             <div style="font-size:13px; color:var(--pos); margin-bottom:10px; padding:10px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius:var(--radius);">\
                 <strong>Create a Send PIN</strong> — This PIN will be required every time you send BTC, adding an extra layer of security.\
             </div>\
@@ -934,7 +934,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                     return;
                 }
 
-                if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Connecting to Strike...</span>';
+                if (resultEl) resultEl.innerHTML = '<span style="color:var(--plat-500);">Connecting to Strike...</span>';
                 saveBtn.disabled = true;
 
                 try {
@@ -1033,7 +1033,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                     return;
                 }
 
-                if (resultEl) resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
+                if (resultEl) resultEl.innerHTML = '<span style="color:var(--plat-500);">Saving PIN...</span>';
 
                 try {
                     // Get session token (should already exist from Strike connection)
