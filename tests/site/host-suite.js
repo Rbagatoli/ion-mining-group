@@ -450,6 +450,24 @@ function subpathAreas(d) {
                   : W.pointercancel(touch(13, 101, 103));
   if (isLive()) fail('a gesture the browser cancelled locked the figure');
 
+  /* THE LOCK IS THE RENDERING WINDOW, NOT THE BLOCK. The callout cards sit in
+     the same wrapper and are page content: while the drawing is locked they must
+     still be a scroll, not a rotation. Targeted at a bubble rather than the svg,
+     which is the only difference between the two gestures. */
+  W.pointerdown(touch(20, 100, 100));
+  W.pointerup(touch(20, 100, 100));
+  if (!isLive()) fail('the tap before the callout test did not lock the figure');
+  const bubble = mkEl('a-callout');
+  const onBubble = (id, x, y) => Object.assign(touch(id, x, y), { target: bubble });
+  const wBefore = writes;
+  W.pointerdown(onBubble(21, 100, 100));
+  W.pointermove(onBubble(21, 101, 150));
+  W.pointermove(onBubble(21, 101, 200));
+  if (writes !== wBefore)
+    fail('a drag on a callout turned the model — the lock is not scoped to the drawing');
+  W.pointerup(onBubble(21, 101, 200));
+  if (!isLive()) fail('touching a callout released the figure');
+
   // Escape lets go of it too, for anyone who arrived by keyboard.
   W.pointerdown(touch(14, 100, 100));
   W.pointerup(touch(14, 100, 100));

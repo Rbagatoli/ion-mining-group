@@ -760,14 +760,18 @@
                     goManual();
                     return;
                 }
+                /* BOTH OF THESE ARE THE DRAWING'S, not the figure's.
+                   The callout cards below it are page content: a finger on one
+                   scrolls, and neither turns the model nor locks it. Only the
+                   rendering window does either.
+
+                   LIVE: the finger is the drawing's, both axes, from the first
+                   move. NOT LIVE: only a drag that proves itself horizontal —
+                   see the direction test in pointermove. */
+                if (!inDrawing(e.target)) return;
                 tapAt = { x: e.clientX, y: e.clientY, id: e.pointerId };
-                /* LIVE: the finger is the figure's, both axes, from the first move.
-                   NOT LIVE: only a drag that proves itself horizontal, and only on
-                   the drawing - see the direction test in pointermove. */
-                if (isLive() || inDrawing(e.target)) {
-                    pending = { x: e.clientX, y: e.clientY, id: e.pointerId,
-                                free: isLive() };
-                }
+                pending = { x: e.clientX, y: e.clientY, id: e.pointerId,
+                            free: isLive() };
             });
 
             wrap.addEventListener('pointermove', function (e) {

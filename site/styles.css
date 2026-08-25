@@ -2146,26 +2146,30 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 /* ===== A FIGURE THAT HAS BEEN TAPPED =====
 
    touch-action: none means the browser keeps nothing: every touch that lands on
-   this figure is delivered to diagram-engine.js, in both axes, and the page
+   the DRAWING is delivered to diagram-engine.js, in both axes, and the page
    cannot scroll underneath it. That is the "lock" - not a body scroll lock,
    which would be a site that cannot be scrolled at all if anything went wrong
-   between locking and unlocking. A touch anywhere else releases the figure.
+   between locking and unlocking.
+
+   THE DRAWING, NOT THE BLOCK. The first version put this on .dg-wrap, which at
+   this width is a grid holding the drawing AND the eight callout cards beneath
+   it - so locking the figure froze a screen and a half of labels along with it,
+   and reading them meant unlocking first. The lock is the rendering window and
+   nothing else: the cards below scroll the page exactly as any other card does,
+   while the drawing above them keeps every touch that lands on it.
+
+   Releasing is still the whole figure's business, deliberately. A touch on a
+   callout, or on the +/- buttons that sit over the drawing, leaves the lock
+   alone - otherwise tapping "+" to zoom would let go of the thing you were
+   zooming. Only a touch outside the figure altogether releases it.
 
    UNCONDITIONAL, AND IT DOES NOT NEED TO BE IN THE TOUCH MEDIA QUERY. The class
-   is only ever added by a touch tap, and these selectors are (0,2,0) and (0,3,0)
-   against (0,1,0) for the rules they have to beat - so specificity settles it
-   wherever the other rules happen to sit in the file, which is the opposite of
-   how the two contradictory touch-action rules used to resolve. */
-.dg-wrap.is-live,
+   is only ever added by a touch tap, and this selector is (0,3,0) against (0,1,0)
+   for the rule it has to beat - so specificity settles it wherever the other
+   rules happen to sit in the file, which is the opposite of how the two
+   contradictory touch-action rules used to resolve. */
 .dg-wrap.is-live .site-diagram { touch-action: none; }
 
-/* AND IT HAS TO LOOK LOCKED. A mode nobody can see is a page that has stopped
-   scrolling for no reason - the single worst outcome available here. The outline
-   is drawn outside the box so it costs no layout and cannot reflow the figure. */
-.dg-wrap.is-live {
-    outline: 1px solid var(--btc-400);
-    outline-offset: 3px;
-}
 .dg-wrap.is-live .dg-hint { color: var(--btc-300); }
 .dg-wrap.is-dragging .site-diagram { cursor: grabbing; }
 .site-diagram:focus-visible { outline: 1px solid var(--btc-300); outline-offset: -2px; }
@@ -2994,7 +2998,48 @@ a.fac:hover .fac-go { color: var(--btc-200); }
        ancestor chain, so .site-diagram's unconditional pan-y already governed touches on
        the drawing while the wrapper's pinch-zoom governed touches on a callout beside it.
        One figure, two behaviours, depending on which half of it your fingers landed on. */
-    .dg-wrap, .dg-wrap .site-diagram { touch-action: pan-y; }
+    /* THE BLOCK AND THE DRAWING WANT DIFFERENT ANSWERS, now that only the
+       drawing locks.
+
+       The drawing gets pan-y: vertical is the page's, and everything else -
+       horizontal drags and pinches - reaches the engine, which turns and zooms
+       the model. The block around it gets pinch-zoom back, so two fingers on the
+       eight callout cards still enlarge the TEXT, the way they do everywhere
+       else on the site. Giving that up over a paragraph is a real accessibility
+       cost and there is no reason to pay it; giving it up over the picture buys
+       a zoom gesture on the picture.
+
+       DECLARED TWICE ON PURPOSE. The pinch-zoom keyword is newer than the rest
+       of touch-action, and an engine that does not know it drops the whole
+       declaration - so the plain pan-y goes first as the floor, exactly as the
+       overflow-wrap pair further up this file does. */
+    .dg-wrap {
+        touch-action: pan-y;
+        touch-action: pan-y pinch-zoom;
+    }
+    .dg-wrap .site-diagram { touch-action: pan-y; }
+
+    /* AND IT HAS TO LOOK LOCKED. A mode nobody can see is a page that has
+       stopped scrolling for no reason - the single worst outcome available here.
+
+       TWO RULES, TOP AND BOTTOM OF THE RENDERING WINDOW, and they are an
+       OUTLINE ON THE DRAWING for a reason worth writing down.
+
+       At this width .site-diagram is 164% wide with -32% margins, cropped by
+       the wrapper's overflow - the drawing's box is a third of a screen wider
+       than the window you can see. So an outline on it has its left and right
+       edges clipped away and its top and bottom edges surviving at full width,
+       which is exactly the bracket this needs and costs nothing to get.
+
+       The version before this tried to draw a full ring as a grid item at
+       grid-row 1. Explicitly-placed grid items are placed BEFORE auto-placed
+       ones, so it took row 1 for itself and pushed the drawing down into row 2 -
+       the ring rendered as a 1px line above the picture and the picture moved.
+       Caught by painting the ring magenta and seeing which line changed. */
+    .dg-wrap.is-live .site-diagram {
+        outline: 1px solid var(--btc-400);
+        outline-offset: -1px;
+    }
 
     /* THE HINT COMES BACK, because the gestures are no longer the mouse's gestures and
        nothing else on the page says so. It moves into the flow across the top of the
