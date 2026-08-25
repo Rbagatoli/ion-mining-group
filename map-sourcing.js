@@ -2551,6 +2551,28 @@ var MapSourcing = (function() {
     }
     function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _evalCache = {}; _oppCtx = null; }
 
+    /* THE MANUAL RECORD, WITH THE BEST LINKED CONTACT ON IT.
+     *
+     * site-opportunity.js scores contactability through contactTier(cand, ctx),
+     * which reads ctx.manual.contact_name / _email / _phone. Those used to be five
+     * flat fields on the site record; they are contact records now, and one person
+     * can cover several prospects. This is the whole of the join: the record, with
+     * the best linked contact overlaid on the three fields the scorer reads.
+     *
+     * contactTier itself is UNCHANGED, and so are its assertions. It is a pure
+     * function of the object handed to it, which is what made this a four-call-site
+     * change rather than a rewrite of the scoring engine.
+     *
+     * Falls back to the bare record when the contacts module is absent, so a
+     * half-loaded page scores the way it did yesterday instead of dropping every
+     * prospect to "no operator identified" and silently re-ranking the table. */
+    function manualFor(id) {
+        if (typeof CrmContacts !== 'undefined' && CrmContacts.contactCtx) {
+            return CrmContacts.contactCtx(id);
+        }
+        return (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(id) : null;
+    }
+
     // Memoised per candidate. Scoring every row on every sort click would otherwise redo the
     // full seven-component calculation across the whole filtered set.
     function opportunityFor(c) {
@@ -2560,7 +2582,7 @@ var MapSourcing = (function() {
             jurisdictions: ctx.jurisdictions,
             fleet: ctx.fleet,
             operator: operatorRecord(c),
-            manual: (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null
+            manual: manualFor(c.id)
         });
         _oppCache[c.id] = r;
         return r;
@@ -2570,7 +2592,7 @@ var MapSourcing = (function() {
     // manually logged bankruptcy on a saved record counts alongside adapter-supplied state.
     function acquirabilityFor(c) {
         if (Object.prototype.hasOwnProperty.call(_acqCache, c.id)) return _acqCache[c.id];
-        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var manual = manualFor(c.id);
         var merged = {
             development_stage: (manual && manual.development_stage) || c.developmentStage || null,
             offtake_state: (manual && manual.offtake_state) || c.offtakeState || null,
@@ -2631,7 +2653,7 @@ var MapSourcing = (function() {
     // the acquisition set by a catalog that has not caught up with you — and the whole point of
     // typing it in was to tell the app something it did not know.
     function isAcquisitionCandidate(c) {
-        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var manual = manualFor(c.id);
         var st = (manual && manual.development_stage) || SiteOpportunity.stageOf(c);
         if (!st) return false;
         return STAGE_ORDER.indexOf(st) >= STAGE_ORDER.indexOf('constructed');
@@ -3445,7 +3467,7 @@ var MapSourcing = (function() {
 
         // The unified 0-100 opportunity score. Ranks across every energy source, so this is what
         // the ranked table sorts on; SiteScoring stays as the flare-specific criteria breakdown.
-        var manual = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(c.id) : null;
+        var manual = manualFor(c.id);
         var opp = SiteOpportunity.score(c, {
             jurisdictions: Jurisdictions,
             operator: op,

@@ -72,6 +72,46 @@
         .p-note { font-size:11.5px; color:var(--plat-500); margin:14px 0 0; }
         .p-golink { color:var(--btc-300); text-decoration:none; font-size:13px; }
         .p-golink:hover { color:var(--btc-200); }
+
+        /* ---- Today ---- */
+        .pt-sec { border:1px solid var(--line); border-left:2px solid var(--line-mid);
+                  background:var(--panel); border-radius:var(--radius); margin:0 0 14px;
+                  max-width:900px; }
+        .pt-sec.t-negative { border-left-color:var(--neg); }
+        .pt-sec.t-active   { border-left-color:var(--btc-300); }
+        .pt-sec.t-warm     { border-left-color:var(--btc-200); }
+        .pt-sec.t-neutral  { border-left-color:var(--line-mid); }
+        .pt-sechead { display:flex; align-items:baseline; gap:10px; padding:11px 14px 9px;
+                      border-bottom:1px solid var(--line); }
+        .pt-sechead h2 { margin:0; font-size:11.5px; letter-spacing:.12em;
+                         text-transform:uppercase; color:var(--plat-300); }
+        .pt-count { font-family:var(--mono); font-size:11px; color:var(--plat-500); }
+        .pt-list { list-style:none; margin:0; padding:0; }
+        .pt-row { display:grid; grid-template-columns:120px 1fr 1.4fr auto auto;
+                  gap:12px; align-items:baseline; padding:9px 14px;
+                  border-bottom:1px solid var(--line); font-size:12.5px; }
+        .pt-row:last-child { border-bottom:none; }
+        .pt-late { font-family:var(--mono); font-size:11px; color:var(--neg); }
+        .pt-name { color:var(--plat-100); }
+        .pt-what { color:var(--plat-400); }
+        .pt-stage { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+                    color:var(--plat-500); }
+        .pt-absent { color:var(--plat-600); font-style:italic; }
+        .pt-none { margin:0; padding:12px 14px; font-size:12px; color:var(--plat-500);
+                   font-style:italic; }
+        .pt-done { background:transparent; border:1px solid var(--line-mid);
+                   color:var(--plat-300); border-radius:var(--radius); font-size:11px;
+                   padding:3px 9px; cursor:pointer; }
+        .pt-done:hover { border-color:var(--btc-300); color:var(--btc-300); }
+        @media (max-width: 720px) {
+            .pt-row { grid-template-columns:1fr auto; }
+            .pt-what, .pt-stage { grid-column:1 / -1; }
+        }
+
+        /* The next thing owed, on the card, so the board answers "what is
+           outstanding here" without opening anything. */
+        .pb-due { font-family:var(--mono); font-size:10px; color:var(--plat-500); }
+        .pb-due.is-late { color:var(--neg); }
     </style>
 </head>
 <body>
@@ -83,7 +123,11 @@
     </header>
     <div id="prospectNav"></div>
 
-    <section id="boardSection">
+    <section id="todaySection">
+        <div id="ptoday"></div>
+    </section>
+
+    <section id="boardSection" hidden>
         <div class="pb-wrap" id="pboard"></div>
         <p class="p-note" id="boardNote"></p>
     </section>
@@ -99,8 +143,12 @@
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=340"></script>
 <script src="./crm-log.js?v=340"></script>
+<script src="./crm-followups.js?v=340"></script>
+<script src="./crm-contacts.js?v=340"></script>
+<script src="./crm-interactions.js?v=340"></script>
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=340"></script>
+<script src="./prospect-today.js?v=340"></script>
 <script src="./prospecting.js?v=340"></script>
 </body>
 </html>

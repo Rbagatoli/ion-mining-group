@@ -17,10 +17,18 @@
         catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
     }
 
-    ProspectNav.render('board');
+    /* Which view, from the hash, so the sub-nav links are ordinary links and the
+       browser's back button works. Today is the default because it is the screen
+       that answers the question you open the app with. */
+    function viewFromHash() {
+        var h = (location.hash || '').replace('#', '');
+        return (h === 'board' || h === 'today') ? h : 'today';
+    }
 
     var host = document.getElementById('pboard');
     var note = document.getElementById('boardNote');
+    var todaySection = document.getElementById('todaySection');
+    var boardSection = document.getElementById('boardSection');
 
     /* list(), not all(). SiteData exposes list() -- the first draft of this called
        all() and threw on a page where nothing had been saved yet, which is exactly
@@ -137,16 +145,46 @@
         draw();
     }
 
-    draw();
+    function show() {
+        var v = viewFromHash();
+        ProspectNav.render(v);
+        todaySection.hidden = (v !== 'today');
+        boardSection.hidden = (v !== 'board');
+        if (v === 'board') draw();
+        else drawToday();
+    }
+
+    function drawToday() {
+        if (typeof ProspectToday === 'undefined') return;
+        ProspectToday.render('ptoday');
+        /* Marking a follow-up done is the one action this screen takes, and it
+           has to be one click — a screen you have to navigate away from to act
+           on is a screen you stop opening. */
+        var btns = document.querySelectorAll('.pt-done');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener('click', function () {
+                var id = this.getAttribute('data-fid');
+                if (id && typeof CrmFollowups !== 'undefined') CrmFollowups.done(id);
+                drawToday();
+            });
+        }
+    }
+
+    window.addEventListener('hashchange', show);
+    show();
 
     /* A pipeline changed on another device should not need a reload to be seen.
        Only this page's own stores are worth redrawing for. */
     window.addEventListener('storage', function (e) {
         if (!e || !e.key) return;
-        if (e.key === 'protonMiningSites' || e.key === 'protonCrmLog' || e.key === 'protonCrmConfig') {
+        if (e.key === 'protonMiningSites' || e.key === 'protonCrmLog' ||
+            e.key === 'protonCrmConfig' || e.key === 'protonCrmFollowups' ||
+            e.key === 'protonContacts') {
             if (typeof CrmConfig !== 'undefined') { CrmConfig.reset(); CrmConfig.publish(); }
             if (typeof CrmLog !== 'undefined') CrmLog.reset();
-            draw();
+            if (typeof CrmFollowups !== 'undefined') CrmFollowups.reset();
+            if (typeof CrmContacts !== 'undefined') CrmContacts.reset();
+            show();
         }
     });
 })();

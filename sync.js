@@ -40,7 +40,9 @@ var SyncEngine = (function() {
         // phone are the same deal, and a record of a call that exists on one
         // machine is a record you will look for on the other and not find.
         crmConfig:         { lsKey: 'protonCrmConfig' },
-        crmLog:            { lsKey: 'protonCrmLog' }
+        crmLog:            { lsKey: 'protonCrmLog' },
+        crmFollowups:      { lsKey: 'protonCrmFollowups' },
+        contacts:          { lsKey: 'protonContacts' }
     };
 
     function getDb() {

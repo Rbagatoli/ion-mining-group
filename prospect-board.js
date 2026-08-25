@@ -71,6 +71,18 @@ var ProspectBoard = (function () {
         return (limit !== null && days > limit);
     }
 
+    /* The next thing owed, so the board answers "what is outstanding here"
+       without opening anything. Absent when nothing is owed — an empty line
+       would read as a missing date rather than as no promise made. */
+    function due(rec) {
+        if (typeof CrmFollowups === 'undefined' || !CrmFollowups.nextFor) return '';
+        var f = CrmFollowups.nextFor(rec.id);
+        if (!f) return '';
+        var late = f.due_date < CrmFollowups.today();
+        return '<div class="pb-due' + (late ? ' is-late' : '') + '">' +
+               (late ? 'overdue: ' : 'due ') + esc(f.due_date) + '</div>';
+    }
+
     function card(rec, nowMs) {
         var days = (typeof SiteData !== 'undefined' && SiteData.daysInStage)
             ? SiteData.daysInStage(rec.id, nowMs) : null;
@@ -85,6 +97,7 @@ var ProspectBoard = (function () {
                 '<span class="pb-src">' + esc(sourceLabel(rec)) + '</span>' +
                 '<span class="pb-kw">' + mw(rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw) + '</span>' +
             '</div>' +
+            due(rec) +
             '<div class="pb-foot">' +
                 '<span class="pb-days' + (stale ? ' is-stale' : '') + '">' + daysLabel(days) + '</span>' +
                 (sc === null ? '<span class="pb-absent">unscored</span>'
