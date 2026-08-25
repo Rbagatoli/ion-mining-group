@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v349';
+const CACHE_NAME = 'proton-mining-v350';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -53,6 +53,7 @@ const ASSETS = [
   // address. data/ghgrp-contacts.json is deliberately NOT cached here, matching every other
   // artifact: the data/ files are far too large to precache and are fetched on demand.
   './ghgrp-contacts.js',
+  './contact-routes.js',
   './prospect-store.js',
   './crm-config.js',
   './crm-log.js',

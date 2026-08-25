@@ -4234,6 +4234,14 @@ var MapSourcing = (function() {
                 'blank rather than naming whoever happens to be nearest.</p>';
         }
 
+        /* ROUTES TO A NUMBER, immediately above the boxes you would paste it
+           into. For a US landfill there is nothing to display and nothing that
+           could be — EPA publishes the owner, the ownership share and the
+           facility address, and never a phone, an email or a person. So the
+           block turns what IS published into the shortest path to what is not,
+           and says out loud why the app has nothing of its own to show. */
+        html += contactRoutesBlock(c, co);
+
         var saved = findSavedSite(c.id) || {};
         html += '<div class="src-crm">' +
             crmField('contact_name', 'Contact name', saved) +
@@ -4338,7 +4346,54 @@ var MapSourcing = (function() {
             buckets[gname] += parts[pi].slice(close + 3);
         }
 
-        // The call sheet: what you need with somebody on the phone, and nothing else. Built from
+        /* Assembled from the record, the LMOP detail and the GHGRP join — every field
+       already on screen somewhere, gathered so the links can be built from them.
+       Returns '' when a phone is already published, which is the Alberta case:
+       a page of routes to something sitting three lines above is noise, and noise
+       beside a real number makes the number look uncertain. */
+    function contactRoutesBlock(c, co) {
+        if (typeof ContactRoutes === 'undefined') return '';
+        var sd = c.sourceDetail || {};
+        var gh = (typeof GhgrpContacts !== 'undefined') ? GhgrpContacts.forCandidate(c) : null;
+        var opts = {
+            name: c.name || sd.name || null,
+            owner: sd.owner || null,
+            parent: gh ? gh.parent : null,
+            operator: (operatorRecord(c) || {}).operator || null,
+            operatorPhone: co ? co.phone : null,
+            ownershipType: sd.ownershipType || null,
+            counterpartyType: sd.counterpartyType || null,
+            /* The GHGRP address is the one with a postcode on it; LMOP's is the
+               street the landfill sits on. Either identifies the place to a map
+               search, so whichever exists is used. */
+            address: (gh && gh.address) || sd.address || null,
+            city: (gh && gh.city) || sd.city || null,
+            state: (gh && gh.state) || sd.state || null,
+            zip: (gh && gh.zip) || sd.zip || null,
+            county: sd.county || (gh && gh.county ? String(gh.county).replace(/ COUNTY$/i, '') : null),
+            frsId: gh ? gh.frsId : null,
+            sourceKind: c.source || null
+        };
+        var list = ContactRoutes.routes(opts);
+        if (!list.length) return '';
+
+        var note = ContactRoutes.absenceNote(opts);
+        var html = '<div class="src-routes">' +
+            '<div class="src-routes-head">How to reach them</div>' +
+            (note ? '<p class="src-note src-gap">' + esc(note) + '</p>' : '') +
+            '<ul class="src-routelist">';
+        for (var i = 0; i < list.length; i++) {
+            html += '<li><a class="src-route" href="' + esc(list[i].url) +
+                '" target="_blank" rel="noopener noreferrer">' + esc(list[i].label) +
+                ' <span class="src-route-out" aria-hidden="true">&#8599;</span></a>' +
+                '<span class="src-route-why">' + esc(list[i].why) + '</span></li>';
+        }
+        return html + '</ul><p class="src-note">Whatever you find goes in the boxes below, ' +
+               'and from there into Contacts &mdash; where one person can cover as many sites ' +
+               'as they actually do.</p></div>';
+    }
+
+    // The call sheet: what you need with somebody on the phone, and nothing else. Built from
         // the group buffers rather than re-rendered, so these blocks cannot drift from the
         // versions inside the disclosures — there is only one of each.
         // Who to ring, on the sheet itself. The full contact block with its provenance and the
@@ -4561,6 +4616,33 @@ var MapSourcing = (function() {
                 site.discovery.flareId = c.id;
                 written = SiteData.add(site);
             }
+            /* INTO THE CONTACT BOOK, not just onto this site. The flat fields are
+               where a contact is typed, and leaving it there rebuilds the exact
+               problem the contact store exists to solve: a county authority holds
+               three landfills, and a number recorded against each of them is the
+               same person going stale in three places.
+               absorb() finds them if they are already known, links them to this
+               prospect as well, and fills gaps without overwriting anything. It
+               matches on email outright and on a phone only when the names agree,
+               because a switchboard is shared by a whole department. */
+            var absorbed = null;
+            if (typeof CrmContacts !== 'undefined' && CrmContacts.absorb &&
+                (changes.contact_name || changes.contact_email || changes.contact_phone)) {
+                var savedNow = findSavedSite(c.id);
+                var pid = savedNow ? savedNow.id : c.id;
+                try {
+                    absorbed = CrmContacts.absorb(pid, {
+                        name: changes.contact_name,
+                        email: changes.contact_email,
+                        phone: changes.contact_phone,
+                        role: changes.contact_role,
+                        notes: changes.contact_notes,
+                        organization: changes.operator || null,
+                        source: 'recorded on the prospect'
+                    });
+                } catch (e) { absorbed = null; }
+            }
+
             // Report what actually happened. This printed "Saved" unconditionally, including
             // when localStorage was full and the record had been silently dropped — the one
             // failure that loses a deal record was also the one the user could never see.
@@ -4571,7 +4653,20 @@ var MapSourcing = (function() {
                     msg.textContent = result.err || 'Not saved.';
                     msg.style.color = '#e66';
                 } else {
-                    msg.textContent = 'Saved — syncs across your devices.';
+                    /* Say which of the two happened, because "added to Contacts"
+                       and "linked to somebody already there" mean different things
+                       about how much of the book you have built. */
+                    var extra = '';
+                    if (absorbed && absorbed.ok) {
+                        var n = absorbed.contact.linked_prospects.length;
+                        extra = absorbed.created
+                            ? ' ' + (absorbed.contact.name || 'Contact') + ' added to Contacts.'
+                            : (absorbed.linked
+                                ? ' Linked to ' + (absorbed.contact.name || 'a contact') +
+                                  ' in Contacts — now on ' + n + ' sites.'
+                                : '');
+                    }
+                    msg.textContent = 'Saved — syncs across your devices.' + extra;
                     msg.style.color = '#3ecf8e';
                 }
             }

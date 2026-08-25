@@ -246,6 +246,97 @@ var CrmContacts = (function () {
        construction: a prospect that already has a linked contact is skipped, so
        running it twice cannot duplicate anybody. The flat fields are LEFT ALONE
        — see the header. */
+    /* The last ten digits, which is what makes two spellings of one North
+       American number comparable: "(403) 262-0321", "403-262-0321" and
+       "+1 403 262 0321" are the same telephone. Fewer than ten digits is not
+       enough to be sure of anything, so it refuses to match rather than guessing
+       on a four-digit extension. */
+    function phoneKey(v) {
+        if (!has(v)) return null;
+        var d = String(v).replace(/[^0-9]/g, '');
+        return d.length >= 10 ? d.slice(-10) : null;
+    }
+
+    function emailKey(v) { return has(v) ? String(v).trim().toLowerCase() : null; }
+
+    /* ===== One person, however many sites they cover =====
+     *
+     * The reason this store exists is that a county waste authority holds three
+     * landfills and an operator holds a dozen leases. Recording a number against
+     * a site and stopping there rebuilds the flat-field problem inside the new
+     * model: the same person typed three times, going stale in three places.
+     *
+     * absorb() is what a save should call. It finds the person if they are
+     * already known, links them to this prospect as well, and fills in the gaps
+     * in what is on file without overwriting anything already there.
+     *
+     * MATCHING IS DELIBERATELY CONSERVATIVE, because merging two people is worse
+     * than holding one twice — the second is untidy, the first loses a name and
+     * puts words in somebody's mouth in a call log.
+     *
+     *   An email matches outright. Nobody shares one.
+     *
+     *   A phone matches only when the names agree, or when neither record has a
+     *   name. A switchboard is shared by an entire department, so "same number"
+     *   emphatically does not mean "same person" — that is precisely the case
+     *   this feature exists to serve, and the case where a naive phone match
+     *   would collapse a department into one contact.
+     */
+    function absorb(prospectId, fields) {
+        if (!prospectId) return { ok: false, err: 'A contact must belong to a prospect.' };
+        fields = fields || {};
+        if (!has(fields.name) && !has(fields.email) && !has(fields.phone)) {
+            return { ok: false, err: 'Nothing to record.' };
+        }
+
+        var wantEmail = emailKey(fields.email);
+        var wantPhone = phoneKey(fields.phone);
+        var wantName = has(fields.name) ? String(fields.name).trim().toLowerCase() : null;
+
+        var all = list();
+        var found = null;
+        for (var i = 0; i < all.length; i++) {
+            var c = all[i];
+            if (wantEmail && emailKey(c.email) === wantEmail) { found = c; break; }
+            if (wantPhone && phoneKey(c.phone) === wantPhone) {
+                var haveName = has(c.name) ? String(c.name).trim().toLowerCase() : null;
+                if (wantName === haveName) { found = c; break; }
+                if (!wantName && !haveName) { found = c; break; }
+            }
+        }
+
+        if (found) {
+            /* Gaps only. A record already carrying a direct line must not lose it
+               to a switchboard typed against another site, and a name already
+               recorded must not be replaced by a blank. */
+            var patch = {};
+            ['name', 'email', 'phone', 'organization', 'notes', 'source'].forEach(function (k) {
+                if (has(fields[k]) && !has(found[k])) patch[k] = fields[k];
+            });
+            if (has(fields.role) && ROLES.indexOf(fields.role) >= 0 && found.role === 'unknown') {
+                patch.role = fields.role;
+            }
+            var updated = Object.keys(patch).length ? update(found.id, patch) : found;
+            var already = (found.linked_prospects || []).indexOf(String(prospectId)) >= 0;
+            if (!already) link(found.id, prospectId);
+            return { ok: true, contact: get(found.id) || updated, created: false,
+                     linked: !already, filled: Object.keys(patch) };
+        }
+
+        var made = add({
+            name: has(fields.name) ? fields.name : '',
+            email: has(fields.email) ? fields.email : '',
+            phone: has(fields.phone) ? fields.phone : '',
+            role: (fields.role && ROLES.indexOf(fields.role) >= 0) ? fields.role : 'unknown',
+            organization: has(fields.organization) ? fields.organization : '',
+            notes: has(fields.notes) ? fields.notes : '',
+            source: has(fields.source) ? fields.source : '',
+            linked_prospects: [String(prospectId)]
+        });
+        if (!made) return { ok: false, err: 'Could not save this contact.' };
+        return { ok: true, contact: made, created: true, linked: true, filled: [] };
+    }
+
     function backfill() {
         if (typeof SiteData === 'undefined' || !SiteData.list) return { created: 0, skipped: 0 };
         var sites = SiteData.list() || [];
@@ -287,6 +378,7 @@ var CrmContacts = (function () {
         forProspect: forProspect,
         bestFor: bestFor,
         contactCtx: contactCtx,
+        absorb: absorb,
         backfill: backfill,
         reset: reset
     };

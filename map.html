@@ -293,6 +293,22 @@
            controls above it rather than as another field. */
         .src-morerow { margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
         .src-filters--more { padding-top:2px; }
+
+        /* ---- routes to a contact ---- */
+        .src-routes { margin:14px 0 16px; padding:12px 14px; background:var(--panel-hover);
+            border:1px solid var(--line); border-left:2px solid var(--btc-200);
+            border-radius:var(--radius); }
+        .src-routes-head { font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--plat-300); font-weight:600; margin-bottom:6px; }
+        .src-routelist { list-style:none; margin:10px 0 8px; padding:0; }
+        .src-routelist li { padding:6px 0; border-bottom:1px solid var(--line); }
+        .src-routelist li:last-child { border-bottom:0; }
+        .src-route { display:inline-block; font-size:12.5px; color:var(--btc-300);
+            text-decoration:none; }
+        .src-route:hover { text-decoration:underline; }
+        .src-route-out { font-size:10.5px; color:var(--plat-500); }
+        .src-route-why { display:block; font-size:11px; line-height:1.5;
+            color:var(--plat-500); margin-top:2px; }
         .src-activebar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
         .src-activebar:empty { display:none; }
         .src-activelabel { font-size:10px; text-transform:uppercase; letter-spacing:.06em;
@@ -1154,6 +1170,7 @@ commercial terms are your assumptions.</p>
 <script src="./source-facility.js?v=338"></script>
 <script src="./source-landfill.js?v=338"></script>
 <script src="./ghgrp-contacts.js?v=338"></script>
+<script src="./contact-routes.js?v=350"></script>
 <script src="./prospect-store.js?v=338"></script>
 <!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
      pushes the configured stage list into site-model.js, and the watchlist renders
@@ -1161,6 +1178,14 @@ commercial terms are your assumptions.</p>
      the old six and only correct itself on the next render. -->
 <script src="./crm-config.js?v=338"></script>
 <script src="./crm-log.js?v=338"></script>
+<!-- The contact book. Loaded here for two reasons that turned out to be one bug:
+     recording a contact on a prospect now puts that person IN the book rather than
+     only on the site, and manualFor() can finally reach contactCtx() -- which
+     overlays the best linked contact onto the three fields contactTier scores. That
+     path existed and was written for these call sites, but this file was never
+     loaded on this page, so every lookup silently fell back to the bare record and
+     a recorded contact never improved the contactability tier it was meant to. -->
+<script src="./crm-contacts.js?v=350"></script>
 <script src="./prospect-nav.js?v=347"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in
