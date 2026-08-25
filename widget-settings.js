@@ -48,8 +48,16 @@
     for (var s = 0; s < sections.length; s++) {
         var key = sections[s].dataset.widget;
         DEFAULT_ORDER.push(key);
+        /* An explicit label wins. A section whose visible heading changes with the
+           page's mode — or whose heading names only one of the things inside it —
+           cannot be described by whichever .section-label happens to come first
+           in its markup. The map section is both: it reads "Map" in fleet mode
+           and "Find sites" in prospects mode, and it now contains the search, the
+           map, the results list and the detail pane. */
+        var explicit = sections[s].getAttribute('data-widget-label');
         var lbl = sections[s].querySelector('.section-label');
         var h3 = sections[s].querySelector('h3');
+        if (explicit) { WIDGET_LABELS[key] = explicit; continue; }
         WIDGET_LABELS[key] = lbl ? lbl.textContent.trim() : (h3 ? h3.textContent.trim() : key);
     }
 

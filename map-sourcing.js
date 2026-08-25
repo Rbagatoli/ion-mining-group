@@ -160,6 +160,30 @@ var MapSourcing = (function() {
         else lo.value = String(b);
     }
 
+    /* WHICH THUMB IS ON TOP has to depend on where they are.
+     *
+     * Both inputs cover the whole track, so where the thumbs overlap the one
+     * painted last takes every grab. Pinning the minimum above the maximum fixes
+     * the overlap at the top of the range and creates a worse trap at the bottom:
+     * with both parked at 0 you always grab the minimum, and clampThumbs drags
+     * the maximum with it, so a range collapsed to zero can never be widened
+     * again with a mouse. Pinning the maximum has the mirror problem at 5 MW.
+     *
+     * The minimum is lifted only once it is past the midpoint — i.e. once it is
+     * in the half of the track where a grab is more likely to be meant for it.
+     * At rest (0 and 5000) the maximum is on top and both are far apart, so it
+     * costs nothing; collapsed at either end, the thumb that can still move is
+     * the one you get.
+     */
+    function liftNearestThumb() {
+        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
+        if (!lo || !hi) return;
+        var a = parseFloat(lo.value);
+        var minOnTop = isFinite(a) && a >= SIZE_MAX_KW / 2;
+        lo.style.zIndex = minOnTop ? '3' : '1';
+        hi.style.zIndex = minOnTop ? '1' : '3';
+    }
+
     function paintSizeRange() {
         var fill = document.getElementById('sizeFill');
         var wrap = document.getElementById('sizeRange');
@@ -4995,6 +5019,7 @@ var MapSourcing = (function() {
             if (!el) return;
             el.addEventListener('input', function() {
                 clampThumbs(id);
+                liftNearestThumb();
                 paintSizeRange();
                 renderSizeHint();
                 clearTimeout(sizeTimer);
@@ -5011,6 +5036,7 @@ var MapSourcing = (function() {
         }
 
         paintSizeRange();
+        liftNearestThumb();
         loadScenario();
         syncScenarioInputs();
 
@@ -5024,7 +5050,13 @@ var MapSourcing = (function() {
                     readScenarioInputs();
                     syncScenarioInputs();
                     applyFilters();
-                    if (_selectedId) renderDetail();
+                    /* The pane is hidden until body[data-detail] says otherwise, and that was
+           only ever set inside select(). A selection restored from the last visit
+           therefore rendered into a display:none column and showed nothing —
+           which is precisely the case restoreView exists to serve, and its own
+           comment says the site you were reading "comes back in the detail
+           panel". Set it here so that stays true. */
+        if (_selectedId) { document.body.setAttribute('data-detail', '1'); renderDetail(); }
                 }, 250);
             });
         });
@@ -5078,7 +5110,12 @@ var MapSourcing = (function() {
         // with the refresh, which quietly changed what this filter means — a hardcoded label
         // would have kept saying the old thing.
         var yEl = document.getElementById('fActiveYear');
-        if (yEl && meta && meta.dataThrough) yEl.textContent = ' (' + meta.dataThrough + ')';
+        /* Just the year. The parentheses and the leading space were doing the
+           spacing before this became a chip; #fActiveYear now gets margin-left and
+           the muted colour from CSS, exactly like .src-srcbtn .n, so writing them
+           here as well renders "survey  (2024)" with two gaps and a bracket the
+           other chips do not have. */
+        if (yEl && meta && meta.dataThrough) yEl.textContent = meta.dataThrough;
 
         renderSourceFilter();
         // Must run BEFORE restoreFilters: a <select> silently rejects a value that has no
@@ -5111,7 +5148,13 @@ var MapSourcing = (function() {
         revealRefineIfFiltering();
         // The detail panel is painted from the restored selection. applyFilters had to run first
         // so the table exists for the row to be highlighted in.
-        if (_selectedId) renderDetail();
+        /* The pane is hidden until body[data-detail] says otherwise, and that was
+           only ever set inside select(). A selection restored from the last visit
+           therefore rendered into a display:none column and showed nothing —
+           which is precisely the case restoreView exists to serve, and its own
+           comment says the site you were reading "comes back in the detail
+           panel". Set it here so that stays true. */
+        if (_selectedId) { document.body.setAttribute('data-detail', '1'); renderDetail(); }
 
         var warn = [];
         if (!_market || !_market.btcPriceUsd) warn.push('BTC price');

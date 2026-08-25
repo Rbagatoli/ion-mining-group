@@ -300,7 +300,6 @@
            the two read as the same kind of control. */
         .src-resultsbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:10px 0 8px; }
         .src-resultsbar .src-viewnote { margin-left:auto; }
-        .src-acqtoggle { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--plat-300); cursor:pointer; }
 
         /* Saved searches. Chips rather than a dropdown: a dropdown hides how many you have and
            needs a second click to reveal the one you want, and these sit directly above the
@@ -401,8 +400,14 @@
            which reads as the control jamming.
            The minimum is lifted above its sibling once it is no longer at the far
            left, so the thumb you are reaching for is the one you get. */
-        .range-dual input#fMinKw { z-index:2; }
-        .range-dual input#fMaxKw { z-index:1; }
+        /* Set from JS, not here. A STATIC lift on the minimum fixes the overlap at
+           the top of the track and creates a worse trap at the bottom: with both
+           thumbs at 0 the minimum is always the one you grab, and clampThumbs
+           then drags the maximum along with it — so a range collapsed to zero can
+           never be reopened with the mouse. Whichever thumb is nearer the end you
+           are reaching for has to be the one on top, which depends on where they
+           are. See the input handler in map-sourcing.js. */
+        .range-dual input[type=range] { z-index:1; }
         /* And the same generic rule's :focus flashed an orange border and a card
            shadow around the whole 30px full-width input every time a thumb was
            grabbed — a rectangle the size of the control lighting up on mousedown,
@@ -784,7 +789,11 @@
     </div>
 
     <!-- ===== FLEET MAP ===== -->
-    <div class="widget-section" data-widget="fleet-map">
+    <!-- Named explicitly because the visible heading changes with the mode
+         ("Map" in fleet, "Find sites" in prospects) and because this section now
+         holds the search, the map, the results list and the detail pane. Hiding
+         it in the gear popover hides all four, so the entry has to say so. -->
+    <div class="widget-section" data-widget="fleet-map" data-widget-label="Map and results">
     <!-- The heading says what the section is FOR, and that differs by mode. In
          prospects mode this widget opens with a question and ends with results;
          calling the whole thing "Map" made the first thing under it read as
@@ -1004,7 +1013,7 @@ blank on each site rather than being guessed.</p>
         <!-- Chipped for the same reason as the three flare filters: it sits in a
              row of .src-view chips and was the last native OS checkbox left on the
              page, drawing its own square in its own blue. -->
-        <label class="src-chk src-acqtoggle" title="Prospects whose physical asset exists — constructed stage or later. Excludes anything with no recorded stage, since an unrecorded stage is missing data rather than a raw resource.">
+        <label class="src-chk" title="Prospects whose physical asset exists — constructed stage or later. Excludes anything with no recorded stage, since an unrecorded stage is missing data rather than a raw resource.">
             <input type="checkbox" id="fAcquisition"><span>Acquisition targets only</span>
         </label>
         <span class="src-viewnote" id="resNote"></span>
