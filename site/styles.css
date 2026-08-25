@@ -3948,8 +3948,32 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     display: inline-block;
     width: 0.6875em;
     height: 0.7344em;
-    margin-left: 0.0313em;
-    margin-right: 0.0371em;
+    /* NOT the glyph's side bearings, which is what these were and why the disc
+       sat hard against the N.
+
+       TWO THINGS WERE WRONG, and only the first is obvious.
+
+       An inline-block does not take the letter-spacing that follows a real
+       character, so swapping the letter for a box silently lost space from the
+       right-hand side. Measured against a control span of the same three letters
+       as plain text: T-to-N spans 1.5853em with the letter and 1.4675em with the
+       disc, and the whole 0.1178em shortfall lands between the disc and the N.
+       That alone is what "the O is closer to the N" was.
+
+       The second: matching the letter exactly would still be wrong here. The
+       font does not centre its own O -- it sits 0.1962em from the T and 0.2752em
+       from the N -- because an open counter reads lighter than the space around
+       it and the eye forgives the difference. A solid disc has no counter to
+       read through, so it wants the true optical centre.
+
+       So the right margin carries the bearing plus the missing spacing, and the
+       pair was then converged empirically rather than derived: measure the ink
+       gaps, move, measure again. Final rendered gaps are 0.2151em on the left
+       and 0.2139em on the right -- 0.02px apart at 13px, which is as centred as
+       a subpixel grid allows. Re-measure if the face or the tracking changes;
+       these numbers belong to THIS font at THIS letter-spacing. */
+    margin-left: 0.0498em;
+    margin-right: 0.1365em;
     vertical-align: -0.0156em;
     border-radius: 50%;
     background-image: var(--metal-btc-lit);
