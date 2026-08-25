@@ -82,7 +82,7 @@
             var shared = ProspectNav.sharedFilters();
             note.textContent = recs.length + ' tracked ' +
                 (recs.length === 1 ? 'prospect' : 'prospects') +
-                (shared ? ' · the map and table are filtered separately' : '');
+                (shared ? ' · the Map tab is filtered separately' : '');
         }
     }
 

@@ -266,6 +266,13 @@ body > * { position: relative; z-index: 1; }
         justify-content: space-around;
     }
     .proton-nav-tabs a { padding: 6px 10px; font-size: 11px; }
+}
+/* Seven tabs rather than six once the map became its own, which is 27px too wide
+   on a 320px phone. The nav has overflow-x as a backstop, but a row you have to
+   swipe to see the end of is a row whose last tab nobody finds. Tightened only
+   here, where it is the difference between fitting and not. */
+@media (max-width: 360px) {
+    .proton-nav-tabs a { padding: 6px 6px; letter-spacing: 0; }
     .proton-currency-select { font-size: 11px; padding: 3px 4px; }
     .proton-nav-sparkline { padding: 1px 6px; gap: 4px; }
     .proton-nav-sparkline canvas { width: 50px; height: 18px; }

@@ -4,12 +4,17 @@
  * and a daily worklist, and those want sub-navigation rather than one page that
  * does all of it.
  *
- * WHY THE MAP IS A LINK AND NOT A VIEW. map.html and map-sourcing.js are about
- * 5,900 lines between them, and the brief is explicit that the existing module,
- * its scoring engine, adapters, map and table are not to be restructured. So the
- * section is a set of pages that share a nav bar and a working set, not one page
- * that absorbed the others. The map keeps its own file, untouched, and simply
- * renders this bar too.
+ * THE MAP IS NOT IN HERE, and that is the point of the separation. It is a
+ * top-level tab of its own now. The two halves are different jobs: the map ranks
+ * sites nobody has spoken to, and this section works the ones that were chosen.
+ * They were briefly one section, and it stopped holding the moment prospecting
+ * grew a pipeline, a contact book, a document register and an analytics screen —
+ * six sub-views, of which the map was the only one not about a live deal.
+ *
+ * Two of those entries were also quietly broken. map.html renders no sub-nav, so
+ * both were one-way trips out of the section, and nothing in map.js or
+ * map-sourcing.js has ever read location.hash — so '#table' only ever loaded the
+ * map in whatever view it was last left in.
  *
  * THE WORKING SET IS SHARED THROUGH STORAGE, not through a parent component.
  * map-sourcing.js already persists its filters to protonMiningProspectFilters —
@@ -26,8 +31,6 @@ var ProspectNav = (function () {
     var VIEWS = [
         { key: 'today',     label: 'Today',     href: './prospecting.html' },
         { key: 'board',     label: 'Board',     href: './prospecting.html#board' },
-        { key: 'map',       label: 'Map',       href: './map.html' },
-        { key: 'table',     label: 'Table',     href: './map.html#table' },
         { key: 'contacts',  label: 'Contacts',  href: './contacts.html' },
         { key: 'analytics', label: 'Analytics', href: './prospecting.html#analytics' }
     ];
@@ -35,8 +38,7 @@ var ProspectNav = (function () {
     /* Views whose page does not exist yet render disabled rather than as a link
        to a 404. A dead nav item is worse than a greyed one: it teaches people the
        section is broken. */
-    var BUILT = { today: true, board: true, map: true, table: true, analytics: true,
-                  contacts: true };
+    var BUILT = { today: true, board: true, contacts: true, analytics: true };
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)
