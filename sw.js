@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v339';
+const CACHE_NAME = 'proton-mining-v340';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -54,6 +54,8 @@ const ASSETS = [
   // artifact: the data/ files are far too large to precache and are fetched on demand.
   './ghgrp-contacts.js',
   './prospect-store.js',
+  './crm-config.js',
+  './crm-log.js',
   './site-model.js',
   './jurisdictions.js',
   './price-history.js',

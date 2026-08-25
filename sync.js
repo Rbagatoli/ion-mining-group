@@ -34,7 +34,13 @@ var SyncEngine = (function() {
         // deliberately composed set of criteria, and having to rebuild it on the laptop after
         // composing it on the desktop is the friction the feature exists to remove. The
         // last-used filters above stay local for exactly the opposite reason.
-        prospectSearches:  { lsKey: 'protonMiningProspectSearches' }
+        prospectSearches:  { lsKey: 'protonMiningProspectSearches' },
+        // The CRM. Both belong on every device for the same reason `sites` does:
+        // a pipeline stage set on the laptop and an interaction logged on the
+        // phone are the same deal, and a record of a call that exists on one
+        // machine is a record you will look for on the other and not find.
+        crmConfig:         { lsKey: 'protonCrmConfig' },
+        crmLog:            { lsKey: 'protonCrmLog' }
     };
 
     function getDb() {

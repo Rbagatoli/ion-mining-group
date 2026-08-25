@@ -1076,6 +1076,18 @@ commercial terms are your assumptions.</p>
 <script src="./source-landfill.js?v=338"></script>
 <script src="./ghgrp-contacts.js?v=338"></script>
 <script src="./prospect-store.js?v=338"></script>
+<!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
+     pushes the configured stage list into site-model.js, and the watchlist renders
+     its stage chips from SiteData.STAGES on first paint — a later load would draw
+     the old six and only correct itself on the next render. -->
+<script src="./crm-config.js?v=338"></script>
+<script src="./crm-log.js?v=338"></script>
+<script>
+  /* Fail soft: a pipeline that will not configure should leave the built-in
+     stages standing rather than take the page down with it. */
+  try { if (typeof CrmConfig !== 'undefined') CrmConfig.publish(); }
+  catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
+</script>
 <script src="./map.js?v=338"></script>
 <script src="./map-sourcing.js?v=338"></script>
 <script>

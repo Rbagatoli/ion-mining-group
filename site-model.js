@@ -17,9 +17,46 @@ var SiteData = (function() {
     // is not a flare. 'flare_detection' is kept as its own value rather than folded in, so
     // records created before multi-source support keep the label they were saved with.
     var SOURCES = ['flare_detection', 'discovery', 'vendor_offer', 'manual'];
-    // The CRM pipeline from the spec. Editable and persisted — this is a working pipeline,
-    // not a read-only view.
-    var STAGES = ['unreviewed', 'researching', 'contacted', 'negotiating', 'dead', 'acquired'];
+    // The CRM pipeline. Editable and persisted — this is a working pipeline, not a
+    // read-only view.
+    //
+    // THE DEFAULT LIST, NOT THE ONLY LIST. crm-config.js owns the configurable
+    // pipeline and pushes it in through registerStages() below. These nine are what
+    // stands if that module never loads, so this file still normalises correctly on
+    // its own and its tests still run without it.
+    //
+    // 'negotiating' and 'acquired' were the previous names for what are now
+    // 'in_discussion' and 'closed_won'. Renamed rather than aliased because there are
+    // no records on either — confirmed before the change. If there had been, normalize()
+    // would have silently reset every one of them to 'unreviewed', which is the single
+    // most dangerous property of this file: an unrecognised stage is not an error, it is
+    // a quiet rewrite.
+    var DEFAULT_STAGES = ['unreviewed', 'researching', 'contacted', 'in_discussion',
+                          'term_sheet', 'diligence', 'agreement', 'closed_won', 'dead'];
+    var STAGES = DEFAULT_STAGES.slice();
+
+    /* Push, not pull. site-model.js does not reach for crm-config.js, so it keeps
+       working — and keeps being testable — with no CRM loaded at all. The reverse
+       direction would make this file depend on a module that depends on it.
+
+       'unreviewed' is forced to survive because normalize() falls back to it. A
+       configuration that removed it would make every record with an unknown stage
+       fall back to a stage that does not exist. */
+    function registerStages(list) {
+        if (!Array.isArray(list) || !list.length) return STAGES.slice();
+        var seen = {}, out = [];
+        for (var i = 0; i < list.length; i++) {
+            var k = list[i];
+            if (typeof k !== 'string' || !k || seen[k]) continue;
+            seen[k] = true;
+            out.push(k);
+        }
+        if (!out.length) return STAGES.slice();
+        if (out.indexOf('unreviewed') < 0) out.unshift('unreviewed');
+        STAGES.length = 0;
+        for (var j = 0; j < out.length; j++) STAGES.push(out[j]);
+        return STAGES.slice();
+    }
 
     // How far along the physical asset is — distinct from STAGES, which tracks OUR conversation
     // with the counterparty. Ordered worst-to-best; site-opportunity.js scores against this order.
@@ -103,6 +140,12 @@ var SiteData = (function() {
             hardware_condition: null,
 
             discovery: null,
+            /* THE LOOSE FIELD. normalize() copies only keys that exist on this
+               template and silently drops everything else, which is right for a
+               model with a fixed shape and wrong for a CRM whose fields are not
+               known yet. One blob means the next ten conversations can add what
+               they need without a migration. */
+            custom_fields: {},
             notes: '',
             created: null,
             updated: null
@@ -226,6 +269,10 @@ var SiteData = (function() {
         if (!Array.isArray(s.distress_signals)) s.distress_signals = [];
         s.distress_signals = s.distress_signals.filter(function(d) { return d && d.type; });
         if (!Array.isArray(s.permit_ids)) s.permit_ids = [];
+        /* An array or a string here would break every reader that treats it as a
+           bag of keys, and a null would make callers guard on every access. */
+        if (!s.custom_fields || typeof s.custom_fields !== 'object' ||
+            Array.isArray(s.custom_fields)) s.custom_fields = {};
         s.name = String(s.name == null ? '' : s.name).slice(0, 120);
         return s;
     }
@@ -276,9 +323,90 @@ var SiteData = (function() {
         return data.sites.length !== before;
     }
 
-    function setStage(id, stage) {
+    /* Every transition is logged, and the log is what Phase 6 reads to answer
+       "where do things stall" and "why do deals die". Neither question can be
+       answered retrospectively, which is why the writing starts now and the
+       reading comes later.
+
+       opts: { note, deadReason }.
+
+       DEAD REQUIRES A REASON. It is refused, not defaulted — a pipeline full of
+       deals that died for 'other' is the same as no data at all, and the reason a
+       deal died is the most valuable thing in a CRM. Validated against the
+       configured list when crm-config.js is present, and accepted as free text
+       when it is not, so this file still works standalone. */
+    function setStage(id, stage, opts) {
         if (STAGES.indexOf(stage) < 0) return null;
-        return update(id, { stage: stage });
+        opts = opts || {};
+        var before = get(id);
+        if (!before) return null;
+        var from = before.stage;
+
+        if (stage === 'dead') {
+            if (!opts.deadReason) return { ok: false, err: 'A dead prospect needs a reason.' };
+            if (typeof CrmConfig !== 'undefined' && CrmConfig.isDeadReason &&
+                !CrmConfig.isDeadReason(opts.deadReason)) {
+                return { ok: false, err: 'Unknown reason: ' + opts.deadReason };
+            }
+        }
+
+        var res = update(id, { stage: stage });
+        if (!res) return null;
+
+        /* Logged AFTER the record is written, so a failed save never leaves a
+           history entry claiming a transition that did not happen. A logged
+           transition with no record is a lie; a record with no log entry is a gap,
+           and a gap is the lesser of the two. */
+        if (from !== stage && typeof CrmLog !== 'undefined' && CrmLog.append) {
+            CrmLog.append('stage', id, {
+                from: from,
+                to: stage,
+                note: opts.note || null,
+                dead_reason: stage === 'dead' ? opts.deadReason : null
+            });
+        }
+        return res;
+    }
+
+    /* How long this prospect has sat where it is, in whole days.
+       Read from the log rather than stored on the record: a stored
+       stage_entered_at is one more field to keep in step, and it cannot answer
+       "how long did it spend in diligence last time" — which is the question
+       Phase 6 needs. null means the prospect has never moved, so the honest
+       answer is that it has no time-in-stage yet rather than zero. */
+    function daysInStage(id, nowMs) {
+        if (typeof CrmLog === 'undefined' || !CrmLog.forProspect) return null;
+        var hist = CrmLog.forProspect(id, 'stage');
+        if (!hist.length) return null;
+        var t = Date.parse(hist[0].at);
+        if (!isFinite(t)) return null;
+        var now = (typeof nowMs === 'number') ? nowMs : Date.now();
+        return Math.max(0, Math.floor((now - t) / 86400000));
+    }
+
+    /* Every stage this prospect has been through, oldest first, with how long it
+       spent in each. The last entry is open — it has a from but no until. */
+    function stageHistory(id, nowMs) {
+        if (typeof CrmLog === 'undefined' || !CrmLog.forProspect) return [];
+        var hist = CrmLog.forProspect(id, 'stage').slice().reverse();   // oldest first
+        var now = (typeof nowMs === 'number') ? nowMs : Date.now();
+        var out = [];
+        for (var i = 0; i < hist.length; i++) {
+            var startMs = Date.parse(hist[i].at);
+            var endMs = (i + 1 < hist.length) ? Date.parse(hist[i + 1].at) : now;
+            out.push({
+                from: hist[i].from,
+                to: hist[i].to,
+                at: hist[i].at,
+                note: hist[i].note || null,
+                dead_reason: hist[i].dead_reason || null,
+                days: (isFinite(startMs) && isFinite(endMs))
+                    ? Math.max(0, Math.floor((endMs - startMs) / 86400000))
+                    : null,
+                open: (i + 1 === hist.length)
+            });
+        }
+        return out;
     }
 
     // Promote a discovered candidate into a tracked site. Commercial terms arrive via
@@ -303,6 +431,10 @@ var SiteData = (function() {
         STATUSES: STATUSES,
         SOURCES: SOURCES,
         STAGES: STAGES,
+        DEFAULT_STAGES: DEFAULT_STAGES,
+        registerStages: registerStages,
+        daysInStage: daysInStage,
+        stageHistory: stageHistory,
         DEVELOPMENT_STAGES: DEVELOPMENT_STAGES,
         OFFTAKE_STATES: OFFTAKE_STATES,
         PERMIT_STATES: PERMIT_STATES,
