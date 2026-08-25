@@ -614,16 +614,119 @@
                 if (!link.owner) link.owner = adopt;
             }
 
-            /* --- Drag to rotate --- */
-            svg.addEventListener('pointerdown', function (e) {
-                if (e.button !== 0) return;
+            /* --- Gestures ------------------------------------------------------
+             *
+             * ONE CONTRACT, WRITTEN DOWN, because until now there were two and they
+             * contradicted each other. The stylesheet carried .dg-wrap { touch-action:
+             * pan-x pan-y } under a comment saying "drag-to-rotate is a mouse affordance
+             * and it stays one", and .dg-wrap { touch-action: pan-y pinch-zoom } under
+             * a comment saying a sideways swipe turns the model — both inside the SAME
+             * media query, so the second silently won and the first was documentation of
+             * a decision that had been reversed. The effect on a phone was that pinching
+             * the DRAWING did nothing at all (the intersection with .site-diagram's own
+             * pan-y forbids the browser from zooming, and nothing here handled it) while
+             * pinching a CALLOUT zoomed the whole page. Same figure, two answers.
+             *
+             * What it is now:
+             *
+             *   MOUSE        drag rotates from the first pixel, wheel zooms. Unchanged.
+             *   ONE FINGER   belongs to the PAGE. Vertical always scrolls. A drag that
+             *                is clearly horizontal turns the model.
+             *   TWO FINGERS  belong to the MODEL. Pinch zooms it, anywhere on the
+             *                figure, bubbles included.
+             *
+             * TWO THINGS THAT MADE IT FEEL WRONG, both fixed here rather than in CSS:
+             *
+             * A finger used to claim the model the instant it landed. pointerdown called
+             * goManual(), which stops the idle turn and starts the resume timer — so
+             * scrolling PAST the drawing with a finger that happened to touch it froze
+             * it mid-rotation and left it at whatever angle it had reached. Now a touch
+             * decides nothing until it has moved TOUCH_SLOP and shown which way it is
+             * going; a scroll never touches the model at all.
+             *
+             * And the page's own pinch-zoom is given up over the figure, deliberately.
+             * That is a real cost — pinch-to-zoom is how people with low vision read —
+             * so it is confined to the figure and nowhere else on the page, the model's
+             * own zoom range is wide (0.55x to 2.6x), and the +/- buttons do the same
+             * job by tapping for anyone who would rather not gesture at all. */
+            var pointers = {};   // every pointer currently down, by id
+            var pending = null;  // a touch that has not yet said what it is
+            var pinch = null;    // { d: spread at start, zoom: zoom at start }
+            var TOUCH_SLOP = 8;  // px of travel before a touch is a gesture and not a tap
+
+            function pcount() { var n = 0; for (var k in pointers) n++; return n; }
+            function spread() {
+                var a = null, b = null;
+                for (var k in pointers) { if (!a) a = pointers[k]; else if (!b) b = pointers[k]; }
+                if (!a || !b) return 0;
+                var dx = a.x - b.x, dy = a.y - b.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            /* The controls are taps, and a finger on one is not a gesture on the model. */
+            function onControl(t) {
+                return !!(t && t.closest && t.closest('.dg-scale, button, a, input'));
+            }
+            function inDrawing(t) { return !!(t && svg.contains(t)); }
+
+            function beginDrag(x, y, id) {
                 goManual();
-                drag = { x: e.clientX, y: e.clientY, yaw: yaw, pitch: getView().pitch };
-                svg.setPointerCapture(e.pointerId);
+                drag = { x: x, y: y, yaw: yaw, pitch: getView().pitch };
+                if (id !== undefined && svg.setPointerCapture) {
+                    try { svg.setPointerCapture(id); } catch (err) { /* already gone */ }
+                }
                 wrap.classList.add('is-dragging');
-                e.preventDefault();
+            }
+
+            /* Bound to the WRAPPER, not the svg, so a pinch that starts with one finger
+               on a callout bubble is still a pinch. Rotation still requires the drawing
+               itself — dragging a label to turn the model would be a surprise. */
+            wrap.addEventListener('pointerdown', function (e) {
+                if (onControl(e.target)) return;
+                pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+
+                if (e.pointerType !== 'touch') {
+                    if (e.button !== 0 || !inDrawing(e.target)) return;
+                    beginDrag(e.clientX, e.clientY, e.pointerId);
+                    e.preventDefault();
+                    return;
+                }
+                if (pcount() >= 2) {
+                    // The second finger arriving turns whatever was happening into a pinch.
+                    endDrag(e);
+                    pending = null;
+                    pinch = { d: spread(), zoom: getView().zoom };
+                    goManual();
+                } else if (inDrawing(e.target)) {
+                    pending = { x: e.clientX, y: e.clientY, id: e.pointerId };
+                }
             });
-            svg.addEventListener('pointermove', function (e) {
+
+            wrap.addEventListener('pointermove', function (e) {
+                var p = pointers[e.pointerId];
+                if (p) { p.x = e.clientX; p.y = e.clientY; }
+
+                if (pinch) {
+                    var d = spread();
+                    if (d > 0 && pinch.d > 0) {
+                        setView({ zoom: pinch.zoom * (d / pinch.d) });
+                        paint();
+                        push();
+                    }
+                    return;
+                }
+                if (pending) {
+                    var dx = e.clientX - pending.x, dy = e.clientY - pending.y;
+                    if (Math.abs(dx) < TOUCH_SLOP && Math.abs(dy) < TOUCH_SLOP) return;
+                    /* Mostly vertical: this was a scroll. Let go of it entirely — the
+                       browser is already scrolling, and touch-action: pan-y means we
+                       were never going to win it anyway. */
+                    if (Math.abs(dy) >= Math.abs(dx)) { pending = null; return; }
+                    /* Origin is where the finger is NOW, not where it landed, so the
+                       eight pixels it spent proving itself are not applied to the model
+                       in one frame as a jump. */
+                    beginDrag(e.clientX, e.clientY, pending.id);
+                    pending = null;
+                }
                 if (!drag) return;
                 // Pointer deltas only — no geometry is ever queried.
                 yaw = drag.yaw + (e.clientX - drag.x) * 0.006;
@@ -631,6 +734,7 @@
                 paint();
                 push();
             });
+
             function endDrag(e) {
                 if (!drag) return;
                 drag = null;
@@ -638,8 +742,21 @@
                 if (e && e.pointerId !== undefined && svg.hasPointerCapture &&
                     svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
             }
-            svg.addEventListener('pointerup', endDrag);
-            svg.addEventListener('pointercancel', endDrag);
+            function endPointer(e) {
+                delete pointers[e.pointerId];
+                if (pending && pending.id === e.pointerId) pending = null;
+                if (pinch && pcount() < 2) {
+                    pinch = null;
+                    /* The finger still down does NOT inherit the gesture and become a
+                       rotate. Re-basing a drag halfway through a pinch makes the model
+                       snap, and lifting one finger is how people END a pinch, not how
+                       they start something else. */
+                    pending = null;
+                }
+                endDrag(e);
+            }
+            wrap.addEventListener('pointerup', endPointer);
+            wrap.addEventListener('pointercancel', endPointer);
 
             /* --- Wheel to zoom, about the centre so nothing needs measuring.
                    The pointer has priority: while it is anywhere over the
@@ -660,9 +777,11 @@
                    to its limits and back in a fraction of a second: it looked like the drawing
                    was glitching, and it was doing exactly what it was told.
 
-                   Ignored on both platforms deliberately. On a desktop ctrl+wheel is the
-                   browser's own zoom and hijacking it is worse than not handling it; on a
-                   phone the page's pinch-zoom is what a reader expects two fingers to do. */
+                   Still ignored here, but for one reason now rather than two. On a desktop
+                   ctrl+wheel is the browser's own zoom and hijacking it is worse than not
+                   handling it. The other half of this comment used to say a phone pinch
+                   belongs to the page; it does not any more — two fingers on the figure
+                   zoom the MODEL, handled as pointers above, and they never arrive here. */
                 if (e.ctrlKey) return;
                 var z = getView().zoom;
                 var next = z * (e.deltaY < 0 ? 1.12 : 1 / 1.12);

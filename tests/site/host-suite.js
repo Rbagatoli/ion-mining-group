@@ -275,6 +275,10 @@ function subpathAreas(d) {
                    toggle: (c,on)=>{ on?cls.add(c):cls.delete(c); } },
       addEventListener: (ev, fn) => { (handlers[id] = handlers[id] || {})[ev] = fn; },
       setPointerCapture(){}, releasePointerCapture(){}, hasPointerCapture:()=>false,
+      /* The gesture layer asks two questions of an event target: is it the drawing,
+         and is it one of the controls. Answering them needs these two. */
+      contains(n) { return n === this; },
+      closest: () => null,
       querySelector: sel => { const m = sel.match(/data-region="([a-z]+)"/); return m ? mkEl('b-'+m[1]) : null; },
     };
   };
@@ -299,8 +303,13 @@ function subpathAreas(d) {
   vm.runInContext(SCENE, sb, { filename: 'scene-hosting.js' });
 
   const H = handlers['siteDiagram'] || {};
-  for (const ev of ['pointerdown','pointermove','pointerup','pointerover','pointerout','keydown'])
-    if (!H[ev]) fail(`no ${ev} handler bound`);
+  /* Hover and keyboard belong to the drawing. The pointer gestures moved to the
+     WRAPPER, so that a pinch which starts with one finger on a callout bubble is
+     still a pinch on the figure rather than two unrelated touches. */
+  for (const ev of ['pointerover','pointerout','keydown'])
+    if (!H[ev]) fail(`no ${ev} handler bound to the drawing`);
+  for (const ev of ['pointerdown','pointermove','pointerup','pointercancel'])
+    if (!(handlers['wrap'] || {})[ev]) fail(`no ${ev} handler bound to the figure wrapper`);
   const w0 = writes;
   H.pointerover({ target: { getAttribute: k => (k === 'data-region' ? 'pdu' : null) } });
   if (writes === w0) fail('hover did not repaint');
@@ -317,6 +326,82 @@ function subpathAreas(d) {
   const pk = prevented;
   W.wheel({ deltaY:-100, ctrlKey:false, metaKey:false, preventDefault: () => prevented++ });
   if (prevented !== pk) fail('at max zoom the wheel still took the event — the page would be trapped');
+  V.resetView();
+
+  /* ---- THE GESTURE CONTRACT ----------------------------------------------
+   *
+   * One finger is the page; two fingers are the model. Asserting that a handler
+   * is bound says nothing about either, and the thing that made this figure feel
+   * broken on a phone was never a missing handler - it was pointerdown claiming
+   * the model the instant a finger landed, so scrolling past the drawing froze it.
+   *
+   * goManual() is observable through the fake clock: it schedules the resume
+   * timer. Rotation is observable through `writes`, because paint() is the only
+   * thing that writes attributes and nothing here flushes the animation frame
+   * queue. Neither needs the engine to expose anything for the test's benefit. */
+  const SVG = get('siteDiagram');
+  const touch = (id, x, y) => ({ pointerId: id, pointerType: 'touch', button: 0,
+                                 clientX: x, clientY: y, target: SVG,
+                                 preventDefault() {} });
+  const mouse = (id, x, y) => Object.assign(touch(id, x, y), { pointerType: 'mouse' });
+  const paints = () => writes;
+
+  // A finger that has landed and not moved has decided nothing.
+  timers.length = 0;
+  W.pointerdown(touch(1, 100, 100));
+  if (timers.length) fail('a touch that has not moved already stopped the idle turn');
+
+  // Mostly vertical: the page's. The model must not move and must not stop.
+  let w1 = paints();
+  W.pointermove(touch(1, 103, 140));
+  if (paints() !== w1) fail('a vertical swipe rotated the model');
+  if (timers.length) fail('a vertical swipe stopped the idle turn');
+  W.pointerup(touch(1, 103, 140));
+
+  // Mostly horizontal, past the slop: the model's.
+  W.pointerdown(touch(2, 100, 100));
+  w1 = paints();
+  W.pointermove(touch(2, 140, 104));
+  if (paints() === w1) fail('a horizontal swipe did not turn the model');
+  if (!timers.length) fail('turning the model did not stop the idle turn');
+  W.pointerup(touch(2, 140, 104));
+
+  // Under the slop in both axes: still undecided, still nothing.
+  W.pointerdown(touch(3, 100, 100));
+  w1 = paints();
+  W.pointermove(touch(3, 104, 103));
+  if (paints() !== w1) fail('a 5px twitch was treated as a drag');
+  W.pointerup(touch(3, 104, 103));
+
+  // Two fingers zoom the model. This did nothing at all before: touch-action
+  // forbade the browser from zooming and no handler picked it up.
+  V.resetView();
+  const z1 = V.getView().zoom;
+  W.pointerdown(touch(4, 100, 200));
+  W.pointerdown(touch(5, 200, 200));       // spread 100
+  W.pointermove(touch(5, 300, 200));       // spread 200 -> twice the zoom
+  const z2 = V.getView().zoom;
+  if (!(z2 > z1)) fail('pinching apart did not zoom the model in');
+  W.pointermove(touch(5, 150, 200));       // spread 50 -> half of the original
+  if (!(V.getView().zoom < z1)) fail('pinching together did not zoom the model out');
+
+  // Lifting one finger ends the pinch. The one still down must not inherit it
+  // and become a rotate, which would snap the model as the hand comes off.
+  W.pointerup(touch(5, 150, 200));
+  w1 = paints();
+  W.pointermove(touch(4, 200, 200));
+  if (paints() !== w1) fail('the finger left over from a pinch started rotating');
+  W.pointerup(touch(4, 200, 200));
+
+  // A mouse still gets the model from the first pixel: there is nothing to
+  // disambiguate, because a mouse cannot scroll the page by dragging.
+  V.resetView();
+  W.pointerdown(mouse(6, 100, 100));
+  w1 = paints();
+  W.pointermove(mouse(6, 108, 100));
+  if (paints() === w1) fail('a mouse drag no longer rotates from the first pixel');
+  W.pointerup(mouse(6, 108, 100));
+
   V.resetView();
   console.log(`browser: mounts, ${writes} attribute writes, hover + drag + zoom respond, no NaN  OK`);
 }

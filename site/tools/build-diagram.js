@@ -265,7 +265,19 @@ function listOf(D) {
   ).join('');
 }
 
-const HINT = '<p class="dg-hint">Drag to rotate &middot; hover a part to identify it &middot; scroll to zoom</p>';
+/* TWO SENTENCES, ONE SHOWN. The mouse one was the only one for a long time, and on a
+   phone every clause of it was false: there is no hover, there is no wheel, and dragging
+   scrolled. The figure's gestures on touch are now real and different, so they get said.
+   The stylesheet picks which sentence is visible; see .dg-hint-touch. */
+const HINT = '<p class="dg-hint">' +
+  '<span class="dg-hint-mouse">Drag to rotate &middot; hover a part to identify it &middot; scroll to zoom</span>' +
+  /* SHORT ENOUGH FOR ONE LINE AT 390px, which is the whole design constraint: the
+     first version ran to two lines and cost every figure on the page 46px, most of
+     what the density pass had just saved. Measured, not guessed - 29 characters of
+     10.5px mono at 0.1em fits, 60 does not. The clause about tapping a label came
+     out because tapping a label is the one thing here somebody will try anyway. */
+  '<span class="dg-hint-touch">Swipe to turn &middot; pinch to zoom</span>' +
+  '</p>';
 
 /* ---- writing it back ---- */
 

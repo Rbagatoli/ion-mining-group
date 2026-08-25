@@ -198,33 +198,24 @@ ok(declOf('.band--tight', 'padding', M560) !== null,
    '.band--tight restates its padding wherever .band changes at 560px',
    'the base rule would give it a top padding it exists to not have');
 
-/* ---- the disc that stands in for the second O of PROTON --------------------
+/* ---- the spacing utility has to stay last -------------------------------
  *
- * Its margins are not the glyph's side bearings, and twice now somebody (me) has
- * "corrected" them back to the bearings because that is what they look like they
- * should be. They cannot be: an inline-block does not take the letter-spacing
- * that follows a real character, so the disc loses the tracking on its right and
- * has to carry it in the margin instead.
+ * .vgap.vgap is (0,2,0), which ties with component rules like .hero .lede
+ * { margin-top: 30px }. A tie is broken by source order, so the utility only
+ * wins while it is below them. It was written near the type rules first, and one
+ * lede in the contact hero quietly took the hero's 30px instead of the 24px its
+ * inline style had been giving it - 87 elements moved down that page, and the
+ * page-height comparison could not see it because the page simply got 6px taller
+ * in a place nobody was looking.
  *
- * The test is the asymmetry, not the two numbers. Measured with canvas
- * TextMetrics across eight installed faces - Segoe UI, Arial, Verdana, Tahoma,
- * Calibri, Trebuchet MS, Franklin Gothic Medium and Candara - the current pair
- * leaves the disc off-centre by at most 0.36px at 13px, against the 1.2px that
- * prompted the fix. Equal margins would put every one of those back to roughly
- * a full pixel out, which is what the eye actually caught. */
-const bo = all.filter(r => /\.brand-o$/.test(r.sel) && props(r.body).indexOf('margin-left') >= 0).pop();
-ok(!!bo, 'the brand disc has a margin rule', bo ? bo.sel : 'not found');
-if (bo) {
-    const val = n => {
-        const d = bo.body.split(';').map(x => x.trim())
-                    .filter(x => x.toLowerCase().indexOf(n + ':') === 0).pop();
-        return d ? parseFloat(d.split(':')[1]) : NaN;
-    };
-    const ml = val('margin-left'), mr = val('margin-right');
-    ok(isFinite(ml) && isFinite(mr) && mr - ml > 0.05,
-       'the disc carries the letter-spacing an inline-block does not inherit',
-       'margin-right - margin-left = ' + (mr - ml).toFixed(4) + 'em, needs > 0.05em');
-}
+ * "Last unconditional rule" rather than "last line of the file": media blocks
+ * legitimately come after, and they are more specific in effect anyway. */
+const unconditional = all.filter(r => r.media === '');
+const lastRule = unconditional[unconditional.length - 1];
+ok(lastRule && lastRule.sel === '.vgap.vgap',
+   'the vertical-gap utility is the last unconditional rule in the sheet',
+   'last is ' + (lastRule ? lastRule.sel : 'nothing') + ' — a utility below a ' +
+   'component it must outrank is a utility that silently stops working');
 
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  modifier-suite: ALL OK');
 process.exit(fail ? 1 : 0);

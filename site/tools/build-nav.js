@@ -81,22 +81,6 @@ const BRAND_MARK = `<svg width="26" height="26" viewBox="0 0 512 512" aria-hidde
         <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
         </svg>`;
 
-/* THE SECOND O OF PROTON.
-
-   The LETTER, with the metallic orange poured into it -- not a circle drawn to
-   look like a letter. That is the whole of why this is a span and not an svg.
-
-   The svg version could not be right: it had to be sized in em and nudged onto
-   the baseline by hand, which meant it was never quite the width of the O beside
-   it and never quite sat on the same line. A glyph has none of those problems
-   because it IS the glyph -- same face, same weight, same tracking, same
-   baseline, same optical size, for free and permanently.
-
-   --metal-btc-lit rather than --metal-btc: the flat and default ramps bottom out
-   around #a85a06 and #c06a08, which are too dark to read at 13px. The lit ramp
-   exists for exactly this case and says so where it is defined. */
-const BRAND_O = `<span class="brand-o">o</span>`;
-
 /* Where the producer portal lives, relative to a page in site/.
    See the note beside the nav link for when this changes. */
 const PORTAL_HREF = '../portal/';
@@ -107,7 +91,7 @@ function nav(active, cta) {
   <div class="nav-inner">
     <a class="brand" href="./index.html">
       ${BRAND_MARK}
-      <span class="brand-name">Prot${BRAND_O}n <span>Mining</span></span>
+      <span class="brand-name">Proton <span>Mining</span></span>
     </a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>

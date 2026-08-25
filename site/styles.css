@@ -2428,6 +2428,11 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     outline: none;
 }
 
+/* Both sentences ship; the media query picks. A hint that is generated per-platform
+   in JS is a hint that is wrong for the first paint, and this one sits under a
+   figure somebody is already looking at. */
+.dg-hint-touch { display: none; }
+
 .dg-hint {
     position: absolute;
     left: 14px;
@@ -2720,10 +2725,12 @@ a.fac:hover .fac-go { color: var(--btc-200); }
            the +/- buttons zoom for anyone who wants a closer look, which is a tap rather than
            a gesture. */
         overflow: hidden;
-        /* Panning belongs to the browser. Without this the engine's pointermove handler and
-           the scroller fight over every horizontal swipe, and the drawing rotates when you
-           meant to scroll it. Drag-to-rotate is a mouse affordance and it stays one. */
-        touch-action: pan-x pan-y;
+        /* The touch-action that used to be here has gone. It said pan-x pan-y, for a
+           layout where this wrapper was a horizontal scroller you swiped the drawing
+           inside - a design superseded further down this same media query, which makes
+           the wrapper a grid and sets touch-action again. The later rule had been
+           winning for as long as both existed, so this one was documenting a decision
+           that had already been reversed. There is now exactly one, and it is below. */
     }
     /* SHIFTED LEFT BY THE WIDTH OF THE CALLOUT GUTTER.
      *
@@ -2948,19 +2955,40 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-scale-end,
     .dg-scale-hint,
     .dg-toggle-on { font-size: 10.5px; }
-    /* Vertical belongs to the page, always. Without this a swipe that is a few degrees off
-       horizontal gets eaten by the diagram and the page does not move, which reads as the
-       page being stuck. */
-    /* Vertical belongs to the page and two fingers belong to the browser. What is left — a
-       horizontal drag — reaches the engine, so a sideways swipe turns the model, which is the
-       one gesture worth having here. */
-    .dg-wrap { touch-action: pan-y pinch-zoom; }
+    /* THE WHOLE GESTURE CONTRACT, IN ONE VALUE. Two comments used to sit stacked here
+       above one declaration, disagreeing with each other about whether a finger may turn
+       the model, and neither described what the page did.
 
-    /* THE HINT DESCRIBED A MOUSE. "Drag to rotate, hover a part to identify it, scroll to
-       zoom" is three things a phone cannot do: dragging now scrolls, there is no hover, and
-       there is no wheel. It also overlapped the zoom buttons at this width. The buttons stay
-       — they work by tapping — and the sentence goes. */
-    .dg-hint { display: none; }
+       pan-y and nothing else means: the browser keeps vertical panning, so a scroll is
+       always a scroll; everything it does not keep - horizontal drags and pinches - is
+       delivered to diagram-engine.js, which turns the model and zooms it. Adding
+       pinch-zoom back would hand two fingers to the browser and leave the figure with no
+       way to be zoomed on a phone at all, which is what it had.
+
+       BOTH ELEMENTS, THE SAME VALUE, on purpose. touch-action is intersected up the
+       ancestor chain, so .site-diagram's unconditional pan-y already governed touches on
+       the drawing while the wrapper's pinch-zoom governed touches on a callout beside it.
+       One figure, two behaviours, depending on which half of it your fingers landed on. */
+    .dg-wrap, .dg-wrap .site-diagram { touch-action: pan-y; }
+
+    /* THE HINT COMES BACK, because the gestures are no longer the mouse's gestures and
+       nothing else on the page says so. It moves into the flow across the top of the
+       callout grid rather than sitting absolutely over the drawing, which is what made it
+       collide with the zoom buttons and got it hidden in the first place. */
+    .dg-hint {
+        position: static;
+        grid-column: 1 / -1;
+        margin: 2px 0 4px;
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+    }
+    .dg-hint-mouse { display: none; }
+    .dg-hint-touch { display: inline; }
+
+    /* The sentence that described a mouse is still wrong on a phone, so it is not the
+       sentence shown - see .dg-hint-touch above. Hiding the hint outright was the right
+       call while dragging did nothing but scroll; now that two fingers zoom the model,
+       a figure that never says so is a figure nobody will try. */
 
     /* THE LIST STAYS OFF NOW THAT THE BUBBLES ARE BACK. Both are generated from the same
        CALLOUTS array in scene-site.js, so showing both put every label on the screen twice,
@@ -3980,71 +4008,6 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 }
 
 
-/* ===== the second O of PROTON =====
-
-   The whole letter filled: a solid disc of metallic orange standing where the O
-   would be, not the letterform with orange in its stroke.
-
-   EVERY NUMBER BELOW WAS MEASURED, not chosen. The first two attempts at this
-   were an svg circle sized by eye, and both came out the wrong size and slightly
-   off the baseline for the same reason -- there was nothing tying them to the
-   glyph. So the face was measured with canvas TextMetrics at 400px and 800px
-   (identical ratios at both, so these are the font's real proportions):
-
-       ink            0.6875em wide by 0.7344em tall -- the O is TALLER than it
-                      is wide, so this is an ellipse and a round circle would be
-                      visibly wrong
-       advance        0.7559em
-       side bearings  0.0313em left, 0.0371em right
-       descent        0.0156em below the baseline
-
-   The margins restore the advance exactly, so the disc occupies the same
-   horizontal space the letter did and the tracking either side is unchanged.
-   vertical-align carries the descent: with overflow:hidden an inline-block's
-   baseline is its bottom margin edge, so -0.0156em puts that edge exactly where
-   the bottom of the O sat.
-
-   The letter is still in the markup and only pushed out of view, so the wordmark
-   still selects, copies and reads as "Proton Mining". A background-image cannot
-   do any of those. */
-.brand .brand-o {
-    display: inline-block;
-    width: 0.6875em;
-    height: 0.7344em;
-    /* NOT the glyph's side bearings, which is what these were and why the disc
-       sat hard against the N.
-
-       TWO THINGS WERE WRONG, and only the first is obvious.
-
-       An inline-block does not take the letter-spacing that follows a real
-       character, so swapping the letter for a box silently lost space from the
-       right-hand side. Measured against a control span of the same three letters
-       as plain text: T-to-N spans 1.5853em with the letter and 1.4675em with the
-       disc, and the whole 0.1178em shortfall lands between the disc and the N.
-       That alone is what "the O is closer to the N" was.
-
-       The second: matching the letter exactly would still be wrong here. The
-       font does not centre its own O -- it sits 0.1962em from the T and 0.2752em
-       from the N -- because an open counter reads lighter than the space around
-       it and the eye forgives the difference. A solid disc has no counter to
-       read through, so it wants the true optical centre.
-
-       So the right margin carries the bearing plus the missing spacing, and the
-       pair was then converged empirically rather than derived: measure the ink
-       gaps, move, measure again. Final rendered gaps are 0.2151em on the left
-       and 0.2139em on the right -- 0.02px apart at 13px, which is as centred as
-       a subpixel grid allows. Re-measure if the face or the tracking changes;
-       these numbers belong to THIS font at THIS letter-spacing. */
-    margin-left: 0.0498em;
-    margin-right: 0.1365em;
-    vertical-align: -0.0156em;
-    border-radius: 50%;
-    background-image: var(--metal-btc-lit);
-    /* Keeps the glyph for selection and screen readers while showing the disc. */
-    text-indent: -9999px;
-    overflow: hidden;
-}
-
 /* ===== mobile: the overflow, and the scrolling =====
 
    THE OVERFLOW was one rule. .ph is a bracketed placeholder and carries
@@ -4107,6 +4070,20 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .band .sec-head { margin-bottom: 22px; }
     .eyebrow { margin-bottom: 14px; }
     .band .sec-head .lede, .lede--gap, .lede + .lede { margin-top: 12px; }
+    /* SCALED, NOT FLATTENED. These twenty-one gaps are not interchangeable - 52px
+       under an intro and 8px under a label are saying different things - so they
+       keep their proportions and all give up the same 40%. */
+    .vgap.vgap { margin-top: calc(var(--vg, 24px) * 0.6); }
+
+    /* ---- the two panels on the home page ----
+       Measured at 390px: 142px of the 545px panel was spacing - a 20px gap under a
+       17px tag, a 16px gap under a 25px heading, and 60px around the list. The
+       list rows were 50px each for one line of text. */
+    .track-tag { margin-bottom: 10px; }
+    .track h3 { margin-bottom: 8px; }
+    .track ul { margin: 16px 0 18px; }
+    .track li { padding: 8px 0 8px 24px; }
+    .track li::before { top: 15px; }   /* the bullet follows the padding down */
     .grid--split { gap: 26px; }
     .btn-row { margin-top: 24px; }
     /* :not() BY NAME, because .grid--matrix { gap: 1px } and .grid--split are
@@ -4117,9 +4094,13 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .grid:not(.grid--matrix):not(.grid--split) { gap: 16px; }
 
     /* ---- padding inside them ---- */
-    .card { padding: 16px 16px; }
+    /* NARROWER SIDES THAN TOP, which is not a typo. At 390px the panel's own
+       20px each side plus the page's 20px gutter left a 310px column, and a 14px
+       line in 310px is where several of these list rows tip onto a second line.
+       Giving 12px back to the text is worth more than the same 12px of margin. */
+    .card { padding: 16px 14px; }
     .step { padding: 22px 0; }
-    .track { padding: 24px 20px 22px; }
+    .track { padding: 22px 14px 20px; }
     .checks li { padding: 12px 0 12px 30px; }
     .checks li::before { top: 19px; }
     .spec-row { padding: 13px 16px; }
@@ -4127,7 +4108,7 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
     /* ---- leading, on the prose only ---- */
     .lede { line-height: 1.55; }
-    .card p, .step p, .checks li, .track p { line-height: 1.55; }
+    .card p, .step p, .checks li, .track p, .track li { line-height: 1.55; }
 
     /* Four figures in a column is four screens of chrome for four numbers. */
     .stats { grid-template-columns: 1fr 1fr; }
@@ -4159,3 +4140,26 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 body {
     overflow-wrap: break-word;
 }
+
+/* ===== the vertical-gap utility, LAST ON PURPOSE =====
+
+   THE LAST OF THE INLINE SPACING. Twenty-one elements carried a bare
+   style="margin-top:NNpx" - 8px to 52px, chosen per instance - which is the same
+   problem .sec-head had: a number the phone cannot argue with. They carry --vg
+   now, so the value is still theirs and the breakpoint can still reach it.
+
+   .vgap.vgap, DOUBLED. As a single class this is (0,1,0) and loses to any
+   component rule that sets a margin on the same element.
+
+   AND AT THE BOTTOM OF THE FILE, which is the half I got wrong first. Doubling
+   the class ties it with .hero .lede { margin-top: 30px } at (0,2,0), and a tie
+   is broken by source order - so while this sat up with the type rules, one lede
+   in the contact hero silently went from the 24px its inline style had been
+   giving it to the hero's 30px, and 87 elements below it moved down the page.
+   Caught by comparing every element's box against the previous commit, not by
+   looking.
+
+   A spacing utility is a statement about ONE element that has to outrank the
+   component it sits inside. That means last in the file, and it means this block
+   should stay last: anything added below it can beat it by accident. */
+.vgap.vgap { margin-top: var(--vg, 24px); }
