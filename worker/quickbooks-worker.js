@@ -252,21 +252,21 @@ async function handleQboStatus(request, env, origin) {
 function getOAuthCallbackHTML(success, companyName) {
     if (success) {
         return '<!DOCTYPE html><html><head><title>QuickBooks Connected</title>' +
-            '<style>body{font-family:system-ui;text-align:center;padding:40px;background:#060606;color:#fff;}' +
-            'h2{color:#4ade80;margin-bottom:10px;}p{color:#888;}</style></head><body>' +
+            '<style>body{font-family:system-ui;text-align:center;padding:40px;background:#0a0a0a;color:#fff;}' +
+            'h2{color:#3fb950;margin-bottom:10px;}p{color:#83827f;}</style></head><body>' +
             '<h2>✓ QuickBooks Connected!</h2>' +
             '<p>Company: <strong>' + escapeHtml(companyName) + '</strong></p>' +
-            '<p style="color:#888;font-size:14px;">You can close this window.</p>' +
+            '<p style="color:#83827f;font-size:14px;">You can close this window.</p>' +
             '<script>if(window.opener){' +
             'window.opener.postMessage({type:"qbo-oauth-success",companyName:"' + escapeHtml(companyName) + '"},"*");' +
             'setTimeout(()=>window.close(),1000);}</script></body></html>';
     } else {
         return '<!DOCTYPE html><html><head><title>Connection Failed</title>' +
-            '<style>body{font-family:system-ui;text-align:center;padding:40px;background:#060606;color:#fff;}' +
-            'h2{color:#f55;margin-bottom:10px;}p{color:#888;}</style></head><body>' +
+            '<style>body{font-family:system-ui;text-align:center;padding:40px;background:#0a0a0a;color:#fff;}' +
+            'h2{color:#e05252;margin-bottom:10px;}p{color:#83827f;}</style></head><body>' +
             '<h2>✗ Connection Failed</h2>' +
             '<p>' + escapeHtml(companyName) + '</p>' +
-            '<p style="color:#888;font-size:14px;">Please close this window and try again.</p></body></html>';
+            '<p style="color:#83827f;font-size:14px;">Please close this window and try again.</p></body></html>';
     }
 }
 
