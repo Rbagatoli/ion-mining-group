@@ -4372,3 +4372,119 @@ body {
    component it sits inside. That means last in the file, and it means this block
    should stay last: anything added below it can beat it by accident. */
 .vgap.vgap { margin-top: var(--vg, 24px); }
+
+
+/* ===== SECOND MOBILE DENSITY PASS: the windows =====
+
+   The first pass took the rhythm BETWEEN blocks. This one takes the chrome
+   INSIDE them, which is where the rest of it turned out to be. Every number
+   below replaces one that was measured at 390px first; the comment on each group
+   is what that measurement said.
+
+   NOTHING HERE TOUCHES A VISUAL. The 3D figures, the chart and the animated
+   fields keep every pixel they have — they are the content, not the frame around
+   it. Type sizes are unchanged too, with one exception that is called out.
+
+   Ordered as the site is read, not as the stylesheet is written. */
+@media (max-width: 560px) {
+
+    /* ---- "Pick a site", five cards on hosting ----
+       323px each, of which 138px was chrome — 43%. Three specs at 4px of padding
+       a side, a 16px gap above the description and another below the specs, and
+       10-12px under every label. */
+    .fac-grid .card { padding: 12px 14px; }
+    .fac-place { margin-bottom: 6px; }
+    .fac-fuel { margin-bottom: 8px; }
+    .fac-spec { margin-top: 8px; padding-top: 8px; }
+    .fac-spec .fac-row { padding: 2px 0; }
+    .fac-go { margin-top: 10px; }
+
+    /* ---- "Your machines will run at" ----
+       595px, and 105px of it was one grid that could not fit two columns.
+       .fac-chosen-spec is repeat(auto-fit, minmax(150px, 1fr)) with a 22px
+       column gap: at 350px wide, minus 40px of padding, two columns need
+       150+22+150 = 322px and only 310px were there. Twelve pixels short, so all
+       four rows stacked. Narrower padding and a narrower gutter give it the two
+       columns it was always designed for. */
+    .fac-chosen { padding: 14px; margin-bottom: 18px; }
+    .fac-chosen-head { margin-bottom: 10px; }
+    .fac-chosen-spec { gap: 8px 14px; padding-top: 8px; }
+    .fac-full { padding: 10px 12px; margin-top: 10px; }
+    .fac-lead, .fac-chosen-note { margin-top: 8px; }
+
+    /* ---- the three prepaid terms ----
+       265px a tier and 130px of it chrome — half. A 13px band top and bottom on
+       the head, 24/26 inside the body, and four stacked margins of 14, 6, 14 and
+       16 between five short lines. */
+    .pp-sec { padding: 16px 14px 14px; margin-bottom: 18px; }
+    .pp-sec-head { margin-bottom: 12px; }
+    /* The one type change in this pass: 19px wrapped this title to three lines
+       at 350px and 17px fits it in two. */
+    .pp-sec-title { font-size: 17px; }
+    .pp-grid { gap: 10px; }
+    .pp-head { padding: 9px 14px; }
+    .pp-body { padding: 12px 14px; }
+    .pp-rate { margin-top: 8px; }
+    .pp-from { margin-top: 3px; }
+    .pp-total { margin-top: 8px; padding-top: 8px; }
+    .pp-pick { margin-top: 10px; padding: 9px 14px; }
+    .pp-note { margin-top: 12px; }
+
+    /* ---- the calculator, everything except the chart ----
+       Twenty .field blocks at a 9px label gap, six model cards at 22/24 of
+       padding, and three result panels whose six-row lists sat on 9px gaps. */
+    .calc-group { gap: 12px; }
+    /* Restated, because .calc-group--adv sets the same gap for the advanced
+       block and would otherwise have lost it to the line above on source order.
+       Not spotted by reading; modifier-suite.js failed on it. */
+    .calc-group--adv { gap: 12px; }
+    .field { gap: 6px; }
+    .cm { padding: 16px 16px; }
+    .calc-panel { padding: 14px; gap: 10px; }
+    .calc-panel h3 { padding-bottom: 7px; }
+    .calc-panel dl { gap: 6px; }
+    .calc-note-cols { gap: 16px; }
+    .calc-note-cols h4 { margin-bottom: 6px; }
+
+    /* ---- and the components that repeat everywhere ----
+       .spec-row appears sixteen times on hosting and seven on energy; .step five
+       times on three pages; .bc four times on the blog with 86px of chrome each,
+       the worst ratio on the site. */
+    .spec-row { padding: 10px 14px; gap: 5px; }
+    .step { padding: 16px 0; gap: 8px; }
+    .step h3 { margin-bottom: 6px; }
+    .bc { padding: 16px 16px 14px; gap: 7px; }
+    .bl-grid { margin-top: 22px; }
+    .form { padding: 18px 16px; }
+    .hw-order { padding: 14px 16px; }
+
+    /* ---- and the last of it, from a second measurement ----
+       After the rules above, the components that still carried real chrome were
+       the ones that repeat most: thirty .checks rows on energy at 24px of
+       padding each, sixteen .spec-rows on hosting at 20px, and the card padding
+       every card on the site pays. Small numbers, multiplied by how often they
+       occur, which is the only reason they are worth taking.
+
+       This is the floor. What is left in these components is text, and the next
+       thing to give would be either the type size or the words. */
+    .checks li { padding: 9px 0 9px 26px; }
+    .checks li::before { top: 16px; }
+    .card { padding: 13px 13px; }
+    .fac-grid .card { padding: 12px 13px; }
+    .spec-row { padding: 8px 13px; }
+    .spec-val small { margin-top: 5px; }
+    .band .sec-head { margin-bottom: 18px; }
+}
+
+/* Why-mining runs on its own component family and its own breakpoint, so its
+   share of this pass lives with them rather than above. Same rule: chrome only,
+   and its prose keeps the leading it was given. */
+@media (max-width: 620px) {
+    .wm-tldr-cell, .wm-vs-col { padding: 14px 16px; }
+    .wm-gate { padding: 14px 16px; }
+    .wm-warn, .wm-note { padding: 13px 15px; }
+    .wm-mech-sum { padding: 13px 15px; }
+    .wm-mech-body { padding: 0 15px 15px; }
+    .wm-cond { margin-top: 12px; }
+    .wm-next { margin-top: 28px; padding-top: 18px; }
+}
