@@ -207,7 +207,7 @@
         /* On the card: a bar you can read across a column. */
         .pb-enrich { display:flex; align-items:center; gap:6px; }
         .pb-ebar { flex:1 1 auto; height:3px; background:var(--line-mid);
-                   border-radius:2px; overflow:hidden; }
+                   border-radius:var(--radius); overflow:hidden; }
         .pb-ebar span { display:block; height:100%; background:var(--btc-300); }
         .pb-epct { font-family:var(--mono); font-size:9.5px; color:var(--plat-500); }
 
@@ -346,7 +346,7 @@
                       max-width:660px; }
         .pa-bl { flex:0 0 132px; font-size:12px; color:var(--plat-200); }
         .pa-bar { flex:1 1 auto; height:8px; background:var(--black);
-                  border-radius:2px; overflow:hidden; }
+                  border-radius:var(--radius); overflow:hidden; }
         .pa-bar > span { display:block; height:100%; background:var(--btc-300); }
         /* Deaths with no reason recorded are a gap in the record, not a cause.
            Shown, because hiding them would make the ranked reasons look complete. */

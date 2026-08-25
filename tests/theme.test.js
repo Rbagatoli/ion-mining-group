@@ -38,7 +38,25 @@ function ok(label, cond) { eq(label, !!cond, true); }
 function walk(dir, out) {
     out = out || [];
     fs.readdirSync(dir, { withFileTypes: true }).forEach(function(e) {
-        if (['.git', 'node_modules', '.cache', 'site', 'data', 'worker', 'worker-strike',
+        /* '_site' is the BUILD OUTPUT. It is gitignored, it is a copy of the files
+           already being audited, and walking it made every counter in this file
+           depend on whether somebody had run tools/build-pages.js: the literal
+           census read 802 or 2,522, the sub-10.5px count 70 or 158, and the
+           failure list 8 items or 9, for the same source tree. A progress meter
+           that moves when nothing changed is not a progress meter. */
+        /* 'portal' is a DIFFERENT SURFACE, and auditing it against the dark app's
+           rules is a category error rather than a finding. The client portal and
+           its printable statement are deliberately white paper with the cards
+           defined by line rather than fill, carrying their own palette scoped to
+           body.pt-app, their own deeper orange for text on a tint (#9e5200 at
+           4.97:1, where --btc-300 falls to 3.96:1), and their own red "legible on
+           paper rather than glowing". Four of this file's failures were nothing
+           but that design being reported as damage: the second :root, two
+           untokenised radii, the blurred shadows, and --btc-on-wash reported
+           unresolved because the definition scanner only ever reads tokens.css.
+           The portal is not left unguarded — the assertion below checks the thing
+           that would actually hurt, which is that palette escaping into the app. */
+        if (['.git', 'node_modules', '.cache', 'site', '_site', 'portal', 'data', 'worker', 'worker-strike',
              'tests', 'tools'].indexOf(e.name) >= 0) return;
         var p = path.join(dir, e.name);
         if (e.isDirectory()) return walk(p, out);
@@ -93,6 +111,44 @@ console.log('\n=== one place defines a colour ===');
         return f.rel !== 'tokens.css' && /:root\s*\{/.test(f.text);
     }).map(function(f) { return f.rel; });
     eq('nothing else declares :root', roots.join(', ') || 'none', 'none');
+})();
+
+// ---- 1b. the portal's paper palette stays in the portal ----------------------------------------
+
+console.log('\n=== the paper theme cannot leak ===');
+(function() {
+    var portal = read('portal/portal.css');
+    ok('portal/portal.css is readable', portal !== null);
+    if (!portal) return;
+
+    /* Every light-palette declaration in the portal must sit inside a rule scoped
+       to body.pt-app (or :root:has(body.pt-app), which is how the root element is
+       reached from a class the page sets on the body, so the scrollbar matches the
+       paper). An unscoped light token would apply the moment portal.css is loaded
+       anywhere, and portal.css is loaded by the sign-in screen too -- which is
+       dark. This is the failure that would actually be visible. */
+    var blocks = portal.split(/\}/);
+    var leaked = [];
+    for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        var brace = b.lastIndexOf('{');
+        if (brace < 0) continue;
+        var sel = b.slice(0, brace);
+        var body = b.slice(brace + 1);
+        if (!/--[a-z0-9-]+\s*:/i.test(body)) continue;      // no token definitions here
+        if (/pt-app/.test(sel)) continue;                    // correctly scoped
+        if (/^\s*:root\s*$/.test(sel)) continue;            // the dark defaults it shares
+        leaked.push(sel.replace(/\s+/g, ' ').trim().slice(0, 60));
+    }
+    eq('every paper token is scoped to body.pt-app', leaked.join(', ') || 'none', 'none');
+
+    /* And the app must not load it. If an operator page ever pulled portal.css in,
+       the scoping above is the only thing standing between the app and a white
+       page -- so the scoping is necessary, and this is the belt. */
+    var pulls = FILES.filter(function(f) {
+        return /\.html$/.test(f.rel) && /portal\.css/.test(f.text);
+    }).map(function(f) { return f.rel; });
+    eq('no app page loads portal.css', pulls.join(', ') || 'none', 'none');
 })();
 
 // ---- 2. the app and the site cannot drift ------------------------------------------------------
