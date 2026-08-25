@@ -3351,14 +3351,14 @@ var MapSourcing = (function() {
     // Always renders the full match set. Focusing dims the others rather than removing them, so
     // the surrounding field stays visible for context.
     function renderMapLayer() {
-        var cands = _filtered.slice(0, 4000).map(function(r) { return r.candidate; });
+        var cands = _filtered.slice(0, MAP_DRAW_CAP).map(function(r) { return r.candidate; });
         var focusId = _focused ? _selectedId : null;
 
         var note = document.getElementById('srcMapNote');
         if (note) {
             note.textContent = _focused
                 ? 'Focused on 1 of ' + fmtInt(cands.length) + '. Click anywhere to show them all again.'
-                : (_filtered.length > 4000
+                : (_filtered.length > MAP_DRAW_CAP
                     ? 'Showing the top 4,000 of ' + fmtInt(_filtered.length) + ' matches — narrow the filters to see the rest.'
                     : fmtInt(cands.length) + ' plotted. Green = burning in every survey year.');
         }
@@ -3385,7 +3385,17 @@ var MapSourcing = (function() {
             var focusCand = focusId ? ProspectStore.get(focusId) : null;
             globe.ringsData(focusCand ? [{ lat: focusCand.lat, lng: focusCand.lng }] : [])
                 .ringLat('lat').ringLng('lng')
-                .ringColor(function() { return function(t) { return 'rgba(62,207,142,' + (1 - t) + ')'; }; })
+                /* Built by concatenation, which is why the literal census never
+                   caught it: its pattern needs a closing paren with numbers in it,
+                   and this string ends at the comma. rgb(62,207,142) is #3ecf8e --
+                   the green this app used BEFORE the palette moved to the site's,
+                   so the focus ring has been a colour that exists nowhere else
+                   since pass 2. A concatenated colour is a blind spot in any regex
+                   census; the answer is not a better regex, it is not building
+                   colours out of string fragments. */
+                .ringColor(function() {
+                    return function(t) { return ProtonTheme.alpha(ProtonTheme.pos, 1 - t); };
+                })
                 .ringMaxRadius(3.5).ringPropagationSpeed(1.4).ringRepeatPeriod(700);
         }
 
@@ -3408,10 +3418,60 @@ var MapSourcing = (function() {
                 });
                 var opx = operatorRecord(c);
                 m.bindTooltip(placeLabel(c) + ' — ' + fmtKw(c.powerPotentialKw) + (opx ? ' — ' + opx.operator : ''));
-                (function(id) { m.on('click', function() { select(id, true); }); })(c.id);
+                (function(id) { m.on('click', function() { _markerTook = true; select(id, true); }); })(c.id);
                 m.addTo(_leafletLayer);
             }
+            wireNearestClick(lmap);
         }
+    }
+
+    /* CLICKING NEAR A MARKER IS CLICKING IT.
+     *
+     * The radius formula above floors at 3px, so the smallest sites render as a
+     * six-pixel dot, and the median across a filtered set measures sixteen. WCAG
+     * 2.5.8 asks for 24x24 as the minimum target. Growing the markers is not the
+     * answer -- at four thousand of them the map becomes a solid sheet of orange,
+     * and the size is carrying information -- so the target grows instead of the
+     * mark: a click anywhere within TOLERANCE_PX of a marker's centre selects the
+     * nearest one.
+     *
+     * Nearest by SCREEN distance, not by latitude and longitude. A degree of
+     * longitude is 111km at the equator and 43km in northern Alberta, so a
+     * geographic radius would quietly become a different-sized target depending
+     * on where you are looking, and would stop matching what the eye sees the
+     * moment the map is zoomed.
+     */
+    /* How many markers the map plots, which is a different number from how many
+       rows the list shows. Named because the click tolerance below has to search
+       exactly the set that was drawn. */
+    var MAP_DRAW_CAP = 4000;
+    var TOLERANCE_PX = 22;
+    var _markerTook = false;
+    var _nearestWired = null;
+
+    function wireNearestClick(lmap) {
+        if (_nearestWired === lmap) return;      // one handler per map, not per repaint
+        _nearestWired = lmap;
+        lmap.on('click', function(e) {
+            /* The marker's own handler already ran and already selected the right
+               prospect. Doing it again would repaint the whole surface for nothing. */
+            if (_markerTook) { _markerTook = false; return; }
+            var best = null, bestD = Infinity;
+            var here = e.containerPoint;
+            /* MAP_DRAW_CAP, not RESULT_CAP. The list shows the top 250 and the map
+               plots the top 4,000, so searching the list's slice would leave every
+               marker past the 250th unclickable -- a tolerance that works only on
+               the rows you could already click in the list beside it. */
+            for (var i = 0; i < _filtered.length && i < MAP_DRAW_CAP; i++) {
+                var c = _filtered[i].candidate;
+                if (c.lat === null || c.lng === null) continue;
+                var p = lmap.latLngToContainerPoint([c.lat, c.lng]);
+                var dx = p.x - here.x, dy = p.y - here.y;
+                var d = dx * dx + dy * dy;
+                if (d < bestD) { bestD = d; best = c; }
+            }
+            if (best && Math.sqrt(bestD) <= TOLERANCE_PX) select(best.id, true);
+        });
     }
 
     function clearMapLayer() {
