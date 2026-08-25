@@ -118,7 +118,7 @@ body > * { position: relative; z-index: 1; }
     padding: 12px 24px;
     background: var(--nav-bg);
     border-bottom: 1px solid var(--line);
-    backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     position: sticky;
     top: 0;
@@ -296,7 +296,7 @@ main {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 20px;
-    backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     box-shadow: var(--shadow-card);
 }
@@ -657,7 +657,7 @@ footer {
     background: var(--panel-hover);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
 }
 .slide-panel h4 {
@@ -809,7 +809,7 @@ footer {
     background: var(--panel-hover);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
 }
 .fleet-toggle-row.active {
@@ -2112,7 +2112,7 @@ svg path:focus, svg path:active { outline: none !important; }
 /* Popup glassmorphism */
 .map-popup-leaflet .leaflet-popup-content-wrapper {
     background: var(--surface-2);
-    backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     border: 1px solid var(--line);
     border-radius: var(--radius);

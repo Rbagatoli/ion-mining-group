@@ -96,7 +96,7 @@ function setActive(container, btn) {
 function pctColor(pct, invert) {
     var p = invert ? 100 - pct : pct;
     if (p <= 25) return 'var(--pos)';
-    if (p <= 60) return '#f7931a';
+    if (p <= 60) return 'var(--btc-300)';
     return 'var(--neg)';
 }
 
@@ -333,7 +333,7 @@ function renderMayerChart(range) {
         beforeDatasetsDraw: function(chart) {
             var y = chart.scales.y, a = chart.chartArea, ctx = chart.ctx;
             if (!y || !a) return;
-            [[1.0, 'rgba(96,165,250,0.35)'], [2.4, 'var(--neg-line)'], [0.8, 'var(--pos-line)']].forEach(function(b) {
+            [[1.0, ProtonTheme.alpha(ProtonTheme.plat400, 0.35)], [2.4, 'var(--neg-line)'], [0.8, 'var(--pos-line)']].forEach(function(b) {
                 var py = y.getPixelForValue(b[0]);
                 if (py < a.top || py > a.bottom) return;
                 ctx.save();

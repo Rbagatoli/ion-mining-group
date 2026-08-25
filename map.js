@@ -469,10 +469,10 @@ var MapBridge = (function() {
                 // context — filled polygons under dense points are unreadable.
                 if (MapBridge.mode() === 'prospects') {
                     return {
-                        fillColor: '#f7931a',
+                        fillColor: ProtonTheme.btc,
                         fillOpacity: 0,
                         weight: data ? 1 : 0.5,
-                        color: data ? 'rgba(247,147,26,0.55)' : '#333',
+                        color: data ? ProtonTheme.alpha(ProtonTheme.btc, 0.55) : ProtonTheme.globe.strokeDim,
                         opacity: data ? 0.6 : 0.25
                     };
                 }
@@ -481,18 +481,18 @@ var MapBridge = (function() {
                     var ratio = data.totalHashrate / maxCountryHash;
                     var opacity = 0.15 + ratio * 0.60;
                     return {
-                        fillColor: '#f7931a',
+                        fillColor: ProtonTheme.btc,
                         fillOpacity: opacity,
                         weight: 1.5,
-                        color: 'rgba(247,147,26,0.5)',
+                        color: ProtonTheme.globe.stroke,
                         opacity: 0.7
                     };
                 }
                 return {
-                    fillColor: '#f7931a',
+                    fillColor: ProtonTheme.btc,
                     fillOpacity: 0.02,
                     weight: 0.5,
-                    color: '#333',
+                    color: ProtonTheme.globe.strokeDim,
                     opacity: 0.3
                 };
             }
@@ -783,7 +783,7 @@ var _globeRef = null, _showGlobePopupRef = null;
             .backgroundColor('rgba(0,0,0,0)')
             .showGlobe(true)
             .showAtmosphere(true)
-            .atmosphereColor('#f7931a')
+            .atmosphereColor(ProtonTheme.globe.atmos)
             .atmosphereAltitude(0.15);
 
         fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
@@ -797,7 +797,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                     // left the GLOBE still painting every country with fleet hashrate, which is
                     // what the fleet layer looked like bleeding through Prospects mode.
                     .polygonCapColor(function(feat) {
-                        if (MapBridge.mode() === 'prospects') return 'rgba(247, 147, 26, 0.02)';
+                        if (MapBridge.mode() === 'prospects') return ProtonTheme.globe.fillMin;
                         var a2 = NUM_TO_A2[String(feat.id)];
                         var data = a2 ? countryData[a2] : null;
                         if (data && maxCountryHash > 0) {
@@ -805,13 +805,14 @@ var _globeRef = null, _showGlobePopupRef = null;
                             var alpha = 0.2 + ratio * 0.8;
                             return 'rgba(247, 147, 26, ' + alpha.toFixed(2) + ')';
                         }
-                        return 'rgba(247, 147, 26, 0.03)';
+                        return ProtonTheme.globe.fillMin;
                     })
-                    .polygonSideColor(function() { return 'rgba(247, 147, 26, 0.05)'; })
+                    .polygonSideColor(function() { return ProtonTheme.globe.fillMin; })
                     .polygonStrokeColor(function(feat) {
-                        if (MapBridge.mode() === 'prospects') return '#333';
+                        if (MapBridge.mode() === 'prospects') return ProtonTheme.globe.strokeDim;
                         var a2 = NUM_TO_A2[String(feat.id)];
-                        return countryData[a2] ? 'rgba(247, 147, 26, 0.4)' : '#222';
+                        return countryData[a2] ? ProtonTheme.globe.stroke
+                                               : ProtonTheme.globe.strokeDim;
                     })
                     .polygonAltitude(function(feat) {
                         // Flat backdrop in Prospects mode: raised countries would occlude the

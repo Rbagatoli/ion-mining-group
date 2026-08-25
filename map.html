@@ -281,6 +281,13 @@
             .src-list { max-height:520px; }
         }
         .map-pane { min-width:0; }
+        /* CartoDB's dark basemap is neutral grey and slightly blue; every other
+           surface in this app is warm platinum. --tile-filter is the correction
+           -- desaturate, lift the contrast a touch, drop the brightness so the
+           flare markers stay the brightest thing on screen, and warm it with a
+           little sepia so the map is made of the same material as the panels
+           around it. The token was defined for this and never applied. */
+        .leaflet-tile-pane { filter: var(--tile-filter); }
         /* Taller now it has the width. 500px in a 420px column was a porthole; the
            same height across 1168px is a map you can find a county on. */
         body[data-map-mode="prospects"] .map-pane #fleetMap,
@@ -717,7 +724,7 @@
 
 <div class="psec-wrap"><div id="prospectNav"></div></div>
 
-<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;" id="mapPageTitle">Fleet Map</h1>
     <p style="color:var(--text-mid); font-size:12px;" id="mapPageSub">Geographic distribution of mining operations</p>
 </header>

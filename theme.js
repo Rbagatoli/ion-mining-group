@@ -63,6 +63,27 @@ var ProtonTheme = (function() {
     var series = ['#f7931a', '#e5e4e2', '#a9a8a5', '#c86f0a',
                   '#5c5b58', '#ffc46b', '#cbcac7', '#8a4a05'];
 
+    /* The persistence ramp, --persist-1..4 in tokens.css. Four steps of orange
+       from nearly-white to nearly-brown, for how many survey years a flare was
+       seen in. Mirrored here because it is consumed by Leaflet path options and
+       by globe.gl point colours -- neither of which resolves a custom property,
+       and both of which are then handed to fade(), which needs six-digit hex.
+       Index 0 is the faintest, matching --persist-1. */
+    var persist = ['#8a4a05', '#c86f0a', '#f7931a', '#ffd9a0'];
+
+    /* The globe's own surfaces, --globe-* in tokens.css. globe.gl hands every one
+       of these to three.js as a material colour, so they are values rather than
+       var(). strokeDim replaces a #333 and a #222 that were the last neutral
+       greys on the globe -- platinum at low alpha reads as the same material as
+       everything else instead of as a different dark. */
+    var globe = {
+        atmos:     btc300,
+        fillMax:   'rgba(247, 147, 26, 0.85)',
+        fillMin:   'rgba(247, 147, 26, 0.03)',
+        stroke:    'rgba(247, 147, 26, 0.40)',
+        strokeDim: 'rgba(229, 228, 226, 0.10)'
+    };
+
     // Inactive slices in the fleet pie: present, but not competing for attention.
     var seriesMuted = ['#5c5b58', '#4e4d4a', '#414040', '#363535', '#2b2a2a', '#4a4947'];
 
@@ -99,6 +120,8 @@ var ProtonTheme = (function() {
         line: line, lineMid: lineMid,
         pos: pos, neg: neg, warn: warn,
         series: series, seriesMuted: seriesMuted, seriesAt: seriesAt, mutedAt: mutedAt,
+        persist: persist,
+        globe: globe,
         sans: sans, mono: mono,
         alpha: alpha
     };

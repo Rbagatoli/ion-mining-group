@@ -356,7 +356,7 @@ function renderHashrateChart(timeframe) {
             datasets: [{
                 label: 'Hashrate (EH/s)',
                 data: hashValues,
-                borderColor: '#60a5fa',
+                borderColor: ProtonTheme.btc,
                 backgroundColor: 'rgba(96, 165, 250, 0.10)',
                 fill: true,
                 borderWidth: 2,
@@ -368,7 +368,7 @@ function renderHashrateChart(timeframe) {
             scales: Object.assign({}, chartOptions.scales, {
                 y: {
                     ticks: {
-                        color: '#60a5fa',
+                        color: ProtonTheme.btc,
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' EH/s'; }
                     },
@@ -921,7 +921,7 @@ function renderHashPriceChart(days) {
     if (hashPriceChartInstance) hashPriceChartInstance.destroy();
 
     var hpOptions = JSON.parse(JSON.stringify(chartOptions));
-    hpOptions.scales.y.ticks = { color: '#a78bfa', font: { size: 11 }, callback: function(v) { return getCurrencySymbol() + v.toFixed(2); } };
+    hpOptions.scales.y.ticks = { color: ProtonTheme.btc, font: { size: 11 }, callback: function(v) { return getCurrencySymbol() + v.toFixed(2); } };
 
     hashPriceChartInstance = new Chart(document.getElementById('hashPriceChart'), {
         type: 'line',
@@ -930,7 +930,7 @@ function renderHashPriceChart(days) {
             datasets: [{
                 label: 'Hash Price (' + getCurrencySymbol() + '/TH/day)',
                 data: values,
-                borderColor: '#a78bfa',
+                borderColor: ProtonTheme.btc,
                 backgroundColor: 'rgba(167, 139, 250, 0.10)',
                 fill: true,
                 borderWidth: 2,

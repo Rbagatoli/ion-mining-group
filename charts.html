@@ -27,7 +27,7 @@
 
 <nav id="proton-nav"></nav>
 
-<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+<header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;">Network Data</h1>
     <p style="color:var(--plat-500); font-size:12px;">Live Bitcoin price, difficulty, and hashrate</p>
 </header>
@@ -41,7 +41,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="priceTitle">BTC Price (90 Days)</h3>
-            <span id="priceValue" class="chart-live-value" style="color:#f7931a;">--</span>
+            <span id="priceValue" class="chart-live-value btc-orange">--</span>
         </div>
         <div class="time-range-selector" id="priceRange">
             <button data-days="7">7D</button>
@@ -228,7 +228,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="diffTitle">Network Difficulty (1 Year)</h3>
-            <span id="diffValue" class="chart-live-value" style="color:var(--pos);">--</span>
+            <span id="diffValue" class="chart-live-value btc-orange">--</span>
         </div>
         <div class="time-range-selector" id="miningRange">
             <button data-tf="3m">3M</button>
@@ -249,7 +249,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="hashTitle">Network Hashrate (1 Year)</h3>
-            <span id="hashValue" class="chart-live-value" style="color:#60a5fa;">--</span>
+            <span id="hashValue" class="chart-live-value btc-orange">--</span>
         </div>
         <div class="time-range-selector" id="hashRange">
             <button data-tf="3m">3M</button>
@@ -270,7 +270,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="hashPriceTitle">Hash Price (90 Days)</h3>
-            <span id="hashPriceValue" class="chart-live-value" style="color:#a78bfa;">--</span>
+            <span id="hashPriceValue" class="chart-live-value btc-orange">--</span>
         </div>
         <div class="time-range-selector" id="hashPriceRange">
             <button data-days="7">7D</button>
@@ -292,7 +292,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="chart-title-row">
             <h3 id="feeTitle">Fee Rate History</h3>
-            <span id="feeValue" class="chart-live-value" style="color:var(--neg);">--</span>
+            <span id="feeValue" class="chart-live-value btc-orange">--</span>
         </div>
         <div class="time-range-selector" id="feeRange">
             <button data-tf="24h" class="active">24H</button>

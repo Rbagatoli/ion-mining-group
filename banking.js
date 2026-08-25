@@ -1176,7 +1176,7 @@ function renderAddressCards(data) {
                             '<div class="stat-label">Deposit Address</div>' +
                             '<div style="display:flex; align-items:center; gap:6px;">' +
                                 '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(strikeAddr) + '</div>' +
-                                '<button class="copy-addr-btn" data-addr="' + escapeHtml(strikeAddr) + '" style="flex-shrink:0; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#a78bfa; border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                                '<button class="copy-addr-btn" data-addr="' + escapeHtml(strikeAddr) + '" style="flex-shrink:0; background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-300); border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                             '</div>' +
                         '</div>';
                     }
@@ -2211,7 +2211,7 @@ function updateOnchainBadge(type) {
     var badge = document.getElementById('onchainAddrBadge');
     if (!badge) return;
     if (type === 'strike') {
-        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;">Strike Custodial &mdash; funds appear in your Strike balance</span>';
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-300);">Strike Custodial &mdash; funds appear in your Strike balance</span>';
     } else {
         badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); color:#f7931a;">Self-Custody Address</span>';
     }
@@ -3968,7 +3968,7 @@ function renderRevenueTable(entries) {
         var sourceLower = e.source.toLowerCase();
         var sourceBadgeStyle = '';
         if (sourceLower.indexOf('strike') !== -1) {
-            sourceBadgeStyle = 'background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#a78bfa;';
+            sourceBadgeStyle = 'background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-300);';
         } else {
             sourceBadgeStyle = 'background:rgba(247,147,26,0.12); border:1px solid rgba(247,147,26,0.3); color:#f7931a;';
         }
@@ -3979,7 +3979,7 @@ function renderRevenueTable(entries) {
         if (categoryLower.indexOf('mining') !== -1 || categoryLower.indexOf('payout') !== -1) {
             categoryBadgeStyle = 'background:var(--pos-wash); border:1px solid var(--pos-line); color:var(--pos);';
         } else if (categoryLower.indexOf('payment') !== -1 || categoryLower.indexOf('receive') !== -1) {
-            categoryBadgeStyle = 'background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;';
+            categoryBadgeStyle = 'background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-400);';
         } else {
             categoryBadgeStyle = 'background:rgba(156,163,175,0.12); border:1px solid rgba(156,163,175,0.3); color:#9ca3af;';
         }

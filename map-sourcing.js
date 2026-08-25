@@ -3166,26 +3166,43 @@ var MapSourcing = (function() {
     }
 
     // ---- map layer ------------------------------------------------------------------
+    /* SIX-DIGIT HEX, NOT var(). Everything this returns is handed either to a
+       Leaflet path option or to a globe.gl point colour, and on the way it goes
+       through fade() -- which returns its input UNCHANGED when it is not six
+       hex digits. So a var() here does not merely fail to resolve, it silently
+       drops the alpha that dims every unfocused marker, and then fails to
+       resolve. An earlier pass of this migration put one here; this is that
+       corrected, and the ramp wired to --persist-1..4 rather than hardcoded.
+
+       The top of the ramp used to be green, which said 'good' about a site
+       that had merely been SEEN every year. Persistence is not a verdict, and
+       the palette's answer for a scale is the orange ramp. */
     function colorFor(c) {
         if (_colourBy === 'margin') return marginColor(c);
         var meta = SiteCatalog.meta();
         var total = meta ? meta.years.length : 6;
         var r = c.yearsSeen / total;
-        if (r >= 0.99) return 'var(--pos)';
-        if (r >= 0.66) return '#f7931a';
-        if (r >= 0.33) return '#d8863a';
-        return '#8a6a4a';
+        var P = ProtonTheme.persist;
+        if (r >= 0.99) return P[3];
+        if (r >= 0.66) return P[2];
+        if (r >= 0.33) return P[1];
+        return P[0];
     }
 
     // Green healthy, amber thin, red below cash cost. Dragging BTC price down and watching the
     // map turn red is the whole point of the scenario bar.
+    /* Same constraint as colorFor: hex, because fade() and Leaflet both need it.
+       This one IS semantic -- a margin below cash cost is a loss -- so it takes
+       the semantic tokens through their mirror rather than the orange ramp. */
     function marginColor(c) {
         var m = evaluateAt(c);
-        if (m.monthly_revenue === null || m.monthly_net === null || m.monthly_revenue <= 0) return '#666';
+        if (m.monthly_revenue === null || m.monthly_net === null || m.monthly_revenue <= 0) {
+            return ProtonTheme.textDim;          // not measurable, not a verdict
+        }
         var margin = m.monthly_net / m.monthly_revenue;
-        if (margin < 0) return 'var(--neg)';        // below cash cost
-        if (margin < 0.30) return '#e0a92e';     // thin
-        return 'var(--pos)';                        // healthy
+        if (margin < 0) return ProtonTheme.neg;      // below cash cost
+        if (margin < 0.30) return ProtonTheme.warn;  // thin
+        return ProtonTheme.pos;                      // healthy
     }
     var _colourBy = 'persistence';
     function sizeFor(c) {

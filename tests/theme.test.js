@@ -84,8 +84,11 @@ console.log('\n=== one place defines a colour ===');
     // have caught map.html:35 using var(--card-bg), which had never been defined anywhere and
     // silently fell back for its whole life.
     var defined = {};
-    (TOKENS.match(/^\s*--[a-z0-9-]+\s*:/gim) || []).forEach(function(d) {
-        defined[d.trim().replace(/\s*:$/, '')] = true;
+    var definedValue = {};
+    (TOKENS.match(/^\s*--[a-z0-9-]+\s*:[^;]+;/gim) || []).forEach(function(d) {
+        var name = d.slice(0, d.indexOf(':')).trim();
+        defined[name] = true;
+        definedValue[name] = d.slice(d.indexOf(':') + 1).replace(/;\s*$/, '').trim();
     });
     var missing = {};
     FILES.forEach(function(f) {
@@ -99,9 +102,26 @@ console.log('\n=== one place defines a colour ===');
 
     // The disease this whole migration exists to cure: 9 of 22 tokens were defined and read by
     // nothing, so the token file was decorative and editing it changed nothing on screen.
+    /* A TOKEN CONSUMED THROUGH THE JS MIRROR IS NOT DEAD.
+     *
+     * Canvas, Chart.js, globe.gl and Leaflet cannot resolve a custom property, so
+     * the ramps they need -- the series colours, the muted slices, the
+     * persistence steps, the globe's surfaces -- are carried in theme.js as real
+     * strings. Nothing writes var(--sr-1), and nothing should, but --sr-1 is not
+     * dead: it is the definition theme.js copies.
+     *
+     * The test for that is the VALUE appearing verbatim in theme.js, which does
+     * two jobs with one rule. It marks the token live, and it fails the moment
+     * tokens.css is edited without theme.js -- which is the real hazard of a
+     * hand-kept mirror, and the one that would otherwise be invisible until a
+     * chart drew in a colour the palette no longer contains. */
+    var THEME = read('theme.js') || '';
     var unused = Object.keys(defined).filter(function(name) {
         if (name.indexOf('--metal') === 0 || name.indexOf('--edge') === 0) return false;  // used via composition
-        return !FILES.some(function(f) { return f.text.indexOf('var(' + name) >= 0; });
+        if (FILES.some(function(f) { return f.text.indexOf('var(' + name) >= 0; })) return false;
+        var v = definedValue[name];
+        if (v && THEME.indexOf(v) >= 0) return false;       // carried by the mirror
+        return true;
     });
     eq('no token is defined and never read', unused.join(', ') || 'none', 'none');
 
