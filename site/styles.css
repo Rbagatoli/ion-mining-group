@@ -2143,32 +2143,26 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
 .site-diagram { display: block; width: 100%; height: auto; cursor: grab; touch-action: pan-y; }
 
-/* ===== A FIGURE THAT HAS BEEN TAPPED =====
+/* ===== A FIGURE SOMEBODY IS USING =====
 
-   touch-action: none means the browser keeps nothing: every touch that lands on
-   the DRAWING is delivered to diagram-engine.js, in both axes, and the page
-   cannot scroll underneath it. That is the "lock" - not a body scroll lock,
-   which would be a site that cannot be scrolled at all if anything went wrong
-   between locking and unlocking.
+   is-live IS FEEDBACK NOW, NOT A GATE. It used to be the switch that turned
+   touch capture on, and the tap that threw it kept failing: a tap on a real
+   screen drifts further than a mouse click does, and the pan-y the drawing
+   carried until then let the browser claim any touch with a vertical component
+   the moment it had one - which fires pointercancel and throws the half-formed
+   tap away. So the commonest gesture of all, a finger landing on the picture and
+   moving, scrolled the page and armed nothing. Three rounds of "it still
+   scrolls" were the same sentence each time: the gate did not open.
 
-   THE DRAWING, NOT THE BLOCK. The first version put this on .dg-wrap, which at
-   this width is a grid holding the drawing AND the eight callout cards beneath
-   it - so locking the figure froze a screen and a half of labels along with it,
-   and reading them meant unlocking first. The lock is the rendering window and
-   nothing else: the cards below scroll the page exactly as any other card does,
-   while the drawing above them keeps every touch that lands on it.
+   Capture is unconditional on touch now - see touch-action on .site-diagram in
+   the touch block below - and this class only says so on screen: the window is
+   ringed and its hint goes orange, from the first touch until the reader touches
+   something else.
 
-   Releasing is still the whole figure's business, deliberately. A touch on a
-   callout, or on the +/- buttons that sit over the drawing, leaves the lock
-   alone - otherwise tapping "+" to zoom would let go of the thing you were
-   zooming. Only a touch outside the figure altogether releases it.
-
-   UNCONDITIONAL, AND IT DOES NOT NEED TO BE IN THE TOUCH MEDIA QUERY. The class
-   is only ever added by a touch tap, and this selector is (0,3,0) against (0,1,0)
-   for the rule it has to beat - so specificity settles it wherever the other
-   rules happen to sit in the file, which is the opposite of how the two
-   contradictory touch-action rules used to resolve. */
-.dg-wrap.is-live .site-diagram { touch-action: none; }
+   THE DRAWING, NOT THE BLOCK. .dg-wrap at this width is a grid holding the
+   drawing AND the eight callout cards beneath it. Only the rendering window
+   captures touches; the cards below scroll the page exactly as any other card
+   does, and the +/- buttons over the drawing stay taps. */
 
 .dg-wrap.is-live .dg-hint { color: var(--btc-300); }
 .dg-wrap.is-dragging .site-diagram { cursor: grabbing; }
@@ -3017,7 +3011,16 @@ a.fac:hover .fac-go { color: var(--btc-200); }
         touch-action: pan-y;
         touch-action: pan-y pinch-zoom;
     }
-    .dg-wrap .site-diagram { touch-action: pan-y; }
+    /* NONE, ALWAYS - NOT ONLY ONCE IT HAS BEEN TAPPED.
+
+       A touch that lands on the rendering window belongs to the rendering
+       window: it turns the model or zooms it, and it never scrolls the page.
+       There is no gate to get through, because the gate is what kept failing.
+
+       The cost is honest and small. You cannot scroll the page by starting a
+       drag on the picture - 211px of an 844px screen - and every other pixel on
+       the page, the eight callout cards included, scrolls normally. */
+    .dg-wrap .site-diagram { touch-action: none; }
 
     /* AND IT HAS TO LOOK LOCKED. A mode nobody can see is a page that has
        stopped scrolling for no reason - the single worst outcome available here.

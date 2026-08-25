@@ -106,30 +106,34 @@
     var OCCLUDING = ['ground', 'inside', 'asics', 'end', 'side', 'top', 'flame'];
 
 
-    /* --- TAP TO LOCK ------------------------------------------------------
+    /* --- THE DRAWING OWNS THE TOUCHES THAT LAND ON IT --------------------
      *
-     * A figure that is LIVE owns every touch that lands on it: one finger turns
-     * it in both axes, two zoom it, and the page does not move underneath.
+     * One rule, and no mode to get into: a finger that lands on a rendering
+     * window turns that model or zooms it, and never scrolls the page. Every
+     * other pixel on the page - the callout cards under the drawing included -
+     * scrolls exactly as it always did.
      *
-     * WHY A MODE AT ALL. The previous answer was touch-action: pan-y, which lets
-     * the browser decide per gesture - vertical is a scroll, horizontal is a
-     * turn. That is unambiguous on paper and not on a phone: the browser judges
-     * by the first few pixels, so a drag meant for the model that starts a few
-     * degrees off horizontal is gone before the figure sees it, and the page
-     * moves instead. There is no threshold that fixes it, because the two
-     * gestures are genuinely the same gesture. Asking first is the only way to
-     * know, which is what a map does and for the same reason.
+     * WHAT CAME BEFORE, AND WHY IT KEPT FAILING. First touch-action: pan-y, so
+     * the browser could sort a scroll from a turn by direction. It judges on the
+     * first few pixels, so a drag meant for the model that started a few degrees
+     * off vertical was gone before the figure saw it. Then a tap to arm it, which
+     * was worse: a tap on a real screen drifts further than a mouse click, and
+     * pan-y let the browser claim any touch with a vertical component the moment
+     * it had one - firing pointercancel and throwing the half-formed tap away. So
+     * the commonest gesture of all, a finger landing on the picture and moving,
+     * scrolled the page and armed nothing.
      *
-     * ONE AT A TIME, module-level, because a page can carry four of these
-     * (energy.html does) and two locked figures would be two answers again.
+     * The lesson is that there was never a gesture to disambiguate. On the
+     * picture, every touch is for the picture.
      *
-     * NO BODY SCROLL LOCK. The obvious way to "freeze the page" is position:
-     * fixed on the body with the scroll offset restored on exit, and it is a
-     * trap: anything that throws between lock and unlock leaves a site that
-     * cannot be scrolled at all. touch-action: none on the live figure is enough
-     * - a touch that lands on it cannot scroll anything - and a touch that lands
-     * anywhere else exits the mode, which is what "click off" means. The worst
-     * failure this can produce is a figure that stays outlined. */
+     * is-live IS ONLY FEEDBACK NOW: the ring and the orange hint, on from the
+     * first touch until the reader touches something else. Still one at a time
+     * across the page, module-level, because energy.html carries four figures.
+     *
+     * NO BODY SCROLL LOCK, EVER. The obvious way to "freeze the page" is
+     * position: fixed on the body with the offset restored afterwards, and it is
+     * a trap: anything that throws in between leaves a site that cannot be
+     * scrolled at all. The worst this can produce is a figure that stays ringed. */
     var live = { wrap: null, off: null };
     var docBound = false;
 
@@ -697,7 +701,6 @@
             var pointers = {};   // every pointer currently down, by id
             var pending = null;  // a touch that has not yet said what it is
             var pinch = null;    // { d: spread at start, zoom: zoom at start }
-            var tapAt = null;    // where one finger landed, still short of being a drag
             var TOUCH_SLOP = 8;  // px of travel before a touch is a gesture and not a tap
 
             function isLive() { return live.wrap === wrap; }
@@ -755,23 +758,21 @@
                     // The second finger arriving turns whatever was happening into a pinch.
                     endDrag(e);
                     pending = null;
-                    tapAt = null;
                     pinch = { d: spread(), zoom: getView().zoom };
                     goManual();
                     return;
                 }
-                /* BOTH OF THESE ARE THE DRAWING'S, not the figure's.
-                   The callout cards below it are page content: a finger on one
-                   scrolls, and neither turns the model nor locks it. Only the
-                   rendering window does either.
+                /* THE DRAWING'S, FROM THE FIRST TOUCH, IN BOTH AXES.
+                   No tap to arm it and no direction test: a finger that lands
+                   here has said everything it needs to. The callout cards below
+                   are page content and never reach this line — a finger on one
+                   scrolls, as it should.
 
-                   LIVE: the finger is the drawing's, both axes, from the first
-                   move. NOT LIVE: only a drag that proves itself horizontal —
-                   see the direction test in pointermove. */
+                   The ring comes on now rather than on pointerup, so the figure
+                   acknowledges the touch before the finger has moved. */
                 if (!inDrawing(e.target)) return;
-                tapAt = { x: e.clientX, y: e.clientY, id: e.pointerId };
-                pending = { x: e.clientX, y: e.clientY, id: e.pointerId,
-                            free: isLive() };
+                setLive(true);
+                pending = { x: e.clientX, y: e.clientY, id: e.pointerId };
             });
 
             wrap.addEventListener('pointermove', function (e) {
@@ -787,18 +788,14 @@
                     }
                     return;
                 }
-                if (tapAt && (Math.abs(e.clientX - tapAt.x) > TOUCH_SLOP ||
-                              Math.abs(e.clientY - tapAt.y) > TOUCH_SLOP)) tapAt = null;
-
                 if (pending) {
                     var dx = e.clientX - pending.x, dy = e.clientY - pending.y;
+                    /* The only thing left to wait for is enough travel to tell a
+                       drag from a tap, so a tap does not nudge the model. There is
+                       no direction test any more: the drawing carries
+                       touch-action: none, so there is no scroll to lose a vertical
+                       gesture to, and both axes are its own. */
                     if (Math.abs(dx) < TOUCH_SLOP && Math.abs(dy) < TOUCH_SLOP) return;
-                    /* Mostly vertical: this was a scroll. Let go of it entirely — the
-                       browser is already scrolling, and touch-action: pan-y means we
-                       were never going to win it anyway. A LIVE figure skips this
-                       test: it carries touch-action: none, so there is no scroll to
-                       lose the gesture to and both axes are its own. */
-                    if (!pending.free && Math.abs(dy) >= Math.abs(dx)) { pending = null; return; }
                     /* Origin is where the finger is NOW, not where it landed, so the
                        eight pixels it spent proving itself are not applied to the model
                        in one frame as a jump. */
@@ -822,14 +819,6 @@
             }
             function endPointer(e) {
                 delete pointers[e.pointerId];
-                /* A TAP LOCKS THE FIGURE. One finger, down and up inside the slop,
-                   nothing else in play: that is somebody pointing at the drawing,
-                   and from here until they touch anything else it is theirs. */
-                if (e.pointerType === 'touch' && tapAt && tapAt.id === e.pointerId &&
-                    !drag && !pinch && pcount() === 0 && !onControl(e.target)) {
-                    setLive(true);
-                }
-                if (tapAt && tapAt.id === e.pointerId) tapAt = null;
                 if (pending && pending.id === e.pointerId) pending = null;
                 if (pinch && pcount() < 2) {
                     pinch = null;
@@ -841,16 +830,36 @@
                 }
                 endDrag(e);
             }
+            /* THE GUARANTEE, and it does not depend on touch-action at all.
+             *
+             * touch-action is a hint the engine reads BEFORE the gesture starts;
+             * preventDefault on a non-passive touchmove wins after it has started
+             * and on engines whose touch-action support is partial or buggy. This
+             * figure has now had three rounds of "it still scrolls" on a real
+             * phone while a headless browser insisted it did not, so the fix is
+             * not another declaration - it is the one mechanism that has been
+             * absolute since touch events existed.
+             *
+             * ON THE DRAWING, so the listener never sees a touch that started
+             * anywhere else: touch events retarget for the whole gesture to the
+             * element the finger first landed on. A finger that starts on a
+             * callout keeps scrolling the page and never reaches this.
+             *
+             * passive: false is the whole point - a passive listener's
+             * preventDefault is ignored, and Safari and Chrome both default
+             * touchmove to passive. */
+            svg.addEventListener('touchmove', function (e) {
+                if (e.cancelable) e.preventDefault();
+            }, { passive: false });
+
             wrap.addEventListener('pointerup', endPointer);
-            /* A CANCEL IS NOT A TAP. The browser fires it when it has decided the
-               gesture is a scroll and taken it, which can happen while the finger
-               is still inside the slop — and without this, scrolling the page with
-               a finger that happened to start on the drawing would lock the figure
-               on the way past, which is the bug this whole mode exists to end. */
-            wrap.addEventListener('pointercancel', function (e) {
-                tapAt = null;
-                endPointer(e);
-            });
+            /* A CANCEL SHOULD NOT HAPPEN ON THE DRAWING ANY MORE - it is the
+               browser saying it has taken the gesture for a scroll, and
+               touch-action: none means there is no scroll for it to take. It is
+               still handled, because a browser that does not honour touch-action
+               is exactly the case the touchmove guard below exists for, and this
+               keeps the pointer bookkeeping straight when one arrives. */
+            wrap.addEventListener('pointercancel', endPointer);
 
             /* --- Wheel to zoom, about the centre so nothing needs measuring.
                    The pointer has priority: while it is anywhere over the

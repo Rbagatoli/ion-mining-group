@@ -336,10 +336,23 @@ function subpathAreas(d) {
 
   /* ---- THE GESTURE CONTRACT ----------------------------------------------
    *
-   * One finger is the page; two fingers are the model. Asserting that a handler
-   * is bound says nothing about either, and the thing that made this figure feel
-   * broken on a phone was never a missing handler - it was pointerdown claiming
-   * the model the instant a finger landed, so scrolling past the drawing froze it.
+   * A touch that lands on the DRAWING is the drawing's, in both axes. A touch
+   * that lands anywhere else, the callout cards included, is the page's.
+   *
+   * These assertions used to encode the opposite - that a vertical swipe on the
+   * drawing belonged to the page - and they passed for three deploys while the
+   * figure was unusable on a phone. Encoding the old contract faithfully is not
+   * the same as the contract being right, which is the only reason to write down
+   * what the last three versions were:
+   *
+   *   touch-action: pan-y      the browser sorts scroll from turn by direction.
+   *                            It decides on the first few pixels, so a drag
+   *                            meant for the model that starts off-vertical is
+   *                            gone before the figure sees it.
+   *   tap to arm it            worse. A tap on a real screen drifts, and pan-y
+   *                            let the browser cancel the half-formed tap the
+   *                            moment it had a vertical component.
+   *   the drawing owns it      this. No mode, no direction test, no gate.
    *
    * goManual() is observable through the fake clock: it schedules the resume
    * timer. Rotation is observable through `writes`, because paint() is the only
@@ -352,32 +365,45 @@ function subpathAreas(d) {
   const mouse = (id, x, y) => Object.assign(touch(id, x, y), { pointerType: 'mouse' });
   const paints = () => writes;
 
-  // A finger that has landed and not moved has decided nothing.
+  // A finger that has landed and not moved has not turned anything yet.
   timers.length = 0;
   W.pointerdown(touch(1, 100, 100));
   if (timers.length) fail('a touch that has not moved already stopped the idle turn');
 
-  // Mostly vertical: the page's. The model must not move and must not stop.
+  // Vertical, on the drawing: the DRAWING's. This is the case that was broken.
   let w1 = paints();
   W.pointermove(touch(1, 103, 140));
-  if (paints() !== w1) fail('a vertical swipe rotated the model');
-  if (timers.length) fail('a vertical swipe stopped the idle turn');
-  W.pointerup(touch(1, 103, 140));
+  W.pointermove(touch(1, 103, 180));
+  if (paints() === w1) fail('a vertical drag on the drawing did not turn the model');
+  if (!timers.length) fail('turning the model did not stop the idle turn');
+  W.pointerup(touch(1, 103, 180));
 
-  // Mostly horizontal, past the slop: the model's.
+  // Horizontal, on the drawing: also the drawing's.
   W.pointerdown(touch(2, 100, 100));
   w1 = paints();
   W.pointermove(touch(2, 140, 104));
-  if (paints() === w1) fail('a horizontal swipe did not turn the model');
-  if (!timers.length) fail('turning the model did not stop the idle turn');
-  W.pointerup(touch(2, 140, 104));
+  W.pointermove(touch(2, 180, 104));
+  if (paints() === w1) fail('a horizontal drag did not turn the model');
+  W.pointerup(touch(2, 180, 104));
 
-  // Under the slop in both axes: still undecided, still nothing.
+  // Under the slop in both axes: a tap, not a drag. The model must not jump.
   W.pointerdown(touch(3, 100, 100));
   w1 = paints();
   W.pointermove(touch(3, 104, 103));
   if (paints() !== w1) fail('a 5px twitch was treated as a drag');
   W.pointerup(touch(3, 104, 103));
+
+  /* THE GUARANTEE THAT DOES NOT DEPEND ON touch-action. A non-passive touchmove
+     listener on the drawing that calls preventDefault is the only mechanism that
+     has been absolute since touch events existed, and it is what makes this work
+     on an engine whose touch-action support is partial. */
+  const T = handlers['siteDiagram'] || {};
+  if (!T.touchmove) fail('nothing prevents the default on touchmove over the drawing');
+  else {
+    let prevented = 0;
+    T.touchmove({ cancelable: true, preventDefault: () => prevented++ });
+    if (!prevented) fail('touchmove over the drawing did not preventDefault the scroll');
+  }
 
   // Two fingers zoom the model. This did nothing at all before: touch-action
   // forbade the browser from zooming and no handler picked it up.
@@ -408,23 +434,24 @@ function subpathAreas(d) {
   const wrapEl = get('wrap');
   const isLive = () => wrapEl.classList.contains('is-live');
 
-  /* The 5px-twitch case above IS a tap, so the figure is already locked here.
-     Released the way a reader releases it - a touch somewhere else - rather than
-     by reaching in and stripping the class, which would leave the engine still
+  /* The ring comes on with the first touch, so it is already on here. Released
+     the way a reader releases it - a touch somewhere else - rather than by
+     reaching in and stripping the class, which would leave the engine still
      believing it owned the figure and make the next assertion pass for the wrong
      reason. It did exactly that on the first attempt. */
   const DOC = handlers['document'] || {};
   const elsewhere = mkEl('somewhere-else');
-  if (!DOC.pointerdown) fail('nothing listens on the document for the tap that releases a figure');
+  if (!DOC.pointerdown) fail('nothing listens on the document for the touch that releases a figure');
   else DOC.pointerdown({ target: elsewhere });
   if (isLive()) fail('a touch outside the figure did not release it');
 
-  // Down and up inside the slop, one finger: a tap.
+  // Touching the drawing rings it, with no tap to land and no drift to survive.
   W.pointerdown(touch(10, 100, 100));
+  if (!isLive()) fail('touching the drawing did not ring it');
   W.pointerup(touch(10, 102, 101));
-  if (!isLive()) fail('tapping the drawing did not lock it');
+  if (!isLive()) fail('lifting the finger un-ringed it');
 
-  // Now a VERTICAL drag turns the model instead of being handed to the page.
+  // A vertical drag turns the model. This is the case that was broken on a phone.
   V.resetView();
   const p0 = V.getView().pitch;
   W.pointerdown(touch(11, 100, 100));
@@ -433,22 +460,8 @@ function subpathAreas(d) {
      are not applied as a jump - so it is the second that turns anything. */
   W.pointermove(touch(11, 101, 140));
   W.pointermove(touch(11, 101, 180));
-  if (V.getView().pitch === p0)
-    fail('while locked, a vertical drag did not turn the model');
+  if (V.getView().pitch === p0) fail('a vertical drag did not turn the model');
   W.pointerup(touch(11, 101, 180));
-
-  // A swipe is not a tap, so a finger that scrolled past cannot leave it locked.
-  DOC.pointerdown({ target: elsewhere });
-  W.pointerdown(touch(12, 100, 100));
-  W.pointermove(touch(12, 104, 160));
-  W.pointerup(touch(12, 104, 160));
-  if (isLive()) fail('a swipe past the figure locked it');
-
-  // Nor can a gesture the browser took for a scroll: pointercancel is not a tap.
-  W.pointerdown(touch(13, 100, 100));
-  H.pointercancel ? H.pointercancel(touch(13, 101, 103))
-                  : W.pointercancel(touch(13, 101, 103));
-  if (isLive()) fail('a gesture the browser cancelled locked the figure');
 
   /* THE LOCK IS THE RENDERING WINDOW, NOT THE BLOCK. The callout cards sit in
      the same wrapper and are page content: while the drawing is locked they must
