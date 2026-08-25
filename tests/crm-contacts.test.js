@@ -208,5 +208,47 @@ SiteData.add(SiteData.normalize({ id: 'p7', stage: 'contacted' }));
 eq('a prospect never contacted is not "gone quiet"',
    CrmInteractions.isStale('p7', 'contacted'), false);
 
+/* ---- The timeline is one story, not two lists ----------------------------
+   "We spoke, then I moved it to term sheet, then they went quiet" is a single
+   sequence. Stage transitions and interactions come from the same append-only
+   store, so showing them as two lists would make the reader reassemble what the
+   data already knows. */
+var ProspectDetail = require(ROOT + '/prospect-detail.js');
+fresh();
+SiteData.add(SiteData.normalize({ id: 'p8', name: 'Timeline', stage: 'unreviewed' }));
+CrmInteractions.log('p8', { type: 'email', summary: 'Introduced ourselves',
+    occurred_at: new Date(Date.now() - 10 * DAY).toISOString() });
+SiteData.setStage('p8', 'contacted', { note: 'Sent the intro' });
+var early = CrmInteractions.log('p8', { type: 'call', summary: 'They said yes',
+    outcome: 'positive', occurred_at: new Date(Date.now() - 2 * DAY).toISOString() });
+
+var tl = ProspectDetail.timeline('p8');
+eq('both kinds of event share one timeline', tl.length, 3);
+
+/* ORDERED BY WHEN THINGS HAPPENED, NOT BY WHEN THEY WERE TYPED, and this
+   ordering is the proof. The call was created LAST but backdated two days; the
+   stage move could only happen when it was recorded, which was just now. So the
+   stage move is newest even though the call was written after it.
+
+   The first version of these assertions expected the call on top, because it was
+   the last line of the fixture. That is creation order, and creation order is
+   exactly what a contact log must not use -- a call written up the next morning
+   is still yesterday's call, and every staleness number on the site depends on
+   that being true. */
+eq('newest first is the stage move, recorded a moment ago', tl[0].entry.kind, 'stage');
+eq('then the call, backdated two days', tl[1].entry.summary, 'They said yes');
+eq('with the oldest last', tl[2].entry.summary, 'Introduced ourselves');
+
+/* A backdated interaction sorts by when it HAPPENED, not when it was typed --
+   which is the only reason the stage move is in the middle above. Both the email
+   and the call were written after it. */
+CrmInteractions.correct(early.entry.id, { outcome: 'neutral' });
+var tl2 = ProspectDetail.timeline('p8');
+eq('a correction appears on the timeline too', tl2.length, 4);
+var corrected = tl2.filter(function (t) { return t.entry.id === early.entry.id; })[0];
+ok(corrected && corrected.correctedBy,
+   'and the entry it replaced is marked corrected rather than removed',
+   'the point of an immutable log is seeing what you believed at the time');
+
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  ALL PASS — ' + pass + ' assertions');
 process.exit(fail ? 1 : 0);

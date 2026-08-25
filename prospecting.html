@@ -112,6 +112,77 @@
            outstanding here" without opening anything. */
         .pb-due { font-family:var(--mono); font-size:10px; color:var(--plat-500); }
         .pb-due.is-late { color:var(--neg); }
+
+        /* ---- one prospect ---- */
+        .pd-head { max-width:900px; margin:0 0 16px; }
+        .pd-back { font-size:11.5px; color:var(--plat-400); text-decoration:none; }
+        .pd-back:hover { color:var(--btc-300); }
+        .pd-title { margin:6px 0 8px; font-size:19px; color:var(--plat-100); }
+        .pd-facts { display:flex; flex-wrap:wrap; gap:16px; font-family:var(--mono);
+                    font-size:11px; color:var(--plat-400); margin:0 0 10px; }
+        .pd-stagepick { display:inline-flex; flex-direction:column; gap:4px;
+                        font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+                        color:var(--plat-500); }
+        .pd-sec { max-width:900px; border:1px solid var(--line); background:var(--panel);
+                  border-radius:var(--radius); margin:0 0 14px; }
+        .pd-sec h3 { margin:0; padding:10px 14px 8px; font-size:11px; letter-spacing:.12em;
+                     text-transform:uppercase; color:var(--plat-300);
+                     border-bottom:1px solid var(--line); }
+        .pd-none { margin:0; padding:12px 14px; font-size:12px; color:var(--plat-500);
+                   font-style:italic; }
+        .pd-absent { color:var(--plat-600); font-style:italic; }
+
+        .pd-form { padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+        .pd-frow { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+        .pd-form label { display:flex; flex-direction:column; gap:4px; font-size:10.5px;
+                         letter-spacing:.08em; text-transform:uppercase; color:var(--plat-500); }
+        .pd-grow { flex:1 1 160px; } .pd-grow2 { flex:2 1 260px; }
+        .pd-form input, .pd-form select {
+            background:var(--black); border:1px solid var(--line-mid); color:var(--plat-200);
+            border-radius:var(--radius); padding:6px 8px; font-size:12.5px;
+            font-family:inherit; text-transform:none; letter-spacing:0; }
+        .pd-btn { background:transparent; border:1px solid var(--line-mid); color:var(--plat-300);
+                  border-radius:var(--radius); font-size:11.5px; padding:6px 12px; cursor:pointer; }
+        .pd-btn:hover { border-color:var(--btc-300); color:var(--btc-300); }
+        .pd-btn--go { border-color:var(--btc-300); color:var(--btc-300); }
+        .pd-hint { margin:0; font-size:11px; color:var(--plat-600); }
+        .pd-hint.is-err { color:var(--neg); }
+
+        .pd-follows, .pd-contacts { list-style:none; margin:0; padding:0; }
+        .pd-follows li, .pd-contacts li { display:flex; flex-wrap:wrap; gap:12px;
+            align-items:baseline; padding:8px 14px; border-bottom:1px solid var(--line);
+            font-size:12.5px; }
+        .pd-follows li:last-child, .pd-contacts li:last-child { border-bottom:none; }
+        .pd-fdue { font-family:var(--mono); font-size:11px; color:var(--plat-400); }
+        .pd-fdue.is-late { color:var(--neg); }
+        .pd-fwhat { flex:1 1 auto; color:var(--plat-200); }
+        .pd-cname { color:var(--plat-100); }
+        .pd-best { font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
+                   color:var(--btc-300); }
+        .pd-crole, .pd-cver, .pd-calso { font-size:10.5px; color:var(--plat-500); }
+        .pd-cways { flex:1 1 auto; font-family:var(--mono); font-size:11px; color:var(--plat-400); }
+
+        .pd-tl { list-style:none; margin:0; padding:0; }
+        .pd-ev { display:flex; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line);
+                 font-size:12.5px; }
+        .pd-ev:last-child { border-bottom:none; }
+        .pd-when { font-family:var(--mono); font-size:11px; color:var(--plat-500);
+                   flex:0 0 78px; }
+        .pd-body { flex:1 1 auto; color:var(--plat-300); }
+        .pd-kind { font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+                   color:var(--plat-500); }
+        .pd-note { display:block; margin-top:3px; color:var(--plat-400); }
+        .pd-next { display:block; margin-top:3px; font-size:11px; color:var(--btc-300); }
+        /* A corrected entry is struck through rather than replaced. The point of an
+           immutable log is seeing what you believed at the time. */
+        .pd-ev.is-corrected .pd-note { text-decoration:line-through; color:var(--plat-600); }
+        .pd-corr { display:block; margin-top:2px; font-size:10px; color:var(--plat-600);
+                   font-style:italic; }
+        .pd-pill { font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+                   padding:1px 6px; border-radius:var(--radius); }
+        .pd-pill.t-positive { background:var(--pos-line); color:var(--pos); }
+        .pd-pill.t-negative { background:var(--neg-wash); color:var(--neg); }
+        .pd-pill.t-neutral  { background:var(--line-mid); color:var(--plat-400); }
     </style>
 </head>
 <body>
@@ -125,6 +196,10 @@
 
     <section id="todaySection">
         <div id="ptoday"></div>
+    </section>
+
+    <section id="detailSection" hidden>
+        <div id="pdetail"></div>
     </section>
 
     <section id="boardSection" hidden>
@@ -149,6 +224,7 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=340"></script>
 <script src="./prospect-today.js?v=340"></script>
+<script src="./prospect-detail.js?v=340"></script>
 <script src="./prospecting.js?v=340"></script>
 </body>
 </html>
