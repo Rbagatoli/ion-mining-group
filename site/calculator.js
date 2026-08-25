@@ -658,7 +658,7 @@
         'outDailyRevenue', 'outDailyPower', 'outEfficiency', 'outFleetHash',
         'outFleetPower', 'outMachines', 'outHorizon', 'outInvestment',
         'outBtcMined', 'outPowerSpend', 'outTotalPl', 'outHeldBtc',
-        'outHeldValue', 'outFinalPrice', 'outBenchmark', 'outAdvantage',
+        'outHeldValue', 'outFinalPrice', 'outBenchmark', 'outBenchmarkValue', 'outAdvantage',
         'outOvertake', 'outVerdict',
     ];
 
@@ -760,16 +760,33 @@
 
         // Benchmark. Not a Proton claim — just the obvious alternative use of the
         // same money, which the engine already computes.
+        /* The VALUE first, because it is the number people look for, and the net
+           second, because it is the number that answers the comparison. On pre-tax
+           income the net is negative at a flat price by exactly the income tax
+           paid to get in - which is the point being made, not an error. */
+        setText('outBenchmarkValue', money(r.buyHoldFinalValue));
         setSigned('outBenchmark', money(r.buyHoldFinalNet), r.buyHoldFinalNet);
+        var benchLabel = $('outBenchmarkLabel');
+        if (benchLabel) {
+            benchLabel.textContent = r.preTaxCapital
+                ? 'What it buys after income tax'
+                : 'What it buys in BTC';
+        }
         setSigned('outAdvantage', money(r.miningAdvantage), r.miningAdvantage);
         setText('outOvertake', r.overtakePeriod
             ? r.overtakePeriod + ' ' + (r.overtakePeriod === 1 ? unit1 : unit)
             : 'Not within ' + p.numPeriods + ' ' + unit);
         var verdict = $('outVerdict');
         if (verdict) {
+            /* "the same dollar" is only true when the money is already taxed. With
+               pre-tax income the two sides are deliberately different sizes, and a
+               verdict that says otherwise contradicts the control that made it so. */
+            var sameDollar = !r.preTaxCapital;
             verdict.textContent = r.isMiningBetter
-                ? 'Mining ahead of buying the same dollar of BTC'
-                : 'Buying the same dollar of BTC ahead of mining';
+                ? (sameDollar ? 'Mining ahead of buying the same dollar of BTC'
+                              : 'Mining ahead of buying BTC with the income after tax')
+                : (sameDollar ? 'Buying the same dollar of BTC ahead of mining'
+                              : 'Buying BTC with the income after tax ahead of mining');
             verdict.classList.toggle('is-up', r.isMiningBetter);
             verdict.classList.toggle('is-down', !r.isMiningBetter);
         }

@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=c813e4d5">
+<link rel="stylesheet" href="./styles.css?v=3d27d269">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -191,7 +191,16 @@
             <h3>Against simply buying BTC</h3>
             <p class="calc-verdict" id="outVerdict">—</p>
             <dl>
-              <div><dt>Buying the same dollar</dt><dd id="outBenchmark">—</dd></div>
+              <!-- TWO ROWS, BECAUSE THEY ARE TWO DIFFERENT QUANTITIES and one label
+                   was being asked to carry both. "Buying the same dollar" showed a NET
+                   P/L, so a reader who put in $206,000 at 20% saw -$41,200 where they
+                   were looking for the $164,800 of bitcoin it buys. Both figures were
+                   right; only one was on screen, under a name that suggested the other.
+
+                   And it is not "the same dollar" any more once the pre-tax option is
+                   on - that option exists precisely because it is not. -->
+              <div><dt id="outBenchmarkLabel">What it buys in BTC</dt><dd id="outBenchmarkValue">—</dd></div>
+              <div><dt>Its net, against the same outlay</dt><dd id="outBenchmark">—</dd></div>
               <div><dt>Difference</dt><dd id="outAdvantage">—</dd></div>
               <div><dt>Mining pulls ahead at</dt><dd id="outOvertake">—</dd></div>
             </dl>
@@ -654,11 +663,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=c813e4d5"></script>
-<script src="./hero-anim.js?v=c813e4d5"></script>
-<script src="./cart.js?v=c813e4d5"></script>
-<script src="./miner-db.js?v=c813e4d5"></script>
-<script src="./calc-engine.js?v=c813e4d5"></script>
-<script src="./calculator.js?v=c813e4d5"></script>
+<script src="./site.js?v=3d27d269"></script>
+<script src="./hero-anim.js?v=3d27d269"></script>
+<script src="./cart.js?v=3d27d269"></script>
+<script src="./miner-db.js?v=3d27d269"></script>
+<script src="./calc-engine.js?v=3d27d269"></script>
+<script src="./calculator.js?v=3d27d269"></script>
 </body>
 </html>

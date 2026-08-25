@@ -683,6 +683,33 @@ ok(JSON.stringify(RootEngine.computeProjection(
    JSON.stringify(ptOn),
    'and the app engine agrees with the site engine on all of it');
 
+/* A VALUE AND A NET ARE TWO NUMBERS. The benchmark panel showed only the net,
+   under the label "Buying the same dollar" - so $206,000 of pre-tax income at 20%
+   read as -$41,200 where the reader was looking for the $164,800 of bitcoin it
+   buys. Both figures were right; one was on screen under a name suggesting the
+   other. They are separate rows now, and the value comes first because it is the
+   one people look for. */
+/* Read here rather than leaning on the copy declared further down: `var` hoists,
+   so that name is in scope but undefined at this point. The first run of these
+   had one assertion fail on it and the next one PASS on it, because a negated
+   test against undefined is true - vacuous in exactly the direction that hides a
+   bug. */
+var benchHtml = fs.readFileSync(S + 'calculator.html', 'utf8');
+ok(/id="outBenchmarkValue"/.test(benchHtml) && /id="outBenchmark"/.test(benchHtml),
+   'the benchmark panel shows what it buys AND what that nets',
+   'one row cannot carry both a value and a profit');
+ok(!/Buying the same dollar<\/dt>/.test(benchHtml),
+   'and no longer labels a net as if it were the purchase');
+var siteJs0 = fs.readFileSync(S + 'calculator.js', 'utf8');
+ok(/outBenchmarkValue[\s\S]{0,120}?buyHoldFinalValue/.test(siteJs0),
+   'the value row is fed the value, not the net');
+ok(/preTaxCapital[\s\S]{0,200}?after income tax/.test(siteJs0),
+   'and the label says so when the money is pre-tax income');
+/* "the same dollar" is only true when both sides spend the same. The pre-tax
+   option exists because they do not, so the verdict must stop saying it. */
+ok(/sameDollar/.test(siteJs0),
+   'the verdict stops claiming "the same dollar" once the sides differ in size');
+
 /* A CONTROL THAT EXISTS BUT DOES NOTHING is the failure this catches, because
    it is the one that happened. The site page sweeps an id list and re-renders on
    any of them, so adding the id was enough. The app wires a listener per control,
