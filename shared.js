@@ -145,7 +145,12 @@ function initNav(activePage) {
     if (window.ION_EMBED) { nav.style.display = 'none'; return; }
     nav.className = 'proton-nav';
     var mobile = window.innerWidth < 600;
-    var labels = mobile ? ['Data', 'Cycle', 'Calc', 'Home', 'Map', 'Bank'] : ['Data', 'Cycle', 'Calculator', 'Dashboard', 'Map', 'Banking'];
+    /* 'Map' became 'Prospecting' because the tab stopped being a map. It is a
+       search tool, a pipeline, a contact history and a daily worklist, and the
+       one that gets used every morning is not the map. The map is still there —
+       it is the second entry in the section's own sub-nav — but it is no longer
+       what the section is called. */
+    var labels = mobile ? ['Data', 'Cycle', 'Calc', 'Home', 'Deals', 'Bank'] : ['Data', 'Cycle', 'Calculator', 'Dashboard', 'Prospecting', 'Banking'];
     nav.innerHTML =
         '<a class="proton-nav-brand" href="./index.html">' +
             '<span class="icon"><svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="protonMarkP" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5c5b58"/><stop offset="13%" stop-color="#b5b4b1"/><stop offset="25%" stop-color="#ffffff"/><stop offset="34%" stop-color="#d0cfcd"/><stop offset="50%" stop-color="#83827f"/><stop offset="65%" stop-color="#e8e7e5"/><stop offset="76%" stop-color="#ffffff"/><stop offset="89%" stop-color="#a2a19e"/><stop offset="100%" stop-color="#6b6a67"/></linearGradient><linearGradient id="protonMarkO" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="38%" stop-color="#f7a02b"/><stop offset="70%" stop-color="#ffdcae"/><stop offset="100%" stop-color="#e07f10"/></linearGradient></defs><circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkP)" stroke-width="26"/><circle cx="256" cy="256" r="52" fill="url(#protonMarkP)"/><circle cx="373" cy="106" r="42" fill="url(#protonMarkO)"/></svg></span>' +
@@ -156,7 +161,11 @@ function initNav(activePage) {
             '<a href="./cycle.html" class="' + (activePage === 'cycle' ? 'active' : '') + '">' + labels[1] + '</a>' +
             '<a href="./calculator.html" class="' + (activePage === 'calculator' ? 'active' : '') + '">' + labels[2] + '</a>' +
             '<a href="./index.html" class="' + (activePage === 'dashboard' ? 'active' : '') + '">' + labels[3] + '</a>' +
-            '<a href="./map.html" class="' + (activePage === 'map' ? 'active' : '') + '">' + labels[4] + '</a>' +
+            /* Every page in the section lights this tab, not just the landing one,
+               so the map does not read as a different part of the app. */
+            '<a href="./prospecting.html" class="' +
+                ((activePage === 'map' || activePage === 'prospecting') ? 'active' : '') + '">' +
+                labels[4] + '</a>' +
             '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[5] + '</a>' +
         '</div>' +
         '<div class="proton-nav-actions">' +
