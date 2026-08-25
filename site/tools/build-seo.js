@@ -117,12 +117,30 @@ const robots = [
 
 /* ---------- sitemap.xml ---------- */
 
-/* Dated from each file's own last modification, so a page that has not changed
-   does not claim it has. */
-function lastmod(file) {
-  const p = path.join(SITE, file);
-  return fs.statSync(p).mtime.toISOString().slice(0, 10);
-}
+/* NO <lastmod> ON THE STATIC PAGES, deliberately.
+
+   It used to be each file's mtime, under a comment saying "so a page that has
+   not changed does not claim it has". The code could not deliver that.
+   build-asset-stamp.js rewrites every HTML file on every run, so the mtime this
+   read was always the date of the last build - ten pages all claiming they
+   changed today, every single time the generators ran.
+
+   That is a fabricated freshness signal, and it is the one field in a sitemap a
+   crawler will stop believing wholesale once it catches it being wrong. It also
+   made this generator's output depend on the wall clock, which is what broke the
+   deploy of 8622d2b: the push crossed UTC midnight, CI regenerated the file with
+   the next day's date, and the "generated output is current" gate correctly
+   called the committed one stale. The site sat a commit behind for a reason that
+   had nothing to do with the site.
+
+   The posts keep theirs because they have a real one - an authored date in the
+   front-matter, a fact about the writing rather than about the build. The pages
+   have no such date anywhere in the repo, and the honest thing to do with a
+   field you cannot fill truthfully is to leave it out. It is optional in the
+   protocol.
+
+   If the pages ever need one, give them an authored date in PAGES above, the way
+   a post gets one. Do not derive it from the filesystem again. */
 
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
@@ -130,7 +148,6 @@ const sitemap = [
   ...Object.keys(PAGES).map(f => [
     '  <url>',
     '    <loc>' + urlFor(f) + '</loc>',
-    '    <lastmod>' + lastmod(f) + '</lastmod>',
     '    <changefreq>' + PAGES[f].changefreq + '</changefreq>',
     '    <priority>' + PAGES[f].priority + '</priority>',
     '  </url>',

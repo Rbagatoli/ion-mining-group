@@ -324,6 +324,60 @@ h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.028em; line-height: 1.12; 
     letter-spacing: -0.006em;
 }
 
+/* THE SECTION HEADER BLOCK: eyebrow, heading, lede, and the space under it.
+
+   This lived on fifteen elements as style="margin-bottom:44px" until now, which
+   is why the mobile rhythm could not be compressed: an inline declaration is not
+   reachable from a media query, and these were the largest single contributor to
+   how tall a section is. They now carry --sh instead.
+
+   THE VALUE STAYS PER-INSTANCE ON PURPOSE. The fifteen were 36px, 40px and 44px
+   with no pattern to which got which, and that looks like drift rather than
+   intent - but guessing which one the author meant, on desktop, while fixing
+   mobile, is a change nobody asked for. --sh preserves every one of them exactly,
+   and the mobile override below replaces the whole declaration so the drift stops
+   mattering at the width where it costs the most. Unify them if you ever want to;
+   the fallback is what a new section gets. */
+.band .sec-head { margin-bottom: var(--sh, 44px); }
+
+/* The lede's own gap was style="margin-top:20px" on eighteen elements. Same
+   number every time, so it belongs here.
+
+   SCOPED TO .sec-head RATHER THAN WRITTEN AS h2 + .lede, which was the first
+   attempt and was wrong: twenty-four ledes elsewhere on the site sit directly
+   after a heading with no top margin at all, and that rule would have silently
+   given every one of them 20px on the desktop layout nobody asked me to touch.
+   Counted before believing it, not after.
+
+   SCOPED TO .band FOR A SECOND REASON, found the same way. sec-head was ALREADY
+   a class in this markup - blog.html and why-mining.html each carry one - with no
+   rule anywhere in the stylesheet behind it. Naming my new component after it
+   silently adopted both, which a before-and-after of every page at 1440px caught
+   as +64px and +28px on two pages this change was not supposed to touch. Those
+   two live in .section--tight and have their own rhythm; .band is the layout this
+   rhythm belongs to, so that is where the selector starts.
+
+   .lede--gap is the other four, which sat in a two-column split rather than a
+   section header. Leaving them out cost three ledes their 20px on the DESKTOP
+   layout, and the page heights did not move an inch, because a margin lost in one
+   column of a grid whose height comes from the other column changes nothing about
+   how tall the page is. Comparing page heights would have shipped it. Comparing
+   every element's box on all ten pages is what found it: 3,309 elements, three
+   wrong.
+
+   A CLASS RATHER THAN A SELECTOR, because there is no rule to find. The obvious
+   next guess - .grid--split .lede - is wrong too: four split columns are built
+   the same way, h2 then lede, and three of them gave that lede 20px while the
+   fourth gave it nothing. That is authoring drift, and the honest way to carry
+   drift forward is to mark the elements that have it rather than to invent a
+   structure that explains it.
+
+   .lede + .lede is the eighteenth, which follows another lede rather than a
+   heading. The two other consecutive pairs on the site were taking 16px from
+   p + p, so this moves those two 4px to agree with the value the author typed by
+   hand for the third. */
+.band .sec-head .lede, .lede--gap, .lede + .lede { margin-top: 20px; }
+
 .measure { max-width: 68ch; }
 .center { text-align: center; }
 .center .eyebrow { justify-content: center; }
@@ -751,6 +805,11 @@ p + p { margin-top: 16px; }
 
 .grid { display: grid; gap: 24px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+/* Two columns that are prose, not cards: wider gutter, tops aligned. Was
+   style="gap:56px; align-items:start" on four elements. On one column that 56px
+   becomes 56px of dead vertical space, which is what the mobile block trims. */
+.grid--split { gap: 56px; align-items: start; }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
@@ -3025,10 +3084,14 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .arrow-link { width: auto; }
 }
 
+/* Three rules came out of here rather than being edited: .stats, .track and
+   .card were all set again, at different values, in the 560px block far below,
+   which is later in the file at the same specificity and therefore won at every
+   width this block covers. They had been dead since that block was written. CSS
+   that contradicts live CSS and never applies is worse than no CSS at all - the
+   next person to change .card at 480px would have changed nothing and had no way
+   to see why. */
 @media (max-width: 480px) {
-    .stats { grid-template-columns: 1fr; }
-    .track { padding: 34px 22px 30px; }
-    .card { padding: 28px 22px; }
     .form { padding: 24px 20px; }
     .footer-top { grid-template-columns: 1fr; gap: 34px; }
 }
@@ -4015,17 +4078,56 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .spec-key, .spec-val { min-width: 0; }
 }
 
-/* THE SCROLLING was not whitespace. Measured before changing anything: padding
-   is 11% of band height, so trimming the rhythm alone would have bought almost
-   nothing. It is component size — five facility cards at 343px each is 1780px of
-   scrolling for five links, and four stat tiles at 32px padding stack into most
-   of a screen for four numbers.
+/* THE SCROLLING, measured rather than guessed. At 390px the pages run 9.5 to
+   15.4 screens, and about a quarter of every one of them is space with no ink in
+   it: on energy.html, 3,606px of padding, margin and gap out of 12,969px.
 
-   So the stats go two-up rather than one-up, and the cards lose the padding they
-   need at desktop widths and do not at 390px. */
+   The first pass at this only reached the stylesheet, which is why it barely
+   moved. The largest single number in a section's height — the gap under its
+   header block — was style="margin-bottom:44px" written onto the element, where
+   no media query can reach it. Those are classes now (.sec-head, .grid--split,
+   and the lede rhythm), and this block is what that bought.
+
+   NOTHING HERE REMOVES A WORD. Every rule trims chrome: the rhythm between
+   blocks, the padding inside them, and the leading on long prose. The text is the
+   same text, at the same size.
+
+   The one judgement call is line-height. Body prose is set at 1.66–1.7, which is
+   right for a 62ch measure on a desktop and loose on a 34ch phone column where
+   the eye has almost no distance to travel back. 1.55 is still above the 1.5
+   floor both platform guidelines ask for, and on a page that is mostly paragraphs
+   it is worth more than every padding change here put together. */
 @media (max-width: 560px) {
-    .band { padding: 56px 0; }
-    .card { padding: 20px 18px; }
+    /* ---- rhythm between blocks ---- */
+    .band { padding: 40px 0; }
+    /* Re-stated for the same reason: .band--tight is (0,1,0) and declared far
+       above, so the line before this one was giving it the 40px of top padding
+       it exists to not have. */
+    .band--tight { padding: 0 0 40px; }
+    .band .sec-head { margin-bottom: 22px; }
+    .eyebrow { margin-bottom: 14px; }
+    .band .sec-head .lede, .lede--gap, .lede + .lede { margin-top: 12px; }
+    .grid--split { gap: 26px; }
+    .btn-row { margin-top: 24px; }
+    /* :not() BY NAME, because .grid--matrix { gap: 1px } and .grid--split are
+       both (0,1,0) like .grid is, and a rule this far down the file beats them
+       on order alone. The first version of this line was a plain .grid and it
+       silently pulled every matrix grid apart - the cards share one hairline at
+       1px, and at 16px they became separate boxes with no line between them. */
+    .grid:not(.grid--matrix):not(.grid--split) { gap: 16px; }
+
+    /* ---- padding inside them ---- */
+    .card { padding: 16px 16px; }
+    .step { padding: 22px 0; }
+    .track { padding: 24px 20px 22px; }
+    .checks li { padding: 12px 0 12px 30px; }
+    .checks li::before { top: 19px; }
+    .spec-row { padding: 13px 16px; }
+    .cta-band { padding: 36px 20px; }
+
+    /* ---- leading, on the prose only ---- */
+    .lede { line-height: 1.55; }
+    .card p, .step p, .checks li, .track p { line-height: 1.55; }
 
     /* Four figures in a column is four screens of chrome for four numbers. */
     .stats { grid-template-columns: 1fr 1fr; }
@@ -4035,7 +4137,15 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
     .fac-grid { gap: 10px; }
     .fac-spec { margin-top: 12px; padding-top: 10px; }
-    .spec-row { padding: 16px 18px; }
+}
+
+/* The hero is the one screen a visitor has already decided to look at, so it
+   keeps more air than a band does — but not 76px of it above the first heading on
+   the page. The buttons keep their 56px height: that is a tap target, not
+   decoration. */
+@media (max-width: 560px) {
+    .hero { padding: 52px 0 44px; }
+    .hero-note { margin-top: 26px; padding-top: 18px; }
 }
 
 

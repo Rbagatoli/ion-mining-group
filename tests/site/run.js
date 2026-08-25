@@ -29,7 +29,7 @@ const HERE = __dirname;
 /* Ordered roughly cheapest-first, so a broken checkout fails fast. */
 const SUITES = [
     'seo-suite.js', 'og-suite.js', 'hero-suite.js', 'dg-suite.js',
-    'dupe-ids.js', 'cascade.js', 'contrast.js', 'verify.js',
+    'dupe-ids.js', 'cascade.js', 'contrast.js', 'modifier-suite.js', 'verify.js',
     'calc-suite.js', 'asic-suite.js', 'host-suite.js', 'dg-regress.js',
     'pad-suite.js', 'landfill-copy-suite.js', 'dg-crop.js',
     'hardware-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js',

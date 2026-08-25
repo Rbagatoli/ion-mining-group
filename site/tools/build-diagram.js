@@ -511,10 +511,10 @@ function build(key) {
   const section = `<!-- ===== ${cfg.marker} ===== -->
 <section class="band" id="${cfg.sectionId}">
   <div class="wrap">
-    <div class="reveal" style="margin-bottom:40px">
+    <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
-      <p class="lede" style="margin-top:20px">${esc(cfg.lede)}</p>
+      <p class="lede">${esc(cfg.lede)}</p>
     </div>${toggle}${fuelOf(cfg, groups)}${panes}
   </div>
 </section>

@@ -246,5 +246,62 @@ fs.readdirSync(S).filter(function (f) { return /\.html$/.test(f); }).sort().forE
 ok(ldPages >= 4, 'structured data was found and checked on every page carrying it',
    ldPages + ' page(s), ' + ldTotal + ' block(s)');
 
+/* ---- no generator the deploy gate re-runs may read the wall clock ----------
+ *
+ * .github/workflows/pages.yml re-runs every generator on a fresh checkout and
+ * fails the deploy if the committed output differs. That gate is only as good as
+ * the generators being deterministic — and one of them was not. build-seo.js
+ * dated each sitemap entry from the file's mtime, which on a fresh checkout is
+ * the checkout, so CI produced a different sitemap from the committed one purely
+ * because the run happened on a later UTC day. The deploy of 8622d2b failed on
+ * exactly that, and the site sat a commit behind with nothing wrong in it.
+ *
+ * The generator list is READ FROM THE WORKFLOW rather than written here, so a
+ * ninth generator added to the gate is covered the day it is added rather than
+ * the day someone remembers this test exists.
+ *
+ * Comments are stripped before looking, because four separate tests in this repo
+ * have failed on prose that merely mentioned the thing they forbade. */
+var WORKFLOW = REPO_ROOT + '.github/workflows/pages.yml';
+var wf = fs.existsSync(WORKFLOW) ? fs.readFileSync(WORKFLOW, 'utf8') : '';
+ok(wf.length > 0, 'the deploy workflow is readable', WORKFLOW);
+
+var gated = (wf.match(/^\s*node\s+([\w./-]+\.js)\s*$/gm) || [])
+    .map(function (l) { return l.trim().replace(/^node\s+/, ''); })
+    .filter(function (f, i, a) { return a.indexOf(f) === i; });
+ok(gated.length >= 6, 'read the generators the deploy gate re-runs',
+   gated.length + ': ' + gated.join(' '));
+
+/* Block comments, line comments and quoted strings all removed: a filename or a
+ * message mentioning Date is not a call to it. */
+function codeOf(src) {
+    return src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+              .replace(/^\s*\/\/.*$/gm, ' ')
+              .replace(/'(?:[^'\\]|\\.)*'/g, "''")
+              .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+}
+
+var CLOCK = /\bnew\s+Date\s*\(\s*\)|\bDate\s*\.\s*now\s*\(|\.\s*[mac]time\b|\bDate\s*\(\s*\)/;
+var ticking = [];
+gated.forEach(function (rel) {
+    var p = REPO_ROOT + rel;
+    if (!fs.existsSync(p)) { ticking.push(rel + ' (missing)'); return; }
+    var hit = codeOf(fs.readFileSync(p, 'utf8')).match(CLOCK);
+    if (hit) ticking.push(rel + ' -> ' + hit[0]);
+});
+ok(ticking.length === 0,
+   'no gated generator dates its own output from the clock', ticking.join(', '));
+
+/* And the sitemap must not carry the field that did it. Posts keep theirs —
+ * an authored front-matter date is a fact about the writing, not the build — so
+ * this asks only that the count matches the posts, not that it is zero. */
+var sm = fs.readFileSync(S + 'sitemap.xml', 'utf8');
+var lastmods = (sm.match(/<lastmod>/g) || []).length;
+var postCount = require(S + 'tools/build-blog.js').readPosts()
+    .filter(function (p) { return p.meta.status === 'published'; }).length;
+ok(lastmods === postCount,
+   'only the posts, which have a real date, claim a lastmod',
+   lastmods + ' lastmod(s) for ' + postCount + ' published post(s)');
+
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  seo-suite: ALL OK');
 process.exit(fail ? 1 : 0);
