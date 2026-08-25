@@ -21,7 +21,7 @@
         }
         .invoice-card {
             background: var(--panel);
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid var(--line);
             border-radius: var(--radius);
             max-width: 440px;
             width: 100%;
@@ -31,7 +31,7 @@
         .business-name {
             font-size: 20px;
             font-weight: 600;
-            color: #f7931a;
+            color: var(--btc-300);
             text-align: center;
             margin-bottom: 4px;
         }
@@ -56,7 +56,7 @@
         }
         .detail-row .label { color: var(--plat-500); }
         .detail-row .value { color: var(--text); font-weight: 500; }
-        .detail-row .value.amount { color: #f7931a; font-size: 18px; font-weight: 700; }
+        .detail-row .value.amount { color: var(--btc-300); font-size: 18px; font-weight: 700; }
         .qr-section {
             text-align: center;
             margin-bottom: 20px;
@@ -79,7 +79,7 @@
             font-family: monospace;
             font-size: 11px;
             word-break: break-all;
-            color: #f7931a;
+            color: var(--btc-300);
             max-height: 70px;
             overflow-y: auto;
             line-height: 1.5;
@@ -90,14 +90,14 @@
             right: 6px;
             padding: 5px 12px;
             font-size: 11px;
-            background: rgba(247,147,26,0.15);
-            border: 1px solid rgba(247,147,26,0.3);
-            color: #f7931a;
+            background: var(--btc-wash);
+            border: 1px solid var(--line-btc);
+            color: var(--btc-300);
             border-radius: var(--radius);
             cursor: pointer;
             font-family: inherit;
         }
-        .copy-btn:hover { background: rgba(247,147,26,0.25); }
+        .copy-btn:hover { background: var(--line-btc); }
         .status-bar {
             text-align: center;
             padding: 14px;
@@ -107,9 +107,9 @@
             margin-bottom: 16px;
         }
         .status-waiting {
-            background: rgba(247,147,26,0.08);
-            border: 1px solid rgba(247,147,26,0.25);
-            color: #f7931a;
+            background: var(--btc-wash);
+            border: 1px solid var(--line-btc);
+            color: var(--btc-300);
         }
         .status-paid {
             background: var(--pos-wash);
@@ -182,7 +182,7 @@
             </div>
 
             <div id="walletBtnWrap" style="display:none; text-align:center; margin-bottom:16px;">
-                <a id="btnOpenWallet" href="#" style="display:inline-block; padding:12px 28px; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius: var(--radius); text-decoration:none; font-size:14px; font-weight:600;">Open in Wallet</a>
+                <a id="btnOpenWallet" href="#" style="display:inline-block; padding:12px 28px; background:var(--btc-wash); border:1px solid var(--line-btc); color:var(--btc-300); border-radius: var(--radius); text-decoration:none; font-size:14px; font-weight:600;">Open in Wallet</a>
             </div>
 
             <div class="footer">Secured payment via Lightning Network</div>

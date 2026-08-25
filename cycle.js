@@ -293,7 +293,7 @@ function renderValuationChart(range) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.08)', fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 },
+                { label: 'Price', data: px, borderColor: ProtonTheme.btc, backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.08), fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 },
                 { label: '200-day avg', data: m200, borderColor: ProtonTheme.seriesAt(1), backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
                 { label: '200-week avg', data: m1400, borderColor: ProtonTheme.pos, backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0, spanGaps: false }
             ]
@@ -494,7 +494,7 @@ function renderFngChart(range) {
     o.scales.y1 = {
         type: 'logarithmic', position: 'right',
         ticks: {
-            color: '#f7931a', font: { size: 11 },
+            color: ProtonTheme.btc, font: { size: 11 },
             callback: function(v) {
                 var s = getCurrencySymbol();
                 if (v >= 1e3) return s + (v / 1e3).toFixed(0) + 'k';
@@ -510,7 +510,7 @@ function renderFngChart(range) {
             labels: labels,
             datasets: [
                 { label: 'Fear & Greed', data: fng, borderColor: ProtonTheme.seriesAt(2), backgroundColor: ProtonTheme.alpha(ProtonTheme.seriesAt(2), 0.10), fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y' },
-                { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y1', spanGaps: true }
+                { label: 'Price', data: px, borderColor: ProtonTheme.btc, backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, yAxisID: 'y1', spanGaps: true }
             ]
         },
         options: o
@@ -599,8 +599,8 @@ function renderDcaChart(amount, everyDays, startDate, mult) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Portfolio value', data: val, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.10)', fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
-                { label: 'Total invested', data: inv, borderColor: '#8c8c8c', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, borderDash: [4, 4] }
+                { label: 'Portfolio value', data: val, borderColor: ProtonTheme.btc, backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.10), fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
+                { label: 'Total invested', data: inv, borderColor: ProtonTheme.plat500, backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0, borderDash: [4, 4] }
             ]
         },
         options: o
@@ -669,7 +669,7 @@ function renderAllCharts() {
     }
     if (!priceSeries || priceSeries.length < 400) {
         statusEl.textContent = 'Not enough price history for these indicators';
-        statusEl.style.color = '#f7931a';
+        statusEl.style.color = 'var(--btc-300)';
         return;
     }
 
@@ -688,7 +688,7 @@ function renderAllCharts() {
     var first = CI.isoDay(priceSeries[0].time);
     if (PriceHistory.isStale()) {
         statusEl.textContent = 'Cached · price data from ' + CI.isoDay(priceSeries[priceSeries.length - 1].time);
-        statusEl.style.color = '#f7931a';
+        statusEl.style.color = 'var(--btc-300)';
     } else {
         statusEl.textContent = priceSeries.length.toLocaleString() + ' days of history since ' + first;
         statusEl.style.color = 'var(--pos)';

@@ -353,7 +353,7 @@ function renderNavSparkline() {
     priceEl.textContent = getCurrencySymbol() + Math.round(last).toLocaleString();
 
     if (history.length < 2) {
-        priceEl.style.color = '#f7931a';
+        priceEl.style.color = 'var(--btc-300)';
         return;
     }
 
@@ -635,7 +635,7 @@ async function fetchLiveMarketData() {
 <div class="slide-panel" id="strikeApiKeyPanel">\
     <div class="panel-inner">\
         <h4>Connect Strike API Key</h4>\
-        <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>\
+        <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Paste your API key from <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:var(--btc-300);">Strike Developer Dashboard</a>. Your key is stored securely and never shown again.</p>\
         <div class="panel-form-grid">\
             <div class="input-group">\
                 <label>API Key</label>\
@@ -690,7 +690,7 @@ async function fetchLiveMarketData() {
                 var panel = document.getElementById('strikeApiKeyPanel');
                 if (panel && panel.dataset.pinRequired === 'true') {
                     var resultEl = document.getElementById('strikeKeyResult');
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before continuing.</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--btc-300);">You must create a send PIN before continuing.</span>';
                     return;
                 }
                 if (panel) panel.classList.remove('open');

@@ -404,7 +404,7 @@ function buildMinerCard(m, eff, mDailyUSD, isLive, isGroupSummary, isExpanded) {
 
     var totalRow = '';
     if (isGroupSummary) {
-        totalRow = '<div class="miner-card-stat"><div class="stat-label">Total Daily (x' + m.quantity + ')</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD * m.quantity) + '</div></div>';
+        totalRow = '<div class="miner-card-stat"><div class="stat-label">Total Daily (x' + m.quantity + ')</div><div class="stat-value" style="color:var(--btc-300)">' + fmtUSD(mDailyUSD * m.quantity) + '</div></div>';
     }
 
     var toggleBtn = '';
@@ -438,7 +438,7 @@ function buildMinerCard(m, eff, mDailyUSD, isLive, isGroupSummary, isExpanded) {
             '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
             '<div class="miner-card-stat"><div class="stat-label">Cost</div><div class="stat-value">' + (m.cost ? fmtUSD(m.cost * getCurrencyMultiplier()) : '--') + '</div></div>' +
             '<div class="miner-card-stat"><div class="stat-label">Status</div><div class="stat-value"><span class="status-dot ' + m.status + (isLive && m.status === 'online' ? ' online-pulse' : '') + '"></span>' + m.status + '</div></div>' +
-            '<div class="miner-card-stat"><div class="stat-label">' + (isGroupSummary ? 'Daily (each)' : 'Daily Est.') + '</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">' + (isGroupSummary ? 'Daily (each)' : 'Daily Est.') + '</div><div class="stat-value" style="color:var(--btc-300)">' + fmtUSD(mDailyUSD) + '</div></div>' +
             daysOwnedText +
             totalRow +
         '</div>' +
@@ -459,7 +459,7 @@ function buildUnitCard(m, eff, mDailyUSD, unitNumber, isLive) {
             '<div class="miner-card-stat"><div class="stat-label">Hashrate</div><div class="stat-value">' + m.hashrate + ' TH/s</div></div>' +
             '<div class="miner-card-stat"><div class="stat-label">Power</div><div class="stat-value">' + (m.power ? m.power + ' kW' : '--') + '</div></div>' +
             '<div class="miner-card-stat"><div class="stat-label">Efficiency</div><div class="stat-value">' + (m.power ? eff + ' J/TH' : '--') + '</div></div>' +
-            '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:#f7931a">' + fmtUSD(mDailyUSD) + '</div></div>' +
+            '<div class="miner-card-stat"><div class="stat-label">Daily Est.</div><div class="stat-value" style="color:var(--btc-300)">' + fmtUSD(mDailyUSD) + '</div></div>' +
         '</div>' +
         (isLive ? '' :
         '<div class="miner-card-actions">' +
@@ -1031,8 +1031,8 @@ function initEarningsChart() {
             datasets: [{
                 label: 'Daily Earnings',
                 data: chartData.values,
-                backgroundColor: 'rgba(247, 147, 26, 0.50)',
-                borderColor: '#f7931a',
+                backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.50),
+                borderColor: ProtonTheme.btc,
                 borderRadius: 4
             }]
         },
@@ -1059,7 +1059,7 @@ function initEarningsChart() {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: '#f7931a',
+                        color: ProtonTheme.btc,
                         font: { size: 11 },
                         callback: function(v) {
                             var s = getCurrencySymbol();

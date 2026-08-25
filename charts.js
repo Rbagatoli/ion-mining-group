@@ -192,8 +192,8 @@ async function renderPriceChart(days) {
             datasets: [{
                 label: 'BTC Price (' + (window.selectedCurrency || 'usd').toUpperCase() + ')',
                 data: priceValues,
-                borderColor: '#f7931a',
-                backgroundColor: 'rgba(247, 147, 26, 0.10)',
+                borderColor: ProtonTheme.btc,
+                backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.10),
                 fill: true,
                 borderWidth: isIntraday ? 1.4 : 2,
                 pointRadius: 0,
@@ -357,7 +357,7 @@ function renderHashrateChart(timeframe) {
                 label: 'Hashrate (EH/s)',
                 data: hashValues,
                 borderColor: ProtonTheme.btc,
-                backgroundColor: 'rgba(96, 165, 250, 0.10)',
+                backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.10),
                 fill: true,
                 borderWidth: 2,
                 pointRadius: 0,
@@ -533,7 +533,7 @@ async function refreshAllCharts() {
             var newest = allPriceData[allPriceData.length - 1];
             statusEl.textContent = 'Cached \u00b7 price data from ' +
                 new Date(newest.time * 1000).toLocaleDateString();
-            statusEl.style.color = '#f7931a';
+            statusEl.style.color = 'var(--btc-300)';
         } else {
             // Timestamp the last actual history pull, not this render. The 60s tick re-renders
             // far more often than the 10-minute history refresh, so stamping "now" overstated
@@ -545,7 +545,7 @@ async function refreshAllCharts() {
         renderHashPriceChart(currentHashPriceDays);
     } else if (priceOk || miningOk) {
         statusEl.textContent = 'Partial update ' + new Date().toLocaleTimeString();
-        statusEl.style.color = '#f7931a';
+        statusEl.style.color = 'var(--btc-300)';
     }
 
     // Load network stats (non-blocking)
@@ -931,7 +931,7 @@ function renderHashPriceChart(days) {
                 label: 'Hash Price (' + getCurrencySymbol() + '/TH/day)',
                 data: values,
                 borderColor: ProtonTheme.btc,
-                backgroundColor: 'rgba(167, 139, 250, 0.10)',
+                backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.10),
                 fill: true,
                 borderWidth: 2,
                 pointRadius: 0,
@@ -1025,9 +1025,9 @@ function renderPoolChart(timeframe, data) {
             datasets: [{
                 data: values,
                 backgroundColor: colors,
-                borderColor: 'rgba(6, 6, 6, 0.8)',
+                borderColor: ProtonTheme.alpha(ProtonTheme.black, 0.8),
                 borderWidth: 2,
-                hoverBorderColor: '#e8e8e8',
+                hoverBorderColor: ProtonTheme.text,
                 hoverBorderWidth: 2
             }]
         },
@@ -1188,7 +1188,7 @@ function renderFeeChart(timeframe, apiData) {
                     label: 'Medium (p50)',
                     data: halfHourData,
                     borderColor: ProtonTheme.warn,
-                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.warn, 0.15),
                     fill: '+1',
                     borderWidth: 2,
                     pointRadius: 0,

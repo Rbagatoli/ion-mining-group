@@ -13,7 +13,7 @@
         .tx-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:2px solid var(--panel-hover); padding-bottom:8px; }
         .tx-tab { background:transparent; border:none; color:var(--plat-500); padding:8px 16px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-10px; transition:all 0.2s ease; }
         .tx-tab:hover { color:var(--plat-400); background:var(--panel); }
-        .tx-tab.active { color:#f7931a; border-bottom-color:#f7931a; }
+        .tx-tab.active { color:var(--btc-300); border-bottom-color:var(--btc-300); }
     </style>
     <script>
     // Force full cache clear for v224 — nukes all service workers and caches
@@ -88,11 +88,11 @@
     </div>
 
     <!-- ===== USER AUTH BAR (shown when logged in) ===== -->
-    <div id="userAuthBar" style="display:none; padding:8px 16px; margin-bottom:8px; background:rgba(247,147,26,0.06); border:1px solid rgba(247,147,26,0.15); border-radius: var(--radius);">
+    <div id="userAuthBar" style="display:none; padding:8px 16px; margin-bottom:8px; background:var(--btc-wash); border:1px solid var(--btc-wash); border-radius: var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:13px;">
                 <span style="color:var(--plat-500);">Logged in as</span>
-                <strong id="authUsername" style="color:#f7931a; margin:0 4px;"></strong>
+                <strong id="authUsername" style="color:var(--btc-300); margin:0 4px;"></strong>
             </div>
             <button class="btn btn-secondary" id="btnLogout" style="padding:4px 12px; font-size:11px;">Logout</button>
         </div>
@@ -100,13 +100,13 @@
 
     <!-- ===== CONNECT YOUR STRIKE ACCOUNT PROMPT ===== -->
     <div id="connectStrikePrompt">
-        <div class="card" style="padding:24px; margin-bottom:16px; border-color:rgba(247,147,26,0.3); background:rgba(247,147,26,0.04);">
-            <h4 style="margin:0 0 8px; color:#f7931a;">&#9889; Connect Your Strike Account</h4>
+        <div class="card" style="padding:24px; margin-bottom:16px; border-color:var(--line-btc); background:var(--btc-wash);">
+            <h4 style="margin:0 0 8px; color:var(--btc-300);">&#9889; Connect Your Strike Account</h4>
             <p style="font-size:13px; color:var(--plat-400); margin:0 0 16px;">Connect your personal Strike account with your API key to send and receive Bitcoin.</p>
             <div style="font-size:13px; color:var(--plat-300); margin-bottom:16px; line-height:1.8;">
-                <div style="margin-bottom:6px;"><strong style="color:#f7931a;">1.</strong> Go to <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:#f7931a;">dashboard.strike.me/developer</a></div>
-                <div style="margin-bottom:6px;"><strong style="color:#f7931a;">2.</strong> Create an API key (enable <em>Balances</em> and <em>Payments</em> permissions)</div>
-                <div><strong style="color:#f7931a;">3.</strong> Paste it below</div>
+                <div style="margin-bottom:6px;"><strong style="color:var(--btc-300);">1.</strong> Go to <a href="https://dashboard.strike.me/developer" target="_blank" rel="noopener" style="color:var(--btc-300);">dashboard.strike.me/developer</a></div>
+                <div style="margin-bottom:6px;"><strong style="color:var(--btc-300);">2.</strong> Create an API key (enable <em>Balances</em> and <em>Payments</em> permissions)</div>
+                <div><strong style="color:var(--btc-300);">3.</strong> Paste it below</div>
             </div>
             <button class="btn btn-primary" id="btnConnectStrikeFromPrompt" style="width:100%;">Connect Strike API Key</button>
         </div>
@@ -114,8 +114,8 @@
 
     <!-- ===== SIGN IN PROMPT (shown when not signed in via Firebase) ===== -->
     <div id="signInPrompt" style="display:none;">
-        <div class="card" style="padding:24px; margin-bottom:16px; border-color:rgba(247,147,26,0.3); background:rgba(247,147,26,0.04); text-align:center;">
-            <h4 style="margin:0 0 8px; color:#f7931a;">Sign In to Access Your Wallet</h4>
+        <div class="card" style="padding:24px; margin-bottom:16px; border-color:var(--line-btc); background:var(--btc-wash); text-align:center;">
+            <h4 style="margin:0 0 8px; color:var(--btc-300);">Sign In to Access Your Wallet</h4>
             <p style="font-size:13px; color:var(--plat-400); margin:0 0 16px;">Sign in with your Proton Mining account to view balances, send BTC, and manage your wallet.</p>
             <button class="btn btn-primary" onclick="if(typeof ProtonAuthUI!=='undefined')ProtonAuthUI.show('signin');" style="width:100%;">Sign In</button>
             <div id="signInError" style="font-size:12px; color:var(--neg); margin-top:10px;"></div>
@@ -216,7 +216,7 @@
                     <img id="twofa-qr" style="border-radius: var(--radius); background:#fff; padding:8px; width:200px; height:200px;" alt="Scan with authenticator app">
                 </div>
                 <div style="font-size:12px; color:var(--plat-400); margin-bottom:8px;">Or enter this key manually in your authenticator app:</div>
-                <div style="background:var(--panel-hover); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
+                <div style="background:var(--panel-hover); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:var(--btc-300); margin-bottom:12px;" id="twofa-secret-display"></div>
                 <div style="font-size:12px; color:var(--pos); margin-bottom:8px; padding:10px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius: var(--radius);">
                     <strong>Verify & Activate:</strong> Enter the code from your authenticator app to activate 2FA on your account.
                 </div>
@@ -272,7 +272,7 @@
     <div class="slide-panel" id="sendBtcPanel">
         <div class="panel-inner">
             <h4>Send BTC</h4>
-            <div style="margin-bottom:12px; padding:10px 14px; background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); border-radius: var(--radius); font-size:12px; color:#f7931a;">
+            <div style="margin-bottom:12px; padding:10px 14px; background:var(--btc-wash); border:1px solid var(--line-btc); border-radius: var(--radius); font-size:12px; color:var(--btc-300);">
                 Session authenticated. 2FA required for sends if enabled. Per-account limits apply.
             </div>
 
@@ -329,7 +329,7 @@
                 <div class="card" style="background:var(--panel); padding:14px; margin-bottom:12px;">
                     <div style="font-size:13px; color:var(--plat-400); margin-bottom:8px;">Quote Details</div>
                     <div id="quoteDetails" style="font-size:13px; line-height:1.8;"></div>
-                    <div id="quoteExpiry" style="font-size:11px; color:#f7931a; margin-top:8px;"></div>
+                    <div id="quoteExpiry" style="font-size:11px; color:var(--btc-300); margin-top:8px;"></div>
                 </div>
                 <div class="input-group" id="pinGroup" style="display:none;">
                     <label>Send PIN</label>
@@ -347,7 +347,7 @@
                 </div>
                 <div class="panel-actions">
                     <button class="btn btn-secondary" id="cancelQuote">Back</button>
-                    <button class="btn btn-primary" id="btnConfirmSend" style="background:#e53e3e;">Confirm &amp; Send</button>
+                    <button class="btn btn-primary" id="btnConfirmSend" style="background:var(--neg);">Confirm &amp; Send</button>
                 </div>
             </div>
 
@@ -397,7 +397,7 @@
                     </div>
                     <div style="font-size:12px; color:var(--plat-400); margin-bottom:6px;">Lightning Invoice:</div>
                     <div style="position:relative;">
-                        <div id="lnInvoiceText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius: var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a; max-height:80px; overflow-y:auto;"></div>
+                        <div id="lnInvoiceText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius: var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:var(--btc-300); max-height:80px; overflow-y:auto;"></div>
                         <button class="btn btn-secondary" id="btnCopyInvoice" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                     </div>
                     <div id="invoiceStatus" style="font-size:12px; margin-top:8px; color:var(--plat-500);"></div>
@@ -779,7 +779,7 @@
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
             <h3 style="margin: 0;">Assets Overview</h3>
             <span id="assetsTotalDisplay" class="value" style="font-size: 1.5em; font-weight: 600;">--</span>
-            <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 8px 16px; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius); background: rgba(255, 255, 255, 0.1); color: inherit; font-size: 0.85em; font-weight: 600; transition: all 0.2s;">USD</button>
+            <button id="assetsToggleBtn" onclick="toggleAssetsDisplay()" style="padding: 8px 16px; cursor: pointer; border: 1px solid var(--line-mid); border-radius: var(--radius); background: var(--panel-hover); color: inherit; font-size: 0.85em; font-weight: 600; transition: all 0.2s;">USD</button>
         </div>
         <section class="fleet-grid" id="assetsGrid">
             <!-- Cards rendered by renderAssetsOverview() -->
@@ -949,7 +949,7 @@
     <div class="slide-panel" id="strikeConnectPanel">
         <div class="panel-inner">
             <h4>Connect Strike Proxy</h4>
-            <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:#f7931a;">tools/worker-strike/</code> with your API key as a secret.</p>
+            <p style="font-size:12px; color:var(--plat-500); margin:0 0 12px;">Enter your Strike proxy worker URL. Deploy the worker from <code style="color:var(--btc-300);">tools/worker-strike/</code> with your API key as a secret.</p>
             <div class="panel-form-grid">
                 <div class="input-group">
                     <label>Strike Proxy URL</label>

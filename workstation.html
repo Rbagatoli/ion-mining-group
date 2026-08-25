@@ -63,7 +63,7 @@
         white-space: nowrap;
     }
     .ws-pane-select-group select {
-        background: #1a1a1a;
+        background: var(--surface-2);
         border: 1px solid var(--line);
         color: var(--text);
         font-size: 12px;
@@ -72,7 +72,7 @@
         cursor: pointer;
     }
     .ws-pane-select-group select option {
-        background: #1a1a1a;
+        background: var(--surface-2);
         color: var(--text);
     }
     .ws-actions {
@@ -82,7 +82,7 @@
         flex-shrink: 0;
     }
     .ws-actions select {
-        background: #1a1a1a;
+        background: var(--surface-2);
         border: 1px solid var(--line);
         color: var(--text);
         font-size: 12px;
@@ -91,7 +91,7 @@
         cursor: pointer;
     }
     .ws-actions select option {
-        background: #1a1a1a;
+        background: var(--surface-2);
         color: var(--text);
     }
     .ws-actions button {
@@ -114,13 +114,13 @@
         color: var(--accent);
         text-decoration: none;
         padding: 4px 10px;
-        border: 1px solid rgba(247, 147, 26, 0.3);
+        border: 1px solid var(--line-btc);
         border-radius: var(--radius);
         transition: background 0.2s;
         white-space: nowrap;
     }
     .ws-exit-btn:hover {
-        background: rgba(247, 147, 26, 0.15);
+        background: var(--btc-wash);
     }
     .ws-panes {
         display: grid;
@@ -142,7 +142,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 4px 10px;
-        background: rgba(247, 147, 26, 0.05);
+        background: var(--btc-wash);
         border-bottom: 1px solid var(--line);
         font-size: 11px;
         color: var(--text-mid);

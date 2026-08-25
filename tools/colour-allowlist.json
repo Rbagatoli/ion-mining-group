@@ -15,25 +15,282 @@
     "drifted allowlist is how a forbidden colour walks back in unnoticed."
   ],
   "files": {
-    "chart.min.js": { "all": true, "why": "vendored Chart.js v4.5.1 -- never edited by hand" },
-    "site/**": { "all": true, "why": "the marketing site is the SOURCE of this palette, not a target" },
-    "worker/**": { "all": true, "why": "Cloudflare Worker, deployed separately, cannot link tokens.css" },
-    "worker-strike/**": { "all": true, "why": "as above" }
+    "chart.min.js": {
+      "all": true,
+      "why": "vendored Chart.js v4.5.1 -- never edited by hand"
+    },
+    "site/**": {
+      "all": true,
+      "why": "the marketing site is the SOURCE of this palette, not a target"
+    },
+    "worker/**": {
+      "all": true,
+      "why": "Cloudflare Worker, deployed separately, cannot link tokens.css"
+    },
+    "worker-strike/**": {
+      "all": true,
+      "why": "as above"
+    },
+    "tokens.css": {
+      "all": true,
+      "why": "THE PALETTE ITSELF. Every literal in this file is a token DEFINITION, not a use of one -- auditing it is like auditing a dictionary for words. What guards it instead is the byte-identical assertion against site/styles.css and the mirror assertion against theme.js."
+    },
+    "theme.js": {
+      "all": true,
+      "why": "The JS mirror of tokens.css, which exists because canvas, Chart.js, globe.gl and Leaflet cannot resolve a custom property. Its literals are the same definitions written again for a context that has no var(). It is not unguarded: the 'no token is defined and never read' assertion treats a token as live only when its VALUE appears here, so this file drifting from tokens.css fails that check."
+    }
   },
   "lines": [
-    { "file": "auth-ui.js", "contains": "M17.64 9.2c0", "literals": ["#4285F4"],
-      "why": "Google brand mark -- trademark. The sign-in button is required to look like Google's. Two verbatim copies of this SVG exist." },
-    { "file": "auth-ui.js", "contains": "M9 18c2.43", "literals": ["#34A853"], "why": "Google brand mark -- trademark" },
-    { "file": "auth-ui.js", "contains": "M3.96 10.77", "literals": ["#FBBC05"], "why": "Google brand mark -- trademark" },
-    { "file": "auth-ui.js", "contains": "M9 3.58c1.32", "literals": ["#EA4335"], "why": "Google brand mark -- trademark" },
-
-    { "file": "banking.html", "contains": "twofa-qr", "literals": ["#fff"],
-      "why": "2FA QR quiet zone. A QR on black is unscannable -- the radius could go, the white cannot." },
-    { "file": "banking.html", "contains": "lnInvoiceQR", "literals": ["#fff"],
-      "why": "Lightning invoice QR quiet zone" },
-    { "file": "banking.js", "contains": "onchainAddrQR", "literals": ["#fff"],
-      "why": "on-chain address QR quiet zone" },
-    { "file": "pay.html", "contains": "background: #fff", "literals": ["#fff"],
-      "why": "invoice QR quiet zone on the standalone payment page" }
+    {
+      "file": "auth-ui.js",
+      "contains": "M17.64 9.2c0",
+      "literals": [
+        "#4285F4"
+      ],
+      "why": "Google brand mark -- trademark. The sign-in button is required to look like Google's. Two verbatim copies of this SVG exist."
+    },
+    {
+      "file": "auth-ui.js",
+      "contains": "M9 18c2.43",
+      "literals": [
+        "#34A853"
+      ],
+      "why": "Google brand mark -- trademark"
+    },
+    {
+      "file": "auth-ui.js",
+      "contains": "M3.96 10.77",
+      "literals": [
+        "#FBBC05"
+      ],
+      "why": "Google brand mark -- trademark"
+    },
+    {
+      "file": "auth-ui.js",
+      "contains": "M9 3.58c1.32",
+      "literals": [
+        "#EA4335"
+      ],
+      "why": "Google brand mark -- trademark"
+    },
+    {
+      "file": "banking.html",
+      "contains": "twofa-qr",
+      "literals": [
+        "#fff"
+      ],
+      "why": "QR quiet zone. A scanner needs the white border; a token that ever darkened would break scanning silently."
+    },
+    {
+      "file": "banking.html",
+      "contains": "lnInvoiceQR",
+      "literals": [
+        "#fff"
+      ],
+      "why": "QR quiet zone, as above."
+    },
+    {
+      "file": "banking.js",
+      "contains": "onchainAddrQR",
+      "literals": [
+        "#fff"
+      ],
+      "why": "QR quiet zone, as above."
+    },
+    {
+      "file": "pay.html",
+      "contains": "background: #fff",
+      "literals": [
+        "#fff"
+      ],
+      "why": "invoice QR quiet zone on the standalone payment page"
+    },
+    {
+      "file": "shared.css",
+      "contains": "rgba(229,228,226,0.",
+      "literals": [
+        "rgba(229,228,226,0.003)",
+        "rgba(229,228,226,0.005)",
+        "rgba(229,228,226,0.006)",
+        "rgba(229,228,226,0.007)",
+        "rgba(229,228,226,0.011)",
+        "rgba(229,228,226,0.015)",
+        "rgba(229,228,226,0.017)"
+      ],
+      "why": "One gradient described by fourteen distinct alphas of platinum. The file states the case itself: tokenising them would mean fourteen tokens nothing else reads, which is the disease this migration cured."
+    },
+    {
+      "file": "shared.css",
+      "contains": "rgba(246,245,243,0.",
+      "literals": [
+        "rgba(246,245,243,0.021)",
+        "rgba(246,245,243,0.024)"
+      ],
+      "why": "The same gradient's warm stop. See the entry above."
+    },
+    {
+      "file": "shared.css",
+      "contains": "The base is",
+      "literals": [
+        "#000"
+      ],
+      "why": "Prose in a comment about the page base."
+    },
+    {
+      "file": "workstation.html",
+      "contains": "(--bg #f5f5f5 vs #f0f2f5",
+      "literals": [
+        "#6b7280",
+        "#f0f2f5",
+        "#f5f5f5"
+      ],
+      "why": "Prose. A comment recording the light-theme drift that this migration removed."
+    },
+    {
+      "file": "prospecting.html",
+      "contains": ".ps-",
+      "literals": [
+        "#000",
+        "#444",
+        "#fff"
+      ],
+      "why": "The one-page deal summary's PRINT stylesheet. Browsers do not print backgrounds, so a page whose colours are all near-white tokens comes out white on white -- invisible on paper while looking correct on screen. Print needs real black on real white, which is the one place in this app a literal is more honest than a token."
+    },
+    {
+      "file": "banking.html",
+      "contains": "receiveDescription",
+      "literals": [
+        "#123"
+      ],
+      "why": "NOT A COLOUR. The placeholder text reads 'e.g. Payment for #123' -- an invoice number that the census's hex pattern cannot tell from a three-digit colour."
+    },
+    {
+      "file": "charts.js",
+      "contains": "It used to be",
+      "literals": [
+        "#f7931a"
+      ],
+      "why": "Prose. A comment explaining which colour was removed and why."
+    },
+    {
+      "file": "legal-eula.html",
+      "contains": "background: #f9fafb",
+      "literals": [
+        "#f9fafb"
+      ],
+      "why": "A paper document, like the portal's statement. These are read and printed rather than used, so they are light on purpose -- the dark palette would cost a reader ink and legibility. The text on them is tokens; only the paper is a literal."
+    },
+    {
+      "file": "legal-privacy.html",
+      "contains": "background: #f9fafb",
+      "literals": [
+        "#f9fafb"
+      ],
+      "why": "A paper document, like the portal's statement. These are read and printed rather than used, so they are light on purpose -- the dark palette would cost a reader ink and legibility. The text on them is tokens; only the paper is a literal."
+    },
+    {
+      "file": "map.js",
+      "contains": "backgroundColor('rgba(0,0,0,0)')",
+      "literals": [
+        "rgba(0,0,0,0)"
+      ],
+      "why": "Fully transparent. A compositing operand rather than a colour -- the globe is drawn on the page's own background, and naming this a token would imply it has a hue."
+    },
+    {
+      "file": "shared.css",
+      "contains": "while this file said",
+      "literals": [
+        "#f0f2f5",
+        "#f5f5f5"
+      ],
+      "why": "Prose. The comment records the drift that made tokens.css the single source of the palette, and naming the two values that disagreed is the whole point of writing it down."
+    },
+    {
+      "file": "shared.css",
+      "contains": "stops below are the only colour literals",
+      "literals": [
+        "rgba(229,228,226,...)"
+      ],
+      "why": "Prose, and a false positive besides: 'rgba(229,228,226,...)' has an ellipsis where the alpha goes, which the census's [0-9.]+ pattern happily reads as a number."
+    },
+    {
+      "file": "shared.css",
+      "contains": "composite on every scroll frame",
+      "literals": [
+        "rgba(6,6,6,0.85)"
+      ],
+      "why": "Prose naming the value a token replaced."
+    },
+    {
+      "file": "shared.css",
+      "contains": "SOFT chrome, not the full flip",
+      "literals": [
+        "#6d6c69",
+        "#f2f1ef"
+      ],
+      "why": "Prose describing where --metal-plat-soft's ramp sits."
+    },
+    {
+      "file": "shared.css",
+      "contains": "background: var(--btc-300); color: #000",
+      "literals": [
+        "#000"
+      ],
+      "why": "Black on the accent, deliberately. #000 on --btc-300 reads 8.6:1; platinum on the same orange reads under 2:1. The one place in a dark app where black type is the accessible choice rather than the lazy one."
+    },
+    {
+      "file": "shared.css",
+      "contains": ".auth-btn-primary",
+      "literals": [
+        "#000"
+      ],
+      "why": "Black on the accent, as above -- the primary sign-in button."
+    },
+    {
+      "file": "workstation.html",
+      "contains": "viewBox=\"0 0 512 512\"",
+      "literals": [
+        "#5c5b58",
+        "#6b6a67",
+        "#83827f",
+        "#a2a19e",
+        "#b5b4b1",
+        "#d0cfcd",
+        "#e07f10",
+        "#e8e7e5",
+        "#f7a02b",
+        "#ffcf8a",
+        "#ffdcae",
+        "#ffffff"
+      ],
+      "why": "The Proton mark. Its metallic platinum and metallic orange are SVG gradient stops -- not a colour applied to the logo, the logo itself. Verbatim copy of the one in shared.js."
+    },
+    {
+      "file": "shared.js",
+      "contains": "viewBox=\"0 0 512 512\"",
+      "literals": [
+        "#5c5b58",
+        "#6b6a67",
+        "#83827f",
+        "#a2a19e",
+        "#b5b4b1",
+        "#d0cfcd",
+        "#e07f10",
+        "#e8e7e5",
+        "#f7a02b",
+        "#ffcf8a",
+        "#ffdcae",
+        "#ffffff"
+      ],
+      "why": "The Proton mark, first copy. See workstation.html."
+    },
+    {
+      "file": "prospecting.html",
+      "contains": "color:#000; }",
+      "literals": [
+        "#000"
+      ],
+      "why": "The deal summary's print stylesheet, continued onto its own line. See the .ps- entry."
+    }
   ]
 }

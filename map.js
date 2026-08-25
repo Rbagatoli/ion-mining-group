@@ -190,10 +190,10 @@ function buildPieChart(currentA2) {
         var pct = slice.value / globalTotalHashrate;
         var angle = pct * 2 * Math.PI;
         var endAngle = startAngle + angle;
-        var fill = slice.isCurrent ? '#f7931a' : mutedColors[s % mutedColors.length];
+        var fill = slice.isCurrent ? ProtonTheme.btc : mutedColors[s % mutedColors.length];
 
         if (pct >= 0.9999) {
-            paths += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fill + '" stroke="#111" stroke-width="0.5"/>';
+            paths += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fill + '" stroke="var(--surface-2)" stroke-width="0.5"/>';
         } else if (pct > 0.001) {
             var x1 = cx + r * Math.cos(startAngle);
             var y1 = cy + r * Math.sin(startAngle);
@@ -203,7 +203,7 @@ function buildPieChart(currentA2) {
 
             paths += '<path d="M' + cx + ',' + cy + ' L' + x1.toFixed(2) + ',' + y1.toFixed(2) +
                 ' A' + r + ',' + r + ' 0 ' + largeArc + ',1 ' + x2.toFixed(2) + ',' + y2.toFixed(2) +
-                ' Z" fill="' + fill + '" stroke="#111" stroke-width="0.5"/>';
+                ' Z" fill="' + fill + '" stroke="var(--surface-2)" stroke-width="0.5"/>';
         }
 
         startAngle = endAngle;
@@ -212,7 +212,7 @@ function buildPieChart(currentA2) {
         if (displayLabel.length > 12) displayLabel = slice.label;
         displayLabel = escapeHtml(displayLabel);
         var pctText = (pct * 100).toFixed(1) + '%';
-        var labelColor = slice.isCurrent ? '#f7931a' : '#999';
+        var labelColor = slice.isCurrent ? 'var(--btc-300)' : 'var(--plat-400)';
         legendHtml += '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:' + labelColor + ';">' +
             '<span style="width:8px;height:8px;border-radius:var(--radius);background:' + fill + ';flex-shrink:0;"></span>' +
             '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayLabel + '</span>' +
@@ -229,7 +229,7 @@ function buildPieChart(currentA2) {
             '<svg viewBox="0 0 100 100" width="' + pieSize + '" height="' + pieSize + '" style="flex-shrink:0;">' + paths + '</svg>' +
             '<div style="display:flex;flex-direction:column;gap:' + (pieMobile ? '2' : '3') + 'px;min-width:0;flex:1;padding-top:2px;">' + legendHtml + '</div>' +
         '</div>' +
-        '<div style="text-align:center;font-size:' + (pieMobile ? '10' : '11') + 'px;color:#f7931a;margin-top:' + (pieMobile ? '4' : '6') + 'px;font-weight:600;">' + currentPct + '% of fleet hashrate</div>' +
+        '<div style="text-align:center;font-size:' + (pieMobile ? '10' : '11') + 'px;color:var(--btc-300);margin-top:' + (pieMobile ? '4' : '6') + 'px;font-weight:600;">' + currentPct + '% of fleet hashrate</div>' +
     '</div>';
 }
 
@@ -254,7 +254,7 @@ function buildPopup(a2, data) {
             '<div class="map-popup-stat"><span class="map-popup-label">Hashrate</span><span class="map-popup-value">' + data.totalHashrate.toLocaleString() + ' TH/s</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Power</span><span class="map-popup-value">' + data.totalPower.toLocaleString() + ' kW</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Efficiency</span><span class="map-popup-value">' + efficiency + ' J/TH</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:#f7931a;">$' + avgElecCost + '/kWh</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:var(--btc-300);">$' + avgElecCost + '/kWh</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:var(--pos);">' + data.onlineCount + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:var(--neg);">' + data.offlineCount + '</span></div>' +
         '</div>' +
@@ -285,7 +285,7 @@ function buildStatePopup(loc) {
             '<div class="map-popup-stat"><span class="map-popup-label">Hashrate</span><span class="map-popup-value">' + loc.totalHashrate.toLocaleString() + ' TH/s</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Power</span><span class="map-popup-value">' + loc.totalPower.toLocaleString() + ' kW</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Efficiency</span><span class="map-popup-value">' + stateEff + ' J/TH</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:#f7931a;">$' + avgElecCost + '/kWh</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:var(--btc-300);">$' + avgElecCost + '/kWh</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:var(--pos);">' + loc.onlineCount + '</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:var(--neg);">' + loc.offlineCount + '</span></div>' +
         '</div>' +
@@ -515,7 +515,7 @@ var MapBridge = (function() {
                         layer.setStyle({
                             fillOpacity: Math.min(baseOpacity + 0.15, 0.9),
                             weight: 2,
-                            color: 'rgba(247,147,26,0.8)'
+                            color: ProtonTheme.alpha(ProtonTheme.btc, 0.8)
                         });
                         if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
                             layer.bringToFront();
@@ -561,9 +561,9 @@ var MapBridge = (function() {
 
                 var stateMarker = L.circleMarker([centroid.lat, centroid.lng], {
                     radius: Math.max(stateRadius, 4),
-                    fillColor: '#fff',
+                    fillColor: ProtonTheme.plat000,
                     fillOpacity: 0.25,
-                    color: '#f7931a',
+                    color: ProtonTheme.btc,
                     weight: 1,
                     opacity: 0.6
                 });
@@ -594,7 +594,7 @@ var MapBridge = (function() {
     // Empty state overlay for flat map
     if (locKeys.length === 0) {
         var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#555;flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
+        overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--plat-600);flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
         overlay.innerHTML =
             '<div style="font-size:36px;opacity:0.4;">&#127758;</div>' +
             '<p style="font-size:14px;color:var(--plat-500);">No miners with locations assigned</p>' +
@@ -652,7 +652,7 @@ var MapBridge = (function() {
                 '<td style="text-align:right">' + loc.totalHashrate.toLocaleString() + ' TH/s</td>' +
                 '<td style="text-align:right">' + loc.totalPower.toLocaleString() + ' kW</td>' +
                 '<td style="text-align:right">' + eff + '</td>' +
-                '<td style="text-align:right"><span style="color:' + (onlinePct === '100%' ? 'var(--pos)' : '#fbbf24') + '">' + onlinePct + '</span></td>' +
+                '<td style="text-align:right"><span style="color:' + (onlinePct === '100%' ? 'var(--pos)' : 'var(--warn)') + '">' + onlinePct + '</span></td>' +
                 '</tr>';
         }
         tbody.innerHTML = html;
@@ -878,7 +878,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                         lat: centroid.lat,
                         lng: centroid.lng,
                         size: 0.15 + stateRatio * 0.5,
-                        color: '#f7931a',
+                        color: ProtonTheme.btc,
                         label: loc.state + ', ' + (GEO_DATA.getCountryName(loc.country) || loc.country),
                         miners: stateMiners,
                         locData: loc
@@ -961,7 +961,7 @@ var _globeRef = null, _showGlobePopupRef = null;
         // Empty state for globe
         if (locKeys.length === 0) {
             var overlay = document.createElement('div');
-            overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#555;flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
+            overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--plat-600);flex-direction:column;gap:8px;z-index:500;pointer-events:none;';
             overlay.innerHTML =
                 '<div style="font-size:36px;opacity:0.4;">&#127758;</div>' +
                 '<p style="font-size:14px;color:var(--plat-500);">No miners with locations assigned</p>' +

@@ -43,7 +43,7 @@
     // ---- tooltip ------------------------------------------------------------------------
     // cornerRadius 0 is the one everybody forgets, and it is exactly the square rule. Chart.js
     // ships 6.
-    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10, 10, 10, 0.94)';
+    Chart.defaults.plugins.tooltip.backgroundColor = T.alpha(T.surface, 0.94);
     Chart.defaults.plugins.tooltip.titleColor = T.plat200;
     Chart.defaults.plugins.tooltip.bodyColor = T.plat300;
     Chart.defaults.plugins.tooltip.borderColor = T.lineMid;

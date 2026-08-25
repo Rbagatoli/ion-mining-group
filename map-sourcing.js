@@ -58,7 +58,7 @@ var MapSourcing = (function() {
         var el = document.getElementById('srcStatus');
         if (!el) return;
         el.textContent = msg || '';
-        el.style.color = color || '#777';
+        el.style.color = color || 'var(--text-dim)';
     }
 
     var ISO3_TO_A2 = {
@@ -1908,7 +1908,7 @@ var MapSourcing = (function() {
             var aging = items.filter(function(i) { return i.cls === 'aging'; }).length;
             hint.textContent = items.length + ' dataset' + (items.length === 1 ? '' : 's') +
                 (stale ? ' · ' + stale + ' out of date' : (aging ? ' · ' + aging + ' ageing' : ''));
-            hint.style.color = stale ? 'var(--neg)' : (aging ? 'var(--warn)' : '#777');
+            hint.style.color = stale ? 'var(--neg)' : (aging ? 'var(--warn)' : 'var(--text-dim)');
         }
     }
 
@@ -2057,7 +2057,7 @@ var MapSourcing = (function() {
         if (!el) return;
         var n = activeFilters().length;
         el.textContent = n ? n + ' active' : '';
-        el.style.color = n ? '#f7931a' : '#777';
+        el.style.color = n ? 'var(--btc-300)' : 'var(--text-dim)';
     }
     var HIDDEN_FILTER_IDS = ['fSources', 'fRegion', 'fRadius', 'fYears',
                              'fActive', 'fOperator', 'fBurning'];
@@ -2072,7 +2072,7 @@ var MapSourcing = (function() {
             if (HIDDEN_FILTER_IDS.indexOf(act[i].key) >= 0 || act[i].key === 'sources') n++;
         }
         el.textContent = n ? n + ' active' : '';
-        el.style.color = n ? '#f7931a' : '#777';
+        el.style.color = n ? 'var(--btc-300)' : 'var(--text-dim)';
     }
 
     // ---- Outreach worklist -----------------------------------------------------------------
@@ -4905,7 +4905,7 @@ var MapSourcing = (function() {
                 labels: meta.years,
                 datasets: [{
                     label: 'kW potential', data: series,
-                    backgroundColor: 'rgba(247,147,26,0.5)', borderColor: '#f7931a', borderWidth: 1
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.5), borderColor: ProtonTheme.btc, borderWidth: 1
                 }]
             },
             options: {

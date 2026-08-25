@@ -1160,7 +1160,7 @@ function renderAddressCards(data) {
                 '<span class="status-badge status-connected" style="font-size:10px; padding:2px 8px;">Connected</span>' +
             '</div>' +
             '<div class="miner-card-stats">' +
-                '<div class="miner-card-stat"><div class="stat-label">BTC Balance</div><div class="stat-value" style="color:#f7931a;">' + fmtBTC(strikeBtc, 8) + ' BTC</div></div>' +
+                '<div class="miner-card-stat"><div class="stat-label">BTC Balance</div><div class="stat-value" style="color:var(--btc-300);">' + fmtBTC(strikeBtc, 8) + ' BTC</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">USD Balance</div><div class="stat-value">' + fmtUSD(strikeUsd) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">BTC in USD</div><div class="stat-value">' + fmtUSD(strikeBtc * liveBtcPrice) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Last Synced</div><div class="stat-value" style="font-size:11px;">' + syncLabel + '</div></div>' +
@@ -1203,17 +1203,17 @@ function renderAddressCards(data) {
         html += '<div class="miner-card">' +
             '<div class="miner-card-header">' +
                 '<div class="miner-card-model">' + escapeHtml(a.label) + '</div>' +
-                '<span class="status-badge" style="font-size:10px; padding:2px 8px; background:rgba(247,147,26,0.15); color:#f7931a;">On-chain</span>' +
+                '<span class="status-badge" style="font-size:10px; padding:2px 8px; background:var(--btc-wash); color:var(--btc-300);">On-chain</span>' +
             '</div>' +
             '<div class="miner-card-stats">' +
                 '<div class="miner-card-stat" style="grid-column:1/-1;">' +
                     '<div class="stat-label">Address</div>' +
                     '<div style="display:flex; align-items:center; gap:6px;">' +
                         '<div class="stat-value" style="font-family:monospace; font-size:10px; word-break:break-all; line-height:1.4;">' + escapeHtml(a.address) + '</div>' +
-                        '<button class="copy-addr-btn" data-addr="' + escapeHtml(a.address) + '" style="flex-shrink:0; background:rgba(247,147,26,0.15); border:1px solid rgba(247,147,26,0.3); color:#f7931a; border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
+                        '<button class="copy-addr-btn" data-addr="' + escapeHtml(a.address) + '" style="flex-shrink:0; background:var(--btc-wash); border:1px solid var(--line-btc); color:var(--btc-300); border-radius:var(--radius); padding:3px 8px; font-size:10px; cursor:pointer;">Copy</button>' +
                     '</div>' +
                 '</div>' +
-                '<div class="miner-card-stat"><div class="stat-label">Balance</div><div class="stat-value" style="color:#f7931a;">' + fmtBTC(a.lastBalance, 8) + ' BTC</div></div>' +
+                '<div class="miner-card-stat"><div class="stat-label">Balance</div><div class="stat-value" style="color:var(--btc-300);">' + fmtBTC(a.lastBalance, 8) + ' BTC</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">USD Value</div><div class="stat-value">' + fmtUSD(a.lastBalance * liveBtcPrice) + '</div></div>' +
                 '<div class="miner-card-stat"><div class="stat-label">Transactions</div><div class="stat-value">' + a.lastTxCount + '</div></div>' +
             '</div>' +
@@ -1439,17 +1439,17 @@ async function renderTransactionHistory() {
             typeCol = '<span style="font-size:11px; color:var(--plat-500);">' + (t.strikeType || 'Transfer') + '</span>';
         } else {
             var txShort = t.txid.substring(0, 10) + '...';
-            typeCol = '<a href="https://mempool.space/tx/' + t.txid + '" target="_blank" rel="noopener" style="color:#f7931a; text-decoration:none; font-family:monospace; font-size:11px;" title="' + t.txid + '">' + txShort + '</a>';
+            typeCol = '<a href="https://mempool.space/tx/' + t.txid + '" target="_blank" rel="noopener" style="color:var(--btc-300); text-decoration:none; font-family:monospace; font-size:11px;" title="' + t.txid + '">' + txShort + '</a>';
         }
 
         var statusText, statusColor;
         if (t.type === 'strike') {
             var st2 = (t.strikeStatus || '').toUpperCase();
             statusText = st2 === 'COMPLETED' ? 'Completed' : st2 === 'PENDING' ? 'Pending' : t.strikeStatus || 'Unknown';
-            statusColor = st2 === 'COMPLETED' ? 'var(--pos)' : '#f7931a';
+            statusColor = st2 === 'COMPLETED' ? 'var(--pos)' : 'var(--btc-300)';
         } else {
             statusText = t.confirmed ? 'Confirmed' : 'Unconfirmed';
-            statusColor = t.confirmed ? 'var(--pos)' : '#f7931a';
+            statusColor = t.confirmed ? 'var(--pos)' : 'var(--btc-300)';
         }
 
         var toCol;
@@ -1664,7 +1664,7 @@ document.getElementById('btnSendBtc').addEventListener('click', function() {
             pinSection.style.display = '';
             keyPanel.classList.add('open');
             var resultEl = document.getElementById('strikeKeyResult');
-            if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before you can send BTC.</span>';
+            if (resultEl) resultEl.innerHTML = '<span style="color:var(--btc-300);">You must create a send PIN before you can send BTC.</span>';
         }
         return;
     }
@@ -1825,7 +1825,7 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
             await loadOnchainTiers();
             tier = tierSelect.value;
             if (tier) {
-                result.innerHTML = '<span style="color:#f90;">Select a fee speed, then tap Get Quote again</span>';
+                result.innerHTML = '<span style="color:var(--warn);">Select a fee speed, then tap Get Quote again</span>';
             } else {
                 result.innerHTML = '<span style="color:var(--neg);">Could not load fee tiers</span>';
             }
@@ -1864,7 +1864,7 @@ function showQuoteConfirmation(quote, type, dest) {
 
     var html = '<div><strong>Type:</strong> ' + (type === 'lightning' ? 'Lightning' : 'On-chain') + '</div>';
     html += '<div><strong>To:</strong> <span style="word-break:break-all; color:var(--plat-400);">' + destShort + '</span></div>';
-    html += '<div><strong>Total:</strong> <span style="color:#f7931a;">' + totalAmt + '</span></div>';
+    html += '<div><strong>Total:</strong> <span style="color:var(--btc-300);">' + totalAmt + '</span></div>';
     html += '<div><strong>Fee:</strong> ' + totalFee + '</div>';
     if (quote.conversionRate) {
         html += '<div><strong>Rate:</strong> 1 BTC = ' + (1 / parseFloat(quote.conversionRate.amount || 1)).toFixed(2) + ' ' + quote.conversionRate.sourceCurrency + '</div>';
@@ -1905,7 +1905,7 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
         return;
     }
 
-    result.innerHTML = '<span style="color:#f7931a;">Sending...</span>';
+    result.innerHTML = '<span style="color:var(--btc-300);">Sending...</span>';
     document.getElementById('btnConfirmSend').disabled = true;
 
     var sendResult = await StrikeAPI.executeSend(activeSendQuote.paymentQuoteId, totpCode || undefined, pinCode || undefined);
@@ -1939,7 +1939,7 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
                 keyPanel.classList.add('open');
                 keyPanel.dataset.pinRequired = 'true';
                 var kr = document.getElementById('strikeKeyResult');
-                if (kr) kr.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before you can send BTC.</span>';
+                if (kr) kr.innerHTML = '<span style="color:var(--btc-300);">You must create a send PIN before you can send BTC.</span>';
             }
         } else if (sendResult.pinRequired) {
             pinEnabled = true;
@@ -2171,7 +2171,7 @@ document.getElementById('btnCopyShareLink').addEventListener('click', function()
 function startInvoicePoll(invoiceId) {
     if (window._invoicePollInterval) clearInterval(window._invoicePollInterval);
     var statusEl = document.getElementById('invoiceStatus');
-    statusEl.innerHTML = '<span style="color:#f7931a;">Waiting for payment...</span>';
+    statusEl.innerHTML = '<span style="color:var(--btc-300);">Waiting for payment...</span>';
 
     window._invoicePollInterval = setInterval(async function() {
         var inv = await StrikeAPI.getInvoice(invoiceId);
@@ -2213,7 +2213,7 @@ function updateOnchainBadge(type) {
     if (type === 'strike') {
         badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-300);">Strike Custodial &mdash; funds appear in your Strike balance</span>';
     } else {
-        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:rgba(247,147,26,0.08); border:1px solid rgba(247,147,26,0.25); color:#f7931a;">Self-Custody Address</span>';
+        badge.innerHTML = '<span style="font-size:11px; padding:3px 10px; border-radius:var(--radius); background:var(--btc-wash); border:1px solid var(--line-btc); color:var(--btc-300);">Self-Custody Address</span>';
     }
 }
 
@@ -2234,7 +2234,7 @@ async function renderOnchainReceiveTab() {
         if (strikeOnchainAddress) {
             allAddresses.unshift({ address: strikeOnchainAddress, label: 'Strike Wallet', type: 'strike' });
         } else {
-            container.innerHTML = '<div style="padding:20px; color:#f7931a; font-size:13px;">Fetching Strike deposit address...</div>';
+            container.innerHTML = '<div style="padding:20px; color:var(--btc-300); font-size:13px;">Fetching Strike deposit address...</div>';
             var addr = await fetchStrikeOnchainAddress();
             if (addr) {
                 allAddresses.unshift({ address: addr, label: 'Strike Wallet', type: 'strike' });
@@ -2263,7 +2263,7 @@ async function renderOnchainReceiveTab() {
     html += '<div style="margin:12px 0;"><img id="onchainAddrQR" width="200" height="200" style="border-radius:var(--radius); background:#fff; padding:8px;"></div>';
     html += '<div style="font-size:12px; color:var(--plat-400); margin-bottom:6px;">Bitcoin Address:</div>';
     html += '<div style="position:relative;">' +
-        '<div id="onchainAddrText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius:var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:#f7931a;"></div>' +
+        '<div id="onchainAddrText" style="background:var(--panel-hover); padding:10px 40px 10px 14px; border-radius:var(--radius); font-family:monospace; font-size:11px; word-break:break-all; color:var(--btc-300);"></div>' +
         '<button class="btn btn-secondary" id="btnCopyOnchainAddr" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>' +
     '</div>';
 
@@ -2310,7 +2310,7 @@ function showOnchainAddress(address) {
             var panel = document.getElementById('strikeApiKeyPanel');
             if (panel.dataset.pinRequired === 'true') {
                 var resultEl = document.getElementById('strikeKeyResult');
-                if (resultEl) resultEl.innerHTML = '<span style="color:#f7931a;">You must create a send PIN before continuing.</span>';
+                if (resultEl) resultEl.innerHTML = '<span style="color:var(--btc-300);">You must create a send PIN before continuing.</span>';
                 return; // Block close
             }
             panel.classList.remove('open');
@@ -2800,11 +2800,11 @@ function renderPayoutTable() {
         // notes and txHash are free-text user input — escape before interpolating
         var safeHash = encodeURIComponent(p.txHash || '');
         var txDisplay = p.txHash
-            ? '<a href="https://mempool.space/tx/' + safeHash + '" target="_blank" rel="noopener" style="color:#f7931a; text-decoration:none;" title="' + escapeHtml(p.txHash) + '">' + escapeHtml(p.txHash.substring(0, 12)) + '...</a>'
+            ? '<a href="https://mempool.space/tx/' + safeHash + '" target="_blank" rel="noopener" style="color:var(--btc-300); text-decoration:none;" title="' + escapeHtml(p.txHash) + '">' + escapeHtml(p.txHash.substring(0, 12)) + '...</a>'
             : '--';
         html += '<tr>' +
             '<td>' + escapeHtml(p.date) + '</td>' +
-            '<td style="color:#f7931a">' + fmtBTC(p.btcAmount, 8) + '</td>' +
+            '<td style="color:var(--btc-300)">' + fmtBTC(p.btcAmount, 8) + '</td>' +
             '<td>' + fmtUSD(p.btcPrice) + '</td>' +
             '<td>' + fmtUSD(p.usdValue) + '</td>' +
             '<td style="font-family:monospace; font-size:11px;">' + txDisplay + '</td>' +
@@ -2924,8 +2924,8 @@ function initPayoutChart() {
                 {
                     label: 'Cumulative BTC',
                     data: chartData.btcValues,
-                    borderColor: '#f7931a',
-                    backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                    borderColor: ProtonTheme.btc,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.1),
                     fill: true,
                     borderWidth: 2,
                     yAxisID: 'y',
@@ -2963,7 +2963,7 @@ function initPayoutChart() {
                     type: 'linear',
                     position: 'left',
                     ticks: {
-                        color: '#f7931a',
+                        color: ProtonTheme.btc,
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(4) + ' BTC'; }
                     },
@@ -3970,7 +3970,7 @@ function renderRevenueTable(entries) {
         if (sourceLower.indexOf('strike') !== -1) {
             sourceBadgeStyle = 'background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-300);';
         } else {
-            sourceBadgeStyle = 'background:rgba(247,147,26,0.12); border:1px solid rgba(247,147,26,0.3); color:#f7931a;';
+            sourceBadgeStyle = 'background:var(--btc-wash); border:1px solid var(--line-btc); color:var(--btc-300);';
         }
 
         // Determine category badge color
@@ -3981,7 +3981,7 @@ function renderRevenueTable(entries) {
         } else if (categoryLower.indexOf('payment') !== -1 || categoryLower.indexOf('receive') !== -1) {
             categoryBadgeStyle = 'background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-400);';
         } else {
-            categoryBadgeStyle = 'background:rgba(156,163,175,0.12); border:1px solid rgba(156,163,175,0.3); color:#9ca3af;';
+            categoryBadgeStyle = 'background:var(--panel-hover); border:1px solid var(--line-mid); color:var(--plat-400);';
         }
 
         html += '<tr>' +
@@ -4114,11 +4114,11 @@ function updatePnLChart(pnl) {
                     label: 'Net Income',
                     type: 'line',
                     data: netData,
-                    borderColor: '#f7931a',
-                    backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                    borderColor: ProtonTheme.btc,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.1),
                     borderWidth: 2,
                     pointRadius: 4,
-                    pointBackgroundColor: '#f7931a',
+                    pointBackgroundColor: ProtonTheme.btc,
                     fill: true,
                     tension: 0.3,
                     order: 1
@@ -4136,7 +4136,7 @@ function updatePnLChart(pnl) {
                         label: function(ctx) { return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString(); }
                     }
                 },
-                legend: { labels: { color: '#bbb', font: { size: 12 } } }
+                legend: { labels: { color: ProtonTheme.plat300, font: { size: 12 } } }
             },
             scales: {
                 x: { ticks: {}, grid: {} },
@@ -4194,7 +4194,7 @@ function updateExpenseDoughnut(pnl) {
             datasets: [{
                 data: catValues,
                 backgroundColor: colors,
-                borderColor: 'rgba(0,0,0,0.3)',
+                borderColor: ProtonTheme.alpha(ProtonTheme.black, 0.3),
                 borderWidth: 1
             }]
         },
@@ -4212,7 +4212,7 @@ function updateExpenseDoughnut(pnl) {
                         }
                     }
                 },
-                legend: { position: 'bottom', labels: { color: '#bbb', font: { size: 12 }, padding: 12 } }
+                legend: { position: 'bottom', labels: { color: ProtonTheme.plat300, font: { size: 12 }, padding: 12 } }
             }
         },
         plugins: [{
@@ -4223,12 +4223,12 @@ function updateExpenseDoughnut(pnl) {
                 var h = chart.height;
                 ctx2.save();
                 ctx2.font = 'bold 16px sans-serif';
-                ctx2.fillStyle = '#e8e8e8';
+                ctx2.fillStyle = ProtonTheme.text;
                 ctx2.textAlign = 'center';
                 ctx2.textBaseline = 'middle';
                 ctx2.fillText('$' + totalExp.toLocaleString(undefined, { maximumFractionDigits: 0 }), w / 2, h / 2 - 8);
                 ctx2.font = '11px sans-serif';
-                ctx2.fillStyle = '#888';
+                ctx2.fillStyle = ProtonTheme.plat500;
                 ctx2.fillText('Total Expenses', w / 2, h / 2 + 12);
                 ctx2.restore();
             }

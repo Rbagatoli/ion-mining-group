@@ -229,12 +229,12 @@ const halvingPlugin = {
             if (x < chart.chartArea.left || x > chart.chartArea.right) continue;
             ctx.beginPath();
             ctx.setLineDash([6, 4]);
-            ctx.strokeStyle = '#f7931a';
+            ctx.strokeStyle = ProtonTheme.btc;
             ctx.lineWidth = 2;
             ctx.moveTo(x, chart.chartArea.top);
             ctx.lineTo(x, chart.chartArea.bottom);
             ctx.stroke();
-            ctx.fillStyle = '#f7931a';
+            ctx.fillStyle = ProtonTheme.btc;
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('HALVING \u2192 ' + h.reward + ' BTC', x, chart.chartArea.top - 6);
@@ -287,8 +287,8 @@ function initChart() {
                     type: 'bar',
                     label: 'BTC Mined (cumulative)',
                     data: [],
-                    backgroundColor: 'rgba(247, 147, 26, 0.60)',
-                    borderColor: '#f7931a',
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.60),
+                    borderColor: ProtonTheme.btc,
                     borderRadius: 3,
                     yAxisID: 'yBTC',
                     order: 2
@@ -297,8 +297,8 @@ function initChart() {
                     type: 'bar',
                     label: 'BTC Held (cumulative)',
                     data: [],
-                    backgroundColor: 'rgba(140, 140, 140, 0.45)',
-                    borderColor: '#999',
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.plat500, 0.45),
+                    borderColor: ProtonTheme.plat400,
                     borderRadius: 3,
                     yAxisID: 'yBTC',
                     order: 3
@@ -307,12 +307,12 @@ function initChart() {
                     type: 'line',
                     label: 'Mining Net Value (USD)',
                     data: [],
-                    borderColor: '#f7931a',
+                    borderColor: ProtonTheme.btc,
                     backgroundColor: 'transparent',
                     borderWidth: 2.5,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#f7931a',
+                    pointHoverBackgroundColor: ProtonTheme.btc,
                     tension: 0.3,
                     yAxisID: 'yUSD',
                     order: 1
@@ -394,7 +394,7 @@ function initChart() {
                     type: 'linear', position: 'right', beginAtZero: true,
                     title: { display: true, text: 'Net Value vs. Buy & Hold (USD)', color: mutedColor(), font: { size: 12 } },
                     ticks: {
-                        color: '#f7931a', font: { size: 11 },
+                        color: ProtonTheme.btc, font: { size: 11 },
                         callback: function(v) {
                             if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
                             if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'k';
@@ -405,9 +405,9 @@ function initChart() {
                 },
                 yMachines: {
                     type: 'linear', position: 'right', beginAtZero: true, display: false,
-                    title: { display: true, text: 'Miners', color: '#ffffff', font: { size: 12 } },
+                    title: { display: true, text: 'Miners', color: ProtonTheme.plat000, font: { size: 12 } },
                     ticks: {
-                        color: '#ffffff', font: { size: 11 }, stepSize: 1,
+                        color: ProtonTheme.plat000, font: { size: 11 }, stepSize: 1,
                         callback: function(v) { return Number.isInteger(v) ? v : ''; }
                     },
                     grid: { drawOnChartArea: false }
@@ -544,11 +544,11 @@ function renderProjection(r) {
         const tr = document.createElement('tr');
         if (row.isHalving) tr.classList.add('halving-row');
         tr.innerHTML =
-            '<td>' + row.period + (row.isHalving ? ' <span style="color:#f7931a">&#x26A0; Halving</span>' : '') + '</td>' +
+            '<td>' + row.period + (row.isHalving ? ' <span style="color:var(--btc-300)">&#x26A0; Halving</span>' : '') + '</td>' +
             '<td>' + fmtUSDFull(row.btcPrice) + '</td>' +
             '<td>' + row.diffT.toFixed(2) + '</td>' +
             '<td>' + row.blockReward + ' BTC</td>' +
-            '<td>' + row.machines + (row.retiredThisPeriod > 0 && row.replacedThisPeriod > 0 ? ' <span style="color:#fb923c">(' + row.retiredThisPeriod + ' replaced)</span>' : row.retiredThisPeriod > 0 ? ' <span style="color:var(--neg)">(-' + row.retiredThisPeriod + ' retired)</span>' : '') + (row.machinesBought > 0 ? ' <span style="color:var(--pos)">(+' + row.machinesBought + ')</span>' : '') + (row.scheduledAdded > 0 ? ' <span style="color:var(--warn)">(+' + row.scheduledAdded + ' sched)</span>' : '') + '</td>' +
+            '<td>' + row.machines + (row.retiredThisPeriod > 0 && row.replacedThisPeriod > 0 ? ' <span style="color:var(--btc-200)">(' + row.retiredThisPeriod + ' replaced)</span>' : row.retiredThisPeriod > 0 ? ' <span style="color:var(--neg)">(-' + row.retiredThisPeriod + ' retired)</span>' : '') + (row.machinesBought > 0 ? ' <span style="color:var(--pos)">(+' + row.machinesBought + ')</span>' : '') + (row.scheduledAdded > 0 ? ' <span style="color:var(--warn)">(+' + row.scheduledAdded + ' sched)</span>' : '') + '</td>' +
             '<td>' + row.pnlBtc.toFixed(8) + '</td>' +
             '<td>' + row.btcHodlCumul.toFixed(6) + '</td>' +
             '<td>' + fmtUSDFull(row.usdValue) + '</td>' +
@@ -1173,7 +1173,7 @@ function renderBacktestChart(bt, mult) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Cumulative revenue', data: revenue, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.10)', fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
+                { label: 'Cumulative revenue', data: revenue, borderColor: ProtonTheme.btc, backgroundColor: ProtonTheme.alpha(ProtonTheme.btc, 0.10), fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
                 { label: 'Cumulative power cost', data: elec, borderColor: ProtonTheme.neg, backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0 },
                 { label: 'Cumulative profit', data: profit, borderColor: ProtonTheme.pos, backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0 }
             ]
@@ -1185,7 +1185,7 @@ function renderBacktestChart(bt, mult) {
             plugins: {
                 legend: { display: true, position: 'top', labels: {} },
                 tooltip: {
-                    borderColor: 'rgba(255,255,255,0.10)', borderWidth: 1, padding: 10,
+                    borderColor: ProtonTheme.line, borderWidth: 1, padding: 10,
                     callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmtUSD(ctx.parsed.y); } }
                 }
             },

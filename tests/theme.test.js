@@ -319,7 +319,18 @@ console.log('\n=== colours live in tokens, not in 1,900 places ===');
 
     // Strike purple was demoted to platinum: source identity is carried by orange-vs-platinum,
     // and purple was the single most off-key thing that would have survived the reskin.
-    var purple = FILES.filter(function(f) { return /#8b5cf6|#a78bfa|#7c3aed/i.test(f.text); })
+    /* THE rgb() SPELLING TOO. This assertion passed while
+       rgba(139,92,246,0.15) was still setting the Strike badge's background in
+       shared.css -- the same purple, written the other way, invisible to a
+       hex-only pattern. A colour rule that knows one notation is a colour rule
+       with a hole in it, and the hole is exactly where a hand-written rgba()
+       goes. */
+    var purple = FILES.filter(function(f) {
+        return /#8b5cf6|#a78bfa|#7c3aed/i.test(f.text) ||
+               /rgba?\(\s*139\s*,\s*92\s*,\s*246/.test(f.text) ||
+               /rgba?\(\s*167\s*,\s*139\s*,\s*250/.test(f.text) ||
+               /rgba?\(\s*124\s*,\s*58\s*,\s*237/.test(f.text);
+    })
                       .map(function(f) { return f.rel; });
     eq('Strike purple is gone', purple.join(', ') || 'none', 'none');
 })();
