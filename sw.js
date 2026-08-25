@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v352';
+const CACHE_NAME = 'proton-mining-v353';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -26,6 +26,7 @@ const ASSETS = [
   './theme.js',
   './chart-theme.js',
   './shared.js',
+  './gas-field.js',
   './fleet-data.js',
   './geo-data.js',
   './dashboard.js',

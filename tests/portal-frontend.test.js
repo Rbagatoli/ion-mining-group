@@ -436,6 +436,15 @@ console.log('\n=== it is the hero rise, and only the rise ===');
     };
     var gasCode = stripped(gas), heroCode = stripped(hero);
 
+    /* THE THIRD COPY. The app runs this animation too, behind every operator
+       page, and it is a separate file for the same reason the portal's is: the
+       build publishes site/ at /, the portal at /portal/ and the app at /app/,
+       so one shared file a level up resolves to nothing in two of the three.
+       Three copies with no assertion between them is how they drift; the table
+       below is what makes the duplication safe rather than merely necessary. */
+    var app = fs.readFileSync(path.join(ROOT, 'gas-field.js'), 'utf8');
+    var appCode = stripped(app);
+
     var SHARED = [
         ['the platinum ink', "'229,228,226'"],
         ['the hot orange', "'247,147,26'"],
@@ -452,7 +461,16 @@ console.log('\n=== it is the hero rise, and only the rise ===');
     SHARED.forEach(function (pair) {
         ok(pair[0] + ' matches the site',
            gasCode.indexOf(pair[1]) >= 0 && heroCode.indexOf(pair[1]) >= 0, pair[1]);
+        ok(pair[0] + ' matches in the app too',
+           appCode.indexOf(pair[1]) >= 0, pair[1]);
     });
+
+    /* And the app's copy is the portal's copy below the header comment. The two
+       are sized to a viewport in the same way and differ only in what they say
+       about themselves, so anything beyond a prose difference is drift. */
+    ok('the app field is the portal field, code for code',
+       appCode.replace(/\s+/g, ' ').trim() === gasCode.replace(/\s+/g, ' ').trim(),
+       'gas-field.js vs portal/gas-field.js');
 
     /* The lattice, which this file never had and the site no longer has either.
        It was the busiest half of the hero and the half that said 'hashrate',

@@ -94,8 +94,16 @@ body::before {
     }
 }
 
-/* ===== TECH LINES BACKGROUND ===== */
-#techLinesCanvas {
+/* ===== THE GAS FIELD =====
+   The same backdrop the marketing site and the portal run: stranded energy
+   rising and cooling. Fixed to the viewport, behind everything, and inert to
+   the pointer.
+
+   NO reduced-motion display:none here, which is what the tech-lines rule did.
+   gas-field.js draws one composed still when motion is reduced, and a still
+   field is a better answer than an empty black rectangle -- the backdrop is
+   part of the page's material, not decoration layered on top of it. */
+#gasField {
     position: fixed;
     top: 0;
     left: 0;
@@ -103,9 +111,6 @@ body::before {
     height: 100%;
     pointer-events: none;
     z-index: 0;
-}
-@media (prefers-reduced-motion: reduce) {
-    #techLinesCanvas { display: none; }
 }
 
 body > * { position: relative; z-index: 1; }
