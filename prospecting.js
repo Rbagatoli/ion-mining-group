@@ -28,12 +28,17 @@
            modal means the back button works and a prospect can be linked to,
            which matters the moment you want to send yourself one. */
         if (h.indexOf('p/') === 0) return 'detail';
+        /* #s/<id> is the one-page summary. Its own route rather than a mode on
+           the detail page, because the whole point of it is to be a thing you can
+           send yourself a link to and print. */
+        if (h.indexOf('s/') === 0) return 'summary';
         return (h === 'board' || h === 'today' || h === 'analytics') ? h : 'today';
     }
 
     function idFromHash() {
         var h = (location.hash || '').replace('#', '');
-        return h.indexOf('p/') === 0 ? decodeURIComponent(h.slice(2)) : null;
+        if (h.indexOf('p/') === 0 || h.indexOf('s/') === 0) return decodeURIComponent(h.slice(2));
+        return null;
     }
 
     var host = document.getElementById('pboard');
@@ -42,6 +47,7 @@
     var boardSection = document.getElementById('boardSection');
     var detailSection = document.getElementById('detailSection');
     var analyticsSection = document.getElementById('analyticsSection');
+    var summarySection = document.getElementById('summarySection');
 
     /* list(), not all(). SiteData exposes list() -- the first draft of this called
        all() and threw on a page where nothing had been saved yet, which is exactly
@@ -180,10 +186,64 @@
         boardSection.hidden = (v !== 'board');
         detailSection.hidden = (v !== 'detail');
         analyticsSection.hidden = (v !== 'analytics');
+        summarySection.hidden = (v !== 'summary');
         if (v === 'board') draw();
         else if (v === 'detail') drawDetail();
         else if (v === 'analytics') drawAnalytics();
+        else if (v === 'summary') drawSummary();
         else drawToday();
+    }
+
+    function drawSummary() {
+        if (typeof ProspectSummary === 'undefined') return;
+        var id = idFromHash();
+        if (!id) return;
+        ProspectSummary.render(id, 'psummary');
+
+        var pr = document.getElementById('psPrint');
+        if (pr) pr.addEventListener('click', function () { window.print(); });
+
+        var cp = document.getElementById('psCopy');
+        if (cp) {
+            cp.addEventListener('click', function () {
+                var btn = this;
+                var body = ProspectSummary.text(id);
+                if (body === null) return;
+                /* SAY WHETHER IT WORKED. The clipboard is refused often enough --
+                   a permission, an insecure origin, a browser that only allows it
+                   inside a user gesture it did not recognise -- and a button that
+                   says "Copied" when nothing was copied sends somebody to an email
+                   they then paste nothing into. */
+                function done(okFlag) {
+                    btn.textContent = okFlag ? 'Copied' : 'Could not copy';
+                    setTimeout(function () { btn.textContent = 'Copy as text'; }, 2200);
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(body)
+                        .then(function () { done(true); })
+                        .catch(function () { done(fallbackCopy(body)); });
+                    return;
+                }
+                done(fallbackCopy(body));
+            });
+        }
+    }
+
+    /* The pre-clipboard-API route, still the only one that works on a page served
+       over plain http. */
+    function fallbackCopy(body) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = body;
+            ta.setAttribute('readonly', 'readonly');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            var okFlag = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return !!okFlag;
+        } catch (e) { return false; }
     }
 
     function drawAnalytics() {
@@ -236,6 +296,55 @@
             }
             drawDetail();
         });
+
+        var docForm = document.getElementById('pdDocForm');
+        if (docForm) {
+            docForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var res = CrmDocuments.add(id, {
+                    title: fieldValue('pdDocTitle').trim(),
+                    kind: fieldValue('pdDocKind') || null,
+                    url: fieldValue('pdDocUrl').trim(),
+                    where: fieldValue('pdDocWhere').trim(),
+                    signed_on: fieldValue('pdDocDate') || null
+                });
+                if (!res.ok) { window.alert(res.err); return; }
+                drawDetail();
+            });
+        }
+
+        /* Removing a document record removes the RECORD. Saying so in the
+           confirmation matters -- somebody about to lose a signed agreement
+           should be told they are not. */
+        var rms = document.querySelectorAll('.pd-drm');
+        for (var r = 0; r < rms.length; r++) {
+            rms[r].addEventListener('click', function () {
+                var did = this.getAttribute('data-did');
+                var doc = CrmDocuments.get(did);
+                if (!doc) return;
+                if (!window.confirm('Remove the record of "' + doc.title +
+                                    '"?' + NEWLINE + NEWLINE +
+                                    'The file itself lives somewhere else and is not touched.')) return;
+                CrmDocuments.remove(did);
+                drawDetail();
+            });
+        }
+
+        var noteForm = document.getElementById('pdNoteForm');
+        if (noteForm) {
+            noteForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var el = document.getElementById('pdNoteBody');
+                var body = el ? el.value.trim() : '';
+                /* An empty note is not a note. Silently, because an empty submit
+                   is a stray Enter key, not an error worth a dialog. */
+                if (!body) return;
+                if (typeof CrmLog === 'undefined') return;
+                var res = CrmLog.append('note', id, { body: body });
+                if (!res.ok) { window.alert(res.err); return; }
+                drawDetail();
+            });
+        }
 
         var stage = document.getElementById('pdStage');
         if (stage) stage.addEventListener('change', function () {
@@ -335,12 +444,14 @@
         if (!e || !e.key) return;
         if (e.key === 'protonMiningSites' || e.key === 'protonCrmLog' ||
             e.key === 'protonCrmConfig' || e.key === 'protonCrmFollowups' ||
-            e.key === 'protonContacts' || e.key === 'protonCrmEnrichment') {
+            e.key === 'protonContacts' || e.key === 'protonCrmEnrichment' ||
+            e.key === 'protonCrmDocuments') {
             if (typeof CrmConfig !== 'undefined') { CrmConfig.reset(); CrmConfig.publish(); }
             if (typeof CrmLog !== 'undefined') CrmLog.reset();
             if (typeof CrmFollowups !== 'undefined') CrmFollowups.reset();
             if (typeof CrmContacts !== 'undefined') CrmContacts.reset();
             if (typeof CrmEnrichment !== 'undefined') CrmEnrichment.reset();
+            if (typeof CrmDocuments !== 'undefined') CrmDocuments.reset();
             show();
         }
     });

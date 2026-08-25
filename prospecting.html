@@ -211,6 +211,112 @@
         .pb-ebar span { display:block; height:100%; background:var(--btc-300); }
         .pb-epct { font-family:var(--mono); font-size:9.5px; color:var(--plat-500); }
 
+
+        /* ---- documents: a register of where things are, not the things ---- */
+        .pd-docs { list-style:none; margin:0 0 10px; padding:0; }
+        .pd-doc { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+                  padding:6px 0; border-bottom:1px solid var(--line); font-size:12px; }
+        .pd-doc:last-child { border-bottom:0; }
+        .pd-dkind { flex:0 0 118px; font-size:10.5px; letter-spacing:.03em;
+                    text-transform:uppercase; color:var(--plat-500); }
+        .pd-dtitle { flex:1 1 180px; color:var(--plat-100); }
+        .pd-dloc { flex:1 1 200px; min-width:0; overflow-wrap:anywhere; }
+        .pd-dlink { color:var(--btc-300); text-decoration:none; }
+        .pd-dlink:hover { text-decoration:underline; }
+        /* Typed, kept, and deliberately not a link. It is shown so it can be
+           fixed, not hidden so it looks fine. */
+        .pd-dbad { color:var(--plat-500); font-family:var(--mono); font-size:11px; }
+        .pd-dwhere { color:var(--plat-400); }
+        .pd-dwhen { flex:0 0 78px; text-align:right; font-family:var(--mono);
+                    font-size:10.5px; color:var(--plat-500); }
+        .pd-drm { flex:0 0 auto; background:none; border:0; cursor:pointer;
+                  color:var(--plat-600); font-size:15px; line-height:1; padding:0 2px; }
+        .pd-drm:hover { color:var(--neg); }
+        .pd-dmiss { margin:0 0 12px; font-size:11px; color:var(--plat-500); }
+        .pd-noteform { display:flex; align-items:flex-end; gap:10px; margin:0 0 14px; }
+        .pd-noteform textarea { width:100%; resize:vertical; background:var(--black);
+                    border:1px solid var(--line-mid); color:var(--plat-200);
+                    border-radius:var(--radius); padding:7px 9px; font:inherit;
+                    font-size:12px; }
+        .pd-ev.k-note .pd-kind { color:var(--plat-400); }
+
+        @media (max-width: 620px) {
+            .pd-dkind { flex-basis:100%; }
+            .pd-dwhen { flex:0 0 auto; }
+        }
+
+        /* ---- the one-page summary ---- */
+        .ps-bar { display:flex; align-items:center; gap:10px; margin:0 0 16px; }
+        .ps-bar .pd-back { margin-right:auto; }
+        .pd-sumlink { font-size:11px; color:var(--plat-400); text-decoration:none;
+                      border:1px solid var(--line-mid); border-radius:var(--radius);
+                      padding:4px 9px; }
+        .pd-sumlink:hover { color:var(--btc-300); border-color:var(--btc-300); }
+        .ps-sheet { max-width:760px; background:var(--panel); border:1px solid var(--line);
+                    border-radius:var(--radius); padding:26px 30px 22px; }
+        .ps-head { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:18px; }
+        .ps-head h2 { margin:0 0 6px; font-size:20px; color:var(--plat-100); }
+        .ps-standing { margin:0; font-size:12px; color:var(--plat-400); }
+        .ps-next { margin:6px 0 0; font-size:12px; color:var(--plat-300); }
+        .ps-next.is-late { color:var(--neg); }
+        .ps-sec { margin:0 0 20px; }
+        .ps-sec h3 { margin:0 0 9px; font-size:11px; letter-spacing:.06em;
+                     text-transform:uppercase; color:var(--plat-500); font-weight:600; }
+        .ps-facts { display:grid; grid-template-columns:150px 1fr; gap:5px 14px;
+                    margin:0; font-size:12.5px; }
+        .ps-facts dt { color:var(--plat-500); }
+        .ps-facts dd { margin:0; color:var(--plat-100); }
+        .ps-note { font-size:10.5px; color:var(--plat-500); }
+        /* One representation of absence, everywhere on the sheet. */
+        .ps-absent { font-style:italic; color:var(--plat-600); font-size:11.5px; }
+        .ps-caveat { margin:0 0 10px; font-size:11.5px; line-height:1.5; color:var(--btc-200);
+                     border-left:2px solid var(--btc-200); padding-left:10px; }
+        .ps-caveat.is-executed { color:var(--pos); border-left-color:var(--pos); }
+        .ps-list { list-style:none; margin:0; padding:0; font-size:12.5px; }
+        .ps-list li { padding:4px 0; color:var(--plat-200); border-bottom:1px solid var(--line); }
+        .ps-list li:last-child { border-bottom:0; }
+        .ps-reach { display:inline-block; margin-left:12px; font-family:var(--mono);
+                    font-size:11px; color:var(--plat-400); }
+        .ps-dkind { display:inline-block; min-width:112px; font-size:10.5px;
+                    text-transform:uppercase; letter-spacing:.03em; color:var(--plat-500); }
+        .ps-where { display:block; font-family:var(--mono); font-size:10.5px;
+                    color:var(--plat-500); overflow-wrap:anywhere; }
+        .ps-where a { color:var(--btc-300); text-decoration:none; }
+        .ps-tl { list-style:none; margin:0; padding:0; font-size:12.5px; }
+        .ps-tl li { display:flex; gap:12px; padding:4px 0; color:var(--plat-200); }
+        .ps-when { flex:0 0 80px; font-family:var(--mono); font-size:11px; color:var(--plat-500); }
+        /* The section that makes the rest of the sheet trustworthy, so it is not
+           styled as an afterthought at the bottom. */
+        .ps-sec--gaps { border:1px solid var(--line-mid); border-radius:var(--radius);
+                        padding:14px 16px; background:var(--black); }
+        .ps-sec--gaps .ps-list li { border-bottom:0; padding:3px 0; color:var(--plat-300); }
+        .ps-sec--gaps strong { color:var(--plat-200); font-weight:500; }
+        .ps-foot { margin:0; padding-top:14px; border-top:1px solid var(--line);
+                   font-size:10.5px; color:var(--plat-600); }
+
+        /* PRINTING A DARK PAGE. Browsers do not print backgrounds by default, so
+           every near-white token would come out white on white -- an invisible
+           page that looks fine on screen. Colours are restated for ink. */
+        @media print {
+            body * { visibility:hidden; }
+            #psummary, #psummary * { visibility:visible; }
+            #psummary { position:absolute; left:0; top:0; width:100%; }
+            .ps-bar { display:none; }
+            .ps-sheet { max-width:none; border:0; padding:0; background:#fff;
+                        color:#000; }
+            .ps-head h2, .ps-facts dd, .ps-list li, .ps-tl li { color:#000; }
+            .ps-standing, .ps-next, .ps-facts dt, .ps-note, .ps-when,
+            .ps-reach, .ps-dkind, .ps-where { color:#444; }
+            .ps-absent, .ps-foot { color:#666; }
+            .ps-sec h3 { color:#000; }
+            .ps-caveat { color:#000; border-left-color:#000; }
+            .ps-sec--gaps { background:#fff; border-color:#999; }
+            .ps-sec--gaps .ps-list li, .ps-sec--gaps strong { color:#000; }
+            .ps-head, .ps-list li, .ps-foot { border-color:#ccc; }
+            .ps-where a { color:#000; }
+            /* A section split across a page break is a section somebody misses. */
+            .ps-sec { break-inside:avoid; page-break-inside:avoid; }
+        }
         /* ---- analytics ---- */
         /* Every number on this screen is computed from too little data to be a
            number yet, and will be for months. So the styling's whole job is to
@@ -230,7 +336,7 @@
         .pa-thin { margin:10px 0 0; font-size:11px; color:var(--plat-600); }
         .pa-foot { margin:11px 0 0; font-size:11px; line-height:1.55; color:var(--plat-600); }
         .pa-absent { font-size:11px; font-style:italic; color:var(--plat-600); }
-        .pa-unit { font-size:10px; color:var(--plat-500); }
+        .pa-unit { font-size:10.5px; color:var(--plat-500); }
 
         .pa-bars { list-style:none; margin:0; padding:0; }
         /* Capped, because a two-count bar stretched across a 1440px page reads as
@@ -276,7 +382,7 @@
         /* A thin figure keeps its value but loses its authority, and carries the
            count it was computed from right beside it. */
         .pa-fig.is-thin { color:var(--plat-500); }
-        .pa-basis { font-family:var(--mono); font-size:10px; color:var(--plat-600); }
+        .pa-basis { font-family:var(--mono); font-size:10.5px; color:var(--plat-600); }
 
         .pa-stats { list-style:none; display:flex; flex-wrap:wrap; gap:10px;
                     margin:0; padding:0; }
@@ -308,6 +414,10 @@
         <div id="pdetail"></div>
     </section>
 
+    <section id="summarySection" hidden>
+        <div id="psummary"></div>
+    </section>
+
     <section id="analyticsSection" hidden>
         <div id="panalytics"></div>
     </section>
@@ -332,11 +442,13 @@
 <script src="./crm-contacts.js?v=340"></script>
 <script src="./crm-interactions.js?v=340"></script>
 <script src="./crm-enrichment.js?v=341"></script>
+<script src="./crm-documents.js?v=345"></script>
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=340"></script>
 <script src="./prospect-today.js?v=340"></script>
 <script src="./prospect-detail.js?v=340"></script>
 <script src="./prospect-analytics.js?v=344"></script>
+<script src="./prospect-summary.js?v=345"></script>
 <script src="./prospecting.js?v=340"></script>
 </body>
 </html>

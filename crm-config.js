@@ -113,6 +113,29 @@ var CrmConfig = (function () {
         { key: 'na',          label: 'Not applicable', tone: 'neutral' }
     ];
 
+    /* WHAT PAPER A DEAL ACCUMULATES. `expected` is the only interesting field:
+       it marks the ones whose ABSENCE is worth saying out loud on the summary --
+       walking into a site visit without a signed NDA on file is a thing to know
+       before you are standing in the parking lot. It is not a blocker and not a
+       checklist; a deal can close having never produced a utility quote.
+
+       Configurable because the answer differs by structure. A gas purchase needs
+       a gas analysis and a surface lease; a revenue share needs neither and needs
+       an operating-cost schedule instead, and hardcoding the first set would make
+       the second look permanently incomplete. */
+    var DEFAULT_DOCUMENT_KINDS = [
+        { key: 'nda',           label: 'NDA',                  expected: true },
+        { key: 'gas_analysis',  label: 'Gas analysis',         expected: true },
+        { key: 'term_sheet',    label: 'Term sheet',           expected: false },
+        { key: 'agreement',     label: 'Executed agreement',   expected: false },
+        { key: 'surface',       label: 'Surface lease / access', expected: false },
+        { key: 'title',         label: 'Land title',           expected: false },
+        { key: 'utility',       label: 'Utility quote',        expected: false },
+        { key: 'permit',        label: 'Permit or approval',   expected: false },
+        { key: 'correspondence', label: 'Correspondence',      expected: false },
+        { key: 'other',         label: 'Other',                expected: false }
+    ];
+
     var DEFAULT_OUTCOMES = [
         { key: 'positive', label: 'Positive', tone: 'positive' },
         { key: 'neutral',  label: 'Neutral',  tone: 'neutral' },
@@ -128,7 +151,8 @@ var CrmConfig = (function () {
             deadReasons: DEFAULT_DEAD_REASONS.map(clone),
             outcomes: DEFAULT_OUTCOMES.map(clone),
             checklists: cloneChecklists(DEFAULT_CHECKLISTS),
-            enrichStatuses: DEFAULT_ENRICH_STATUSES.map(clone)
+            enrichStatuses: DEFAULT_ENRICH_STATUSES.map(clone),
+            documentKinds: DEFAULT_DOCUMENT_KINDS.map(clone)
         };
     }
 
@@ -173,6 +197,9 @@ var CrmConfig = (function () {
                 }
                 if (parsed && Array.isArray(parsed.enrichStatuses) && parsed.enrichStatuses.length) {
                     d.enrichStatuses = parsed.enrichStatuses.filter(function (x) { return x && x.key; });
+                }
+                if (parsed && Array.isArray(parsed.documentKinds) && parsed.documentKinds.length) {
+                    d.documentKinds = parsed.documentKinds.filter(function (x) { return x && x.key; });
                 }
             }
         } catch (e) { /* defaults stand */ }
@@ -305,6 +332,34 @@ var CrmConfig = (function () {
         return write(cfg);
     }
 
+    function documentKinds() { return read().documentKinds.map(clone); }
+
+    function documentKindLabel(key) {
+        var l = read().documentKinds;
+        for (var i = 0; i < l.length; i++) if (l[i].key === key) return l[i].label;
+        /* An unconfigured kind keeps its key rather than disappearing. Retiring a
+           kind must not erase the documents filed under it. */
+        return key || '';
+    }
+
+    function setDocumentKinds(list) {
+        if (!Array.isArray(list) || !list.length) {
+            return { ok: false, err: 'There has to be at least one document kind.' };
+        }
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var it = list[i];
+            if (!it || !it.key) continue;
+            out.push({ key: String(it.key),
+                       label: it.label ? String(it.label) : String(it.key),
+                       expected: !!it.expected });
+        }
+        if (!out.length) return { ok: false, err: 'None of those had a key.' };
+        var cfg = read();
+        cfg.documentKinds = out;
+        return write(cfg);
+    }
+
     function enrichStatuses() { return read().enrichStatuses.map(clone); }
 
     function enrichStatusLabel(key) {
@@ -346,6 +401,9 @@ var CrmConfig = (function () {
         checklistFor: checklistFor,
         checklistTypes: checklistTypes,
         setChecklist: setChecklist,
+        documentKinds: documentKinds,
+        documentKindLabel: documentKindLabel,
+        setDocumentKinds: setDocumentKinds,
         enrichStatuses: enrichStatuses,
         enrichStatusLabel: enrichStatusLabel,
         publish: publish,

@@ -87,6 +87,21 @@ var ProspectDetail = (function () {
                     (e.note ? '<span class="pd-note">' + esc(e.note) + '</span>' : '') +
                 '</span></li>';
         }
+        /* A FREE-FORM NOTE IS NOT AN INTERACTION and must not render as one.
+           Falling through to the branch below would print "note / nobody named /
+           no summary" -- three absences describing a record that is not missing
+           anything, because a note has no counterparty and no outcome by
+           definition. */
+        if (e.kind === 'note') {
+            return '<li class="' + cls + ' k-note">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">Note</span> ' +
+                    (e.body ? '<span class="pd-note">' + esc(e.body) + '</span>'
+                            : '<span class="pd-note">' + absent('empty') + '</span>') +
+                    (t.correctedBy ? '<span class="pd-corr">corrected later</span>' : '') +
+                '</span></li>';
+        }
         var who = e.contact_person ? esc(e.contact_person) : absent('nobody named');
         return '<li class="' + cls + ' k-int">' +
             '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
@@ -193,6 +208,100 @@ var ProspectDetail = (function () {
         return html + '</ul>';
     }
 
+    /* THE REGISTER SAYS WHERE, NOT WHAT. Nothing here holds a file -- see the
+       header of crm-documents.js -- so every row is a claim about somewhere else,
+       and the styling is deliberately plain: a link that has rotted looks exactly
+       like one that has not, and a row that implied otherwise would be lying
+       about the only thing it knows. */
+    function docsBlock(prospectId) {
+        if (typeof CrmDocuments === 'undefined') return '';
+        var list = CrmDocuments.forProspect(prospectId);
+        var kinds = (typeof CrmConfig !== 'undefined') ? CrmConfig.documentKinds() : [];
+        var rows = '';
+        for (var i = 0; i < list.length; i++) {
+            var d = list[i];
+            var link = CrmDocuments.linkFor(d.url);
+            var loc;
+            if (link.safe) {
+                /* noopener because a document link goes to somebody else's page,
+                   and window.opener would hand that page control of this tab --
+                   the tab holding the fleet, the wallet and the banking data. */
+                loc = '<a class="pd-dlink" href="' + esc(link.href) + '" target="_blank" ' +
+                      'rel="noopener noreferrer">' + esc(link.text) + '</a>';
+            } else if (link.text) {
+                loc = '<span class="pd-dbad" title="Not a link this app will open, ' +
+                      'so it is shown as text">' + esc(link.text) + '</span>';
+            } else if (d.where) {
+                loc = '<span class="pd-dwhere">' + esc(d.where) + '</span>';
+            } else {
+                loc = absent('no location recorded');
+            }
+            rows += '<li class="pd-doc">' +
+                '<span class="pd-dkind">' +
+                    (d.kind ? esc(CrmConfig.documentKindLabel(d.kind)) : absent('unfiled')) +
+                '</span>' +
+                '<span class="pd-dtitle">' + esc(d.title) + '</span>' +
+                '<span class="pd-dloc">' + loc + '</span>' +
+                '<span class="pd-dwhen">' +
+                    (d.signed_on ? esc(d.signed_on) : absent('undated')) + '</span>' +
+                '<button type="button" class="pd-drm" data-did="' + esc(d.id) + '" ' +
+                    'title="Remove this record. The file itself is somewhere else and is ' +
+                    'not touched.">&times;</button>' +
+            '</li>';
+        }
+
+        /* The absence is the useful half. Not a warning and not a blocker -- a
+           deal can close without half of these -- but walking into a site visit
+           without an NDA on file is worth knowing beforehand. */
+        var miss = CrmDocuments.missing(prospectId);
+        var missLine = '';
+        if (miss.length) {
+            var names = [];
+            for (var m = 0; m < miss.length; m++) names.push(miss[m].label);
+            missLine = '<p class="pd-dmiss">Not on file: ' + esc(names.join(', ')) + '</p>';
+        }
+
+        return (rows ? '<ul class="pd-docs">' + rows + '</ul>'
+                     : '<p class="pd-none">Nothing recorded. This is a register of where ' +
+                       'documents live, not a place they are stored.</p>') +
+            missLine +
+            '<form class="pd-form pd-docform" id="pdDocForm">' +
+                '<div class="pd-frow">' +
+                    '<label class="pd-grow2">Document' +
+                        '<input type="text" id="pdDocTitle" placeholder="Signed NDA"></label>' +
+                    '<label>Kind<select id="pdDocKind"><option value="">—</option>' +
+                        optionList(kinds, function (k) { return k.key; },
+                                   function (k) { return k.label; }) +
+                    '</select></label>' +
+                    '<label>Dated<input type="date" id="pdDocDate"></label>' +
+                '</div>' +
+                '<div class="pd-frow">' +
+                    '<label class="pd-grow2">Link' +
+                        '<input type="text" id="pdDocUrl" placeholder="https://..."></label>' +
+                    '<label class="pd-grow2">or where it lives' +
+                        '<input type="text" id="pdDocWhere" ' +
+                        'placeholder="Emailed by Dave in March"></label>' +
+                    '<button type="submit" class="pd-btn">Record</button>' +
+                '</div>' +
+            '</form>';
+    }
+
+    /* A note is for the things that were not a call: something read in a filing,
+       a thought about the site, a reason for a decision. It goes on the same
+       timeline because that is where you will look for it, but it deliberately
+       does NOT touch the contact clock -- writing a note to yourself is not
+       contact, and letting it reset the staleness would make a prospect look
+       worked while it went quiet. */
+    function noteBox() {
+        return '<form class="pd-form pd-noteform" id="pdNoteForm">' +
+            '<label class="pd-grow2">' +
+                '<textarea id="pdNoteBody" rows="2" ' +
+                'placeholder="Anything worth remembering that was not a call"></textarea>' +
+            '</label>' +
+            '<button type="submit" class="pd-btn">Add note</button>' +
+        '</form>';
+    }
+
     function optionList(items, keyOf, labelOf) {
         var html = '';
         for (var i = 0; i < items.length; i++) {
@@ -266,6 +375,8 @@ var ProspectDetail = (function () {
         '<div class="pd-head">' +
             '<a class="pd-back" href="#board">&larr; Pipeline</a>' +
             '<h2 class="pd-title">' + esc(rec.name || rec.id) + '</h2>' +
+            '<a class="pd-sumlink" href="#s/' + esc(encodeURIComponent(rec.id)) + '">' +
+                'One-page summary</a>' +
             '<div class="pd-facts">' +
                 '<span>' + mw(rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw) + '</span>' +
                 '<span>' + esc(String(rec.energy_type || rec.source || 'unknown').replace(/_/g, ' ')) + '</span>' +
@@ -282,7 +393,8 @@ var ProspectDetail = (function () {
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Research</h3>' + enrichBlock(prospectId) + '</section>' +
-        '<section class="pd-sec"><h3>History</h3>' +
+        '<section class="pd-sec"><h3>Documents</h3>' + docsBlock(prospectId) + '</section>' +
+        '<section class="pd-sec"><h3>History</h3>' + noteBox() +
             (events ? '<ul class="pd-tl">' + events + '</ul>'
                     : '<p class="pd-none">Nothing has happened yet.</p>') +
         '</section>';

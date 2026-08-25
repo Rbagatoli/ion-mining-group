@@ -43,7 +43,8 @@ var SyncEngine = (function() {
         crmLog:            { lsKey: 'protonCrmLog' },
         crmFollowups:      { lsKey: 'protonCrmFollowups' },
         contacts:          { lsKey: 'protonContacts' },
-        crmEnrichment:     { lsKey: 'protonCrmEnrichment' }
+        crmEnrichment:     { lsKey: 'protonCrmEnrichment' },
+        crmDocuments:      { lsKey: 'protonCrmDocuments' }
     };
 
     function getDb() {

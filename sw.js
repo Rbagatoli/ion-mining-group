@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v344';
+const CACHE_NAME = 'proton-mining-v345';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -60,11 +60,13 @@ const ASSETS = [
   './crm-interactions.js',
   './crm-followups.js',
   './crm-enrichment.js',
+  './crm-documents.js',
   './prospect-today.js',
   './prospect-detail.js',
   './prospect-nav.js',
   './prospect-board.js',
   './prospect-analytics.js',
+  './prospect-summary.js',
   './prospecting.js',
   './prospecting.html',
   './site-model.js',
