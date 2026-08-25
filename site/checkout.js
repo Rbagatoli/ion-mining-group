@@ -382,7 +382,7 @@
 
         /* WHICH Proton site, when the customer picked one. This is a shipping instruction, so it
            goes on the order rather than living only on screen: the machines are delivered to the
-           facility that will run them, and "an Proton facility" is not an address.
+           facility that will run them, and "a Proton facility" is not an address.
 
            Only the ID is sent. The capacity and the rate shown next to it are Proton's own data and
            the service reads them from its own copy — the same rule the money already follows,

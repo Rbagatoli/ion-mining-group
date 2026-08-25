@@ -756,7 +756,7 @@
         setText('outHeldValue', money(r.heldBtcValue));
         setText('outFinalPrice', money(r.finalBtcPrice));
 
-        // Benchmark. Not an Proton claim — just the obvious alternative use of the
+        // Benchmark. Not a Proton claim — just the obvious alternative use of the
         // same money, which the engine already computes.
         setSigned('outBenchmark', money(r.buyHoldFinalNet), r.buyHoldFinalNet);
         setSigned('outAdvantage', money(r.miningAdvantage), r.miningAdvantage);

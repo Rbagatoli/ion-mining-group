@@ -129,13 +129,13 @@
             var site = (typeof Facilities !== 'undefined' && d.site_id)
                 ? Facilities.byId(d.site_id) : null;
             if (site) {
-                el.textContent = 'An Proton facility ' + String.fromCharCode(8212) + ' ' +
+                el.textContent = 'A Proton facility ' + String.fromCharCode(8212) + ' ' +
                     site.name + ', ' + site.region + '. Power ' + Facilities.powerLabel(site) +
                     ', indicative and confirmed on your hosting agreement. ' +
                     'Your machines are delivered straight to the site that will run them.';
                 return;
             }
-            el.textContent = 'An Proton facility — we host them for you. We will confirm which site has capacity for a fleet this size.';
+            el.textContent = 'A Proton facility — we host them for you. We will confirm which site has capacity for a fleet this size.';
             return;
         }
         var parts = [d.facility, d.street, d.city, d.region, d.postcode, d.country]

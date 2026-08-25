@@ -316,7 +316,7 @@ for (const [label, lines] of BAD_LINES) {
     ok(short.error, 'an address with no street or city is refused', JSON.stringify(short));
 
     const ion = T.readDestination({ kind: 'ion' });
-    ok(!ion.error && !ion.street, 'an Proton destination needs no address', JSON.stringify(ion));
+    ok(!ion.error && !ion.street, 'a Proton destination needs no address', JSON.stringify(ion));
 
     /* An unrecognised kind must not become a third-party shipment with no
        address — it falls back to Proton, which is the one that needs nothing. */

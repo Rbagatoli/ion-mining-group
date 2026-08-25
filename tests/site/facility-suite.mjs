@@ -6,7 +6,7 @@
  *   1. The figures drift. Capacity is shown on the hosting card, the catalogue page and the cart.
  *      If those are three copies, they agree until somebody edits one. price-list.js exists in
  *      this repo because that already happened to machine costs and they ended up 5.8x apart.
- *   2. The choice is dropped. A customer picks Texas, pays, and the order says "an Proton facility".
+ *   2. The choice is dropped. A customer picks Texas, pays, and the order says "a Proton facility".
  *      Silently discarding a shipping instruction is worse than refusing it.
  *   3. The choice is honoured for a site that cannot take machines. Every site is orderable
  *      today — the ones not yet energised are sold as reservations — but one will close the

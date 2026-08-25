@@ -2842,6 +2842,37 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-wrap--now  .site-diagram,
     .dg-wrap--ion  .site-diagram { width: 119.18%; margin: 0 -9.59%; }    /* draws x 123..1157 */
 
+    /* EDGE TO EDGE, WHICH IS THE ONLY FREE HEIGHT THERE IS.
+     *
+     * The window's height is not a number anyone can pick. The SVG keeps the viewBox's
+     * aspect, so height = width x 470 / (slice of the viewBox shown), and the slice cannot
+     * shrink: the drawing does not merely change width as it turns, it MOVES, so the slice
+     * has to cover the union of every position over a revolution. Measured, --cont occupies
+     * x 272..1008 across the sweep while being at most 721 units wide at any single angle,
+     * so the 736-unit union is the floor. Cropping past it clips the drawing at some yaw,
+     * and a drawing that clips as it rotates is worse than a smaller one.
+     *
+     * That leaves width. The figure was capped at the text measure — 100vw minus two 20px
+     * gutters — and taking those back is a real 11%: 350px becomes 390px on a 390px phone,
+     * the drawing goes 336px to 368px, and the window 212px to 235px. Everything else in
+     * this block already scales off the wrap's own width, so the crop percentages, the gas
+     * field and the bubble columns all follow with no other change.
+     *
+     * calc rather than 100vw: 100vw counts a scrollbar that the layout does not have, and
+     * this resolves to the wrap's own border box either way. The cards run to the edge, and
+     * their 13px padding keeps the text off it. */
+    .wrap > .dg-wrap,
+    .wrap > .dg-views,
+    .wrap > .dg-fuel-pane > .dg-views {
+        --dg-w: calc(100% + var(--gut) * 2);
+    }
+    /* The bare text keeps a gutter the boxes do not need. A callout is a bordered card with
+       13px of its own padding, so running it to the edge reads as deliberate; .dg-hint and
+       .dg-note are loose lines spanning the grid, and at full bleed their first character sat
+       against the glass with the D of "DRAG TO TURN" half off the screen. */
+    .dg-hint,
+    .dg-note { padding-inline: var(--gut); }
+
     /* NO DOLLY ON A PHONE, because it unhooks the gas from the drawing.
      *
      * .dg-wrap--cont and --asic scale their SVG with the slider — a small push-in that sells

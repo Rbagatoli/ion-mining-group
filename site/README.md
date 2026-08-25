@@ -425,7 +425,7 @@ the order is emptied.
 
 ### Where the machines go
 
-The destination is the point of the checkout: an Proton facility, the customer's own site, or a
+The destination is the point of the checkout: a Proton facility, the customer's own site, or a
 third-party facility. Picking anything but Proton reveals the delivery address, and `required` is added
 and removed with it — a hidden required field blocks submission with a validation message pointing at
 something nobody can see. The page says plainly that ASICs arrive as palletised freight and need

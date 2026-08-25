@@ -181,7 +181,7 @@ const LD = {
   logo: BASE + '/favicon.svg',
   description: 'Bitcoin mining sites built on landfill gas, flared gas, and ' +
                'curtailed power. We finance, build, and operate the interruptible ' +
-               'load that turns stranded energy into revenue, and host third-party fleets.',
+               'load that turns stranded energy into revenue, and runs the machines it sells.',
   email: 'hello@protonminingco.com',
 };
 

@@ -857,6 +857,55 @@ console.log('=== the drawings are visible on a phone ===');
     ok(/[.]dg-c-title \{ font-size: (1[0-9]|[2-9][0-9])(\.\d+)?px/.test(block),
        '  and their type clears the 10.5px floor at this width');
 
+    /* HOSTING IS ONLY EVER OFFERED ON MACHINES BOUGHT FROM PROTON.
+     *
+     * The site used to sell both: "Already own machines? Request a hosting quote" in the
+     * hosting hero, "hosts third-party fleets" in the home page lede and its Organization
+     * JSON-LD, "Ship us your ASICs", "Send us the machine list", and "colocation" in the
+     * hosting page title and in seventeen page footers. That service no longer exists, and
+     * copy that offers it is a promise the business will not honour - the kind of defect that
+     * costs a sales call rather than a pixel, and the kind nothing else in this suite can see.
+     *
+     * "Colocation" is on the list because it is the industry's name for exactly this: housing
+     * hardware the customer sourced elsewhere. Clients still OWN their machines, so "your
+     * machines", "your fleet" and "your pool" all stay - ownership was never what changed. */
+    const OFFERS_BYO = [
+        'colocation',
+        'already own machines',
+        'third-party fleet',
+        'ship us your',
+        'host your asics',
+        'host your fleet',
+        'host your miners',
+        'hosting my miners',
+        'send us the machine list',
+        /* Not a phrase anyone would grep for, and the one the sweep missed: the home page's
+           "Two ways to work with us" line read "put your machines on our power", which is the
+           same offer in different words. */
+        'put your machines on our power',
+        'machines you already own',
+        'fleet you already own',
+    ];
+    const pagesToScan = fs.readdirSync(SITE).filter((f) => /\.html$/.test(f));
+    const offenders = [];
+    pagesToScan.forEach((f) => {
+        const h = fs.readFileSync(path.join(SITE, f), 'utf8');
+        /* Comments are where the reasoning for the removal is written down, so they are
+           allowed to name the phrases; visible copy is not. */
+        const visible = h.replace(/<!--[\s\S]*?-->/g, '');
+        OFFERS_BYO.forEach((needle) => {
+            if (visible.toLowerCase().indexOf(needle) >= 0) offenders.push(f + ': "' + needle + '"');
+        });
+    });
+    ok(offenders.length === 0,
+       'no page offers to host machines the customer did not buy from Proton',
+       offenders.slice(0, 4).join('   '));
+    /* And the thing that replaced it is actually said somewhere, or the rule reads as an
+       omission rather than a position. */
+    const hostingPage = fs.readFileSync(path.join(SITE, 'hosting.html'), 'utf8');
+    ok(/You buy the machines from us/.test(hostingPage),
+       '  and the hosting page says where the machines come from');
+
     /* ONE VIEW'S LABELS AT A TIME. Two wraps share a grid cell and crossfade on opacity; with
        the bubbles visible that rendered both sets stacked, 973 characters of text word over
        word at the midpoint of the slider. The note has to swap with them or the machine's spec

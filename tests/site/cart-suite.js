@@ -345,7 +345,7 @@ ok(cartSrc.indexOf('DEPOSIT_RATE') >= 0 && ckSrc.indexOf('depositRate') >= 0,
        'missing name="' + n + '"');
 });
 ok(html.indexOf('id="ckAddr" hidden') >= 0,
-   'with the address hidden until somewhere other than an Proton site is picked');
+   'with the address hidden until somewhere other than a Proton site is picked');
 
 /* ---- placing the order with the service ---- */
 
