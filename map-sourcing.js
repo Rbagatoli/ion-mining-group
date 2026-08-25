@@ -3387,7 +3387,7 @@ var MapSourcing = (function() {
                 .ringLat('lat').ringLng('lng')
                 /* Built by concatenation, which is why the literal census never
                    caught it: its pattern needs a closing paren with numbers in it,
-                   and this string ends at the comma. rgb(62,207,142) is #3ecf8e --
+                   and this string ended at the comma. The value it assembled was
                    the green this app used BEFORE the palette moved to the site's,
                    so the focus ring has been a colour that exists nowhere else
                    since pass 2. A concatenated colour is a blind spot in any regex
