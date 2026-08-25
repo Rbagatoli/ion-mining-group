@@ -191,10 +191,28 @@
            List view. In the Table view the list is gone and the map takes the width back, so the
            two result surfaces are never on screen together. */
         .map-with-list { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+        /* THE RESULTS ARE THE POINT, and the map is how you look at them. This was
+           the other way round: a map on 1fr with the list in a fixed 340px
+           sidebar, which is why the list read as an afterthought bolted to the
+           side of the real content. The list now takes the flexible column and
+           the map takes the fixed one.
+
+           Order, not DOM position, so the map keeps its place in the markup —
+           Leaflet and globe.gl both measure their container on creation and the
+           widget reorder writes to these same elements. */
         body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
         body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list {
-            grid-template-columns:minmax(0,1fr) 340px; }
+            /* A FIXED second column, not minmax(0,420px). The map sizes its canvas
+               FROM its container, so a column allowed to shrink to zero collapses
+               it to nothing and then keeps it there — measured at 0px wide before
+               this was pinned. The original 340px worked for exactly this reason. */
+            grid-template-columns:minmax(0,1fr) 420px; }
+        body[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
+        body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard { order:-1; }
         body[data-map-mode="prospects"][data-res-view="table"] .map-with-list { grid-template-columns:1fr; }
+        /* The count line carries the ordering now, so it is a heading rather than
+           a footnote under the map. */
+        .src-count { font-size:12px; color:var(--plat-300); }
         /* The list card and the table widget are mutually exclusive, driven off one body
            attribute. NOT inline styles: widget-settings.js writes style.display on every
            .widget-section after load, so anything set inline here would be wiped on the next
@@ -208,7 +226,9 @@
         @media (max-width:900px) {
             body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
             body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list { grid-template-columns:1fr; }
-            .src-list { max-height:340px; }
+            /* Stacked, the list still leads — that is the whole point of the
+               order above, and it survives the columns collapsing. */
+            .src-list { max-height:520px; }
         }
         .map-pane { min-width:0; }
         /* Owner rollup rows. Same 340 px column as the scan list, so no layout branch. */
@@ -258,8 +278,10 @@
         .src-savedname { background:var(--panel-solid); border:1px solid var(--line-btc); color:var(--plat-100);
                          border-radius: var(--radius); padding:3px 8px; font-size:11px; width:210px; }
         .src-listcard { align-self:stretch; display:flex; flex-direction:column; }
-        /* Track the map's height so the list scrolls beside it rather than past it. */
-        .src-list { overflow-y:auto; flex:1; min-height:280px; max-height:540px; }
+        /* Taller than the map beside it, deliberately. It used to track the map's
+           height, which made the map the thing that decided how many results you
+           could see at once. */
+        .src-list { overflow-y:auto; flex:1; min-height:420px; max-height:760px; }
         .src-count { font-size:11px; color:var(--text-mid); padding:7px 10px; border-bottom:1px solid var(--line);
                      display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .src-unfocus { background:var(--btc-wash); border:1px solid var(--line-btc); color:var(--btc-300);
@@ -268,8 +290,8 @@
         /* Portfolio tick column in the ranked table — narrow, and it must not trigger row select. */
         .src-table th.pf-col, .src-table td.pf-col { width:26px; text-align:center; padding-left:8px; padding-right:4px; }
         .src-table th.pf-col { color:var(--text-dim); font-weight:400; }
-        .src-row { display:grid; grid-template-columns:1fr auto; gap:8px; padding:9px 10px;
-                   border-bottom:1px solid var(--line); cursor:pointer; font-size:12px; }
+        .src-row { display:grid; grid-template-columns:auto 1fr auto; gap:10px; padding:11px 12px;
+                   border-bottom:1px solid var(--line); cursor:pointer; font-size:13px; }
         .src-row:hover { background:var(--btc-wash); }
         .src-row.sel { background:var(--btc-wash); }
         .src-row .t { font-weight:600; color:var(--plat-100); }
@@ -293,6 +315,14 @@
            controls above it rather than as another field. */
         .src-morerow { margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
         .src-filters--more { padding-top:2px; }
+        /* Capped. Two number boxes stretched across half the page to hold "2" and
+           "3" look like a mistake, and the grid column they sit in is sized for a
+           select. */
+        .src-sizepair { display:flex; align-items:center; gap:8px; max-width:230px; }
+        .src-sizepair input { width:100%; min-width:0; background:var(--black);
+            border:1px solid var(--line-mid); color:var(--plat-200);
+            border-radius:var(--radius); padding:7px 9px; font:inherit; font-size:12px; }
+        .src-sizeto { font-size:11px; color:var(--plat-500); flex:0 0 auto; }
 
         /* ---- routes to a contact ---- */
         .src-routes { margin:14px 0 16px; padding:12px 14px; background:var(--panel-hover);
@@ -742,22 +772,28 @@ blank on each site rather than being guessed.</p>
         </div>
         <div id="refinePanel" hidden>
         <div class="src-filters">
-<div class="src-field">
-                <label for="fCountry">Country</label>
-                <select id="fCountry"><option value="">USA &amp; Canada</option></select>
-            </div>
 <div class="src-field src-field-wide">
-                <label>Site size</label>
-                <div class="range-dual" id="sizeRange">
-                    <div class="range-track"></div>
-                    <div class="range-fill" id="sizeFill"></div>
-                    <!-- Two overlaid sliders: the track is drawn by the divs above, the inputs
-                         contribute only their thumbs. 5 MW on the upper thumb means NO MAXIMUM,
-                         so the top of the scale is open rather than a hard ceiling. -->
-                    <input type="range" id="fMinKw" min="0" max="5000" step="25" value="0" aria-label="Minimum site size">
-                    <input type="range" id="fMaxKw" min="0" max="5000" step="25" value="5000" aria-label="Maximum site size">
+                <label for="fMinMw">Site size (MW)</label>
+                <!-- TWO BOXES, NOT A DUAL SLIDER. Dragging two thumbs that can cross
+                     each other, on a track whose top end means "no maximum" rather
+                     than 5 MW, is a fiddly way to express "at least two megawatts" —
+                     and "at least two megawatts" is what people actually want. These
+                     are typed, keyboard-reachable, and blank means unbounded at
+                     either end.
+
+                     The kW pair below stays as the value the filter chain reads.
+                     Every starting point, every saved search and the whole
+                     save/restore path speak kW, so the boxes convert rather than
+                     the chain changing units. -->
+                <div class="src-sizepair">
+                    <input type="number" id="fMinMw" min="0" step="0.1" placeholder="any"
+                           inputmode="decimal" aria-label="Smallest site, MW">
+                    <span class="src-sizeto">to</span>
+                    <input type="number" id="fMaxMw" min="0" step="0.1" placeholder="any"
+                           inputmode="decimal" aria-label="Largest site, MW">
                 </div>
-                <div class="range-ends"><span id="sizeMinLabel">0</span><span id="sizeMaxLabel">5 MW+</span></div>
+                <input type="hidden" id="fMinKw" value="0">
+                <input type="hidden" id="fMaxKw" value="5000">
             </div>
 <div class="src-field">
                 <label for="fSort">Rank by</label>
@@ -785,14 +821,7 @@ blank on each site rather than being guessed.</p>
                      source appears here without an edit. -->
                 <div class="src-srcfilter" id="fSources"></div>
             </div>
-<div class="src-field">
-                <label for="fRegion">Near</label>
-                <select id="fRegion"><option value="">Anywhere</option></select>
-            </div>
-<div class="src-field">
-                <label for="fRadius">Within (km)</label>
-                <input type="number" id="fRadius" value="250" min="10" max="3000" step="25">
-            </div>
+
 <div class="src-field">
                 <label for="fYears">Persistence</label>
                 <select id="fYears">
@@ -810,7 +839,13 @@ blank on each site rather than being guessed.</p>
                    Small operators (Alberta) collapsed the catalog to 64 sites
                    Generation already on site  still filters, but only via the starting points
                                                that need it, which is where it was ever used -->
-            <div class="src-checks">
+            <!-- Hidden when no flare source is in scope. Two of these are VIIRS-only
+                 by nature and the third removes six landfills out of 1,908, so on a
+                 landfill search all three are controls that cannot help. They come
+                 back the moment a flare source is selected, and any one of them that
+                 is TICKED stays visible regardless — hiding a live filter is worse
+                 than showing an irrelevant one. -->
+            <div class="src-checks" id="srcFlareChecks">
             <label><input type="checkbox" id="fOperator"> Only sites with a named operator</label>
             <!-- Both of these are FLARE-ONLY by nature: only the VIIRS source publishes a survey
                  year or gets checked against FIRMS. Said in the label, because ticking either one
@@ -819,6 +854,7 @@ blank on each site rather than being guessed.</p>
                  from the catalog at boot so it cannot drift from the data again. -->
             <label title="Flare-gas prospects only — the other sources publish no survey year."><input type="checkbox" id="fActive"> Flare seen in the latest survey<span id="fActiveYear"></span></label>
             <label title="Flare-gas prospects only — checked against NASA FIRMS."><input type="checkbox" id="fBurning"> Flare confirmed burning recently (satellite)</label>
+            <p class="src-note src-gap" id="srcFlareChecksNote"></p>
         </div>
 
         <!-- SAVED SEARCHES. A named filter combination, recalled by clicking its chip.

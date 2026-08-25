@@ -142,7 +142,49 @@ var MapSourcing = (function() {
     // geometry keeps the fill locked to the handles.
     var THUMB_PX = 16;                  // must match the thumb width in map.html
 
+    /* MW IN THE BOXES, kW IN THE CHAIN.
+     *
+     * Every filter, every starting point, every saved search and the whole
+     * save/restore path speak kW, and changing that would mean touching all of
+     * them for a units preference. So the two visible boxes convert instead: they
+     * are the only thing that knows about megawatts.
+     *
+     * BLANK MEANS UNBOUNDED, at either end, which is the thing a dual slider
+     * could not say. An empty maximum is not five megawatts, it is no maximum —
+     * the old track's top thumb meant that too, but only a label said so.
+     */
+    function mwFromKw(kw, isMax) {
+        var v = parseFloat(kw);
+        if (!isFinite(v)) return '';
+        if (isMax && v >= SIZE_MAX_KW) return '';      // open top
+        if (!isMax && v <= 0) return '';               // open bottom
+        /* Trailing zeros dropped: 1 MW rather than 1.0, and 0.9 rather than 0.90.
+           A box that reformats what you typed into the same number wearing
+           different digits reads as the app arguing with you. */
+        return String(Math.round((v / 1000) * 100) / 100);
+    }
+
+    function syncSizeInputs() {
+        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
+        var loMw = document.getElementById('fMinMw'), hiMw = document.getElementById('fMaxMw');
+        if (!lo || !hi || !loMw || !hiMw) return;
+        /* Never while it is being typed in. Rewriting the field under the cursor
+           turns "1.5" into "1" the instant the decimal point is pressed. */
+        if (document.activeElement !== loMw) loMw.value = mwFromKw(lo.value, false);
+        if (document.activeElement !== hiMw) hiMw.value = mwFromKw(hi.value, true);
+    }
+
+    function pushSizeInputs() {
+        var lo = document.getElementById('fMinKw'), hi = document.getElementById('fMaxKw');
+        var loMw = document.getElementById('fMinMw'), hiMw = document.getElementById('fMaxMw');
+        if (!lo || !hi || !loMw || !hiMw) return;
+        var a = parseFloat(loMw.value), b = parseFloat(hiMw.value);
+        lo.value = String(isFinite(a) && a > 0 ? Math.round(a * 1000) : 0);
+        hi.value = String(isFinite(b) && b > 0 ? Math.round(b * 1000) : SIZE_MAX_KW);
+    }
+
     function paintSizeRange() {
+        syncSizeInputs();
         var fill = document.getElementById('sizeFill');
         var wrap = document.getElementById('sizeRange');
         if (!fill || !wrap) return;
@@ -560,6 +602,48 @@ var MapSourcing = (function() {
     // included rather than silently excluded.
     var _srcFilter = {};
 
+    /* Two of the three checkboxes are flare-only by nature: only VIIRS publishes a
+       survey year, and only VIIRS gets checked against FIRMS. Ticking either one
+       while looking at landfills is guaranteed to return nothing, and it used to
+       do so silently — the labels carried a title attribute saying so, which is
+       a tooltip nobody reads.
+       The third, "only sites with a named operator", does apply to landfills: the
+       LMOP owner is read as the operator. But 1,902 of 1,908 landfills have one,
+       so it removes six rows and creates a false impression of having narrowed
+       something. That is the same reasoning this file already applied when it
+       deleted the collection-system filter.
+       So all three hide when no flare source is in scope — unless one is TICKED,
+       in which case it stays visible. Hiding a live filter is the one thing worse
+       than showing an irrelevant one. */
+    function flareInScope() {
+        if (typeof ProspectStore === 'undefined') return true;
+        var keys = Object.keys(_srcFilter || {});
+        if (!keys.length) return true;              // empty means every source
+        for (var i = 0; i < keys.length; i++) {
+            if (String(keys[i]).indexOf('flare') >= 0) return true;
+        }
+        return false;
+    }
+
+    function renderFlareOnlyChecks() {
+        var wrap = document.getElementById('srcFlareChecks');
+        if (!wrap) return;
+        var live = flareInScope();
+        var ids = ['fOperator', 'fActive', 'fBurning'];
+        var anyTicked = false;
+        for (var i = 0; i < ids.length; i++) {
+            var el = document.getElementById(ids[i]);
+            if (el && el.checked) anyTicked = true;
+        }
+        wrap.hidden = !(live || anyTicked);
+        var note = document.getElementById('srcFlareChecksNote');
+        if (note) {
+            note.textContent = (!live && anyTicked)
+                ? 'These apply to flare-gas prospects only, and no flare source is selected.'
+                : '';
+        }
+    }
+
     function renderSourceFilter() {
         var el = document.getElementById('fSources');
         if (!el || typeof ProspectStore === 'undefined' || !ProspectStore.loaded()) return;
@@ -645,7 +729,16 @@ var MapSourcing = (function() {
         var meta = SiteCatalog.meta();
         var size = sizeBounds();
         var minYears = parseInt(document.getElementById('fYears').value, 10);
-        var iso = document.getElementById('fCountry').value || null;
+        /* The country, near and within controls were removed: the operating scope
+           is mainland USA and Canada, both are always in it, and a radius from a
+           province centroid is not a region — the control said so on its own
+           label. Three inputs that between them narrowed almost nothing were
+           three of the twelve that made the page feel like a control panel.
+           Read defensively rather than deleted from the chain, because the scope
+           filter and the saved-search restore both still speak this vocabulary
+           and a future control could put it back. */
+        var isoEl = document.getElementById('fCountry');
+        var iso = (isoEl && isoEl.value) ? isoEl.value : null;
         return {
             iso3: iso,
             // Applied whenever no single country is chosen. With one chosen, iso3 already
@@ -1089,7 +1182,9 @@ var MapSourcing = (function() {
                 renderSourceFilter();
                 _hasGenFilter = true;
                 setSize(1000, 3000);
-                setValue('fCountry', 'USA');
+                /* Every LMOP record is American, so the country clause this used
+                   to set narrowed nothing and only existed to light the control
+                   that has since been removed. */
                 setSort('combined');
             }
         },
@@ -1109,6 +1204,9 @@ var MapSourcing = (function() {
             label: 'Close to my Alberta operations',
             hint: 'Everything in Alberta, biggest first',
             set: function() {
+                /* setValue no-ops on a missing control, so this stays correct
+                   whether or not a country input exists. It is the one starting
+                   point that genuinely means a country. */
                 setValue('fCountry', 'CAN');
                 setSort('power_potential');
             }
@@ -1153,6 +1251,7 @@ var MapSourcing = (function() {
         renderSearchHead();
         status(s.label + ' — ' + fmtInt(_filtered.length) + ' prospects, best first. ' +
                'Adjust to narrow it.', '#8ac');
+        _starterStatus = true;
     }
 
     // How many each one returns, without applying it.
@@ -1164,6 +1263,7 @@ var MapSourcing = (function() {
     // silently -- the count would stay plausible while describing a search the button no longer
     // performs. Nothing renders between the write and the restore, so none of it is observable.
     var _starterCounts = null, _activeStarter = null, _applyingStarter = false;
+    var _starterStatus = false;
 
     function countStarters() {
         if (_starterCounts) return _starterCounts;
@@ -1568,9 +1668,20 @@ var MapSourcing = (function() {
         // against -- but its gas is under contract, so its acquirability is near zero and the
         // combined score collapses. Sorting here lifts the idle plants, which is the whole thesis
         // of site-acquirability.js and was until now reachable only from the table.
-        if (sortBy === 'combined') {
+        /* AND 'score' FOR THE SAME REASON, which was a real bug rather than a
+           nicety. This app has two scores: SiteScoring's, computed from a
+           candidate's published fields, and SiteOpportunity's seven-component
+           one — and the list has always DISPLAYED the second. SiteScoring.rank
+           orders by the first, so choosing "Overall score" produced a list whose
+           visible numbers read 55, 84, 84, 78, 79 and looked broken, because it
+           was ordered by a number that is nowhere on screen.
+           The one the reader can see is the one that has to do the ordering. */
+        if (sortBy === 'combined' || sortBy === 'score') {
+            var valueFor = (sortBy === 'combined')
+                ? combinedFor
+                : function(c) { return opportunityFor(c).scoreRaw; };
             _filtered.sort(function(a, b) {
-                var av = combinedFor(a.candidate), bv = combinedFor(b.candidate);
+                var av = valueFor(a.candidate), bv = valueFor(b.candidate);
                 // Nulls last: a prospect missing an axis has not scored badly, it has not scored.
                 if (av === null && bv === null) return 0;
                 if (av === null) return 1;
@@ -1585,6 +1696,7 @@ var MapSourcing = (function() {
         renderPortfolio();
         paintSizeRange();
         renderSizeHint();
+        renderFlareOnlyChecks();
         renderActiveBar();
         // Repainted on every filter change so the chip for the search you are actually looking at
         // lights up — and stops lighting up the moment you change one control.
@@ -1593,7 +1705,14 @@ var MapSourcing = (function() {
         renderRefineCount();
         // Any filter change that did not come from a starting point means the search on screen is
         // the user's own, so the card stops claiming credit for it.
-        if (!_applyingStarter) _activeStarter = null;
+        if (!_applyingStarter) {
+            _activeStarter = null;
+            /* And the starting point's status line goes with it. It named a count
+               -- "336 prospects, best first" -- which stayed on screen while the
+               count beside the list said 124, so the page made two contradictory
+               claims about the same search. */
+            if (_starterStatus) { status(''); _starterStatus = false; }
+        }
         renderStarters();
         renderSearchHead();
         renderSummary(matches);
@@ -2331,7 +2450,11 @@ var MapSourcing = (function() {
             var anch = currentAnchor();
             countEl.textContent = fmtInt(_filtered.length) + ' prospect' + (_filtered.length === 1 ? '' : 's') +
                 (anch ? ' within ' + fmtInt(anch.km) + ' km of the centre of ' + anch.name : '') +
-                (_filtered.length > shown.length ? ' — top ' + shown.length + ' shown' : '');
+                (_filtered.length > shown.length ? ' — top ' + shown.length + ' shown' : '') +
+                /* Said out loud, because "why is this one first" is the question a
+                   ranked list gets asked most and the answer was only ever in a
+                   dropdown three sections away. */
+                ', ' + sortDescription();
         }
         // The way back out of focus mode, beside the count. The table has its own copy in its own
         // count row; only one of the two is ever on screen.
@@ -2366,9 +2489,9 @@ var MapSourcing = (function() {
                 '<div class="yr">' + minersLabel(c) + '</div>' +
                 // The score, because the list is in ranked order and the reason a row is near the
                 // top is otherwise invisible. Unscoreable stays blank rather than becoming a zero.
-                '<div class="sc">' + (opp.score === null
-                    ? '<span class="src-gap">--</span>'
-                    : 'opp ' + opp.score) + '</div></div>' +
+                // It shows whatever the list is CURRENTLY ordered by: a column of opportunity
+                // scores beside a list sorted on acquisition rank is a list that looks wrong.
+                '<div class="sc">' + sortedValueCell(c, opp) + '</div></div>' +
                 '</div>';
         }
         listEl.innerHTML = html;
@@ -2703,6 +2826,20 @@ var MapSourcing = (function() {
     }
 
     // Combined rank, on unrounded inputs so the sort key is not quantised into false ties.
+    /* Plain words for the active order, for the line above the list. */
+    var SORT_WORDS = {
+        persistence:     'most persistent first',
+        score:           'best overall score first',
+        combined:        'best acquisition rank first',
+        power_potential: 'largest first',
+        jurisdiction:    'friendliest jurisdiction first'
+    };
+    function sortDescription() {
+        var el = document.getElementById('fSort');
+        var by = el ? el.value : 'persistence';
+        return SORT_WORDS[by] || 'ranked';
+    }
+
     function combinedFor(c) {
         var o = opportunityFor(c), a = acquirabilityFor(c);
         return SiteAcquirability.combine(o.scoreRaw, a.scoreRaw);
@@ -2968,6 +3105,26 @@ var MapSourcing = (function() {
         var mm = evaluateAt(c);
         if (!mm || !mm.months_to_revenue) return '<span class="src-gap">--</span>';
         return mm.months_to_revenue.min + '\u2013' + mm.months_to_revenue.max + ' mo';
+    }
+
+    /* The number the list is ordered by, labelled. Sorts whose key is already
+       visible on the row -- size is the big kW figure, jurisdiction is the tier
+       badge -- keep showing the opportunity score, because repeating the sort key
+       twice on one row tells the reader nothing they cannot already see. */
+    function sortedValueCell(c, opp) {
+        var el = document.getElementById('fSort');
+        var by = el ? el.value : 'persistence';
+        if (by === 'combined') {
+            var v = combinedFor(c);
+            return v === null ? '<span class="src-gap">--</span>' : 'rank ' + Math.round(v);
+        }
+        /* Persistence deliberately has no badge of its own. A landfill scores on
+           persistence -- it emits continuously -- while having no VIIRS survey
+           year at all, so a "8/8 yr" badge printed "--" beside correctly ranked
+           rows and looked like missing data rather than a different kind of site.
+           The row's third line already carries the survey history where one
+           exists, which is the honest place for it. */
+        return opp.score === null ? '<span class="src-gap">--</span>' : 'opp ' + opp.score;
     }
 
     function combinedCell(c) {
@@ -4787,16 +4944,18 @@ var MapSourcing = (function() {
         // return nothing because SCOPE_ISO3 excludes them anyway. A select offering choices that
         // silently yield zero results is worse than not offering them.
         var sel = document.getElementById('fCountry');
-        var counts = {};
-        (ProspectStore.countries() || []).forEach(function(x) { counts[x.iso3] = x.count; });
-        SCOPE_ISO3.forEach(function(iso) {
-            var o = document.createElement('option');
-            o.value = iso;
-            // The count is the scope's own count, so it cannot promise rows the scope excludes.
-            o.textContent = countryName(iso) + (counts[iso] ? ' (' + fmtInt(counts[iso]) + ')' : '');
-            sel.appendChild(o);
-        });
-        sel.value = '';                        // both countries; the scope is the default view
+        if (sel) {
+            var counts = {};
+            (ProspectStore.countries() || []).forEach(function(x) { counts[x.iso3] = x.count; });
+            SCOPE_ISO3.forEach(function(iso) {
+                var o = document.createElement('option');
+                o.value = iso;
+                // The count is the scope's own count, so it cannot promise rows the scope excludes.
+                o.textContent = countryName(iso) + (counts[iso] ? ' (' + fmtInt(counts[iso]) + ')' : '');
+                sel.appendChild(o);
+            });
+            sel.value = '';                    // both countries; the scope is the default view
+        }
 
         // The baseline, snapshotted at exactly this moment: after every shipped default is in
         // place and before any saved search is restored over the top. hasNonDefaultFilters()
@@ -4815,14 +4974,25 @@ var MapSourcing = (function() {
         // Dragging fires continuously, so the track repaints every frame for responsiveness
         // while the expensive re-rank is debounced.
         var sizeTimer = null;
-        ['fMinKw', 'fMaxKw'].forEach(function(id) {
+        ['fMinMw', 'fMaxMw'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('input', function() {
-                paintSizeRange();
+                pushSizeInputs();
+                renderSizeHint();
+                /* Longer than the slider's 160ms. A slider emits a value per
+                   frame and wants to feel live; a number box emits one per
+                   keystroke, and re-ranking 30,361 rows between "1" and "1.5"
+                   ranks a search nobody asked for. */
+                clearTimeout(sizeTimer);
+                sizeTimer = setTimeout(applyFilters, 320);
+            });
+            // Leaving the field settles it: 1.5 typed and abandoned still applies.
+            el.addEventListener('change', function() {
+                pushSizeInputs();
                 renderSizeHint();
                 clearTimeout(sizeTimer);
-                sizeTimer = setTimeout(applyFilters, 160);
+                applyFilters();
             });
         });
         paintSizeRange();
