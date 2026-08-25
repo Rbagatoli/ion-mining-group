@@ -4,17 +4,21 @@
  * and a daily worklist, and those want sub-navigation rather than one page that
  * does all of it.
  *
- * THE MAP IS NOT IN HERE, and that is the point of the separation. It is a
- * top-level tab of its own now. The two halves are different jobs: the map ranks
- * sites nobody has spoken to, and this section works the ones that were chosen.
- * They were briefly one section, and it stopped holding the moment prospecting
- * grew a pipeline, a contact book, a document register and an analytics screen —
- * six sub-views, of which the map was the only one not about a live deal.
+ * THE MAP HERE IS THE SOURCING MAP, and it is not the one on the Map tab. That
+ * tab is the fleet: where our own operations are. This one is flares nobody has
+ * spoken to, scored. They are two questions that happen to be drawn on the same
+ * component, and they were behind one in-page toggle with a sticky preference —
+ * so a single tab showed whichever of the two you last looked at, and neither
+ * could be linked to.
  *
- * Two of those entries were also quietly broken. map.html renders no sub-nav, so
- * both were one-way trips out of the section, and nothing in map.js or
- * map-sourcing.js has ever read location.hash — so '#table' only ever loaded the
- * map in whatever view it was last left in.
+ * map.html now takes its mode from the URL: ?mode=prospects is this one. Same
+ * file, same scoring engine, same adapters — nothing about the module changed,
+ * only which of its two faces a link asks for.
+ *
+ * The 'Table' entry that used to sit beside it is gone for a different reason:
+ * nothing in map.js or map-sourcing.js has ever read location.hash, so
+ * './map.html#table' only ever loaded the map in whatever view it was last left
+ * in. The ranked table has its own in-page toggle and always did.
  *
  * THE WORKING SET IS SHARED THROUGH STORAGE, not through a parent component.
  * map-sourcing.js already persists its filters to protonMiningProspectFilters —
@@ -31,6 +35,9 @@ var ProspectNav = (function () {
     var VIEWS = [
         { key: 'today',     label: 'Today',     href: './prospecting.html' },
         { key: 'board',     label: 'Board',     href: './prospecting.html#board' },
+        /* The sourcing map, which is a different map from the fleet one on the
+           Map tab. Same file, opened in the mode this section means. */
+        { key: 'map',       label: 'Map',       href: './map.html?mode=prospects' },
         { key: 'contacts',  label: 'Contacts',  href: './contacts.html' },
         { key: 'analytics', label: 'Analytics', href: './prospecting.html#analytics' }
     ];
@@ -38,7 +45,7 @@ var ProspectNav = (function () {
     /* Views whose page does not exist yet render disabled rather than as a link
        to a 404. A dead nav item is worse than a greyed one: it teaches people the
        section is broken. */
-    var BUILT = { today: true, board: true, contacts: true, analytics: true };
+    var BUILT = { today: true, board: true, map: true, contacts: true, analytics: true };
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)

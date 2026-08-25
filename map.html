@@ -4,11 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proton Mining — Fleet Map</title>
+    <style>
+        /* The prospecting section's bar, shown only when this page is that
+           section's map. Same rules as prospecting.html and contacts.html carry. */
+        .psec-nav { display:flex; gap:2px; flex-wrap:wrap; border-bottom:1px solid var(--line);
+                    margin: 0 0 14px; }
+        .psec-tab { padding:9px 14px; font-size:12px; letter-spacing:.04em; color:var(--plat-400);
+                    text-decoration:none; border-bottom:2px solid transparent; }
+        .psec-tab:hover { color:var(--plat-200); }
+        .psec-tab.is-on { color:var(--btc-300); border-bottom-color:var(--btc-300); }
+        .psec-tab.is-soon { color:var(--plat-600); cursor:default; }
+        /* Hidden until the mode says otherwise, not shown until it says not to.
+           The body attribute is set by a script at the end of the page, so a
+           default-visible bar would flash 12px of padding on every fleet load. */
+        .psec-wrap { display:none; max-width:1200px; margin:0 auto; padding:12px 16px 0; }
+        body[data-map-mode="prospects"] .psec-wrap { display:block; }
+    </style>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./tokens.css?v=338">
     <link rel="stylesheet" href="./shared.css?v=338">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <script>
+    /* WHICH MAP THIS IS, decided by the URL and nothing else.
+     *
+     * This page draws two maps that share a container and almost nothing else:
+     * the fleet map is where our own operations are, and the sourcing map is
+     * flares nobody has spoken to. They used to be an in-page toggle with a
+     * sticky preference, which meant one tab that showed you whichever of the
+     * two you happened to be looking at last -- and no way to link to either.
+     *
+     * They are now two tabs. ?mode=prospects is the prospecting section's map;
+     * anything else is the fleet. Read here, in the head, so the first paint is
+     * already the right layout: the CSS switches on body[data-map-mode], and
+     * deciding later meant a frame of fleet chrome on the way to sourcing.
+     *
+     * The URL also replaces what the old localStorage key was for. shared.js
+     * reloads the page whenever a new service worker activates, and
+     * location.reload() keeps the query string -- so a reload mid-search now
+     * lands where it started without anything having to remember. */
+    window.PROTON_MAP_MODE =
+        (String(location.search).indexOf('mode=prospects') >= 0) ? 'prospects' : 'fleet';
+    </script>
     <script src="./brand-migrate.js?v=338"></script>
 <script src="./theme.js?v=338"></script>
     <script src="./chart.min.js?v=338"></script>
@@ -484,6 +521,8 @@
 
 <nav id="proton-nav"></nav>
 
+<div class="psec-wrap"><div id="prospectNav"></div></div>
+
 <header style="text-align:center; padding:14px 16px 8px; border-bottom:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
     <h1 class="page-title" style="font-size:22px; font-weight:600; margin-bottom:2px;" id="mapPageTitle">Fleet Map</h1>
     <p style="color:var(--text-mid); font-size:12px;" id="mapPageSub">Geographic distribution of mining operations</p>
@@ -601,11 +640,11 @@ H₂S content, road or winter access, or whether anyone will sell it to you. Vol
 site burning through 2022 is very likely still burning, but this cannot confirm today. Those gaps stay
 blank on each site rather than being guessed.</p>
     </div>
+    <!-- The My Fleet / Prospects toggle used to live here. It is the tab bar now:
+         two maps that answer different questions do not belong behind one control
+         that remembers which you saw last. Globe / Map stays -- that is how you
+         look at whichever map you are on, not which map it is. -->
     <div class="map-mode-row">
-        <div class="map-mode-toggle" id="mapModeToggle">
-            <button class="map-toggle-btn active" data-mode="fleet">My Fleet</button>
-            <button class="map-toggle-btn" data-mode="prospects">Prospects</button>
-        </div>
         <div class="map-view-toggle">
             <button class="map-toggle-btn" id="btnGlobeView" data-view="globe">Globe</button>
             <button class="map-toggle-btn" id="btnMapView" data-view="map">Map</button>
@@ -1082,6 +1121,7 @@ commercial terms are your assumptions.</p>
      the old six and only correct itself on the next render. -->
 <script src="./crm-config.js?v=338"></script>
 <script src="./crm-log.js?v=338"></script>
+<script src="./prospect-nav.js?v=347"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in
      stages standing rather than take the page down with it. */
@@ -1097,9 +1137,6 @@ commercial terms are your assumptions.</p>
 // point layer. The flare catalog loads ONCE on first switch and is never unmounted after that —
 // toggling changes visibility only, so there is no refetch and no stall on thousands of points.
 (function() {
-    var toggle = document.getElementById('mapModeToggle');
-    if (!toggle) return;
-
     var TITLES = {
         fleet:     ['Fleet Map', 'Geographic distribution of mining operations'],
         prospects: ['Site Sourcing', 'Gas flares observed from orbit, scored as mining sites']
@@ -1108,8 +1145,6 @@ commercial terms are your assumptions.</p>
     function setMode(mode) {
         document.body.setAttribute('data-map-mode', mode);
         MapBridge.setMode(mode);
-        var btns = toggle.querySelectorAll('button');
-        for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.mode === mode);
 
         document.getElementById('mapPageTitle').textContent = TITLES[mode][0];
         document.getElementById('mapPageSub').textContent = TITLES[mode][1];
@@ -1125,15 +1160,6 @@ commercial terms are your assumptions.</p>
         if (lm) setTimeout(function() { lm.invalidateSize(); }, 60);
     }
 
-    toggle.addEventListener('click', function(e) {
-        var b = e.target.closest('button');
-        if (!b || !b.dataset.mode) return;
-        setMode(b.dataset.mode);
-        // Remember the mode across reloads. shared.js reloads the page whenever the service
-        // worker activates a new build, which used to drop you back on Fleet mid-search.
-        try { localStorage.setItem('protonMiningMapMode', b.dataset.mode); } catch (err) {}
-    });
-
     // Switching to the flat map reveals a container that was 0x0 until now. Leaflet cannot
     // place markers in a zero-size container, so the prospect layer is (re)drawn only once it
     // has real dimensions.
@@ -1148,14 +1174,14 @@ commercial terms are your assumptions.</p>
         });
     }
 
-    var saved = null;
-    try { saved = localStorage.getItem('protonMiningMapMode'); } catch (e) {}
-    if (saved === 'prospects') {
-        // Paint the mode immediately so the fleet layout never flashes on the way to prospects.
-        document.body.setAttribute('data-map-mode', 'prospects');
+    var mode = (window.PROTON_MAP_MODE === 'prospects') ? 'prospects' : 'fleet';
+    // Painted immediately so neither layout flashes on the way to the other.
+    document.body.setAttribute('data-map-mode', mode);
+    if (mode === 'prospects') {
         setMode('prospects');
-    } else {
-        document.body.setAttribute('data-map-mode', 'fleet');
+        /* The section bar, so the map is a place inside prospecting rather than
+           somewhere you got sent. Renders nothing if the host is absent. */
+        if (typeof ProspectNav !== 'undefined') ProspectNav.render('map');
     }
 })();
 </script>

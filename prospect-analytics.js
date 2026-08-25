@@ -311,7 +311,8 @@ var ProspectAnalytics = (function () {
                 '<h2>Nothing to analyse yet</h2>' +
                 '<p>These figures are read out of the pipeline as it moves. Track a ' +
                 'few prospects and work them, and this screen fills itself in.</p>' +
-                '<p><a class="p-golink" href="./map.html">Go to the map &rarr;</a></p>' +
+                '<p><a class="p-golink" href="./map.html?mode=prospects">' +
+                'Go to the map &rarr;</a></p>' +
             '</div>';
             return d;
         }

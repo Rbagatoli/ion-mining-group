@@ -1,5 +1,8 @@
 // ===== PROTON MINING — Fleet Map (Choropleth + Globe) =====
-initNav('map');
+/* One page, two tabs. ?mode=prospects makes this the prospecting section's map,
+   and the top-level tab that lights has to follow, or the sourcing map reads as
+   a different part of the app from the pipeline it feeds. */
+initNav(window.PROTON_MAP_MODE === 'prospects' ? 'prospecting' : 'map');
 
 // Always start on globe view (no localStorage persistence for default)
 

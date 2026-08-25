@@ -67,7 +67,7 @@
                 '<p>The board shows prospects you have chosen to track — not the ' +
                 'detections the adapters surface. Find a site on the map and add it ' +
                 'to the watchlist, and it will appear here at <em>Unreviewed</em>.</p>' +
-                '<p><a class="p-golink" href="./map.html">' +
+                '<p><a class="p-golink" href="./map.html?mode=prospects">' +
                 'Go to the map &rarr;</a></p>' +
             '</div>';
         if (note) note.textContent = '';
