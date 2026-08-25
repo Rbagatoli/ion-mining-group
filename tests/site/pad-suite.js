@@ -586,8 +586,13 @@ const engine = fs.readFileSync(D + 'diagram-engine.js', 'utf8');
 const engineCode = engine.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 ok(/new IntersectionObserver\([\s\S]{0,220}?threshold:\s*0\s*\}\)\.observe\(svg\)/.test(engineCode),
    'diagram-engine gates each drawing on an IntersectionObserver at threshold 0');
-ok(/isIntersecting[\s\S]{0,120}?else\s+stop\(\)/.test(engineCode),
+/* The else branch may be braced now — scrolling a figure out of view also
+   releases it if it was locked — so the shape this accepts is "else, then a
+   stop() before anything else", not "else stop()" exactly. */
+ok(/isIntersecting[\s\S]{0,160}?else\s*\{?\s*stop\(\)/.test(engineCode),
    'and actually stops the loop when the drawing is not intersecting');
+ok(/isIntersecting[\s\S]{0,200}?else\s*\{[\s\S]{0,60}?setLive\(false\)/.test(engineCode),
+   'and releases a locked figure that has been scrolled away from');
 
 /* The decorative canvas behind each drawing is a second animation, mounted once
    per canvas — four of them on this page. It needs the same gate. */

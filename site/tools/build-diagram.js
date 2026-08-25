@@ -276,7 +276,8 @@ const HINT = '<p class="dg-hint">' +
      what the density pass had just saved. Measured, not guessed - 29 characters of
      10.5px mono at 0.1em fits, 60 does not. The clause about tapping a label came
      out because tapping a label is the one thing here somebody will try anyway. */
-  '<span class="dg-hint-touch">Swipe to turn &middot; pinch to zoom</span>' +
+  '<span class="dg-hint-touch">Tap the drawing to interact</span>' +
+  '<span class="dg-hint-live">Drag and pinch &middot; tap off to scroll</span>' +
   '</p>';
 
 /* ---- writing it back ---- */

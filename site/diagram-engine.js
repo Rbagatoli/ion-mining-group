@@ -106,6 +106,51 @@
     var OCCLUDING = ['ground', 'inside', 'asics', 'end', 'side', 'top', 'flame'];
 
 
+    /* --- TAP TO LOCK ------------------------------------------------------
+     *
+     * A figure that is LIVE owns every touch that lands on it: one finger turns
+     * it in both axes, two zoom it, and the page does not move underneath.
+     *
+     * WHY A MODE AT ALL. The previous answer was touch-action: pan-y, which lets
+     * the browser decide per gesture - vertical is a scroll, horizontal is a
+     * turn. That is unambiguous on paper and not on a phone: the browser judges
+     * by the first few pixels, so a drag meant for the model that starts a few
+     * degrees off horizontal is gone before the figure sees it, and the page
+     * moves instead. There is no threshold that fixes it, because the two
+     * gestures are genuinely the same gesture. Asking first is the only way to
+     * know, which is what a map does and for the same reason.
+     *
+     * ONE AT A TIME, module-level, because a page can carry four of these
+     * (energy.html does) and two locked figures would be two answers again.
+     *
+     * NO BODY SCROLL LOCK. The obvious way to "freeze the page" is position:
+     * fixed on the body with the scroll offset restored on exit, and it is a
+     * trap: anything that throws between lock and unlock leaves a site that
+     * cannot be scrolled at all. touch-action: none on the live figure is enough
+     * - a touch that lands on it cannot scroll anything - and a touch that lands
+     * anywhere else exits the mode, which is what "click off" means. The worst
+     * failure this can produce is a figure that stays outlined. */
+    var live = { wrap: null, off: null };
+    var docBound = false;
+
+    function bindDocExit() {
+        if (docBound || typeof document === 'undefined' ||
+            !document.addEventListener) return;
+        docBound = true;
+        /* CAPTURE PHASE. The nav, the cart and the callouts all stop propagation
+           on their own handlers; listening on the way down means none of them can
+           strand a figure in the live state by swallowing the tap that should
+           have released it. */
+        document.addEventListener('pointerdown', function (e) {
+            if (!live.wrap || !live.off) return;
+            if (live.wrap.contains && live.wrap.contains(e.target)) return;
+            live.off();
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            if (live.wrap && live.off && e.key === 'Escape') live.off();
+        });
+    }
+
     /* Views that move together. Scenes load as separate modules and never see
        each other, so the link is looked up by name rather than passed around. */
     var LINKS = {};
@@ -652,7 +697,23 @@
             var pointers = {};   // every pointer currently down, by id
             var pending = null;  // a touch that has not yet said what it is
             var pinch = null;    // { d: spread at start, zoom: zoom at start }
+            var tapAt = null;    // where one finger landed, still short of being a drag
             var TOUCH_SLOP = 8;  // px of travel before a touch is a gesture and not a tap
+
+            function isLive() { return live.wrap === wrap; }
+            function setLive(on) {
+                if (on === isLive()) return;
+                if (on) {
+                    if (live.off) live.off();          // only one figure at a time
+                    live.wrap = wrap;
+                    live.off = function () { setLive(false); };
+                    wrap.classList.add('is-live');
+                    bindDocExit();
+                } else {
+                    if (live.wrap === wrap) { live.wrap = null; live.off = null; }
+                    wrap.classList.remove('is-live');
+                }
+            }
 
             function pcount() { var n = 0; for (var k in pointers) n++; return n; }
             function spread() {
@@ -694,10 +755,18 @@
                     // The second finger arriving turns whatever was happening into a pinch.
                     endDrag(e);
                     pending = null;
+                    tapAt = null;
                     pinch = { d: spread(), zoom: getView().zoom };
                     goManual();
-                } else if (inDrawing(e.target)) {
-                    pending = { x: e.clientX, y: e.clientY, id: e.pointerId };
+                    return;
+                }
+                tapAt = { x: e.clientX, y: e.clientY, id: e.pointerId };
+                /* LIVE: the finger is the figure's, both axes, from the first move.
+                   NOT LIVE: only a drag that proves itself horizontal, and only on
+                   the drawing - see the direction test in pointermove. */
+                if (isLive() || inDrawing(e.target)) {
+                    pending = { x: e.clientX, y: e.clientY, id: e.pointerId,
+                                free: isLive() };
                 }
             });
 
@@ -714,13 +783,18 @@
                     }
                     return;
                 }
+                if (tapAt && (Math.abs(e.clientX - tapAt.x) > TOUCH_SLOP ||
+                              Math.abs(e.clientY - tapAt.y) > TOUCH_SLOP)) tapAt = null;
+
                 if (pending) {
                     var dx = e.clientX - pending.x, dy = e.clientY - pending.y;
                     if (Math.abs(dx) < TOUCH_SLOP && Math.abs(dy) < TOUCH_SLOP) return;
                     /* Mostly vertical: this was a scroll. Let go of it entirely — the
                        browser is already scrolling, and touch-action: pan-y means we
-                       were never going to win it anyway. */
-                    if (Math.abs(dy) >= Math.abs(dx)) { pending = null; return; }
+                       were never going to win it anyway. A LIVE figure skips this
+                       test: it carries touch-action: none, so there is no scroll to
+                       lose the gesture to and both axes are its own. */
+                    if (!pending.free && Math.abs(dy) >= Math.abs(dx)) { pending = null; return; }
                     /* Origin is where the finger is NOW, not where it landed, so the
                        eight pixels it spent proving itself are not applied to the model
                        in one frame as a jump. */
@@ -744,6 +818,14 @@
             }
             function endPointer(e) {
                 delete pointers[e.pointerId];
+                /* A TAP LOCKS THE FIGURE. One finger, down and up inside the slop,
+                   nothing else in play: that is somebody pointing at the drawing,
+                   and from here until they touch anything else it is theirs. */
+                if (e.pointerType === 'touch' && tapAt && tapAt.id === e.pointerId &&
+                    !drag && !pinch && pcount() === 0 && !onControl(e.target)) {
+                    setLive(true);
+                }
+                if (tapAt && tapAt.id === e.pointerId) tapAt = null;
                 if (pending && pending.id === e.pointerId) pending = null;
                 if (pinch && pcount() < 2) {
                     pinch = null;
@@ -756,7 +838,15 @@
                 endDrag(e);
             }
             wrap.addEventListener('pointerup', endPointer);
-            wrap.addEventListener('pointercancel', endPointer);
+            /* A CANCEL IS NOT A TAP. The browser fires it when it has decided the
+               gesture is a scroll and taken it, which can happen while the finger
+               is still inside the slop — and without this, scrolling the page with
+               a finger that happened to start on the drawing would lock the figure
+               on the way past, which is the bug this whole mode exists to end. */
+            wrap.addEventListener('pointercancel', function (e) {
+                tapAt = null;
+                endPointer(e);
+            });
 
             /* --- Wheel to zoom, about the centre so nothing needs measuring.
                    The pointer has priority: while it is anywhere over the
@@ -888,7 +978,7 @@
             if (window.IntersectionObserver) {
                 new IntersectionObserver(function (e) {
                     visible = e[0].isIntersecting;
-                    if (visible) start(); else stop();
+                    if (visible) start(); else { stop(); setLive(false); }
                 }, { threshold: 0 }).observe(svg);
             }
             document.addEventListener('visibilitychange', function () {

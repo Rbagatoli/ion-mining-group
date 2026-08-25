@@ -286,8 +286,14 @@ function subpathAreas(d) {
   let rafQ = [];
   let timers = [], timerId = 0;
   const sb = { console, Math, Object, Array, String, Number, Set,
+    /* A REAL addEventListener, because the document is where the lock is
+       RELEASED. A no-op here would let the tests prove a figure can be locked and
+       never that it can be let go of, which is the half a reader is stuck with. */
     document: { hidden:false, readyState:'complete', getElementById:get,
-                querySelector: () => get('wrap'), addEventListener(){} },
+                querySelector: () => get('wrap'),
+                addEventListener: (ev, fn) => {
+                  (handlers['document'] = handlers['document'] || {})[ev] = fn;
+                } },
     window: { matchMedia: () => ({ matches:false }),
               IntersectionObserver: function(){ return { observe(){} }; } },
     requestAnimationFrame: cb => { rafQ.push(cb); return rafQ.length; },
@@ -392,6 +398,65 @@ function subpathAreas(d) {
   W.pointermove(touch(4, 200, 200));
   if (paints() !== w1) fail('the finger left over from a pinch started rotating');
   W.pointerup(touch(4, 200, 200));
+
+  /* ---- TAP TO LOCK ---------------------------------------------------------
+   *
+   * A tap makes the figure live: one finger then turns it in BOTH axes, because
+   * touch-action: none means there is no scroll left to lose the gesture to.
+   * The state is visible through the wrapper's class list, which is also what
+   * the stylesheet keys on, so there is nothing exposed here for the test alone. */
+  const wrapEl = get('wrap');
+  const isLive = () => wrapEl.classList.contains('is-live');
+
+  /* The 5px-twitch case above IS a tap, so the figure is already locked here.
+     Released the way a reader releases it - a touch somewhere else - rather than
+     by reaching in and stripping the class, which would leave the engine still
+     believing it owned the figure and make the next assertion pass for the wrong
+     reason. It did exactly that on the first attempt. */
+  const DOC = handlers['document'] || {};
+  const elsewhere = mkEl('somewhere-else');
+  if (!DOC.pointerdown) fail('nothing listens on the document for the tap that releases a figure');
+  else DOC.pointerdown({ target: elsewhere });
+  if (isLive()) fail('a touch outside the figure did not release it');
+
+  // Down and up inside the slop, one finger: a tap.
+  W.pointerdown(touch(10, 100, 100));
+  W.pointerup(touch(10, 102, 101));
+  if (!isLive()) fail('tapping the drawing did not lock it');
+
+  // Now a VERTICAL drag turns the model instead of being handed to the page.
+  V.resetView();
+  const p0 = V.getView().pitch;
+  W.pointerdown(touch(11, 100, 100));
+  /* TWO MOVES. The first one past the slop only sets the drag origin - it is
+     placed where the finger is NOW so the eight pixels it spent proving itself
+     are not applied as a jump - so it is the second that turns anything. */
+  W.pointermove(touch(11, 101, 140));
+  W.pointermove(touch(11, 101, 180));
+  if (V.getView().pitch === p0)
+    fail('while locked, a vertical drag did not turn the model');
+  W.pointerup(touch(11, 101, 180));
+
+  // A swipe is not a tap, so a finger that scrolled past cannot leave it locked.
+  DOC.pointerdown({ target: elsewhere });
+  W.pointerdown(touch(12, 100, 100));
+  W.pointermove(touch(12, 104, 160));
+  W.pointerup(touch(12, 104, 160));
+  if (isLive()) fail('a swipe past the figure locked it');
+
+  // Nor can a gesture the browser took for a scroll: pointercancel is not a tap.
+  W.pointerdown(touch(13, 100, 100));
+  H.pointercancel ? H.pointercancel(touch(13, 101, 103))
+                  : W.pointercancel(touch(13, 101, 103));
+  if (isLive()) fail('a gesture the browser cancelled locked the figure');
+
+  // Escape lets go of it too, for anyone who arrived by keyboard.
+  W.pointerdown(touch(14, 100, 100));
+  W.pointerup(touch(14, 100, 100));
+  if (!isLive()) fail('the tap before the Escape test did not lock the figure');
+  if (DOC.keydown) DOC.keydown({ key: 'Escape' });
+  else fail('nothing listens for Escape to release a locked figure');
+  if (isLive()) fail('Escape did not release the figure');
 
   // A mouse still gets the model from the first pixel: there is nothing to
   // disambiguate, because a mouse cannot scroll the page by dragging.
