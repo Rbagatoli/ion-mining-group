@@ -24,7 +24,11 @@ publish nothing, and say why in your report. That is the one case where you hold
 1. **Research.** `WebSearch` for recent news. Prefer the last 30 days. Search more than once
    with different angles — a single query returns a single narrative.
 2. **Pick an angle that touches this business.** Proton builds mining sites on stranded energy
-   (landfill gas, flared gas, curtailed power), hosts third-party fleets, and sells hardware.
+   (landfill gas, flared gas, curtailed power), sells machines, and hosts the machines it
+   sells. **It does not host hardware a customer sourced elsewhere** — that offer was
+   withdrawn, and every trace of it was taken off the site on 25 August 2026. A post that
+   invites readers to send in a fleet they already own is selling something that does not
+   exist, and blog-suite.mjs will fail the build for it.
    Good: hashprice, difficulty, energy markets, curtailment, hardware cycles, regulation
    affecting hosting, halving mechanics. Bad: price predictions, generic "bitcoin hits $X"
    coverage, anything that reads like a newsletter nobody asked for.
