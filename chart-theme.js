@@ -2,7 +2,7 @@
 //
 // Before this file, there were ZERO Chart.defaults anywhere in the repo and 24 `new Chart(...)`
 // calls each repeating its own legend colour, tooltip colours, tick colours and grid colours —
-// roughly 290 colour literals saying the same thing 24 times, and 72 isLightMode() ternaries
+// roughly 290 colour literals saying the same thing 24 times, and 72 light-mode ternaries
 // carrying a dark/light pair that no longer has two sides.
 //
 // LOAD ORDER MATTERS. This must come after chart.min.js and after theme.js, and it must NOT

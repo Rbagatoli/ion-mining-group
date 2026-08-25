@@ -4882,7 +4882,6 @@ var MapSourcing = (function() {
         var series = (c.sourceDetail && c.sourceDetail.kwByYear) || null;
         if (!series) { el.style.display = 'none'; return; }
         el.style.display = '';
-        var light = isLightMode();
         _trendChart = new Chart(el, {
             type: 'bar',
             data: {

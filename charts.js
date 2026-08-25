@@ -45,7 +45,7 @@ window.onCurrencyChange = function() {
 
 // Built as a function so the palette can be re-derived when the theme toggles
 // Structure only. Every colour, font and border here now comes from Chart.defaults in
-// chart-theme.js -- this used to restate the whole palette, twice over, through isLightMode()
+// chart-theme.js -- this used to restate the whole palette, twice over, through a light-mode branch
 // ternaries carrying a light branch that no longer has a second side.
 function buildChartOptions() {
     return {

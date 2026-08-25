@@ -243,11 +243,16 @@ const halvingPlugin = {
     }
 };
 
-// NOTE: these must be read lazily. This module is evaluated before initNav() applies the
-// saved theme, so resolving them at load time always yielded the dark palette — which made
-// the grid lines invisible against a light background.
-function gridColor() { return isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255, 255, 255, 0.06)'; }
-function mutedColor() { return isLightMode() ? '#6b7280' : '#888'; }
+// Read lazily so ProtonTheme is certainly loaded. The note that used to be here
+// described the hazard of resolving at load time and getting the dark palette
+// against a light background; there is no light background any more.
+/* Both of these existed only to pick between a light value and a dark one,
+   and isLightMode has returned a constant false since the light theme was
+   removed. What is left is the dark value, which is a token — and because
+   these feed Chart.js they have to be the token's VALUE rather than a var(),
+   which is what ProtonTheme is. */
+function gridColor() { return ProtonTheme.line; }
+function mutedColor() { return ProtonTheme.plat500; }
 
 function createGlossGradient(ctx, chartArea, r, g, b, alpha) {
     const grad = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
@@ -316,11 +321,11 @@ function initChart() {
                     type: 'line',
                     label: 'Miners Owned',
                     data: [],
-                    borderColor: isLightMode() ? '#1a1a1a' : '#ffffff',
+                    borderColor: ProtonTheme.plat000,
                     borderWidth: 2.5,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: isLightMode() ? '#1a1a1a' : '#ffffff',
+                    pointHoverBackgroundColor: ProtonTheme.plat000,
                     stepped: 'after',
                     fill: true,
                     yAxisID: 'yMachines',

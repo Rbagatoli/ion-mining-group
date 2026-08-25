@@ -52,8 +52,10 @@ function buildOpts() {
 }
 var opts = buildOpts();
 
-function gridCol() { return isLightMode() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'; }
-function tickCol() { return isLightMode() ? '#6b7280' : '#888'; }
+/* The light halves are unreachable — isLightMode is a constant false. Chart.js
+   hands these to a canvas, so they are ProtonTheme values rather than var(). */
+function gridCol() { return ProtonTheme.line; }
+function tickCol() { return ProtonTheme.plat500; }
 
 // ===== HELPERS =====
 

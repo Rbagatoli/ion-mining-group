@@ -7,11 +7,12 @@ if (window.ION_EMBED) {
 }
 
 // --- Theme helper ---
-// The app is dark only, deliberately: the marketing site this palette comes from has no light
-// mode and does not want one. This is kept as a constant rather than deleted so the ~80 call
-// sites that still branch on it take the dark path immediately, and can be unwound file by file
-// instead of in one unreviewable commit. It goes when the last caller does.
-window.isLightMode = function() { return false; };
+// GONE, as its own comment promised: "it goes when the last caller does".
+// window.isLightMode was a constant false, kept so the call sites still
+// branching on it would take the dark path while they were unwound file by
+// file rather than in one unreviewable commit. The last of them went with
+// this one, so the stub follows. The app is dark only because the marketing
+// site this palette comes from has no light mode and does not want one.
 
 // --- Aggressive SW auto-update: check for new SW on every page load ---
 (function() {

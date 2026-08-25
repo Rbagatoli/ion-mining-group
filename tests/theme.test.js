@@ -182,7 +182,13 @@ console.log('\n=== dark only, by choice ===');
         return FILES.filter(function(f) { return re.test(f.text); }).map(function(f) { return f.rel; });
     }
     eq('no [data-theme] anywhere', hits(/data-theme/).join(', ') || 'none', 'none');
-    eq('no isLightMode', hits(/isLightMode/).join(', ') || 'none', 'none');
+    /* A CALL or an assignment, not the word. window.isLightMode is deleted and
+       every branch that used it is unwound, but several comments still describe
+       what used to be there -- chart-theme.js records that it replaced 72 of
+       these ternaries, which is worth keeping. Matching the bare word would make
+       the file's own history trip its own guard, and the thing actually worth
+       preventing is the function coming back, not being remembered. */
+    eq('no isLightMode', hits(/isLightMode\s*[(=]/).join(', ') || 'none', 'none');
     // shared.js keeps ONE mention: a one-time localStorage.removeItem behind a sentinel, so a
     // returning user is not left holding a dead key. That is a migration artifact with an expiry,
     // not a survivor -- so it is exempted by shape (removeItem only), which still fails if
