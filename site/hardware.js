@@ -207,17 +207,23 @@
         var held = (typeof Cart !== 'undefined') ? Cart.qtyOf(m.model) : 0;
         return '' +
         '<tr data-model="' + esc(m.model) + '">' +
+          /* data-label on every cell that a phone has to relabel. The table
+             head carries the labels on a wide screen; below 720px the head is
+             gone and each row becomes a card, where a bare "$4.20" says
+             nothing. The three spec cells need none - "473 TH/s" and
+             "12.0 J/TH" carry their own units - and the name is the heading. */
           '<td class="hw-name">' + esc(m.model) + '</td>' +
-          '<td>' + m.hashrate.toLocaleString('en-US') + ' TH/s</td>' +
-          '<td>' + m.power.toFixed(3) + ' kW</td>' +
-          '<td>' + m.efficiency.toFixed(1) + ' J/TH</td>' +
-          '<td>' + price + '</td>' +
+          '<td class="hw-spec">' + m.hashrate.toLocaleString('en-US') + ' TH/s</td>' +
+          '<td class="hw-spec">' + m.power.toFixed(3) + ' kW</td>' +
+          '<td class="hw-spec">' + m.efficiency.toFixed(1) + ' J/TH</td>' +
+          '<td class="hw-cost">' + price + '</td>' +
           /* An empty cell where no power price has been given reads as "not
              asked yet"; a dash would read as "no answer exists". */
-          '<td class="hw-num">' + (e ? usd(e.revenue) : '') + '</td>' +
-          '<td class="hw-num' + (e && e.profit !== null && e.profit < 0 ? ' hw-loss' : '') + '">' +
+          '<td class="hw-num" data-label="Revenue / day">' + (e ? usd(e.revenue) : '') + '</td>' +
+          '<td class="hw-num' + (e && e.profit !== null && e.profit < 0 ? ' hw-loss' : '') + '"' +
+              ' data-label="Profit / day">' +
               (e && e.profit !== null ? usd(e.profit) : '') + '</td>' +
-          '<td class="hw-num">' + (e ? paybackText(e.paybackDays) : '') + '</td>' +
+          '<td class="hw-num" data-label="Payback">' + (e ? paybackText(e.paybackDays) : '') + '</td>' +
           /* The column heading is the label here, so the field carries only an
              aria-label naming the machine — a visible "Quantity" per row would
              be twenty-eight repetitions of the header. */

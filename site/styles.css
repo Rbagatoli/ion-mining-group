@@ -3755,6 +3755,138 @@ a.fac:hover .fac-go { color: var(--btc-200); }
    this one does not work. */
 .hw-table .hw-loss { color: var(--loss); }
 
+/* ===== THE CATALOGUE STOPS BEING A TABLE ON A PHONE =====
+
+   MEASURED FIRST: at 390px the table is 1135px wide inside a 350px scroller.
+   The machine name fits and nothing else does — nine columns and 785px of
+   sideways scrolling to reach the end, with the name column not pinned, so
+   scrolling right leaves you reading numbers with no idea whose they are. The
+   last column IS pinned, which was the fix for a 1255px table in a 1144px
+   container; it does nothing for a table three times its window.
+
+   A horizontal scroller is the right answer for a table that is a little too
+   wide. This one is not a little too wide. So below 720px each row becomes a
+   card — the same cells, the same source, the reading order turned ninety
+   degrees:
+
+       ANTMINER S21 XP HYD                        $[X,XXX]
+       473 TH/s · 5.676 kW · 12.0 J/TH
+       REVENUE / DAY                                 $4.20     <- only once a
+       PROFIT / DAY                                  $1.15        power price
+       PAYBACK                                     412 days       is entered
+       [ − 0 + ]                            Run the numbers →
+
+   FOUR LINES UNTIL A RATE IS ENTERED, not the eight that a plain
+   label-per-row transform gives. Twenty-eight machines is a long list however
+   it is drawn, and this page has already been through one pass for excess
+   scrolling.
+
+   HOW THE LINES ARE COMPOSED. The row is a wrapping flexbox and the cells
+   arrive in table order, which is not the order a card wants. Two zero-height
+   full-width flex items — the row's own ::before and ::after — force the line
+   breaks, and `order` puts every cell on the side of them it belongs. A
+   flex item that is 100% wide cannot share a line, which is what makes both
+   the breaks and the three economics rows work without any extra markup.
+
+   :empty IS LOAD-BEARING. The economics cells render as empty strings until a
+   power price is given — deliberately, because a dash would read as "no answer
+   exists" rather than "not asked yet" — and the card would otherwise show three
+   labels with nothing beside them. */
+@media (max-width: 720px) {
+    /* The scroller has nothing left to scroll, and leaving it on would clip the
+       card's own bottom border. */
+    .calc-table-scroll:has(.hw-table) { overflow-x: visible; }
+    .hw-table, .hw-table tbody { display: block; }
+    .hw-table thead { display: none; }
+
+    .hw-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        padding: 14px 14px 12px;
+        border-top: 1px solid var(--line);
+    }
+    .hw-table tbody tr:last-child { border-bottom: 1px solid var(--line); }
+
+    /* The two line breaks. Zero height, so they cost nothing but the wrap. */
+    .hw-table tr::before,
+    .hw-table tr::after {
+        content: '';
+        width: 100%;
+        height: 0;
+    }
+    .hw-table tr::before { order: 3; }
+    .hw-table tr::after  { order: 5; }
+
+    /* border-bottom OFF. .calc-table td carries one for a table's row rhythm,
+       and on a card it draws a stub under whatever the cell happens to be as
+       wide as - a line under the specs that stops halfway across. The card's
+       own top border is the separator now. */
+    .hw-table td {
+        display: block;
+        padding: 0;
+        white-space: nowrap;
+        width: auto;
+        border-bottom: none;
+    }
+    .hw-table td:empty { display: none; }
+
+    /* Line 1: what it is, and what it costs. */
+    .hw-table .hw-name {
+        order: 1;
+        flex: 1 1 auto;
+        font-size: 15px;
+        white-space: normal;
+        padding-right: 12px;
+    }
+    .hw-table .hw-cost { order: 2; font-size: 14px; }
+
+    /* Line 2: the three specs, run together. Their units are their labels. */
+    .hw-table .hw-spec { order: 4; color: var(--plat-400); font-size: 11.5px; padding-top: 4px; }
+    .hw-table .hw-spec + .hw-spec::before {
+        content: '·';
+        color: var(--plat-600);
+        padding: 0 7px;
+    }
+
+    /* One line each, label left and figure right, and only when there is one. */
+    .hw-table .hw-num {
+        order: 6;
+        display: flex;
+        align-items: baseline;
+        width: 100%;
+        padding: 6px 0 0;
+        border-top: 1px solid rgba(229, 228, 226, 0.05);
+        margin-top: 6px;
+    }
+    .hw-table .hw-num::before {
+        content: attr(data-label);
+        margin-right: auto;
+        padding-right: 12px;
+        color: var(--plat-500);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    /* Last line: the stepper, and the link pushed to the far end. */
+    .hw-table .hw-qty { order: 7; padding-top: 12px; }
+    /* td.hw-see, NOT .hw-see. The rule that pins this column on a wide screen is
+       `.hw-table td.hw-see` at (0,2,1), so a (0,2,0) selector here loses to it -
+       the cell kept position:sticky and its opaque black background, which drew
+       as a black slab behind the link running off the right edge of the card.
+       Caught in a screenshot; the computed style is where it was obvious. */
+    .hw-table td.hw-see {
+        order: 8;
+        padding-top: 12px;
+        margin-left: auto;
+        /* Nothing left to pin against once the row is a card. */
+        position: static;
+        background: none;
+    }
+    .hw-table td.hw-see::before { display: none; }
+}
+
 /* The power-price control sits above the table rather than in it — it applies
    to every row, and a control repeated per row would read as a per-row setting. */
 .hw-econ {
