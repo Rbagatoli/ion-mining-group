@@ -278,8 +278,8 @@ function renderDifficultyChart(timeframe) {
             datasets: [{
                 label: 'Difficulty (T)',
                 data: diffValues,
-                borderColor: '#4ade80',
-                backgroundColor: 'rgba(74, 222, 128, 0.10)',
+                borderColor: ProtonTheme.pos,
+                backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.10),
                 fill: true,
                 borderWidth: 2,
                 pointRadius: 0,
@@ -291,7 +291,7 @@ function renderDifficultyChart(timeframe) {
             scales: Object.assign({}, chartOptions.scales, {
                 y: {
                     ticks: {
-                        color: '#4ade80',
+                        color: ProtonTheme.pos,
                         font: { size: 11 },
                         callback: function(v) { return v.toFixed(0) + ' T'; }
                     },
@@ -496,11 +496,11 @@ async function refreshAllCharts() {
                 priceOk = true;
             } else {
                 statusEl.textContent = 'Price history unavailable';
-                statusEl.style.color = '#f55';
+                statusEl.style.color = 'var(--neg)';
             }
         } catch (e) {
             statusEl.textContent = 'Price load failed: ' + e.message;
-            statusEl.style.color = '#f55';
+            statusEl.style.color = 'var(--neg)';
         }
     }
 
@@ -516,7 +516,7 @@ async function refreshAllCharts() {
             miningOk = true;
         } catch (e) {
             statusEl.textContent = 'Mining load failed: ' + e.message;
-            statusEl.style.color = '#f55';
+            statusEl.style.color = 'var(--neg)';
         }
     }
 
@@ -540,7 +540,7 @@ async function refreshAllCharts() {
             // how fresh the price series was.
             statusEl.textContent = 'Live \u00b7 Updated ' +
                 new Date(_lastHistoryFetch || Date.now()).toLocaleTimeString();
-            statusEl.style.color = '#4ade80';
+            statusEl.style.color = 'var(--pos)';
         }
         renderHashPriceChart(currentHashPriceDays);
     } else if (priceOk || miningOk) {
@@ -1177,8 +1177,8 @@ function renderFeeChart(timeframe, apiData) {
                 {
                     label: 'High Priority (p90)',
                     data: fastestData,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    borderColor: ProtonTheme.neg,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.neg, 0.15),
                     fill: '+1',
                     borderWidth: 2,
                     pointRadius: 0,
@@ -1187,7 +1187,7 @@ function renderFeeChart(timeframe, apiData) {
                 {
                     label: 'Medium (p50)',
                     data: halfHourData,
-                    borderColor: '#f59e0b',
+                    borderColor: ProtonTheme.warn,
                     backgroundColor: 'rgba(245, 158, 11, 0.15)',
                     fill: '+1',
                     borderWidth: 2,
@@ -1197,8 +1197,8 @@ function renderFeeChart(timeframe, apiData) {
                 {
                     label: 'Low Priority (p10)',
                     data: economyData,
-                    borderColor: '#4ade80',
-                    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+                    borderColor: ProtonTheme.pos,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.15),
                     fill: 'origin',
                     borderWidth: 2,
                     pointRadius: 0,

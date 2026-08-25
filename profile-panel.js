@@ -98,7 +98,7 @@
             if (user.emailVerified) {
                 verifiedHtml =
                     '<div class="profile-verified">' +
-                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2">' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--pos)" stroke-width="2">' +
                             '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>' +
                             '<polyline points="22 4 12 14.01 9 11.01"/>' +
                         '</svg> Email verified' +
@@ -132,14 +132,14 @@
                 resendLink.style.pointerEvents = 'none';
                 ProtonAuth.resendVerification().then(function() {
                     resendLink.textContent = 'Sent! Check inbox & spam.';
-                    resendLink.style.color = '#4ade80';
+                    resendLink.style.color = 'var(--pos)';
                 }).catch(function(err) {
                     console.error('Resend verification failed:', err.code, err.message);
                     var msg = 'Failed';
                     if (err.code === 'auth/too-many-requests') msg = 'Too many attempts — try later';
                     else if (err.message) msg = err.message;
                     resendLink.textContent = msg;
-                    resendLink.style.color = '#ef4444';
+                    resendLink.style.color = 'var(--neg)';
                     setTimeout(function() {
                         resendLink.textContent = 'Resend';
                         resendLink.style.color = '';

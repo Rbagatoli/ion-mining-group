@@ -106,7 +106,7 @@ function copyToClipboard(text, btnEl) {
     navigator.clipboard.writeText(text).then(function() {
         var orig = btnEl.textContent;
         btnEl.textContent = 'Copied!';
-        btnEl.style.color = '#4ade80';
+        btnEl.style.color = 'var(--pos)';
         setTimeout(function() { btnEl.textContent = orig; btnEl.style.color = ''; }, 1500);
     }).catch(function() {
         var ta = document.createElement('textarea');
@@ -119,7 +119,7 @@ function copyToClipboard(text, btnEl) {
         document.body.removeChild(ta);
         var orig = btnEl.textContent;
         btnEl.textContent = 'Copied!';
-        btnEl.style.color = '#4ade80';
+        btnEl.style.color = 'var(--pos)';
         setTimeout(function() { btnEl.textContent = orig; btnEl.style.color = ''; }, 1500);
     });
 }
@@ -1424,7 +1424,7 @@ async function renderTransactionHistory() {
         var date = new Date(t.timestamp * 1000);
         var dateStr = (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear() + ' ' +
             String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
-        var changeColor = t.change >= 0 ? '#4ade80' : '#ef4444';
+        var changeColor = t.change >= 0 ? 'var(--pos)' : 'var(--neg)';
         var changePrefix = t.change >= 0 ? '+' : '';
 
         var sourceBadge;
@@ -1446,10 +1446,10 @@ async function renderTransactionHistory() {
         if (t.type === 'strike') {
             var st2 = (t.strikeStatus || '').toUpperCase();
             statusText = st2 === 'COMPLETED' ? 'Completed' : st2 === 'PENDING' ? 'Pending' : t.strikeStatus || 'Unknown';
-            statusColor = st2 === 'COMPLETED' ? '#4ade80' : '#f7931a';
+            statusColor = st2 === 'COMPLETED' ? 'var(--pos)' : '#f7931a';
         } else {
             statusText = t.confirmed ? 'Confirmed' : 'Unconfirmed';
-            statusColor = t.confirmed ? '#4ade80' : '#f7931a';
+            statusColor = t.confirmed ? 'var(--pos)' : '#f7931a';
         }
 
         var toCol;
@@ -1569,7 +1569,7 @@ document.getElementById('cancelWalletStrike').addEventListener('click', function
 document.getElementById('testWalletStrike').addEventListener('click', async function() {
     var url = document.getElementById('walletStrikeProxyUrl').value.trim();
     var result = document.getElementById('walletStrikeTestResult');
-    if (!url) { result.innerHTML = '<span style="color:#f55;">Enter a proxy URL</span>'; return; }
+    if (!url) { result.innerHTML = '<span style="color:var(--neg);">Enter a proxy URL</span>'; return; }
 
     result.innerHTML = '<span style="color:#888;">Testing connection...</span>';
 
@@ -1591,9 +1591,9 @@ document.getElementById('testWalletStrike').addEventListener('click', async func
         for (var i = 0; i < balArr.length; i++) {
             info.push(balArr[i].currency + ': ' + (balArr[i].available || balArr[i].total || '0'));
         }
-        result.innerHTML = '<span style="color:#4ade80;">Connected! Balances: ' + info.join(', ') + '</span>';
+        result.innerHTML = '<span style="color:var(--pos);">Connected! Balances: ' + info.join(', ') + '</span>';
     } else {
-        result.innerHTML = '<span style="color:#f55;">Failed: ' + (data.error || 'Unknown error') + '</span>';
+        result.innerHTML = '<span style="color:var(--neg);">Failed: ' + (data.error || 'Unknown error') + '</span>';
     }
 });
 
@@ -1805,8 +1805,8 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
     var cur = document.getElementById('sendCurrency').value;
     var result = document.getElementById('sendResult');
 
-    if (!dest) { result.innerHTML = '<span style="color:#f55;">Enter a destination</span>'; return; }
-    if (!amt) { result.innerHTML = '<span style="color:#f55;">Enter an amount</span>'; return; }
+    if (!dest) { result.innerHTML = '<span style="color:var(--neg);">Enter a destination</span>'; return; }
+    if (!amt) { result.innerHTML = '<span style="color:var(--neg);">Enter an amount</span>'; return; }
 
     result.innerHTML = '<span style="color:#888;">Getting quote...</span>';
 
@@ -1827,7 +1827,7 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
             if (tier) {
                 result.innerHTML = '<span style="color:#f90;">Select a fee speed, then tap Get Quote again</span>';
             } else {
-                result.innerHTML = '<span style="color:#f55;">Could not load fee tiers</span>';
+                result.innerHTML = '<span style="color:var(--neg);">Could not load fee tiers</span>';
             }
             return;
         }
@@ -1850,7 +1850,7 @@ document.getElementById('btnGetQuote').addEventListener('click', async function(
         result.innerHTML = '';
     } else {
         var errMsg = quoteData.error || quoteData.message || quoteData.title || JSON.stringify(quoteData);
-        result.innerHTML = '<span style="color:#f55;">' + errMsg + '</span>';
+        result.innerHTML = '<span style="color:var(--neg);">' + errMsg + '</span>';
     }
 });
 
@@ -1893,15 +1893,15 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
     var pinCode = (document.getElementById('sendPinCode').value || '').replace(/\s/g, '');
     var result = document.getElementById('sendResult');
     if (pinEnabled && (!pinCode || pinCode.length < 4)) {
-        result.innerHTML = '<span style="color:#f55;">Enter your 4-digit send PIN</span>'; return;
+        result.innerHTML = '<span style="color:var(--neg);">Enter your 4-digit send PIN</span>'; return;
     }
     if (totpEnabled && (!totpCode || totpCode.length !== 6)) {
-        result.innerHTML = '<span style="color:#f55;">Enter the 6-digit code from Google Authenticator</span>'; return;
+        result.innerHTML = '<span style="color:var(--neg);">Enter the 6-digit code from Google Authenticator</span>'; return;
     }
-    if (!activeSendQuote || !activeSendQuote.paymentQuoteId) { result.innerHTML = '<span style="color:#f55;">No active quote</span>'; return; }
+    if (!activeSendQuote || !activeSendQuote.paymentQuoteId) { result.innerHTML = '<span style="color:var(--neg);">No active quote</span>'; return; }
 
     if (activeSendQuote.validUntil && new Date(activeSendQuote.validUntil).getTime() < Date.now()) {
-        result.innerHTML = '<span style="color:#f55;">Quote expired. Go back and get a new one.</span>';
+        result.innerHTML = '<span style="color:var(--neg);">Quote expired. Go back and get a new one.</span>';
         return;
     }
 
@@ -1917,7 +1917,7 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
 
     if (sendResult && !sendResult.error) {
         var state = sendResult.state || 'COMPLETED';
-        result.innerHTML = '<span style="color:#4ade80;">Payment ' + state + '!</span>';
+        result.innerHTML = '<span style="color:var(--pos);">Payment ' + state + '!</span>';
         activeSendQuote = null;
         setTimeout(function() {
             document.getElementById('sendBtcPanel').classList.remove('open');
@@ -1945,7 +1945,7 @@ document.getElementById('btnConfirmSend').addEventListener('click', async functi
             pinEnabled = true;
             updatePinVisibility();
         }
-        result.innerHTML = '<span style="color:#f55;">' + (sendResult.error || 'Send failed') + '</span>';
+        result.innerHTML = '<span style="color:var(--neg);">' + (sendResult.error || 'Send failed') + '</span>';
     }
 });
 
@@ -2012,8 +2012,8 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
     var code = (document.getElementById('twofa-verify-code').value || '').replace(/\s/g, '');
     var resultEl = document.getElementById('twofa-save-result');
 
-    if (!secret) { resultEl.innerHTML = '<span style="color:#f55;">Generate a secret first.</span>'; return; }
-    if (!code || code.length !== 6) { resultEl.innerHTML = '<span style="color:#f55;">Enter the 6-digit code from your authenticator.</span>'; return; }
+    if (!secret) { resultEl.innerHTML = '<span style="color:var(--neg);">Generate a secret first.</span>'; return; }
+    if (!code || code.length !== 6) { resultEl.innerHTML = '<span style="color:var(--neg);">Enter the 6-digit code from your authenticator.</span>'; return; }
 
     resultEl.innerHTML = '<span style="color:#888;">Saving...</span>';
     this.disabled = true;
@@ -2022,7 +2022,7 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
 
     this.disabled = false;
     if (data && data.ok) {
-        resultEl.innerHTML = '<span style="color:#4ade80;">2FA activated! All sends now require an authenticator code.</span>';
+        resultEl.innerHTML = '<span style="color:var(--pos);">2FA activated! All sends now require an authenticator code.</span>';
         totpEnabled = true;
         updateTotpVisibility();
         window._pending2FASecret = null;
@@ -2033,7 +2033,7 @@ document.getElementById('btnSave2FAToWorker').addEventListener('click', async fu
             StrikeAuth.saveSession(StrikeAuth.getToken(), user);
         }
     } else {
-        resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || data.message || 'Failed to save') + '</span>';
+        resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || data.message || 'Failed to save') + '</span>';
     }
 });
 
@@ -2096,7 +2096,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
     var resultEl = document.getElementById('receiveResult');
 
     if (!amt || parseFloat(amt) <= 0) {
-        resultEl.innerHTML = '<span style="color:#f55;">Enter an amount</span>';
+        resultEl.innerHTML = '<span style="color:var(--neg);">Enter an amount</span>';
         return;
     }
 
@@ -2108,7 +2108,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
 
     if (!data || data.error || !data.invoiceId) {
         this.disabled = false;
-        resultEl.innerHTML = '<span style="color:#f55;">' + (data && data.error || 'Failed to create invoice') + '</span>';
+        resultEl.innerHTML = '<span style="color:var(--neg);">' + (data && data.error || 'Failed to create invoice') + '</span>';
         return;
     }
 
@@ -2119,7 +2119,7 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
 
     var bolt11 = (quote && quote.lnInvoice) || '';
     if (!bolt11) {
-        resultEl.innerHTML = '<span style="color:#f55;">' + (quote && quote.error || 'Could not generate Lightning invoice') + '</span>';
+        resultEl.innerHTML = '<span style="color:var(--neg);">' + (quote && quote.error || 'Could not generate Lightning invoice') + '</span>';
         return;
     }
 
@@ -2144,12 +2144,12 @@ document.getElementById('btnCreateInvoice').addEventListener('click', async func
                 var shareUrl = StrikeAPI.getProxyUrl().replace(/\/$/, '') + '/pay?id=' + shareData.shareId;
                 document.getElementById('shareUrlText').textContent = shareUrl;
                 shareLinkEl.style.display = '';
-                shareStatusEl.innerHTML = '<span style="color:#4ade80;">Share link ready!</span>';
+                shareStatusEl.innerHTML = '<span style="color:var(--pos);">Share link ready!</span>';
             } else {
-                shareStatusEl.innerHTML = '<span style="color:#f55;">Share failed: ' + (shareData && shareData.error || 'Unknown error') + '</span>';
+                shareStatusEl.innerHTML = '<span style="color:var(--neg);">Share failed: ' + (shareData && shareData.error || 'Unknown error') + '</span>';
             }
         } catch(e) {
-            shareStatusEl.innerHTML = '<span style="color:#f55;">Share error: ' + e.message + '</span>';
+            shareStatusEl.innerHTML = '<span style="color:var(--neg);">Share error: ' + e.message + '</span>';
         }
     } else {
     }
@@ -2177,11 +2177,11 @@ function startInvoicePoll(invoiceId) {
         var inv = await StrikeAPI.getInvoice(invoiceId);
         if (inv && inv.state === 'PAID') {
             clearInterval(window._invoicePollInterval);
-            statusEl.innerHTML = '<span style="color:#4ade80;">Payment received!</span>';
+            statusEl.innerHTML = '<span style="color:var(--pos);">Payment received!</span>';
             setTimeout(function() { loadAndRefreshWallet(); }, 2000);
         } else if (inv && (inv.state === 'CANCELLED' || inv.state === 'EXPIRED')) {
             clearInterval(window._invoicePollInterval);
-            statusEl.innerHTML = '<span style="color:#ef4444;">Invoice expired</span>';
+            statusEl.innerHTML = '<span style="color:var(--neg);">Invoice expired</span>';
         }
     }, 5000);
 }
@@ -2323,7 +2323,7 @@ function showOnchainAddress(address) {
             var apiKey = document.getElementById('strikeApiKeyInput').value.trim();
             var resultEl = document.getElementById('strikeKeyResult');
 
-            if (!apiKey) { resultEl.innerHTML = '<span style="color:#f55;">Enter your Strike API key</span>'; return; }
+            if (!apiKey) { resultEl.innerHTML = '<span style="color:var(--neg);">Enter your Strike API key</span>'; return; }
 
             resultEl.innerHTML = '<span style="color:#888;">Connecting to Strike...</span>';
             saveBtn.disabled = true;
@@ -2354,19 +2354,19 @@ function showOnchainAddress(address) {
                 // Show PIN creation UI — PIN is mandatory, cannot skip
                 var pinSection = document.getElementById('strikeKeyPinSection');
                 if (pinSection && !(user && user.hasPin)) {
-                    resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
+                    resultEl.innerHTML = '<span style="color:var(--pos);">Strike connected! Now create a send PIN below.</span>';
                     pinSection.style.display = '';
                     // Mark panel as requiring PIN before close
                     document.getElementById('strikeApiKeyPanel').dataset.pinRequired = 'true';
                 } else {
-                    resultEl.innerHTML = '<span style="color:#4ade80;">Strike account connected!</span>';
+                    resultEl.innerHTML = '<span style="color:var(--pos);">Strike account connected!</span>';
                     setTimeout(function() {
                         document.getElementById('strikeApiKeyPanel').classList.remove('open');
                         loadAndRefreshWallet();
                     }, 1000);
                 }
             } else {
-                resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to connect') + '</span>';
+                resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || 'Failed to connect') + '</span>';
             }
         });
     }
@@ -2382,10 +2382,10 @@ function showOnchainAddress(address) {
             var resultEl = document.getElementById('pinSaveResult');
 
             if (!pin || pin.length < 4 || !/^\d+$/.test(pin)) {
-                resultEl.innerHTML = '<span style="color:#f55;">PIN must be 4-6 digits.</span>'; return;
+                resultEl.innerHTML = '<span style="color:var(--neg);">PIN must be 4-6 digits.</span>'; return;
             }
             if (pin !== confirm) {
-                resultEl.innerHTML = '<span style="color:#f55;">PINs do not match.</span>'; return;
+                resultEl.innerHTML = '<span style="color:var(--neg);">PINs do not match.</span>'; return;
             }
 
             resultEl.innerHTML = '<span style="color:#888;">Saving PIN...</span>';
@@ -2395,7 +2395,7 @@ function showOnchainAddress(address) {
             pinBtn.disabled = false;
 
             if (data && data.ok) {
-                resultEl.innerHTML = '<span style="color:#4ade80;">Send PIN saved!</span>';
+                resultEl.innerHTML = '<span style="color:var(--pos);">Send PIN saved!</span>';
                 pinEnabled = true;
                 var user = StrikeAuth.getUser();
                 if (user) {
@@ -2407,7 +2407,7 @@ function showOnchainAddress(address) {
                     loadAndRefreshWallet();
                 }, 1500);
             } else {
-                resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || data.message || 'Failed to save PIN') + '</span>';
+                resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || data.message || 'Failed to save PIN') + '</span>';
             }
         });
     }
@@ -2449,7 +2449,7 @@ function showOnchainAddress(address) {
             saveBtn.disabled = false;
 
             if (data && data.ok) {
-                resultEl.innerHTML = '<span style="color:#4ade80;">Settings saved!</span>';
+                resultEl.innerHTML = '<span style="color:var(--pos);">Settings saved!</span>';
                 // Update local user
                 var user = StrikeAuth.getUser();
                 if (user) {
@@ -2458,7 +2458,7 @@ function showOnchainAddress(address) {
                     StrikeAuth.saveSession(StrikeAuth.getToken(), user);
                 }
             } else {
-                resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to save') + '</span>';
+                resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || 'Failed to save') + '</span>';
             }
         });
     }
@@ -2758,7 +2758,7 @@ function renderElectricityTable() {
         html += '<tr>' +
             '<td>' + escapeHtml(e.date) + '</td>' +
             '<td>' + e.kwhUsed.toLocaleString() + '</td>' +
-            '<td style="color:#ef4444">' + fmtUSD(e.costUSD) + '</td>' +
+            '<td style="color:var(--neg)">' + fmtUSD(e.costUSD) + '</td>' +
             '<td>$' + e.effectiveRate.toFixed(4) + '</td>' +
             '<td>' + escapeHtml(e.notes || '--') + '</td>' +
             '<td><button class="delete-elec" data-id="' + escapeHtml(e.id) + '">&times;</button></td>' +
@@ -2935,8 +2935,8 @@ function initPayoutChart() {
                 {
                     label: 'USD Value',
                     data: chartData.usdValues,
-                    borderColor: '#4ade80',
-                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    borderColor: ProtonTheme.pos,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.1),
                     fill: true,
                     borderWidth: 2,
                     yAxisID: 'y1',
@@ -2973,7 +2973,7 @@ function initPayoutChart() {
                     type: 'linear',
                     position: 'right',
                     ticks: {
-                        color: '#4ade80',
+                        color: ProtonTheme.pos,
                         font: { size: 11 },
                         callback: function(v) { return '$' + v.toFixed(0); }
                     },
@@ -3046,8 +3046,8 @@ function initRevCostChart() {
                 {
                     label: 'Cumulative Revenue',
                     data: chartData.revenue,
-                    borderColor: '#4ade80',
-                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    borderColor: ProtonTheme.pos,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.1),
                     fill: true,
                     borderWidth: 2,
                     pointRadius: 3,
@@ -3056,8 +3056,8 @@ function initRevCostChart() {
                 {
                     label: 'Cumulative Electricity Cost',
                     data: chartData.costs,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: ProtonTheme.neg,
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.neg, 0.1),
                     fill: true,
                     borderWidth: 2,
                     pointRadius: 3,
@@ -3304,7 +3304,7 @@ async function connectQuickBooks() {
         }, 500);
 
     } catch (e) {
-        if (result) result.innerHTML = '<span style="color:#f55;">Error: ' + e.message + '</span>';
+        if (result) result.innerHTML = '<span style="color:var(--neg);">Error: ' + e.message + '</span>';
     }
 }
 
@@ -3412,7 +3412,7 @@ async function onQuickBooksConnected(companyName) {
     qboConnected = true;
     updateQboStatus(companyName || 'Connected');
     var result = document.getElementById('qboTestResult');
-    if (result) result.innerHTML = '<span style="color:#4ade80;">Connected: ' + companyName + '</span>';
+    if (result) result.innerHTML = '<span style="color:var(--pos);">Connected: ' + companyName + '</span>';
     document.getElementById('qboConnectPanel').classList.remove('open');
     await loadAccountingData();  // Wait for data to load
     renderAccounting();  // Then render immediately
@@ -3576,7 +3576,7 @@ if (testStrikeAcct) {
         if (!urlInput || !result) return;
 
         var url = urlInput.value.trim();
-        if (!url) { result.innerHTML = '<span style="color:#f55;">Enter a proxy URL</span>'; return; }
+        if (!url) { result.innerHTML = '<span style="color:var(--neg);">Enter a proxy URL</span>'; return; }
         result.innerHTML = '<span style="color:#888;">Testing...</span>';
         var settings = FleetData.getSettings();
         if (!settings.strike) settings.strike = {};
@@ -3591,9 +3591,9 @@ if (testStrikeAcct) {
             var balArr = Array.isArray(balances) ? balances : (balances.items || [balances]);
             var info = [];
             for (var i = 0; i < balArr.length; i++) info.push(balArr[i].currency + ': ' + (balArr[i].available || balArr[i].total || balArr[i].amount || '0'));
-            result.innerHTML = '<span style="color:#4ade80;">Connected! Balances: ' + info.join(', ') + '</span>';
+            result.innerHTML = '<span style="color:var(--pos);">Connected! Balances: ' + info.join(', ') + '</span>';
         } else {
-            result.innerHTML = '<span style="color:#f55;">Failed: ' + ((data && data.error) || 'Unknown') + '</span>';
+            result.innerHTML = '<span style="color:var(--neg);">Failed: ' + ((data && data.error) || 'Unknown') + '</span>';
         }
     });
 }
@@ -3977,7 +3977,7 @@ function renderRevenueTable(entries) {
         var categoryLower = e.category.toLowerCase();
         var categoryBadgeStyle = '';
         if (categoryLower.indexOf('mining') !== -1 || categoryLower.indexOf('payout') !== -1) {
-            categoryBadgeStyle = 'background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); color:#4ade80;';
+            categoryBadgeStyle = 'background:var(--pos-wash); border:1px solid var(--pos-line); color:var(--pos);';
         } else if (categoryLower.indexOf('payment') !== -1 || categoryLower.indexOf('receive') !== -1) {
             categoryBadgeStyle = 'background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;';
         } else {
@@ -4097,16 +4097,16 @@ function updatePnLChart(pnl) {
                 {
                     label: 'Revenue',
                     data: revData,
-                    backgroundColor: 'rgba(74, 222, 128, 0.6)',
-                    borderColor: '#4ade80',
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.6),
+                    borderColor: ProtonTheme.pos,
                     borderRadius: 4,
                     order: 2
                 },
                 {
                     label: 'Expenses',
                     data: expData,
-                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                    borderColor: '#ef4444',
+                    backgroundColor: ProtonTheme.alpha(ProtonTheme.neg, 0.6),
+                    borderColor: ProtonTheme.neg,
                     borderRadius: 4,
                     order: 2
                 },

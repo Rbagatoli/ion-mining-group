@@ -255,8 +255,8 @@ function buildPopup(a2, data) {
             '<div class="map-popup-stat"><span class="map-popup-label">Power</span><span class="map-popup-value">' + data.totalPower.toLocaleString() + ' kW</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Efficiency</span><span class="map-popup-value">' + efficiency + ' J/TH</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:#f7931a;">$' + avgElecCost + '/kWh</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:#4ade80;">' + data.onlineCount + '</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:#ef4444;">' + data.offlineCount + '</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:var(--pos);">' + data.onlineCount + '</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:var(--neg);">' + data.offlineCount + '</span></div>' +
         '</div>' +
         (modelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:' + (isLightMode() ? '#6b7280' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid ' + (isLightMode() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') + ';">Models</div>' + modelHtml + '</div>' : '') +
         buildPieChart(a2) +
@@ -286,8 +286,8 @@ function buildStatePopup(loc) {
             '<div class="map-popup-stat"><span class="map-popup-label">Power</span><span class="map-popup-value">' + loc.totalPower.toLocaleString() + ' kW</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Efficiency</span><span class="map-popup-value">' + stateEff + ' J/TH</span></div>' +
             '<div class="map-popup-stat"><span class="map-popup-label">Avg. Elec. Cost</span><span class="map-popup-value" style="color:#f7931a;">$' + avgElecCost + '/kWh</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:#4ade80;">' + loc.onlineCount + '</span></div>' +
-            '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:#ef4444;">' + loc.offlineCount + '</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Online</span><span class="map-popup-value" style="color:var(--pos);">' + loc.onlineCount + '</span></div>' +
+            '<div class="map-popup-stat"><span class="map-popup-label">Offline</span><span class="map-popup-value" style="color:var(--neg);">' + loc.offlineCount + '</span></div>' +
         '</div>' +
         (stateModelHtml ? '<div class="map-popup-models"><div style="font-size:10px;color:' + (isLightMode() ? '#6b7280' : '#888') + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;padding-top:8px;border-top:1px solid ' + (isLightMode() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') + ';">Models</div>' + stateModelHtml + '</div>' : '') +
     '</div>';
@@ -652,7 +652,7 @@ var MapBridge = (function() {
                 '<td style="text-align:right">' + loc.totalHashrate.toLocaleString() + ' TH/s</td>' +
                 '<td style="text-align:right">' + loc.totalPower.toLocaleString() + ' kW</td>' +
                 '<td style="text-align:right">' + eff + '</td>' +
-                '<td style="text-align:right"><span style="color:' + (onlinePct === '100%' ? '#4ade80' : '#fbbf24') + '">' + onlinePct + '</span></td>' +
+                '<td style="text-align:right"><span style="color:' + (onlinePct === '100%' ? 'var(--pos)' : '#fbbf24') + '">' + onlinePct + '</span></td>' +
                 '</tr>';
         }
         tbody.innerHTML = html;

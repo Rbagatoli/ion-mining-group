@@ -93,9 +93,9 @@ function setActive(container, btn) {
 // Colour a percentile bar: low percentile = green (historically cheap), high = orange/red.
 function pctColor(pct, invert) {
     var p = invert ? 100 - pct : pct;
-    if (p <= 25) return '#4ade80';
+    if (p <= 25) return 'var(--pos)';
     if (p <= 60) return '#f7931a';
-    return '#ef4444';
+    return 'var(--neg)';
 }
 
 function setCard(ids, value, sub, readingText, pct, invert) {
@@ -293,7 +293,7 @@ function renderValuationChart(range) {
             datasets: [
                 { label: 'Price', data: px, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.08)', fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 },
                 { label: '200-day avg', data: m200, borderColor: ProtonTheme.seriesAt(1), backgroundColor: 'transparent', fill: false, borderWidth: 1.6, pointRadius: 0, tension: 0, spanGaps: false },
-                { label: '200-week avg', data: m1400, borderColor: '#4ade80', backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0, spanGaps: false }
+                { label: '200-week avg', data: m1400, borderColor: ProtonTheme.pos, backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0, spanGaps: false }
             ]
         },
         options: o
@@ -331,7 +331,7 @@ function renderMayerChart(range) {
         beforeDatasetsDraw: function(chart) {
             var y = chart.scales.y, a = chart.chartArea, ctx = chart.ctx;
             if (!y || !a) return;
-            [[1.0, 'rgba(96,165,250,0.35)'], [2.4, 'rgba(239,68,68,0.35)'], [0.8, 'rgba(74,222,128,0.35)']].forEach(function(b) {
+            [[1.0, 'rgba(96,165,250,0.35)'], [2.4, 'var(--neg-line)'], [0.8, 'var(--pos-line)']].forEach(function(b) {
                 var py = y.getPixelForValue(b[0]);
                 if (py < a.top || py > a.bottom) return;
                 ctx.save();
@@ -346,7 +346,7 @@ function renderMayerChart(range) {
 
     mayerChart = new Chart(document.getElementById('mayerChart'), {
         type: 'line',
-        data: { labels: labels, datasets: [{ label: 'Mayer Multiple', data: vals, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.08)', fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 }] },
+        data: { labels: labels, datasets: [{ label: 'Mayer Multiple', data: vals, borderColor: ProtonTheme.pos, backgroundColor: ProtonTheme.alpha(ProtonTheme.pos, 0.08), fill: true, borderWidth: 1.6, pointRadius: 0, tension: 0 }] },
         options: o,
         plugins: [bandPlugin]
     });
@@ -376,7 +376,7 @@ function renderDrawdownChart() {
 
     drawdownChart = new Chart(document.getElementById('drawdownChart'), {
         type: 'line',
-        data: { labels: labels, datasets: [{ label: 'Drawdown', data: vals, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.12)', fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0 }] },
+        data: { labels: labels, datasets: [{ label: 'Drawdown', data: vals, borderColor: ProtonTheme.neg, backgroundColor: ProtonTheme.alpha(ProtonTheme.neg, 0.12), fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0 }] },
         options: o
     });
 }
@@ -662,7 +662,7 @@ function renderAllCharts() {
         });
     } catch (e) {
         statusEl.textContent = 'Could not load price history';
-        statusEl.style.color = '#f55';
+        statusEl.style.color = 'var(--neg)';
         return;
     }
     if (!priceSeries || priceSeries.length < 400) {
@@ -689,7 +689,7 @@ function renderAllCharts() {
         statusEl.style.color = '#f7931a';
     } else {
         statusEl.textContent = priceSeries.length.toLocaleString() + ' days of history since ' + first;
-        statusEl.style.color = '#4ade80';
+        statusEl.style.color = 'var(--pos)';
     }
 
     // Sentiment is a separate host — load it after the core page is already usable

@@ -83,8 +83,8 @@
     <div class="banking-tab-content active" id="tabWallet">
 
     <!-- Watch-Only Banner -->
-    <div class="card" style="background:rgba(74,222,128,0.08); border-color:rgba(74,222,128,0.25); margin-bottom:16px; padding:12px 16px;">
-        <p style="font-size:13px; color:#4ade80; margin:0;">Watch-only wallet &mdash; monitors on-chain balances. No private keys stored.</p>
+    <div class="card" style="background:var(--pos-wash); border-color:var(--pos-line); margin-bottom:16px; padding:12px 16px;">
+        <p style="font-size:13px; color:var(--pos); margin:0;">Watch-only wallet &mdash; monitors on-chain balances. No private keys stored.</p>
     </div>
 
     <!-- ===== USER AUTH BAR (shown when logged in) ===== -->
@@ -118,7 +118,7 @@
             <h4 style="margin:0 0 8px; color:#f7931a;">Sign In to Access Your Wallet</h4>
             <p style="font-size:13px; color:#aaa; margin:0 0 16px;">Sign in with your Proton Mining account to view balances, send BTC, and manage your wallet.</p>
             <button class="btn btn-primary" onclick="if(typeof ProtonAuthUI!=='undefined')ProtonAuthUI.show('signin');" style="width:100%;">Sign In</button>
-            <div id="signInError" style="font-size:12px; color:#ef4444; margin-top:10px;"></div>
+            <div id="signInError" style="font-size:12px; color:var(--neg); margin-top:10px;"></div>
         </div>
     </div>
 
@@ -217,7 +217,7 @@
                 </div>
                 <div style="font-size:12px; color:#aaa; margin-bottom:8px;">Or enter this key manually in your authenticator app:</div>
                 <div style="background:rgba(255,255,255,0.05); padding:10px 14px; border-radius: var(--radius); font-family:monospace; font-size:14px; letter-spacing:2px; word-break:break-all; text-align:center; color:#f7931a; margin-bottom:12px;" id="twofa-secret-display"></div>
-                <div style="font-size:12px; color:#4ade80; margin-bottom:8px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius: var(--radius);">
+                <div style="font-size:12px; color:var(--pos); margin-bottom:8px; padding:10px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius: var(--radius);">
                     <strong>Verify & Activate:</strong> Enter the code from your authenticator app to activate 2FA on your account.
                 </div>
                 <div class="input-group" style="margin-bottom:8px;">
@@ -262,7 +262,7 @@
             </div>
             <div id="settingsResult" style="margin-top:10px; font-size:12px;"></div>
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">
-                <button class="btn btn-secondary" id="btnDisconnectStrikeKey" style="width:100%; color:#ef4444; border-color:rgba(239,68,68,0.3);">Disconnect Strike API Key</button>
+                <button class="btn btn-secondary" id="btnDisconnectStrikeKey" style="width:100%; color:var(--neg); border-color:var(--neg-line);">Disconnect Strike API Key</button>
                 <div style="font-size:11px; color:#666; margin-top:6px; text-align:center;">You can reconnect anytime with a new key.</div>
             </div>
         </div>
@@ -401,10 +401,10 @@
                         <button class="btn btn-secondary" id="btnCopyInvoice" style="position:absolute; top:6px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                     </div>
                     <div id="invoiceStatus" style="font-size:12px; margin-top:8px; color:#888;"></div>
-                    <div id="invoiceShareLink" style="display:none; margin-top:12px; padding:12px; background:rgba(74,222,128,0.06); border:1px solid rgba(74,222,128,0.2); border-radius: var(--radius);">
-                        <div style="font-size:12px; color:#4ade80; margin-bottom:6px; font-weight:500;">Client Payment Link:</div>
+                    <div id="invoiceShareLink" style="display:none; margin-top:12px; padding:12px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius: var(--radius);">
+                        <div style="font-size:12px; color:var(--pos); margin-bottom:6px; font-weight:500;">Client Payment Link:</div>
                         <div style="position:relative;">
-                            <div id="shareUrlText" style="background:rgba(255,255,255,0.05); padding:8px 40px 8px 12px; border-radius: var(--radius); font-size:11px; word-break:break-all; color:#4ade80; line-height:1.5;"></div>
+                            <div id="shareUrlText" style="background:rgba(255,255,255,0.05); padding:8px 40px 8px 12px; border-radius: var(--radius); font-size:11px; word-break:break-all; color:var(--pos); line-height:1.5;"></div>
                             <button class="btn btn-secondary" id="btnCopyShareLink" style="position:absolute; top:4px; right:6px; padding:4px 10px; font-size:11px;">Copy</button>
                         </div>
                         <div style="font-size:10px; color:#666; margin-top:6px;">Send this link to your client — no app download needed</div>
@@ -935,8 +935,8 @@
             </div>
 
             <div id="qboConnected" style="display:none;">
-                <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius: var(--radius);padding:12px;margin-bottom:15px;">
-                    <div style="font-size:14px;color:#4ade80;margin-bottom:5px;">✓ Connected</div>
+                <div style="background:var(--pos-wash);border:1px solid var(--pos-line);border-radius: var(--radius);padding:12px;margin-bottom:15px;">
+                    <div style="font-size:14px;color:var(--pos);margin-bottom:5px;">✓ Connected</div>
                     <div style="font-size:12px;color:#888;" id="qboCompanyName">Company Name</div>
                 </div>
                 <button class="btn btn-secondary" id="disconnectQbo" style="width:100%;">Disconnect</button>

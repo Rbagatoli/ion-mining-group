@@ -331,13 +331,13 @@ function initChart() {
                     type: 'line',
                     label: 'Buy & Hold Net Value (USD)',
                     data: [],
-                    borderColor: '#10b981',
+                    borderColor: ProtonTheme.pos,
                     backgroundColor: 'transparent',
                     borderWidth: 2.5,
                     borderDash: [5, 5],
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#10b981',
+                    pointHoverBackgroundColor: ProtonTheme.pos,
                     tension: 0.3,
                     yAxisID: 'yUSD',
                     order: 1
@@ -543,13 +543,13 @@ function renderProjection(r) {
             '<td>' + fmtUSDFull(row.btcPrice) + '</td>' +
             '<td>' + row.diffT.toFixed(2) + '</td>' +
             '<td>' + row.blockReward + ' BTC</td>' +
-            '<td>' + row.machines + (row.retiredThisPeriod > 0 && row.replacedThisPeriod > 0 ? ' <span style="color:#fb923c">(' + row.retiredThisPeriod + ' replaced)</span>' : row.retiredThisPeriod > 0 ? ' <span style="color:#ef4444">(-' + row.retiredThisPeriod + ' retired)</span>' : '') + (row.machinesBought > 0 ? ' <span style="color:#4ade80">(+' + row.machinesBought + ')</span>' : '') + (row.scheduledAdded > 0 ? ' <span style="color:#f59e0b">(+' + row.scheduledAdded + ' sched)</span>' : '') + '</td>' +
+            '<td>' + row.machines + (row.retiredThisPeriod > 0 && row.replacedThisPeriod > 0 ? ' <span style="color:#fb923c">(' + row.retiredThisPeriod + ' replaced)</span>' : row.retiredThisPeriod > 0 ? ' <span style="color:var(--neg)">(-' + row.retiredThisPeriod + ' retired)</span>' : '') + (row.machinesBought > 0 ? ' <span style="color:var(--pos)">(+' + row.machinesBought + ')</span>' : '') + (row.scheduledAdded > 0 ? ' <span style="color:var(--warn)">(+' + row.scheduledAdded + ' sched)</span>' : '') + '</td>' +
             '<td>' + row.pnlBtc.toFixed(8) + '</td>' +
             '<td>' + row.btcHodlCumul.toFixed(6) + '</td>' +
             '<td>' + fmtUSDFull(row.usdValue) + '</td>' +
-            '<td style="color:#ef4444">' + fmtUSDFull(row.elecCost) + '</td>' +
-            '<td style="color:' + (row.netCashFlow >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(row.netCashFlow) + '</td>' +
-            '<td style="color:' + (row.cumulPL >= 0 ? '#4ade80' : '#ef4444') + '">' + fmtUSDFull(row.cumulPL) + '</td>';
+            '<td style="color:var(--neg)">' + fmtUSDFull(row.elecCost) + '</td>' +
+            '<td style="color:' + (row.netCashFlow >= 0 ? 'var(--pos)' : 'var(--neg)') + '">' + fmtUSDFull(row.netCashFlow) + '</td>' +
+            '<td style="color:' + (row.cumulPL >= 0 ? 'var(--pos)' : 'var(--neg)') + '">' + fmtUSDFull(row.cumulPL) + '</td>';
         tbody.appendChild(tr);
     }
 }
@@ -727,8 +727,8 @@ function renderComparison() {
     function row(label, valA, valB, higherBetter) {
         var aWin = '', bWin = '';
         if (a && b) {
-            if (higherBetter) { if (valA > valB) aWin = ' style="color:#4ade80"'; else if (valB > valA) bWin = ' style="color:#4ade80"'; }
-            else { if (valA < valB) aWin = ' style="color:#4ade80"'; else if (valB < valA) bWin = ' style="color:#4ade80"'; }
+            if (higherBetter) { if (valA > valB) aWin = ' style="color:var(--pos)"'; else if (valB > valA) bWin = ' style="color:var(--pos)"'; }
+            else { if (valA < valB) aWin = ' style="color:var(--pos)"'; else if (valB < valA) bWin = ' style="color:var(--pos)"'; }
         }
         return '<tr><td style="color:#888;">' + label + '</td>' +
             '<td' + aWin + '>' + (a ? formatVal(label, valA) : '--') + '</td>' +
@@ -1169,8 +1169,8 @@ function renderBacktestChart(bt, mult) {
             labels: labels,
             datasets: [
                 { label: 'Cumulative revenue', data: revenue, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.10)', fill: true, borderWidth: 1.8, pointRadius: 0, tension: 0 },
-                { label: 'Cumulative power cost', data: elec, borderColor: '#ef4444', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0 },
-                { label: 'Cumulative profit', data: profit, borderColor: '#4ade80', backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0 }
+                { label: 'Cumulative power cost', data: elec, borderColor: ProtonTheme.neg, backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0 },
+                { label: 'Cumulative profit', data: profit, borderColor: ProtonTheme.pos, backgroundColor: 'transparent', fill: false, borderWidth: 2, pointRadius: 0, tension: 0 }
             ]
         },
         options: {

@@ -959,7 +959,7 @@ var MapSourcing = (function() {
         } catch (e) {
             // Say so. A saved search that silently was not saved is worse than no feature: you
             // would rebuild the filters believing they were kept.
-            status('Could not save — browser storage is full or unavailable.', '#c85');
+            status('Could not save — browser storage is full or unavailable.', 'var(--warn)');
             return false;
         }
     }
@@ -1071,9 +1071,9 @@ var MapSourcing = (function() {
         applyFilters();
 
         if (missing.length) {
-            status('Applied "' + s.name + '" — but ' + missing.join(', ') + ' could not be restored.', '#c85');
+            status('Applied "' + s.name + '" — but ' + missing.join(', ') + ' could not be restored.', 'var(--warn)');
         } else {
-            status('Applied "' + s.name + '" — ' + fmtInt(_filtered.length) + ' prospects.', '#8ac');
+            status('Applied "' + s.name + '" — ' + fmtInt(_filtered.length) + ' prospects.', 'var(--plat-200)');
         }
     }
 
@@ -1098,7 +1098,7 @@ var MapSourcing = (function() {
     function commitSave() {
         var inp = document.getElementById('savedNameInput');
         var name = inp ? inp.value.trim().slice(0, 60) : '';
-        if (!name) { status('Give the search a name first.', '#c85'); return; }
+        if (!name) { status('Give the search a name first.', 'var(--warn)'); return; }
         var next = captureSearch();
         next.name = name;
         next.at = new Date().toISOString().slice(0, 10);
@@ -1117,14 +1117,14 @@ var MapSourcing = (function() {
             _searches[existing] = next;
         } else {
             if (_searches.length >= MAX_SEARCHES) {
-                status('That is ' + MAX_SEARCHES + ' saved searches — delete one first.', '#c85');
+                status('That is ' + MAX_SEARCHES + ' saved searches — delete one first.', 'var(--warn)');
                 return;
             }
             next.id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
             _searches.push(next);
         }
         _naming = false;
-        if (persistSearches()) status('Saved "' + name + '".', '#8ac');
+        if (persistSearches()) status('Saved "' + name + '".', 'var(--plat-200)');
         renderSaved();
     }
 
@@ -1250,7 +1250,7 @@ var MapSourcing = (function() {
         renderStarters();
         renderSearchHead();
         status(s.label + ' — ' + fmtInt(_filtered.length) + ' prospects, best first. ' +
-               'Adjust to narrow it.', '#8ac');
+               'Adjust to narrow it.', 'var(--plat-200)');
         _starterStatus = true;
     }
 
@@ -1908,7 +1908,7 @@ var MapSourcing = (function() {
             var aging = items.filter(function(i) { return i.cls === 'aging'; }).length;
             hint.textContent = items.length + ' dataset' + (items.length === 1 ? '' : 's') +
                 (stale ? ' · ' + stale + ' out of date' : (aging ? ' · ' + aging + ' ageing' : ''));
-            hint.style.color = stale ? '#e66' : (aging ? '#db2' : '#777');
+            hint.style.color = stale ? 'var(--neg)' : (aging ? 'var(--warn)' : '#777');
         }
     }
 
@@ -2377,7 +2377,7 @@ var MapSourcing = (function() {
         if (ex) {
             ex.addEventListener('click', function() {
                 var rows = worklistRows();
-                if (!rows.length) { status('Nothing to export at this stage.', '#c85'); return; }
+                if (!rows.length) { status('Nothing to export at this stage.', 'var(--warn)'); return; }
                 // The BOM is what makes Excel read this as UTF-8 rather than the system
                 // codepage; without it every accented company name arrives mangled.
                 var blob = new Blob(['﻿' + worklistCsv()], { type: 'text/csv;charset=utf-8;' });
@@ -2389,7 +2389,7 @@ var MapSourcing = (function() {
                 a.click();
                 document.body.removeChild(a);
                 setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-                status('Exported ' + rows.length + ' site' + (rows.length === 1 ? '' : 's') + ' to CSV.', '#3ecf8e');
+                status('Exported ' + rows.length + ' site' + (rows.length === 1 ? '' : 's') + ' to CSV.', 'var(--pos)');
             });
         }
         renderWorklist();
@@ -2764,7 +2764,7 @@ var MapSourcing = (function() {
         setResultsView('list', true);
         applyFilters();
         status('Showing every prospect owned by ' + name +
-               ' — clear the Operator filter to go back to all counterparties.', '#8ac');
+               ' — clear the Operator filter to go back to all counterparties.', 'var(--plat-200)');
     }
 
     // ---- Ranked table --------------------------------------------------------------------
@@ -3171,7 +3171,7 @@ var MapSourcing = (function() {
         var meta = SiteCatalog.meta();
         var total = meta ? meta.years.length : 6;
         var r = c.yearsSeen / total;
-        if (r >= 0.99) return '#3ecf8e';
+        if (r >= 0.99) return 'var(--pos)';
         if (r >= 0.66) return '#f7931a';
         if (r >= 0.33) return '#d8863a';
         return '#8a6a4a';
@@ -3183,9 +3183,9 @@ var MapSourcing = (function() {
         var m = evaluateAt(c);
         if (m.monthly_revenue === null || m.monthly_net === null || m.monthly_revenue <= 0) return '#666';
         var margin = m.monthly_net / m.monthly_revenue;
-        if (margin < 0) return '#e05555';        // below cash cost
+        if (margin < 0) return 'var(--neg)';        // below cash cost
         if (margin < 0.30) return '#e0a92e';     // thin
-        return '#3ecf8e';                        // healthy
+        return 'var(--pos)';                        // healthy
     }
     var _colourBy = 'persistence';
     function sizeFor(c) {
@@ -3986,7 +3986,7 @@ var MapSourcing = (function() {
             row('Miners supported', fmtInt(m.max_miners)) +
             row('Hashrate', m.total_hashrate_ph === null ? '--' : m.total_hashrate_ph.toFixed(1) + ' PH/s') +
             row('Monthly BTC', m.monthly_btc === null ? gap('needs network data') : m.monthly_btc.toFixed(4)) +
-            row('Location', c.offshore === true ? '<span style="color:#e66;">offshore — not viable</span>' : 'onshore') +
+            row('Location', c.offshore === true ? '<span style="color:var(--neg);">offshore — not viable</span>' : 'onshore') +
             row('Jurisdiction', esc(j.label || countryName(c.iso3)) + ' ' + tierBadge(c.iso3)) +
             '</dl></div>';
 
@@ -4726,11 +4726,11 @@ var MapSourcing = (function() {
             draft.addEventListener('click', function() {
                 var cand = _selectedId ? ProspectStore.get(_selectedId) : null;
                 var text = cand ? draftEnquiry(cand) : null;
-                if (!text) { status('Nothing to draft — no counterparty address for this site.', '#fa4'); return; }
+                if (!text) { status('Nothing to draft — no counterparty address for this site.', 'var(--warn)'); return; }
                 copyText(text).then(function(ok) {
                     status(ok ? 'Enquiry copied — paste it into a letter or an email. Nothing was sent.'
                               : 'Could not reach the clipboard. The draft is in the console instead.',
-                           ok ? '#8ac' : '#fa4');
+                           ok ? 'var(--plat-200)' : 'var(--warn)');
                     if (!ok) console.log(text);
                 });
             });
@@ -4843,7 +4843,7 @@ var MapSourcing = (function() {
             if (msg) {
                 if (result && result.ok === false) {
                     msg.textContent = result.err || 'Not saved.';
-                    msg.style.color = '#e66';
+                    msg.style.color = 'var(--neg)';
                 } else {
                     /* Say which of the two happened, because "added to Contacts"
                        and "linked to somebody already there" mean different things
@@ -4859,7 +4859,7 @@ var MapSourcing = (function() {
                                 : '');
                     }
                     msg.textContent = 'Saved — syncs across your devices.' + extra;
-                    msg.style.color = '#3ecf8e';
+                    msg.style.color = 'var(--pos)';
                 }
             }
             if (result && result.ok === false) return;   // nothing was stored; do not re-render as if it were
@@ -4958,7 +4958,7 @@ var MapSourcing = (function() {
             // renders a landfill before the lookup is available and silently shows nothing.
             if (typeof GhgrpContacts !== 'undefined') await GhgrpContacts.load();
         } catch (e) {
-            status('Could not load prospects: ' + e.message, '#f55');
+            status('Could not load prospects: ' + e.message, 'var(--neg)');
             var l = document.getElementById('srcTableBody');
             if (l) l.innerHTML = '<tr><td colspan="14" class="src-gap" style="padding:14px;">' +
                 'Prospects unavailable. Run <code>node tools/build-flare-catalog.js</code>.</td></tr>';
@@ -4970,7 +4970,7 @@ var MapSourcing = (function() {
         var errs = ProspectStore.errors();
         if (errs.length) {
             status(errs.length + ' source' + (errs.length > 1 ? 's' : '') + ' failed: ' +
-                   errs.map(function(e) { return e.source; }).join(', '), '#f55');
+                   errs.map(function(e) { return e.source; }).join(', '), 'var(--neg)');
         }
 
         // Only the countries Proton operates in. The catalog still holds all 30,361 prospects and
@@ -5161,19 +5161,19 @@ var MapSourcing = (function() {
         if (!_market || !_market.networkHashratePh) warn.push('network hashrate');
 
         if (warn.length) {
-            status('Catalog loaded — ' + warn.join(' and ') + ' unavailable, economics incomplete', '#c85');
+            status('Catalog loaded — ' + warn.join(' and ') + ' unavailable, economics incomplete', 'var(--warn)');
         } else if (restored) {
             // Say so explicitly: a restored search otherwise looks like the app ignored its own
             // defaults, and you cannot tell whether the filters are yours or stale.
             status('Restored your last search — ' + fmtInt(_filtered.length) + ' prospects of ' +
-                   fmtInt(ProspectStore.all().length) + ' in catalog', '#8ac');
+                   fmtInt(ProspectStore.all().length) + ' in catalog', 'var(--plat-200)');
         } else {
             // Sourced from the store, not the flare artifact — with a second adapter registered
             // this line would otherwise under-report the catalog and still call it "flare sites".
             var srcs = ProspectStore.sources().filter(function(s) { return s.count > 0; });
             status(fmtInt(ProspectStore.all().length) + ' prospects from ' + srcs.length + ' source' +
                    (srcs.length === 1 ? '' : 's') + ' · survey ' + meta.years[0] + '–' + meta.dataThrough +
-                   ' · ' + fmtInt(SiteCatalog.operatorCount()) + ' with a named operator', '#3ecf8e');
+                   ' · ' + fmtInt(SiteCatalog.operatorCount()) + ' with a named operator', 'var(--pos)');
         }
     }
 

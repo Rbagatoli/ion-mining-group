@@ -384,7 +384,11 @@ function buildMinerCard(m, eff, mDailyUSD, isLive, isGroupSummary, isExpanded) {
         var totalCostGroup = m.cost * m.quantity;
         var estEarnings = mDailyUSD * m.quantity * daysOwned;
         var roi = ((estEarnings - totalCostGroup) / totalCostGroup) * 100;
-        var roiColor = roi >= 0 ? '#4caf50' : '#f55';
+        /* NOT var(). Three lines down this is concatenated with '22' and '44'
+           to build eight-digit hex alpha, and 'var(--pos)22' is not a colour.
+           ProtonTheme is the token's value as a real string, which is exactly
+           the case it exists for. */
+        var roiColor = roi >= 0 ? ProtonTheme.pos : ProtonTheme.neg;
         var roiSign = roi >= 0 ? '+' : '';
         roiBadge = '<div class="miner-card-qty" style="background:' + roiColor + '22;color:' + roiColor + ';border:1px solid ' + roiColor + '44">ROI: ' + roiSign + roi.toFixed(1) + '%</div>';
         daysOwnedText = '<div class="miner-card-stat"><div class="stat-label">Days Owned</div><div class="stat-value">' + daysOwned + '</div></div>';
@@ -762,7 +766,7 @@ document.getElementById('testAPI').addEventListener('click', async function() {
 
     if (!workerUrl || (needsUsername && !username)) {
         apiStatusText.textContent = needsUsername ? 'Please enter both fields.' : 'Please enter the Worker URL.';
-        apiStatusText.style.color = '#f55';
+        apiStatusText.style.color = 'var(--neg)';
         apiStatusEl.style.display = '';
         return;
     }
@@ -776,14 +780,14 @@ document.getElementById('testAPI').addEventListener('click', async function() {
         var data = await res.json();
         if (res.ok && data.ok) {
             apiStatusText.textContent = 'Connected to ' + (poolCfg ? poolCfg.name : poolType) + ' successfully!';
-            apiStatusText.style.color = '#4caf50';
+            apiStatusText.style.color = 'var(--pos)';
         } else {
             apiStatusText.textContent = 'Error: ' + (data.error || 'Unknown error');
-            apiStatusText.style.color = '#f55';
+            apiStatusText.style.color = 'var(--neg)';
         }
     } catch (e) {
         apiStatusText.textContent = 'Failed to connect: ' + e.message;
-        apiStatusText.style.color = '#f55';
+        apiStatusText.style.color = 'var(--neg)';
     }
 });
 

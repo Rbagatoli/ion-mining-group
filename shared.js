@@ -358,7 +358,7 @@ function renderNavSparkline() {
 
     var first = history[0].price;
     var isUp = last >= first;
-    var lineColor = isUp ? '#4ade80' : '#ef4444';
+    var lineColor = isUp ? 'var(--pos)' : 'var(--neg)';
     priceEl.style.color = lineColor;
 
     // HiDPI scaling
@@ -398,8 +398,8 @@ function renderNavSparkline() {
     ctx.lineTo(pad, h - pad);
     ctx.closePath();
     var grad = ctx.createLinearGradient(0, 0, 0, h);
-    var fillTop = isUp ? 'rgba(74,222,128,0.15)' : 'rgba(239,68,68,0.15)';
-    var fillBot = isUp ? 'rgba(74,222,128,0)' : 'rgba(239,68,68,0)';
+    var fillTop = isUp ? 'var(--pos-wash)' : 'var(--neg-wash)';
+    var fillBot = isUp ? 'var(--pos-wash)' : 'var(--neg-wash)';
     grad.addColorStop(0, fillTop);
     grad.addColorStop(1, fillBot);
     ctx.fillStyle = grad;
@@ -876,7 +876,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
         </div>\
         <div id="strikeKeyResult" style="margin-top:10px; font-size:12px;"></div>\
         <div id="strikeKeyPinSection" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.06);">\
-            <div style="font-size:13px; color:#4ade80; margin-bottom:10px; padding:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); border-radius:var(--radius);">\
+            <div style="font-size:13px; color:var(--pos); margin-bottom:10px; padding:10px; background:var(--pos-wash); border:1px solid var(--pos-line); border-radius:var(--radius);">\
                 <strong>Create a Send PIN</strong> — This PIN will be required every time you send BTC, adding an extra layer of security.\
             </div>\
             <div class="input-group">\
@@ -930,7 +930,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                 var resultEl = document.getElementById('strikeKeyResult');
 
                 if (!apiKey) {
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Enter your Strike API key</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Enter your Strike API key</span>';
                     return;
                 }
 
@@ -952,7 +952,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
 
                         if (!fbUser) {
                             saveBtn.disabled = false;
-                            if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                            if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Please sign in first</span>';
                             return;
                         }
 
@@ -968,7 +968,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                         var loginData = await loginRes.json();
                         if (!loginData.ok || !loginData.token) {
                             saveBtn.disabled = false;
-                            if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Authentication failed</span>';
+                            if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Authentication failed</span>';
                             return;
                         }
 
@@ -1000,18 +1000,18 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                             localStorage.setItem('protonStrikeUser', JSON.stringify(user));
                         } catch(e) {}
 
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">Strike connected! Now create a send PIN below.</span>';
+                        if (resultEl) resultEl.innerHTML = '<span style="color:var(--pos);">Strike connected! Now create a send PIN below.</span>';
                         var pinSection = document.getElementById('strikeKeyPinSection');
                         if (pinSection) {
                             pinSection.style.display = '';
                             document.getElementById('strikeApiKeyPanel').dataset.pinRequired = 'true';
                         }
                     } else {
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to connect') + '</span>';
+                        if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || 'Failed to connect') + '</span>';
                     }
                 } catch (err) {
                     saveBtn.disabled = false;
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Connection error: ' + err.message + '</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Connection error: ' + err.message + '</span>';
                 }
             });
         }
@@ -1024,12 +1024,12 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                 var resultEl = document.getElementById('pinSaveResult');
 
                 if (!pin || !confirmPin) {
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Enter and confirm your PIN</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Enter and confirm your PIN</span>';
                     return;
                 }
 
                 if (pin !== confirmPin) {
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">PINs do not match</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">PINs do not match</span>';
                     return;
                 }
 
@@ -1040,7 +1040,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                     var sessionToken = localStorage.getItem('protonStrikeSession') || '';
 
                     if (!sessionToken) {
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Please sign in first</span>';
+                        if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Please sign in first</span>';
                         return;
                     }
 
@@ -1063,7 +1063,7 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                             localStorage.setItem('protonStrikeUser', JSON.stringify(user));
                         } catch(e) {}
 
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#4ade80;">PIN saved! Strike is now connected.</span>';
+                        if (resultEl) resultEl.innerHTML = '<span style="color:var(--pos);">PIN saved! Strike is now connected.</span>';
                         setTimeout(function() {
                             var panel = document.getElementById('strikeApiKeyPanel');
                             if (panel) {
@@ -1075,10 +1075,10 @@ var SPARK_INK = 'rgba(247, 147, 26, ';    // lines, nodes, pulses
                             }
                         }, 1500);
                     } else {
-                        if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">' + (data.error || 'Failed to save PIN') + '</span>';
+                        if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">' + (data.error || 'Failed to save PIN') + '</span>';
                     }
                 } catch (err) {
-                    if (resultEl) resultEl.innerHTML = '<span style="color:#f55;">Error: ' + err.message + '</span>';
+                    if (resultEl) resultEl.innerHTML = '<span style="color:var(--neg);">Error: ' + err.message + '</span>';
                 }
             });
         }

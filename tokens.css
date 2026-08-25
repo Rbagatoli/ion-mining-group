@@ -124,15 +124,33 @@
        direction of a number is not a brand decision — losing red and green on
        P&L, on alert severity and on the map's margin scale would be a real
        regression dressed up as purity.
-       These are the ONLY hues in the app outside black, platinum and orange. */
-    --pos:  #4ade80;
-    --neg:  #ef4444;
-    --warn: #fbbf24;
-    --pos-line:  rgba(74, 222, 128, 0.30);
-    --neg-line:  rgba(239, 68, 68, 0.30);
+       These are the ONLY hues in the app outside black, platinum and orange.
+
+       THE VALUES ARE THE SITE'S, not this app's own. They were #4ade80 and
+       #ef4444 — Tailwind's defaults, picked by nobody for this palette — while
+       site/styles.css:53-55 carries two colours chosen against the accent and
+       measured: --loss #e05252, "picked for a full 33 degrees of hue separation
+       from the orange accent so a loss can never be mistaken for an accent",
+       5.18:1 on the tiles; --gain #3fb950, "7.79:1 on the tiles, 95 deg off the
+       accent". A green that is nearly the same green and a red that is nearly
+       the same red is exactly the kind of near-miss that reads as two products.
+
+       The NAMES stay --pos/--neg. The site calls them --gain/--loss, but this
+       app reads them in about forty places and in ProtonTheme, and renaming
+       forty call sites changes nothing anybody can see.
+
+       THE YELLOW HAS NO COUNTERPART TO MATCH. site/styles.css:854 says it
+       outright — "this site has neither rounded corners nor yellow". It is kept
+       because a financial dashboard needs a third state between fine and wrong,
+       and it is the one colour here answering to nothing on the site. */
+    --pos:  #3fb950;   /* site --gain */
+    --neg:  #e05252;   /* site --loss */
+    --warn: #fbbf24;   /* no counterpart on the site; see above */
+    --pos-line:  rgba(63, 185, 80, 0.30);
+    --neg-line:  rgba(224, 82, 82, 0.30);
     --warn-line: rgba(251, 191, 36, 0.30);
-    --pos-wash:  rgba(74, 222, 128, 0.08);
-    --neg-wash:  rgba(239, 68, 68, 0.08);
+    --pos-wash:  rgba(63, 185, 80, 0.08);
+    --neg-wash:  rgba(224, 82, 82, 0.08);
     --warn-wash: rgba(251, 191, 36, 0.08);
     /* Orange at low alpha, for the one wash orange is allowed: an unfilled
        placeholder. Replaces the old --accent-bg, which nothing ever read. */

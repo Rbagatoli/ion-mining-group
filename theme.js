@@ -45,8 +45,14 @@ var ProtonTheme = (function() {
 
     // Data colours. The recorded exception to the three-material rule: the site has no numbers
     // in it, and the direction of a number is not a brand decision.
-    var pos  = '#4ade80';
-    var neg  = '#ef4444';
+    /* Mirrors tokens.css:127-129 exactly. These are the SITE's --gain and
+       --loss, not Tailwind's defaults; see the reasoning where they are defined.
+       This file exists because canvas and Chart.js cannot resolve a CSS custom
+       property, so it is a hand-kept copy — and a copy that drifts from its
+       original is worse than no copy, which is what tests/theme.test.js's
+       byte-identical assertion is for. */
+    var pos  = '#3fb950';
+    var neg  = '#e05252';
     var warn = '#fbbf24';
 
     // ---- chart series ---------------------------------------------------------------------
