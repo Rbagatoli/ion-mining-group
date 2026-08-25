@@ -87,13 +87,21 @@ document.getElementById('bankingTabs').addEventListener('click', function(e) {
     switchBankingTab(btn.getAttribute('data-tab'));
 });
 
-// Hash-based tab selection (early)
-(function() {
-    var hash = location.hash.replace('#', '');
-    if (hash === 'income' || hash === 'wallet' || hash === 'accounting') {
-        switchBankingTab(hash);
-    }
-})();
+/* Hash-based tab selection, DEFERRED to the end of this file rather than run
+   here. It used to run inline at this point, and "early" was the bug rather
+   than the feature: switchBankingTab('accounting') calls renderAccounting,
+   which calls buildUnifiedPnL, which reads PayoutData -- and PayoutData is a
+   `var` declared 115 lines BELOW this. Hoisting means it exists and is
+   undefined, so .getData() threw, and the throw aborted the rest of the file:
+   every module defined after this point silently never got created.
+
+   Arriving at banking.html#accounting on a fresh load therefore broke the whole
+   page. It looked fine in testing because visiting banking.html first and then
+   the #accounting hash is a same-document navigation -- the script does not
+   re-run, so the modules were already there from the previous load.
+
+   Moved verbatim to the bottom of this file, where everything it touches
+   exists. See the note there. */
 
 // ===== SHARED HELPERS =====
 function escapeHtml(str) {
@@ -4591,6 +4599,17 @@ initNav('banking');
     // Re-check hash after data is loaded
     var hash = location.hash.replace('#', '');
     if (hash === 'income' || hash === 'accounting') {
+        switchBankingTab(hash);
+    }
+})();
+
+/* The hash-based tab selection lifted out of the top of this file. Everything
+   switchBankingTab reaches -- PayoutData, ElectricityData, the render
+   functions -- is defined by the time this line is reached, which was the one
+   thing the original position could not promise. */
+(function() {
+    var hash = location.hash.replace('#', '');
+    if (hash === 'income' || hash === 'wallet' || hash === 'accounting') {
         switchBankingTab(hash);
     }
 })();
