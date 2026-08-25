@@ -183,6 +183,33 @@
         .pd-pill.t-positive { background:var(--pos-line); color:var(--pos); }
         .pd-pill.t-negative { background:var(--neg-wash); color:var(--neg); }
         .pd-pill.t-neutral  { background:var(--line-mid); color:var(--plat-400); }
+
+        /* ---- research ---- */
+        .pd-esum { padding:10px 14px; font-size:12.5px; color:var(--plat-400);
+                   border-bottom:1px solid var(--line); }
+        .pd-esum strong { color:var(--btc-300); font-family:var(--mono); }
+        .pd-echecks { list-style:none; margin:0; padding:0; }
+        .pd-echecks li { display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+                         padding:7px 14px; border-bottom:1px solid var(--line); font-size:12.5px; }
+        .pd-echecks li:last-child { border-bottom:none; }
+        .pd-echecks li.s-complete .pd-elabel { color:var(--plat-100); }
+        .pd-echecks li.s-na .pd-elabel { color:var(--plat-600); text-decoration:line-through; }
+        .pd-elabel { flex:1 1 240px; color:var(--plat-300); }
+        .pd-estat { background:var(--black); border:1px solid var(--line-mid);
+                    color:var(--plat-300); border-radius:var(--radius);
+                    padding:4px 6px; font-size:11.5px; }
+        .pd-enote { flex:1 1 200px; background:var(--black); border:1px solid var(--line-mid);
+                    color:var(--plat-300); border-radius:var(--radius);
+                    padding:4px 7px; font-size:11.5px; }
+        .pd-ewhen { font-family:var(--mono); font-size:10px; color:var(--plat-600);
+                    flex:0 0 66px; text-align:right; }
+
+        /* On the card: a bar you can read across a column. */
+        .pb-enrich { display:flex; align-items:center; gap:6px; }
+        .pb-ebar { flex:1 1 auto; height:3px; background:var(--line-mid);
+                   border-radius:2px; overflow:hidden; }
+        .pb-ebar span { display:block; height:100%; background:var(--btc-300); }
+        .pb-epct { font-family:var(--mono); font-size:9.5px; color:var(--plat-500); }
     </style>
 </head>
 <body>
@@ -221,6 +248,7 @@
 <script src="./crm-followups.js?v=340"></script>
 <script src="./crm-contacts.js?v=340"></script>
 <script src="./crm-interactions.js?v=340"></script>
+<script src="./crm-enrichment.js?v=341"></script>
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=340"></script>
 <script src="./prospect-today.js?v=340"></script>

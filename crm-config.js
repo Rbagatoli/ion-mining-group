@@ -60,6 +60,59 @@ var CrmConfig = (function () {
         { key: 'other',              label: 'Other' }
     ];
 
+    /* THE RESEARCH THAT COMPOUNDS. Every landfill worked out now -- who owns it,
+       who to ring, whether there is already a genset on it -- is work not repeated
+       later, and it is the only part of this build that pays while waiting for
+       capital rather than for a phone call to be returned.
+
+       PER SOURCE TYPE, because the questions genuinely differ. You ask a landfill
+       who holds the permit and whether the collection system is real; you ask a
+       wellpad whose lease it is and what the decline curve looks like. One shared
+       list would be half irrelevant on both.
+
+       Keyed on the candidate's energyType, with a fallback list for sources that
+       have no checklist of their own -- a new adapter should surface a short
+       generic list rather than an empty one that reads as "nothing to do". */
+    var DEFAULT_CHECKLISTS = {
+        landfill_gas: [
+            { key: 'owner',        label: 'Owner identified' },
+            { key: 'ops_contact',  label: 'Operations contact named' },
+            { key: 'direct',       label: 'Direct contact obtained' },
+            { key: 'echo',         label: 'ECHO permit status checked' },
+            { key: 'ghgrp',        label: 'GHGRP trend reviewed' },
+            { key: 'aerial',       label: 'Aerial imagery reviewed for existing generation' },
+            { key: 'collection',   label: 'Collection system corroborated' },
+            { key: 'interconnect', label: 'Grid interconnect located' },
+            { key: 'ownership',    label: 'Ownership type determined (public vs private)' }
+        ],
+        flare_gas: [
+            { key: 'operator',     label: 'Operator identified' },
+            { key: 'facility_id',  label: 'Well or facility ID located' },
+            { key: 'production',   label: 'Production history pulled' },
+            { key: 'decline',      label: 'Decline curve assessed' },
+            { key: 'size_class',   label: 'Operator size class determined' },
+            { key: 'surface',      label: 'Surface rights owner identified' }
+        ],
+        _default: [
+            { key: 'owner',        label: 'Owner identified' },
+            { key: 'direct',       label: 'Direct contact obtained' },
+            { key: 'permit',       label: 'Permit status checked' },
+            { key: 'interconnect', label: 'Grid interconnect located' }
+        ]
+    };
+
+    /* NOT APPLICABLE IS NOT COMPLETE, and keeping them apart is the whole reason
+       this is four states rather than a checkbox. A landfill with no GHGRP filing
+       has nothing to review there; counting that as done would inflate the
+       percentage, and counting it as outstanding would make a site that is
+       finished look permanently unfinished. It comes out of the denominator. */
+    var DEFAULT_ENRICH_STATUSES = [
+        { key: 'not_started', label: 'Not started', tone: 'neutral' },
+        { key: 'in_progress', label: 'In progress', tone: 'active' },
+        { key: 'complete',    label: 'Complete',    tone: 'positive' },
+        { key: 'na',          label: 'Not applicable', tone: 'neutral' }
+    ];
+
     var DEFAULT_OUTCOMES = [
         { key: 'positive', label: 'Positive', tone: 'positive' },
         { key: 'neutral',  label: 'Neutral',  tone: 'neutral' },
@@ -73,8 +126,19 @@ var CrmConfig = (function () {
             _v: VERSION,
             stages: DEFAULT_STAGES.map(clone),
             deadReasons: DEFAULT_DEAD_REASONS.map(clone),
-            outcomes: DEFAULT_OUTCOMES.map(clone)
+            outcomes: DEFAULT_OUTCOMES.map(clone),
+            checklists: cloneChecklists(DEFAULT_CHECKLISTS),
+            enrichStatuses: DEFAULT_ENRICH_STATUSES.map(clone)
         };
+    }
+
+    function cloneChecklists(src) {
+        var out = {};
+        for (var k in src) {
+            if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+            out[k] = src[k].map(clone);
+        }
+        return out;
     }
 
     function clone(o) {
@@ -103,6 +167,12 @@ var CrmConfig = (function () {
                 }
                 if (parsed && Array.isArray(parsed.outcomes) && parsed.outcomes.length) {
                     d.outcomes = parsed.outcomes.filter(function (o) { return o && o.key; });
+                }
+                if (parsed && parsed.checklists && typeof parsed.checklists === 'object') {
+                    d.checklists = cloneChecklists(parsed.checklists);
+                }
+                if (parsed && Array.isArray(parsed.enrichStatuses) && parsed.enrichStatuses.length) {
+                    d.enrichStatuses = parsed.enrichStatuses.filter(function (x) { return x && x.key; });
                 }
             }
         } catch (e) { /* defaults stand */ }
@@ -203,6 +273,46 @@ var CrmConfig = (function () {
     }
     function outcomes() { return read().outcomes.map(clone); }
 
+    // ---- Enrichment ---------------------------------------------------------
+    /* Looked up by the prospect's energy type, falling back to the generic list.
+       A source with no checklist of its own gets four questions rather than none:
+       an empty checklist reads as "nothing to research here", which is never true
+       of a site somebody is tracking. */
+    function checklistFor(energyType) {
+        var all = read().checklists || {};
+        var key = energyType && Object.prototype.hasOwnProperty.call(all, energyType)
+            ? energyType : '_default';
+        return (all[key] || []).map(clone);
+    }
+
+    function checklistTypes() {
+        var all = read().checklists || {};
+        return Object.keys(all).filter(function (k) { return k !== '_default'; });
+    }
+
+    function setChecklist(energyType, items) {
+        if (!energyType || !Array.isArray(items)) return { ok: false, err: 'A checklist needs a type and items.' };
+        var seen = {}, out = [];
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (!it || !it.key || seen[it.key]) continue;
+            seen[it.key] = true;
+            out.push({ key: String(it.key), label: it.label ? String(it.label) : String(it.key) });
+        }
+        var cfg = read();
+        if (!cfg.checklists) cfg.checklists = {};
+        cfg.checklists[energyType] = out;
+        return write(cfg);
+    }
+
+    function enrichStatuses() { return read().enrichStatuses.map(clone); }
+
+    function enrichStatusLabel(key) {
+        var l = read().enrichStatuses;
+        for (var i = 0; i < l.length; i++) if (l[i].key === key) return l[i].label;
+        return key || '';
+    }
+
     /* site-model.js validates every stage it is given and silently rewrites
        anything it does not recognise back to 'unreviewed'. That guard is right --
        it is what stops a typo becoming a pipeline state -- but it means the
@@ -233,6 +343,11 @@ var CrmConfig = (function () {
         deadReasonLabel: deadReasonLabel,
         isDeadReason: isDeadReason,
         outcomes: outcomes,
+        checklistFor: checklistFor,
+        checklistTypes: checklistTypes,
+        setChecklist: setChecklist,
+        enrichStatuses: enrichStatuses,
+        enrichStatusLabel: enrichStatusLabel,
         publish: publish,
         reset: reset
     };

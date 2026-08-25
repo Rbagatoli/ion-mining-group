@@ -83,6 +83,22 @@ var ProspectBoard = (function () {
                (late ? 'overdue: ' : 'due ') + esc(f.due_date) + '</div>';
     }
 
+    /* How much is known about this site, as a bar you can read across a column.
+       Ten fully enriched prospects are worth more than a hundred raw ones, and a
+       board that shows only stage and score cannot say which is which. Absent
+       when nothing on the checklist applies -- see CrmEnrichment for why that is
+       null rather than 100%. */
+    function enrich(rec) {
+        if (typeof CrmEnrichment === 'undefined' || !CrmEnrichment.completeness) return '';
+        var c = CrmEnrichment.completeness(rec.id);
+        if (c.pct === null) return '';
+        return '<div class="pb-enrich" title="' + c.complete + ' of ' + c.applicable +
+                    ' researched">' +
+                '<span class="pb-ebar"><span style="width:' + c.pct + '%"></span></span>' +
+                '<span class="pb-epct">' + c.pct + '%</span>' +
+            '</div>';
+    }
+
     function card(rec, nowMs) {
         var days = (typeof SiteData !== 'undefined' && SiteData.daysInStage)
             ? SiteData.daysInStage(rec.id, nowMs) : null;
@@ -98,6 +114,7 @@ var ProspectBoard = (function () {
                 '<span class="pb-kw">' + mw(rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw) + '</span>' +
             '</div>' +
             due(rec) +
+            enrich(rec) +
             '<div class="pb-foot">' +
                 '<span class="pb-days' + (stale ? ' is-stale' : '') + '">' + daysLabel(days) + '</span>' +
                 (sc === null ? '<span class="pb-absent">unscored</span>'
@@ -187,6 +204,7 @@ var ProspectBoard = (function () {
         card: card,
         totalMw: totalMw,
         sourceLabel: sourceLabel,
+        enrich: enrich,
         isStale: isStale,
         scoreOf: scoreOf
     };

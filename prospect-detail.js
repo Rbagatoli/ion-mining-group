@@ -136,6 +136,43 @@ var ProspectDetail = (function () {
         return html + '</ul>';
     }
 
+    /* The checklist, with what was found and where it came from. Editable in
+       place, because research happens in the middle of doing something else and a
+       checklist you have to navigate to is a checklist that stays empty. */
+    function enrichBlock(prospectId) {
+        if (typeof CrmEnrichment === 'undefined') return '';
+        var items = CrmEnrichment.itemsFor(prospectId);
+        if (!items.length) return '<p class="pd-none">No checklist for this source type.</p>';
+        var c = CrmEnrichment.completeness(prospectId);
+        var statuses = (typeof CrmConfig !== 'undefined') ? CrmConfig.enrichStatuses() : [];
+        var head = '<div class="pd-esum">' +
+            (c.pct === null
+                ? absent('nothing on this checklist applies')
+                : '<strong>' + c.pct + '%</strong> &middot; ' + c.complete + ' of ' +
+                  c.applicable + ' researched' +
+                  (c.inProgress ? ' &middot; ' + c.inProgress + ' underway' : '') +
+                  (c.na ? ' &middot; ' + c.na + ' not applicable' : '')) +
+            '</div>';
+        var html = head + '<ul class="pd-echecks">';
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var opts = '';
+            for (var j = 0; j < statuses.length; j++) {
+                opts += '<option value="' + esc(statuses[j].key) + '"' +
+                        (statuses[j].key === it.status ? ' selected' : '') + '>' +
+                        esc(statuses[j].label) + '</option>';
+            }
+            html += '<li class="s-' + esc(it.status) + '">' +
+                '<span class="pd-elabel">' + esc(it.label) + '</span>' +
+                '<select class="pd-estat" data-item="' + esc(it.key) + '">' + opts + '</select>' +
+                '<input type="text" class="pd-enote" data-item="' + esc(it.key) + '" ' +
+                    'value="' + esc(it.note || '') + '" placeholder="where it came from">' +
+                '<span class="pd-ewhen">' + (it.at ? esc(day(it.at)) : '') + '</span>' +
+            '</li>';
+        }
+        return html + '</ul>';
+    }
+
     function followBlock(prospectId) {
         if (typeof CrmFollowups === 'undefined') return '';
         var list = CrmFollowups.forProspect(prospectId).filter(function (f) {
@@ -244,6 +281,7 @@ var ProspectDetail = (function () {
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +
+        '<section class="pd-sec"><h3>Research</h3>' + enrichBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>History</h3>' +
             (events ? '<ul class="pd-tl">' + events + '</ul>'
                     : '<p class="pd-none">Nothing has happened yet.</p>') +

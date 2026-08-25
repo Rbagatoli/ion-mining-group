@@ -253,6 +253,35 @@
             drawDetail();
         });
 
+        /* THE CHECKLIST SAVES AS YOU TOUCH IT. Research happens in the middle of
+           doing something else -- a tab open on ECHO, a licence number in the
+           clipboard -- and a checklist with a Save button is a checklist that
+           gets half filled and abandoned. The status commits on change; the
+           source note commits on blur, so typing is not interrupted. */
+        var host3 = document.getElementById('pdetail');
+        var stats = host3 ? host3.querySelectorAll('.pd-estat') : [];
+        for (var e = 0; e < stats.length; e++) {
+            stats[e].addEventListener('change', function () {
+                var key = this.getAttribute('data-item');
+                var noteEl = host3.querySelector('.pd-enote[data-item="' + key + '"]');
+                CrmEnrichment.set(id, key, this.value, noteEl ? noteEl.value : null);
+                drawDetail();
+            });
+        }
+        var notes = host3 ? host3.querySelectorAll('.pd-enote') : [];
+        for (var n2 = 0; n2 < notes.length; n2++) {
+            notes[n2].addEventListener('blur', function () {
+                var key = this.getAttribute('data-item');
+                var statEl = host3.querySelector('.pd-estat[data-item="' + key + '"]');
+                var status = statEl ? statEl.value : 'not_started';
+                /* Typing a source and leaving the status alone means the work was
+                   done, so an untouched item moves itself to in_progress rather
+                   than keeping a note nobody can see the state of. */
+                if (status === 'not_started' && this.value.trim()) status = 'in_progress';
+                CrmEnrichment.set(id, key, status, this.value);
+            });
+        }
+
         var host2 = document.getElementById('pdetail');
         var dones = host2 ? host2.querySelectorAll('[data-done]') : [];
         for (var i = 0; i < dones.length; i++) {
@@ -298,11 +327,12 @@
         if (!e || !e.key) return;
         if (e.key === 'protonMiningSites' || e.key === 'protonCrmLog' ||
             e.key === 'protonCrmConfig' || e.key === 'protonCrmFollowups' ||
-            e.key === 'protonContacts') {
+            e.key === 'protonContacts' || e.key === 'protonCrmEnrichment') {
             if (typeof CrmConfig !== 'undefined') { CrmConfig.reset(); CrmConfig.publish(); }
             if (typeof CrmLog !== 'undefined') CrmLog.reset();
             if (typeof CrmFollowups !== 'undefined') CrmFollowups.reset();
             if (typeof CrmContacts !== 'undefined') CrmContacts.reset();
+            if (typeof CrmEnrichment !== 'undefined') CrmEnrichment.reset();
             show();
         }
     });
