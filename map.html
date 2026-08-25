@@ -215,9 +215,21 @@
            Explicit placement rather than order/auto-flow, because there are three
            children in two rows and auto-placement would put the detail wherever
            the map happened not to be. */
+        /* WHICH COLUMN IS FIXED IS THE WHOLE DECISION HERE. It used to be
+           minmax(0,1fr) 420px -- the list flexible and the detail pinned narrow
+           -- which gave the list 734px at a 1440px viewport. A row needs 371px
+           of glyph at its widest and 273px at the median, measured across the
+           250 rows a default scan returns, so around 360px of every row was
+           void while the detail rendered into 378px of usable width: its
+           heading wrapped onto three lines and .src-detailgrid, which asks for
+           minmax(210px,1fr) tracks, could only ever resolve to one column.
+
+           Fixed first, flexible second. The list is sized to what it holds and
+           the detail takes everything left over -- 748px, enough for three
+           detail columns instead of one. */
         body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
         body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list {
-            grid-template-columns:minmax(0,1fr) 420px; }
+            grid-template-columns:420px minmax(0,1fr); }
         body[data-map-mode="prospects"][data-res-view="list"] .map-pane,
         body[data-map-mode="prospects"][data-res-view="owners"] .map-pane {
             grid-column:1 / -1; grid-row:1; }
@@ -229,7 +241,7 @@
             grid-column:2; grid-row:2; min-width:0; }
 
         /* NOTHING SELECTED, NOTHING TO SHOW. The pane holds a static "Select a
-           prospect" placeholder, and a 420px column of placeholder permanently
+           prospect" placeholder, and a column of placeholder permanently
            parked beside the results is the kind of furniture that trains people
            to stop looking at that part of the screen. body[data-detail] is set on
            selection and cleared on deselect, and until then the list has the
@@ -261,8 +273,9 @@
         body[data-res-view="table"] #srcListCard { display:none; }
         body[data-map-mode="prospects"][data-res-view="list"] [data-widget="prospect-table"],
         body[data-map-mode="prospects"][data-res-view="owners"] [data-widget="prospect-table"] { display:none; }
-        /* Below 900 px there is no room for a 340 px column beside a map, so the list drops under
-           it and gets its own scroll height rather than running the length of the page. */
+        /* Below 900 px there is no room for a 420 px list beside a detail pane, so the two
+           stack under the map and the list gets its own scroll height rather than running
+           the length of the page. */
         @media (max-width:900px) {
             body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
             body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list { grid-template-columns:1fr; }
@@ -292,7 +305,7 @@
            same height across 1168px is a map you can find a county on. */
         body[data-map-mode="prospects"] .map-pane #fleetMap,
         body[data-map-mode="prospects"] .map-pane #fleetGlobe { height:560px; }
-        /* Owner rollup rows. Same 340 px column as the scan list, so no layout branch. */
+        /* Owner rollup rows. Same column as the scan list, so no layout branch. */
         .src-ownerrow { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
             padding:9px 10px; border-bottom:1px solid var(--line); cursor:pointer; }
         .src-ownerrow:hover { background:var(--surface-2); }
