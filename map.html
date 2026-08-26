@@ -374,6 +374,31 @@
         /* A contradiction between two datasets is a lead, not an error to be tidied away. */
         .src-disagree { color:var(--warn); }
         .src-linkchip { color:var(--pos); font-size:11px; cursor:help; }
+
+        /* GAS COLLECTION. Three states meaning three different capital positions, so they read
+           as three different things rather than one badge with three words in it.
+
+           Shutdown is the ORANGE one, deliberately: it is the best state in the set. The wells
+           and blower are in the ground, idle, and nobody is charging a royalty for them.
+           Installed is platinum -- good, ordinary, somebody owns it and will want paying. None
+           takes the warning colour because in the US the collection bill is yours; it is NOT an
+           error colour, because in Canada the same word means the operator is legally obliged to
+           install it, which is the best lead in the country. */
+        .src-coll { font-size:11px; letter-spacing:0.02em; white-space:nowrap; }
+        .src-coll.s-shutdown  { color:var(--btc-300); font-weight:600; }
+        .src-coll.s-installed { color:var(--plat-200); }
+        .src-coll.s-none      { color:var(--warn); }
+
+        .src-collfilter { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+        .src-collbtn {
+            background:var(--panel); border:1px solid var(--line); color:var(--text-mid);
+            border-radius:var(--radius); padding:3px 9px; font-size:11px; cursor:pointer;
+            font-family:inherit;
+        }
+        .src-collbtn:hover { border-color:var(--line-mid); color:var(--text); }
+        .src-collbtn.on { border-color:var(--line-btc); color:var(--btc-300); background:var(--btc-wash); }
+        .src-collbtn .n { color:var(--text-dim); margin-left:5px; }
+        .src-collbtn.on .n { color:var(--btc-300); }
         .src-linkchip.warn { color:var(--warn); }
 
         /* An empty result names what is actually switched on, with a way to undo each one.
@@ -943,6 +968,9 @@ blank on each site rather than being guessed.</p>
                 <!-- Populated from whatever adapters actually returned prospects, so a new
                      source appears here without an edit. -->
                 <div class="src-srcfilter" id="fSources"></div>
+                <!-- Landfill only. Hidden when no landfill source is in scope, and NOT hidden
+                     while one of its buttons is active — see renderCollectionFilter(). -->
+                <div class="src-collfilter" id="fCollection" hidden></div>
             </div>
 
 <div class="src-field">
@@ -1116,6 +1144,7 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="duty" class="num">Duty</th>
                         <th data-sort="years" class="num">Years</th>
                         <th data-sort="stage">Stage</th>
+                        <th data-sort="collection">Collection</th>
                         <th data-sort="opportunity" class="num">Opportunity</th>
                         <th data-sort="acquirability" class="num">Acquirable</th>
                         <th data-sort="combined" class="num">Combined</th>

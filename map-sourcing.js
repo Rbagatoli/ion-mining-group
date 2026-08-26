@@ -554,7 +554,10 @@ var MapSourcing = (function() {
                rows, including every site with no generator on it. The saved-search
                path has always carried it as s.hasGen; the last-used path did not.
                Same field name, so the two agree. */
-            var out = { _v: 1, company: _companyFilter, hasGen: !!_hasGenFilter };
+            var out = { _v: 1, company: _companyFilter, hasGen: !!_hasGenFilter,
+                        /* Same reason as hasGen above: not a DOM control, so the field loops
+                           below cannot see it and it would be dropped on every reload. */
+                        collection: Object.keys(_collFilter) };
             FILTER_FIELDS.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) out[id] = el.value;
@@ -593,6 +596,12 @@ var MapSourcing = (function() {
         /* undefined reads as off, which is right for a search saved before this
            was persisted -- the clause was not recorded, so it cannot be claimed. */
         _hasGenFilter = !!saved.hasGen;
+        // Restored the same way, and defensively: an older saved blob has no
+        // collection key at all, which must mean "no filter" rather than throwing.
+        _collFilter = {};
+        if (Array.isArray(saved.collection)) {
+            saved.collection.forEach(function(k) { _collFilter[k] = true; });
+        }
         return true;
     }
 
@@ -661,6 +670,73 @@ var MapSourcing = (function() {
         el.innerHTML = h;
     }
 
+    /* THE COLLECTION FACET. Same shape as the source picker above it: no selection means every
+       value, and clicking toggles one on.
+
+       LANDFILL ONLY, and hidden when no landfill source is in scope -- a flare has no wells and
+       the control would filter the entire flare set to nothing if it were live. It follows the
+       rule renderFlareOnlyChecks() already established for the flare-only checkboxes: hide when
+       irrelevant, but NEVER hide while one of its buttons is active, because a live filter the
+       user cannot see is worse than an irrelevant one. */
+    var _collFilter = {};
+
+    function landfillInScope() {
+        if (typeof ProspectStore === 'undefined') return true;
+        var keys = Object.keys(_srcFilter || {});
+        if (!keys.length) return true;              // empty means every source
+        for (var i = 0; i < keys.length; i++) {
+            if (String(keys[i]).indexOf('landfill') >= 0) return true;
+        }
+        return false;
+    }
+
+    function renderCollectionFilter() {
+        var el = document.getElementById('fCollection');
+        if (!el) return;
+        var active = Object.keys(_collFilter).length > 0;
+        if (!landfillInScope() && !active) { el.hidden = true; el.innerHTML = ''; return; }
+
+        // Counts come from the FULL landfill population rather than the current result set, so
+        // the numbers do not move underneath the reader as other filters narrow.
+        var all = (typeof ProspectStore !== 'undefined' && ProspectStore.loaded())
+            ? ProspectStore.all() : [];
+        var counts = { installed: 0, shutdown: 0, none: 0 };
+        for (var i = 0; i < all.length; i++) {
+            if (all[i].energyType !== 'landfill_gas') continue;
+            var st = collectionStatusOf(all[i]);
+            if (st && counts[st] !== undefined) counts[st]++;
+        }
+        if (!counts.installed && !counts.shutdown && !counts.none) {
+            el.hidden = true; el.innerHTML = ''; return;
+        }
+        var order = ['shutdown', 'installed', 'none'];   // best capital position first
+        var h = '<span class="src-collbtn-label"></span>';
+        h = '';
+        for (var k = 0; k < order.length; k++) {
+            var key = order[k];
+            if (!counts[key]) continue;
+            h += '<button type="button" class="src-collbtn' + (_collFilter[key] ? ' on' : '') +
+                 '" data-coll="' + key + '" title="Gas collection: ' + COLLECTION_LABEL[key] + '">' +
+                 COLLECTION_LABEL[key] + '<span class="n">' + fmtInt(counts[key]) + '</span></button>';
+        }
+        el.hidden = false;
+        el.innerHTML = h;
+    }
+
+    function wireCollectionFilter() {
+        var el = document.getElementById('fCollection');
+        if (!el) return;
+        el.addEventListener('click', function(e) {
+            var b = e.target.closest('.src-collbtn');
+            if (!b) return;
+            var key = b.getAttribute('data-coll');
+            if (_collFilter[key]) delete _collFilter[key]; else _collFilter[key] = true;
+            renderCollectionFilter();
+            saveFilters();
+            applyFilters('collection');
+        });
+    }
+
     function wireSourceFilter() {
         var el = document.getElementById('fSources');
         if (!el) return;
@@ -686,6 +762,7 @@ var MapSourcing = (function() {
                 if (Object.keys(_srcFilter).length === srcs.length) _srcFilter = {};
             }
             renderSourceFilter();
+            renderCollectionFilter();
             saveFiltersSources();
             applyFilters();
         });
@@ -740,6 +817,7 @@ var MapSourcing = (function() {
         var isoEl = document.getElementById('fCountry');
         var iso = (isoEl && isoEl.value) ? isoEl.value : null;
         return {
+            collection: Object.keys(_collFilter),
             iso3: iso,
             // Applied whenever no single country is chosen. With one chosen, iso3 already
             // narrows harder than the scope does and the two would be redundant.
@@ -899,6 +977,7 @@ var MapSourcing = (function() {
         // starting point's filter would outlive the starting point.
         _hasGenFilter = false;
         renderSourceFilter();
+        renderCollectionFilter();
         paintSizeRange();
         renderSizeHint();
         saveFilters();
@@ -1064,6 +1143,7 @@ var MapSourcing = (function() {
         // undefined, which correctly reads as off.
         _hasGenFilter = !!s.hasGen;
         renderSourceFilter();
+        renderCollectionFilter();
         paintSizeRange();
         renderSizeHint();
         saveFilters();
@@ -1180,6 +1260,7 @@ var MapSourcing = (function() {
             set: function() {
                 _srcFilter = {}; _srcFilter['lmop-landfill'] = true;
                 renderSourceFilter();
+                renderCollectionFilter();
                 _hasGenFilter = true;
                 setSize(1000, 3000);
                 /* Every LMOP record is American, so the country clause this used
@@ -1212,6 +1293,7 @@ var MapSourcing = (function() {
             set: function() {
                 _srcFilter = {}; _srcFilter['eccc-landfill-ca'] = true;
                 renderSourceFilter();
+                renderCollectionFilter();
                 setSize(1000, 5000);
                 setSort('combined');
             }
@@ -1223,6 +1305,7 @@ var MapSourcing = (function() {
             set: function() {
                 _srcFilter = {}; _srcFilter['flare-viirs'] = true;
                 renderSourceFilter();
+                renderCollectionFilter();
                 setValue('fYears', '5');
                 setSort('persistence');
             }
@@ -1265,6 +1348,7 @@ var MapSourcing = (function() {
         _srcFilter = {};
         s.set();
         renderSourceFilter();
+        renderCollectionFilter();
         paintSizeRange();
         renderSizeHint();
         saveFilters();
@@ -1340,6 +1424,7 @@ var MapSourcing = (function() {
         _companyFilterId = savedCoId;
         _hasGenFilter = savedGen;
         renderSourceFilter();
+        renderCollectionFilter();
         _starterCounts = out;
         return out;
     }
@@ -1652,6 +1737,26 @@ var MapSourcing = (function() {
         // about generation, which is true of every flare. Filtering on this therefore excludes
         // flares by construction, exactly as the flare-only filters exclude landfills — and the
         // label says so rather than leaving it to be discovered.
+        /* Gas collection. NARROWS TO LANDFILLS BY CONSTRUCTION, and that is deliberate.
+
+           The first version let flares and generating facilities pass through untouched, on the
+           reasoning that their sources publish nothing about wells. It was consistent and it was
+           useless: choosing Shutdown took 19,544 rows to 17,520 -- 31 landfills plus every
+           untouched flare -- so the top of the list stayed entirely flares and not one collection
+           value was visible on screen. A filter that appears to do nothing is worse than one that
+           excludes something.
+
+           So it behaves like every other source-specific filter here: hasGeneration excludes
+           flares by construction, the flare-only checks exclude landfills, and this excludes
+           both. The control is labelled Gas collection and sits under the landfill sources, so
+           what it narrows to is stated rather than left to be discovered. */
+        if (f.collection && f.collection.length) {
+            matches = matches.filter(function(c) {
+                if (c.energyType !== 'landfill_gas') return false;
+                var st = collectionStatusOf(c);
+                return st !== null && f.collection.indexOf(st) >= 0;
+            });
+        }
         if (f.hasGeneration) {
             matches = matches.filter(function(c) {
                 return c.existingGenerationKw !== null && c.existingGenerationKw > 0;
@@ -2892,6 +2997,85 @@ var MapSourcing = (function() {
         return SiteAcquirability.combine(o.scoreRaw, a.scoreRaw);
     }
 
+    /* GAS COLLECTION, WHICH DECIDES WHO PAYS FOR THE WELLS.
+     *
+     * A collection system -- extraction wells, headers, condensate management, blower and flare
+     * -- runs roughly $800K to $2.8M at 1-2 MW, often more than the generation equipment. Where
+     * one already exists you rent the gas for a royalty of about 10% of revenue, which on this
+     * app's own revenue model is about $91K a year at 1 MW. Where one does not, you fund it: at
+     * $1.5M that is a 16.5-year payback on equipment with a 20-year life.
+     *
+     * So it is worth reading before anything else on a landfill, and until now it was ingested,
+     * carried through sourceDetail, and displayed NOWHERE.
+     *
+     * FOUR STATES, and the two datasets say the same thing in different words:
+     *
+     *   installed  LMOP 'Yes'        / ECCC: the facility reports gas destruction
+     *   shutdown   LMOP 'Shutdown'   / no ECCC equivalent
+     *   none       LMOP 'No'         / ECCC: no destruction reported
+     *   null       blank, or a source that publishes nothing about collection
+     *
+     * SHUTDOWN IS THE BEST STATE IN THE SET, not a middle one. The wells, headers and blower
+     * are in the ground and idle: the capital is sunk, somebody else spent it, and nobody is
+     * earning a royalty on it today. That is the lowest-capital entry point in the dataset, so
+     * it is styled distinctly rather than blended into a generic flag.
+     *
+     * AND 'none' MEANS OPPOSITE THINGS IN THE TWO COUNTRIES, which is why this reports the fact
+     * and takes no view. In the US nobody is obliged to install collection, so 'none' means the
+     * bill is yours. In Canada the Landfill Methane Regulations oblige the operator to destroy
+     * methane on a statutory date, so 'none' is precisely the January 2029 forced-buyer cohort
+     * -- 30 sites, 28.2 MW, where the operator funds the collection and a partner funds the
+     * plant. Read as a quality score, this column would delete the best Canadian prospects. */
+    var COLLECTION_LABEL = { installed: 'Installed', shutdown: 'Shutdown', none: 'None' };
+
+    function collectionStatusOf(c) {
+        var sd = (c && c.sourceDetail) || {};
+        var raw = sd.collectionSystem;
+        if (raw !== null && raw !== undefined && raw !== '') {
+            var v = String(raw).trim().toLowerCase();
+            if (v === 'yes') return 'installed';
+            if (v === 'shutdown') return 'shutdown';
+            if (v === 'no') return 'none';
+            return null;                       // an unrecognised word is not a guess
+        }
+        // ECCC publishes no such column. Gas destruction is the same fact by another route, and
+        // source-landfill-ca.js has already resolved it from the emission-source categories.
+        if (sd.hasExistingControls === true) return 'installed';
+        if (sd.hasExistingControls === false) return 'none';
+        return null;
+    }
+
+    // Where the status came from and when it was pulled. Both are stated because a stale
+    // collection status is a different kind of wrong from an absent one, and LMOP republishes
+    // only two or three times a year.
+    function collectionSourceLabel(c) {
+        var sd = (c && c.sourceDetail) || {};
+        if (sd.collectionSystem !== null && sd.collectionSystem !== undefined && sd.collectionSystem !== '') {
+            return 'EPA LMOP, LFG collection system';
+        }
+        if (sd.hasExistingControls !== null && sd.hasExistingControls !== undefined) {
+            return 'ECCC GHGRP, derived from reported gas destruction';
+        }
+        return 'not published by this source';
+    }
+
+    function collectionAsOf(c) {
+        var sd = (c && c.sourceDetail) || {};
+        var m = null;
+        if (sd.collectionSystem !== null && sd.collectionSystem !== undefined && sd.collectionSystem !== '') {
+            m = (typeof LandfillSource !== 'undefined' && LandfillSource.meta) ? LandfillSource.meta() : null;
+        } else {
+            m = (typeof LandfillCaSource !== 'undefined' && LandfillCaSource.meta) ? LandfillCaSource.meta() : null;
+        }
+        return m && m.generated ? String(m.generated).slice(0, 10) : null;
+    }
+
+    function collectionCell(c) {
+        var st = collectionStatusOf(c);
+        if (st === null) return '<span class="src-gap">--</span>';
+        return '<span class="src-coll s-' + st + '">' + COLLECTION_LABEL[st] + '</span>';
+    }
+
     function tableSortValue(row, key) {
         var c = row.candidate;
         switch (key) {
@@ -2912,6 +3096,13 @@ var MapSourcing = (function() {
                 return mt && mt.months_to_revenue ? mt.months_to_revenue.min : null;
             case 'acquirability': var a = acquirabilityFor(c).scoreRaw; return a === null ? null : a;
             case 'combined':      return combinedFor(c);
+            // Ordered by what it costs YOU, not alphabetically: shutdown first (sunk capital,
+            // idle, no royalty), then installed (sunk, but somebody charges for it), then none
+            // (you fund the wells), and unpublished sorts last with every other null.
+            case 'collection':
+                var cs = collectionStatusOf(c);
+                return cs === null ? null
+                     : (cs === 'shutdown' ? 0 : cs === 'installed' ? 1 : 2);
             case 'stage':
                 var st = SiteOpportunity.stageOf(c);
                 return st === null ? null : SiteOpportunity.STAGE_SCORES[st];
@@ -2994,7 +3185,7 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="14" style="padding:6px 10px 14px;">' +
+            body.innerHTML = '<tr><td colspan="15" style="padding:6px 10px 14px;">' +
                 emptyStateHtml('No prospects match.') + '</td></tr>';
             return;
         }
@@ -3047,6 +3238,7 @@ var MapSourcing = (function() {
                 '<td class="num">' + dutyCell(c) + '</td>' +
                 '<td class="num">' + (c.yearsSeen === null ? '--' : c.yearsSeen + '/' + (c.yearsTotal || '?')) + '</td>' +
                 '<td>' + stageCell(c) + '</td>' +
+                '<td>' + collectionCell(c) + '</td>' +
                 '<td class="num">' + (opp.score === null
                     ? '<span class="src-gap">--</span>'
                     : '<span class="src-oppcell">' + opp.score + '</span>' +
@@ -4139,6 +4331,21 @@ var MapSourcing = (function() {
             html += row('Installed capacity', installedMw === null ? gap('not published')
                 : (Math.round(installedMw * 100) / 100) + ' MW');
             if (fsd.capacityBasis) html += row('Capacity basis', '<span class="src-sub2">' + esc(fsd.capacityBasis) + '</span>');
+            var collSt = collectionStatusOf(c);
+            if (collSt !== null) {
+                var collWhen = collectionAsOf(c);
+                html += row('Gas collection', collectionCell(c) +
+                    (collSt === 'shutdown'
+                        ? '<div class="src-sub2">wells, headers and blower are in the ground and ' +
+                          'idle — the collection capital is already spent</div>'
+                        : collSt === 'none'
+                        ? '<div class="src-sub2">no collection published. Installing one runs ' +
+                          'roughly $800K–2.8M at 1–2 MW, against a royalty near 10% of revenue ' +
+                          'where a system already exists</div>'
+                        : '') +
+                    '<div class="src-sub2">' + esc(collectionSourceLabel(c)) +
+                    (collWhen ? ', retrieved ' + esc(collWhen) : '') + '</div>');
+            }
             var inSvc = fsd.inServiceYear || fsd.landfillOpenedYear || null;
             html += row('In service', inSvc ? esc(String(inSvc)) : gap('not published'));
             if (fsd.projectShutdownDate) html += row('Shut down', esc(fsd.projectShutdownDate));
@@ -5236,7 +5443,7 @@ var MapSourcing = (function() {
         } catch (e) {
             status('Could not load prospects: ' + e.message, 'var(--neg)');
             var l = document.getElementById('srcTableBody');
-            if (l) l.innerHTML = '<tr><td colspan="14" class="src-gap" style="padding:14px;">' +
+            if (l) l.innerHTML = '<tr><td colspan="15" class="src-gap" style="padding:14px;">' +
                 'Prospects unavailable. Run <code>node tools/build-flare-catalog.js</code>.</td></tr>';
             return;
         }
@@ -5370,6 +5577,7 @@ var MapSourcing = (function() {
         wireUnfocus();
         wireWorklist();
         wireSourceFilter();
+        wireCollectionFilter();
         wireEmptyState();
         wireMoreFilters();
         loadSearches();
@@ -5394,6 +5602,7 @@ var MapSourcing = (function() {
         if (yEl && meta && meta.dataThrough) yEl.textContent = meta.dataThrough;
 
         renderSourceFilter();
+        renderCollectionFilter();
         // Must run BEFORE restoreFilters: a <select> silently rejects a value that has no
         // matching option, so restoring "CA|Alberta" into an unpopulated list would leave the
         // control empty and the saved anchor would vanish on every reload.
