@@ -103,11 +103,47 @@ var SiteOpportunity = (function() {
         proximityFarKm: 1200
     };
 
+    /* LANDFILLS SCORE ON A DIFFERENT COMPONENT SET, so they get their own table.
+     *
+     * capital_avoided is meaningless for a flare -- there is no infrastructure at a wellhead to
+     * inherit -- and development_stage is redundant for a landfill, because capital_avoided
+     * measures the same fact in dollars rather than as a label. Scoring both would count the
+     * inheritance twice.
+     *
+     * TWO TABLES RATHER THAN ONE, and the reason is `coverage`. It is reported as the share of
+     * TOTAL weight that was actually measured, so a single table holding every component would
+     * make a flare report 71% coverage while having complete data for everything that applies to
+     * it -- the missing 29% being a component that could never apply. Each table sums to 100 over
+     * the components that genuinely apply, which is the invariant the file header asks for and
+     * what makes coverage mean the same thing for both.
+     *
+     * These are the brief's weights, unchanged. */
+    var LANDFILL_WEIGHTS = {
+        capital_avoided:    35,
+        capacity_fit:       15,
+        supply_persistence: 10,
+        actionability:      10,
+        counterparty:       10,
+        site_quality:       10,
+        jurisdiction:        5,
+        proximity:           5
+    };
+
     var _weights = null, _settings = null;
 
     function weights() {
         if (!_weights) { _weights = {}; for (var k in DEFAULT_WEIGHTS) _weights[k] = DEFAULT_WEIGHTS[k]; }
         return _weights;
+    }
+    var _lfWeights = null;
+    function landfillWeights() {
+        if (!_lfWeights) { _lfWeights = {}; for (var k in LANDFILL_WEIGHTS) _lfWeights[k] = LANDFILL_WEIGHTS[k]; }
+        return _lfWeights;
+    }
+    // A component absent from the chosen table takes weight 0 and is excluded from wtotal, so
+    // coverage counts only what could have applied.
+    function weightsFor(cand) {
+        return (cand && cand.energyType === 'landfill_gas') ? landfillWeights() : weights();
     }
     function settings() {
         if (!_settings) {
@@ -311,9 +347,48 @@ var SiteOpportunity = (function() {
     }
 
     function scoreDevelopmentStage(cand) {
+        /* SUPERSEDED FOR LANDFILLS, because capital_avoided measures the same thing in dollars.
+         *
+         * Development stage is a proxy: it ranks a constructed site above a candidate one because
+         * the constructed site inherits equipment. capital_avoided says HOW MUCH equipment, at
+         * what value, discounted for condition. Scoring both would count the same fact twice, at
+         * 25% and 35%, and would let a stage label outvote the dollars behind it.
+         *
+         * Null rather than deletion: the component still exists and still ranks every flare and
+         * every generating facility, where there is no capital-avoided figure to replace it. */
+        if (cand && cand.energyType === 'landfill_gas') {
+            return { value: null, detail: 'superseded by capital avoided for landfill gas' };
+        }
         var st = stageOf(cand);
         if (st === null) return { value: null, detail: 'development stage not recorded' };
         return { value: STAGE_SCORES[st], detail: st.replace(/_/g, ' ') };
+    }
+
+    /* The share of the build somebody else has paid for, or must pay for. 0-100 so a 500 kW site
+     * and a 5 MW one are directly comparable -- an absolute dollar figure would just re-rank by
+     * size, which capacity_fit already does.
+     *
+     * Multiplied by the confidence in the inventory behind it, per the brief: high 1.0, medium
+     * 0.8, low 0.5. A site whose infrastructure is inferred from one published field should not
+     * outrank one where it is inferred from two. */
+    function scoreCapitalAvoided(cand, ctx) {
+        if (!cand || cand.energyType !== 'landfill_gas') {
+            return { value: null, detail: 'capital avoided applies to landfill gas only' };
+        }
+        var SI = (ctx && ctx.infrastructure) ||
+                 (typeof SiteInfrastructure !== 'undefined' ? SiteInfrastructure : null);
+        if (!SI) return { value: null, detail: 'infrastructure model not loaded' };
+        var asOf = (ctx && ctx.asOf) || null;
+        var r = SI.capitalAvoided(cand, { asOf: asOf, band: ctx && ctx.band });
+        if (r.totalBuildUsd === null || r.totalBuildUsd <= 0) {
+            return { value: null, detail: 'capacity not published, so the build cannot be priced' };
+        }
+        var share = 100 * r.avoidedUsd / r.totalBuildUsd;
+        var mult = SI.CONFIDENCE_MULT[r.confidence] === undefined ? 0.5 : SI.CONFIDENCE_MULT[r.confidence];
+        var detail = '$' + Math.round(r.avoidedUsd).toLocaleString() + ' of $' +
+                     Math.round(r.totalBuildUsd).toLocaleString() + ' avoided' +
+                     (r.conditionVerified ? ' (verified)' : ' (unverified estimate)');
+        return { value: clamp100(share * mult), detail: detail };
     }
 
     function scoreJurisdiction(cand, ctx) {
@@ -387,7 +462,8 @@ var SiteOpportunity = (function() {
         { id: 'jurisdiction',       label: 'Jurisdiction',       fn: scoreJurisdiction },
         { id: 'actionability',      label: 'Actionability',      fn: scoreActionability },
         { id: 'proximity',          label: 'Proximity',          fn: scoreProximity },
-        { id: 'counterparty',       label: 'Counterparty',       fn: scoreCounterparty }
+        { id: 'counterparty',       label: 'Counterparty',       fn: scoreCounterparty },
+        { id: 'capital_avoided',   label: 'Capital avoided',    fn: scoreCapitalAvoided }
     ];
 
     // ---- The score ----------------------------------------------------------------------
@@ -396,7 +472,7 @@ var SiteOpportunity = (function() {
         if (!cand || typeof cand !== 'object') {
             return { score: null, scoreRaw: null, coverage: 0, breakdown: [], contactTier: null, effectiveKw: null };
         }
-        var w = weights(), breakdown = [], sum = 0, wsum = 0, wtotal = 0, tier = null;
+        var w = weightsFor(cand), breakdown = [], sum = 0, wsum = 0, wtotal = 0, tier = null;
 
         for (var i = 0; i < COMPONENTS.length; i++) {
             var c = COMPONENTS[i], weight = w[c.id] === undefined ? 0 : w[c.id];
@@ -429,6 +505,8 @@ var SiteOpportunity = (function() {
     return {
         score: score,
         contactTier: contactTier,
+        landfillWeights: landfillWeights,
+        LANDFILL_WEIGHTS: LANDFILL_WEIGHTS,
         effectiveKw: effectiveKw,
         weights: weights,
         setWeight: setWeight,

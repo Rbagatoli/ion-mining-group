@@ -216,19 +216,59 @@ ok('and moves 2 MW out of it', comp(SO.score(site({ powerPotentialKw: 2000 })), 
 SO.reset();
 
 // ---- The score is source-agnostic -----------------------------------------------------
-// A landfill and a flare with the same effective capacity, persistence and reachability must
-// score identically. If they do not, a source type has leaked into the model.
+/* SOURCE TYPE NOW ENTERS THE MODEL DELIBERATELY, so this guard is narrowed rather than dropped.
+ *
+ * It used to assert that a landfill and a flare with identical inputs score identically -- a
+ * guard against a source type LEAKING in by accident. Landfills now score on their own weight
+ * table, because the two have genuinely different evidence available: a flare at a wellhead has
+ * no infrastructure to inherit, so capital_avoided cannot apply to it, and development_stage is
+ * redundant for a landfill because capital_avoided measures the same inheritance in dollars.
+ *
+ * What the guard was protecting is still worth protecting, so it is replaced by two narrower
+ * ones: two landfills from DIFFERENT ADAPTERS must still score identically (nothing may key on
+ * which registry a row came from), and the flare/landfill difference must be explainable by the
+ * component set alone rather than by a shared component behaving differently. */
 var flare = SO.score({ id: 'f', energyType: 'flare_gas', source: 'flare-viirs', iso3: 'USA',
                        lat: 40, lng: -100, powerPotentialKw: 2000, dutyCyclePct: 100,
                        yearsSeen: 6, yearsTotal: 6, counterpartyType: 'oil_gas_operator' });
 var landfill = SO.score({ id: 'l', energyType: 'landfill_gas', source: 'lmop', iso3: 'USA',
                           lat: 40, lng: -100, powerPotentialKw: 2000, dutyCyclePct: 100,
                           yearsSeen: 6, yearsTotal: 6, counterpartyType: 'oil_gas_operator' });
-eq('identical prospects score the same regardless of source type', flare.score, landfill.score);
+// Same energy type, different adapter -> must be identical. This is the leak the original
+// assertion existed to catch, and it is still caught.
+var lmopLf = SO.score({ id: 'a', energyType: 'landfill_gas', source: 'lmop-landfill', iso3: 'USA',
+                        lat: 40, lng: -100, powerPotentialKw: 2000, dutyCyclePct: 100,
+                        yearsSeen: 6, yearsTotal: 6, counterpartyType: 'oil_gas_operator' });
+var ecccLf = SO.score({ id: 'b', energyType: 'landfill_gas', source: 'eccc-landfill-ca', iso3: 'USA',
+                        lat: 40, lng: -100, powerPotentialKw: 2000, dutyCyclePct: 100,
+                        yearsSeen: 6, yearsTotal: 6, counterpartyType: 'oil_gas_operator' });
+eq('two landfills from different adapters score identically', lmopLf.score, ecccLf.score);
+
+// And every component the two share must produce the same value. If a shared component ever
+// starts reading energyType, this catches it even though the totals now differ by design.
+(function () {
+    var fB = {}, lB = {};
+    flare.breakdown.forEach(function (b) { fB[b.id] = b.value; });
+    landfill.breakdown.forEach(function (b) { lB[b.id] = b.value; });
+    var shared = Object.keys(fB).filter(function (k) {
+        return k !== 'capital_avoided' && k !== 'development_stage';
+    });
+    var differ = shared.filter(function (k) { return fB[k] !== lB[k]; });
+    ok('every SHARED component scores identically across source types — ' +
+       'the totals differ only because the component sets do', differ.length === 0, differ);
+})();
 
 // ---- Structure -------------------------------------------------------------------------
 var r = SO.score(site());
-eq('every registered component is reported', r.breakdown.length, Object.keys(SO.DEFAULT_WEIGHTS).length);
+// The breakdown always reports EVERY registered component, including ones that carry no weight
+// for this candidate's type -- so a reader can see that capital_avoided was considered and did
+// not apply, rather than wondering why it is missing. Compare against the union of both tables.
+(function () {
+    var all = {};
+    Object.keys(SO.DEFAULT_WEIGHTS).forEach(function (k) { all[k] = 1; });
+    Object.keys(SO.LANDFILL_WEIGHTS).forEach(function (k) { all[k] = 1; });
+    eq('every registered component is reported', r.breakdown.length, Object.keys(all).length);
+})();
 ok('every component carries a human-readable detail',
    r.breakdown.every(function(b) { return typeof b.detail === 'string' && b.detail.length > 0; }));
 ok('the default weights sum to 100',

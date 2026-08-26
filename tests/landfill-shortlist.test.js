@@ -122,11 +122,24 @@ console.log('\n=== the preset filters to a universe, not a shortlist ===');
 
 // ---- 3. the two axes disagree, and that is the point ------------------------------------------
 
-console.log('\n=== overall score ranks the plant you cannot buy ===');
+/* THIS SECTION USED TO PIN THE OPPOSITE, AND THE REVERSAL IS THE POINT.
+ *
+ * It asserted that the opportunity score ranks OPERATING plants top and buries the best shutdown
+ * project 141 places down -- which is why a separate acquirability axis had to exist at all. That
+ * was true, and it was the module's central weakness: opportunity asked "is this energy worth
+ * mining against" and answered by preferring the plant whose gas is already under contract.
+ *
+ * capital_avoided changes what opportunity MEANS for a landfill. Ranking now leads with how much
+ * of the build somebody else has already paid for, so a shut plant with collection, gensets,
+ * switchgear and a pad rises to the top -- where the thesis always said it belonged.
+ *
+ * The assertions below are inverted deliberately. If they ever revert, capital_avoided has
+ * stopped reaching the score. */
+console.log('\n=== overall score now leads with the plant you can buy ===');
 (function() {
     var top = topBy(opp, 20);
     var operating = top.filter(function(c) { return statusOf(c) === 'Operational'; }).length;
-    ok('sorted by overall score, the top 20 are running plants', operating >= 18,
+    ok('the top 20 are no longer dominated by running plants', operating <= 12,
        operating + ' of 20 operational');
 
     // Not a defect. Opportunity asks whether the energy is worth mining against, and a running
@@ -156,7 +169,7 @@ console.log('\n=== acquisition rank inverts it ===');
     for (var i = 0; i < byOpp.length; i++) {
         if (statusOf(byOpp[i]) === 'Shutdown') { firstShutdown = i + 1; break; }
     }
-    ok('on overall score the best shutdown project is buried', firstShutdown > 100,
+    ok('the best shutdown project now ranks near the top, not buried', firstShutdown <= 10,
        'rank ' + firstShutdown + ' of ' + UNIVERSE.length);
     eq('on acquisition rank it is first', statusOf(topBy(combined, 1)[0]), 'Shutdown');
 })();
