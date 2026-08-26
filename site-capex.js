@@ -131,7 +131,22 @@ var SiteCapex = (function() {
         // Who owns the generator when the record does not say. 'producer' for raw resource is
         // Proton's actual deal structure and the reason $450/kW never included a genset; 'client'
         // from constructed onward, because acquiring a plant means acquiring its generator.
-        ownGenerationRawResource: 'producer',
+        /* WHO OWNS THE GENERATOR AT A RAW SITE.
+         *
+         * This defaulted to 'producer' -- the model of a flare deal where the gas owner brings
+         * gensets and sells you power at a $/kWh that has their capital baked into it. That is
+         * a real structure, but it is not the one this operator runs: they buy the engine and
+         * build the pad themselves at a flare exactly as they would at a landfill.
+         *
+         * The default mattered more than a default should, because it silently gated FOUR
+         * components at once -- generation equipment, interconnection, commissioning and gas
+         * treatment all resolved to 'avoided'. A flare came out at $456/kW of site capital
+         * against $1,910-2,160/kW for a landfill, which is not a real 4x advantage in the
+         * ground; it is one assumption about who signs the cheque for the engine.
+         *
+         * Still a SETTING, and still overridable per record via generator_ownership, because
+         * producer-owned flare deals do exist and this should price them when they do. */
+        ownGenerationRawResource: 'client',
         ownGenerationBuilt: 'client',
         // Ships UNSET. Inventing a cost of capital would be exactly the sin this module exists to
         // avoid, so carrying cost reports unknown until a real figure is entered.
@@ -412,9 +427,26 @@ var SiteCapex = (function() {
 
         out.components = comps;
         out.incurred_usd = incurred;
-        // Excludes site acquisition, because map-sourcing passes that separately as
-        // purchase_price_usd and the engine would otherwise count it twice.
-        out.additional_usd = incurred - acqUsd;
+        /* ADDITIONAL means "capital the engine has not already counted", and there are TWO
+         * things it has. Site acquisition was excluded here from the start, because
+         * map-sourcing passes it separately as purchase_price_usd.
+         *
+         * Miners are the identical case and were not excluded. map-sourcing passes
+         * ctx.minerCapexUsd into this stack, which prices a `miners` component into `incurred`;
+         * site-engine.js then computes its OWN minerCapexUsd into total_capital, and
+         * all_in_capital_usd sums total_capital + development_capex_usd. So every site in the
+         * app was carrying one extra ASIC fleet.
+         *
+         * Measured on a 51.9 MW landfill: all-in read $183,067,680 against a true
+         * $147,583,680 -- $35,484,000 of phantom capital, which is 14,785 miners at the
+         * engine's own $2,400. That is 24% of the all-in figure, it inflated $/kW from $2,844
+         * to $3,528, and it is most of the reason "to return capital" came out negative on
+         * every source where the operator buys the plant.
+         *
+         * The miners component STAYS in components[] -- the breakdown should show what the
+         * fleet costs. It just must not be added twice. */
+        var minerCounted = (minerUsd === null) ? 0 : minerUsd;
+        out.additional_usd = incurred - acqUsd - minerCounted;
         out.avoided_usd = avoided;
         out.coverage = comps.length ? Math.round(100 * priced / comps.length) : 0;
         out.months_to_revenue = { min: mtr.min, max: mtr.max, basis: stage.replace(/_/g, ' ') };

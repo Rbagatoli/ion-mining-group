@@ -143,7 +143,16 @@ SC.reset();
     ok('and above it only by explicit permitting', siteSide > 450, siteSide);
     eq('the producer owns the grid tie too', comp(producerOwned, 'interconnection').state, 'avoided');
     eq('and commissions their own generation', comp(producerOwned, 'commissioning').state, 'avoided');
-    eq('the default for raw resource is producer-owned', SC.generationOwnership({}, 'raw_resource'), 'producer');
+    /* THE DEFAULT FLIPPED, AND ON PURPOSE. It was 'producer' -- the flare-deal model where the
+       gas owner brings gensets and sells power at a $/kWh with their capital baked in. That is a
+       real structure but not the one this operator runs: they buy the engine and build the pad at
+       a flare exactly as at a landfill. The old default silently gated FOUR components to
+       'avoided' at once and made a raw flare look like $456/kW of site capital against
+       $1,910-2,160/kW for a landfill -- a 4x edge that was one assumption, not a fact in the
+       ground. */
+    eq('the default for raw resource is now client-owned', SC.generationOwnership({}, 'raw_resource'), 'client');
+    eq('and a producer-owned deal is still priced when the record says so',
+       SC.generationOwnership({ generator_ownership: 'producer' }, 'raw_resource'), 'producer');
     eq('and client-owned once built', SC.generationOwnership({}, 'operating'), 'client');
 })();
 
@@ -184,11 +193,33 @@ SC.reset();
        /H2S/.test(t.reason), t.reason);
 })();
 
-// ---- additional_usd must not double-count the acquisition ------------------------------
+/* ---- additional_usd must not double-count ANYTHING the engine already holds -------------
+ *
+ * additional_usd means "capital site-engine.js has not already counted". It has two such
+ * things, and only one of them was being excluded.
+ *
+ * Acquisition was excluded from the start. Miners were not -- map-sourcing passes
+ * ctx.minerCapexUsd in here, this module prices a `miners` component from it, and the engine
+ * then computes its own minerCapexUsd into total_capital before summing the two. Every site in
+ * the app carried a second ASIC fleet: measured on a 51.9 MW landfill, $183.1M all-in against a
+ * true $147.6M, which is 24% phantom capital and most of the reason "to return capital" read
+ * negative wherever the operator buys the plant. */
 (function () {
+    var MINERS = 1365600;   // matches the fixture's ctx.minerCapexUsd
     var r = st({ development_stage: 'operating' }, { acquisitionUsd: 1500000 });
-    near('additional_usd excludes the acquisition price', r.incurred_usd - r.additional_usd, 1500000, 1);
-    ok('and is still positive — mining buildout and miners remain', r.additional_usd > 0, r.additional_usd);
+    near('additional_usd excludes the acquisition price and the miners',
+         r.incurred_usd - r.additional_usd, 1500000 + MINERS, 1);
+    // Each exclusion pinned on its own, so a regression names which one came back.
+    var noAcq = st({ development_stage: 'operating' }, { acquisitionUsd: 0 });
+    near('miners alone are excluded when there is no acquisition price',
+         noAcq.incurred_usd - noAcq.additional_usd, MINERS, 1);
+    var noMiners = st({ development_stage: 'operating' }, { acquisitionUsd: 1500000, minerCapexUsd: null });
+    near('acquisition alone is excluded when no miner cost is supplied',
+         noMiners.incurred_usd - noMiners.additional_usd, 1500000, 1);
+    // The fleet still SHOWS in the breakdown; it just is not added twice.
+    var m = comp(r, 'miners');
+    eq('the miners line is still rendered as incurred', m.state, 'incurred');
+    ok('and is still positive — mining buildout remains', r.additional_usd > 0, r.additional_usd);
 })();
 
 // ---- Months to revenue ------------------------------------------------------------------
