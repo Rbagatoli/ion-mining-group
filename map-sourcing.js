@@ -1188,6 +1188,34 @@ var MapSourcing = (function() {
                 setSort('combined');
             }
         },
+        /* CANADA. A different KIND of opportunity from the four around it, which is why it
+           earns its own card rather than a country checkbox on one of them.
+
+           Every other starter looks for an asset somebody wants to be rid of. This one looks
+           for an operator legally obliged to spend money: Canada's Landfill Methane Regulations
+           came into force on 12 December 2025, and the January 2029 cohort is over 1,000 t of
+           methane a year with no gas recovery running when the rules landed. They must build
+           gas destruction either way. A partner who funds the plant turns that cost into a
+           revenue line, which is a better opening than asking whether they would consider
+           selling.
+
+           Ranked by acquisition rank, because that is the axis the obligation feeds --
+           lmr_jan_2029 is an acquirability signal, not an opportunity one, so ranking by
+           persistence would hide exactly the sites this card exists to surface.
+
+           The floor is 1 MW, not the regulatory threshold. The threshold itself is a ~450 kW
+           site: filtering at it returns a list too small to put a container on. */
+        {
+            id: 'canada-lmr',
+            label: 'Canadian sites facing the methane deadline',
+            hint: 'Obliged to destroy landfill methane, nothing built yet',
+            set: function() {
+                _srcFilter = {}; _srcFilter['eccc-landfill-ca'] = true;
+                renderSourceFilter();
+                setSize(1000, 5000);
+                setSort('combined');
+            }
+        },
         {
             id: 'flare',
             label: 'Gas nobody is using yet',

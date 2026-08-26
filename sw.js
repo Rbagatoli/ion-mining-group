@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v359';
+const CACHE_NAME = 'proton-mining-v360';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -50,6 +50,8 @@ const ASSETS = [
   './site-links.js',
   './source-facility.js',
   './source-landfill.js',
+  './lmr.js',
+  './source-landfill-ca.js',
   // Not an adapter -- it decorates landfill prospects with the legal owner and a mailable
   // address. data/ghgrp-contacts.json is deliberately NOT cached here, matching every other
   // artifact: the data/ files are far too large to precache and are fetched on demand.

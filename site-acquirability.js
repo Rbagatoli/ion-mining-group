@@ -52,7 +52,34 @@ var SiteAcquirability = (function() {
         listed_for_sale:               60,
         permit_lapsed:                 50,
         compliance_violations:         45,
-        ownership_change_lt_24mo:      30
+        ownership_change_lt_24mo:      30,
+
+        // ---- Canada, Landfill Methane Regulations (SOR/2025-279) ----------------------
+        //
+        // A LEGAL OBLIGATION IS NOT DISTRESS, AND IT IS BETTER THAN DISTRESS. Every other
+        // signal in this table is a company in trouble. These two are a company that is
+        // fine, and required by law to destroy its landfill methane by a fixed date.
+        //
+        // lmr_jan_2029 is the strongest inferred signal here, above lmop_shutdown, and it
+        // is worth being precise about why. A shutdown project tells you an asset is idle;
+        // somebody still has to want to sell it. The 2029 cohort tells you the operator
+        // MUST spend money on gas destruction, has a date, and -- because no recovery
+        // system was running when the Regulations came into force -- has no capital
+        // already in the ground to build on. A partner who funds the plant converts a
+        // compliance cost into a revenue line. That is a better opening than "would you
+        // consider selling", and it is the closest thing to a forced buyer in this module.
+        //
+        // It stays below the 100 reserved for owner_confirmed_available, because it is
+        // still an inference from a public register and that ceiling belongs to a person
+        // having actually said so.
+        lmr_jan_2029:                  85,
+        // The 2028 cohort is obligated on a nearer date but already owns collection and a
+        // flare, so the capital gap a partner fills is smaller and the operator has more
+        // ways to comply without one.
+        lmr_jan_2028:                  55,
+        // s.5(3), the 664-999 t tier. Real, regulated, and nine years out -- which is
+        // exactly long enough for the operator to do nothing about it yet.
+        lmr_jan_2035:                  25
     };
 
     // How fast each signal stops being evidence, in years. Split deliberately between EVENTS,
@@ -74,7 +101,17 @@ var SiteAcquirability = (function() {
         listed_for_sale:               1,    // a listing sells or is withdrawn quickly
         permit_lapsed:                 5,    // stays lapsed until the site is reclaimed
         compliance_violations:         2,
-        ownership_change_lt_24mo:      2
+        ownership_change_lt_24mo:      2,
+
+        // A STATUTORY DEADLINE IS A COUNTDOWN, so it ages like offtake_expiring_lt_18mo
+        // rather than like a condition. The urgency is real while the operator still has
+        // to choose a solution and gone once they have chosen one -- after the date
+        // passes, the site either built something or is in enforcement, and neither is a
+        // lead. Half-lives are set so the signal is still most of itself at the deadline
+        // and fading within a couple of years after it.
+        lmr_jan_2029:                  3,
+        lmr_jan_2028:                  3,
+        lmr_jan_2035:                  8    // nine years out; it decays slowly because it has to
     };
 
     // ---- Structural baseline ------------------------------------------------------------
