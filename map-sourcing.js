@@ -3207,15 +3207,25 @@ var MapSourcing = (function() {
         return ProtonTheme.pos;                      // healthy
     }
     var _colourBy = 'persistence';
-    function sizeFor(c) {
-        return Math.max(0.09, Math.min(0.9, Math.log(Math.max(c.powerPotentialKw || 30, 30)) / 12));
-    }
-    // Column height. Log-scaled between the 30 Mcf/day floor (~125 kW) and 10 MW so the whole
-    // usable range is legible; a linear scale would flatten everything under 1 MW to nothing.
+    /* Column height. Log-scaled between the 30 Mcf/day floor (~125 kW) and 10 MW so
+       the whole usable range is legible; a linear scale would flatten everything
+       under 1 MW to nothing.
+
+       THE RANGE IS HALF WHAT IT WAS (0.175 globe radii at the top, now 0.085).
+       A column points radially outward, so at the LIMB it is seen side-on at full
+       length -- and the North American cluster sits on the limb at the framing the
+       globe opens on, where several hundred full-length columns overlap into a
+       single grey slab hanging off the edge of the planet. Widening the markers to
+       a usable size made that slab three times heavier.
+
+       Halving costs nothing real, because the height is redundant: markPxFor() and
+       altFor() are both functions of powerPotentialKw and nothing else, so a column
+       says exactly what its own width already said. The relative ordering, which is
+       the only thing height was actually communicating, is untouched. */
     function altFor(c) {
         var kw = Math.max(c.powerPotentialKw || 125, 125);
         var t = (Math.log(kw) - Math.log(125)) / (Math.log(10000) - Math.log(125));
-        return 0.015 + Math.max(0, Math.min(1, t)) * 0.16;
+        return 0.008 + Math.max(0, Math.min(1, t)) * 0.077;
     }
 
     // ---- zoom-dependent point size -------------------------------------------------
@@ -3240,40 +3250,103 @@ var MapSourcing = (function() {
         } catch (e) { return REF_ALTITUDE; }
     }
 
-    /* SUB-LINEAR, not proportional. Shrinking the angular radius in exact
-       proportion to altitude holds the marker at a constant number of SCREEN
-       pixels -- which sounds right and is the wrong target. Constant screen size
-       means a marker that was six pixels across at the default framing is still
-       six pixels across when you have pushed all the way into a basin, and six
-       pixels is under half the 24px WCAG 2.5.8 asks of a target. Proportional
-       scaling therefore preserves the exact problem that zooming in is meant to
-       solve: the sites separate, and each one stays just as hard to hit.
+    /* SIZES IN PIXELS, BECAUSE PIXELS ARE WHAT THE COMPLAINT WAS ABOUT.
+     *
+     * globe.gl takes pointRadius in DEGREES OF ARC, which is a unit nobody can
+     * hold a ruler against: you cannot look at 0.42 and know whether that is a
+     * dot or a blob. Measured through the library's own projection, a 27 MW
+     * prospect at the default framing was 2.5 PIXELS across and a median one
+     * was 1.7. That is the defect. It was never really about zoom -- they were
+     * hairs at every altitude, and no zoom law rescues a two-pixel target.
+     *
+     * WHAT THE ZOOM LAW ACTUALLY DOES. A marker sits on the surface and the
+     * camera sits `altitude` above the surface, both in units of globe radius,
+     * so the distance between them is R*altitude -- NOT R*(1 + altitude), which
+     * is the distance to the globe's CENTRE. Screen size therefore goes as
+     * theta/altitude, and the original theta ∝ altitude did hold constant screen
+     * size correctly. I briefly replaced it with (1+alt)/(1+REF) on the strength
+     * of a centre-distance derivation and measured the result: markers ballooned
+     * from 2.5px to 27px between the default framing and altitude 0.06. Reverted.
+     * The old law was right; it was holding constant at the wrong constant.
+     *
+     * So: state the size in pixels, convert to arc-degrees at draw time using
+     * the fov and container height that are actually in effect, and keep ONE
+     * deliberate knob for how much bigger a marker gets as you close in.
+     * ZOOM_GROWTH = 0 would be exactly constant screen size; 0.45 lets targets
+     * grow toward WCAG's 24px as you approach without becoming discs that
+     * swallow their neighbours. MARK_CAP_PX is the ceiling, and it is now a
+     * number in the same units as the complaint. */
+    var GLOBE_R      = 100;                          // three-globe's GLOBE_RADIUS
+    var DEG_UNIT     = 2 * Math.PI * GLOBE_R / 360;  // world units per degree of arc
+    var REF_ALTITUDE = 2.2;                          // the framing the px figures describe
+    var MARK_MIN_PX  = 3.5;                          // RADIUS at the 125 kW floor
+    var MARK_MAX_PX  = 6.5;                          // RADIUS at 10 MW and above
+    var MARK_CAP_PX  = 16;                           // ceiling after zoom growth
+    var FOCUS_MULT   = 1.45;
+    var ZOOM_GROWTH  = 0.45;                         // 0 = constant screen size
 
-       An exponent below 1 keeps the direction and softens the rate, so markers
-       still shrink as you descend -- the terrain still wins -- but they give up
-       less of themselves doing it. At the default altitude the exponent changes
-       nothing (ratio 1, and 1 to any power is 1). Measured against the old
-       linear curve:
+    var _zoomScale = 1;                              // composite, for the deadband
+    var _zoomRaf = null;
 
-           altitude 1.0   0.45x -> 0.58x     (+27%)
-           altitude 0.5   0.23x -> 0.35x     (+56%)
-           altitude 0.2   0.09x -> 0.19x     (+106%)
-           altitude 0.1   0.05x -> 0.12x     (+152%)
+    function currentAltitude() {
+        var g = MapBridge.globe();
+        if (!g) return REF_ALTITUDE;
+        try {
+            var pov = g.pointOfView();
+            return pov && isFinite(pov.altitude) ? pov.altitude : REF_ALTITUDE;
+        } catch (e) { return REF_ALTITUDE; }
+    }
 
-       So the deeper you go, the more of the marker survives, which is the range
-       the complaint was about. The floor is raised from 0.02 to 0.08 for the same
-       reason: 2% of a marker is not a small marker, it is an invisible one. */
-    var ZOOM_EXPONENT = 0.7;
+    // Marker radius in CSS pixels, from capacity. Same log curve as before, new units.
+    function markPxFor(c) {
+        var kw = Math.max(c.powerPotentialKw || 125, 125);
+        var t = (Math.log(kw) - Math.log(125)) / (Math.log(10000) - Math.log(125));
+        return MARK_MIN_PX + Math.max(0, Math.min(1, t)) * (MARK_MAX_PX - MARK_MIN_PX);
+    }
 
-    function zoomScale() {
-        // The clamps used to be 0.06 and 1.25. The upper one bit almost immediately — it caps
-        // at altitude 2.75, barely past the default 2.2 — so markers visibly stopped growing
-        // as soon as you pulled back, which reads as "zooming out doesn't resize them".
-        // Widened so the proportional response holds across the whole usable range; these are
-        // now genuine safety rails rather than working limits.
-        var ratio = currentAltitude() / REF_ALTITUDE;
-        if (!(ratio > 0)) ratio = 1;
-        return Math.max(0.08, Math.min(2.0, Math.pow(ratio, ZOOM_EXPONENT)));
+    /* Arc-degrees that render as one CSS pixel, right now. The fov and the
+       viewport height are READ rather than assumed: the globe container is 560px
+       on desktop, 380px below 900px and 350px below 600px, and a hard-coded
+       constant would silently bake one of the three in. */
+    function degPerPx() {
+        var g = MapBridge.globe(), h = 560, fov = 50;
+        try {
+            h = g.height() || 560;
+            var cam = g.camera();
+            if (cam && cam.fov) fov = cam.fov;
+        } catch (e) { /* globe not ready */ }
+        return 200 * Math.tan(fov * Math.PI / 360) * Math.max(currentAltitude(), 1e-4)
+               / (DEG_UNIT * h);
+    }
+
+    function zoomGrowth() {
+        return Math.pow(REF_ALTITUDE / Math.max(currentAltitude(), 1e-4), ZOOM_GROWTH);
+    }
+
+    function radiusDeg(d) {
+        return Math.min((d.px || MARK_MIN_PX) * zoomGrowth(), MARK_CAP_PX) * degPerPx();
+    }
+
+    /* HEIGHT IS A DIFFERENT QUESTION FROM WIDTH.
+     *
+     * The columns encode power potential -- and so does the radius, from the
+     * same powerPotentialKw and nothing else, so the height is REDUNDANT. It
+     * earns its place only from far enough out to see the columns side-on; up
+     * close it is 4,000 cylinders lying across the sites you descended to pick.
+     * Note the units differ too: radius is in degrees and altitude in globe
+     * radii, which makes the same number about 57x longer than it is wide, which
+     * is why they read as capsules rather than discs.
+     *
+     * Constant screen height would be altitude/REF, exactly as for width. The
+     * exponent above 1 makes them shrink FASTER than that, so they flatten
+     * toward discs on approach while staying full height at the default framing,
+     * where both curves pass through 1.0. A chart from orbit, a map from close in. */
+    var FLATTEN = 1.6;
+
+    function altScale() {
+        var alt = currentAltitude();
+        if (!isFinite(alt) || alt < 0) alt = REF_ALTITUDE;
+        return Math.max(0.01, Math.min(2.0, Math.pow(alt / REF_ALTITUDE, FLATTEN)));
     }
 
     // Re-applies the size accessors only. Cheap next to rebuilding pointsData, and coalesced to
@@ -3281,18 +3354,61 @@ var MapSourcing = (function() {
     function applyZoomScale() {
         var g = MapBridge.globe();
         if (!g) return;
-        var s = zoomScale();
+        // The deadband now watches the COMPOSITE pixels-to-degrees factor, since
+        // that is what actually changes what gets drawn.
+        var s = zoomGrowth() * degPerPx();
         // Ignore very small changes: re-assigning an accessor re-renders every point. 2% is
         // below the visible threshold but tight enough that a slow scroll still feels live.
         if (Math.abs(s - _zoomScale) / _zoomScale < 0.02) return;
         _zoomScale = s;
         try {
-            g.pointRadius(function(d) { return d.size * s; })
-             // Height scales with zoom exactly like radius. A floor here (it was 0.35)
-             // leaves columns 35% of full length while the camera is 200 km up, which
-             // renders as spikes streaking off the horizon. The small absolute floor
-             // just stops them collapsing to nothing.
-             .pointAltitude(function(d) { return Math.max(0.004, d.alt * s); });
+            var a = altScale();
+            g.pointRadius(radiusDeg)
+             .pointAltitude(function(d) { return Math.max(0.004, d.alt * a); });
+        } catch (e) { /* globe not ready */ }
+    }
+
+    /* POINT THE GLOBE AT THE DATA, AND STOP IT SPINNING.
+     *
+     * The globe inherits fleet mode's behaviour: it opens on whatever longitude
+     * it happens to be at and idles at 0.3 deg/s. For a fleet overview that is a
+     * hero animation. For prospecting it means the catalogue -- which is
+     * overwhelmingly North American -- sits on the LIMB at the framing you
+     * arrive on, edge-on, where radial columns pile into a slab hanging off the
+     * planet, and then drifts while you are trying to click something.
+     *
+     * Framed once, on the first render only. Re-framing on every filter change
+     * would yank the camera out from under someone who had just positioned it.
+     *
+     * The centroid is a VECTOR mean, not an arithmetic one. Averaging longitudes
+     * puts the centre of a set straddling the antimeridian in the middle of
+     * Africa; averaging unit vectors and converting back does not, and costs
+     * three multiplies per site. */
+    var _framed = false;
+
+    function frameOnData(globe, cands) {
+        if (_framed || !cands || !cands.length) return;
+        var x = 0, y = 0, z = 0, n = 0;
+        for (var i = 0; i < cands.length; i++) {
+            var c = cands[i];
+            if (c.lat === null || c.lng === null) continue;
+            var la = c.lat * Math.PI / 180, lo = c.lng * Math.PI / 180;
+            var cl = Math.cos(la);
+            x += cl * Math.cos(lo); y += cl * Math.sin(lo); z += Math.sin(la);
+            n++;
+        }
+        if (!n) return;
+        _framed = true;
+        x /= n; y /= n; z /= n;
+        var hyp = Math.sqrt(x * x + y * y);
+        // A set spread evenly over the planet averages to near the origin, where the
+        // direction is meaningless. Leave the camera alone rather than aim it at noise.
+        if (Math.sqrt(hyp * hyp + z * z) < 0.05) return;
+        var lat = Math.atan2(z, hyp) * 180 / Math.PI;
+        var lng = Math.atan2(y, x) * 180 / Math.PI;
+        try {
+            globe.controls().autoRotate = false;
+            globe.pointOfView({ lat: lat, lng: lng, altitude: REF_ALTITUDE }, 900);
         } catch (e) { /* globe not ready */ }
     }
 
@@ -3303,10 +3419,16 @@ var MapSourcing = (function() {
         try { ctrls = g.controls(); } catch (e) { return; }
         if (!ctrls || !ctrls.addEventListener) return;
         _zoomWatched = true;
-        ctrls.addEventListener('change', function() {
+        var schedule = function() {
             if (_zoomRaf) return;
             _zoomRaf = requestAnimationFrame(function() { _zoomRaf = null; applyZoomScale(); });
-        });
+        };
+        ctrls.addEventListener('change', schedule);
+        /* degPerPx() reads the container height, so a resize changes the marker
+           size even though the camera has not moved -- and OrbitControls does not
+           fire 'change' for a resize. Without this the markers keep the pixel
+           size they had at the old viewport height until you next touch the globe. */
+        window.addEventListener('resize', schedule);
     }
     var _zoomWatched = false;
 
@@ -3366,7 +3488,7 @@ var MapSourcing = (function() {
                 lat: c.lat, lng: c.lng,
                 // The focused column stands slightly proud and the rest recede, so the eye lands
                 // on it without the surrounding field disappearing.
-                size: sizeFor(c) * (isFocus ? 0.62 : 0.42),
+                px: markPxFor(c) * (isFocus ? FOCUS_MULT : 1),
                 alt: altFor(c) * (dim ? 0.35 : 1),
                 color: dim ? fade(colorFor(c), 0.18) : fade(colorFor(c), solidityFor(c)),
                 label: placeLabel(c),
@@ -3395,14 +3517,15 @@ var MapSourcing = (function() {
         var globe = MapBridge.globe();
         if (globe) {
             watchZoom();
-            _zoomScale = zoomScale();
+            frameOnData(globe, cands);
+            _zoomScale = zoomGrowth() * degPerPx();
             globe.pointsData(toGlobePoints(cands, focusId))
                 .pointLat('lat').pointLng('lng')
                 // Columns, not flat dots. Height carries power potential on a log scale so an
                 // 11 MW site visibly towers over a 150 kW one without a 70x bar. Flattening this
                 // to a constant made every prospect look identical from orbit.
-                .pointAltitude(function(d) { return Math.max(0.004, d.alt * _zoomScale); })
-                .pointRadius(function(d) { return d.size * _zoomScale; })
+                .pointAltitude(function(d) { return Math.max(0.004, d.alt * altScale()); })
+                .pointRadius(radiusDeg)
                 .pointColor('color')
                 .pointLabel(function(d) {
                     var op = operatorRecord(d);
@@ -5285,9 +5408,58 @@ var MapSourcing = (function() {
     // Called by map.js when a flare marker on the shared globe is clicked.
     function selectFromMap(id) { if (id) select(id, true); }
 
+    /* CLICKING NEAR A MARKER ON THE GLOBE IS CLICKING IT.
+     *
+     * The long note above wireNearestClick -- WCAG 2.5.8, why the target grows
+     * instead of the mark -- was written for the flat map and then only ever
+     * implemented there. The globe got nothing: globe.gl raycasts the cylinder
+     * geometry itself, so you had to physically hit a marker that measured 2.5
+     * pixels across. Sizing them in pixels fixed most of that; this is the rest.
+     *
+     * onGlobeClick fires only when the ray misses every marker, so this cannot
+     * double-fire with onPointClick and needs no equivalent of the flat map's
+     * _markerTook flag -- the two handlers are already mutually exclusive.
+     *
+     * THE FAR SIDE OF THE PLANET PROJECTS PERFECTLY HAPPILY. getScreenCoords is
+     * a bare projection with no occlusion test, so a flare in Australia lands on
+     * screen next to one in Texas and would win the nearest search from behind
+     * the globe. A surface point P is visible from a camera at C exactly when
+     * dot(P, C) >= R^2, which is one dot product per candidate. */
+    function globeNearest(lat, lng) {
+        var g = MapBridge.globe();
+        if (!g || MapBridge.mode() !== 'prospects') return false;
+        var here, cam;
+        try {
+            here = g.getScreenCoords(lat, lng, 0);
+            cam = g.camera();
+        } catch (e) { return false; }
+        var cp = cam && cam.position;
+        if (!here || !cp) return false;
+
+        var R2 = GLOBE_R * GLOBE_R;
+        var best = null, bestD = Infinity;
+        for (var i = 0; i < _filtered.length && i < MAP_DRAW_CAP; i++) {
+            var c = _filtered[i].candidate;
+            if (c.lat === null || c.lng === null) continue;
+            var w, sc;
+            try {
+                w = g.getCoords(c.lat, c.lng, 0);
+                if (!w || (w.x * cp.x + w.y * cp.y + w.z * cp.z) < R2) continue;
+                sc = g.getScreenCoords(c.lat, c.lng, 0);
+            } catch (e) { continue; }
+            if (!sc) continue;
+            var dx = sc.x - here.x, dy = sc.y - here.y;
+            var d = dx * dx + dy * dy;
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        if (best && Math.sqrt(bestD) <= TOLERANCE_PX) { select(best.id, true); return true; }
+        return false;
+    }
+
     return {
         boot: boot,
         selectFromMap: selectFromMap,
+        globeNearest: globeNearest,
         applyFilters: applyFilters,
         exitFocus: exitFocus,
         clearMapLayer: clearMapLayer,

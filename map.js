@@ -784,7 +784,18 @@ var _globeRef = null, _showGlobePopupRef = null;
             .showGlobe(true)
             .showAtmosphere(true)
             .atmosphereColor(ProtonTheme.globe.atmos)
-            .atmosphereAltitude(0.15);
+            .atmosphereAltitude(0.15)
+            /* NO TWEEN ON RESIZE. three-globe starts a fresh 1000ms eased Tween per
+               point whenever any of {lat, lng, alt, radius} changes, and the zoom
+               handler reassigns radius and altitude up to once per animation frame
+               while you drag. At 4,000 prospects a continuous zoom therefore queues
+               thousands of overlapping second-long tweens, which costs frames AND
+               leaves the markers up to a second behind the camera -- still travelling
+               toward a size the camera has already moved past. That lag reads as
+               "they shrink too much" all by itself, independently of what the scale
+               formula says. Zero means the size the maths asks for is the size drawn,
+               on the frame it is asked for. */
+            .pointsTransitionDuration(0);
 
         fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
             .then(function(r) { return r.json(); })
@@ -910,14 +921,26 @@ var _globeRef = null, _showGlobePopupRef = null;
                         if (!point.locData) return;
                         showGlobePopup(buildStatePopup(point.locData), point.lat, point.lng, evt);
                     })
-                    .onGlobeClick(function() {
+                    .onGlobeClick(function(coords) {
                         hideGlobePopup();
+                        /* A miss on the geometry is not necessarily a miss on the
+                           intent. In Prospects mode, hand the surface point to the
+                           nearest-marker search before treating this as "clicked
+                           empty space" -- the same 22px forgiveness the flat map
+                           has had, which the globe never got. */
+                        if (coords && typeof MapSourcing !== 'undefined' &&
+                            MapSourcing.globeNearest) {
+                            MapSourcing.globeNearest(coords.lat, coords.lng);
+                        }
                     });
 
                 globeInstance(globeContainer);
 
                 // Auto-rotate
-                globeInstance.controls().autoRotate = true;
+                /* Only fleet mode idles. In Prospects the globe is a work surface --
+                   4,000 targets you are trying to hit -- and a surface that moves
+                   while you aim at it is a surface that fights you. */
+                globeInstance.controls().autoRotate = (MapBridge.mode() !== 'prospects');
                 globeInstance.controls().autoRotateSpeed = 0.3;
                 globeInstance.controls().enableZoom = true;
 
@@ -931,12 +954,14 @@ var _globeRef = null, _showGlobePopupRef = null;
                     globeInstance.controls().autoRotate = false;
                     clearTimeout(idleTimer);
                 }, { passive: true });
-                globeContainer.addEventListener('mouseup', function() {
-                    idleTimer = setTimeout(function() { globeInstance.controls().autoRotate = true; }, 8000);
-                });
-                globeContainer.addEventListener('touchend', function() {
-                    idleTimer = setTimeout(function() { globeInstance.controls().autoRotate = true; }, 8000);
-                });
+                // Resume only where idling is wanted -- see the note on autoRotate above.
+                var resumeIdle = function() {
+                    idleTimer = setTimeout(function() {
+                        if (MapBridge.mode() !== 'prospects') globeInstance.controls().autoRotate = true;
+                    }, 8000);
+                };
+                globeContainer.addEventListener('mouseup', resumeIdle);
+                globeContainer.addEventListener('touchend', resumeIdle);
 
                 // Click anywhere in globe card (including background) dismisses popup
                 globeContainer.addEventListener('click', function(e) {
