@@ -63,13 +63,14 @@ var ProtonTheme = (function() {
     var series = ['#f7931a', '#e5e4e2', '#a9a8a5', '#c86f0a',
                   '#5c5b58', '#ffc46b', '#cbcac7', '#8a4a05'];
 
-    /* The persistence ramp, --persist-1..4 in tokens.css. Four steps of orange
-       from nearly-white to nearly-brown, for how many survey years a flare was
-       seen in. Mirrored here because it is consumed by Leaflet path options and
+    /* The persistence ramp, --persist-1..4 in tokens.css. Platinum through
+       orange, for how many survey years a flare was seen in: the two metal
+       ramps' own stops, so the scale separates by hue and not by lightness
+       alone. Mirrored here because it is consumed by Leaflet path options and
        by globe.gl point colours -- neither of which resolves a custom property,
        and both of which are then handed to fade(), which needs six-digit hex.
        Index 0 is the faintest, matching --persist-1. */
-    var persist = ['#8a4a05', '#c86f0a', '#f7931a', '#ffd9a0'];
+    var persist = ['#6b6a67', '#c06a08', '#f7931a', '#ffd9a0'];
 
     /* The globe's own surfaces, --globe-* in tokens.css. globe.gl hands every one
        of these to three.js as a material colour, so they are values rather than

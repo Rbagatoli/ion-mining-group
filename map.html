@@ -229,9 +229,16 @@
            detail columns instead of one. */
         body[data-map-mode="prospects"] .map-with-list {
             grid-template-columns:420px minmax(0,1fr); }
+        /* MIRRORED FOR THE TABLE. The scan list is narrow and the detail is wide;
+           the ranked table is the wide one, so in Table view the fixed column
+           swaps sides and the detail takes it. Giving fourteen columns the 420px
+           track would show about a third of them. */
+        body[data-map-mode="prospects"][data-res-view="table"] .map-with-list {
+            grid-template-columns:minmax(0,1fr) 420px; }
         body[data-map-mode="prospects"] .map-pane {
             grid-column:1 / -1; grid-row:1; }
-        body[data-map-mode="prospects"] #srcListCard {
+        body[data-map-mode="prospects"] #srcListCard,
+        body[data-map-mode="prospects"] [data-widget="prospect-table"] {
             grid-column:1; grid-row:2; }
         body[data-map-mode="prospects"] .src-detailpane {
             grid-column:2; grid-row:2; min-width:0; }
@@ -244,22 +251,23 @@
            whole width. */
         .src-detailpane { display:none; }
         body[data-detail][data-map-mode="prospects"] .src-detailpane { display:block; }
-        body:not([data-detail])[data-map-mode="prospects"] #srcListCard {
+        body:not([data-detail])[data-map-mode="prospects"] #srcListCard,
+        body:not([data-detail])[data-map-mode="prospects"] [data-widget="prospect-table"] {
             grid-column:1 / -1; }
         .src-detailpane .card { margin-bottom:0; }
         /* The count line carries the ordering now, so it is a heading rather than
            a footnote under the map. */
         .src-count { font-size:12px; color:var(--plat-300); }
-        /* The ranked table is the one thing that IS view-specific: it is the "every
-           column, sortable" surface and it needs the full width, so it appears below
-           the map area only in Table view. The scan list no longer disappears when it
-           does -- the list is how you get a detail pane to sit beside something, and
-           taking it away was what put the detail on its own row.
+        /* ONE RESULTS SURFACE AT A TIME. The scan list and the ranked table are two
+           views of the same prospects, and showing both put a short list of them
+           directly above a long one. Each view picks exactly one, and the detail pane
+           sits beside whichever it is.
 
            NOT inline styles: widget-settings.js writes style.display on every
            .widget-section after load, so anything set inline here would be wiped on the
            next reorder. A widget the user has hidden in widget settings stays hidden
            either way — that is their choice, and this rule only ever hides, never reveals. */
+        body[data-map-mode="prospects"][data-res-view="table"] #srcListCard { display:none; }
         body[data-map-mode="prospects"][data-res-view="list"] [data-widget="prospect-table"],
         body[data-map-mode="prospects"][data-res-view="owners"] [data-widget="prospect-table"] { display:none; }
         /* Below 900 px there is no room for a 420 px list beside a detail pane, so the two
@@ -272,6 +280,7 @@
                column 2 that no longer exists. */
             body[data-map-mode="prospects"] .map-pane,
             body[data-map-mode="prospects"] #srcListCard,
+            body[data-map-mode="prospects"] [data-widget="prospect-table"],
             body[data-map-mode="prospects"] .src-detailpane {
                 grid-column:1; grid-row:auto; }
             body[data-map-mode="prospects"] .map-pane #fleetMap,
@@ -1063,14 +1072,18 @@ blank on each site rather than being guessed.</p>
         </div>
     </div>
       </div>
-    </div>
 
-    <div id="globePopup" class="globe-popup" style="display:none;">
-        <button class="globe-popup-close" id="globePopupClose">&times;</button>
-        <div id="globePopupContent"></div>
-    </div>
-    </div>
+      <!-- INSIDE THE GRID, not after it. The ranked table is a results surface
+           like the scan list is, and the detail pane has to be able to sit
+           BESIDE whichever one is showing. While this lived outside .map-with-list
+           the detail had nothing to share a row with in Table view, so it spanned
+           the full width and landed above the table instead of next to it.
 
+           Cost, recorded because it is real: widget-settings.js positions widgets
+           with style.order, and order is ignored on a grid item that has been
+           placed explicitly. So "Ranked prospects" can no longer be dragged into a
+           different position among the page's widgets. It can still be hidden and
+           shown, which is the part that matters here. -->
     <!-- ===== RANKED TABLE (prospects mode) =====
          Shares filter state with the map and the side list — all three read the same
          MapSourcing.filtered() result, so they can never disagree about what matched. -->
@@ -1116,6 +1129,14 @@ blank on each site rather than being guessed.</p>
         </div>
     </div>
     </div>
+    </div>
+
+    <div id="globePopup" class="globe-popup" style="display:none;">
+        <button class="globe-popup-close" id="globePopupClose">&times;</button>
+        <div id="globePopupContent"></div>
+    </div>
+    </div>
+
 
     <!-- ===== PROSPECT DETAIL (prospects mode) ===== -->
     <!-- The Site Detail widget used to sit here, five sections down the page, and

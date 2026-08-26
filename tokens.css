@@ -223,14 +223,29 @@
     --globe-stroke: rgba(247, 147, 26, 0.40);
     --globe-stroke-dim: rgba(229, 228, 226, 0.10);
 
-    /* Flare persistence, as a real sequential scale. The palette this replaces
-       ran green → orange → brown → brown, which is not monotonic in luminance
-       and therefore was not a sequential scale at all: its two ends read as
-       equally dark. This one descends cleanly. */
+    /* Flare persistence, as a real sequential scale. The palette before last ran
+       green → orange → brown → brown, which is not monotonic in luminance and so
+       was not a sequential scale at all. The one after that was four oranges --
+       monotonic, but separated ONLY by lightness, which on a dark basemap at six
+       pixels across is close to no separation.
+
+       This is drawn from the two metal ramps, so the pins are made of the same
+       material as everything else: three stops of --metal-btc (#ffd9a0 at 0%,
+       #f7931a at 28%, #c06a08 at 48%) and one of --metal-plat-flat (#6b6a67).
+       Luminance still descends cleanly -- 221, 160, 117, 106 -- and the bottom
+       step now differs in HUE as well, which is the separation four oranges
+       could not give at six pixels across on a dark basemap.
+
+       ONLY the bottom step is platinum, and that is a deliberate ratio rather
+       than a compromise. 314 of 19,397 sites burn in every survey year, so the
+       low buckets hold the overwhelming majority; taking two steps to platinum
+       turned the whole map grey and made a page about flared gas look inert.
+       One platinum step reads as "we have seen this once, treat it as
+       unproven" while the map stays the colour of the thing it is about. */
     --persist-4: #ffd9a0;
     --persist-3: #f7931a;
-    --persist-2: #c86f0a;
-    --persist-1: #8a4a05;
+    --persist-2: #c06a08;
+    --persist-1: #6b6a67;
 
     /* ---- Chrome ------------------------------------------------------------ */
     /* The sticky nav sits over scrolling content, so it needs a floor of its own

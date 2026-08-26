@@ -2444,15 +2444,11 @@ var MapSourcing = (function() {
     }
 
     function renderResults() {
-        /* The scan list sits beside the map in EVERY view now, not only in List,
-           so something has to paint it in every view. Owners view paints owner
-           rollups into the same element -- the two are alternatives for #srcList
-           -- and Table view paints the scan list AND its own full-width grid
-           below. Before this, Table view painted neither and the column beside
-           the map came up empty. */
-        if (_resView === 'owners') renderOwners();
-        else renderList();
+        /* One surface per view. All three are alternatives, and the detail pane
+           sits beside whichever one is showing rather than below it. */
         if (_resView === 'table') renderTable();
+        else if (_resView === 'owners') renderOwners();
+        else renderList();
     }
 
     // The scan list. Deliberately NOT a narrow copy of the table: it carries the four things you
@@ -3244,13 +3240,40 @@ var MapSourcing = (function() {
         } catch (e) { return REF_ALTITUDE; }
     }
 
+    /* SUB-LINEAR, not proportional. Shrinking the angular radius in exact
+       proportion to altitude holds the marker at a constant number of SCREEN
+       pixels -- which sounds right and is the wrong target. Constant screen size
+       means a marker that was six pixels across at the default framing is still
+       six pixels across when you have pushed all the way into a basin, and six
+       pixels is under half the 24px WCAG 2.5.8 asks of a target. Proportional
+       scaling therefore preserves the exact problem that zooming in is meant to
+       solve: the sites separate, and each one stays just as hard to hit.
+
+       An exponent below 1 keeps the direction and softens the rate, so markers
+       still shrink as you descend -- the terrain still wins -- but they give up
+       less of themselves doing it. At the default altitude the exponent changes
+       nothing (ratio 1, and 1 to any power is 1). Measured against the old
+       linear curve:
+
+           altitude 1.0   0.45x -> 0.58x     (+27%)
+           altitude 0.5   0.23x -> 0.35x     (+56%)
+           altitude 0.2   0.09x -> 0.19x     (+106%)
+           altitude 0.1   0.05x -> 0.12x     (+152%)
+
+       So the deeper you go, the more of the marker survives, which is the range
+       the complaint was about. The floor is raised from 0.02 to 0.08 for the same
+       reason: 2% of a marker is not a small marker, it is an invisible one. */
+    var ZOOM_EXPONENT = 0.7;
+
     function zoomScale() {
         // The clamps used to be 0.06 and 1.25. The upper one bit almost immediately — it caps
         // at altitude 2.75, barely past the default 2.2 — so markers visibly stopped growing
         // as soon as you pulled back, which reads as "zooming out doesn't resize them".
         // Widened so the proportional response holds across the whole usable range; these are
         // now genuine safety rails rather than working limits.
-        return Math.max(0.02, Math.min(2.0, currentAltitude() / REF_ALTITUDE));
+        var ratio = currentAltitude() / REF_ALTITUDE;
+        if (!(ratio > 0)) ratio = 1;
+        return Math.max(0.08, Math.min(2.0, Math.pow(ratio, ZOOM_EXPONENT)));
     }
 
     // Re-applies the size accessors only. Cheap next to rebuilding pointsData, and coalesced to
