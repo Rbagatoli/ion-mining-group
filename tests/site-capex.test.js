@@ -222,6 +222,55 @@ SC.reset();
     ok('and is still positive — mining buildout remains', r.additional_usd > 0, r.additional_usd);
 })();
 
+/* ---- The balance-of-plant floor: an engine ages, its foundation does not ---------------
+ *
+ * site-capex.js contained ZERO references to existingGenerationKw before this. Generation was
+ * priced from the shutdown DATE alone, so 403 landfills with an engine on the pad rated at 90%+
+ * of site capacity were charged the full $900/kW for a new one -- $762,679,395 aggregate.
+ *
+ * And REFURB_RETAINED is a STEP, so one birthday decided the answer: constructed sites shut
+ * 10-20 years were 100% under the $2,731/kW break-even at a median $2,613/kW, while the >20 year
+ * bucket was 1% at $2,843/kW. The 0.20 -> 0.00 step is $230/kW and it lands across the line.
+ *
+ * The floor applies ONLY where a generator is documented, which is the whole point: measured
+ * after the change, >20 year sites WITH an engine are 88 pass / 0 fail and those without are
+ * 0 pass / 61 fail. A site with nothing standing still prices a full greenfield build. */
+(function () {
+    var OLD = { existing_generation_kw: 2000, development_stage: 'constructed',
+                shutdown_date: '1995-01-01' };
+    var NONE = { development_stage: 'constructed', shutdown_date: '1995-01-01' };
+
+    var withGen = comp(st(OLD), 'generation_equipment');
+    var noGen = comp(st(NONE), 'generation_equipment');
+    ok('a 30-year-old engine that is documented on site is NOT charged as greenfield',
+       withGen.usd < noGen.usd, withGen.usd + ' vs ' + noGen.usd);
+    near('and it retains the balance of plant, not the engine',
+         withGen.retained, SC.settings().bopRetained, 0.001);
+    ok('a site with no published generator still prices a full build',
+       noGen.usd > 0 && (noGen.retained === undefined || noGen.retained === null || noGen.retained === 0),
+       noGen.retained);
+
+    // The setting has to be READ, not silently undefined. It was: DEFAULT_SETTINGS referenced the
+    // constant before its var assignment ran, so the floor initialised to undefined, every
+    // comparison against it was false, and the entire change was inert while looking correct.
+    ok('bopRetained is a real number, not an undefined hoisted var',
+       typeof SC.settings().bopRetained === 'number' && SC.settings().bopRetained > 0,
+       SC.settings().bopRetained);
+
+    // Size gate: a token engine is not a plant you inherit.
+    var token = comp(st({ existing_generation_kw: 100, development_stage: 'constructed',
+                          shutdown_date: '1995-01-01' }), 'generation_equipment');
+    ok('a 100 kW engine on a 2 MW site does not earn the floor',
+       token.usd === noGen.usd, token.usd + ' vs ' + noGen.usd);
+
+    // Gas treatment must NOT inherit the generator's floor -- a siloxane skid is vessels and
+    // media with its own life, and giving it an engine's floor is the same category error
+    // running the other way.
+    var t1 = comp(st(OLD), 'gas_treatment'), t2 = comp(st(NONE), 'gas_treatment');
+    ok('gas treatment does not inherit the generator floor', t1.usd === t2.usd,
+       t1.usd + ' vs ' + t2.usd);
+})();
+
 // ---- Months to revenue ------------------------------------------------------------------
 (function () {
     var raw = st({ development_stage: 'raw_resource' });

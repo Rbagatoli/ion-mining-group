@@ -127,6 +127,12 @@ var SiteCapex = (function() {
                                               // still build the mining side
     };
 
+    /* Declared HERE, above DEFAULT_SETTINGS, because that object literal reads it.
+       Declaring it further down hoists the var but not the assignment, so the setting
+       silently initialised to undefined and the floor below never fired -- the whole
+       change was inert and the numbers did not move. */
+    var DEFAULT_BOP_RETAINED = 0.35;
+
     var DEFAULT_SETTINGS = {
         // Who owns the generator when the record does not say. 'producer' for raw resource is
         // Proton's actual deal structure and the reason $450/kW never included a genset; 'client'
@@ -146,6 +152,11 @@ var SiteCapex = (function() {
          *
          * Still a SETTING, and still overridable per record via generator_ownership, because
          * producer-owned flare deals do exist and this should price them when they do. */
+        // The share of installed generation cost that is NOT the engine -- foundations,
+        // enclosure, switchgear, controls, heat rejection -- and therefore does not age out with
+        // the engine's shutdown date. Floors the refurb curve where a generator is documented on
+        // site. See the note above refurbRetained().
+        bopRetained: DEFAULT_BOP_RETAINED,
         ownGenerationRawResource: 'client',
         ownGenerationBuilt: 'client',
         // Ships UNSET. Inventing a cost of capital would be exactly the sin this module exists to
@@ -222,6 +233,51 @@ var SiteCapex = (function() {
         return Math.max(0, (now - t) / (365.25 * 24 * 3600 * 1000));
     }
 
+    /* AN ENGINE AGES. THE CONCRETE IT BOLTS TO DOES NOT.
+     *
+     * REFURB_RETAINED prices a shut generator from its shutdown DATE, and at the bottom it
+     * returns 0.00 -- "a 1990 gas engine is scrap". That is true of the machine and false of the
+     * installation. `generation_equipment` at $900/kW is not an engine on a pallet; it is an
+     * engine plus the foundation, the enclosure or building, the switchgear, the controls, the
+     * exhaust and heat-rejection package and the gas train. When a project shuts down, the
+     * engine corrodes and those do not.
+     *
+     * So the retained fraction gets a FLOOR whenever the source publishes that a generator of
+     * adequate size is physically on the site. The engine may be worth nothing; the civils and
+     * the electrical package it sits in are not, and a buyer replacing the engine in place is
+     * not doing a greenfield build.
+     *
+     * WHAT THIS FIXES, measured on the real artifact before the change:
+     *
+     *   site-capex.js contained ZERO references to existingGenerationKw. Generation was priced
+     *   from the date and nothing else, so 403 landfills with an engine on the pad rated at 90%
+     *   or more of site capacity were charged the full $900/kW for a new one -- $762,679,395 in
+     *   aggregate.
+     *
+     *   And because the table is a STEP, one birthday decided the answer. Constructed sites shut
+     *   10-20 years were 100% capital-positive at a median $2,613/kW; the >20 year bucket was 1%
+     *   positive at $2,843/kW. The 0.20 -> 0.00 step adds $230/kW and the break-even line sits at
+     *   $2,731/kW, so it lands squarely across it. 149 of the 306 negative sites are on the far
+     *   side of that one boundary.
+     *
+     * The floor is 0.35. Published cost breakdowns for reciprocating gas-engine plants put the
+     * engine-generator package at roughly half to two-thirds of installed cost, with foundations,
+     * building, switchgear, controls and heat rejection making up the rest. 0.35 is the
+     * conservative end of "the rest", and it is a SETTING so it can be argued with.
+     *
+     * It applies only where a generator is actually documented. A site with no published
+     * generation still prices a full greenfield build, which is correct -- there is nothing
+     * standing there to inherit. */
+
+    function generatorOnSite(rec, capacityKw) {
+        var gen = num(pick(rec, 'existingGenerationKw', 'existing_generation_kw'));
+        if (gen === null || gen <= 0) return false;
+        // Adequate size, not merely present: a 200 kW engine on a 5 MW site is not a plant you
+        // are inheriting, it is a component you would replace anyway.
+        if (capacityKw && capacityKw > 0 && gen < capacityKw * 0.5) return false;
+        return true;
+    }
+
     function refurbRetained(years) {
         if (years === null) return null;      // unknown age -> unknown condition -> unknown cost
         for (var i = 0; i < REFURB_RETAINED.length; i++) {
@@ -292,6 +348,14 @@ var SiteCapex = (function() {
                     return;
                 }
                 r = refurb;
+                /* The balance-of-plant floor -- see the note above refurbRetained(). Applied to
+                   the GENERATION line only: the foundation, enclosure, switchgear and controls
+                   survive an engine that does not. Gas treatment deliberately does NOT get it;
+                   a siloxane skid is vessels and media, it has its own life, and giving it a
+                   generator's floor would be the same category error in the other direction. */
+                if (retainKey === 'generation' && hasGenerator && r < bopFloor) {
+                    r = bopFloor;
+                }
             }
             if (r >= 1) {
                 add(id, label, 'avoided', 0, basisText, 'inherited at the ' + stage.replace(/_/g, ' ') + ' stage',
@@ -306,6 +370,9 @@ var SiteCapex = (function() {
             }
             add(id, label, 'incurred', cost, note, null, r > 0 ? { avoided_usd: fullUsd * r, retained: r } : null);
         }
+
+        var hasGenerator = generatorOnSite(rec, kw);
+        var bopFloor = settings().bopRetained;
 
         // 1. Site acquisition. A real figure always wins; otherwise the stage default, clearly
         //    flagged as an assumption.
