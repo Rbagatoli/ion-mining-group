@@ -121,6 +121,14 @@ var SiteData = (function() {
             quoted_rate: null,
             quoted_rate_units: null,
 
+            /* CONDITION VERIFIED ON SITE — the one fact no dataset can supply.
+               LMOP records that a gas plant was INSTALLED. It never records whether the gensets
+               still turn, whether the switchgear was cannibalised, or whether the wellfield was
+               capped. site-infrastructure.js discounts unverified equipment hard for exactly that
+               reason, and this is the field an inspection clears it with. Null, not false: "not
+               yet looked at" and "looked at and it is scrap" are different answers. */
+            infra_condition_verified: null,
+
             take_or_pay_pct: null,
             contract_term_years: null,
             generator_ownership: null,

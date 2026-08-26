@@ -388,6 +388,57 @@
         .src-coll.s-shutdown  { color:var(--btc-300); font-weight:600; }
         .src-coll.s-installed { color:var(--plat-200); }
         .src-coll.s-none      { color:var(--warn); }
+        /* The inventory's own vocabulary, which overlaps the collection column's by one word.
+           Colour carries the same meaning in both: orange = capital already in the ground and
+           idle, platinum = there but somebody is using it, warn = you are paying for it. */
+        .src-coll.s-shutdown, .src-coll.s-mandated { color:var(--btc-300); font-weight:600; }
+        .src-coll.s-present   { color:var(--plat-200); }
+        .src-coll.s-absent    { color:var(--warn); }
+        .src-coll.s-unknown   { color:var(--text-dim); }
+
+        /* The compact inventory glyph in the table. Upper case = running, lower case = installed
+           and shut — which is the BEST state in the set, so it is deliberately not dimmed. */
+        .src-infra { font-family:var(--mono); font-size:11.5px; letter-spacing:0.04em;
+                     color:var(--plat-200); }
+        .src-infra .s-mandated { color:var(--btc-300); }
+        /* An unverified capital figure is never a bare number, anywhere it appears. */
+        .src-unver { color:var(--warn); font-weight:600; cursor:help; }
+
+        .src-capsum { display:flex; flex-wrap:wrap; gap:18px; margin:2px 0 10px; }
+        .src-capsum > div { display:flex; flex-direction:column; gap:2px; }
+        .src-capsum .k { font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em;
+                         color:var(--text-dim); }
+        .src-capsum .v { font-size:17px; font-weight:600; color:var(--text); }
+        .src-capsum .v.pos { color:var(--btc-300); }
+
+        /* Loud on purpose. This is the sentence that stops a shortlist figure being mistaken for
+           a diligence figure, and it sits above the table it qualifies rather than under it. */
+        .src-capverdict {
+            font-size:11.5px; line-height:1.5; color:var(--warn);
+            background:var(--warn-wash); border:1px solid var(--warn-line);
+            border-radius:var(--radius); padding:7px 9px; margin:0 0 10px;
+        }
+        .src-capverdict.verified { color:var(--pos); background:var(--pos-wash);
+                                   border-color:var(--pos-line); }
+        .src-verifybtn {
+            display:block; margin-top:7px; background:transparent;
+            border:1px solid var(--warn-line); color:var(--warn);
+            border-radius:var(--radius); padding:4px 9px; cursor:pointer;
+            font:inherit; font-size:11px; text-transform:uppercase; letter-spacing:0.08em;
+        }
+        .src-verifybtn:hover { border-color:var(--warn); background:var(--warn-wash); }
+
+        .src-captable { width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:8px; }
+        .src-captable th {
+            text-align:left; font-weight:600; font-size:10px; text-transform:uppercase;
+            letter-spacing:0.1em; color:var(--text-dim); padding:0 8px 5px 0;
+            border-bottom:1px solid var(--line);
+        }
+        .src-captable td { padding:5px 8px 5px 0; border-bottom:1px solid var(--line);
+                           color:var(--text-mid); }
+        .src-captable th.num, .src-captable td.num { text-align:right; padding-right:0;
+                                                     font-family:var(--mono); }
+        .src-captable tbody tr:last-child td { border-bottom:none; }
 
         .src-collfilter { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
         .src-collbtn {
@@ -951,6 +1002,7 @@ blank on each site rather than being guessed.</p>
                     <option value="combined">Acquisition rank</option>
                     <option value="power_potential">Size</option>
                     <option value="jurisdiction">Jurisdiction</option>
+                    <option value="capital_avoided">Capital avoided</option>
                 </select>
             </div>
         </div>
@@ -1145,6 +1197,9 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="years" class="num">Years</th>
                         <th data-sort="stage">Stage</th>
                         <th data-sort="collection">Collection</th>
+                        <th data-sort="infraverified">Infra</th>
+                        <th data-sort="capavoided" class="num">Capital avoided</th>
+                        <th data-sort="caprequired" class="num">Capital required</th>
                         <th data-sort="opportunity" class="num">Opportunity</th>
                         <th data-sort="acquirability" class="num">Acquirable</th>
                         <th data-sort="combined" class="num">Combined</th>
@@ -1374,21 +1429,21 @@ commercial terms are your assumptions.</p>
 <script src="./site-engine.js?v=338"></script>
 <script src="./site-flags.js?v=338"></script>
 <script src="./site-scoring.js?v=338"></script>
-<script src="./site-opportunity.js?v=338"></script>
+<script src="./site-opportunity.js?v=368"></script>
 <script src="./site-acquirability.js?v=338"></script>
-<script src="./site-capex.js?v=338"></script>
-<script src="./site-infrastructure.js?v=367"></script>
+<script src="./site-capex.js?v=368"></script>
+<script src="./site-infrastructure.js?v=368"></script>
 <script src="./site-availability.js?v=338"></script>
 <script src="./site-sources.js?v=338"></script>
-<script src="./site-model.js?v=338"></script>
+<script src="./site-model.js?v=368"></script>
 <script src="./site-catalog.js?v=338"></script>
 <script src="./source-flare-gas.js?v=338"></script>
 <script src="./permit-index.js?v=338"></script>
 <script src="./site-links.js?v=338"></script>
 <script src="./source-facility.js?v=338"></script>
-<script src="./source-landfill.js?v=338"></script>
-<script src="./lmr.js?v=360"></script>
-<script src="./source-landfill-ca.js?v=360"></script>
+<script src="./source-landfill.js?v=368"></script>
+<script src="./lmr.js?v=368"></script>
+<script src="./source-landfill-ca.js?v=368"></script>
 <script src="./ghgrp-contacts.js?v=338"></script>
 <script src="./contact-routes.js?v=350"></script>
 <script src="./prospect-store.js?v=338"></script>
@@ -1414,7 +1469,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=338"></script>
-<script src="./map-sourcing.js?v=338"></script>
+<script src="./map-sourcing.js?v=368"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

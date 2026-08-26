@@ -1269,6 +1269,33 @@ var MapSourcing = (function() {
                 setSort('combined');
             }
         },
+        /* SOMEBODY ELSE ALREADY BUILT IT -- the card this whole reweight exists to produce.
+
+           Ranked by capital avoided in DOLLARS. Modelled against this platform's own calculator,
+           at 5 MW a $1M cut in infrastructure moves the BTC-accumulation crossover about three
+           years, while a 2 cent/kWh cut in power cost moves it about two. The money somebody
+           else already spent outranks the quality of the gas.
+
+           Both landfill adapters, because the inheritance comes from two different directions:
+           a US site where a gas plant was built and shut, and a Canadian one where the operator
+           is legally obliged to build collection whether or not you show up.
+
+           The 1 MW floor is commercial, not regulatory. Below it the fixed costs of a deal --
+           diligence, legal, mobilisation -- do not amortise, whatever is standing on the site. */
+        {
+            id: 'lowest-capital',
+            label: 'Somebody else already built it',
+            hint: 'Collection and gensets already in the ground, richest first',
+            set: function() {
+                _srcFilter = {};
+                _srcFilter['lmop-landfill'] = true;
+                _srcFilter['eccc-landfill-ca'] = true;
+                renderSourceFilter();
+                renderCollectionFilter();
+                setSize(1000, 5000);
+                setSort('capital_avoided');
+            }
+        },
         /* CANADA. A different KIND of opportunity from the four around it, which is why it
            earns its own card rather than a country checkbox on one of them.
 
@@ -1784,6 +1811,7 @@ var MapSourcing = (function() {
     }
 
     function applyFilters(changed) {
+        clearCapitalCache();
         if (reconcileGeo(typeof changed === 'string' ? changed : null)) saveFilters();
         var f = currentFilters();
         var stats = { acqSuppressed: 0 };
@@ -1809,9 +1837,16 @@ var MapSourcing = (function() {
            visible numbers read 55, 84, 84, 78, 79 and looked broken, because it
            was ordered by a number that is nowhere on screen.
            The one the reader can see is the one that has to do the ordering. */
-        if (sortBy === 'combined' || sortBy === 'score') {
+        if (sortBy === 'combined' || sortBy === 'score' || sortBy === 'capital_avoided') {
+            /* CAPITAL AVOIDED SORTS ON DOLLARS, NOT ON THE SCORE. The scorer uses the SHARE of
+               the build avoided, so a 500 kW site inheriting everything outranks a 5 MW site
+               inheriting most of it -- correct for ranking quality, wrong for ranking a
+               shortlist you are going to spend money against. Here the reader is asking "where
+               is the most capital already in the ground", and that is an absolute figure. */
             var valueFor = (sortBy === 'combined')
                 ? combinedFor
+                : (sortBy === 'capital_avoided')
+                ? function(c) { var r = capitalFor(c); return r ? r.avoidedUsd : null; }
                 : function(c) { return opportunityFor(c).scoreRaw; };
             _filtered.sort(function(a, b) {
                 var av = valueFor(a.candidate), bv = valueFor(b.candidate);
@@ -2989,7 +3024,8 @@ var MapSourcing = (function() {
         score:           'best overall score first',
         combined:        'best acquisition rank first',
         power_potential: 'largest first',
-        jurisdiction:    'friendliest jurisdiction first'
+        jurisdiction:    'friendliest jurisdiction first',
+        capital_avoided: 'most capital already spent first'
     };
     function sortDescription() {
         var el = document.getElementById('fSort');
@@ -3179,6 +3215,88 @@ var MapSourcing = (function() {
         return '<span class="src-coll s-' + st + '">' + COLLECTION_LABEL[st] + '</span>';
     }
 
+    /* The rate band everything on this page is priced at. site-infrastructure.js supports low
+       (0.7x) and high (1.4x) as a stress test, and this stays on mid because a shortlist wants
+       one number rather than a range -- the range belongs in diligence, against a real quote.
+       Global rather than per-site if it ever becomes a control, because the uncertainty is
+       correlated: a site expensive for one reason is usually expensive for most of them. */
+    var _capBand = 'mid';
+
+    /* CAPITAL AVOIDED, memoised per render.
+     *
+     * capitalAvoided() walks five components and reads the capex rate table, and the table calls
+     * it up to four times per row across the columns and the sort. At 250 rows that is a thousand
+     * passes for a figure that cannot change between them. The cache is cleared whenever the
+     * result set is rebuilt, for the same reason evaluateAt's is. */
+    var _capCache = {};
+    function clearCapitalCache() { _capCache = {}; }
+
+    function capitalFor(c) {
+        if (!c || c.energyType !== 'landfill_gas') return null;
+        if (typeof SiteInfrastructure === 'undefined') return null;
+        if (Object.prototype.hasOwnProperty.call(_capCache, c.id)) return _capCache[c.id];
+        /* A SITE THE USER HAS INSPECTED IS PRICED AS INSPECTED. The flag lives on the saved
+           record rather than on the candidate, because the candidate is rebuilt from the source
+           artifact on every load and would forget it. */
+        var saved = findSavedSite(c.id) || {};
+        var probe = c;
+        if (saved.infra_condition_verified === true) {
+            probe = Object.assign({}, c, { sourceDetail:
+                Object.assign({}, c.sourceDetail || {}, { infraConditionVerified: true }) });
+        }
+        /* PRICED ON USABLE kW, NOT THE HEADLINE RATING. Capital is sized to what you can put
+           miners on -- the gross figure is a resource number and on a large minority of landfills
+           it is roughly double what the site delivers. The SCORE is unaffected either way: it
+           uses the share avoided, and both sides of that fraction scale linearly with kW. */
+        var r = SiteInfrastructure.capitalAvoided(probe, {
+            kw: usableKwFor(c),
+            asOf: new Date().toISOString().slice(0, 10),
+            band: _capBand
+        });
+        _capCache[c.id] = r;
+        return r;
+    }
+
+    /* A COMPACT INVENTORY, because a reader scanning 250 rows needs the shape at a glance and
+       cannot read five state fields per row. C = collection, G = generation, and a lower-case
+       letter means the thing is there but SHUT -- which is the best state in the set, so it is
+       not hidden behind the same glyph as absent. */
+    function infraSummary(c) {
+        var r = capitalFor(c);
+        if (!r) return '<span class="src-gap">--</span>';
+        var inv = r.inventory, bits = [];
+        if (inv.collection === 'present') bits.push('C');
+        else if (inv.collection === 'shutdown') bits.push('c');
+        else if (inv.collection === 'mandated') bits.push('<span class="s-mandated">M</span>');
+        if (inv.generation === 'present') bits.push('G');
+        else if (inv.generation === 'shutdown') bits.push('g');
+        if (!bits.length) {
+            /* "none" and "not published" are different answers and the column must not merge
+               them. LMOP saying collectionSystem = No is an assertion worth acting on; LMOP
+               saying nothing is an absence of evidence, and printing "none" for it would invent
+               a fact the dataset never stated. */
+            var stated = inv.collection !== 'unknown' || inv.generation !== 'unknown';
+            return stated ? '<span class="src-gap">none</span>'
+                          : '<span class="src-gap">--</span>';
+        }
+        return '<span class="src-infra" title="C collection, G generation; lower case = ' +
+               'installed but shut down; M = mandated">' + bits.join('+') + '</span>';
+    }
+
+    function capitalCell(c, which) {
+        var r = capitalFor(c);
+        if (!r || r.avoidedUsd === null) return '<span class="src-gap">--</span>';
+        var v = which === 'required' ? r.requiredUsd : r.avoidedUsd;
+        var s = '$' + Math.round(v / 1000).toLocaleString() + 'K';
+        if (which === 'required') return s;
+        /* NEVER A BARE NUMBER. The whole thesis rests on this equipment being usable and the
+           dataset cannot tell you that, so an unverified figure is marked wherever it appears. */
+        return s + (r.conditionVerified
+            ? ' <span class="src-verified" title="condition verified on site">&#10003;</span>'
+            : ' <span class="src-unver" title="unverified estimate — condition not estab' +
+              'lished; LMOP records that equipment was installed, never that it still works">~</span>');
+    }
+
     function tableSortValue(row, key) {
         var c = row.candidate;
         switch (key) {
@@ -3206,6 +3324,14 @@ var MapSourcing = (function() {
                 var cs = collectionStatusOf(c);
                 return cs === null ? null
                      : (cs === 'shutdown' ? 0 : cs === 'installed' ? 1 : 2);
+            // The primary working number, so it sorts on the real dollars rather than the
+            // confidence-adjusted score the ranking uses.
+            case 'capavoided':
+                var ca = capitalFor(c); return ca && ca.avoidedUsd !== null ? ca.avoidedUsd : null;
+            case 'caprequired':
+                var cr = capitalFor(c); return cr && cr.requiredUsd !== null ? cr.requiredUsd : null;
+            case 'infraverified':
+                var cv = capitalFor(c); return cv ? (cv.conditionVerified ? 1 : 0) : null;
             case 'stage':
                 var st = SiteOpportunity.stageOf(c);
                 return st === null ? null : SiteOpportunity.STAGE_SCORES[st];
@@ -3288,7 +3414,7 @@ var MapSourcing = (function() {
         }
 
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="15" style="padding:6px 10px 14px;">' +
+            body.innerHTML = '<tr><td colspan="18" style="padding:6px 10px 14px;">' +
                 emptyStateHtml('No prospects match.') + '</td></tr>';
             return;
         }
@@ -3342,6 +3468,9 @@ var MapSourcing = (function() {
                 '<td class="num">' + (c.yearsSeen === null ? '--' : c.yearsSeen + '/' + (c.yearsTotal || '?')) + '</td>' +
                 '<td>' + stageCell(c) + '</td>' +
                 '<td>' + collectionCell(c) + '</td>' +
+                '<td>' + infraSummary(c) + '</td>' +
+                '<td class="num">' + capitalCell(c, 'avoided') + '</td>' +
+                '<td class="num">' + capitalCell(c, 'required') + '</td>' +
                 '<td class="num">' + (opp.score === null
                     ? '<span class="src-gap">--</span>'
                     : '<span class="src-oppcell">' + opp.score + '</span>' +
@@ -4603,6 +4732,82 @@ var MapSourcing = (function() {
             row('Jurisdiction', esc(j.label || countryName(c.iso3)) + ' ' + tierBadge(c.iso3)) +
             '</dl></div>';
 
+        /* ---- Infrastructure & capital ------------------------------------------------
+           THE ARITHMETIC, NOT JUST THE ANSWER.
+
+           A capital-avoided figure is a claim about equipment nobody on this side has seen, built
+           from five inferences and a condition discount. Printing only the total would ask the
+           reader to trust it. Printing the working lets them disagree with one line of it, which
+           is the only way a number like this survives contact with a real site visit.
+
+           It sits directly above Capital -- what YOU would spend -- because the two are the same
+           ledger read from opposite ends. */
+        var cap = capitalFor(c);
+        if (cap && cap.avoidedUsd !== null) {
+            mark('capacity');
+            html += '<div class="src-detail src-detail-wide">' +
+                '<div class="section-label">Infrastructure &amp; capital</div>';
+
+            html += '<div class="src-capsum">' +
+                '<div><span class="k">Capital avoided</span><span class="v pos">' +
+                    fmtUsd(cap.avoidedUsd) + '</span></div>' +
+                '<div><span class="k">Still to spend</span><span class="v">' +
+                    fmtUsd(cap.requiredUsd) + '</span></div>' +
+                '<div><span class="k">Full build</span><span class="v">' +
+                    fmtUsd(cap.totalBuildUsd) + '</span></div>' +
+                '</div>';
+
+            /* THE CONDITION LINE COMES FIRST, because it governs every figure under it. LMOP
+               records that equipment was INSTALLED and nothing whatever about whether it still
+               works; a shut project's gensets may be serviceable, cannibalised or scrap, and
+               only somebody standing on the pad can tell you which. */
+            html += cap.conditionVerified
+                ? '<div class="src-capverdict verified">Condition verified on site — components ' +
+                  'valued in full, with no discount for doubt.</div>'
+                : '<div class="src-capverdict">UNVERIFIED ESTIMATE. The dataset records that this ' +
+                  'equipment was installed, not that it still works. Every figure below carries a ' +
+                  'condition discount, and only an inspection lifts it.' +
+                  '<button type="button" class="src-verifybtn" id="srcVerifyInfra">' +
+                  'Mark verified after inspection</button></div>';
+
+            html += '<table class="src-captable"><thead><tr><th>Component</th><th>On site</th>' +
+                '<th class="num">Full cost</th><th class="num">Kept</th>' +
+                '<th class="num">Avoided</th></tr></thead><tbody>';
+            for (var xi = 0; xi < cap.components.length; xi++) {
+                var xc = cap.components[xi];
+                html += '<tr><td>' + esc(xc.label) + '</td>' +
+                    '<td><span class="src-coll s-' + esc(xc.state) + '">' + esc(xc.state) + '</span></td>' +
+                    '<td class="num">' + (xc.fullUsd ? fmtUsd(xc.fullUsd) : gap('--')) + '</td>' +
+                    '<td class="num">' + (xc.discount ? Math.round(xc.discount * 100) + '%' : gap('--')) + '</td>' +
+                    '<td class="num">' + (xc.avoidedUsd ? fmtUsd(xc.avoidedUsd) : gap('--')) + '</td></tr>';
+            }
+            html += '</tbody></table>';
+
+            if (cap.mandateFactor !== null) {
+                /* A mandate only helps if you arrive before the operator commits to a flare
+                   design. Once that engineering is let, the collection being built is sized to
+                   burn the gas, and adding generation afterwards is a second project on a
+                   budget that has already closed. */
+                html += '<div class="src-sub2">Mandated capital, timed: ' +
+                    (cap.mandateMonths === null ? 'no deadline established'
+                        : cap.mandateMonths + ' months to the deadline') +
+                    ' — counted at ' + Math.round(cap.mandateFactor * 100) + '%. The operator ' +
+                    'funds collection either way; the value is in arriving before the flare is ' +
+                    'designed.</div>';
+            }
+
+            html += '<div class="src-sub2">Priced at the capex model\'s ' + esc(cap.band) +
+                ' band, the same rates the Capital section below charges you. Inventory ' +
+                'confidence ' + esc(cap.confidence) + ', inferred from ' +
+                cap.inventory.evidence.length + ' published field' +
+                (cap.inventory.evidence.length === 1 ? '' : 's') +
+                (cap.inventory.evidence.length
+                    ? ': ' + esc(cap.inventory.evidence.map(function(ev) {
+                          return ev.field + ' = ' + ev.value; }).join('; '))
+                    : '') + '.</div>';
+            html += '</div>';
+        }
+
         // ---- Capital ---------------------------------------------------------------
         var cx = m.capex;
         if (cx && cx.incurred_usd !== null) {
@@ -5349,6 +5554,31 @@ var MapSourcing = (function() {
             });
         }
 
+        /* MARKING A SITE VERIFIED, which is an assertion about the world and is therefore
+           WRITTEN DOWN rather than held in a variable. It changes the capital-avoided figure by
+           millions on a large site, so it has to survive a reload and be visible beside the
+           contact notes -- which means it belongs on the saved record, not on the candidate.
+
+           SiteData.update() only mutates a record that already exists, so a prospect nobody has
+           saved yet is promoted first. That is the right side effect: you do not inspect a site
+           you are not tracking. */
+        var verify = document.getElementById('srcVerifyInfra');
+        if (verify) verify.addEventListener('click', function() {
+            var cand = _selectedId ? ProspectStore.get(_selectedId) : null;
+            if (!cand) return;
+            var rec = findSavedSite(cand.id);
+            if (!rec) {
+                try { rec = SiteData.fromCandidate(cand); }
+                catch (e) { status('Could not save this site: ' + e.message, 'var(--neg)'); return; }
+            }
+            SiteData.update(rec.id, { infra_condition_verified: true });
+            clearCapitalCache();
+            status('Marked verified — capital avoided is now valued in full, and this site is ' +
+                   'tracked under My sites.', 'var(--plat-200)');
+            renderDetail();
+            applyFilters();
+        });
+
         var save = document.getElementById('srcSave');
         if (!save) return;
         save.addEventListener('click', function() {
@@ -5572,7 +5802,7 @@ var MapSourcing = (function() {
         } catch (e) {
             status('Could not load prospects: ' + e.message, 'var(--neg)');
             var l = document.getElementById('srcTableBody');
-            if (l) l.innerHTML = '<tr><td colspan="15" class="src-gap" style="padding:14px;">' +
+            if (l) l.innerHTML = '<tr><td colspan="18" class="src-gap" style="padding:14px;">' +
                 'Prospects unavailable. Run <code>node tools/build-flare-catalog.js</code>.</td></tr>';
             return;
         }
