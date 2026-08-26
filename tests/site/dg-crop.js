@@ -35,11 +35,25 @@ const WRAPS = {
     'ion':   ['scene-landfill-ion', 'scene-pad-ion'],
 };
 
+/* THE GROUND IS A BACKDROP, AND IT IS THE ONE THING ALLOWED OUT OF FRAME.
+ *
+ * The landfill and pad scenes stand their plant on a perspective ground plane that sweeps
+ * x 123..1157 - almost the whole viewBox - while the plant itself spans 274..1006. Sizing the
+ * crop to contain everything therefore sized it to the grid, and those two figures rendered
+ * in a 170px window against 237px for the rest of the chain.
+ *
+ * So the containment rule is split rather than relaxed. The plant must be inside the window,
+ * exactly as before; the ground may run off the edges, which is what a backdrop is for and
+ * what it already does on every other figure. Relaxing it wholesale would have let a crop
+ * slice the flare in half and still pass. */
+const BACKDROP = new Set(['ground']);
+
 /* Every number a frame puts on screen, as a bounding box. Leaders and callout anchors are
    excluded deliberately: they run out to the gutters the crop exists to remove. */
 function extentOf(mod) {
     const D = require(REPO_ROOT + 'site/' + mod + '.js');
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    let gx0 = Infinity, gx1 = -Infinity;
     const eat = (d) => {
         if (typeof d !== 'string') return;
         const n = d.match(/-?\d+(?:\.\d+)?/g);
@@ -62,10 +76,23 @@ function extentOf(mod) {
     /* 72 steps: every 5 degrees, the same resolution dg-regress.js sweeps at. */
     for (let i = 0; i <= 72; i++) {
         const f = D.frame(Math.PI * 2 * (i / 72), null);
-        walk(f.slots, 0);
+        (f.slots || []).forEach((slot) => {
+            if (BACKDROP.has(slot.id)) {
+                /* Measured separately so the report can still say how far it reaches, and so
+                   a scene that renames its ground plane shows up as a sudden jump in the
+                   plant's own extent rather than passing quietly. */
+                const save = [x0, x1, y0, y1];
+                x0 = Infinity; x1 = -Infinity;
+                walk(slot, 0);
+                gx0 = Math.min(gx0, x0); gx1 = Math.max(gx1, x1);
+                [x0, x1, y0, y1] = save;
+                return;
+            }
+            walk(slot, 0);
+        });
         walk(f.flow, 0);
     }
-    return { x0, x1, y0, y1, VB: D.VB };
+    return { x0, x1, y0, y1, gx0, gx1, VB: D.VB };
 }
 
 /* Read the crop back out of the stylesheet, per wrap class.
@@ -121,10 +148,12 @@ console.log('  scene extents, swept over a full revolution:');
 for (const [cls, mods] of Object.entries(WRAPS)) {
     /* The union across every scene this wrap has to hold. */
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, VB = null;
+    let gx0 = Infinity, gx1 = -Infinity;
     mods.forEach(m => {
         const e = extentOf(m);
         x0 = Math.min(x0, e.x0); x1 = Math.max(x1, e.x1);
         y0 = Math.min(y0, e.y0); y1 = Math.max(y1, e.y1);
+        gx0 = Math.min(gx0, e.gx0); gx1 = Math.max(gx1, e.gx1);
         VB = e.VB;
     });
     /* Clamp to the viewBox. Some scenes emit geometry past the edge — the landfill reaches
@@ -133,13 +162,15 @@ for (const [cls, mods] of Object.entries(WRAPS)) {
     x0 = Math.max(0, x0); x1 = Math.min(VB.w, x1);
     y0 = Math.max(0, y0); y1 = Math.min(VB.h, y1);
     const crop = cropOf(cls);
-    console.log('  .dg-wrap--' + cls.padEnd(6) + ' draws x ' +
+    const hasGround = gx0 < Infinity;
+    console.log('  .dg-wrap--' + cls.padEnd(6) + ' plant x ' +
         Math.round(x0) + '..' + Math.round(x1) + '  y ' + Math.round(y0) + '..' + Math.round(y1) +
+        (hasGround ? '   ground x ' + Math.round(gx0) + '..' + Math.round(gx1) + ' (may bleed)' : '') +
         '   of a ' + VB.w + 'x' + VB.h + ' viewBox');
     if (!crop) { ok(false, '  has a mobile crop in styles.css'); continue; }
     const win = windowOf(crop, VB);
     ok(win.x0 <= x0 && win.x1 >= x1,
-       '  the crop keeps the whole drawing',
+       '  the crop keeps the whole plant',
        'window x ' + Math.round(win.x0) + '..' + Math.round(win.x1) +
        '  clear by ' + Math.round(x0 - win.x0) + '/' + Math.round(win.x1 - x1) + ' units');
     /* And it has to be worth doing. Cropping nothing is safe and pointless: the whole reason

@@ -2839,8 +2839,21 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-wrap--site .site-diagram { width: 166.23%; margin: 0 -33.12%; }   /* draws x 275..1005 */
     .dg-wrap--cont .site-diagram { width: 164.95%; margin: 0 -32.47%; }   /* draws x 272..1008 */
     .dg-wrap--asic .site-diagram { width: 184.44%; margin: 0 -42.22%; }   /* draws x 313..967  */
+    /* CROPPED TO THE PLANT, NOT TO THE GROUND IT STANDS ON.
+     *
+     * These two were visibly smaller than the other figures in the chain - a 170px window
+     * against 237px for "Our mine" and 235px for "One container" - and the reason was a
+     * backdrop. The landfill scene's ground plane sweeps x 123..1157, so a crop sized to
+     * contain everything was 1074 units wide, while the plant itself spans 274..1006, which
+     * is within a unit or two of what scene-hosting occupies. The window was being sized by
+     * a perspective grid.
+     *
+     * Cropping into the ground is the harmless case: it is a backdrop and reads correctly
+     * running off the edges of the frame, which is what it already does on every other
+     * figure. Cropping into the plant is not, so the window still contains all of that.
+     * tests/site/dg-crop.js enforces exactly that split. */
     .dg-wrap--now  .site-diagram,
-    .dg-wrap--ion  .site-diagram { width: 119.18%; margin: 0 -9.59%; }    /* draws x 123..1157 */
+    .dg-wrap--ion  .site-diagram { width: 165.80%; margin: 0 -32.90%; }    /* plant x 274..1006 */
 
     /* EDGE TO EDGE, WHICH IS THE ONLY FREE HEIGHT THERE IS.
      *
@@ -2941,7 +2954,7 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .dg-wrap--cont .anim-field--dg { width: 164.95%; left: -32.47%; }
     .dg-wrap--asic .anim-field--dg { width: 184.44%; left: -42.22%; }
     .dg-wrap--now  .anim-field--dg,
-    .dg-wrap--ion  .anim-field--dg { width: 119.18%; left: -9.59%; }
+    .dg-wrap--ion  .anim-field--dg { width: 165.80%; left: -32.90%; }
 
     /* ONE SET OF LABELS AT A TIME.
      *
