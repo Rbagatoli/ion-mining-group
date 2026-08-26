@@ -122,12 +122,22 @@ body > * { position: relative; z-index: 1; }
     align-items: center;
     padding: 12px 24px;
     background: var(--nav-bg);
-    border-bottom: 1px solid var(--line);
+    /* 1px of transparent border rather than none: removing it outright would
+       shorten the sticky nav by a pixel and shift every page's content up. */
+    border-bottom: 1px solid transparent;
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     position: sticky;
     top: 0;
     z-index: 100;
+}
+.proton-nav::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+    pointer-events: none;
 }
 .proton-nav-brand {
     display: flex;
@@ -167,6 +177,7 @@ body > * { position: relative; z-index: 1; }
     justify-content: center;
 }
 .proton-nav-tabs a {
+    position: relative;
     padding: 8px 18px;
     border-radius: var(--radius);
     font-size: 13px;
@@ -180,8 +191,16 @@ body > * { position: relative; z-index: 1; }
     color: var(--text);
 }
 .proton-nav-tabs a.active {
-    background: var(--btc-wash);
-    color: var(--btc-300);
+    background: none;
+    color: var(--plat-100);
+}
+.proton-nav-tabs a.active::after {
+    content: '';
+    position: absolute;
+    left: 15px; right: 15px; bottom: -1px;
+    height: 2px;
+    background-image: var(--metal-btc-flat);
+    z-index: 1;
 }
 
 /* Workstation link */
@@ -271,6 +290,7 @@ body > * { position: relative; z-index: 1; }
         justify-content: space-around;
     }
     .proton-nav-tabs a { padding: 6px 10px; font-size: 11px; }
+    .proton-nav-tabs a.active::after { left: 8px; right: 8px; }
 }
 /* Seven tabs rather than six once the map became its own, which is 27px too wide
    on a 320px phone. The nav has overflow-x as a backstop, but a row you have to
@@ -278,6 +298,9 @@ body > * { position: relative; z-index: 1; }
    here, where it is the difference between fitting and not. */
 @media (max-width: 360px) {
     .proton-nav-tabs a { padding: 6px 6px; letter-spacing: 0; }
+    /* At 6px of padding the inset has to go entirely -- a fixed-width bar under
+       the label's left edge is the site's own answer at this size. */
+    .proton-nav-tabs a.active::after { left: 0; right: auto; width: 18px; }
     .proton-currency-select { font-size: 11px; padding: 3px 4px; }
     .proton-nav-sparkline { padding: 1px 6px; gap: 4px; }
     .proton-nav-sparkline canvas { width: 50px; height: 18px; }
@@ -297,13 +320,30 @@ main {
 
 /* ===== GLASSMORPHISM CARD ===== */
 .card {
-    background: var(--panel);
+    position: relative;
+    background-color: var(--panel);
+    /* Light from above-left, at an angle that matches no edge of the box. */
+    background-image: var(--sheen-panel);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 20px;
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     box-shadow: var(--shadow-card);
+}
+/* THE POLISHED LIP. The site's .card is otherwise byte-for-byte what the app
+   already had -- same --panel, same 1px --line border -- and this one pseudo
+   element is the whole difference between a panel and a machined plate. It sits
+   at -1px so it caps the border rather than floating inside it. */
+.card::before,
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 1px;
+    background-image: var(--edge-plat);
+    pointer-events: none;
+    z-index: 2;
 }
 .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--text); letter-spacing: 0.3px; }
 
@@ -367,7 +407,9 @@ main {
 @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .metric-card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    position: relative;
+    background-color: var(--panel); background-image: var(--sheen-panel);
+    border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px 16px; text-align: center;
     backdrop-filter: blur(16px) saturate(1.2);
     -webkit-backdrop-filter: blur(16px) saturate(1.2);
@@ -389,6 +431,19 @@ main {
 .negative { color: var(--neg); }
 .neutral  { color: var(--warn); }
 .btc-orange { color: var(--btc-300); }
+/* Scoped to the two places the class is actually used on a NUMBER (20px and
+   24px respectively, both verified in the page markup) rather than to
+   .btc-orange at large: text-fill-color:transparent turns any element that
+   later borrows the class into invisible text if it is not a glyph. */
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    .value.btc-orange,
+    .chart-live-value.btc-orange {
+        background-image: var(--metal-btc-lit);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+}
 
 /* ===== CHART ===== */
 .combo-chart-container {
@@ -472,10 +527,10 @@ tbody tr.halving-row { background: var(--btc-wash); }
    cell and a nine-character cell land on completely different slices of the ramp, so rows in a
    column would not match each other. */
 .page-title {
-    font-size: 22px;
+    font-size: 30px;
     font-weight: 600;
     margin-bottom: 2px;
-    letter-spacing: -0.028em;
+    letter-spacing: -0.032em;
     color: var(--plat-200);
 }
 .section-label { font-size: 18px; font-weight: 500; color: var(--plat-100); margin-bottom: 12px; letter-spacing: 0.2px; }
@@ -484,16 +539,37 @@ tbody tr.halving-row { background: var(--btc-wash); }
        at 52%; across a 74px display heading that hard horizon is what makes it read as metal,
        but across 22px it lands mid-glyph and reads as a rendering fault. The site draws exactly
        this line -- full flip for .h-display and .h-section, soft everywhere below. */
+    /* THE FULL FLIP, now that it is big enough to survive it. --metal-plat drops
+       to its darkest stop at 47% and snaps back to near-white at 52%; that hard horizon is
+       the entire reason it reads as metal rather than as grey. Across 22px it
+       landed mid-glyph and read as a rendering fault, which is why this was on
+       the soft ramp. At 30px the horizon falls between the x-height and the
+       baseline, where the site puts it. */
     .page-title {
-        background-image: var(--metal-plat-soft);
+        background-image: var(--metal-plat);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         color: transparent;
     }
+    /* CHILDREN OPT BACK OUT. See the note above the selector list -- a clipped
+       parent hands every nested element a transparent fill and no gradient to
+       show through it. Zero-specificity so nothing here outranks a child's own
+       colour; it only supplies a floor for children that set none. */
+    :where(.page-title, .section-label, .chart-title-row h3, .card h3)
+    :where(span, small, em, b, i, a, code) {
+        color: var(--plat-400);
+        -webkit-text-fill-color: currentColor;
+    }
+    /* The orange numbers keep their own colour on the parent rather than going
+       transparent, so their children need the fill restored but not a new colour. */
+    :where(.value.btc-orange, .chart-live-value.btc-orange) :where(span, small, sup) {
+        -webkit-text-fill-color: currentColor;
+    }
+
     /* Section labels get the SOFTER chrome. At 18px the full flip reads as noise rather than
        as metal -- the site draws the same distinction. */
-    .section-label, .chart-title-row h3 {
+    .section-label, .chart-title-row h3, .card h3 {
         background-image: var(--metal-plat-soft);
         -webkit-background-clip: text;
         background-clip: text;
@@ -685,30 +761,62 @@ footer {
     justify-content: flex-end;
 }
 .btn {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     padding: 8px 20px;
-    font-size: 13px;
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     font-family: inherit;
     border-radius: var(--radius);
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
     border: 1px solid var(--line-mid);
 }
+/* The brushed sweep. Parked off the left edge and slid across on hover -- it is
+   the one thing that makes a flat fill read as a polished surface rather than a
+   coloured rectangle. transform and left only, so it cannot cost a repaint of
+   anything but itself, and pointer-events:none so it never eats the click. */
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -130%;
+    width: 55%; height: 100%;
+    background: var(--sheen-sweep);
+    transform: skewX(-18deg);
+    transition: left 0.55s cubic-bezier(0.3, 0, 0.2, 1);
+    pointer-events: none;
+}
+.btn:hover::after { left: 145%; }
+/* THE PRIMARY BUTTON WAS NOT ORANGE, IT WAS 36% OF ORANGE. --line-btc is
+   the brand orange at hairline opacity -- an edge colour -- and it was being used as a FIELD
+   with orange text on top of it -- which is why "+ Add Miner" read as muted
+   brown next to the site's CTAs. The site fills this button with metal and
+   puts black on it. */
 .btn-primary {
-    background: var(--line-btc);
-    color: var(--btc-300);
-    border-color: var(--line-btc);
+    background-image: var(--metal-btc-btn);
+    color: var(--on-accent);
+    border-color: var(--line-btc-lit);
 }
-.btn-primary:hover {
-    background: var(--line-btc);
-}
+.btn-primary:hover { border-color: var(--line-btc-lit-hover); }
+/* Machined platinum edge rather than a flat grey line: the padding-box layer
+   paints the field, the border-box layer paints the border with the gradient.
+   --panel-solid rather than --panel because a border-box gradient cannot show
+   through a translucent fill without the border bleeding into the field. */
 .btn-secondary {
-    background: var(--line);
-    color: var(--text-mid);
+    background:
+        linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+        var(--metal-plat-flat) border-box;
+    border-color: transparent;
+    color: var(--plat-100);
 }
-.btn-secondary:hover {
-    background: var(--line-mid);
-    color: var(--text);
-}
+.btn-secondary:hover { color: var(--plat-000); }
+.btn-secondary::after { background: var(--sheen-sweep-soft); }
 
 /* Delete dialog */
 .delete-dialog-overlay {

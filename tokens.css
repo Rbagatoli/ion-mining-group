@@ -96,6 +96,40 @@
         rgba(229,228,226,0.03) 80%, transparent 100%);
     --edge-plat-short: linear-gradient(90deg,
         rgba(255,255,255,0.17) 0%, rgba(229,228,226,0.05) 45%, transparent 88%);
+
+    /* The same metal, for a button that is nearly full width. Copied from the site
+       verbatim -- the app was missing it, so a wide primary button had no correct
+       fill to reach for. The site's reasoning: a gradient's mean lightness does not
+       change with the box it is painted into, but the physical size of each band
+       does, so the narrow CTA's specular highlight becomes a flat pale panel when
+       the same ramp is stretched. This one keeps the highlight tight. */
+    --metal-btc-btn-wide: linear-gradient(135deg,
+        #bf680b 0%, #e0820f 24%, #f7931a 40%,
+        #ffbc60 47%, #f7931a 54%, #cf7310 78%, #e0820f 100%);
+
+    /* ---- Lit surfaces ------------------------------------------------------
+       Three treatments the site applies everywhere and the app applied nowhere.
+       They live here as tokens rather than inline in shared.css for the ordinary
+       reason: tokens.css is the one file the colour census does not read for raw
+       literals, because it is where the literals are supposed to be. */
+
+    /* A panel catching light from above-left. The site puts this on every stat
+       plate; the angle is off-axis so it never lines up with the panel edges. */
+    --sheen-panel: linear-gradient(163deg, rgba(229,228,226,0.055), transparent 62%);
+
+    /* The brushed sweep that crosses a button on hover. */
+    --sheen-sweep:      linear-gradient(100deg, transparent, rgba(255,255,255,0.42), transparent);
+    --sheen-sweep-soft: linear-gradient(100deg, transparent, rgba(255,255,255,0.28), transparent);
+
+    /* Warm edges for a button whose FIELD is the brand orange -- a grey hairline
+       around metallic orange reads as a mistake. */
+    --line-btc-lit:       rgba(255, 210, 150, 0.45);
+    --line-btc-lit-hover: rgba(255, 225, 185, 0.80);
+
+    /* Ink for text sitting ON the accent rather than beside it. Black, not the
+       near-black it could be: against --metal-btc-btn's darkest stop (#d4791a)
+       this measures 6.55:1, and every lighter stop only improves on that. */
+    --on-accent: #000000;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
     /* =========================================================================

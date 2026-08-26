@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v355';
+const CACHE_NAME = 'proton-mining-v356';
 const ASSETS = [
   // HTML pages
   './index.html',
