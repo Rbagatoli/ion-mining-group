@@ -206,6 +206,49 @@ var LandfillSource = (function() {
     // a city co-owns is not a pure major, and MUNICIPAL_NAME would veto it regardless.
     var MAJOR_EXACT = { 'wm': 1 };
     var MUNICIPAL_NAME = /authority|district|county|city of|commission|township|borough|parish|municipal|state of/i;
+    /* PERSISTENCE FOR A LANDFILL, WHICH THIS ADAPTER NEVER SUPPLIED.
+     *
+     * Without it every LMOP candidate carried persistencePct: null, and the map's colour ramp --
+     * which had no other input it could use for this source -- painted all 1,908 of them the
+     * same shade. The scale existed and told you nothing.
+     *
+     * For a flare, persistence is the share of survey years a satellite saw it burning. A
+     * landfill has no such series, so the honest analogue is confidence the gas is still
+     * flowing, and it is read in the order the rest of this codebase reads things:
+     *
+     *   MEASURED FIRST. A published collection or flare rate means gas is moving TODAY, whatever
+     *   the closure year says. Kingsland closed in 1988 and still flares 1.13 mmscfd.
+     *   THEN STATUS. A site still accepting waste is adding fuel faster than it decays.
+     *   THEN THE MODEL. Remaining years against the decay horizon.
+     *   THEN NOTHING. null, so the ramp shows unmeasured as unmeasured. */
+    function computePersistence(p) {
+        var flow = p.lfgCollectedMmscfd || p.lfgFlaredMmscfd || p.lfgFlowToProjectMmscfd;
+        var measured = flow !== null && flow !== undefined && isFinite(flow) && flow > 0;
+        var open = /open/i.test(p.landfillStatus || '');
+
+        /* MEASURED FLOW FLOORS THIS, IT DOES NOT SATURATE IT. Returning 100 for anything with a
+           published gas rate was the first version, and it was true as a statement and useless as
+           a scale: 1,899 of 1,908 rows carry a rate, so the ramp went from one flat colour to a
+           different one flat colour. A landfill's gas is nearly always still flowing; what varies
+           -- and what a buyer actually needs -- is how much LONGER, so the grade comes from the
+           decay horizon and measurement lifts the floor rather than pinning the top. */
+        var left = remainingYears(p);
+        var graded = (left === null || !isFinite(left))
+            ? null
+            : Math.max(0, Math.min(100, Math.round(left / LFG_DECAY_YEARS * 100)));
+
+        if (graded === null) {
+            // Past the modelled horizon or no closure year. Measurement is then the only thing
+            // that speaks, and it says "still producing" without saying for how long.
+            if (measured) return 70;
+            if (open) return 85;
+            return null;
+        }
+        if (measured) return Math.max(graded, 55);
+        if (open) return Math.max(graded, 50);
+        return graded;
+    }
+
     function counterpartyFor(p) {
         var owner = p.owner || '';
         // hasOwnProperty, not MAJOR_EXACT[key] -- an owner named "constructor" or "toString"
@@ -304,6 +347,7 @@ var LandfillSource = (function() {
         fetch: fetchAll,
         normalize: normalize,
         computeCapacity: computeCapacity,
+        computePersistence: computePersistence,
         refreshSchedule: refreshSchedule
     };
 

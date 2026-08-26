@@ -3207,12 +3207,38 @@ var MapSourcing = (function() {
        The top of the ramp used to be green, which said 'good' about a site
        that had merely been SEEN every year. Persistence is not a verdict, and
        the palette's answer for a scale is the orange ramp. */
+    /* THE RAMP HAS TO MEAN SOMETHING FOR EVERY SOURCE, NOT JUST FLARES.
+     *
+     * This divided c.yearsSeen by the length of the VIIRS survey -- the flare catalogue's year
+     * count -- and applied that to whatever candidate it was handed. For flares it was right.
+     * For everything else it produced one flat colour:
+     *
+     *   LMOP landfills set no yearsSeen at all, so the ratio was undefined/8 = NaN, every
+     *   comparison below was false, and all 1,908 fell through to P[0].
+     *   Canadian landfills DO carry yearsSeen -- up to 15 years of filings -- divided by that
+     *   same 8, so the ratio always exceeded 1 and every one of them took P[3].
+     *
+     * Both were uniform, which is what "the pins are all one colour on the landfill source" is.
+     *
+     * persistencePct already means "share of the time this source was active", it is on the
+     * shared candidate shape for exactly this, and each adapter computes it in its own units
+     * before it arrives. Prefer it; fall back to a year ratio only when an adapter supplies
+     * years and no percentage; and colour an unmeasured site differently rather than painting
+     * it the same shade as one measured at the bottom of the scale. */
     function colorFor(c) {
         if (_colourBy === 'margin') return marginColor(c);
-        var meta = SiteCatalog.meta();
-        var total = meta ? meta.years.length : 6;
-        var r = c.yearsSeen / total;
         var P = ProtonTheme.persist;
+        var r = null;
+        if (c.persistencePct !== null && c.persistencePct !== undefined &&
+            isFinite(c.persistencePct)) {
+            r = c.persistencePct / 100;
+        } else if (isFinite(c.yearsSeen) && isFinite(c.yearsTotal) && c.yearsTotal > 0) {
+            r = c.yearsSeen / c.yearsTotal;
+        } else if (isFinite(c.yearsSeen)) {
+            var meta = SiteCatalog.meta();
+            r = c.yearsSeen / (meta ? meta.years.length : 6);
+        }
+        if (r === null || !isFinite(r)) return ProtonTheme.textDim;   // unmeasured, not lowest
         if (r >= 0.99) return P[3];
         if (r >= 0.66) return P[2];
         if (r >= 0.33) return P[1];
@@ -3253,7 +3279,7 @@ var MapSourcing = (function() {
     function altFor(c) {
         var kw = Math.max(c.powerPotentialKw || 125, 125);
         var t = (Math.log(kw) - Math.log(125)) / (Math.log(10000) - Math.log(125));
-        return 0.008 + Math.max(0, Math.min(1, t)) * 0.077;
+        return 0.004 + Math.max(0, Math.min(1, t)) * 0.034;
     }
 
     // ---- zoom-dependent point size -------------------------------------------------
@@ -3307,9 +3333,9 @@ var MapSourcing = (function() {
     var GLOBE_R      = 100;                          // three-globe's GLOBE_RADIUS
     var DEG_UNIT     = 2 * Math.PI * GLOBE_R / 360;  // world units per degree of arc
     var REF_ALTITUDE = 2.2;                          // the framing the px figures describe
-    var MARK_MIN_PX  = 3.5;                          // RADIUS at the 125 kW floor
-    var MARK_MAX_PX  = 6.5;                          // RADIUS at 10 MW and above
-    var MARK_CAP_PX  = 16;                           // ceiling after zoom growth
+    var MARK_MIN_PX  = 2.0;                          // RADIUS at the 125 kW floor
+    var MARK_MAX_PX  = 4.2;                          // RADIUS at 10 MW and above
+    var MARK_CAP_PX  = 10;                           // ceiling after zoom growth
     var FOCUS_MULT   = 1.45;
     var ZOOM_GROWTH  = 0.45;                         // 0 = constant screen size
 
@@ -3369,7 +3395,7 @@ var MapSourcing = (function() {
      * exponent above 1 makes them shrink FASTER than that, so they flatten
      * toward discs on approach while staying full height at the default framing,
      * where both curves pass through 1.0. A chart from orbit, a map from close in. */
-    var FLATTEN = 1.6;
+    var FLATTEN = 2.4;
 
     function altScale() {
         var alt = currentAltitude();

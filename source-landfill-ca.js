@@ -210,10 +210,22 @@ var LandfillCaSource = (function() {
     // year since 2010 is a site that is still open and still making gas.
     function computePersistence(p) {
         if (!p.series || !p.series.length) return null;
-        var meta_ = _data;
-        var span = meta_ && meta_.reportingYear ? (meta_.reportingYear - p.series[0].year + 1) : null;
-        if (!span || span <= 0) return null;
-        return Math.max(0, Math.min(100, Math.round(p.series.length / span * 100)));
+        /* Span comes from the SERIES, not from the artifact's reportingYear. The artifact is only
+           loaded in the browser, so reading it here returned null for every candidate under Node
+           -- which is where the tests run, and which is why this looked correct and produced 156
+           uncoloured pins. A facility's own first and last filing say the same thing and say it
+           without a dependency. */
+        var first = p.series[0].year, last = p.series[p.series.length - 1].year;
+        var span = last - first + 1;
+        if (!isFinite(span) || span <= 0) return null;
+        var filed = Math.max(0, Math.min(100, Math.round(p.series.length / span * 100)));
+        /* AN UNBROKEN RUN THAT ENDED IN 2015 IS NOT PERSISTENCE NOW. Filing completeness alone
+           saturates -- most facilities file every year they file at all, so 140 of 156 came out
+           at the top of the scale and the ramp was flat again in a new way. What separates them
+           is whether the run reaches the present. `current` is set by the builder against the
+           latest reporting year ECCC has published, so a site that stopped filing is halved:
+           still evidence of a real landfill, no longer evidence it is still being measured. */
+        return p.current === false ? Math.round(filed * 0.5) : filed;
     }
 
     function refreshSchedule() {
