@@ -3261,27 +3261,6 @@ var MapSourcing = (function() {
         return ProtonTheme.pos;                      // healthy
     }
     var _colourBy = 'persistence';
-    /* Column height. Log-scaled between the 30 Mcf/day floor (~125 kW) and 10 MW so
-       the whole usable range is legible; a linear scale would flatten everything
-       under 1 MW to nothing.
-
-       THE RANGE IS HALF WHAT IT WAS (0.175 globe radii at the top, now 0.085).
-       A column points radially outward, so at the LIMB it is seen side-on at full
-       length -- and the North American cluster sits on the limb at the framing the
-       globe opens on, where several hundred full-length columns overlap into a
-       single grey slab hanging off the edge of the planet. Widening the markers to
-       a usable size made that slab three times heavier.
-
-       Halving costs nothing real, because the height is redundant: markPxFor() and
-       altFor() are both functions of powerPotentialKw and nothing else, so a column
-       says exactly what its own width already said. The relative ordering, which is
-       the only thing height was actually communicating, is untouched. */
-    function altFor(c) {
-        var kw = Math.max(c.powerPotentialKw || 125, 125);
-        var t = (Math.log(kw) - Math.log(125)) / (Math.log(10000) - Math.log(125));
-        return 0.004 + Math.max(0, Math.min(1, t)) * 0.034;
-    }
-
     // ---- zoom-dependent point size -------------------------------------------------
     // globe.gl sizes points in DEGREES, so they scale with the globe: zooming in magnifies the
     // markers along with the terrain and a dense basin stays an unreadable blob no matter how
@@ -3335,9 +3314,16 @@ var MapSourcing = (function() {
     var REF_ALTITUDE = 2.2;                          // the framing the px figures describe
     var MARK_MIN_PX  = 2.0;                          // RADIUS at the 125 kW floor
     var MARK_MAX_PX  = 4.2;                          // RADIUS at 10 MW and above
-    var MARK_CAP_PX  = 10;                           // ceiling after zoom growth
+    var MARK_CAP_PX  = 8;                            // ceiling after zoom growth
     var FOCUS_MULT   = 1.45;
-    var ZOOM_GROWTH  = 0.45;                         // 0 = constant screen size
+    /* GROWTH IS MODEST BECAUSE THE CLICK TOLERANCE DOES THE HARD WORK.
+       This was 0.45, set when a marker had to be physically big enough to hit. It does not need
+       to be: globeNearest() selects the nearest prospect within 22px of the click, so a marker
+       only has to be big enough to SEE. At 0.45 the largest reached about 19px across on
+       approach, and 4,000 of them over the continental United States merged into one mass --
+       legibility spent on a size that was buying nothing. 13px, and the tolerance still catches
+       the click. */
+    var ZOOM_GROWTH  = 0.25;                         // 0 = constant screen size
 
     var _zoomScale = 1;                              // composite, for the deadband
     var _zoomRaf = null;
@@ -3381,26 +3367,36 @@ var MapSourcing = (function() {
         return Math.min((d.px || MARK_MIN_PX) * zoomGrowth(), MARK_CAP_PX) * degPerPx();
     }
 
-    /* HEIGHT IS A DIFFERENT QUESTION FROM WIDTH.
+    /* A MARKER IS A DISC, AT EVERY ZOOM, AND THAT IS THE WHOLE RULE.
      *
-     * The columns encode power potential -- and so does the radius, from the
-     * same powerPotentialKw and nothing else, so the height is REDUNDANT. It
-     * earns its place only from far enough out to see the columns side-on; up
-     * close it is 4,000 cylinders lying across the sites you descended to pick.
-     * Note the units differ too: radius is in degrees and altitude in globe
-     * radii, which makes the same number about 57x longer than it is wide, which
-     * is why they read as capsules rather than discs.
+     * Height used to encode power potential on its own log curve, with an exponent that
+     * flattened it on approach. Two things were wrong with that.
      *
-     * Constant screen height would be altitude/REF, exactly as for width. The
-     * exponent above 1 makes them shrink FASTER than that, so they flatten
-     * toward discs on approach while staying full height at the default framing,
-     * where both curves pass through 1.0. A chart from orbit, a map from close in. */
-    var FLATTEN = 2.4;
+     * It was REDUNDANT: the width and the height were both functions of powerPotentialKw and
+     * nothing else, so a column's height said exactly what its width already said.
+     *
+     * And it only flattened CLOSE IN. Measured at the framing the globe actually opens on,
+     * markers were 0.79-1.65 units in radius and 0.54-5.16 units TALL -- a height-to-radius
+     * ratio of 3.13. Those are not discs, they are posts standing off the surface, and in a
+     * dense basin where neighbours sit about a unit apart they physically INTERSECT each
+     * other's side walls. That is what the torn edges and half-circles were: not z-fighting,
+     * not a driver bug, just solid geometry passing through solid geometry.
+     *
+     * So altitude is now derived from the marker's own radius rather than from the data a
+     * second time. Every marker is a quarter as tall as it is wide, everywhere, which keeps
+     * the proportions constant through a zoom instead of morphing from post to wafer.
+     *
+     * The small remaining height is deliberate and does real work: it separates overlapping
+     * markers in depth, so a bigger site sits fractionally proud of a smaller one and wins
+     * the overlap. Coplanar discs at identical radii would z-fight for real. */
+    var DISC_HEIGHT_RATIO = 0.25;
 
-    function altScale() {
-        var alt = currentAltitude();
-        if (!isFinite(alt) || alt < 0) alt = REF_ALTITUDE;
-        return Math.max(0.01, Math.min(2.0, Math.pow(alt / REF_ALTITUDE, FLATTEN)));
+    function altitudeFor(d) {
+        // radiusDeg is in degrees of arc; convert to world units, then to globe radii.
+        var worldRadius = radiusDeg(d) * DEG_UNIT;
+        // Floor low enough that it does not turn the disc back into a post at deep zoom,
+        // high enough that a marker never collapses into a coplanar z-fighting wafer.
+        return Math.max(0.0005, worldRadius / GLOBE_R * DISC_HEIGHT_RATIO);
     }
 
     // Re-applies the size accessors only. Cheap next to rebuilding pointsData, and coalesced to
@@ -3416,9 +3412,8 @@ var MapSourcing = (function() {
         if (Math.abs(s - _zoomScale) / _zoomScale < 0.02) return;
         _zoomScale = s;
         try {
-            var a = altScale();
             g.pointRadius(radiusDeg)
-             .pointAltitude(function(d) { return Math.max(0.004, d.alt * a); });
+             .pointAltitude(altitudeFor);
         } catch (e) { /* globe not ready */ }
     }
 
@@ -3543,7 +3538,6 @@ var MapSourcing = (function() {
                 // The focused column stands slightly proud and the rest recede, so the eye lands
                 // on it without the surrounding field disappearing.
                 px: markPxFor(c) * (isFocus ? FOCUS_MULT : 1),
-                alt: altFor(c) * (dim ? 0.35 : 1),
                 color: dim ? fade(colorFor(c), 0.18) : fade(colorFor(c), solidityFor(c)),
                 label: placeLabel(c),
                 kw: c.powerPotentialKw,
@@ -3578,7 +3572,7 @@ var MapSourcing = (function() {
                 // Columns, not flat dots. Height carries power potential on a log scale so an
                 // 11 MW site visibly towers over a 150 kW one without a 70x bar. Flattening this
                 // to a constant made every prospect look identical from orbit.
-                .pointAltitude(function(d) { return Math.max(0.004, d.alt * altScale()); })
+                .pointAltitude(altitudeFor)
                 .pointRadius(radiusDeg)
                 .pointColor('color')
                 .pointLabel(function(d) {
