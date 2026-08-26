@@ -227,17 +227,13 @@
            Fixed first, flexible second. The list is sized to what it holds and
            the detail takes everything left over -- 748px, enough for three
            detail columns instead of one. */
-        body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
-        body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list {
+        body[data-map-mode="prospects"] .map-with-list {
             grid-template-columns:420px minmax(0,1fr); }
-        body[data-map-mode="prospects"][data-res-view="list"] .map-pane,
-        body[data-map-mode="prospects"][data-res-view="owners"] .map-pane {
+        body[data-map-mode="prospects"] .map-pane {
             grid-column:1 / -1; grid-row:1; }
-        body[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
-        body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard {
+        body[data-map-mode="prospects"] #srcListCard {
             grid-column:1; grid-row:2; }
-        body[data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
-        body[data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
+        body[data-map-mode="prospects"] .src-detailpane {
             grid-column:2; grid-row:2; min-width:0; }
 
         /* NOTHING SELECTED, NOTHING TO SHOW. The pane holds a static "Select a
@@ -247,47 +243,36 @@
            selection and cleared on deselect, and until then the list has the
            whole width. */
         .src-detailpane { display:none; }
-        body[data-detail][data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
-        body[data-detail][data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
-            display:block; }
-        body:not([data-detail])[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
-        body:not([data-detail])[data-map-mode="prospects"][data-res-view="owners"] #srcListCard {
+        body[data-detail][data-map-mode="prospects"] .src-detailpane { display:block; }
+        body:not([data-detail])[data-map-mode="prospects"] #srcListCard {
             grid-column:1 / -1; }
-        /* TABLE VIEW HAS NO LIST TO SIT BESIDE. #srcListCard is hidden there and
-           the ranked table takes the full width in its own widget below, so the
-           pane spans instead of vanishing — without this, selecting a row in the
-           table rendered the detail into a display:none column and showed you
-           nothing at all, anywhere. */
-        body[data-detail][data-map-mode="prospects"][data-res-view="table"] .src-detailpane {
-            display:block; grid-column:1 / -1; grid-row:2; }
         .src-detailpane .card { margin-bottom:0; }
-        body[data-map-mode="prospects"][data-res-view="table"] .map-with-list { grid-template-columns:1fr; }
         /* The count line carries the ordering now, so it is a heading rather than
            a footnote under the map. */
         .src-count { font-size:12px; color:var(--plat-300); }
-        /* The list card and the table widget are mutually exclusive, driven off one body
-           attribute. NOT inline styles: widget-settings.js writes style.display on every
-           .widget-section after load, so anything set inline here would be wiped on the next
-           reorder. A widget the user has hidden in widget settings stays hidden either way —
-           that is their choice, and this rule only ever hides, never reveals. */
-        body[data-res-view="table"] #srcListCard { display:none; }
+        /* The ranked table is the one thing that IS view-specific: it is the "every
+           column, sortable" surface and it needs the full width, so it appears below
+           the map area only in Table view. The scan list no longer disappears when it
+           does -- the list is how you get a detail pane to sit beside something, and
+           taking it away was what put the detail on its own row.
+
+           NOT inline styles: widget-settings.js writes style.display on every
+           .widget-section after load, so anything set inline here would be wiped on the
+           next reorder. A widget the user has hidden in widget settings stays hidden
+           either way — that is their choice, and this rule only ever hides, never reveals. */
         body[data-map-mode="prospects"][data-res-view="list"] [data-widget="prospect-table"],
         body[data-map-mode="prospects"][data-res-view="owners"] [data-widget="prospect-table"] { display:none; }
         /* Below 900 px there is no room for a 420 px list beside a detail pane, so the two
            stack under the map and the list gets its own scroll height rather than running
            the length of the page. */
         @media (max-width:900px) {
-            body[data-map-mode="prospects"][data-res-view="list"] .map-with-list,
-            body[data-map-mode="prospects"][data-res-view="owners"] .map-with-list { grid-template-columns:1fr; }
+            body[data-map-mode="prospects"] .map-with-list { grid-template-columns:1fr; }
             /* One column: map, then list, then detail under it. Every explicit
                placement above has to be undone or the detail would be asked for a
                column 2 that no longer exists. */
-            body[data-map-mode="prospects"][data-res-view="list"] .map-pane,
-            body[data-map-mode="prospects"][data-res-view="owners"] .map-pane,
-            body[data-map-mode="prospects"][data-res-view="list"] #srcListCard,
-            body[data-map-mode="prospects"][data-res-view="owners"] #srcListCard,
-            body[data-map-mode="prospects"][data-res-view="list"] .src-detailpane,
-            body[data-map-mode="prospects"][data-res-view="owners"] .src-detailpane {
+            body[data-map-mode="prospects"] .map-pane,
+            body[data-map-mode="prospects"] #srcListCard,
+            body[data-map-mode="prospects"] .src-detailpane {
                 grid-column:1; grid-row:auto; }
             body[data-map-mode="prospects"] .map-pane #fleetMap,
             body[data-map-mode="prospects"] .map-pane #fleetGlobe { height:380px; }

@@ -42,15 +42,15 @@ body::before {
        on purpose: fourteen distinct alphas describing ONE gradient. Tokenising them would
        mean fourteen tokens nothing else reads, which is the disease this migration cured.
 
-       ALPHAS CUT TO ROUGHLY A QUARTER of the values copied from the marketing site. There the
-       field is the whole page and has nothing to compete with; here it sits under dense tables,
-       charts and a canvas of orange sparks, and at the site's own strength the three washes
-       stacked into a grey-brown haze that read as the background colour rather than as sheen.
-       The base is #000 and now actually looks it.
+       THESE ARE THE SITE'S OWN ALPHAS. They were previously divided by roughly four, on the
+       reasoning that the app sits under dense tables and a canvas of sparks where the site's
+       field has nothing to compete with. That reasoning produced a page whose ground was the
+       same STRUCTURE as the site's and a quarter of its LIGHT, which is a different-looking
+       page -- the periods and the grid matched and none of it was visible.
 
-       The structure is kept, not deleted: the same non-harmonic periods (1870 / 2630 / 3400px)
-       and the same 88px machinist grid, just faint enough to be texture you notice on a large
-       screen rather than a wash you see immediately. */
+       Same four layers, same non-harmonic periods (1870 / 2630 / 3400px), same 88px machinist
+       grid, at full strength. Because the periods do not divide into each other the crests
+       drift down the page and never land on a section boundary. */
     content: '';
     position: absolute;
     inset: 0;
@@ -58,25 +58,25 @@ body::before {
     background-image:
         linear-gradient(101deg,
             transparent 6%,
-            rgba(229,228,226,0.007) 20%,
-            rgba(229,228,226,0.017) 33%,
-            rgba(246,245,243,0.024) 43%,
-            rgba(229,228,226,0.011) 55%,
-            rgba(229,228,226,0.003) 68%,
+            rgba(229,228,226,0.028) 20%,
+            rgba(229,228,226,0.068) 33%,
+            rgba(246,245,243,0.095) 43%,
+            rgba(229,228,226,0.044) 55%,
+            rgba(229,228,226,0.011) 68%,
             transparent 82%),
         linear-gradient(259deg,
             transparent 12%,
-            rgba(229,228,226,0.006) 32%,
-            rgba(229,228,226,0.015) 50%,
-            rgba(246,245,243,0.021) 60%,
-            rgba(229,228,226,0.006) 74%,
+            rgba(229,228,226,0.022) 32%,
+            rgba(229,228,226,0.058) 50%,
+            rgba(246,245,243,0.082) 60%,
+            rgba(229,228,226,0.022) 74%,
             transparent 90%),
         linear-gradient(180deg,
-            rgba(229,228,226,0.007) 0%, transparent 24%,
-            rgba(229,228,226,0.005) 48%, transparent 72%,
-            rgba(229,228,226,0.006) 100%),
-        linear-gradient(to right,  rgba(229,228,226,0.007) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(229,228,226,0.007) 1px, transparent 1px);
+            rgba(229,228,226,0.026) 0%, transparent 24%,
+            rgba(229,228,226,0.019) 48%, transparent 72%,
+            rgba(229,228,226,0.024) 100%),
+        linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
     background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
     background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
     pointer-events: none;

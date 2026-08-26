@@ -109,13 +109,16 @@
       "file": "shared.css",
       "contains": "rgba(229,228,226,0.",
       "literals": [
-        "rgba(229,228,226,0.003)",
-        "rgba(229,228,226,0.005)",
-        "rgba(229,228,226,0.006)",
-        "rgba(229,228,226,0.007)",
         "rgba(229,228,226,0.011)",
-        "rgba(229,228,226,0.015)",
-        "rgba(229,228,226,0.017)"
+        "rgba(229,228,226,0.018)",
+        "rgba(229,228,226,0.019)",
+        "rgba(229,228,226,0.022)",
+        "rgba(229,228,226,0.024)",
+        "rgba(229,228,226,0.026)",
+        "rgba(229,228,226,0.028)",
+        "rgba(229,228,226,0.044)",
+        "rgba(229,228,226,0.058)",
+        "rgba(229,228,226,0.068)"
       ],
       "why": "One gradient described by fourteen distinct alphas of platinum. The file states the case itself: tokenising them would mean fourteen tokens nothing else reads, which is the disease this migration cured."
     },
@@ -123,8 +126,8 @@
       "file": "shared.css",
       "contains": "rgba(246,245,243,0.",
       "literals": [
-        "rgba(246,245,243,0.021)",
-        "rgba(246,245,243,0.024)"
+        "rgba(246,245,243,0.082)",
+        "rgba(246,245,243,0.095)"
       ],
       "why": "The same gradient's warm stop. See the entry above."
     },

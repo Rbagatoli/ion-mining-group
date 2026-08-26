@@ -2444,9 +2444,15 @@ var MapSourcing = (function() {
     }
 
     function renderResults() {
-        if (_resView === 'table') renderTable();
-        else if (_resView === 'owners') renderOwners();
+        /* The scan list sits beside the map in EVERY view now, not only in List,
+           so something has to paint it in every view. Owners view paints owner
+           rollups into the same element -- the two are alternatives for #srcList
+           -- and Table view paints the scan list AND its own full-width grid
+           below. Before this, Table view painted neither and the column beside
+           the map came up empty. */
+        if (_resView === 'owners') renderOwners();
         else renderList();
+        if (_resView === 'table') renderTable();
     }
 
     // The scan list. Deliberately NOT a narrow copy of the table: it carries the four things you
