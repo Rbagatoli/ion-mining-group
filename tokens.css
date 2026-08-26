@@ -221,7 +221,32 @@
     --globe-fill-max: rgba(247, 147, 26, 0.85);
     --globe-fill-min: rgba(247, 147, 26, 0.03);
     --globe-stroke: rgba(247, 147, 26, 0.40);
-    --globe-stroke-dim: rgba(229, 228, 226, 0.10);
+    /* Was 0.10, which is invisible against a lit metal body. The globe used to be pure black,
+       so a barely-there platinum line was enough; on platinum it disappears entirely. */
+    --globe-stroke-dim: rgba(229, 228, 226, 0.18);
+
+    /* ---- The globe is machined platinum, and it is lit ----------------------
+       It was a pure black sphere with no material ever set, so the only thing on screen was the
+       country outlines and the atmosphere. Black is not a colour this palette has anywhere else,
+       and a globe made of it reads as a hole in the page rather than as an object on it.
+
+       TWO BODIES, because the globe does two different jobs. In Fleet mode the globe IS the
+       subject: the hashrate choropleth is painted onto it, so the body runs bright and the orange
+       countries sit on a platinum ocean. In Prospects mode the globe is a BACKDROP for four
+       thousand markers whose colours were tuned against near-black, and a bright ground eats the
+       pale end of the persistence ramp — so the body drops back and the sheen softens.
+
+       These are three.js material values, not CSS. They are mirrored into theme.js like every
+       other WebGL colour, because a shader cannot resolve a custom property. */
+    --globe-body-fleet: #5c5b58;
+    --globe-body-prospects: #2e2d2b;
+    --globe-spec-fleet: #cbcac7;
+    --globe-spec-prospects: #83827f;
+    --globe-emissive-fleet: #111110;
+    --globe-emissive-prospects: #0f0f0e;
+    --globe-ambient-fleet: #cbcac7;
+    --globe-ambient-prospects: #a9a8a5;
+    --globe-key: #ffffff;
 
     /* Flare persistence, as a real sequential scale. The palette before last ran
        green → orange → brown → brown, which is not monotonic in luminance and so

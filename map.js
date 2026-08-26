@@ -772,6 +772,71 @@ var _globeRef = null, _showGlobePopupRef = null;
     function getGlobeInstance() { return globeInstance; }
     _globeRef = getGlobeInstance;
 
+    /* THE GLOBE'S MATERIAL AND LIGHTING, per mode.
+     *
+     * Nothing here ever set a material, so three-globe's default left the sphere pure black --
+     * the one colour this palette does not contain anywhere. Machined platinum instead, lit by
+     * the single key light three-globe already creates.
+     *
+     * ONE LIGHT, deliberately. A warm orange rim light was the obvious way to make the limb
+     * glow, and it was tried and rejected: every directional light contributes its own specular
+     * highlight, so on a smooth sphere an orange back light reads as an orange headlight sitting
+     * on the front of the ball. The warm halo comes from the atmosphere shader instead, which is
+     * behind the globe by construction and cannot do that.
+     *
+     * The lights belong to three-globe, not to this file, so they are found by traversal rather
+     * than constructed -- there is no THREE global on this page and adding one would mean a
+     * build step. Everything below is a property assignment on objects that already exist. */
+    var _bodyTries = 0;
+    function applyGlobeBody() {
+        if (!globeInstance) return;
+        var spec = ProtonTheme.globe.body[MapBridge.mode() === 'prospects' ? 'prospects' : 'fleet'];
+        try {
+            var m = globeInstance.globeMaterial();
+            m.color.set(spec.color);
+            m.specular.set(spec.specular);
+            /* Low on purpose. Above about 40 the highlight collapses into a tight blown-out disc
+               that reads as glass; metal on a dark ground wants a broad soft sheen. */
+            m.shininess = spec.shininess;
+            m.emissive.set(spec.emissive);
+            m.needsUpdate = true;
+
+            /* THE LIGHTS ARE NOT THERE YET ON THE FIRST CALL. three-globe creates the material
+               synchronously with the mount but adds the lights afterwards, so a traverse run
+               immediately after globeInstance(container) finds none -- and the body would ship
+               with the default overhead white key and a PI-intensity ambient, which is what
+               washed the specular flat in the first place. Measured: on a fresh load the
+               material was correct and the lights were three-globe's defaults; only switching
+               mode fixed them, which is not a thing the user should have to do.
+
+               So this retries on the next frame until it finds them, rather than guessing at a
+               delay that would be wrong on a slow machine. */
+            var found = 0;
+            globeInstance.scene().traverse(function(o) {
+                if (o.isAmbientLight || o.isDirectionalLight) found++;
+                if (o.isAmbientLight) {
+                    o.color.set(spec.ambient);
+                    o.intensity = spec.ambientI;
+                } else if (o.isDirectionalLight) {
+                    o.color.set(ProtonTheme.globe.key);
+                    o.intensity = spec.keyI;
+                    /* World space, so the highlight travels across the surface as the globe
+                       turns rather than following the camera like a torch. Swung off the camera
+                       axis so it lands nearer the limb than the centre of the disc, where it
+                       would otherwise sit on top of the densest cluster of prospects. */
+                    o.position.set(ProtonTheme.globe.keyPosition[0],
+                                   ProtonTheme.globe.keyPosition[1],
+                                   ProtonTheme.globe.keyPosition[2]);
+                }
+            });
+            globeInstance.atmosphereAltitude(spec.atmosphereAltitude);
+            if (!found && _bodyTries < 60) {
+                _bodyTries++;
+                requestAnimationFrame(applyGlobeBody);
+            }
+        } catch (e) { /* globe not mounted yet; init calls this again once it is */ }
+    }
+
     function initGlobe() {
         globeInitialized = true;
         var globeContainer = document.getElementById('fleetGlobe');
@@ -784,7 +849,29 @@ var _globeRef = null, _showGlobePopupRef = null;
             .showGlobe(true)
             .showAtmosphere(true)
             .atmosphereColor(ProtonTheme.globe.atmos)
-            .atmosphereAltitude(0.15)
+            .atmosphereAltitude(ProtonTheme.globe.body.fleet.atmosphereAltitude)
+            /* THE BLACK PLOTS ON THE LAND, which were a geometry bug and not a colour one.
+             *
+             * three-globe builds each country cap by triangulating the polygon and projecting
+             * the vertices onto a shell at radius R*(1+altitude). The triangle FACES are flat
+             * chords, so a triangle spanning an angle theta sags below that shell by about
+             * R*theta^2/8. At the default polygonCapCurvatureResolution of 5 degrees, measured
+             * on the live scene, the worst cap triangle reached radius 99.24 -- while the shell
+             * it belongs to sits at 100.1, only 0.1 above the sphere. The triangle therefore
+             * passed straight THROUGH the globe and was occluded by it, leaving a clean hole.
+             *
+             * That is why the holes appeared only in the interiors of large countries, where the
+             * triangles are biggest, and never along coastlines, where they are small.
+             *
+             * At resolution 1 the worst sag is 99.95, which clears the sphere. It costs 3.3x the
+             * cap triangles -- 10,636 to 35,005 -- which is nothing next to the marker layer.
+             *
+             * NOT FIXED by depthWrite, and NOT fixed by the camera frustum. Both were tried on
+             * the live page and photographed: the caps genuinely are behind the sphere, so no
+             * depth-state change reaches them. Raising `near` would also be actively harmful --
+             * globe.gl derives controls().minDistance from it ONCE at mount, so a later change
+             * clips the front of the globe at the altitudes prospecting actually uses. */
+            .polygonCapCurvatureResolution(1)
             /* NO TWEEN ON RESIZE. three-globe starts a fresh 1000ms eased Tween per
                point whenever any of {lat, lng, alt, radius} changes, and the zoom
                handler reassigns radius and altitude up to once per animation frame
@@ -935,6 +1022,14 @@ var _globeRef = null, _showGlobePopupRef = null;
                     });
 
                 globeInstance(globeContainer);
+                applyGlobeBody();
+                /* The body is mode-dependent for the same reason the polygon fill is: bright
+                   platinum when the choropleth is painted onto the globe, dark when the globe is
+                   a backdrop for four thousand markers. Registered through onModeChange rather
+                   than called from refreshGlobePolygons, because MapBridge is a separate IIFE and
+                   applyGlobeBody is not in scope there -- a direct call would have been a silent
+                   no-op behind a typeof guard. */
+                MapBridge.onModeChange(applyGlobeBody);
 
                 // Auto-rotate
                 /* Only fleet mode idles. In Prospects the globe is a work surface --

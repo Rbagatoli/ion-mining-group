@@ -82,7 +82,37 @@ var ProtonTheme = (function() {
         fillMax:   'rgba(247, 147, 26, 0.85)',
         fillMin:   'rgba(247, 147, 26, 0.03)',
         stroke:    'rgba(247, 147, 26, 0.40)',
-        strokeDim: 'rgba(229, 228, 226, 0.10)'
+        // Lifted from 0.10: a line that read against a black sphere vanishes against a lit one.
+        strokeDim: 'rgba(229, 228, 226, 0.18)',
+
+        /* THE BODY, per mode. --globe-body-* in tokens.css.
+         *
+         * The sphere had no material set at all, so three-globe's default left it pure black --
+         * the one colour this palette does not contain. Machined platinum instead, lit by one
+         * key light, with the warm halo coming from the atmosphere shader BEHIND the globe
+         * rather than from any orange light in front of it. A second orange light was tried and
+         * rejected: every directional light adds its own specular highlight, so a warm rim light
+         * reads as an orange headlight on the front of the ball instead of a glow behind it.
+         *
+         * Shininess is deliberately low. At 90+ the highlight is a tight blown-out disc that
+         * reads as glass or snooker ball; metal on a dark ground wants a broad soft sheen.
+         *
+         * Fleet runs bright because the choropleth is painted on the body and wants a light
+         * ground. Prospects runs dark because the body is a backdrop for markers that were
+         * colour-tuned against near-black. */
+        body: {
+            fleet:     { color: '#5c5b58', specular: '#cbcac7', shininess: 14,
+                         emissive: '#111110', ambient: '#cbcac7', ambientI: 1.7,
+                         keyI: 1.6, atmosphereAltitude: 0.24 },
+            prospects: { color: '#2e2d2b', specular: '#83827f', shininess: 18,
+                         emissive: '#0f0f0e', ambient: '#a9a8a5', ambientI: 1.15,
+                         keyI: 1.6, atmosphereAltitude: 0.26 }
+        },
+        key: '#ffffff',
+        // World space, so the highlight travels across the surface as the globe turns, the way
+        // a sun would. Swung off the camera axis so it lands nearer the limb than the middle of
+        // the disc, where it would otherwise sit on top of the densest marker cluster.
+        keyPosition: [-0.75, 0.45, 0.25]
     };
 
     // Inactive slices in the fleet pie: present, but not competing for attention.
