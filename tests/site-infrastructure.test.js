@@ -42,9 +42,24 @@ ok('generation is priced at the capex stack rate, not the brief\'s',
 ok('treatment and electrical likewise',
    SI.rates().gasTreatment === SiteCapex.rates().gasTreatmentPerKw &&
    SI.rates().electrical === SiteCapex.rates().interconnectionPerKw);
-// The one addition: site-capex prices NO collection component at any stage.
-ok('collection carries its own rate, because the capex stack has none',
-   SI.rates().collection > 0 && SiteCapex.DEFAULT_RATES.collectionPerKw === undefined);
+/* THIS ASSERTION IS DELIBERATELY INVERTED. It used to assert that collectionPerKw was ABSENT
+   from the capex card, because site-infrastructure declared the rate itself -- and that was the
+   honest description of the code at the time.
+
+   It is wrong now, and the reason is worth keeping: the budget module reads rates from both
+   modules, so two declarations of the same $550 would drift the moment anyone edited the card,
+   and would show up as a variance against a budget rather than as a bug.
+
+   WHAT HAS NOT CHANGED is the thing the old comment was really about: site-capex still prices no
+   collection COMPONENT at any stage, so a greenfield landfill is still never charged for the
+   field it would have to drill. The rate moving does not close that gap, and the assertion below
+   pins the gap open so nobody mistakes one for the other. */
+ok('the collection rate comes off the shared capex card, not a second declaration',
+   SI.rates().collection === SiteCapex.rates().collectionPerKw &&
+   SiteCapex.rates().collectionPerKw === 550);
+ok('and the capex STACK still prices no collection component at any stage',
+   SiteCapex.stack({ usable_kw: 2000, development_stage: 'raw_resource', energy_type: 'landfill_gas' }, {})
+     .components.every(function (c) { return c.id !== 'collection'; }));
 
 console.log('\n=== generation is read from the field, not inferred from status ===');
 /* The brief proposed operational/construction/shutdown -> "generation present". Measured on the

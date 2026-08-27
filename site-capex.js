@@ -63,7 +63,22 @@ var SiteCapex = (function() {
 
         // Siloxane removal, moisture knockout, H2S scrubbing. APPLIED ONLY where the source
         // publishes requiresGasTreatment — a derived gate on a published fact, not a guess.
-        gasTreatmentPerKw: 250
+        gasTreatmentPerKw: 250,
+
+        /* GAS COLLECTION: wells, headers, blower. $550/kW is the midpoint of a $300-800 range,
+           which at 1-2 MW is the $800K-2.8M quoted for a collection system.
+         *
+         * IT LIVES HERE NOW, having been declared in site-infrastructure.js because this card
+         * did not carry it. That split was defensible while only one module priced collection
+         * and it stops being defensible the moment a budget reads both: an estimate that says
+         * $550/kW and a rate card the user can edit to $700 would disagree silently, and the
+         * disagreement would show up as a variance against a budget rather than as a bug.
+         *
+         * NOTE WHAT stack() STILL DOES NOT DO. Adding the rate here does not add a collection
+         * COMPONENT to the stack -- a greenfield landfill is still never charged for the field
+         * it would have to drill. That gap is real, it is older than this change, and closing it
+         * moves every all-in figure in the app. It is filed, not fixed here. */
+        collectionPerKw: 550
     };
 
     // What it costs to BUY the asset, per kW, by how far along it is.

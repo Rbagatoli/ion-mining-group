@@ -1,0 +1,14 @@
+{
+  "_comment": "Pins capitalAvoided() and stack() across the collection-rate unification, where $550/kW moved from site-infrastructure.js's own constant onto SiteCapex.DEFAULT_RATES. The value did not change, so both digests are identical before and after -- they were computed on both sides of the edit and compared. Sensitivity was then demonstrated rather than assumed: nudging the rate to 551 breaks the capitalAvoided digest across all 11,829 candidates, so an unchanged digest means the arithmetic really is unchanged.",
+  "generated_from": "df298be",
+  "candidates": 11829,
+  "avoidedDigest": "27123d9691a817e6e773fa34076ea92805e188e4bdec57221af1c9afe55d5956",
+  "stackDigest": "b6cb9bf13244a1c4c6a5f65c5b2d0d1bcfee74087b69bcb900753be4be75cc72",
+  "collectionRate": 550,
+  "sampleAvoided": [
+    "ca-lf-G10026|6101370|29212620|35313990|medium|false|null|collection:550:10168950:0.6:6101370,generation:900:16640100:0:0,gasTreatment:250:4622250:0:0,electrical:150:2773350:0:0,civil:60:1109340:0:0",
+    "ca-lf-G10032|277200|1327200|1604400|medium|false|null|collection:550:462000:0.6:277200,generation:900:756000:0:0,gasTreatment:250:210000:0:0,electrical:150:126000:0:0,civil:60:50400:0:0",
+    "ca-lf-G10095|286770|1373020|1659790|medium|false|null|collection:550:477950:0.6:286770,generation:900:782100:0:0,gasTreatment:250:217250:0:0,electrical:150:130350:0:0,civil:60:52140:0:0"
+  ],
+  "verified": "digests computed pre-edit and post-edit and found equal; sensitivity confirmed at 551/kW"
+}

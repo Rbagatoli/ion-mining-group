@@ -44,14 +44,14 @@ var SiteInfrastructure = (function() {
      * wrong they are wrong in one place, and correcting them corrects both sides at once. The
      * low/mid/high band below is the stress-test the brief asked for, applied as a multiplier.
      *
-     * COLLECTION IS THE ONE ADDITION. site-capex.js prices no gas collection component at all --
-     * no wells, no headers, no blower, at any stage -- so a greenfield landfill is never charged
-     * for a field it would have to drill. That gap is real and is filed separately; here it means
-     * the rate has to be declared, and $550/kW is the midpoint of the brief's $300-800 range,
-     * which at 1-2 MW is the $800K-2.8M quoted for a collection system. */
-    var COLLECTION_PER_KW = 550;
+     * COLLECTION USED TO BE DECLARED HERE and now comes off the shared card like the rest.
+     * site-capex.js still prices no collection COMPONENT -- a greenfield landfill is never
+     * charged for the field it would have to drill, which is a real and separately filed gap --
+     * but the RATE is one number in one place, because a budget is about to read both modules
+     * and two figures for the same wells would surface as a variance rather than as a bug. */
 
     var FALLBACK_RATES = {          // used only when SiteCapex is not loaded
+        collectionPerKw: 550,
         generationPerKw: 900,
         gasTreatmentPerKw: 250,
         interconnectionPerKw: 150,
@@ -98,7 +98,7 @@ var SiteInfrastructure = (function() {
     function rates() {
         var r = (typeof SiteCapex !== 'undefined' && SiteCapex.rates) ? SiteCapex.rates() : null;
         return {
-            collection:    COLLECTION_PER_KW,
+            collection:    (r && r.collectionPerKw)      || FALLBACK_RATES.collectionPerKw,
             generation:    (r && r.generationPerKw)      || FALLBACK_RATES.generationPerKw,
             gasTreatment:  (r && r.gasTreatmentPerKw)    || FALLBACK_RATES.gasTreatmentPerKw,
             electrical:    (r && r.interconnectionPerKw) || FALLBACK_RATES.interconnectionPerKw,
@@ -279,7 +279,6 @@ var SiteInfrastructure = (function() {
     var CONFIDENCE_MULT = { high: 1.0, medium: 0.8, low: 0.5 };
 
     return {
-        COLLECTION_PER_KW: COLLECTION_PER_KW,
         BAND: BAND,
         CONDITION_DISCOUNT: CONDITION_DISCOUNT,
         MANDATE_DECAY: MANDATE_DECAY,
