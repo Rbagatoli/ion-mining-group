@@ -167,7 +167,16 @@
     // Prefix-driven rather than a list, so a key added later is covered without anyone
     // remembering to add it here. The export is keyed by the REAL localStorage key so a restore
     // needs no translation table.
-    var EXPORT_PREFIXES = ['protonMining', 'btcMinerCalc'];
+    // THE CRM PREFIX HAD TO BE ADDED BY HAND, WHICH IS THE POINT OF THE PARAGRAPH ABOVE.
+    // "A key added later is covered without anyone remembering" holds only for keys that pick a
+    // covered prefix. The CRM layer picked protonCrm and fell straight back out of the backup --
+    // six stores, including the register of executed agreements, outside the one backup
+    // affordance in the product for as long as they have existed. Same class of bug as the
+    // 11-of-28 one this block already records, found the same way: by counting.
+    //
+    // tests/backup-coverage.test.js now reads THIS ARRAY and walks the repo for every declared
+    // store, so the next store to pick a new prefix fails a test instead of going quiet.
+    var EXPORT_PREFIXES = ['protonMining', 'btcMinerCalc', 'protonCrm', 'protonContacts'];
 
     function exportableKeys() {
         var out = [];
