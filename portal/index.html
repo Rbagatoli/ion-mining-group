@@ -7,8 +7,8 @@
 <!-- Not indexed. A counterparty gets the link from us; nobody needs to find it. -->
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../tokens.css?v=278030b7">
-<link rel="stylesheet" href="./portal.css?v=278030b7">
+<link rel="stylesheet" href="../tokens.css?v=bef10983">
+<link rel="stylesheet" href="./portal.css?v=bef10983">
 </head>
 <body>
 
@@ -179,21 +179,21 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="../firebase-config.js?v=278030b7"></script>
-<script src="./portal.js?v=278030b7"></script>
+<script src="../firebase-config.js?v=bef10983"></script>
+<script src="./portal.js?v=bef10983"></script>
 <!-- The stand-in. Loaded on every visit, but it can only DO anything while
      PORTAL_ENDPOINT is empty, and only when somebody clicks for it. -->
-<script src="./portal-demo.js?v=278030b7"></script>
+<script src="./portal-demo.js?v=bef10983"></script>
 
 <!-- No dependencies, no network, no storage: DOM text on a grid and one
      setInterval. On the allowlist in tests/portal-frontend.test.js by name. -->
-<script src="./gas-field.js?v=278030b7"></script>
+<script src="./gas-field.js?v=bef10983"></script>
 
 <!-- The history chart. Like gas-field.js this is on the allowlist in
      tests/portal-frontend.test.js rather than exempt from it: it draws an SVG
      from an array it is handed, and has no network, no storage and no reference
      to anything else, which the test asserts rather than takes on trust. -->
-<script src="./fleet-chart.js?v=278030b7"></script>
+<script src="./fleet-chart.js?v=bef10983"></script>
 
 
 <script>

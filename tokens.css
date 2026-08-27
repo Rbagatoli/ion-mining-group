@@ -217,7 +217,14 @@
        CARTO's dark_all basemap is grey-blue and platinum is warm, so the tiles
        are retinted in the browser rather than by swapping tile servers. */
     --tile-filter: grayscale(1) contrast(1.06) brightness(0.82) sepia(0.12);
-    --globe-atmos: #f7931a;
+    /* NOT the brand orange, deliberately, and this is measured rather than eyeballed.
+       three-globe's atmosphere fades its colour to nothing across the shell, and the falloff
+       crushes green and blue to zero faster than red -- so whatever goes in arrives redder.
+       Feeding it btc-300 rendered at hue 17-19 degrees, which is rust, and is what 'the glow is
+       too red' was. Sampled from the rendered ring: btc-300 -> 17, btc-200 -> 25, this -> 30,
+       btc-100 -> 32, against a brand hue of 33. This is the most saturated input that still
+       lands on the brand hue; going paler only costs saturation from here. */
+    --globe-atmos: #ffcd85;
     --globe-fill-max: rgba(247, 147, 26, 0.85);
     --globe-fill-min: rgba(247, 147, 26, 0.03);
     --globe-stroke: rgba(247, 147, 26, 0.40);

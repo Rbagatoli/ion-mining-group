@@ -78,7 +78,14 @@ var ProtonTheme = (function() {
        greys on the globe -- platinum at low alpha reads as the same material as
        everything else instead of as a different dark. */
     var globe = {
-        atmos:     btc300,
+        /* NOT btc300, and that is measured rather than eyeballed. three-globe fades the
+           atmosphere colour to nothing across its shell, and the falloff crushes green and blue
+           to zero faster than red -- so whatever goes in arrives redder than it went. Sampled
+           out of the rendered ring: btc-300 comes back at hue 17-19, which is rust, and was the
+           reason the glow read as red. btc-200 comes back at 25, this at 30, btc-100 at 32,
+           against a brand hue of 33. This is the most saturated input that still lands on the
+           brand hue; anything paler only trades saturation away for nothing. */
+        atmos:     '#ffcd85',
         fillMax:   'rgba(247, 147, 26, 0.85)',
         fillMin:   'rgba(247, 147, 26, 0.03)',
         stroke:    'rgba(247, 147, 26, 0.40)',
