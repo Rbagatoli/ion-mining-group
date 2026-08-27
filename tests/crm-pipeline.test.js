@@ -212,5 +212,41 @@ eq('and time-in-stage answers honestly rather than throwing',
 global.CrmLog = CrmLog;
 global.CrmConfig = CrmConfig;
 
+// ---- The payload cannot forge the ordering ------------------------------------
+/* append() copies the caller's payload onto the entry, skipping the four fields the
+   store owns: id, kind, prospect_id, at. `seq` was not in that list, so a payload
+   carrying one overwrote the monotonic counter that forProspect() sorts on when two
+   entries share a millisecond -- which is the exact case seq was added to survive.
+
+   Nothing writes a `seq` payload today. It matters now because the execution
+   workspace adds log kinds for waivers, change-order approvals and payment
+   approvals, and CrmInteractions.correct() already merges a whole prior entry
+   forward as a payload (crm-interactions.js:170). Merging an entry that carries its
+   own seq is how this stops being theoretical: the corrected copy would inherit the
+   original's position and sort as though it had never been corrected. */
+fresh();
+SiteData.add(SiteData.normalize({ id: 'pseq' }));
+CrmLog.append('note', 'pseq', { body: 'first' });
+var forged = CrmLog.append('note', 'pseq', { body: 'second', seq: -999 });
+ok(forged.ok && forged.entry.seq > 0, 'a payload cannot set seq',
+   'entry seq is ' + (forged.entry && forged.entry.seq));
+
+/* The consequence, stated as the behaviour rather than the field: two entries in the
+   same millisecond must still come back newest first. This is what the counter is
+   for, and it is what a forged seq breaks. */
+var order = CrmLog.forProspect('pseq', 'note');
+eq('and both entries are still there', order.length, 2);
+ok(order[0].body === 'second', 'newest first survives a forged seq',
+   'got ' + JSON.stringify(order.map(function (e) { return e.body; })));
+
+/* The four fields that were already guarded stay guarded. Asserted alongside so a
+   future edit to the exclusion list cannot quietly drop one of them either. */
+var owned = CrmLog.append('note', 'pseq',
+    { id: 'forged', kind: 'stage', prospect_id: 'someone_else', at: '1999-01-01T00:00:00.000Z' });
+ok(owned.entry.id !== 'forged', 'a payload cannot set id');
+ok(owned.entry.kind === 'note', 'a payload cannot set kind');
+ok(owned.entry.prospect_id === 'pseq', 'a payload cannot reassign the prospect');
+ok(owned.entry.at.slice(0, 4) !== '1999', 'a payload cannot backdate the entry');
+
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  ALL PASS — ' + pass + ' assertions');
 process.exit(fail ? 1 : 0);

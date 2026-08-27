@@ -107,7 +107,15 @@ var CrmLog = (function () {
         payload = payload || {};
         for (var k in payload) {
             if (!Object.prototype.hasOwnProperty.call(payload, k)) continue;
-            if (k === 'id' || k === 'kind' || k === 'prospect_id' || k === 'at') continue;
+            /* seq JOINED THIS LIST LATE, and its absence was a live bug rather than an
+               oversight waiting to become one. The four fields above are the ones a caller
+               must not forge; seq is the one a caller must not forge ACCIDENTALLY.
+               CrmInteractions.correct() merges a whole prior entry forward as a payload
+               (crm-interactions.js:170), so a corrected entry inherited the original's
+               position and sorted as though it had never been corrected -- newest-first
+               returning oldest-first, which is the one thing the counter exists to stop. */
+            if (k === 'id' || k === 'kind' || k === 'prospect_id' || k === 'at' ||
+                k === 'seq') continue;
             entry[k] = payload[k];
         }
         data.entries.push(entry);
