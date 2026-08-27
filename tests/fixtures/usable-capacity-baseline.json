@@ -1,0 +1,250 @@
+{
+  "_comment": "Pre-extraction baseline for usableCapacity(). Generated from map-sourcing.js before the function moved to site-capacity.js. See tests/site-capacity.test.js.",
+  "generated_from": "map-sourcing.js @ 6aaf294",
+  "candidates": 30517,
+  "digest": "30e636ac20a1d6bb3cc55b015de939c50886524bec7641914e4b6ede0936cfe0",
+  "constants": {
+    "PARASITIC": {
+      "landfill_gas": 0.1,
+      "flare_gas": 0.07,
+      "_default": 0.07
+    },
+    "LFG_MW_PER_MMSCFD": 2.08
+  },
+  "samples": [
+    {
+      "id": "lmop_100-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 829,
+        "grossUsedKw": 921,
+        "parasiticPct": 10,
+        "gasSupportedKw": 921,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 1600
+      }
+    },
+    {
+      "id": "lmop_1000-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 6569,
+        "grossUsedKw": 7299,
+        "parasiticPct": 10,
+        "gasSupportedKw": 7299,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 12000
+      }
+    },
+    {
+      "id": "lmop_101-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 1818,
+        "grossUsedKw": 2020,
+        "parasiticPct": 10,
+        "gasSupportedKw": 2020,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 2020
+      }
+    },
+    {
+      "id": "lmop_1010-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 320,
+        "grossUsedKw": 356,
+        "parasiticPct": 10,
+        "gasSupportedKw": 356,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 356
+      }
+    },
+    {
+      "id": "lmop_1013-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 2488,
+        "grossUsedKw": 2764,
+        "parasiticPct": 10,
+        "gasSupportedKw": 2764,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 4800
+      }
+    },
+    {
+      "id": "lmop_1016-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 12438,
+        "grossUsedKw": 13820,
+        "parasiticPct": 10,
+        "gasSupportedKw": 13820,
+        "gasCapped": true,
+        "basis": "limited by gas collected at the landfill, 2.08 MW/mmscfd",
+        "gross": 22500
+      }
+    },
+    {
+      "id": "lmop_0-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 1404,
+        "grossUsedKw": 1560,
+        "parasiticPct": 10,
+        "gasSupportedKw": 1560,
+        "gasCapped": false,
+        "basis": "LFG collected at landfill at 2.08 MW/mmscfd",
+        "gross": 1560
+      }
+    },
+    {
+      "id": "lmop_100-1",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 720,
+        "grossUsedKw": 800,
+        "parasiticPct": 10,
+        "gasSupportedKw": 921,
+        "gasCapped": false,
+        "basis": "EPA rated MW capacity",
+        "gross": 800
+      }
+    },
+    {
+      "id": "lmop_1001-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 2880,
+        "grossUsedKw": 3200,
+        "parasiticPct": 10,
+        "gasSupportedKw": 8114,
+        "gasCapped": false,
+        "basis": "EPA rated MW capacity",
+        "gross": 3200
+      }
+    },
+    {
+      "id": "lmop_1008-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 1763,
+        "grossUsedKw": 1959,
+        "parasiticPct": 10,
+        "gasSupportedKw": 1959,
+        "gasCapped": false,
+        "basis": "LFG collected at landfill at 2.08 MW/mmscfd",
+        "gross": 1959
+      }
+    },
+    {
+      "id": "lmop_1012-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 809,
+        "grossUsedKw": 899,
+        "parasiticPct": 10,
+        "gasSupportedKw": 1918,
+        "gasCapped": false,
+        "basis": "LFG flow to project at 2.08 MW/mmscfd",
+        "gross": 899
+      }
+    },
+    {
+      "id": "lmop_1013-1",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 2488,
+        "grossUsedKw": 2764,
+        "parasiticPct": 10,
+        "gasSupportedKw": 2764,
+        "gasCapped": false,
+        "basis": "LFG collected at landfill at 2.08 MW/mmscfd",
+        "gross": 2764
+      }
+    },
+    {
+      "id": "lmop_1016-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 20250,
+        "grossUsedKw": 22500,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "EPA rated MW capacity",
+        "gross": 22500
+      }
+    },
+    {
+      "id": "lmop_1016-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 20250,
+        "grossUsedKw": 22500,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "EPA rated MW capacity",
+        "gross": 22500
+      }
+    },
+    {
+      "id": "lmop_1040-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 1498,
+        "grossUsedKw": 1664,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "LFG flow to project at 2.08 MW/mmscfd",
+        "gross": 1664
+      }
+    },
+    {
+      "id": "lmop_1041-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 1498,
+        "grossUsedKw": 1664,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "LFG flow to project at 2.08 MW/mmscfd",
+        "gross": 1664
+      }
+    },
+    {
+      "id": "lmop_1044-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 3182,
+        "grossUsedKw": 3536,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "LFG flow to project at 2.08 MW/mmscfd",
+        "gross": 3536
+      }
+    },
+    {
+      "id": "lmop_1055-0",
+      "energyType": "landfill_gas",
+      "out": {
+        "kw": 954,
+        "grossUsedKw": 1060,
+        "parasiticPct": 10,
+        "gasSupportedKw": null,
+        "gasCapped": false,
+        "basis": "EPA rated MW capacity",
+        "gross": 1060
+      }
+    }
+  ]
+}
