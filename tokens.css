@@ -245,8 +245,8 @@
 
        These are three.js material values, not CSS. They are mirrored into theme.js like every
        other WebGL colour, because a shader cannot resolve a custom property. */
-    --globe-body-fleet: #383734;
-    --globe-body-prospects: #2a2926;
+    --globe-body-fleet: #2e1b09;
+    --globe-body-prospects: #2e1b09;
     --globe-ambient-fleet: #6b6a67;
     --globe-ambient-prospects: #5c5b58;
     --globe-key: #ffffff;

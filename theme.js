@@ -131,13 +131,13 @@ var ProtonTheme = (function() {
          * hashrate choropleth is painted onto it; Prospects' body is a backdrop for four thousand
          * markers and gets out of their way. */
         body: {
-            fleet:     { color: '#383734', specular: '#4a4845', shininess: 60,
+            fleet:     { color: '#2e1b09', specular: '#4a4845', shininess: 60,
                          bumpScale: 0.42, emissive: '#000000',
                          ambient: '#6b6a67', ambientI: 0.8,
                          keyI: 2.5, atmosphereAltitude: 0.28 },
-            prospects: { color: '#2a2926', specular: '#4a4845', shininess: 60,
+            prospects: { color: '#2e1b09', specular: '#4a4845', shininess: 60,
                          bumpScale: 0.42, emissive: '#000000',
-                         ambient: '#5c5b58', ambientI: 0.7,
+                         ambient: '#6b6a67', ambientI: 0.75,
                          keyI: 2.6, atmosphereAltitude: 0.28 }
         },
         grainRepeat: [56, 28],
