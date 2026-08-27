@@ -1,4 +1,4 @@
-const CACHE_NAME = 'proton-mining-v374';
+const CACHE_NAME = 'proton-mining-v375';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -87,6 +87,7 @@ const ASSETS = [
   './firebase-config.js',
   './sync.js',
   './auth-ui.js',
+  './backup.js',
   './profile-panel.js',
   './alerts.js',
   './onboarding.js',

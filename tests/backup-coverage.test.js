@@ -30,9 +30,9 @@ function ok(label, cond, detail) {
 // Parsed rather than copied, for the reason storage.test.js gives when it parses SYNC_KEYS: a
 // duplicated list agrees with a past version of the code. A copy here would keep passing after
 // someone narrowed the prefixes, which is precisely the change this test exists to catch.
-var PANEL = fs.readFileSync(path.join(ROOT, 'profile-panel.js'), 'utf8');
+var PANEL = fs.readFileSync(path.join(ROOT, 'backup.js'), 'utf8');
 var PREFIX_DECL = /var\s+EXPORT_PREFIXES\s*=\s*\[([^\]]*)\]/.exec(PANEL);
-ok('EXPORT_PREFIXES was found in profile-panel.js', !!PREFIX_DECL);
+ok('EXPORT_PREFIXES was found in backup.js', !!PREFIX_DECL);
 var PREFIXES = PREFIX_DECL
     ? (PREFIX_DECL[1].match(/'([^']+)'/g) || []).map(function (s) { return s.slice(1, -1); })
     : [];
@@ -54,7 +54,11 @@ var stores = [];
 fs.readdirSync(ROOT).forEach(function (f) {
     if (!/\.js$/.test(f) || f === 'chart.min.js') return;
     var src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    var re = /var\s+KEY\s*=\s*'([^']+)'/g, m;
+    /* The key pattern is deliberately tighter than [^']+. This scan reads comments as code --
+       the same property that makes the colour census work -- and a doc comment in backup.js
+       describing "var KEY = '...'" registered an ellipsis as a tenth store. Store keys are
+       identifiers, so requiring one costs nothing real and stops prose from inventing stores. */
+    var re = /var\s+KEY\s*=\s*'([A-Za-z][A-Za-z0-9_]*)'/g, m;
     while ((m = re.exec(src)) !== null) stores.push({ file: f, key: m[1] });
 });
 

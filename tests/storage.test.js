@@ -81,20 +81,14 @@ console.log('\n--- a failed save reports failure ---');
 // ================================================================================
 console.log('\n--- the export covers every key, not just the synced ones ---');
 (function() {
-    // The export is prefix-driven so a key added later is covered without anyone remembering.
-    // Reproduced here rather than imported, because profile-panel.js needs a DOM to load.
-    var PREFIXES = ['protonMining', 'btcMinerCalc'];
-    function exportable(store) {
-        var out = [];
-        for (var i = 0; i < store.length; i++) {
-            var k = store.key(i);
-            if (!k) continue;
-            for (var p = 0; p < PREFIXES.length; p++) {
-                if (k.indexOf(PREFIXES[p]) === 0) { out.push(k); break; }
-            }
-        }
-        return out.sort();
-    }
+    /* IMPORTED NOW, NOT REPRODUCED. This block used to carry its own copy of the prefix list
+       "because profile-panel.js needs a DOM to load" -- and that copy is why this test stayed
+       green while six protonCrm* stores sat outside the export it claims to cover. The list and
+       the key walk moved to backup.js precisely so they could be imported here.
+
+       Coverage of the real store inventory is tests/backup-coverage.test.js. What is left here
+       is the mechanism: which shapes of key the walk includes and excludes. */
+    var exportable = require(path.join(ROOT, 'backup.js')).exportableKeys;
 
     var st = makeStorage();
     // A representative spread: synced keys, unsynced keys, and one that must NOT be exported.

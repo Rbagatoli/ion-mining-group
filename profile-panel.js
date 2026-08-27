@@ -26,6 +26,11 @@
                         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
                         'Export All Data' +
                     '</button>' +
+                    '<button class="profile-action-btn" id="profileImportBtn">' +
+                        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+                        'Restore From File' +
+                    '</button>' +
+                    '<input type="file" id="profileImportInput" accept="application/json,.json" hidden>' +
                     '<button class="profile-action-btn" id="profileDeleteDataBtn">' +
                         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
                         'Delete Cloud Data' +
@@ -45,6 +50,10 @@
 
         document.getElementById('profileCloseBtn').addEventListener('click', hidePanel);
         document.getElementById('profileExportBtn').addEventListener('click', exportAllData);
+        document.getElementById('profileImportBtn').addEventListener('click', function() {
+            document.getElementById('profileImportInput').click();
+        });
+        document.getElementById('profileImportInput').addEventListener('change', importFromFile);
         document.getElementById('profileDeleteDataBtn').addEventListener('click', deleteCloudData);
         document.getElementById('profileSignOutBtn').addEventListener('click', handleSignOut);
         document.getElementById('profileDeleteAccountBtn').addEventListener('click', handleDeleteAccount);
@@ -167,47 +176,103 @@
     // Prefix-driven rather than a list, so a key added later is covered without anyone
     // remembering to add it here. The export is keyed by the REAL localStorage key so a restore
     // needs no translation table.
-    // THE CRM PREFIX HAD TO BE ADDED BY HAND, WHICH IS THE POINT OF THE PARAGRAPH ABOVE.
-    // "A key added later is covered without anyone remembering" holds only for keys that pick a
-    // covered prefix. The CRM layer picked protonCrm and fell straight back out of the backup --
-    // six stores, including the register of executed agreements, outside the one backup
-    // affordance in the product for as long as they have existed. Same class of bug as the
-    // 11-of-28 one this block already records, found the same way: by counting.
+    // THE PREFIX LIST AND THE KEY WALK NOW LIVE IN backup.js, alongside the restore that has to
+    // agree with them exactly. They were here, and the CRM layer's protonCrm prefix fell outside
+    // them silently -- six stores, including the register of executed agreements, outside the one
+    // backup affordance in the product for as long as they existed. Same class of bug as the
+    // 11-of-28 one the paragraph above records, found the same way: by counting.
     //
-    // tests/backup-coverage.test.js now reads THIS ARRAY and walks the repo for every declared
-    // store, so the next store to pick a new prefix fails a test instead of going quiet.
-    var EXPORT_PREFIXES = ['protonMining', 'btcMinerCalc', 'protonCrm', 'protonContacts'];
+    // Moving them also made them testable. tests/storage.test.js had to reproduce the list
+    // locally "because profile-panel.js needs a DOM to load", and a reproduced list is what let
+    // a test called "the export covers every key" stay green while it covered a third of them.
 
-    function exportableKeys() {
-        var out = [];
-        for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (!k) continue;
-            for (var p = 0; p < EXPORT_PREFIXES.length; p++) {
-                if (k.indexOf(EXPORT_PREFIXES[p]) === 0) { out.push(k); break; }
-            }
-        }
-        return out.sort();
-    }
-
-    function exportAllData() {
-        var data = {};
-        var ks = exportableKeys();
-        for (var i = 0; i < ks.length; i++) {
-            var raw = localStorage.getItem(ks[i]);
-            if (raw === null) continue;
-            try { data[ks[i]] = JSON.parse(raw); } catch (e) { data[ks[i]] = raw; }
-        }
-
-        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    function download(text, name) {
+        var blob = new Blob([text], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
-        a.download = 'proton-mining-data-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.download = name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    function stamp() { return new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'); }
+
+    function exportAllData() {
+        download(ProtonBackup.serialize(ProtonBackup.collect(localStorage)),
+                 'proton-mining-data-' + new Date().toISOString().slice(0, 10) + '.json');
+    }
+
+    /* RESTORE. The counterpart the export has been missing, which made the one backup affordance
+       in the product a one-way door.
+     *
+       Everything that decides anything lives in backup.js and is tested in node against a real
+       storage shim -- this function is the file picker, the sentence the user reads, and the
+       download of the safety copy. The split is deliberate: a restore that can overwrite a
+       ledger must not be testable only by re-implementing it, which is how the export came to
+       have a green test while six stores sat outside it. */
+    function importFromFile(ev) {
+        var input = ev.target;
+        var file = input.files && input.files[0];
+        // Cleared immediately so choosing the same file twice in a row still fires a change.
+        input.value = '';
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onerror = function() { alert('That file could not be read.'); };
+        reader.onload = function() {
+            var parsed;
+            try {
+                parsed = JSON.parse(String(reader.result));
+            } catch (e) {
+                alert('That file is not valid JSON, so nothing was restored.');
+                return;
+            }
+
+            /* VALIDATED IN FULL BEFORE ANYTHING IS SHOWN, let alone written. If any key fails,
+               the user is told what is wrong with the file rather than being asked to confirm a
+               restore that would then half-happen. */
+            var check = ProtonBackup.inspect(parsed, localStorage);
+            if (!check.ok) { alert(check.err); return; }
+
+            /* WHAT IS ABOUT TO BE REPLACED, per key, with counts on both sides. "Restore this
+               backup?" is not a question anyone can answer; "sites: 47 records become 12" is. */
+            var lines = check.plan.map(function(p) {
+                return p.action === 'create'
+                    ? '  ' + p.key + ': not present now, ' + p.after + ' restored'
+                    : '  ' + p.key + ': ' + p.before + ' now, ' + p.after + ' after';
+            });
+            var untouched = ProtonBackup.exportableKeys(localStorage).filter(function(k) {
+                for (var i = 0; i < check.plan.length; i++) if (check.plan[i].key === k) return false;
+                return true;
+            });
+            var msg = 'Restore ' + check.plan.length + ' store' +
+                      (check.plan.length === 1 ? '' : 's') + ' from this file?\n\n' +
+                      lines.join('\n') + '\n\n' +
+                      (untouched.length
+                        ? untouched.length + ' other store' + (untouched.length === 1 ? ' is' : 's are') +
+                          ' not in this file and will be left as they are.\n\n'
+                        : '') +
+                      'Each store is REPLACED, not merged. A copy of your current data will ' +
+                      'download first.';
+            if (!confirm(msg)) return;
+
+            /* The safety copy is not optional and not a checkbox. Restoring an old backup over
+               recent work is the obvious way to lose data here, and it is the one the user is
+               least likely to have anticipated at the moment they click. */
+            var res = ProtonBackup.apply(parsed, localStorage, function(snapshot) {
+                download(ProtonBackup.serialize(snapshot),
+                         'proton-mining-before-restore-' + stamp() + '.json');
+            });
+
+            if (!res.ok) { alert(res.err); return; }
+            alert('Restored ' + res.written.length + ' store' +
+                  (res.written.length === 1 ? '' : 's') + '. The page will reload.');
+            location.reload();
+        };
+        reader.readAsText(file);
     }
 
     function deleteCloudData() {
