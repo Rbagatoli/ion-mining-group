@@ -82,37 +82,55 @@ var ProtonTheme = (function() {
         fillMax:   'rgba(247, 147, 26, 0.85)',
         fillMin:   'rgba(247, 147, 26, 0.03)',
         stroke:    'rgba(247, 147, 26, 0.40)',
-        // Lifted from 0.10: a line that read against a black sphere vanishes against a lit one.
-        strokeDim: 'rgba(229, 228, 226, 0.18)',
+        /* Lifted from 0.10. A line that read against a black sphere vanishes against a lit
+           one, and on a dark matte body the borders now do most of the work a specular
+           highlight only pretended to do -- so they carry more weight, not less. */
+        strokeDim: 'rgba(229, 228, 226, 0.32)',
 
         /* THE BODY, per mode. --globe-body-* in tokens.css.
          *
          * The sphere had no material set at all, so three-globe's default left it pure black --
-         * the one colour this palette does not contain. Machined platinum instead, lit by one
-         * key light, with the warm halo coming from the atmosphere shader BEHIND the globe
-         * rather than from any orange light in front of it. A second orange light was tried and
-         * rejected: every directional light adds its own specular highlight, so a warm rim light
-         * reads as an orange headlight on the front of the ball instead of a glow behind it.
+         * the one colour this palette does not contain. Dark machined graphite instead, lit by
+         * one key light, with the warm halo coming from the atmosphere shader BEHIND the globe.
          *
-         * Shininess is deliberately low. At 90+ the highlight is a tight blown-out disc that
-         * reads as glass or snooker ball; metal on a dark ground wants a broad soft sheen.
+         * SPECULAR IS OFF ENTIRELY, and that is the finding. MeshPhongMaterial spreads its
+         * highlight as pow(cos, shininess), which on a smooth sphere under a directional light
+         * is always a bright patch somewhere on the disc -- there is no such thing as a specular
+         * that is present but not a blob. Photographed across the range: shininess 14-40 gives a
+         * broad wash over most of the visible face, 90+ gives a tight blown-out disc that reads
+         * as glass, 220 gives a small hard glint that is still a bright spot. Every one of them
+         * puts a light patch in the middle of the map, on top of the data. So it is switched off.
          *
-         * Fleet runs bright because the choropleth is painted on the body and wants a light
-         * ground. Prospects runs dark because the body is a backdrop for markers that were
-         * colour-tuned against near-black. */
+         * WITHOUT IT, "metal" has to come from somewhere else, and it comes from three things: a
+         * low ambient against a strong key, which gives a crisp terminator rather than a flat
+         * wash; the atmosphere's thin bright rim, which separates the ball from the page; and
+         * border lines carrying real contrast. That is also what dark-but-sharp means here --
+         * sharpness is edge definition, not gloss.
+         *
+         * A warm orange rim LIGHT was tried earlier and rejected for the same reason: every
+         * directional light contributes its own highlight, so it read as an orange headlight
+         * stuck on the front of the ball rather than a glow behind it.
+         *
+         * Fleet's body sits a shade above Prospects' because there the body is the OCEAN and the
+         * hashrate choropleth is painted onto it; Prospects' body is a backdrop for four thousand
+         * markers and gets out of their way. With the specular off, lifting fleet's body cannot
+         * bring a hotspot back -- the brightness is purely diffuse and stays even across the
+         * disc. */
         body: {
-            fleet:     { color: '#5c5b58', specular: '#cbcac7', shininess: 14,
-                         emissive: '#111110', ambient: '#cbcac7', ambientI: 1.7,
-                         keyI: 1.6, atmosphereAltitude: 0.24 },
-            prospects: { color: '#2e2d2b', specular: '#83827f', shininess: 18,
-                         emissive: '#0f0f0e', ambient: '#a9a8a5', ambientI: 1.15,
-                         keyI: 1.6, atmosphereAltitude: 0.26 }
+            fleet:     { color: '#383734', specular: '#000000', shininess: 1,
+                         emissive: '#000000', ambient: '#6b6a67', ambientI: 0.8,
+                         keyI: 2.5, atmosphereAltitude: 0.28 },
+            prospects: { color: '#2a2926', specular: '#000000', shininess: 1,
+                         emissive: '#000000', ambient: '#5c5b58', ambientI: 0.7,
+                         keyI: 2.6, atmosphereAltitude: 0.28 }
         },
         key: '#ffffff',
-        // World space, so the highlight travels across the surface as the globe turns, the way
-        // a sun would. Swung off the camera axis so it lands nearer the limb than the middle of
-        // the disc, where it would otherwise sit on top of the densest marker cluster.
-        keyPosition: [-0.75, 0.45, 0.25]
+        /* World space, so the light stays put while the globe turns -- the terminator sweeps
+           across the surface the way a sun would, rather than following the camera like a torch.
+           Swung well off the camera axis so the lit/unlit boundary falls ACROSS the disc instead
+           of facing the viewer flat-on, which is what gives the ball its shape now that there is
+           no highlight to do it. */
+        keyPosition: [-0.8, 0.4, 0.25]
     };
 
     // Inactive slices in the fleet pie: present, but not competing for attention.

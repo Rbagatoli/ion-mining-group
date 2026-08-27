@@ -223,7 +223,7 @@
     --globe-stroke: rgba(247, 147, 26, 0.40);
     /* Was 0.10, which is invisible against a lit metal body. The globe used to be pure black,
        so a barely-there platinum line was enough; on platinum it disappears entirely. */
-    --globe-stroke-dim: rgba(229, 228, 226, 0.18);
+    --globe-stroke-dim: rgba(229, 228, 226, 0.32);
 
     /* ---- The globe is machined platinum, and it is lit ----------------------
        It was a pure black sphere with no material ever set, so the only thing on screen was the
@@ -238,15 +238,14 @@
 
        These are three.js material values, not CSS. They are mirrored into theme.js like every
        other WebGL colour, because a shader cannot resolve a custom property. */
-    --globe-body-fleet: #5c5b58;
-    --globe-body-prospects: #2e2d2b;
-    --globe-spec-fleet: #cbcac7;
-    --globe-spec-prospects: #83827f;
-    --globe-emissive-fleet: #111110;
-    --globe-emissive-prospects: #0f0f0e;
-    --globe-ambient-fleet: #cbcac7;
-    --globe-ambient-prospects: #a9a8a5;
+    --globe-body-fleet: #383734;
+    --globe-body-prospects: #2a2926;
+    --globe-ambient-fleet: #6b6a67;
+    --globe-ambient-prospects: #5c5b58;
     --globe-key: #ffffff;
+    /* NO SPECULAR AT ALL, which is the whole reason the globe stopped having a bright blob in
+       the middle of it. See theme.js for why a smaller highlight was not enough. */
+    --globe-spec: #000000;
 
     /* Flare persistence, as a real sequential scale. The palette before last ran
        green → orange → brown → brown, which is not monotonic in luminance and so

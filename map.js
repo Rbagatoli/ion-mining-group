@@ -795,8 +795,9 @@ var _globeRef = null, _showGlobePopupRef = null;
             var m = globeInstance.globeMaterial();
             m.color.set(spec.color);
             m.specular.set(spec.specular);
-            /* Low on purpose. Above about 40 the highlight collapses into a tight blown-out disc
-               that reads as glass; metal on a dark ground wants a broad soft sheen. */
+            /* BLACK, i.e. no specular term at all. On a smooth sphere under a directional
+               light there is no shininess that produces a highlight which is not a bright patch
+               somewhere on the disc -- and that patch lands on the data. See theme.js. */
             m.shininess = spec.shininess;
             m.emissive.set(spec.emissive);
             m.needsUpdate = true;
