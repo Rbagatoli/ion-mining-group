@@ -100,43 +100,52 @@ var ProtonTheme = (function() {
          * the one colour this palette does not contain. Dark machined graphite instead, lit by
          * one key light, with the warm halo coming from the atmosphere shader BEHIND the globe.
          *
-         * SPECULAR IS OFF ENTIRELY, and that is the finding. MeshPhongMaterial spreads its
-         * highlight as pow(cos, shininess), which on a smooth sphere under a directional light
-         * is always a bright patch somewhere on the disc -- there is no such thing as a specular
-         * that is present but not a blob. Photographed across the range: shininess 14-40 gives a
-         * broad wash over most of the visible face, 90+ gives a tight blown-out disc that reads
-         * as glass, 220 gives a small hard glint that is still a bright spot. Every one of them
-         * puts a light patch in the middle of the map, on top of the data. So it is switched off.
+         * THE SURFACE IS BRUSHED, WHICH IS WHAT LETS IT HAVE A HIGHLIGHT AT ALL.
          *
-         * WITHOUT IT, "metal" has to come from somewhere else, and it comes from three things: a
-         * low ambient against a strong key, which gives a crisp terminator rather than a flat
-         * wash; the atmosphere's thin bright rim, which separates the ball from the page; and
-         * border lines carrying real contrast. That is also what dark-but-sharp means here --
-         * sharpness is edge definition, not gloss.
+         * Switching the specular off killed the bright blob but left the globe matte. Both
+         * facts have the same cause: MeshPhongMaterial spreads its highlight as
+         * pow(cos, shininess), and on a PERFECTLY SMOOTH sphere that pools into one disc no
+         * matter what shininess is set to. Photographed across the range: 14-40 washes most of
+         * the visible face, 90+ tightens to a blown-out disc that reads as glass, 220 gives a
+         * hard glint that is still a bright spot. There is no smooth-sphere setting that is
+         * metallic without being a blob, which is why turning it off was the only way out.
          *
-         * A warm orange rim LIGHT was tried earlier and rejected for the same reason: every
-         * directional light contributes its own highlight, so it read as an orange headlight
-         * stuck on the front of the ball rather than a glow behind it.
+         * So the sphere stops being smooth. A procedural bump map with fine latitudinal grain
+         * -- generated in-canvas at runtime, see brushedGrain() in map.js -- perturbs the normal
+         * just enough that the lobe smears ALONG the grain instead of pooling. That is exactly
+         * what brushed steel does, and it is why brushed metal has a long soft sheen where
+         * polished metal has a hotspot.
+         *
+         * grainRepeat is the tile count across the sphere, and it is the setting that has to
+         * survive the whole zoom range rather than look right once. At 16 the grain reads as
+         * fine texture wide out and as coarse scratches at altitude 0.3, where prospecting
+         * actually works; at 56 it holds at both ends. Photographed at altitude 2.0, 0.9 and
+         * 0.3 before choosing.
+         *
+         * A warm orange rim LIGHT was tried much earlier and rejected: every directional light
+         * contributes its own highlight, so it read as an orange headlight stuck on the front
+         * of the ball rather than a glow behind it. The halo is the atmosphere shader, which is
+         * behind the globe by construction and cannot do that.
          *
          * Fleet's body sits a shade above Prospects' because there the body is the OCEAN and the
          * hashrate choropleth is painted onto it; Prospects' body is a backdrop for four thousand
-         * markers and gets out of their way. With the specular off, lifting fleet's body cannot
-         * bring a hotspot back -- the brightness is purely diffuse and stays even across the
-         * disc. */
+         * markers and gets out of their way. */
         body: {
-            fleet:     { color: '#383734', specular: '#000000', shininess: 1,
-                         emissive: '#000000', ambient: '#6b6a67', ambientI: 0.8,
+            fleet:     { color: '#383734', specular: '#4a4845', shininess: 60,
+                         bumpScale: 0.42, emissive: '#000000',
+                         ambient: '#6b6a67', ambientI: 0.8,
                          keyI: 2.5, atmosphereAltitude: 0.28 },
-            prospects: { color: '#2a2926', specular: '#000000', shininess: 1,
-                         emissive: '#000000', ambient: '#5c5b58', ambientI: 0.7,
+            prospects: { color: '#2a2926', specular: '#4a4845', shininess: 60,
+                         bumpScale: 0.42, emissive: '#000000',
+                         ambient: '#5c5b58', ambientI: 0.7,
                          keyI: 2.6, atmosphereAltitude: 0.28 }
         },
+        grainRepeat: [56, 28],
         key: '#ffffff',
         /* World space, so the light stays put while the globe turns -- the terminator sweeps
            across the surface the way a sun would, rather than following the camera like a torch.
-           Swung well off the camera axis so the lit/unlit boundary falls ACROSS the disc instead
-           of facing the viewer flat-on, which is what gives the ball its shape now that there is
-           no highlight to do it. */
+           Swung well off the camera axis so the lit/unlit boundary falls ACROSS the disc rather
+           than facing the viewer flat-on. */
         keyPosition: [-0.8, 0.4, 0.25]
     };
 

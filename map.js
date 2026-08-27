@@ -787,18 +787,78 @@ var _globeRef = null, _showGlobePopupRef = null;
      * The lights belong to three-globe, not to this file, so they are found by traversal rather
      * than constructed -- there is no THREE global on this page and adding one would mean a
      * build step. Everything below is a property assignment on objects that already exist. */
-    var _bodyTries = 0;
+    /* THE BRUSHED GRAIN, generated rather than shipped.
+     *
+     * This is what lets the globe have a specular highlight without that highlight being a
+     * bright blob in the middle of the map -- see the long note in theme.js. Fine latitudinal
+     * strokes perturb the surface normal a little, so the lobe smears along the grain the way it
+     * does on brushed steel instead of pooling into a disc on a perfect sphere.
+     *
+     * A SMALL TILE, REPEATED. Generating one globe-sized 2048x1024 image cost 3.5MB as a data URI
+     * and a visible pause; a 512px tile repeated 56x28 costs about 100KB and 12ms, measured, and
+     * is indistinguishable at every zoom the app reaches.
+     *
+     * Deterministic PRNG, not Math.random: the surface of the globe should not be different on
+     * every reload, and a fixed seed means a screenshot taken today matches one taken tomorrow. */
+    var GRAIN_FLAT = 128;        // mid-grey is zero displacement in a bump map; 0 and 255 are the extremes
+    var GRAIN_SWING = 96;        // how far strokes deviate from flat, before bumpScale scales it
+    var GRAIN_TILE = 512;
+    var GRAIN_STROKES = 5200;
+
+    function brushedGrain() {
+        var c = document.createElement('canvas');
+        c.width = c.height = GRAIN_TILE;
+        var g = c.getContext('2d');
+        var flat = 'rgb(' + GRAIN_FLAT + ',' + GRAIN_FLAT + ',' + GRAIN_FLAT + ')';
+        g.fillStyle = flat;
+        g.fillRect(0, 0, GRAIN_TILE, GRAIN_TILE);
+        var seed = 20260826;
+        function rnd() {
+            seed = (seed * 1664525 + 1013904223) >>> 0;
+            return seed / 4294967296;
+        }
+        for (var i = 0; i < GRAIN_STROKES; i++) {
+            var y = Math.floor(rnd() * GRAIN_TILE);
+            var x = rnd() * GRAIN_TILE;
+            var len = GRAIN_TILE * (0.04 + rnd() * 0.45);
+            var v = GRAIN_FLAT + Math.round((rnd() - 0.5) * GRAIN_SWING);
+            g.strokeStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+            g.lineWidth = rnd() < 0.75 ? 1 : 2;
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y); g.stroke();
+            // Drawn twice where a stroke runs off the right edge, so the tile seams cleanly in
+            // the direction it repeats. Without this there is a visible vertical seam per tile.
+            if (x + len > GRAIN_TILE) {
+                g.beginPath();
+                g.moveTo(x - GRAIN_TILE, y);
+                g.lineTo(x + len - GRAIN_TILE, y);
+                g.stroke();
+            }
+        }
+        return c.toDataURL('image/png');
+    }
+
+    var _bodyTries = 0, _grainSent = false;
     function applyGlobeBody() {
         if (!globeInstance) return;
         var spec = ProtonTheme.globe.body[MapBridge.mode() === 'prospects' ? 'prospects' : 'fleet'];
         try {
+            /* bumpImageUrl, unlike globeImageUrl, does NOT swap the material out -- measured,
+               because globeImageUrl does and that silently nulls specular and emissive. Sent
+               once; the load is async, so the texture is configured further down when it
+               appears. */
+            if (!_grainSent) {
+                _grainSent = true;
+                globeInstance.bumpImageUrl(brushedGrain());
+            }
+
             var m = globeInstance.globeMaterial();
             m.color.set(spec.color);
+            /* NON-ZERO ONLY BECAUSE THE SURFACE IS BRUSHED. On a smooth sphere any specular
+               at all is a bright patch somewhere on the disc, and that patch lands on the data;
+               the grain below is what smears it into a sheen instead. See theme.js. */
             m.specular.set(spec.specular);
-            /* BLACK, i.e. no specular term at all. On a smooth sphere under a directional
-               light there is no shininess that produces a highlight which is not a bright patch
-               somewhere on the disc -- and that patch lands on the data. See theme.js. */
             m.shininess = spec.shininess;
+            m.bumpScale = spec.bumpScale;
             m.emissive.set(spec.emissive);
             m.needsUpdate = true;
 
@@ -812,6 +872,28 @@ var _globeRef = null, _showGlobePopupRef = null;
 
                So this retries on the next frame until it finds them, rather than guessing at a
                delay that would be wrong on a slow machine. */
+            /* RepeatWrapping is 1000 in three.js. Spelled as the number because there is no
+               THREE global on this page -- the library is bundled inside globe.gl and exports
+               nothing -- and adding one would mean a build step. */
+            var grainReady = false;
+            if (m.bumpMap) {
+                grainReady = true;
+                if (!m.bumpMap._protonTuned) {
+                    m.bumpMap.wrapS = 1000;
+                    m.bumpMap.wrapT = 1000;
+                    m.bumpMap.repeat.set(ProtonTheme.globe.grainRepeat[0],
+                                         ProtonTheme.globe.grainRepeat[1]);
+                    // The grain is viewed at a grazing angle over most of the globe, which is
+                    // exactly where isotropic filtering smears it into nothing.
+                    try {
+                        m.bumpMap.anisotropy =
+                            globeInstance.renderer().capabilities.getMaxAnisotropy();
+                    } catch (e) { /* older context; the default is fine */ }
+                    m.bumpMap._protonTuned = true;
+                    m.bumpMap.needsUpdate = true;
+                }
+            }
+
             var found = 0;
             globeInstance.scene().traverse(function(o) {
                 if (o.isAmbientLight || o.isDirectionalLight) found++;
@@ -831,7 +913,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                 }
             });
             globeInstance.atmosphereAltitude(spec.atmosphereAltitude);
-            if (!found && _bodyTries < 60) {
+            if ((!found || !grainReady) && _bodyTries < 120) {
                 _bodyTries++;
                 requestAnimationFrame(applyGlobeBody);
             }

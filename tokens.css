@@ -250,9 +250,10 @@
     --globe-ambient-fleet: #6b6a67;
     --globe-ambient-prospects: #5c5b58;
     --globe-key: #ffffff;
-    /* NO SPECULAR AT ALL, which is the whole reason the globe stopped having a bright blob in
-       the middle of it. See theme.js for why a smaller highlight was not enough. */
-    --globe-spec: #000000;
+    /* The specular is back, but only because the surface is no longer smooth. A highlight pools
+       into a single disc on a perfect sphere; on a brushed one it smears along the grain. See
+       theme.js -- the bump map is what makes this value safe to be non-zero. */
+    --globe-spec: #4a4845;
 
     /* Flare persistence, as a real sequential scale. The palette before last ran
        green → orange → brown → brown, which is not monotonic in luminance and so
