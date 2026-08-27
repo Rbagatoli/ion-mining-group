@@ -93,7 +93,7 @@ eq('a checked one carries its age in days', rowFor(d, 'Reachable Rita').verified
 // ---- A link outlives the prospect ------------------------------------------------
 /* The contact store has no reason to know a prospect was deleted, so the link
    survives it. Filtered out, it is invisible and can never be cleaned up. */
-SiteData.remove('p2');
+SiteData.remove('p2');   // return deliberately ignored: this line exists to orphan a link
 CrmContacts.reset();
 d = V.build({}, NOW);
 var rita = rowFor(d, 'Reachable Rita');

@@ -323,12 +323,31 @@ var SiteData = (function() {
         return null;
     }
 
+    /* { ok, err } RATHER THAN A BOOLEAN, and the boolean was hiding two different things.
+     *
+     * It returned false both for "no such site" and, silently, for "the site was removed from the
+     * in-memory array and the write to disk then failed" -- because the return value was computed
+     * from the array length and saveData's own { ok, err } was discarded. On a full localStorage
+     * that reported a successful delete of a record still on disk, which reappears on reload.
+     *
+     * The shape matches setStage's precondition refusals (:353), which is the only other place in
+     * this file that says no. A caller that has to distinguish "refused" from "failed to write"
+     * can, and one that only cares whether the record is gone reads .ok.
+     *
+     * This signature is changed AHEAD of the thing that needs it. The execution workspace refuses
+     * to delete a prospect that has a live project, and that refusal needs somewhere to put its
+     * reason -- but mixing the signature change into the commit that adds projects would make a
+     * missed call site look like a project bug. There are only two call sites today and both are
+     * tests: nothing in the product deletes a site at all. */
     function remove(id) {
         var data = getData();
         var before = data.sites.length;
-        data.sites = data.sites.filter(function(s) { return s.id !== id; });
-        if (data.sites.length !== before) saveData(data);
-        return data.sites.length !== before;
+        var kept = data.sites.filter(function(s) { return s.id !== id; });
+        if (kept.length === before) return { ok: false, err: 'No such site.' };
+        data.sites = kept;
+        var res = saveData(data);
+        if (!res.ok) return { ok: false, err: res.err };
+        return { ok: true, err: null };
     }
 
     /* Every transition is logged, and the log is what Phase 6 reads to answer

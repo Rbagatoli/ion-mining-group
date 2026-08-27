@@ -401,7 +401,13 @@ SiteSources.register({
     ok('every satellite-blind field is blank by default', allManualNull, JSON.stringify(SiteData.MANUAL_FIELDS));
     eq('h2s_content is present but empty', blank.h2s_content, null);
 
-    eq('remove() deletes', SiteData.remove(added.id), true);
+    eq('remove() deletes', SiteData.remove(added.id).ok, true);
+    /* The boolean used to conflate "no such site" with "the write failed". Both are now
+       distinguishable, and the second one is the reason the signature changed: on a full
+       localStorage the old return said the record was gone while it was still on disk. */
+    eq('and says so rather than throwing when the id is unknown',
+       SiteData.remove('no-such-id').ok, false);
+    eq('with a reason', SiteData.remove('no-such-id').err, 'No such site.');
     eq('list() is empty again', SiteData.list().length, 0);
 
     // Corrupt storage must degrade to empty, never throw.
