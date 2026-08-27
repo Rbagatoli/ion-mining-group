@@ -217,43 +217,11 @@
        CARTO's dark_all basemap is grey-blue and platinum is warm, so the tiles
        are retinted in the browser rather than by swapping tile servers. */
     --tile-filter: grayscale(1) contrast(1.06) brightness(0.82) sepia(0.12);
-    /* NOT the brand orange, deliberately, and this is measured rather than eyeballed.
-       three-globe's atmosphere fades its colour to nothing across the shell, and the falloff
-       crushes green and blue to zero faster than red -- so whatever goes in arrives redder.
-       Feeding it btc-300 rendered at hue 17-19 degrees, which is rust, and is what 'the glow is
-       too red' was. Sampled from the rendered ring: btc-300 -> 17, btc-200 -> 25, this -> 30,
-       btc-100 -> 32, against a brand hue of 33. This is the most saturated input that still
-       lands on the brand hue; going paler only costs saturation from here. */
-    --globe-atmos: #ffcd85;
+    --globe-atmos: #f7931a;
     --globe-fill-max: rgba(247, 147, 26, 0.85);
     --globe-fill-min: rgba(247, 147, 26, 0.03);
     --globe-stroke: rgba(247, 147, 26, 0.40);
-    /* Was 0.10, which is invisible against a lit metal body. The globe used to be pure black,
-       so a barely-there platinum line was enough; on platinum it disappears entirely. */
-    --globe-stroke-dim: rgba(229, 228, 226, 0.32);
-
-    /* ---- The globe is machined platinum, and it is lit ----------------------
-       It was a pure black sphere with no material ever set, so the only thing on screen was the
-       country outlines and the atmosphere. Black is not a colour this palette has anywhere else,
-       and a globe made of it reads as a hole in the page rather than as an object on it.
-
-       TWO BODIES, because the globe does two different jobs. In Fleet mode the globe IS the
-       subject: the hashrate choropleth is painted onto it, so the body runs bright and the orange
-       countries sit on a platinum ocean. In Prospects mode the globe is a BACKDROP for four
-       thousand markers whose colours were tuned against near-black, and a bright ground eats the
-       pale end of the persistence ramp — so the body drops back and the sheen softens.
-
-       These are three.js material values, not CSS. They are mirrored into theme.js like every
-       other WebGL colour, because a shader cannot resolve a custom property. */
-    --globe-body-fleet: #2e1b09;
-    --globe-body-prospects: #2e1b09;
-    --globe-ambient-fleet: #6b6a67;
-    --globe-ambient-prospects: #5c5b58;
-    --globe-key: #ffffff;
-    /* The specular is back, but only because the surface is no longer smooth. A highlight pools
-       into a single disc on a perfect sphere; on a brushed one it smears along the grain. See
-       theme.js -- the bump map is what makes this value safe to be non-zero. */
-    --globe-spec: #4a4845;
+    --globe-stroke-dim: rgba(229, 228, 226, 0.10);
 
     /* Flare persistence, as a real sequential scale. The palette before last ran
        green → orange → brown → brown, which is not monotonic in luminance and so
