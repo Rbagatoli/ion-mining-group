@@ -131,17 +131,37 @@ ok('and the item points at the document', !!nowSat.document_id);
    first sample of one can never tell newest from oldest — so the loop in docKinds() resolved to
    the OLDEST of a kind for as long as the test passed. A revision is the only thing that shows it. */
 var firstDoc = nowSat.document_id;
-CrmDocuments.add('p1', { title: 'Gas analysis 2027-09 — REVISED, siloxanes re-run',
-                         kind: 'gas_analysis' });
+var revisedAdd = CrmDocuments.add('p1', {
+    title: 'Gas analysis 2027-09 — REVISED, siloxanes re-run', kind: 'gas_analysis' });
+
+/* BACK-DATED SEVEN MONTHS APART, and this fixture detail is the whole test.
+ *
+ * CrmDocuments.add() stamps added_at from the clock, and two adds in a row land inside one
+ * millisecond. forProspect()'s comparator only reaches its added_at branch when the timestamps
+ * differ; otherwise the seq tie-break alone decides. Measured on the version of this test
+ * without these two lines: inverting forProspect's PRIMARY comparator to oldest-first left this
+ * file green 10 runs out of 10. It was testing the tie-break and nothing else.
+ *
+ * And the expectation below names an id captured at add() time rather than reading
+ * forProspect()[0].id. Deriving it from the function under test made both sides move together
+ * under an inverted comparator, which is the second reason this passed while checking nothing. */
+(function backdate() {
+    var raw = JSON.parse(_store[CrmDocuments.KEY]);
+    raw.items.forEach(function (d) {
+        if (d.id === firstDoc) d.added_at = '2027-03-02T09:00:00.000Z';
+        if (d.id === revisedAdd.item.id) d.added_at = '2027-09-14T09:00:00.000Z';
+    });
+    _store[CrmDocuments.KEY] = JSON.stringify(raw);
+    CrmDocuments.reset();
+})();
+
 ProjectData.reset();
 var revised = ProjectGates.itemsFor(ProjectData.get(q.id), 'diligence')
     .filter(function (i) { return i.key === 'gas_composition'; })[0];
 ok('a revised document supersedes the original as the cited evidence',
    revised.document_id !== firstDoc,
    'still citing ' + firstDoc + ' — the superseded analysis');
-var newestId = CrmDocuments.forProspect('p1')
-    .filter(function (d) { return d.kind === 'gas_analysis'; })[0].id;
-eq('and it cites the newest one specifically', revised.document_id, newestId);
+eq('and it cites the newest one specifically', revised.document_id, revisedAdd.item.id);
 eq('while the older one stays on file rather than being replaced',
    CrmDocuments.forProspect('p1').filter(function (d) { return d.kind === 'gas_analysis'; }).length, 2);
 

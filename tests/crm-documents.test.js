@@ -39,6 +39,25 @@ function eq(label, got, want) {
 }
 function fresh() { _store = {}; CrmConfig.reset(); CrmDocuments.reset(); }
 
+/* BACK-DATE A FILED DOCUMENT, so an ordering assertion tests ordering.
+ *
+ * add() stamps added_at from the clock and takes no override, and three adds in a row land
+ * inside the same millisecond most of the time. forProspect()'s comparator only reaches its
+ * PRIMARY branch when added_at differs -- otherwise the seq tie-break alone decides, and the two
+ * happen to agree. Measured: with the primary comparator inverted to oldest-first, the 'newest
+ * first' assertion below failed 1 run in 10. A guard that fires on a coin flip is not a guard,
+ * and the fix is fixture-shaped rather than assertion-shaped. */
+function backdate(prospectId, title, iso) {
+    var raw = JSON.parse(_store[CrmDocuments.KEY]);
+    for (var i = 0; i < raw.items.length; i++) {
+        if (raw.items[i].prospect_id === String(prospectId) && raw.items[i].title === title) {
+            raw.items[i].added_at = iso;
+        }
+    }
+    _store[CrmDocuments.KEY] = JSON.stringify(raw);
+    CrmDocuments.reset();
+}
+
 // ---- The link filter -----------------------------------------------------------
 fresh();
 var L = CrmDocuments.linkFor;
@@ -141,8 +160,36 @@ CrmDocuments.add('a', { title: 'A two', kind: 'gas_analysis' });
 eq('two on a', CrmDocuments.countFor('a'), 2);
 eq('one on b', CrmDocuments.countFor('b'), 1);
 eq('none on a stranger', CrmDocuments.countFor('c'), 0);
-/* Newest first: the one added this morning is the one being looked for. */
+/* Newest first: the one added this morning is the one being looked for.
+   Back-dated seven months apart so the added_at comparator is what decides, not the seq
+   tie-break that shadowed it. Deliberately back-dated AGAINST the insertion order too -- 'A two'
+   was added last but is dated EARLIER -- so a comparator that silently fell through to seq would
+   now disagree with one that reads the date. */
+backdate('a', 'A one', '2026-01-04T09:00:00.000Z');
+backdate('a', 'A two', '2026-08-11T09:00:00.000Z');
 eq('newest first', CrmDocuments.forProspect('a')[0].title, 'A two');
+backdate('a', 'A two', '2025-11-02T09:00:00.000Z');
+eq('and it is the DATE that decides, not the order they were entered',
+   CrmDocuments.forProspect('a')[0].title, 'A one');
+eq('with the older one behind it', CrmDocuments.forProspect('a')[1].title, 'A two');
+// Restored, so nothing downstream in this file inherits a doctored fixture.
+backdate('a', 'A two', '2026-08-11T09:00:00.000Z');
+
+/* THE TIE-BREAK NEEDS AN ACTUAL TIE, and giving the two documents above distinct dates took it
+   away. Both halves of a two-clause comparator have to be exercised or one of them is decoration:
+   before this pair existed the date clause was covered by a coin flip and after the back-dating
+   the seq clause was covered by nothing. Same millisecond is not a contrivance -- it is what
+   two adds in a row actually produce, which is how the date clause went untested in the first
+   place. */
+CrmDocuments.add('a', { title: 'A three, filed in the same breath', kind: 'permit' });
+CrmDocuments.add('a', { title: 'A four, filed in the same breath', kind: 'utility' });
+backdate('a', 'A three, filed in the same breath', '2026-09-01T12:00:00.000Z');
+backdate('a', 'A four, filed in the same breath', '2026-09-01T12:00:00.000Z');
+var tied = CrmDocuments.forProspect('a').filter(function (d) { return /same breath/.test(d.title); });
+eq('an exact tie on date falls to the later seq', tied[0].title, 'A four, filed in the same breath');
+eq('with the earlier one behind it', tied[1].title, 'A three, filed in the same breath');
+ok('and they really are tied on the date', tied[0].added_at === tied[1].added_at,
+   tied[0].added_at + ' vs ' + tied[1].added_at);
 
 // ---- Coverage: the absence is the useful half -----------------------------------
 var cov = CrmDocuments.coverage('a');
