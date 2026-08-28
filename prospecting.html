@@ -467,6 +467,9 @@
 <script src="./site-infrastructure.js?v=384"></script>
 <script src="./site-opportunity.js?v=384"></script>
 <script src="./project-gates.js?v=384"></script>
+<!-- The budget ledger. After project-gates.js because it routes writes through ProjectData.mutate,
+     and after site-capex.js because seedFromEstimate reads SiteCapex.stack(). -->
+<script src="./project-budget.js?v=385"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=383"></script>
