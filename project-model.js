@@ -173,6 +173,13 @@ var ProjectData = (function () {
 
         p.capacity_kw = num(p.capacity_kw);
         p.annual_cost_of_capital_pct = num(p.annual_cost_of_capital_pct);
+        // The resource figure the sanction was taken on. See promote() for why it lives here and
+        // not on the prospect. Null is a real state: a manually entered prospect has no candidate
+        // behind it, and project-sizing.js refuses rather than sizing against nothing.
+        p.gas_mmscfd = num(p.gas_mmscfd);
+        p.gas_basis = text(p.gas_basis, 200);
+        p.horizon_years = num(p.horizon_years);
+        p.horizon_basis = text(p.horizon_basis, 300);
         p.budget_authorised_usd = num(p.budget_authorised_usd);
         p.target_energization = isDay(p.target_energization) ? p.target_energization : null;
 
@@ -386,6 +393,24 @@ var ProjectData = (function () {
             budget_authorised_usd: budget,
             target_energization: isDay(f.target_energization) ? f.target_energization : null,
             notes: typeof f.notes === 'string' ? f.notes : '',
+            /* THE RESOURCE THE SANCTION WAS TAKEN ON, and it has to be passed in because the
+               prospect record cannot hold it. site-model.js blankSite() has no gas volume field
+               of any kind, and normalize() discards unknown keys on save (site-model.js:120), so
+               the volume that decides the whole deal is lost at the candidate-to-prospect
+               boundary. The promotion form has the candidate in hand; this is where it lands.
+
+               Frozen for the same reason development_stage is frozen a few lines below: a later
+               edit upstream must not silently reprice a build already sanctioned. What replaces
+               it is not an edit but a gas generation forecast study, recorded against the project
+               and superseding this outright -- which is the one path project-sizing.js allows. */
+            gas_mmscfd: num(f.gas_mmscfd),
+            gas_basis: text(f.gas_basis, 200),
+            /* The remaining-life horizon, captured for the same reason and with the same problem:
+               it lives on the candidate's sourceDetail, which is not part of the prospect template
+               either. It is a flat 25-year post-closure figure and project-sizing.js is forbidden
+               from multiplying it by money. */
+            horizon_years: num(f.horizon_years),
+            horizon_basis: text(f.horizon_basis, 300),
             prospect: {
                 prospect_id: String(prospectId),
                 name: rec.name,
