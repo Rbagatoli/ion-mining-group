@@ -164,9 +164,153 @@ var CrmConfig = (function () {
             checklists: cloneChecklists(DEFAULT_CHECKLISTS),
             enrichStatuses: DEFAULT_ENRICH_STATUSES.map(clone),
             documentKinds: DEFAULT_DOCUMENT_KINDS.map(clone),
+            gateDeliverables: cloneChecklists(DEFAULT_GATE_DELIVERABLES),
             settings: clone(DEFAULT_SETTINGS)
         };
     }
+
+    /* ===== WHAT EACH BUILD GATE REQUIRES ==================================================
+     *
+     * A SECOND VOCABULARY ALONGSIDE documentKinds, NOT A REPLACEMENT FOR IT, and the CRM's
+     * document semantics are untouched. The distinction is the whole reason both exist:
+     *
+     *   documentKinds says what paper a DEAL accumulates, and its `expected` flag is explicitly
+     *   "not a blocker and not a checklist" -- a deal of unknown structure should not have
+     *   blockers, because a revenue share needs neither a gas analysis nor a surface lease.
+     *
+     *   This says what a BUILD requires, and here blocking is correct, because a promoted
+     *   project is one known structure and the sequence is physical rather than procedural. You
+     *   cannot specify gas treatment before you know the siloxane level, and ordering gensets
+     *   against an unissued air permit is how deposits are lost.
+     *
+     * Two objects, two rules, no conflict. The project gate READS the same documents through
+     * CrmDocuments and applies its own blocking rule on top.
+     *
+     * FIELDS.
+     *   blocking          the gate cannot be left until this is complete or explicitly waived
+     *   requires_document a completion claim is not enough; a document must be on file. Only
+     *                     used where the paper IS the fact -- an air permit that is "complete"
+     *                     with nothing attached is somebody's recollection.
+     *   evidence_kind     which CrmDocuments kind satisfies it, so the check reads the existing
+     *                     register rather than a parallel one.
+     *
+     * Configurable for the same reason everything else here is: these are this operator's build
+     * sequence, met once, and the first real project will disagree with some of it.
+     */
+    var DEFAULT_GATE_DELIVERABLES = {
+        target_screen: [],
+
+        contact_loi: [
+            { key: 'nda',        label: 'Mutual NDA executed', blocking: true,
+              requires_document: true, evidence_kind: 'nda' },
+            /* Not just "an LOI": the five terms below are what makes one worth having, and a
+               letter missing exclusivity is the one that lets somebody else diligence the site
+               you are paying to diligence. */
+            { key: 'loi',        label: 'LOI covering price basis, volume, term, access and exclusivity',
+              blocking: true, requires_document: true, evidence_kind: 'term_sheet' },
+            { key: 'exclusivity', label: 'Exclusivity period executed', blocking: true }
+        ],
+
+        diligence: [
+            /* THE THREE HARD BLOCKS. Each is a fact that cannot be inferred and that changes
+               whether the deal works at all. */
+            { key: 'gas_composition',
+              label: 'Gas composition — methane, siloxanes, moisture, H2S, halides',
+              blocking: true, requires_document: true, evidence_kind: 'gas_analysis',
+              why: 'Siloxane level sets the treatment cost, which is the difference between ' +
+                   'roughly 3 and over 4 cents/kWh all-in. It is invisible until tested.' },
+            { key: 'collection_condition',
+              label: 'Collection system condition assessed on site',
+              blocking: true,
+              why: 'An installed system in poor condition is a liability, not an asset. This is ' +
+                   'where the capital-avoided estimate is verified or falsified.' },
+            { key: 'gas_forecast',
+              label: 'Gas generation forecast over the contract term',
+              blocking: true,
+              why: 'Must support the contract term, and it is what sizes the plant. Building ' +
+                   '5 MW on gas that sustains 3 is roughly $2M producing nothing.' },
+
+            // Required before agreements, but not blocking the gate itself.
+            { key: 'title',       label: 'Surface rights title search', blocking: false,
+              requires_document: false, evidence_kind: 'title',
+              why: 'Mineral and surface rights are frequently severed — the landfill operator ' +
+                   'may not be the surface owner.' },
+            { key: 'phase_one',   label: 'Phase I environmental', blocking: false },
+            { key: 'survey',      label: 'Site survey', blocking: false },
+            { key: 'interconnect', label: 'Interconnect study', blocking: false,
+              evidence_kind: 'utility' },
+            { key: 'permit_class', label: 'Air permit classification determined', blocking: false,
+              why: 'Major versus minor source swings the permitting timeline materially.' }
+        ],
+
+        agreements: [
+            /* THREE SEPARATE DOCUMENTS. Treating them as one is a common and expensive error:
+               the surface owner may not be the operator, and access is a third party again. */
+            { key: 'gas_supply',  label: 'Gas supply agreement', blocking: true,
+              requires_document: true, evidence_kind: 'agreement' },
+            { key: 'surface_lease', label: 'Surface lease with the surface owner', blocking: true,
+              requires_document: true, evidence_kind: 'surface' },
+            { key: 'easements',   label: 'Road and utility access easements', blocking: true,
+              requires_document: true, evidence_kind: 'surface' },
+            { key: 'env_attributes',
+              label: 'Environmental attributes (RINs, RECs, offsets) assigned explicitly',
+              blocking: true,
+              why: 'Can be worth as much as the power, and are frequently left silent in ' +
+                   'draft agreements. Unresolved until assigned in writing, either way.' },
+            { key: 'renewal',     label: 'Renewal rights or right of first refusal', blocking: true,
+              why: 'RNG developers can outbid power generation for the same gas on RIN and ' +
+                   'LCFS value. Expiry without renewal rights is the likeliest way this asset ' +
+                   'is lost — not gas depletion.' }
+        ],
+
+        permitting_complete: [
+            /* The gate is the permit being ISSUED, which is why it requires the document. A
+               completion claim with nothing on file is a recollection, and advancing here stops
+               a $160,000 permitting cost being charged and cuts months-to-revenue by 4 to 10. */
+            { key: 'air_permit',  label: 'Air permit issued', blocking: true,
+              requires_document: true, evidence_kind: 'permit',
+              why: 'The long pole at 3-9 months. Advancing before issuance silently reprices ' +
+                   'the whole build.' },
+            { key: 'other_permits', label: 'Remaining permits and approvals on file', blocking: false,
+              evidence_kind: 'permit' }
+        ],
+
+        engineering_procurement: [
+            { key: 'long_lead_ordered', label: 'Long-lead equipment ordered', blocking: true,
+              why: 'Gensets run 20-40 weeks and must be ordered before construction starts, ' +
+                   'not after. A slipped genset order moves energization one-for-one.' },
+            { key: 'ifc_drawings', label: 'Issued-for-construction drawings', blocking: false }
+        ],
+
+        construction: [
+            { key: 'civil_complete',      label: 'Civil and pad complete', blocking: false },
+            { key: 'electrical_complete', label: 'Electrical installation complete', blocking: false },
+            { key: 'lien_waivers',        label: 'Lien waivers current for all contractors',
+              blocking: true,
+              why: 'A payment issued without a corresponding waiver is a routine cause of loss ' +
+                   'on a first-time build.' }
+        ],
+
+        commissioning: [
+            /* IN ORDER, and the order is the point. The load bank test proves the unit performs
+               under real load rather than idling, and it must happen before miners are on site
+               -- a genset that fails under load with containers already energised is a much
+               more expensive discovery. */
+            { key: 'purge_leak',   label: 'Gas purge and leak test', blocking: true },
+            { key: 'load_bank',    label: 'Load bank test on each genset, before any miners',
+              blocking: true,
+              why: 'Non-negotiable. It proves performance under real load, and it must happen ' +
+                   'before miners are connected.' },
+            { key: 'electrical_verify', label: 'Electrical verification under load', blocking: true },
+            { key: 'thermal',      label: 'Thermal survey at full load', blocking: true },
+            { key: 'continuous',   label: 'Continuous run', blocking: true }
+        ],
+
+        // A terminal state, not a gate. Deliberately empty: it is what a project becomes when
+        // the last gate closes and it hands off to operations.
+        operating: [],
+        cancelled: []
+    };
 
     function cloneChecklists(src) {
         var out = {};
@@ -369,6 +513,47 @@ var CrmConfig = (function () {
         return write(cfg);
     }
 
+    /* WHAT A GATE REQUIRES. Falls back to the shipped defaults rather than an empty list when
+       the stored config predates this collection: an empty list would report every gate as
+       having nothing to satisfy, which reads as "ready" and is the most dangerous possible
+       wrong answer for a blocking check. */
+    function gateDeliverables(gate) {
+        var all = read().gateDeliverables || DEFAULT_GATE_DELIVERABLES;
+        if (!Object.prototype.hasOwnProperty.call(all, gate)) {
+            return Object.prototype.hasOwnProperty.call(DEFAULT_GATE_DELIVERABLES, gate)
+                ? DEFAULT_GATE_DELIVERABLES[gate].map(clone) : [];
+        }
+        return (all[gate] || []).map(clone);
+    }
+
+    function gateDeliverableGates() {
+        var all = read().gateDeliverables || DEFAULT_GATE_DELIVERABLES;
+        return Object.keys(all);
+    }
+
+    function setGateDeliverables(gate, list) {
+        if (!Array.isArray(list)) return { ok: false, err: 'A gate needs a list of deliverables.' };
+        var out = [], seen = {};
+        for (var i = 0; i < list.length; i++) {
+            var it = list[i] || {};
+            var key = (typeof it.key === 'string') ? it.key.trim() : '';
+            if (!key || seen[key]) continue;
+            seen[key] = true;
+            out.push({
+                key: key,
+                label: (typeof it.label === 'string' && it.label.trim()) ? it.label.trim() : key,
+                blocking: !!it.blocking,
+                requires_document: !!it.requires_document,
+                evidence_kind: (typeof it.evidence_kind === 'string' && it.evidence_kind) ? it.evidence_kind : null,
+                why: (typeof it.why === 'string' && it.why) ? it.why : null
+            });
+        }
+        var cfg = read();
+        if (!cfg.gateDeliverables) cfg.gateDeliverables = cloneChecklists(DEFAULT_GATE_DELIVERABLES);
+        cfg.gateDeliverables[gate] = out;
+        return write(cfg);
+    }
+
     function documentKinds() { return read().documentKinds.map(clone); }
 
     function documentKindLabel(key) {
@@ -440,6 +625,9 @@ var CrmConfig = (function () {
         setChecklist: setChecklist,
         setting: setting,
         setSetting: setSetting,
+        gateDeliverables: gateDeliverables,
+        gateDeliverableGates: gateDeliverableGates,
+        setGateDeliverables: setGateDeliverables,
         documentKinds: documentKinds,
         documentKindLabel: documentKindLabel,
         setDocumentKinds: setDocumentKinds,

@@ -138,17 +138,27 @@ var CrmEnrichment = (function () {
 
     /* { pct, complete, inProgress, outstanding, applicable, total, na }
        pct is null when nothing applies -- see the header. */
-    function completeness(prospectId) {
-        var items = itemsFor(prospectId);
+    /* THE ARITHMETIC, SEPARATED FROM THE CHECKLIST IT WAS WRITTEN FOR.
+     *
+     * Extracted so the execution workspace can compute gate readiness with THIS function rather
+     * than a second one. The edge cases above are the whole value and every one of them is a
+     * decision someone could plausibly make the other way: a second implementation would not be
+     * wrong so much as flattering, and two completion percentages that disagree is worse than
+     * either on its own.
+     *
+     * Pure: takes statuses, returns counts. Identical output to the previous inline version,
+     * which is pinned by the existing enrichment tests. */
+    function tally(statuses) {
+        var list = Array.isArray(statuses) ? statuses : [];
         var complete = 0, inProgress = 0, na = 0;
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].status === 'complete') complete++;
-            else if (items[i].status === 'in_progress') inProgress++;
-            else if (items[i].status === 'na') na++;
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] === 'complete') complete++;
+            else if (list[i] === 'in_progress') inProgress++;
+            else if (list[i] === 'na') na++;
         }
-        var applicable = items.length - na;
+        var applicable = list.length - na;
         return {
-            total: items.length,
+            total: list.length,
             na: na,
             applicable: applicable,
             complete: complete,
@@ -156,6 +166,10 @@ var CrmEnrichment = (function () {
             outstanding: applicable - complete - inProgress,
             pct: applicable > 0 ? Math.round((complete / applicable) * 100) : null
         };
+    }
+
+    function completeness(prospectId) {
+        return tally(itemsFor(prospectId).map(function (i) { return i.status; }));
     }
 
     /* Sortable. A prospect with nothing applicable sorts BELOW one at 0%, because
@@ -197,6 +211,7 @@ var CrmEnrichment = (function () {
         itemsFor: itemsFor,
         set: set,
         clear: clear,
+        tally: tally,
         completeness: completeness,
         sortKey: sortKey,
         ranked: ranked,

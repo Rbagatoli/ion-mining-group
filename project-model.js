@@ -185,6 +185,16 @@ var ProjectData = (function () {
 
         p.notes = typeof p.notes === 'string' ? p.notes : '';
 
+        /* DELIVERABLE STATE, keyed by gate then by item. Not one of COLLECTIONS: those are the
+           many-per-project ledgers whose emptiness remove() checks, and a cancelled project
+           should not be un-removable because somebody once ticked a checkbox.
+
+           A map of maps for the same reason the ledgers are maps -- two devices marking two
+           different deliverables complete must set-union rather than one overwriting the other. */
+        if (!p.deliverables || typeof p.deliverables !== 'object' || Array.isArray(p.deliverables)) {
+            p.deliverables = {};
+        }
+
         // Maps, not arrays -- see the header. Guaranteed present so a later build can write into
         // them without guarding, and repaired if an older record arrives without them.
         for (var c = 0; c < COLLECTIONS.length; c++) {
@@ -411,7 +421,7 @@ var ProjectData = (function () {
        key the caller believed it set is the same class of bug as the whitelist this file exists
        to avoid. */
     var SEALED = ['id', 'seq', 'created', 'prospect', 'gate', 'gate_entered_at',
-                  'deleted_at', 'deleted_reason'].concat(COLLECTIONS);
+                  'deleted_at', 'deleted_reason', 'deliverables'].concat(COLLECTIONS);
 
     function update(id, patch) {
         var d = draft();
@@ -466,6 +476,19 @@ var ProjectData = (function () {
         if (GATES.indexOf(gate) < GATES.indexOf(from) && !text(opts.reason)) {
             return { ok: false, err: 'Moving a project back a gate needs a reason.' };
         }
+        /* THE HARD BLOCK. Forward moves only -- going back or cancelling is a decision, not an
+           achievement, and requiring the current gate's deliverables to leave it backwards would
+           trap a project in a gate it should never have reached.
+
+           opts.force is deliberately NOT a way past this. A blocking requirement is stepped
+           around by waiving it, which names a reason and an approver and leaves a mark on the
+           timeline; a force flag would do the same thing invisibly, which is the entire failure
+           the gates exist to prevent. */
+        if (GATES.indexOf(gate) > GATES.indexOf(from) && gate !== 'cancelled' &&
+            typeof ProjectGates !== 'undefined' && ProjectGates.canAdvance) {
+            var verdict = ProjectGates.canAdvance(p, gate);
+            if (!verdict.ok) return { ok: false, err: verdict.err, blockers: verdict.blockers };
+        }
         p.gate = gate;
         p.gate_entered_at = nowIso();
         p.updated = p.gate_entered_at;
@@ -511,6 +534,28 @@ var ProjectData = (function () {
         return res.ok ? { ok: true, err: null } : { ok: false, err: res.err };
     }
 
+    /* MUTATE ONE PROJECT UNDER THE DRAFT/COMMIT DISCIPLINE, for modules that own part of the
+       record. project-gates.js writes deliverable state; a Stage 4 budget module will write
+       lines. Exposing draft() and commit() separately would let a caller mutate the cache
+       directly, which is the one thing the raw-string guard exists to prevent.
+
+       The callback receives a deep clone. If commit fails -- quota, size gate, version block --
+       nothing has been touched. */
+    function mutate(id, fn) {
+        if (typeof fn !== 'function') return { ok: false, err: 'mutate() needs a function.' };
+        var d = draft();
+        var p = d.byProject[String(id)];
+        if (!p || p.deleted_at) return { ok: false, err: 'No such project.' };
+        try { fn(p); } catch (e) {
+            return { ok: false, err: 'That change could not be applied: ' + (e && e.message) };
+        }
+        d.byProject[p.id] = normalizeProject(p);
+        d.byProject[p.id].updated = nowIso();
+        var res = commit(d);
+        return res.ok ? { ok: true, err: null, project: d.byProject[p.id], notice: res.notice }
+                      : { ok: false, err: res.err };
+    }
+
     function reset() { _cache = null; _raw = null; _blocked = null; }
 
     return {
@@ -531,6 +576,7 @@ var ProjectData = (function () {
         liveFor: liveFor,
         promote: promote,
         update: update,
+        mutate: mutate,
         setGate: setGate,
         cancel: cancel,
         remove: remove,
