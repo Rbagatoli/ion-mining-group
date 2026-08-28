@@ -72,7 +72,7 @@ var CrmEnrichment = (function () {
             return res;
         }
         if (typeof SyncEngine !== 'undefined' && SyncEngine.save) {
-            try { SyncEngine.save('crmEnrichment'); } catch (e) { /* local write stands */ }
+            try { SyncEngine.save('crmEnrichment', data); } catch (e) { /* local write stands */ }
         }
         return res;
     }

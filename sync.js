@@ -61,9 +61,33 @@ var SyncEngine = (function() {
     }
 
     // Save data to Firestore (debounced)
+    /* THE MISSING SECOND ARGUMENT, WHICH SILENTLY DISABLED SYNC FOR SIX STORES.
+     *
+     * Every CRM module called save('crmLog') with no data. JSON.parse(JSON.stringify(undefined))
+     * is JSON.parse("undefined"), a SyntaxError -- thrown inside the debounce timer, long after
+     * the caller's try/catch has returned. So ref.set was never reached (nothing ever uploaded)
+     * AND neither .then nor .catch ran, so the _recentSaves flag set on the line above was never
+     * cleared. There is no other path that clears it: grep gives exactly four references, and
+     * stopAll() clears _listeners, not this. The key was therefore poisoned for the life of the
+     * page and the listener at :118 dropped every inbound change for it.
+     *
+     * The instance is fixed at the six call sites. The CLASS is fixed here, because the reason
+     * this survived is that it was invisible:
+     *   - a missing payload is refused BEFORE _recentSaves is set, so a bad call can no longer
+     *     deafen the listener as a side effect
+     *   - it says so on the console rather than failing mutely
+     *   - the debounce body is wrapped, and the flag is cleared in a finally, so no future throw
+     *     anywhere in that block can leave a key permanently suppressed again
+     *
+     * tests/sync-coverage.test.js asserts every SyncEngine.save() call in the repo passes data. */
     function save(key, data) {
         if (!ProtonAuth.isSignedIn()) return;
         if (!SYNC_KEYS[key]) return;
+        if (arguments.length < 2 || data === undefined) {
+            console.error('[Sync] save("' + key + '") called with no data — nothing was uploaded. ' +
+                          'This is a bug in the caller: pass the object you just wrote.');
+            return;
+        }
 
         // Mark as recently saved so listener ignores our own writes
         _recentSaves[key] = true;
@@ -72,12 +96,23 @@ var SyncEngine = (function() {
         if (_debounceTimers[key]) clearTimeout(_debounceTimers[key]);
         _debounceTimers[key] = setTimeout(function() {
             var ref = getUserDocRef(key);
-            if (!ref) return;
+            if (!ref) { delete _recentSaves[key]; return; }
 
-            var payload = {
-                data: JSON.parse(JSON.stringify(data)),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            var payload;
+            try {
+                payload = {
+                    data: JSON.parse(JSON.stringify(data)),
+                    // Written and, today, read by nothing. Left in place deliberately: if a
+                    // conflict tiebreak is ever wanted, the field is already being recorded on
+                    // every write and the history will be there to use.
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+            } catch (e) {
+                delete _recentSaves[key];
+                console.error('[Sync] ' + key + ' could not be encoded, nothing was uploaded:',
+                              e && e.message);
+                return;
+            }
 
             ref.set(payload, { merge: true }).then(function() {
                 setTimeout(function() { delete _recentSaves[key]; }, 3000);

@@ -1413,7 +1413,7 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="./firebase-config.js?v=338"></script>
-<script src="./sync.js?v=338"></script>
+<script src="./sync.js?v=379"></script>
 <script src="./auth-ui.js?v=338"></script>
 <script src="./backup.js?v=375"></script>
 <script src="./profile-panel.js?v=375"></script>
@@ -1452,8 +1452,8 @@ commercial terms are your assumptions.</p>
      pushes the configured stage list into site-model.js, and the watchlist renders
      its stage chips from SiteData.STAGES on first paint — a later load would draw
      the old six and only correct itself on the next render. -->
-<script src="./crm-config.js?v=338"></script>
-<script src="./crm-log.js?v=338"></script>
+<script src="./crm-config.js?v=379"></script>
+<script src="./crm-log.js?v=379"></script>
 <!-- The contact book. Loaded here for two reasons that turned out to be one bug:
      recording a contact on a prospect now puts that person IN the book rather than
      only on the site, and manualFor() can finally reach contactCtx() -- which
@@ -1461,7 +1461,7 @@ commercial terms are your assumptions.</p>
      path existed and was written for these call sites, but this file was never
      loaded on this page, so every lookup silently fell back to the bare record and
      a recorded contact never improved the contactability tier it was meant to. -->
-<script src="./crm-contacts.js?v=350"></script>
+<script src="./crm-contacts.js?v=379"></script>
 <script src="./prospect-nav.js?v=347"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in

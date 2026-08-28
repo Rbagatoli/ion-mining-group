@@ -68,7 +68,7 @@ var CrmContacts = (function () {
             return res;
         }
         if (typeof SyncEngine !== 'undefined' && SyncEngine.save) {
-            try { SyncEngine.save('contacts'); } catch (e) { /* local write stands */ }
+            try { SyncEngine.save('contacts', data); } catch (e) { /* local write stands */ }
         }
         return res;
     }

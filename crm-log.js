@@ -64,7 +64,7 @@ var CrmLog = (function () {
             return res;
         }
         if (typeof SyncEngine !== 'undefined' && SyncEngine.save) {
-            try { SyncEngine.save('crmLog'); } catch (e) { /* the local write stands */ }
+            try { SyncEngine.save('crmLog', data); } catch (e) { /* the local write stands */ }
         }
         return res;
     }

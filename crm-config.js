@@ -245,7 +245,7 @@ var CrmConfig = (function () {
             return res;
         }
         if (typeof SyncEngine !== 'undefined' && SyncEngine.save) {
-            try { SyncEngine.save('crmConfig'); } catch (e) { /* local write already succeeded */ }
+            try { SyncEngine.save('crmConfig', data); } catch (e) { /* local write already succeeded */ }
         }
         return res;
     }
