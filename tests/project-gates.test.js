@@ -114,6 +114,25 @@ var nowSat = ProjectGates.itemsFor(ProjectData.get(q.id), 'diligence')
     .filter(function (i) { return i.key === 'gas_composition'; })[0];
 eq('filing the document satisfies it, with no re-ticking', nowSat.satisfied, true);
 ok('and the item points at the document', !!nowSat.document_id);
+
+/* WHICH document, not merely that there is one. Truthiness was all this asserted before, and a
+   first sample of one can never tell newest from oldest — so the loop in docKinds() resolved to
+   the OLDEST of a kind for as long as the test passed. A revision is the only thing that shows it. */
+var firstDoc = nowSat.document_id;
+CrmDocuments.add('p1', { title: 'Gas analysis 2027-09 — REVISED, siloxanes re-run',
+                         kind: 'gas_analysis' });
+ProjectData.reset();
+var revised = ProjectGates.itemsFor(ProjectData.get(q.id), 'diligence')
+    .filter(function (i) { return i.key === 'gas_composition'; })[0];
+ok('a revised document supersedes the original as the cited evidence',
+   revised.document_id !== firstDoc,
+   'still citing ' + firstDoc + ' — the superseded analysis');
+var newestId = CrmDocuments.forProspect('p1')
+    .filter(function (d) { return d.kind === 'gas_analysis'; })[0].id;
+eq('and it cites the newest one specifically', revised.document_id, newestId);
+eq('while the older one stays on file rather than being replaced',
+   CrmDocuments.forProspect('p1').filter(function (d) { return d.kind === 'gas_analysis'; }).length, 2);
+
 ok('the gate now advances', ProjectData.setGate(q.id, 'agreements').ok);
 
 console.log('\n=== the permitting gate needs the permit itself ===');

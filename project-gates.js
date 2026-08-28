@@ -49,12 +49,24 @@ var ProjectGates = (function () {
     /* Which documents are on file for this prospect, by kind. Read from CrmDocuments rather than
        tracked separately, so filing a document in the normal place satisfies the gate and there
        is no second register to keep in step. */
+    /* NEWEST OF EACH KIND WINS, and the first-write-wins loop below is the whole fix.
+     *
+     * CrmDocuments.forProspect sorts NEWEST FIRST (crm-documents.js:214-217). Assigning on every
+     * iteration therefore left the LAST one standing, which is the oldest -- so a revised gas
+     * analysis or a reissued air permit never became the cited document, and the gate went on
+     * pointing at the superseded one.
+     *
+     * It never changed a gate DECISION, because satisfied only asks whether a document exists at
+     * all. It changed which document a reader opens to check the decision, which is the entire
+     * point of requiring one. */
     function docKinds(prospectId) {
         var out = {};
         if (typeof CrmDocuments === 'undefined' || !CrmDocuments.forProspect || !prospectId) return out;
         var list = CrmDocuments.forProspect(prospectId) || [];
         for (var i = 0; i < list.length; i++) {
-            if (list[i] && list[i].kind) out[list[i].kind] = list[i].id;
+            if (!list[i] || !list[i].kind) continue;
+            if (Object.prototype.hasOwnProperty.call(out, list[i].kind)) continue;   // newest already held
+            out[list[i].kind] = list[i].id;
         }
         return out;
     }
