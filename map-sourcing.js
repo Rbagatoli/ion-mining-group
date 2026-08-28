@@ -3376,7 +3376,8 @@ var MapSourcing = (function() {
                 '<td class="pf-col"><label class="pf-check" title="Include in portfolio">' +
                     '<input type="checkbox" data-pf="' + esc(c.id) + '"' +
                     (_portfolio[c.id] ? ' checked' : '') + '></label></td>' +
-                '<td class="name">' + esc(placeLabel(c)) + tierBadge(c.iso3) + linkChip(c) + '</td>' +
+                '<td class="name">' + esc(placeLabel(c)) + promotedBadge(c) + tierBadge(c.iso3) +
+                    linkChip(c) + '</td>' +
                 '<td><span class="src-srcchip">' + esc(energyLabel(c)) + '</span></td>' +
                 '<td>' + esc(c.iso3 || '--') + '</td>' +
                 '<td class="num kw">' + fmtKw(usableKwFor(c)) + '</td>' +
@@ -3521,6 +3522,27 @@ var MapSourcing = (function() {
         var v = combinedFor(c);
         return v === null ? '<span class="src-gap">--</span>'
                           : '<span class="src-oppcell">' + Math.round(v) + '</span>';
+    }
+
+    /* PROMOTED, on the scanning surface. This table is how you decide what to look at next, so
+       the one thing it has to say about a project is "you already started this one" -- otherwise
+       a site under construction sits in the ranking looking like a fresh opportunity.
+
+       The gate comes off ProjectData rather than being restated here: the board and this table
+       are different screens, and a badge that disagreed between them would be worse than none. */
+    var GATE_LABELS = {
+        target_screen: 'target & screen', contact_loi: 'contact & LOI', diligence: 'diligence',
+        agreements: 'agreements', permitting_complete: 'permitted', construction: 'construction',
+        engineering_procurement: 'engineering & procurement', commissioning: 'commissioning',
+        operating: 'operating'
+    };
+
+    function promotedBadge(c) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(c.id);
+        if (!p) return '';
+        return ' <span class="src-promoted" title="Project ' + esc(p.id) + ' — ' +
+               esc(GATE_LABELS[p.gate] || p.gate) + '">building</span>';
     }
 
     // Energy type reads better than an adapter id in a narrow column.

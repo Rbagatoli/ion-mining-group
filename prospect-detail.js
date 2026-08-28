@@ -354,6 +354,25 @@ var ProspectDetail = (function () {
         '</form>';
     }
 
+    /* The detail view is where you decide to act on a site, so it names WHICH project and which
+       gate rather than only that one exists. Same helper as the ranked table and the board: three
+       screens disagreeing about whether a site is being built would send you looking for the
+       difference between them. */
+    var PROMOTED_GATE_LABELS = {
+        target_screen: 'target & screen', contact_loi: 'contact & LOI', diligence: 'diligence',
+        agreements: 'agreements', permitting_complete: 'permitted',
+        engineering_procurement: 'engineering & procurement', construction: 'construction',
+        commissioning: 'commissioning', operating: 'operating'
+    };
+
+    function promotedPill(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        if (!p) return '';
+        return ' <span class="pd-promoted" title="Project ' + esc(p.id) + '">building &middot; ' +
+               esc(PROMOTED_GATE_LABELS[p.gate] || p.gate) + '</span>';
+    }
+
     function render(prospectId, hostId) {
         var host = document.getElementById(hostId || 'pdetail');
         if (!host) return null;
@@ -374,7 +393,7 @@ var ProspectDetail = (function () {
         host.innerHTML =
         '<div class="pd-head">' +
             '<a class="pd-back" href="#board">&larr; Pipeline</a>' +
-            '<h2 class="pd-title">' + esc(rec.name || rec.id) + '</h2>' +
+            '<h2 class="pd-title">' + esc(rec.name || rec.id) + promotedPill(rec) + '</h2>' +
             '<a class="pd-sumlink" href="#s/' + esc(encodeURIComponent(rec.id)) + '">' +
                 'One-page summary</a>' +
             '<div class="pd-facts">' +

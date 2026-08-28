@@ -309,11 +309,19 @@ var ProjectData = (function () {
         return list().filter(function (p) { return p.prospect.prospect_id === pid; });
     }
 
+    /* THE ONE ANSWER BOTH SURFACES ASK. The ranked table on the map and the pipeline board are
+       different screens with different markup, and a badge that disagreed between them would be
+       worse than no badge -- so they share this rather than each deciding what promoted means.
+
+       Returns the project so a caller can show which gate it is at; null reads as false. */
+    function liveFor(prospectId) {
+        return forProspect(prospectId).filter(function (p) { return p.gate !== 'cancelled'; })[0] || null;
+    }
+
     /* What SiteData.remove() asks before it refuses. Cancelled does not count: a cancelled
        project is a decision already taken, and its prospect should be deletable again. */
-    function hasLive(prospectId) {
-        return forProspect(prospectId).some(function (p) { return p.gate !== 'cancelled'; });
-    }
+    function hasLive(prospectId) { return !!liveFor(prospectId); }
+    function isPromoted(prospectId) { return !!liveFor(prospectId); }
 
     // ---- writes ------------------------------------------------------------------------
 
@@ -520,6 +528,8 @@ var ProjectData = (function () {
         get: get,
         forProspect: forProspect,
         hasLive: hasLive,
+        isPromoted: isPromoted,
+        liveFor: liveFor,
         promote: promote,
         update: update,
         setGate: setGate,

@@ -118,6 +118,14 @@
         .pd-back { font-size:11.5px; color:var(--plat-400); text-decoration:none; }
         .pd-back:hover { color:var(--btc-300); }
         .pd-title { margin:6px 0 8px; font-size:19px; color:var(--plat-100); }
+        /* The same fact on the board and in the detail header, styled to sit inside a heading
+           rather than beside it. Same vocabulary as .src-promoted on the map, because three
+           screens using three words for one state is how people stop trusting any of them. */
+        .pb-promoted, .pd-promoted { display:inline-block; padding:1px 6px;
+            border-radius: var(--radius); font-size:9px; letter-spacing:.06em;
+            text-transform:uppercase; font-weight:700; vertical-align:middle;
+            background:var(--btc-wash); color:var(--btc-300); border:1px solid var(--line-btc); }
+        .pd-promoted { font-size:10px; margin-left:8px; }
         .pd-facts { display:flex; flex-wrap:wrap; gap:16px; font-family:var(--mono);
                     font-size:11px; color:var(--plat-400); margin:0 0 10px; }
         .pd-stagepick { display:inline-flex; flex-direction:column; gap:4px;
@@ -439,7 +447,7 @@
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=340"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=380"></script>
+<script src="./project-model.js?v=381"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=379"></script>
@@ -450,9 +458,9 @@
 <script src="./crm-enrichment.js?v=379"></script>
 <script src="./crm-documents.js?v=379"></script>
 <script src="./prospect-nav.js?v=340"></script>
-<script src="./prospect-board.js?v=340"></script>
+<script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=340"></script>
-<script src="./prospect-detail.js?v=340"></script>
+<script src="./prospect-detail.js?v=381"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
 <script src="./prospecting.js?v=340"></script>

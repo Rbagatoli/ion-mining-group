@@ -49,6 +49,23 @@ var ProspectBoard = (function () {
         return v.charAt(0).toUpperCase() + v.slice(1);
     }
 
+    /* The same answer the ranked table gives, from the same helper. A card that said "building"
+       while the table did not would send you looking for the difference. */
+    var GATE_LABELS = {
+        target_screen: 'target & screen', contact_loi: 'contact & LOI', diligence: 'diligence',
+        agreements: 'agreements', permitting_complete: 'permitted', construction: 'construction',
+        engineering_procurement: 'engineering & procurement', commissioning: 'commissioning',
+        operating: 'operating'
+    };
+
+    function promoted(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        if (!p) return '';
+        return ' <span class="pb-promoted" title="Project ' + esc(p.id) + ' — ' +
+               esc(GATE_LABELS[p.gate] || p.gate) + '">building</span>';
+    }
+
     function scoreOf(rec) {
         var v = rec && rec.custom_fields ? rec.custom_fields.opportunity_score : null;
         if (v === null || v === undefined || !isFinite(v)) return null;
@@ -108,7 +125,7 @@ var ProspectBoard = (function () {
         '<article class="pb-card' + (stale ? ' is-stale' : '') + '" draggable="true" ' +
                  'data-id="' + esc(rec.id) + '" tabindex="0" ' +
                  'aria-label="' + esc(rec.name || rec.id) + '">' +
-            '<h4 class="pb-name">' + esc(rec.name || rec.id) + '</h4>' +
+            '<h4 class="pb-name">' + esc(rec.name || rec.id) + promoted(rec) + '</h4>' +
             '<div class="pb-meta">' +
                 '<span class="pb-src">' + esc(sourceLabel(rec)) + '</span>' +
                 '<span class="pb-kw">' + mw(rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw) + '</span>' +

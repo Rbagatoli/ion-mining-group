@@ -695,6 +695,13 @@
         .src-badge { display:inline-block; padding:1px 6px; border-radius: var(--radius); font-size:9px; letter-spacing:.04em;
                      text-transform:uppercase; margin-left:5px; vertical-align:middle; }
         .src-badge.t-preferred  { background:var(--pos-wash); color:var(--pos); }
+        /* PROMOTED. Deliberately the loudest chip on the row: on a table used to decide
+           what to look at next, a site already under construction must not read as a fresh
+           opportunity. BTC orange rather than the platinum used for sourced facts, because this
+           one is a decision you made rather than something a registry published. */
+        .src-promoted { display:inline-block; padding:1px 6px; border-radius: var(--radius);
+            font-size:9px; letter-spacing:.06em; text-transform:uppercase; font-weight:700;
+            background:var(--btc-wash); color:var(--btc-300); border:1px solid var(--line-btc); }
         .src-badge.t-workable   { background:var(--panel-hover); color:var(--plat-300); }
         .src-badge.t-restricted { background:var(--warn-wash);  color:var(--warn); }
         .src-badge.t-prohibited { background:var(--neg-wash);   color:var(--neg); }
@@ -1437,7 +1444,7 @@ commercial terms are your assumptions.</p>
 <script src="./site-availability.js?v=338"></script>
 <script src="./site-sources.js?v=338"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=380"></script>
+<script src="./project-model.js?v=381"></script>
 <script src="./site-catalog.js?v=338"></script>
 <script src="./source-flare-gas.js?v=338"></script>
 <script src="./permit-index.js?v=338"></script>
@@ -1472,7 +1479,7 @@ commercial terms are your assumptions.</p>
 </script>
 <script src="./map.js?v=374"></script>
 <script src="./site-capacity.js?v=376"></script>
-<script src="./map-sourcing.js?v=376"></script>
+<script src="./map-sourcing.js?v=381"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
