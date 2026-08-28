@@ -185,6 +185,35 @@ eq('and it is still not called unbudgeted', acq2.unbudgeted, false);
 eq('but a category nobody planned for IS unbudgeted', eng.unbudgeted, true);
 eq('and that one was never priced at zero', eng.priced_at_zero, false);
 
+console.log('\n=== THE CARRYING COST IS PRICED AT THE PROJECT\'S OWN RATE ===');
+/* Two definitions of one number. SiteCapex reads a global house setting; every project record
+   carries annual_cost_of_capital_pct as a REQUIRED field. Seeding used the setting, so a project
+   agreed at 11% opened its budget priced at whatever the house number said -- and the seeded line
+   is what every later variance is measured against. */
+fresh();
+var cc = ProjectData.list()[0];
+global.SiteCapex.setSetting('annualCostOfCapital', 6);        // a rate this project never agreed
+var ccSeed = ProjectBudget.seedFromEstimate(cc.id);
+ok('carrying cost is now seedable at all, because the project always has a rate',
+   ccSeed.skipped.indexOf('carrying_cost') < 0, 'skipped: ' + ccSeed.skipped.join(','));
+var ccLine = ProjectBudget.lines(ProjectData.get(cc.id))
+    .filter(function (l) { return l.category === 'carrying_cost'; })[0];
+ok('and a line exists', !!ccLine);
+// 3,216,040 incurred x 11% x 18/12 months. At the 6% setting it would be $289,444.
+eq('priced at the project rate, not the house setting', ccLine.budgeted_amount, 530647);
+ok('and the basis says which rate it used', /11% annual/.test(ccLine.notes), ccLine.notes);
+ok('naming it as the project\'s own', /this project's own rate/.test(ccLine.notes), ccLine.notes);
+/* The override is opt-in: absent the key the estimator behaves exactly as it always did, which is
+   what tests/capex-rate.test.js pins across all 11,829 candidates. */
+var houseOnly = global.SiteCapex.stack(
+    { powerPotentialKw: 1959, development_stage: 'raw_resource', energy_type: 'landfill_gas' },
+    { capacityKw: 1959 });
+var houseLine = houseOnly.components.filter(function (c) { return c.id === 'carrying_cost'; })[0];
+eq('with no rate passed, the house setting still applies', Math.round(houseLine.usd), 289444);
+ok('and that basis does NOT claim to be the project\'s',
+   !/this project's own rate/.test(houseLine.basis || ''), houseLine.basis);
+global.SiteCapex.setSetting('annualCostOfCapital', null);
+
 console.log('\n=== no material spend before exclusivity ===');
 /* Flagged, not refused: the money may be committed for a good reason, and refusing would move
    the record out of the system, which is worse than a flagged line. */

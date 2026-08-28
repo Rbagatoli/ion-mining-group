@@ -480,7 +480,17 @@ var SiteCapex = (function() {
 
         // 9. Carrying cost of capital during the dead period before first revenue.
         var mtr = MONTHS_TO_REVENUE[stage];
-        var coc = num(S.annualCostOfCapital);
+        /* THE CALLER'S RATE BEATS THE GLOBAL SETTING, because by the time a deal is a project the
+           rate is a fact about that project rather than a house assumption. Every project record
+           carries annual_cost_of_capital_pct as a required field; this module only ever had the
+           one global number, so a project agreed at 11% was having its carrying cost priced at
+           whatever the setting happened to say. Measured on a real 1,959 kW site: $289,444 at a
+           6% setting against $530,647 at the project's own 11%, a $241,203 gap arriving as a
+           favourable variance that does not exist.
+
+           Absent, this reads exactly as before -- the setting, and unknown when that is unset. */
+        var cocFromCtx = num(ctx.annualCostOfCapitalPct);
+        var coc = cocFromCtx !== null ? cocFromCtx : num(S.annualCostOfCapital);
         if (coc === null) {
             add('carrying_cost', 'Carrying cost', 'unknown', null, null,
                 'cost of capital not set — nothing is assumed for it');
@@ -502,7 +512,10 @@ var SiteCapex = (function() {
             var carry = incurred * (coc / 100) * (months / 12);
             add('carrying_cost', 'Carrying cost', 'incurred', carry,
                 coc + '% annual on $' + fmt(Math.round(incurred)) + ' over ~' + Math.round(months) +
-                ' months to first revenue');
+                ' months to first revenue' +
+                // Named, because a budget line seeded from this basis is the thing a variance is
+                // later measured against, and which rate it used is the whole question.
+                (cocFromCtx !== null ? ", this project's own rate" : ''));
             incurred += carry;
             priced++;
         }

@@ -240,11 +240,15 @@ var ProjectBudget = (function () {
         var kw = num(project.capacity_kw);
         if (kw === null || kw <= 0) return { ok: false, err: 'The project has no capacity to price.' };
 
+        /* THE PROJECT'S OWN COST OF CAPITAL, not the house setting. It is a required field on
+           every project precisely so the carrying cost seeded here is the one that was agreed;
+           without it the opening budget would be priced at a rate the project never accepted and
+           every later variance would be measured against the wrong number. */
         var stack = SiteCapex.stack({
             powerPotentialKw: kw,
             development_stage: project.prospect.development_stage || null,
             energy_type: 'landfill_gas'
-        }, { capacityKw: kw });
+        }, { capacityKw: kw, annualCostOfCapitalPct: num(project.annual_cost_of_capital_pct) });
 
         var seeded = [], skipped = [];
         for (var i = 0; i < stack.components.length; i++) {
