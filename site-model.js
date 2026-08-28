@@ -340,6 +340,24 @@ var SiteData = (function() {
      * missed call site look like a project bug. There are only two call sites today and both are
      * tests: nothing in the product deletes a site at all. */
     function remove(id) {
+        /* A PROSPECT WITH A LIVE PROJECT IS NOT DELETABLE, and the refusal is here rather than
+           in the UI because there is more than one way to reach this function and only one of
+           them is a button. Cancelled projects do not block: cancelling is a decision already
+           recorded, and the prospect should be reclaimable afterwards.
+
+           typeof-guarded like every other cross-module call in this file, so site-model.js keeps
+           working -- and keeps being testable -- with no project model loaded.
+
+           Advisory across devices, not enforced: sites and projects are two independent
+           last-write-wins documents, so a device that has not yet pulled the projects doc will
+           not see the project and will allow the delete. That is a reconciliation problem for
+           the workspace to surface, not something this function can promise. */
+        if (typeof ProjectData !== 'undefined' && ProjectData.hasLive &&
+            ProjectData.hasLive(id)) {
+            var live = ProjectData.forProspect(id).filter(function(p) { return p.gate !== 'cancelled'; })[0];
+            return { ok: false, err: 'This prospect is being built as project ' + live.id +
+                     ' (' + live.name + '). Cancel the project first.' };
+        }
         var data = getData();
         var before = data.sites.length;
         var kept = data.sites.filter(function(s) { return s.id !== id; });

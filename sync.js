@@ -44,7 +44,11 @@ var SyncEngine = (function() {
         crmFollowups:      { lsKey: 'protonCrmFollowups' },
         contacts:          { lsKey: 'protonContacts' },
         crmEnrichment:     { lsKey: 'protonCrmEnrichment' },
-        crmDocuments:      { lsKey: 'protonCrmDocuments' }
+        crmDocuments:      { lsKey: 'protonCrmDocuments' },
+        /* The execution workspace. Registered here at the same time the store is created
+           rather than afterwards: an unregistered store is a single-browser store, and this one
+           holds budget commitments and payment applications. */
+        projects:          { lsKey: 'protonMiningProjects' }
     };
 
     function getDb() {
