@@ -398,9 +398,9 @@ var ProjectData = (function () {
            writes nothing, which would otherwise be invisible here. */
         var logged = null;
         if (typeof CrmLog !== 'undefined' && CrmLog.append) {
-            logged = CrmLog.append('note', String(prospectId), {
-                body: 'Promoted to project ' + p.id,
-                project_id: p.id
+            logged = CrmLog.append('gate', String(prospectId), {
+                project_id: p.id, from: null, to: p.gate,
+                reason: 'Promoted to project ' + p.id
             });
         }
         return { ok: true, err: null, project: p, notice: res.notice,
@@ -477,8 +477,7 @@ var ProjectData = (function () {
         if (!res.ok) return { ok: false, err: res.err };
         var logged = null;
         if (typeof CrmLog !== 'undefined' && CrmLog.append && p.prospect.prospect_id) {
-            logged = CrmLog.append('note', p.prospect.prospect_id, {
-                body: 'Project ' + p.id + ' moved from ' + from + ' to ' + gate,
+            logged = CrmLog.append('gate', p.prospect.prospect_id, {
                 project_id: p.id, from: from, to: gate, reason: text(opts.reason)
             });
         }

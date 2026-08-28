@@ -247,6 +247,16 @@
                     border-radius:var(--radius); padding:7px 9px; font:inherit;
                     font-size:12px; }
         .pd-ev.k-note .pd-kind { color:var(--plat-400); }
+        /* THE BUILD EVENTS, colour-coded by how much they should interrupt a read of the
+           timeline. A gate move is orange because it is the project advancing; a waiver is the
+           warn colour because it is a hard block being stepped around and should never scan as
+           routine; a score movement is dim because it is a consequence rather than a decision;
+           money is platinum, matching every other figure in the app. */
+        .pd-ev.k-gate .pd-kind   { color:var(--btc-300); }
+        .pd-ev.k-waiver .pd-kind { color:var(--warn); }
+        .pd-ev.k-score .pd-kind  { color:var(--plat-500); }
+        .pd-ev.k-money .pd-kind  { color:var(--plat-200); }
+        .pd-ev.k-other .pd-kind  { color:var(--plat-400); }
 
         @media (max-width: 620px) {
             .pd-dkind { flex-basis:100%; }
@@ -447,11 +457,11 @@
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=340"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=381"></script>
+<script src="./project-model.js?v=382"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=379"></script>
-<script src="./crm-log.js?v=379"></script>
+<script src="./crm-log.js?v=382"></script>
 <script src="./crm-followups.js?v=379"></script>
 <script src="./crm-contacts.js?v=379"></script>
 <script src="./crm-interactions.js?v=340"></script>
@@ -460,7 +470,7 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=340"></script>
-<script src="./prospect-detail.js?v=381"></script>
+<script src="./prospect-detail.js?v=382"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
 <script src="./prospecting.js?v=340"></script>

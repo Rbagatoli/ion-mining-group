@@ -27,7 +27,28 @@ var CrmLog = (function () {
     var KEY = 'protonCrmLog';
     var VERSION = 1;
 
-    var KINDS = ['stage', 'interaction', 'note'];
+    /* THE EXECUTION WORKSPACE'S EVENTS SHARE THIS LOG rather than starting a parallel one.
+     * It already has the two properties an audit trail lives on -- append-only, and a total
+     * order under a same-millisecond tie -- plus supersede(), which is the only revision
+     * machinery anywhere in the CRM layer.
+     *
+     * A kind is refused if it is not here, and append() fails CLOSED and silently: it returns
+     * { ok:false } and writes nothing, which a caller that ignores the return would never see.
+     * So every one of these is registered before anything writes it, and the callers check.
+     *
+     *   gate         a project moved between build gates
+     *   waiver       a blocking deliverable was waived, with a reason and who approved it
+     *   score        an automatic score moved because a stage advanced -- which component,
+     *                and by how much. Required because a number that changes on its own must
+     *                be attributable without reading source.
+     *   change_order a change order was raised, approved or rejected (Stage 4)
+     *   payment      a payment application was approved (Stage 4)
+     *
+     * Registered together rather than one per stage, because prospect-detail.js renders every
+     * kind on one timeline and an unregistered kind renders as a malformed interaction. Adding
+     * them in step with the renderer is the safe order. */
+    var KINDS = ['stage', 'interaction', 'note',
+                 'gate', 'waiver', 'score', 'change_order', 'payment'];
 
     var _cache = null;
 

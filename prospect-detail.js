@@ -4,11 +4,22 @@
  * follow-ups and the contacts were all real and none of them were reachable —
  * fully built, fully tested, and writable only from the console.
  *
- * ONE TIMELINE, TWO KINDS OF EVENT. Stage transitions and interactions are
+ * ONE TIMELINE, EVERY KIND OF EVENT. Stage transitions and interactions are
  * interleaved and sorted together, because "we spoke, then I moved it to term
  * sheet, then they went quiet" is one story and splitting it into two lists
  * makes the reader reassemble it. They come from the same append-only store, so
  * this is a merge rather than a join.
+ *
+ * The execution workspace adds four more — gate moves, waivers, automatic score
+ * movements and money events — onto the same timeline for the same reason: "the
+ * gas analysis came back, so we waived nothing and moved to agreements, and the
+ * score moved because of it" is also one story.
+ *
+ * EVERY KIND GETS ITS OWN BRANCH, and the interaction branch is now reached only
+ * by interactions. It used to be the fallthrough, so any kind added later would
+ * have rendered as an interaction with a wrong label and two absences — which is
+ * precisely the bug the note branch below was written to fix, waiting to happen
+ * again to the next person.
  *
  * CORRECTIONS ARE SHOWN, NOT HIDDEN. An entry that was later corrected renders
  * struck through with its replacement beneath it. The point of an immutable log
@@ -57,6 +68,21 @@ var ProspectDetail = (function () {
         return out;
     }
 
+    /* Gate keys are the project's vocabulary, not the CRM pipeline's, so CrmConfig.stageLabel
+       cannot name them. Kept beside the renderer that uses them. */
+    var GATE_LABELS = {
+        target_screen: 'target & screen', contact_loi: 'contact & LOI', diligence: 'diligence',
+        agreements: 'agreements', permitting_complete: 'permit issued',
+        engineering_procurement: 'engineering & procurement', construction: 'construction',
+        commissioning: 'commissioning', operating: 'operating', cancelled: 'cancelled'
+    };
+    function gateLabel(k) { return GATE_LABELS[k] || String(k || 'unknown').replace(/_/g, ' '); }
+
+    function money(v) {
+        if (typeof v !== 'number' || !isFinite(v)) return '';
+        return '$' + Math.round(v).toLocaleString();
+    }
+
     function outcomePill(key) {
         if (!key) return '';
         var label = key, tone = 'neutral';
@@ -100,6 +126,67 @@ var ProspectDetail = (function () {
                     (e.body ? '<span class="pd-note">' + esc(e.body) + '</span>'
                             : '<span class="pd-note">' + absent('empty') + '</span>') +
                     (t.correctedBy ? '<span class="pd-corr">corrected later</span>' : '') +
+                '</span></li>';
+        }
+        /* THE BUILD EVENTS. Rendered before the interaction fallthrough for exactly the reason
+           the note branch above gives: falling through prints "nobody named / no summary",
+           three absences describing a record that is not missing anything. */
+        if (e.kind === 'gate') {
+            return '<li class="' + cls + ' k-gate">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">Gate</span> ' +
+                    esc(gateLabel(e.from)) + ' &rarr; <strong>' + esc(gateLabel(e.to)) + '</strong>' +
+                    (e.reason ? '<span class="pd-note">' + esc(e.reason) + '</span>' : '') +
+                '</span></li>';
+        }
+        if (e.kind === 'waiver') {
+            /* A waiver is the loudest thing on this timeline on purpose. It is the record of a
+               hard block being stepped around, and the whole value of a gate is that stepping
+               around it leaves a mark naming who decided to. */
+            return '<li class="' + cls + ' k-waiver">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">Waived</span> ' +
+                    '<strong>' + esc(e.deliverable || 'a requirement') + '</strong>' +
+                    ' <span class="pd-pill t-negative">waived</span>' +
+                    '<span class="pd-note">' + esc(e.reason || '') +
+                        (e.approved_by ? ' — ' + esc(e.approved_by) : ' — ' + absent('nobody named')) +
+                    '</span>' +
+                '</span></li>';
+        }
+        if (e.kind === 'score') {
+            var d = (typeof e.delta === 'number') ? (e.delta > 0 ? '+' + e.delta : String(e.delta)) : '?';
+            return '<li class="' + cls + ' k-score">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">Score</span> ' +
+                    esc(e.component || 'a component') + ' moved ' + esc(d) +
+                    (e.reason ? '<span class="pd-note">' + esc(e.reason) + '</span>' : '') +
+                '</span></li>';
+        }
+        if (e.kind === 'change_order' || e.kind === 'payment') {
+            return '<li class="' + cls + ' k-money">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">' + (e.kind === 'payment' ? 'Payment' : 'Change order') + '</span> ' +
+                    esc(e.description || '') +
+                    (typeof e.amount === 'number' ? ' <strong>' + esc(money(e.amount)) + '</strong>' : '') +
+                    (e.approved_by ? '<span class="pd-note">approved by ' + esc(e.approved_by) + '</span>' : '') +
+                '</span></li>';
+        }
+        /* AN UNKNOWN KIND IS NOT AN INTERACTION EITHER. The fallthrough below used to catch
+           everything that was not a stage or a note, so the next kind anyone registers would
+           render as an interaction with two absences and a wrong label. It now catches only
+           entries that actually carry interaction fields. */
+        if (e.kind !== 'interaction') {
+            return '<li class="' + cls + ' k-other">' +
+                '<span class="pd-when">' + esc(day(t.when)) + '</span>' +
+                '<span class="pd-body">' +
+                    '<span class="pd-kind">' + esc(String(e.kind || 'event').replace(/_/g, ' ')) + '</span> ' +
+                    (e.body || e.description
+                        ? '<span class="pd-note">' + esc(e.body || e.description) + '</span>'
+                        : '<span class="pd-note">' + absent('nothing recorded') + '</span>') +
                 '</span></li>';
         }
         var who = e.contact_person ? esc(e.contact_person) : absent('nobody named');
