@@ -182,6 +182,176 @@ var ProjectGates = (function () {
         };
     }
 
+    /* ===== WHAT A CLOSED GATE MEANS FOR THE ASSET ==========================================
+     *
+     * development_stage on the prospect record is load-bearing in three places, and advancing it
+     * moves real numbers: site-capex's STAGE_RETAINED stops charging a $160,000 flat permitting
+     * cost at 'permitted', MONTHS_TO_REVENUE drops from 12-24 to 8-14 at the same point, and
+     * site-opportunity's scoreSiteQuality infers road access at 'constructed', which moved a real
+     * 1,959 kW landfill's score from 44 to 51.
+     *
+     * KEYED ON THE GATE BEING LEFT, NOT THE GATE BEING ENTERED, and that is the distinction the
+     * gate names were sloppy about once already. development_stage describes what the asset HAS
+     * ACHIEVED. A project sitting in the permitting_complete gate is doing the permitting; it is
+     * 'permitted' when that gate CLOSES behind it. Reading it the other way -- stage set on
+     * entry -- would stop charging the permitting cost and shorten the schedule by four to ten
+     * months while the permit is still outstanding and still being paid for.
+     *
+     * Gates with no entry here achieve nothing on their own: leaving contact_loi does not make a
+     * site permitted, it makes it a site with a signed LOI, which development_stage has no word
+     * for and should not invent one.
+     */
+    var STAGE_ON_LEAVING = {
+        permitting_complete: 'permitted',
+        construction: 'constructed',
+        commissioning: 'energized'
+    };
+    // Reaching the terminal gate is itself the achievement; there is no gate after it to leave.
+    var STAGE_ON_ENTERING = { operating: 'operating' };
+
+    var STAGE_ORDER = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
+
+    /* ISSUANCE, NOT PHASE ENTRY, AND NOT A WAIVER EITHER.
+     *
+     * The gate already refuses to open without the air permit satisfied -- but `satisfied`
+     * includes waived, and a waiver is a deliberate decision to proceed without the thing. That
+     * is a legitimate way to move a PROJECT forward and it is not a legitimate way to tell the
+     * capex model a permit exists. Waiving the permit and having the $160,000 quietly stop being
+     * charged is precisely the silent repricing this precondition exists to prevent.
+     *
+     * So the stage advance asks a stricter question than the gate did: complete, with the
+     * document on file, not waived. */
+    function permitIssued(project) {
+        var items = itemsFor(project, 'permitting_complete');
+        if (items === null) return false;
+        var air = items.filter(function (i) { return i.key === 'air_permit'; })[0];
+        if (!air) return false;
+        return air.status === 'complete' && !!air.document_id && !air.waived;
+    }
+
+    function stageAchieved(project, fromGate, toGate) {
+        var entering = STAGE_ON_ENTERING[toGate] || null;
+        var leaving = STAGE_ON_LEAVING[fromGate] || null;
+        // Whichever is further along; both may be null, which means this move achieves nothing.
+        var a = STAGE_ORDER.indexOf(entering), b = STAGE_ORDER.indexOf(leaving);
+        return (a > b) ? entering : leaving;
+    }
+
+    /* Advances the PROSPECT's development_stage when a gate move earns it, and reports what it
+     * did rather than doing it silently. Returns:
+     *   { moved:false, reason }            nothing was earned, or it was refused
+     *   { moved:true, from, to, scores }   the record was written, with what it moved
+     *
+     * Forward only. A project moved back a gate does not un-permit a site: the permit is still
+     * issued and the capex model is still right to stop charging for it. Rolling the stage back
+     * would say the asset regressed, which is not what happened.
+     */
+    function syncDevelopmentStage(project, fromGate, toGate) {
+        if (typeof SiteData === 'undefined' || !SiteData.get) {
+            return { moved: false, reason: 'site model not loaded' };
+        }
+        var pid = project && project.prospect && project.prospect.prospect_id;
+        if (!pid) return { moved: false, reason: 'no prospect' };
+        var rec = SiteData.get(pid);
+        if (!rec) return { moved: false, reason: 'prospect no longer exists' };
+
+        var want = stageAchieved(project, fromGate, toGate);
+        if (!want) return { moved: false, reason: 'this gate achieves no change of asset stage' };
+
+        var have = rec.development_stage || 'raw_resource';
+        if (STAGE_ORDER.indexOf(want) <= STAGE_ORDER.indexOf(have)) {
+            return { moved: false, reason: 'the asset is already at ' + have };
+        }
+        if (want === 'permitted' && !permitIssued(project)) {
+            return { moved: false, refused: true,
+                     reason: 'the air permit is not on file as issued — a waived or undocumented ' +
+                             'permit does not make the site permitted, and advancing would stop ' +
+                             'the permitting cost being charged while it is still outstanding' };
+        }
+
+        /* THE SCORE, MEASURED BEFORE AND AFTER. Taken here rather than recomputed later because
+           the only honest way to say what a change did is to hold both sides of it. */
+        var before = scoreSnapshot(rec);
+        var res = SiteData.update(pid, { development_stage: want });
+        if (!res || (res._save && !res._save.ok)) {
+            return { moved: false, reason: 'the prospect record could not be saved' };
+        }
+        var after = scoreSnapshot(SiteData.get(pid));
+        var moves = diffScores(before, after);
+
+        /* IF THE SCORER IS NOT ON THIS PAGE, SAY SO IN THE LOG rather than logging nothing.
+           An empty score history is indistinguishable from "nothing moved", and the two are
+           opposite answers -- this exact gap was live until prospecting.html gained the scorer,
+           and a stage advance there recorded no attribution at all while the numbers on the map
+           page moved. An unmeasured movement is a fact worth recording. */
+        var measured = (before !== null && after !== null);
+        if (!measured && typeof CrmLog !== 'undefined' && CrmLog.append) {
+            CrmLog.append('score', pid, {
+                project_id: project.id, component: null, delta: null,
+                trigger: 'stage_advance', from_stage: have, to_stage: want,
+                unmeasured: true,
+                reason: 'the asset stage moved, but the scoring model was not loaded on this ' +
+                        'page, so what it did to the score was not recorded'
+            });
+        }
+
+        /* LOGGED PER COMPONENT THAT MOVED, with the trigger named. Reviewing a score history
+           later, the question is always whether the SITE changed or the PROJECT did -- a gas
+           volume revision and a gate closing move the same number and mean opposite things. */
+        if (typeof CrmLog !== 'undefined' && CrmLog.append) {
+            for (var i = 0; i < moves.length; i++) {
+                CrmLog.append('score', pid, {
+                    project_id: project.id,
+                    component: moves[i].label,
+                    component_id: moves[i].id,
+                    from: moves[i].from,
+                    to: moves[i].to,
+                    delta: moves[i].delta,
+                    trigger: 'stage_advance',
+                    from_stage: have,
+                    to_stage: want,
+                    reason: 'the project closed the ' + fromGate.replace(/_/g, ' ') +
+                            ' gate, so the asset is now ' + want.replace(/_/g, ' ') +
+                            ' — the site itself did not change'
+                });
+            }
+        }
+        return { moved: true, from: have, to: want, scores: moves, measured: measured };
+    }
+
+    function scoreSnapshot(rec) {
+        if (typeof SiteOpportunity === 'undefined' || !SiteOpportunity.score || !rec) return null;
+        var r = SiteOpportunity.score(rec);
+        var out = { total: r.score, by: {} };
+        for (var i = 0; i < r.breakdown.length; i++) {
+            out.by[r.breakdown[i].id] = { value: r.breakdown[i].value, label: r.breakdown[i].label };
+        }
+        return out;
+    }
+
+    function diffScores(before, after) {
+        if (!before || !after) return [];
+        var out = [];
+        for (var id in after.by) {
+            if (!Object.prototype.hasOwnProperty.call(after.by, id)) continue;
+            var b = before.by[id] ? before.by[id].value : null;
+            var a = after.by[id].value;
+            if (b === a) continue;
+            out.push({
+                id: id, label: after.by[id].label, from: b, to: a,
+                // A component appearing where there was nothing is a move from unmeasured, not
+                // from zero, so the delta is null rather than a number that overstates it.
+                delta: (typeof a === 'number' && typeof b === 'number') ? Math.round(a - b) : null
+            });
+        }
+        if (before.total !== after.total) {
+            out.push({ id: '_total', label: 'Opportunity score', from: before.total, to: after.total,
+                       delta: (typeof after.total === 'number' && typeof before.total === 'number')
+                              ? after.total - before.total : null });
+        }
+        return out;
+    }
+
     // ---- writes ------------------------------------------------------------------------
 
     function writeState(projectId, gate, key, mutate) {
@@ -262,6 +432,11 @@ var ProjectGates = (function () {
         readiness: readiness,
         blockers: blockers,
         canAdvance: canAdvance,
+        STAGE_ON_LEAVING: STAGE_ON_LEAVING,
+        STAGE_ON_ENTERING: STAGE_ON_ENTERING,
+        permitIssued: permitIssued,
+        stageAchieved: stageAchieved,
+        syncDevelopmentStage: syncDevelopmentStage,
         setStatus: setStatus,
         waive: waive,
         unwaive: unwaive

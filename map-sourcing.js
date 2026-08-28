@@ -4450,7 +4450,17 @@ var MapSourcing = (function() {
             for (var bi = 0; bi < opp.breakdown.length; bi++) {
                 var b = opp.breakdown[bi];
                 if (!b.weight) continue;
-                html += row(b.label + ' <span class="src-sub2">' + b.weight + '%</span>',
+                /* MARKED WHERE THE NUMBER MOVES ON ITS OWN. These two read development_stage,
+                   so they change when a PROJECT closes a gate rather than when anything about
+                   the site is learned -- site_quality infers road access from a built asset and
+                   jumps a real landfill 44 to 51 at 'constructed'. A number that moves without
+                   the site changing has to say so where it is read, or the only way to find out
+                   is to read the scorer. The matching CrmLog entry carries the delta. */
+                var stageDerived = (b.id === 'development_stage' || b.id === 'site_quality');
+                html += row(b.label + ' <span class="src-sub2">' + b.weight + '%</span>' +
+                    (stageDerived ? ' <span class="src-stagederived" title="Partly derived from ' +
+                        'the development stage, so this moves when a project closes a gate rather ' +
+                        'than when the site changes">stage</span>' : ''),
                     (b.value === null ? gap('not measured') : Math.round(b.value) + '/100') +
                     '<div class="src-sub2">' + escapeHtml(b.detail) + '</div>');
             }

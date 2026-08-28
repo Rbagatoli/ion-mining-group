@@ -457,8 +457,16 @@
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=340"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=383"></script>
-<script src="./project-gates.js?v=383"></script>
+<script src="./project-model.js?v=384"></script>
+<!-- The scorer, so a gate advance can say what it did to the score rather than only
+     that it happened. site-opportunity needs SiteInfrastructure for capital_avoided,
+     which needs SiteCapex for its rate card; jurisdictions is read by the scorer too.
+     Loaded BEFORE project-gates.js, which reads SiteOpportunity at gate time. -->
+<script src="./jurisdictions.js?v=384"></script>
+<script src="./site-capex.js?v=384"></script>
+<script src="./site-infrastructure.js?v=384"></script>
+<script src="./site-opportunity.js?v=384"></script>
+<script src="./project-gates.js?v=384"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=383"></script>

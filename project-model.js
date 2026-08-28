@@ -504,8 +504,17 @@ var ProjectData = (function () {
                 project_id: p.id, from: from, to: gate, reason: text(opts.reason)
             });
         }
+        /* THE ASSET STAGE FOLLOWS THE GATE, after the write and after the log, in that order.
+           A stage advance moves real money -- it stops a $160,000 permitting charge and shortens
+           the schedule -- so it must never happen off the back of a gate move that did not
+           itself persist. project-gates decides whether anything was earned and refuses the
+           permitted case unless the permit is on file as issued rather than waived. */
+        var staged = null;
+        if (typeof ProjectGates !== 'undefined' && ProjectGates.syncDevelopmentStage) {
+            staged = ProjectGates.syncDevelopmentStage(p, from, gate);
+        }
         return { ok: true, err: null, project: p, notice: res.notice,
-                 logged: !!(logged && logged.ok) };
+                 logged: !!(logged && logged.ok), stage: staged };
     }
 
     function cancel(id, reason) { return setGate(id, 'cancelled', { reason: reason }); }

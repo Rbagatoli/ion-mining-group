@@ -32,6 +32,9 @@ global.CrmConfig = require(path.join(ROOT, 'crm-config.js'));
 global.CrmLog = require(path.join(ROOT, 'crm-log.js'));
 global.CrmDocuments = require(path.join(ROOT, 'crm-documents.js'));
 global.CrmEnrichment = require(path.join(ROOT, 'crm-enrichment.js'));
+global.SiteOpportunity = require(path.join(ROOT, 'site-opportunity.js'));
+global.SiteInfrastructure = require(path.join(ROOT, 'site-infrastructure.js'));
+global.SiteCapex = require(path.join(ROOT, 'site-capex.js'));
 global.SiteData = require(path.join(ROOT, 'site-model.js'));
 global.ProjectData = require(path.join(ROOT, 'project-model.js'));
 global.ProjectGates = require(path.join(ROOT, 'project-gates.js'));
@@ -218,6 +221,128 @@ ok('and says nothing could be confirmed', /not loaded/.test(verdict.err), verdic
 eq('itemsFor reports null rather than an empty list',
    ProjectGates.itemsFor(ProjectData.get(m.id), 'diligence'), null);
 global.CrmConfig = savedCfg;
+
+console.log('\n=== the asset stage follows the gate that CLOSES, not the one entered ===');
+/* development_stage describes what the asset has achieved. A project sitting in the
+   permitting_complete gate is doing the permitting; it is 'permitted' when that gate closes. */
+eq('leaving permitting_complete is what makes a site permitted',
+   ProjectGates.STAGE_ON_LEAVING.permitting_complete, 'permitted');
+eq('leaving construction makes it constructed',
+   ProjectGates.STAGE_ON_LEAVING.construction, 'constructed');
+eq('leaving commissioning makes it energized',
+   ProjectGates.STAGE_ON_LEAVING.commissioning, 'energized');
+eq('and reaching operating is itself the achievement',
+   ProjectGates.STAGE_ON_ENTERING.operating, 'operating');
+ok('gates that achieve nothing on their own map to nothing',
+   !ProjectGates.STAGE_ON_LEAVING.contact_loi && !ProjectGates.STAGE_ON_LEAVING.diligence,
+   'a signed LOI does not make a site permitted');
+
+console.log('\n=== a WAIVED permit does not make a site permitted ===');
+/* The sharp case, and the reason the precondition is stated separately from the gate. The gate
+   opens on `satisfied`, which includes waived — a legitimate way to move a PROJECT forward. It is
+   not a legitimate way to tell the capex model a permit exists: $160,000 would quietly stop being
+   charged while the permit is still outstanding. */
+fresh();
+var wp = ProjectData.list()[0];
+function clearTo(projId, gate) {
+    var order = ProjectData.GATES;
+    for (var i = 1; i <= order.indexOf(gate); i++) {
+        var g = order[i - 1];
+        CrmConfig.gateDeliverables(g).forEach(function (d) {
+            if (d.requires_document && d.evidence_kind) {
+                CrmDocuments.add('p1', { title: d.label, kind: d.evidence_kind });
+            }
+            ProjectGates.setStatus(projId, g, d.key, 'complete');
+        });
+        ProjectData.setGate(projId, order[i]);
+    }
+}
+// Clear everything up to and including entering permitting_complete, but WAIVE the air permit.
+clearTo(wp.id, 'permitting_complete');
+eq('the project is at permitting_complete', ProjectData.get(wp.id).gate, 'permitting_complete');
+// Undo the document so the permit is genuinely absent, then waive it.
+ProjectGates.setStatus(wp.id, 'permitting_complete', 'air_permit', 'not_started');
+var wv = ProjectGates.waive(wp.id, 'permitting_complete', 'air_permit',
+    { reason: 'authority backlog, proceeding at risk', approved_by: 'R Bagatoli' });
+ok('the permit can be waived', wv.ok, wv.err);
+eq('so the gate opens', ProjectGates.canAdvance(ProjectData.get(wp.id), 'engineering_procurement').ok, true);
+eq('but the permit is not issued', ProjectGates.permitIssued(ProjectData.get(wp.id)), false);
+
+var advanced = ProjectData.setGate(wp.id, 'engineering_procurement');
+ok('the project advances', advanced.ok, advanced.err);
+eq('and the asset stage did NOT move', advanced.stage.moved, false);
+ok('because the permit is not on file as issued',
+   /not on file as issued/.test(advanced.stage.reason), advanced.stage.reason);
+eq('the prospect is still raw_resource',
+   SiteData.get('p1').development_stage || 'raw_resource', 'raw_resource');
+
+console.log('\n=== an issued permit does move it, and says what moved ===');
+fresh();
+var ip = ProjectData.list()[0];
+clearTo(ip.id, 'permitting_complete');
+// The permit itself: filed as a document and marked complete, which is what "issued" means here.
+CrmDocuments.add('p1', { title: 'Air permit AP-2027-114', kind: 'permit' });
+ProjectGates.setStatus(ip.id, 'permitting_complete', 'air_permit', 'complete');
+ProjectData.reset();
+eq('the permit now reads as issued', ProjectGates.permitIssued(ProjectData.get(ip.id)), true);
+var scoreBefore = CrmLog.forProspect('p1', 'score').length;
+var moved = ProjectData.setGate(ip.id, 'engineering_procurement');
+ok('the gate opens on a real permit', moved.ok, moved.err);
+eq('and the asset stage moves', moved.stage.moved, true);
+eq('to permitted', moved.stage.to, 'permitted');
+eq('the prospect record was actually written',
+   SiteData.get('p1').development_stage, 'permitted');
+
+console.log('\n=== the movement is attributable without reading source ===');
+var scoreLogs = CrmLog.forProspect('p1', 'score');
+ok('score movements were logged', scoreLogs.length > scoreBefore,
+   'before ' + scoreBefore + ', after ' + scoreLogs.length);
+var one = scoreLogs[0];
+eq('the trigger says it was a stage advance, not a data change', one.trigger, 'stage_advance');
+ok('it names the component', !!one.component);
+ok('and carries the delta', one.delta !== undefined);
+eq('with the stage it came from', one.from_stage, 'raw_resource');
+eq('and the stage it went to', one.to_stage, 'permitted');
+ok('and says the site itself did not change',
+   /site itself did not change/.test(one.reason), one.reason);
+
+console.log('\n=== the stage never rolls backwards ===');
+/* A project moved back a gate does not un-permit a site. The permit is still issued and the
+   capex model is still right to stop charging for it; rolling back would claim the asset
+   regressed, which is not what happened. */
+var back = ProjectData.setGate(ip.id, 'permitting_complete', { reason: 'genset quote expired' });
+ok('the project can move back', back.ok, back.err);
+eq('but the asset stage stays where it got to',
+   SiteData.get('p1').development_stage, 'permitted');
+
+console.log('\n=== an unmeasured movement is recorded as unmeasured ===');
+/* An empty score history and "nothing moved" are opposite answers that look identical. This gap
+   was live: prospecting.html did not load the scorer, so a gate advance there attributed nothing
+   while the same advance moved the number on the map page. */
+(function () {
+    var savedSO = global.SiteOpportunity;
+    delete global.SiteOpportunity;
+    fresh();
+    var u = ProjectData.list()[0];
+    SiteData.update('p1', { development_stage: 'permitted' });
+    var before = CrmLog.forProspect('p1', 'score').length;
+    var r = ProjectGates.syncDevelopmentStage(
+        Object.assign({}, ProjectData.get(u.id)), 'construction', 'commissioning');
+    eq('the stage still moves', r.moved, true);
+    eq('but it reports that nothing was measured', r.measured, false);
+    var logs = CrmLog.forProspect('p1', 'score');
+    eq('and it is logged rather than silent', logs.length, before + 1);
+    eq('marked unmeasured', logs[0].unmeasured, true);
+    ok('with the reason', /not loaded on this page/.test(logs[0].reason), logs[0].reason);
+    global.SiteOpportunity = savedSO;
+})();
+
+console.log('\n=== a project whose prospect is gone says so rather than throwing ===');
+var orphan = ProjectGates.syncDevelopmentStage(
+    { id: 'proj_x', gate: 'permitting_complete', prospect: { prospect_id: 'no_such' }, deliverables: {} },
+    'permitting_complete', 'engineering_procurement');
+eq('it does not move', orphan.moved, false);
+ok('and names the reason', /no longer exists/.test(orphan.reason), orphan.reason);
 
 console.log('\n' + (fail === 0 ? 'ALL PASS — ' + pass + ' assertions'
                                : pass + ' passed, ' + fail + ' FAILED'));
