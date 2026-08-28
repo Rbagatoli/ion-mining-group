@@ -61,6 +61,18 @@ eq('exactly three requirements block diligence', blocking.length, 3);
 ok('gas composition is one', blocking.indexOf('gas_composition') >= 0);
 ok('collection condition is one', blocking.indexOf('collection_condition') >= 0);
 ok('gas forecast is one', blocking.indexOf('gas_forecast') >= 0);
+/* TWO OF THE THREE NEED THE PAPER, NOT THE TICK, and they are the two where the paper IS the
+   fact. The forecast is a site-specific engineering study and it is the only thing that ever
+   supersedes the flat 25-year horizon in the sizing arithmetic; a status click cannot supersede
+   anything. Collection condition is the exception on purpose — it is assessed by standing on the
+   site, and the assessment may legitimately be a person's judgement with no document behind it. */
+var byKey = {};
+items.forEach(function (i) { byKey[i.key] = i; });
+eq('the gas analysis needs the document', byKey.gas_composition.requires_document, true);
+eq('so does the gas forecast', byKey.gas_forecast.requires_document, true);
+eq('and it points at the forecast kind specifically', byKey.gas_forecast.evidence_kind, 'gas_forecast');
+eq('collection condition does not — it is a site visit, not a filing',
+   !!byKey.collection_condition.requires_document, false);
 ok('and each carries why it blocks, not just that it does',
    items.filter(function (i) { return i.blocking; }).every(function (i) { return !!i.why; }));
 ok('the non-blocking ones are still listed',
@@ -133,6 +145,13 @@ eq('and it cites the newest one specifically', revised.document_id, newestId);
 eq('while the older one stays on file rather than being replaced',
    CrmDocuments.forProspect('p1').filter(function (d) { return d.kind === 'gas_analysis'; }).length, 2);
 
+// The forecast is the second document this gate wants, and the gate stays shut without it.
+var oneShort = ProjectData.setGate(q.id, 'agreements');
+eq('the analysis alone does not open the gate', oneShort.ok, false);
+ok('and it names the forecast as what is missing',
+   /forecast/i.test(oneShort.err), oneShort.err);
+CrmDocuments.add('p1', { title: 'Gas generation forecast, 15-year', kind: 'gas_forecast' });
+ProjectData.reset();
 ok('the gate now advances', ProjectData.setGate(q.id, 'agreements').ok);
 
 console.log('\n=== the permitting gate needs the permit itself ===');

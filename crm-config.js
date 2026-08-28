@@ -126,6 +126,10 @@ var CrmConfig = (function () {
     var DEFAULT_DOCUMENT_KINDS = [
         { key: 'nda',           label: 'NDA',                  expected: true },
         { key: 'gas_analysis',  label: 'Gas analysis',         expected: true },
+        // expected:false on purpose. A forecast is what a BUILD requires, not what a deal of
+        // unknown structure accumulates -- a revenue share needs no gas study. The diligence
+        // gate enforces it; documentKinds only has to be able to hold it.
+        { key: 'gas_forecast',  label: 'Gas generation forecast', expected: false },
         { key: 'term_sheet',    label: 'Term sheet',           expected: false },
         { key: 'agreement',     label: 'Executed agreement',   expected: false },
         { key: 'surface',       label: 'Surface lease / access', expected: false },
@@ -226,7 +230,7 @@ var CrmConfig = (function () {
                    'where the capital-avoided estimate is verified or falsified.' },
             { key: 'gas_forecast',
               label: 'Gas generation forecast over the contract term',
-              blocking: true,
+              blocking: true, requires_document: true, evidence_kind: 'gas_forecast',
               why: 'Must support the contract term, and it is what sizes the plant. Building ' +
                    '5 MW on gas that sustains 3 is roughly $2M producing nothing.' },
 
