@@ -579,6 +579,89 @@ var ProspectDetail = (function () {
         return '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>';
     }
 
+    /* ---- Procurement (Stage 6) ----
+     *
+     * Every decision here belongs to procurement.js, which has its own tests; this turns states
+     * into sentences and nothing else. The one thing the panel is responsible for is not
+     * flattening the distinction the model works to preserve.
+     *
+     * THREE COUNTS, THREE SENTENCES. 'late' and 'unknown' are different problems and get
+     * different lines. An item nobody can date is not on schedule and is not late either — it
+     * is a question about a lead time somebody has to answer, and folding it into either
+     * number makes it disappear. Same argument as "$0 and not computed are opposite claims"
+     * in the sizing block above. */
+    /* One word each, because the column beside this one already says it in full: rendered as
+       "PAST THE ORDER DATE  90 days past the order date of 2026-05-30" the label was both
+       redundant and long enough to wrap to two lines in an 11ch column. The state names what
+       it is; the date says how much. */
+    var PROC_STATE = {
+        late:      'late',
+        blocked:   'blocked',
+        due_soon:  'due soon',
+        unknown:   'undated',
+        scheduled: 'scheduled',
+        ordered:   'ordered',
+        delivered: 'delivered',
+        cancelled: 'cancelled'
+    };
+    /* Only the first four are things to act on; the rest are states of rest. Used to decide
+       which rows carry a tone and which are quiet. */
+    var PROC_TONE = { late: 'warn', blocked: 'warn', due_soon: 'note', unknown: 'note' };
+
+    function procWhen(r) {
+        if (r.state === 'ordered' || r.state === 'delivered' || r.state === 'cancelled') return '';
+        if (r.order_by === null) {
+            /* Say which input is missing rather than "unknown". The fix is different for each:
+               one is a lead time to chase, the other a date to set on the project. */
+            return r.item.lead_time_weeks === null
+                ? 'no lead time recorded'
+                : 'no date to work back from';
+        }
+        var d = r.days_late;
+        if (d === null) return 'order by ' + r.order_by;
+        if (d > 0) return d + ' days past the order date of ' + r.order_by;
+        if (d === 0) return 'order today';
+        return 'order by ' + r.order_by + ' — ' + (-d) + ' days';
+    }
+
+    function procRow(r) {
+        var tone = PROC_TONE[r.state] ? ' pd-proc-' + PROC_TONE[r.state] : '';
+        return '<li class="pd-proc-row' + tone + '">' +
+            '<span class="pd-proc-what">' +
+                (r.item.description ? esc(r.item.description) : absent('unnamed item')) +
+            '</span>' +
+            '<span class="pd-proc-state">' + esc(PROC_STATE[r.state] || r.state) + '</span>' +
+            '<span class="pd-proc-when">' + esc(procWhen(r)) + '</span>' +
+        '</li>';
+    }
+
+    function procurementBlock(project) {
+        if (typeof ProjectProcurement === 'undefined') return '';
+        var now = Date.now();
+        var rows = ProjectProcurement.schedule(project, now);
+        if (!rows.length) {
+            return '<p class="pd-basis">Nothing is on the procurement schedule yet. Long-lead ' +
+                   'items belong here as soon as they are known, because the order date is ' +
+                   'worked back from the energisation date and is often already close.</p>';
+        }
+        var s = ProjectProcurement.summary(project, now);
+        var lines = [];
+        if (s.late) lines.push('<span class="pd-warn">' + s.late + ' past the order date.</span>');
+        if (s.blocked) lines.push('<span class="pd-warn">' + s.blocked +
+            ' cannot be ordered until the air permit is issued.</span>');
+        if (s.due_soon) lines.push(s.due_soon + ' to order within ' +
+            ProjectProcurement.DUE_SOON_DAYS + ' days.');
+        /* Never merged into the two above, and never silent. */
+        if (s.unknown) lines.push('<span class="pd-warn">' + s.unknown +
+            ' cannot be dated at all.</span>');
+        if (!lines.length) lines.push('Nothing needs ordering yet.');
+
+        var list = '';
+        for (var i = 0; i < rows.length; i++) list += procRow(rows[i]);
+        return '<p class="pd-proc-head">' + lines.join(' ') + '</p>' +
+               '<ul class="pd-proc">' + list + '</ul>';
+    }
+
     function projectBlock(rec) {
         if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
         var p = ProjectData.liveFor(rec.id);
@@ -588,6 +671,18 @@ var ProspectDetail = (function () {
                    esc(fmtKw(p.capacity_kw)) + ' &middot; budget ' +
                    esc(fmtUsd(p.budget_authorised_usd)) + '</p>' +
                sizingBlock(p);
+    }
+
+    /* Its own section rather than a tail on Build, because it is answered on a different
+       cadence: the build sizing is settled once and revisited rarely, while what should have
+       been ordered changes every morning. */
+    function procurementSection(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        /* Nothing is procured for a prospect. Showing an empty schedule before promotion would
+           invite items onto a record that has no energisation date to work back from. */
+        if (!p) return '';
+        return '<section class="pd-sec"><h3>Procurement</h3>' + procurementBlock(p) + '</section>';
     }
 
     function render(prospectId, hostId) {
@@ -626,6 +721,7 @@ var ProspectDetail = (function () {
             '</select></label>' +
         '</div>' +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
+        procurementSection(rec) +
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +

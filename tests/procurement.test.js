@@ -45,7 +45,7 @@ var NOW = Date.parse('2026-08-28T09:00:00Z');
 var day = function (n) { return new Date(NOW + n * 86400000).toISOString().slice(0, 10); };
 
 function project(over) {
-    var p = { id: 'proj1', target_energization: day(330), procurement: [] };
+    var p = { id: 'proj1', target_energization: day(330), procurement: {} };
     for (var k in (over || {})) p[k] = over[k];
     return p;
 }
@@ -169,23 +169,38 @@ console.log('\n=== normalizeItem fills what is missing and keeps what it does no
 
 console.log('\n=== the schedule puts the worst first ===');
 {
-    var p = project({ procurement: [
+    /* A MAP KEYED BY ID. project-model.js keeps every per-project collection as a map,
+       because Firestore's merge deep-merges maps and replaces arrays wholesale - as an
+       array, two devices each adding an item lose one silently, and normalizeProject()
+       discards an array outright. The first version of these tests used arrays throughout
+       and passed while the module read a shape storage can never produce. */
+    var byId = function (list) {
+        var m = {};
+        list.forEach(function (it) { m[it.id] = it; });
+        return m;
+    };
+    var p = project({ procurement: byId([
         item({ id: 'sched', lead_time_weeks: 10 }),
         item({ id: 'late2', lead_time_weeks: 60 }),
         item({ id: 'late1', lead_time_weeks: 52 }),
         item({ id: 'nolead', lead_time_weeks: null }),
         item({ id: 'soon', lead_time_weeks: 44 }),
         item({ id: 'done', lead_time_weeks: 60, status: 'delivered' })
-    ] });
+    ]) });
     var rows = P.schedule(p, NOW);
     eq('every item is in the schedule', rows.length, 6);
-    eq('the latest item is first', rows[0].item.id, 'late2');
-    eq('then the next latest', rows[1].item.id, 'late1');
-    eq('then the one due soon', rows[2].item.id, 'soon');
+    /* Indexed through a helper so a schedule that comes back empty reports six failed
+       expectations rather than throwing on rows[0] and taking the rest of the file with
+       it. The first shape bug did exactly that, and a TypeError stack is a worse
+       description of "the module read the wrong collection" than a list of wanted ids. */
+    var at = function (i) { return (rows[i] && rows[i].item && rows[i].item.id) || null; };
+    eq('the latest item is first', at(0), 'late2');
+    eq('then the next latest', at(1), 'late1');
+    eq('then the one due soon', at(2), 'soon');
     /* Unknown sits above scheduled: an item nobody can date is a question for today. */
-    eq('then the one nobody can date', rows[3].item.id, 'nolead');
-    eq('then the comfortable one', rows[4].item.id, 'sched');
-    eq('and settled items sink', rows[5].item.id, 'done');
+    eq('then the one nobody can date', at(3), 'nolead');
+    eq('then the comfortable one', at(4), 'sched');
+    eq('and settled items sink', at(5), 'done');
 
     var s = P.summary(p, NOW);
     eq('the summary counts the late ones', s.late, 2);
@@ -194,9 +209,51 @@ console.log('\n=== the schedule puts the worst first ===');
     ok('every state has a key', Object.keys(s).length >= 8);
 }
 
+console.log('\n=== the shape is the one project-model actually stores ===');
+{
+    /* THE TEST THAT COULD NOT HAVE BEEN WRITTEN FROM BELIEF.
+     *
+     * Every other fixture in this file is built by this file, so every one of them agrees with
+     * whatever this file thinks a project looks like. That is exactly how the first version
+     * passed fifty assertions while the module read arrays: the tests and the module shared one
+     * wrong assumption and nothing else was consulted. This hands a record to the real
+     * normalizer and reads back what survives. */
+    var PD = require(path.join(ROOT, 'project-model.js'));
+    ok('project-model exposes its normalizer', typeof PD.normalizeProject === 'function');
+    if (typeof PD.normalizeProject === 'function') {
+        var norm = PD.normalizeProject({ id: 'pr1', prospect_id: 'p1', capacity_kw: 1000,
+            target_energization: day(330),
+            procurement: { g1: { id: 'g1', description: 'Genset', lead_time_weeks: 60 } } });
+        ok('a map in procurement survives normalization',
+           norm.procurement && typeof norm.procurement === 'object'
+               && !Array.isArray(norm.procurement));
+        eq('with the item still in it', Object.keys(norm.procurement).length, 1);
+        eq('and the schedule reads it', P.schedule(norm, NOW).length, 1);
+        eq('and dates it',
+           (P.schedule(norm, NOW)[0] || {}).order_by, day(330 - 60 * 7));
+
+        /* The half that makes the map load-bearing rather than stylistic: an array is thrown
+           away by the normalizer, so a module reading arrays reports an empty schedule on a
+           project that has items, forever, with nothing failing. */
+        var arr = PD.normalizeProject({ id: 'pr2', prospect_id: 'p1', capacity_kw: 1000,
+            procurement: [{ id: 'g1', description: 'Genset', lead_time_weeks: 60 }] });
+        eq('an array is discarded outright', Object.keys(arr.procurement).length, 0);
+    }
+
+    /* Filed under a key with no id of its own: it still has one to sort and render by. */
+    eq('the map key becomes the id when the item has none',
+       P.schedule({ id: 'pr3', target_energization: day(330),
+                    procurement: { k9: { description: 'Unnamed', lead_time_weeks: 10 } } },
+                  NOW).map(function (r) { return r.item.id; })[0], 'k9');
+}
+
 console.log('\n=== a project with nothing in it does not throw ===');
 {
-    eq('no procurement array is an empty schedule', P.schedule({}, NOW).length, 0);
+    eq('no procurement map is an empty schedule', P.schedule({}, NOW).length, 0);
+    /* Refused rather than tolerated: storage cannot produce an array, so accepting one
+       would only hide the same mistake in the next caller. */
+    eq('an array is not read as a schedule',
+       P.schedule({ procurement: [{ id: 'x', lead_time_weeks: 4 }] }, NOW).length, 0);
     eq('and a null project too', P.schedule(null, NOW).length, 0);
     eq('state of nothing is unknown', P.state(null, project(), NOW), 'unknown');
 }

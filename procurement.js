@@ -144,9 +144,39 @@ var ProjectProcurement = (function () {
         return it;
     }
 
+    /* A MAP KEYED BY ID, NOT AN ARRAY, and reading the wrong one is silent.
+     *
+     * project-model.js keeps every per-project collection as a map because sync.js writes each
+     * store with ref.set(payload, { merge: true }), and merge deep-merges maps while replacing
+     * arrays wholesale: as an array, two devices each adding a genset produce a document with
+     * one of them and no error. normalizeProject() enforces it — an array in `procurement` is
+     * discarded and replaced with {} on the next write.
+     *
+     * The first version of this function read an array. It returned [] for every real project,
+     * so the panel showed "nothing on the schedule yet" forever, and fifty tests passed because
+     * every one of them built its own array fixture. A fixture the test invents cannot disagree
+     * with the module about the shape; only the real normalizer can, which is why one test now
+     * runs a project through it.
+     *
+     * Arrays are NOT accepted here as a kindness. Storage cannot produce one, so tolerating it
+     * would only hide the same mistake in the next caller. */
     function itemsOf(project) {
-        if (!project || !Array.isArray(project.procurement)) return [];
-        return project.procurement;
+        var m = project && project.procurement;
+        if (!m || typeof m !== 'object' || Array.isArray(m)) return [];
+        var out = [];
+        for (var k in m) {
+            if (Object.prototype.hasOwnProperty.call(m, k)) {
+                var it = m[k];
+                if (it && typeof it === 'object') {
+                    /* The map key is the identity. An item whose own id disagrees with the key
+                       it is filed under would sort and render under one and be written back
+                       under the other. */
+                    if (!it.id) { it = Object.assign({}, it, { id: String(k) }); }
+                    out.push(it);
+                }
+            }
+        }
+        return out;
     }
 
     /* The morning view: every item with its derived dates, worst first.
