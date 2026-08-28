@@ -126,6 +126,52 @@
             text-transform:uppercase; font-weight:700; vertical-align:middle;
             background:var(--btc-wash); color:var(--btc-300); border:1px solid var(--line-btc); }
         .pd-promoted { font-size:10px; margin-left:8px; }
+        /* PROMOTION AND RIGHT-SIZING. Promoting commits capital, so the form is plain and the
+           figures it asks for are named for what they are rather than abbreviated. */
+        .pd-promote { padding:12px 14px; }
+        .pd-promote-why { margin:0 0 10px; font-size:12px; color:var(--plat-400);
+                          max-width:62ch; line-height:1.5; }
+        .pd-pgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+                    gap:10px 14px; margin:0 0 10px; }
+        .pd-pgrid label { display:flex; flex-direction:column; gap:4px; font-size:10.5px;
+                          letter-spacing:.1em; text-transform:uppercase; color:var(--plat-500); }
+        .pd-pgrid input { background:var(--surface-2); border:1px solid var(--line);
+                          border-radius:var(--radius); color:var(--plat-100);
+                          font-family:var(--mono); font-size:12.5px; padding:6px 8px; }
+        .pd-pgrid input:focus { outline:none; border-color:var(--line-btc); }
+        .pd-opt { text-transform:none; letter-spacing:0; color:var(--plat-600); font-size:10.5px; }
+        /* The reference figure. Styled as prose rather than as a value, because it is something
+           to read before deciding, not a number to copy into the field above it. */
+        .pd-supports { margin:0 0 8px; font-size:12px; color:var(--btc-300);
+                       max-width:62ch; line-height:1.5; }
+        .pd-note { margin:0 0 10px; font-size:11.5px; color:var(--plat-500); max-width:62ch;
+                   line-height:1.5; }
+        .pd-btn { background:var(--btc-wash); border:1px solid var(--line-btc);
+                  border-radius:var(--radius); color:var(--btc-300); font-size:11px;
+                  letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+                  padding:7px 14px; cursor:pointer; }
+        .pd-btn:hover { background:var(--btc-500); color:var(--plat-000); }
+        .pd-projhead { margin:0; padding:10px 14px; font-family:var(--mono); font-size:12px;
+                       color:var(--plat-300); border-bottom:1px solid var(--line); }
+        .pd-size-head { margin:0; padding:10px 14px; font-size:12.5px; line-height:1.5;
+                        max-width:70ch; color:var(--plat-200); }
+        .pd-warn { color:var(--btc-300); }
+        .pd-ok { color:var(--plat-200); }
+        .pd-note-tone { color:var(--plat-300); }
+        .pd-size { display:grid; grid-template-columns:auto 1fr; gap:4px 16px;
+                   margin:0; padding:2px 14px 10px; font-size:12px; }
+        .pd-size dt { color:var(--plat-500); }
+        .pd-size dd { margin:0; font-family:var(--mono); color:var(--plat-200); }
+        .pd-basis { margin:0; padding:0 14px 10px; font-size:11.5px; color:var(--plat-500);
+                    max-width:70ch; line-height:1.5; }
+        /* Refusals read as prose, never as a dash in a value slot. "Not measured" and "zero" are
+           opposite claims and must not share a rendering. */
+        .pd-refused { margin:0; padding:12px 14px; font-size:12px; color:var(--plat-400);
+                      max-width:70ch; line-height:1.55; }
+        .pd-term { border-top:1px solid var(--line); padding-top:10px; }
+        .pd-term-head { margin:0; padding:0 14px 6px; font-size:12.5px; color:var(--plat-200); }
+        .pd-directional { color:var(--plat-400); border-top:1px solid var(--line);
+                          padding-top:10px; }
         .pd-facts { display:flex; flex-wrap:wrap; gap:16px; font-family:var(--mono);
                     font-size:11px; color:var(--plat-400); margin:0 0 10px; }
         .pd-stagepick { display:inline-flex; flex-direction:column; gap:4px;
@@ -470,6 +516,11 @@
 <!-- The budget ledger. After project-gates.js because it routes writes through ProjectData.mutate,
      and after site-capex.js because seedFromEstimate reads SiteCapex.stack(). -->
 <script src="./project-budget.js?v=385"></script>
+<!-- Right-sizing. site-capacity.js first: project-sizing.js reads LFG_MW_PER_MMSCFD and the
+     parasitic rates off it, and prospecting.js reads the same two to draw the live reference
+     figure beside the capacity field. One definition of the conversion, on both sides. -->
+<script src="./site-capacity.js?v=386"></script>
+<script src="./project-sizing.js?v=386"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=383"></script>

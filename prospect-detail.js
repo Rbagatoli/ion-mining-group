@@ -460,6 +460,136 @@ var ProspectDetail = (function () {
                esc(PROMOTED_GATE_LABELS[p.gate] || p.gate) + '</span>';
     }
 
+    /* ===== PROMOTION, AND WHAT IT COMMITS ===================================================
+     *
+     * The first caller promote() has ever had. Until now the whole project model -- gates, budget
+     * ledger, sizing -- was reachable only from tests, so nothing in the app could create the
+     * record any of it reads.
+     *
+     * CAPACITY IS TYPED, NEVER DEFAULTED, and that is the single most consequential decision on
+     * this form. Right-sizing is build capacity minus what the gas supports; pre-filling the build
+     * from the gas makes that subtraction zero by construction. Measured across data/landfills.json
+     * it would be zero on 1,054 of 1,908 rows -- 55% -- because powerPotentialKw is itself derived
+     * from the gas on most of them. A penalty that reads $0 on more than half of all sites while
+     * having measured nothing is worse than no penalty at all. So the supported figure is shown
+     * beside the field as a reference and the operator states what they intend to build.
+     *
+     * THE GAS VOLUME AND THE HORIZON ARE ASKED FOR HERE because they cannot be read from anywhere
+     * else on this page. site-model.js blankSite() has no field for either and normalize() drops
+     * unknown keys on save, so both are lost at the candidate-to-prospect boundary; ProspectStore,
+     * which does hold them, is a map-page global and is not loaded here. Asking is also the honest
+     * framing: promotion is the moment capital is committed, and these are the two facts the
+     * commitment rests on.
+     */
+    function fmtUsd(n) {
+        if (n === null || n === undefined) return '—';
+        return '$' + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function fmtKw(n) {
+        if (n === null || n === undefined) return '—';
+        return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' kW';
+    }
+
+    function promoteForm(rec) {
+        var potential = rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw;
+        return '<form id="pdPromote" class="pd-promote">' +
+            '<p class="pd-promote-why">Promoting commits capital. The three figures below are ' +
+            'what the commitment rests on, and they are frozen on the project so a later edit ' +
+            'here cannot silently reprice a build already sanctioned.</p>' +
+            '<div class="pd-pgrid">' +
+                '<label>Gas collected, mmscfd' +
+                    '<input id="pdGas" type="number" step="0.001" min="0" required></label>' +
+                '<label>Build capacity, kW' +
+                    '<input id="pdKw" type="number" step="1" min="1" required></label>' +
+                '<label>Cost of capital, % a year' +
+                    '<input id="pdCoc" type="number" step="0.1" min="0.1" max="100" required></label>' +
+                '<label>Authorised budget, USD' +
+                    '<input id="pdBudget" type="number" step="1000" min="0" required></label>' +
+                '<label>Remaining life, years <span class="pd-opt">optional</span>' +
+                    '<input id="pdHorizon" type="number" step="1" min="0"></label>' +
+                '<label>Target energization <span class="pd-opt">optional</span>' +
+                    '<input id="pdTarget" type="date"></label>' +
+            '</div>' +
+            /* Filled in live from the gas volume as it is typed. Deliberately NOT written into
+               the capacity field: a reference the operator reads and a value the form submits are
+               different things, and only the second one makes the penalty meaningless. */
+            '<p class="pd-supports" id="pdSupports">Enter a gas volume and this will say what it ' +
+            'supports.</p>' +
+            (potential !== null && potential !== undefined
+                ? '<p class="pd-note">This prospect was recorded at ' + esc(fmtKw(potential)) +
+                  ' of potential. That is the figure the source published, not what the gas ' +
+                  'was measured to support.</p>'
+                : '') +
+            '<button type="submit" class="pd-btn">Promote to project</button>' +
+        '</form>';
+    }
+
+    /* ===== RIGHT-SIZING =====================================================================
+     * Everything here is derived on read. The only stored figure is the study, because what a
+     * PDF says cannot be computed from anything in this repo. */
+    function sizingBlock(project) {
+        if (typeof ProjectSizing === 'undefined') return '';
+        var a = ProjectSizing.assess(project);
+        var out = '';
+        if (!a.measured) {
+            out += '<p class="pd-refused">' + esc(a.reason) + '</p>';
+        } else {
+            var tone = a.fits ? 'ok' : (a.excess_kw > 0 ? 'warn' : 'note');
+            out += '<p class="pd-size-head pd-' + tone + '">' + esc(a.headline) + '</p>' +
+                '<dl class="pd-size">' +
+                    row('Building', fmtKw(a.build_kw)) +
+                    row('Gas supports', fmtKw(a.supported_kw)) +
+                    (a.excess_kw > 0 ? row('Above the gas', fmtKw(a.excess_kw)) : '') +
+                    (a.stranded_kw > 0 ? row('Gas not taken', fmtKw(a.stranded_kw)) : '') +
+                    row('Marginal capital', a.marginal_usd_per_kw === null ? '—'
+                        : fmtUsd(a.marginal_usd_per_kw) + '/kW') +
+                    /* $0 and "not computed" are opposite claims, so they never share a rendering.
+                       The same distinction the contingency ratio needed in the budget ledger. */
+                    row('Oversizing penalty', a.penalty_usd === null
+                        ? 'not computed' : fmtUsd(a.penalty_usd)) +
+                '</dl>' +
+                '<p class="pd-basis">' + esc(a.gas.source_note) + '</p>';
+        }
+        // The term, kept visually apart because it is the one thing here the horizon may speak to
+        // and it never produces a figure in dollars.
+        var t = ProjectSizing.termSupport(project, new Date().getFullYear());
+        var termWord = { covered: 'The term is covered.', short: 'The term is NOT covered.',
+                         no_term: 'No contract term is recorded.',
+                         unknown: 'The term cannot be assessed.' }[t.state] || '';
+        out += '<div class="pd-term">' +
+            '<p class="pd-term-head">' + esc(termWord) +
+                (t.years_available !== null && t.years_available !== undefined
+                    ? ' ' + esc(String(t.years_available)) + ' years available' +
+                      (t.contract_term_years ? ' against a ' + esc(String(t.contract_term_years)) +
+                       '-year term' : '') + '.'
+                    : '') +
+            '</p>' +
+            '<p class="pd-basis">' + esc(t.note || '') + '</p>' +
+        '</div>';
+
+        if (!ProjectSizing.studyOf(project)) {
+            out += '<p class="pd-basis pd-directional">Every figure above is directional until ' +
+                   'the gas generation forecast is on file. File it against this prospect as a ' +
+                   'document of kind "Gas generation forecast", then record its numbers here.</p>';
+        }
+        return out;
+    }
+
+    function row(k, v) {
+        return '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>';
+    }
+
+    function projectBlock(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        if (!p) return promoteForm(rec);
+        return '<p class="pd-projhead">Project ' + esc(p.id) + ' &middot; ' +
+                   esc(PROMOTED_GATE_LABELS[p.gate] || p.gate) + ' &middot; ' +
+                   esc(fmtKw(p.capacity_kw)) + ' &middot; budget ' +
+                   esc(fmtUsd(p.budget_authorised_usd)) + '</p>' +
+               sizingBlock(p);
+    }
+
     function render(prospectId, hostId) {
         var host = document.getElementById(hostId || 'pdetail');
         if (!host) return null;
@@ -495,6 +625,7 @@ var ProspectDetail = (function () {
                 optionList(stages, function (s) { return s.key; }, function (s) { return s.label; }) +
             '</select></label>' +
         '</div>' +
+        '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +

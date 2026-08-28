@@ -346,6 +346,51 @@
             });
         }
 
+        /* PROMOTION. The gas volume drives a live reference figure beside the capacity field, and
+           deliberately does not fill it in: right-sizing is build minus supported, and defaulting
+           the build from the gas makes that subtraction zero on 55% of real sites. */
+        var gasEl = document.getElementById('pdGas');
+        var supportsEl = document.getElementById('pdSupports');
+        if (gasEl && supportsEl) {
+            var showSupports = function () {
+                var mm = parseFloat(gasEl.value);
+                if (!(mm > 0) || typeof SiteCapacity === 'undefined') {
+                    supportsEl.textContent =
+                        'Enter a gas volume and this will say what it supports.';
+                    return;
+                }
+                var gross = mm * SiteCapacity.LFG_MW_PER_MMSCFD * 1000;
+                var net = Math.round(gross * (1 - SiteCapacity.parasiticFor(
+                    { energyType: 'landfill_gas' })));
+                supportsEl.textContent = 'That supports about ' + net.toLocaleString() +
+                    ' kW at the plug — ' + Math.round(gross).toLocaleString() +
+                    ' kW gross, less 10% parasitic load. It is a reference, not the answer: ' +
+                    'what you build is your decision and the difference is what gets measured.';
+            };
+            gasEl.addEventListener('input', showSupports);
+            showSupports();
+        }
+        var promote = document.getElementById('pdPromote');
+        if (promote) promote.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var kw = parseFloat(fieldValue('pdKw'));
+            var mm = parseFloat(fieldValue('pdGas'));
+            var horizon = fieldValue('pdHorizon');
+            var target = fieldValue('pdTarget');
+            var res = ProjectData.promote(id, {
+                capacity_kw: kw,
+                annual_cost_of_capital_pct: parseFloat(fieldValue('pdCoc')),
+                budget_authorised_usd: parseFloat(fieldValue('pdBudget')),
+                target_energization: target || null,
+                gas_mmscfd: isFinite(mm) ? mm : null,
+                gas_basis: isFinite(mm) ? 'entered at promotion' : null,
+                horizon_years: horizon === '' ? null : parseFloat(horizon),
+                horizon_basis: horizon === '' ? null : 'entered at promotion'
+            });
+            if (!res.ok) { window.alert(res.err); return; }
+            drawDetail();
+        });
+
         var stage = document.getElementById('pdStage');
         if (stage) stage.addEventListener('change', function () {
             var to = this.value;
