@@ -102,3 +102,30 @@ inside the project work would hide a general problem inside a specific change.
 
 **What to build.** For the projects key at least, refuse a pull that would reduce the project
 count or drop a project the local store has, and say so rather than doing it silently.
+
+---
+
+## 7. Prospects saved before the derate still hold the gross figure
+
+**What.** `SiteSources.toSite()` used to write `usable_kw: cand.powerPotentialKw` — the gross
+resource figure, before the gas cap and before parasitic load. That is fixed going forward, but
+every prospect saved to the CRM before the fix still carries the inflated number, and
+`map-sourcing.js:301` prefers a saved `usable_kw` over the derived one. So those records keep
+showing what they always showed.
+
+**The magnitude, measured.** Across all 30,517 candidates the two figures differ on 30,509,
+always downward: -7.0% median, -20.1% on landfill gas because the gas cap binds on 2,056 of
+2,064 rows. Coastal Plains RDF: 5,000 kW recorded against 3,607 kW the gas supports.
+
+**Why it is not addressed here.** `usable_kw` carries no provenance. site-capacity.js:50 is
+explicit that a user-entered figure must beat the model — and a typed measurement and a
+machine-written default are indistinguishable in the stored record, so a blind migration would
+silently overwrite real measurements with modelled ones. That is a worse failure than the one it
+would fix.
+
+**What to build.** Detection rather than migration, on the map where the candidate is in hand: a
+saved `usable_kw` that exactly equals its candidate's `powerPotentialKw` while differing from
+`usableKwFor(c)` is almost certainly machine-written, since a person typing 3,607 by hand and
+landing exactly on the gross is implausible. Flag those rows and offer to recompute one at a
+time, with the old and new figures both on screen. A field recording where the number came from
+would remove the guesswork entirely and is the better fix if the prospect model is ever opened.

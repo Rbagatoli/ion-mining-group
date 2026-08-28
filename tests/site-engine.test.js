@@ -20,6 +20,10 @@ global.localStorage = {
 var SiteEngine    = require(path.join(ROOT, 'site-engine.js'));
 var SiteFlags     = require(path.join(ROOT, 'site-flags.js'));
 var SiteScoring   = require(path.join(ROOT, 'site-scoring.js'));
+/* BEFORE site-sources.js, because toSite() now derates the gross resource figure through it.
+   Loaded rather than left out: without it toSite() reports usable_kw as null, which is the
+   honest answer for a module that cannot compute it and a useless one to assert against. */
+global.SiteCapacity = require(path.join(ROOT, 'site-capacity.js'));
 var SiteSources   = require(path.join(ROOT, 'site-sources.js'));
 var Jurisdictions = require(path.join(ROOT, 'jurisdictions.js'));
 global.SiteSources = SiteSources;                       // SiteData.fromCandidate looks for it
@@ -345,11 +349,16 @@ SiteSources.register({
     eq('nothing rejected', res.rejected.length, 0);
 
     var wind = SiteSources.toSite(res.candidates[0], { purchase_price_usd: 500000, power_rate: 0.02, power_rate_currency: 'CAD' });
-    eq('candidate becomes a site with usable_kw from the source', wind.usable_kw, 2400);
+    /* USABLE, NOT GROSS, and the old name of this assertion -- "usable_kw from the source" --
+       was the bug written down: it asserted that the field named usable held the source's gross
+       figure. Curtailed renewable takes the 7% default parasitic rate; there is no gas volume, so
+       nothing caps it further. 2,400 x 0.93 = 2,232. */
+    eq('candidate becomes a site whose usable_kw is derated, not the gross', wind.usable_kw, 2232);
+    eq('and the source figure it came from is unchanged', res.candidates[0].powerPotentialKw, 2400);
     eq('commercial terms not invented by the source', wind.take_or_pay_pct, null);
 
     var windMetrics = SiteEngine.evaluate(wind, MARKET);
-    eq('the SAME engine evaluates a wind site', windMetrics.max_miners, Math.floor(2400 * 1000 / 3510));
+    eq('the SAME engine evaluates a wind site', windMetrics.max_miners, Math.floor(2232 * 1000 / 3510));
     ok('wind site produces full economics', windMetrics.cash_cost_per_btc > 0, windMetrics.cash_cost_per_btc);
     ok('site-engine.js code names no energy source at all',
        !engineMentions('curtail') && !engineMentions('flare') && !engineMentions('biogas') &&

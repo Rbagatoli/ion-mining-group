@@ -341,10 +341,29 @@ var SiteSources = (function() {
             longitude: cand.lng,
             jurisdiction: cand.iso3 || cand.country || null,
 
-            // Capacity comes from the estimate. nameplate is left null on purpose: the source
-            // knows what the energy can support, not what equipment a producer installed.
+            /* Capacity comes from the estimate. nameplate is left null on purpose: the source
+               knows what the energy can support, not what equipment a producer installed.
+
+               USABLE MEANS USABLE. This wrote powerPotentialKw, which is the GROSS resource
+               figure -- before the gas cap and before parasitic load -- into a field named
+               usable_kw, and site-capacity.js exists precisely to say those are not the same
+               number. Measured across all 30,517 candidates the two differ on 30,509 of them,
+               always downward: -7.0% median, and -20.1% on landfill gas because the gas cap binds
+               on 2,056 of 2,064 rows. Coastal Plains RDF is rated 5,000 kW and the gas supports
+               3,607 -- a 1,393 kW plant, 397 miners and $2.6M of capital that were never there.
+
+               AND IT DID NOT SIT STILL. map-sourcing.js:301 prefers a SAVED usable_kw over
+               usableKwFor(c), so the act of saving a prospect to the CRM replaced the derated
+               figure the map had been showing with this gross one, and every downstream number
+               moved with it. Saving a site should not change its economics.
+
+               NULL, NOT THE GROSS, when the capacity module is absent. A missing figure reports
+               as missing and site-engine.js:12 already handles that by refusing to price rather
+               than ranking the site best; falling back to the gross would reintroduce the same
+               wrong number under a guard that looks like caution. */
             nameplate_kw: null,
-            usable_kw: cand.powerPotentialKw,
+            usable_kw: (typeof SiteCapacity !== 'undefined' && SiteCapacity.usableKwFor)
+                ? SiteCapacity.usableKwFor(cand) : null,
 
             // Commercial terms are unknown until someone negotiates them. Left null so the
             // engine reports them as missing instead of scoring the site as if it were free.
