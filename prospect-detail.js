@@ -662,6 +662,148 @@ var ProspectDetail = (function () {
                '<ul class="pd-proc">' + list + '</ul>';
     }
 
+    /* ---- Contractors (Stage 7) ----
+     *
+     * project-contractors.js makes every decision here and has its own tests; this turns states
+     * into sentences. The panel's one job is not to flatten a distinction the model works to
+     * keep, and this one has more of them than the procurement schedule did, because the
+     * conditions CO-OCCUR: a terminated firm can be uninsured, over-certified and unwaived at
+     * once. The row shows the worst; the head counts each condition on its own.
+     *
+     * NOTHING ON THE HEAD IS EVER ADDED TOGETHER. Money paid with no waiver, money under a
+     * conditional waiver, and money we still owe on a certified application are three different
+     * quantities with three different calls to make -- a lawyer, the bank, and accounts payable.
+     * A combined figure would say "there is $340,000 of something here" and name no action,
+     * which is the failure the procurement head avoids by keeping late, blocked and undated
+     * apart. */
+    var CT_STATE = {
+        uninsured:      'uninsured',
+        unwaived:       'unwaived',
+        overcertified:  'over',
+        unpaid:         'owed',
+        conditional:    'conditional',
+        insurance_soon: 'expiring',
+        unknown:        'unknown',
+        active:         'active',
+        complete:       'complete',
+        terminated:     'terminated'
+    };
+    /* Everything above 'active' is something to do this week. 'unpaid' is a note rather than a
+       warning: money we owe is a payment to release, not an exposure. */
+    var CT_TONE = { uninsured: 'warn', unwaived: 'warn', overcertified: 'warn',
+                    conditional: 'note', unpaid: 'note', insurance_soon: 'note', unknown: 'note' };
+
+    /* Say WHICH input is missing rather than "unknown", for the reason procWhen() gives: a
+       contract sum is typed in, an application is priced from the certificate, and an insurance
+       date is chased from the broker. Three different fixes. */
+    function ctUnknownWhy(r) {
+        if (r.flags.unpriced_apps) {
+            return r.unpriced_apps + ' application' + (r.unpriced_apps === 1 ? '' : 's') +
+                   ' with no amount';
+        }
+        if (r.flags.variations_unknown) return 'variations not loaded';
+        if (r.flags.unpriced_contract) return 'no contract sum recorded';
+        if (r.flags.insurance_undated) return 'no insurance date';
+        return 'nothing recorded';
+    }
+
+    function ctWhen(r) {
+        if (r.state === 'uninsured') return 'insurance expired ' + r.insurance_days + ' days ago';
+        if (r.state === 'insurance_soon') return 'insurance expires in ' + (-r.insurance_days) + ' days';
+        if (r.state === 'unwaived') return fmtUsd(r.unwaived_usd) + ' paid, no waiver';
+        if (r.state === 'conditional') return fmtUsd(r.conditional_usd) + ' conditional only';
+        if (r.state === 'overcertified') return fmtUsd(r.overcertified_usd) + ' over the contract';
+        if (r.state === 'unpaid') return fmtUsd(r.outstanding_usd) + ' certified, unpaid';
+        if (r.state === 'unknown') return ctUnknownWhy(r);
+        if (r.paid_usd > 0) return fmtUsd(r.paid_usd) + ' paid to date';
+        return r.committed_usd === null ? '' : fmtUsd(r.committed_usd) + ' contracted';
+    }
+
+    function ctRow(r) {
+        var tone = CT_TONE[r.state] ? ' pd-ct-' + CT_TONE[r.state] : '';
+        var c = r.contractor;
+        return '<li class="pd-ct-row' + tone + '">' +
+            '<span class="pd-ct-who">' +
+                (c.name ? esc(c.name) : absent('unnamed contractor')) +
+                (c.trade ? ' <span class="pd-ct-trade">' + esc(c.trade) + '</span>' : '') +
+            '</span>' +
+            '<span class="pd-ct-state">' + esc(CT_STATE[r.state] || r.state) + '</span>' +
+            '<span class="pd-ct-when">' + esc(ctWhen(r)) + '</span>' +
+        '</li>';
+    }
+
+    function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+    function contractorsBlock(project) {
+        if (typeof ProjectContractors === 'undefined') return '';
+        var now = Date.now();
+        var rows = ProjectContractors.register(project, now);
+        if (!rows.length) {
+            return '<p class="pd-basis">No contractors on this build yet. A firm belongs here ' +
+                   'as soon as it is selected, because the window where nobody has checked its ' +
+                   'insurance is the window before the contract is signed.</p>';
+        }
+        var e = ProjectContractors.exposure(project, now);
+        var lines = [];
+        /* Ordered the way the register is: unbounded and true today, then money that can be
+           claimed twice, then money we owe. */
+        if (e.uninsured_count) lines.push('<span class="pd-warn">' +
+            plural(e.uninsured_count, 'contractor has', 'contractors have') +
+            ' no current certificate of insurance.</span>');
+        if (e.unwaived_count) lines.push('<span class="pd-warn">' +
+            plural(e.unwaived_count, 'contractor has', 'contractors have') + ' been paid ' +
+            fmtUsd(e.unwaived_usd) + ' with no lien waiver on file.</span>');
+        /* NEVER MERGED WITH THE LINE ABOVE. A conditional waiver is a real document that
+           releases nothing until the cheque clears; adding the two amounts would close an
+           exposure that is entirely intact. */
+        if (e.conditional_count) lines.push('<span class="pd-warn">' +
+            plural(e.conditional_count, 'contractor holds', 'contractors hold') +
+            ' a conditional waiver only, over ' + fmtUsd(e.conditional_usd) +
+            ' — nothing is released until the payment clears.</span>');
+        if (e.overcertified_count) lines.push('<span class="pd-warn">' +
+            plural(e.overcertified_count, 'contractor has', 'contractors have') +
+            ' certified ' + fmtUsd(e.overcertified_usd) + ' beyond the contract, with no ' +
+            'change order behind it.</span>');
+        if (e.outstanding_count) lines.push(plural(e.outstanding_count, 'contractor is', 'contractors are') +
+            ' owed ' + fmtUsd(e.outstanding_usd) + ' on certified applications.');
+        if (e.insurance_soon_count) lines.push(
+            plural(e.insurance_soon_count, 'certificate expires', 'certificates expire') +
+            ' within ' + ProjectContractors.INSURANCE_SOON_DAYS + ' days.');
+        if (e.submitted_count) lines.push(plural(e.submitted_count, 'application is', 'applications are') +
+            ' waiting to be certified.');
+        /* The three unknowns, each its own sentence and each warned, for the same reason
+           procurement never folds 'undated' into 'scheduled': a figure nobody can compute is a
+           question for today, not a footnote. */
+        if (e.insurance_undated_count) lines.push('<span class="pd-warn">' +
+            plural(e.insurance_undated_count, 'contractor has', 'contractors have') +
+            ' no insurance expiry recorded, so the cover is unverified rather than valid.</span>');
+        if (e.unpriced_contract_count) lines.push('<span class="pd-warn">' +
+            plural(e.unpriced_contract_count, 'contract has', 'contracts have') +
+            ' no value recorded, so nothing can be measured against them.</span>');
+        if (e.unpriced_apps) lines.push('<span class="pd-warn">' +
+            plural(e.unpriced_apps, 'application carries', 'applications carry') +
+            ' no amount, so these figures are a floor.</span>');
+        if (e.variations_unknown) lines.push('<span class="pd-warn">Approved change orders ' +
+            'could not be read, so no contract value here accounts for its variations.</span>');
+        if (!lines.length) lines.push('Every contractor is insured, paid and waived.');
+
+        var list = '';
+        for (var i = 0; i < rows.length; i++) list += ctRow(rows[i]);
+        return '<p class="pd-ct-head">' + lines.join(' ') + '</p>' +
+               '<ul class="pd-ct">' + list + '</ul>';
+    }
+
+    /* Its own section for the same reason procurement has one: it is answered on a different
+       cadence from the build sizing, and the lien position changes with every cheque. */
+    function contractorsSection(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        /* Nothing is contracted for a prospect. An empty register before promotion would invite
+           firms onto a record with no budget to pay them from. */
+        if (!p) return '';
+        return '<section class="pd-sec"><h3>Contractors</h3>' + contractorsBlock(p) + '</section>';
+    }
+
     function projectBlock(rec) {
         if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
         var p = ProjectData.liveFor(rec.id);
@@ -722,6 +864,7 @@ var ProspectDetail = (function () {
         '</div>' +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
         procurementSection(rec) +
+        contractorsSection(rec) +
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +

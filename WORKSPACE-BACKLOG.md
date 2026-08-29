@@ -129,3 +129,50 @@ saved `usable_kw` that exactly equals its candidate's `powerPotentialKw` while d
 landing exactly on the gross is implausible. Flag those rows and offer to recompute one at a
 time, with the old and new figures both on screen. A field recording where the number came from
 would remove the guesswork entirely and is the better fix if the prospect model is ever opened.
+
+---
+
+## 8. Two stages of ledger have no way in
+
+**What.** `procurement.js` (Stage 6) and `project-contractors.js` (Stage 7) both read their
+collections and neither stage shipped a form. `ProjectProcurement` owns no storage at all --
+nothing anywhere writes `project.procurement`, so the schedule panel says "Nothing is on the
+procurement schedule yet" on every project, permanently. `ProjectContractors` does have
+writers, and they are tested, but no UI calls them: the register reads "No contractors on this
+build yet" until somebody opens a console.
+
+**Why this is worth writing down rather than shrugging at.** It is the same OUTCOME as the
+array-shaped-collection bug that was just fixed -- a panel that reports emptiness forever on a
+build that is not empty -- reached by a different route. That one was caught because a test
+finally consulted the owning module about the shape. This one no test can catch, because every
+module involved is correct on its own and the tests populate the collections through the API.
+A feature is inert whether the reader is broken or the writer was never built, and only one of
+those two failures has anything pointed at it.
+
+**Why it was not closed here.** Stage 6 shipped module-plus-panel and that shape was reviewed
+and accepted; Stage 7 matched it deliberately rather than quietly changing the deal mid-
+sequence. The forms are also a different kind of work -- event wiring in `prospecting.js`,
+which already carries eight submit handlers -- and folding them into the model commit would
+mix a ledger with a UI in one diff.
+
+**What to build.** An add-item form on the procurement section and an add-contractor form on
+the contractors section, each wired in `prospecting.js` beside the existing `pdPromote` and
+document handlers, plus the three payment actions (`certifyPayApp`, `recordPayment`,
+`recordWaiver`) as row buttons. The model side is done and refuses everything it should, so
+this is wiring rather than design. Until then both panels are honest about being empty and
+wrong about why.
+
+---
+
+## 9. `procurement.js` and `project-contractors.js` are not in the service worker precache
+
+**What.** `sw.js` ASSETS lists the modules the app caches for offline use. Neither new module
+is in it, and the file has four duplicate entries already, so the edit was left for whoever is
+holding the uncommitted `sw.js` change rather than done twice.
+
+**What goes wrong.** Offline, `prospecting.html` loads without them. Both panels open with a
+`typeof` guard, so the sections silently do not render -- the graceful-degradation path, which
+looks exactly like a project with no procurement items and no contractors. The guard is right;
+it is the reason the failure is quiet.
+
+**What to build.** Add both to ASSETS in the same pass that removes the duplicates.

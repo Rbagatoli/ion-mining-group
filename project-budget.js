@@ -378,10 +378,26 @@ var ProjectBudget = (function () {
         var days = num(f.schedule_impact_days);
         if (days === null) return { ok: false, err: 'A change order needs a schedule impact in days, even if it is zero.' };
 
+        /* OPTIONALLY AGAINST ONE CONTRACT. A change order is a project cost impact first, and
+           many are -- an owner-side scope change with no contractor attached is a real record.
+           But most of them in construction are a variation to somebody's contract, and without
+           the attribution ProjectContractors cannot say what a contract is now worth: it would
+           measure certified work against the ORIGINAL sum and report every approved variation as
+           over-certification. A flag that fires on every legitimate case is worse than no flag,
+           because it trains the reader to ignore the one that matters.
+
+           Validated against the contractors on the project rather than stored blind, so a typo
+           produces a refusal instead of a variation attached to nothing. */
+        var cid = text(f.contractor_id, 80);
         var coId = newId('co');
         var res = ProjectData.mutate(projectId, function (p) {
+            if (cid) {
+                var c = p.contractors[cid];
+                if (!c || c.deleted_at) throw new Error('No such contractor: ' + cid + '.');
+            }
             p.change_orders[coId] = {
                 id: coId, description: desc, reason: text(f.reason, 500),
+                contractor_id: cid,
                 cost_impact: cost, schedule_impact_days: days,
                 status: 'proposed', approved_by: null, approved_at: null,
                 created: nowIso(), updated: nowIso()

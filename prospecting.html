@@ -195,6 +195,33 @@
             .pd-proc-row { grid-template-columns:1fr auto; }
             .pd-proc-state { grid-column:1 / -1; order:3; }
         }
+        /* ---- Contractors (Stage 7) ----
+           Same three-column shape as the procurement rows, because they are read the same way:
+           down the state column first, then across to the number. The state column is wider
+           here — 'conditional' and 'terminated' are the longest labels the model can produce
+           and both wrapped to two lines at 11ch. */
+        .pd-ct-head { margin:0; padding:12px 14px 8px; font-size:12.5px; line-height:1.6;
+                      max-width:74ch; color:var(--plat-300); }
+        .pd-ct { list-style:none; margin:0; padding:0 0 6px; }
+        .pd-ct-row { display:grid; grid-template-columns:1fr 13ch auto; gap:4px 12px;
+                     align-items:baseline; padding:7px 14px;
+                     border-top:1px solid var(--line); font-size:12px; }
+        .pd-ct-who { color:var(--plat-200); }
+        /* The trade sits with the name rather than in a column of its own: it is how a reader
+           recognises the firm, not something they scan down. */
+        .pd-ct-trade { color:var(--plat-500); font-size:11px; }
+        .pd-ct-state { font-family:var(--mono); font-size:10.5px; letter-spacing:.06em;
+                       text-transform:uppercase; color:var(--plat-500); }
+        .pd-ct-when { font-family:var(--mono); font-size:11.5px; color:var(--plat-400);
+                      text-align:right; font-variant-numeric:tabular-nums; }
+        /* Tone on the row, as with procurement, so an uninsured firm reads as urgent even
+           though its figure is a day count rather than money. */
+        .pd-ct-warn .pd-ct-state, .pd-ct-warn .pd-ct-when { color:var(--btc-300); }
+        .pd-ct-note .pd-ct-state { color:var(--plat-300); }
+        @media (max-width:560px) {
+            .pd-ct-row { grid-template-columns:1fr auto; }
+            .pd-ct-state { grid-column:1 / -1; order:3; }
+        }
         .pd-term { border-top:1px solid var(--line); padding-top:10px; }
         .pd-term-head { margin:0; padding:0 14px 6px; font-size:12.5px; color:var(--plat-200); }
         .pd-directional { color:var(--plat-400); border-top:1px solid var(--line);
@@ -554,6 +581,10 @@
      quieter panel rather than a broken page -- which is exactly why the panel test asserts this
      tag exists: the guard that makes a missing module safe also makes a missing module silent. -->
 <script src="./procurement.js?v=389"></script>
+<!-- Reads project.contractors and project.pay_apps, and asks ProjectBudget for the approved
+     variations against each contract. Both are reached from inside a render, not at load, so
+     nothing here depends on the order of these tags. -->
+<script src="./project-contractors.js?v=390"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=383"></script>
