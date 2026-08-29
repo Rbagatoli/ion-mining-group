@@ -29,7 +29,7 @@
         'energyBasis', 'energyValue', 'gasBtuPerCf', 'heatRate',
         'elecCost', 'btcPrice', 'priceChange', 'difficulty', 'diffChange',
         'periodLength', 'investPeriod',
-        'txFee', 'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
+        'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
@@ -209,7 +209,6 @@
             capex: num(el.capex.value, 0),
             machineCount: machineCount,
             elecCost: num(el.elecCost.value, 0),
-            txFee: num(el.txFee.value, 0),
             poolFee: num(el.poolFee.value, 0),
             uptime: num(el.uptime.value, 100),
             hodlRatio: num(el.hodlRatio.value, 0),
@@ -753,13 +752,10 @@
         setText('outHorizon', p.numPeriods + ' ' + (p.numPeriods === 1 ? unit1 : unit));
         setText('outInvestment', money(r.totalInitialInvestment));
         setText('outBtcMined', btc(r.cumulBtcMined) + ' BTC');
-        setText('outBtcSold', btc(r.cumulBtcSold) + ' BTC');
         setText('outPowerSpend', money(r.cumulElecCost));
-        setText('outCashRequired', money(r.peakCashDeficit));
         setSigned('outTotalPl', money(r.totalPL), r.totalPL);
         setText('outHeldBtc', btc(r.cumulBtcHeld) + ' BTC');
         setText('outHeldValue', money(r.heldBtcValue));
-        setText('outFleetValue', money(r.residualFleetValue));
         setText('outFinalPrice', money(r.finalBtcPrice));
 
         // Benchmark. Not a Proton claim — just the obvious alternative use of the
@@ -800,26 +796,6 @@
             var msgs = [];
             if (p.elecCost === 0) {
                 msgs.push('Power is set to $0.00/kWh, so nothing is being charged for electricity.');
-            }
-            /* THE MOST MISREAD THING ON THIS PAGE. "Up-front investment" is not what the
-               plan costs to run, and at the shipped HODL of 100 the gap is not small: no
-               BTC is ever sold, so every power bill is funded out of pocket and the page
-               will happily print a 386% return on $301,000 while the plan consumes $1.2M
-               of cash. The cost IS charged against the P/L -- this is not hidden power --
-               but a reader who takes the return as self-funding has read it wrong, and
-               nothing on the page told them otherwise. */
-            if (r.externalOpexFunded > 0) {
-                msgs.push('This plan needs ' + money(r.peakCashDeficit) + ' of cash, not the ' +
-                    money(r.totalInitialInvestment) + ' shown as up-front investment. ' +
-                    'Replacing worn machines is capital, so it is not settled out of production.');
-            }
-            /* savingsElec keeps the power bill off the P/L entirely, which is the one
-               setting here that can make a return look better than the business is. It
-               is a legitimate way to model an operator funding opex from other income,
-               but the figure has to be named or the ROI reads as if the power were free. */
-            if (p.savingsElec && r.cumulElecCost > 0) {
-                msgs.push('Electricity is being paid from savings, so ' + money(r.cumulElecCost) +
-                    ' of power is excluded from the profit and loss and from the return.');
             }
             warn.textContent = msgs.join(' ');
             warn.hidden = msgs.length === 0;

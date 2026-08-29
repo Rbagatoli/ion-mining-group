@@ -13,12 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<<<<<<< Updated upstream
-<link rel="stylesheet" href="./styles.css?v=8e7eaa8d">
-<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-=======
-<link rel="stylesheet" href="./styles.css?v=8e7eaa8d">
->>>>>>> Stashed changes
+<link rel="stylesheet" href="./styles.css?v=445db3a1">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -183,20 +178,10 @@
             <h3>Over <span id="outHorizon">—</span></h3>
             <dl>
               <div><dt>Up-front investment</dt><dd id="outInvestment">—</dd></div>
-              <!-- The up-front figure is not what the plan costs to run. With BTC held
-                   rather than sold, every power bill and every replacement fleet is
-                   money from outside, and the row above says nothing about it. -->
-              <div><dt>Cash required from outside</dt><dd id="outCashRequired">—</dd></div>
               <div><dt>BTC mined</dt><dd id="outBtcMined">—</dd></div>
-              <div><dt>BTC sold to pay costs</dt><dd id="outBtcSold">—</dd></div>
               <div><dt>Spent on power</dt><dd id="outPowerSpend">—</dd></div>
               <div><dt>BTC still held</dt><dd id="outHeldBtc">—</dd></div>
               <div><dt>Value of held BTC</dt><dd id="outHeldValue">—</dd></div>
-              <!-- The machines you still own. Booked at zero until now, which wrote off
-                   whatever was left of a fleet the horizon stopped partway through and made
-                   the buy-and-hold comparison meaningless: that side is a NET gain, because
-                   its money is still an asset it holds. -->
-              <div><dt>Fleet value at end</dt><dd id="outFleetValue">—</dd></div>
               <div><dt>BTC price at end</dt><dd id="outFinalPrice">—</dd></div>
               <div class="is-total"><dt>Total profit or loss</dt><dd id="outTotalPl">—</dd></div>
             </dl>
@@ -296,13 +281,7 @@
             <div class="field">
               <label for="diffChange">Monthly Difficulty Change</label>
               <div class="calc-unit">
-                <input id="diffChange" type="number" step="0.01" value="0.81" data-default="0.81"><span class="cu-post">%</span></div>
-              <p class="calc-explain">Hashrate arrives until revenue per terahash meets cost per
-                terahash, so in equilibrium difficulty tracks <strong>price &times; block
-                subsidy</strong> &mdash; not price alone. Over this horizon price rises 3.2&times;
-                and the 2028 halving cuts the subsidy in half, so difficulty can rise 1.61&times;.
-                Setting it equal to price growth assumes miners keep adding machines while the
-                revenue per machine halves.</p>
+                <input id="diffChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
             </div>
             <p class="calc-hint calc-hint--warn" id="marketNote">BTC price and network difficulty are fetched when this page loads. If that does not land, the figures shown are from <strong>20 August 2026</strong> &mdash; BTC $72,684, difficulty 127.48&nbsp;T &mdash; and are <strong>not live data</strong>, so set them yourself.</p>
             <div class="field">
@@ -443,14 +422,6 @@
                 <input id="elecCost" type="number" min="0" step="0.001" value="0.04" data-default="0.04"><span class="cu-post">/kWh</span></div>
             </div>
             <div class="field">
-              <label for="txFee">Transaction Fees</label>
-              <div class="calc-unit">
-                <input id="txFee" type="number" min="0" max="100" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
-              <p class="calc-explain">Paid on top of the block subsidy, as a share of it. Left out
-                entirely until now, which understated every projection &mdash; and understated it
-                most after a halving, when fees are a larger share of what a miner earns.</p>
-            </div>
-            <div class="field">
               <label for="poolFee">Pool Fee</label>
               <div class="calc-unit">
                 <input id="poolFee" type="number" min="0" max="100" step="0.1" value="2.5" data-default="2.5"><span class="cu-post">%</span></div>
@@ -470,14 +441,7 @@
                   <input id="hodlRatio" type="number" min="0" max="100" step="1" value="100" data-default="100"><span class="cu-post">%</span></div>
               </div>
             </div>
-            <!-- WHAT THE RATIO IS A RATIO OF changes with "Sell to Cover Power", so the
-                 basis is written by the script rather than fixed here. Left as a flat
-                 "keep all BTC" it would contradict the switch: with costs coming off the
-                 top, 100% keeps everything the power bill did not take. -->
-            <p class="calc-explain">Of everything mined: <strong>100%</strong> = keep it all
-              &nbsp;|&nbsp; <strong>0%</strong> = sell it all &nbsp;|&nbsp; <strong>50%</strong> =
-              sell half, hold half. Electricity is charged as a cost either way &mdash; at 100%
-              nothing is sold to meet it, so see <em>Cash required from outside</em> below.</p>
+            <p class="calc-explain"><strong>100%</strong> = keep all BTC &nbsp;|&nbsp; <strong>0%</strong> = sell all &nbsp;|&nbsp; <strong>50%</strong> = sell half, hold half</p>
 
             <label class="calc-switch">
               <input id="taxAdjustment" type="checkbox" data-default="false">
@@ -522,10 +486,6 @@
               </div>
             </div>
 
-            <p class="calc-hint">Off, electricity is charged against the return as the cost it
-              is. On, it leaves the projection entirely &mdash; the figures are then computed as
-              though the power were free, which is a way to model funding opex from other income
-              and not a claim that it costs nothing.</p>
             <label class="calc-switch">
               <input id="savingsElec" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
@@ -703,20 +663,11 @@
   </div>
 </footer>
 
-<<<<<<< Updated upstream
-<script src="./site.js?v=8e7eaa8d"></script>
-<script src="./hero-anim.js?v=8e7eaa8d"></script>
-<script src="./cart.js?v=8e7eaa8d"></script>
-<script src="./miner-db.js?v=8e7eaa8d"></script>
-<script src="./calc-engine.js?v=8e7eaa8d"></script>
-<script src="./calculator.js?v=8e7eaa8d"></script>
-=======
-<script src="./site.js?v=8e7eaa8d"></script>
-<script src="./hero-anim.js?v=8e7eaa8d"></script>
-<script src="./cart.js?v=8e7eaa8d"></script>
-<script src="./miner-db.js?v=8e7eaa8d"></script>
-<script src="./calc-engine.js?v=8e7eaa8d"></script>
-<script src="./calculator.js?v=8e7eaa8d"></script>
->>>>>>> Stashed changes
+<script src="./site.js?v=445db3a1"></script>
+<script src="./hero-anim.js?v=445db3a1"></script>
+<script src="./cart.js?v=445db3a1"></script>
+<script src="./miner-db.js?v=445db3a1"></script>
+<script src="./calc-engine.js?v=445db3a1"></script>
+<script src="./calculator.js?v=445db3a1"></script>
 </body>
 </html>

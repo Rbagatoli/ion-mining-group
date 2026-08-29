@@ -85,19 +85,6 @@ var CalcEngine = (function() {
             machineCount: Math.max(1, int(s.machineCount, 1)),
             elecCost: Math.max(0, num(s.elecCost, 0)),
             poolFeePct: clamp(num(s.poolFee, 0) / 100, 0, 1),
-            /* TRANSACTION FEES, which the engine used to leave out entirely.
-
-               A block pays the subsidy PLUS the fees in it, and this modelled only the
-               subsidy -- so every projection understated revenue by whatever fees were
-               running. It matters most exactly where this model is weakest: after a halving
-               the subsidy drops but fee income does not, so fees become a larger share of
-               what a miner earns at the same moment the rest of the projection turns down.
-
-               Clamped to a sane band rather than 0..1. A negative fee is not a thing, and a
-               figure above 100% of the subsidy has happened for individual blocks but never
-               for a sustained average -- letting one be typed would quietly double a
-               five-year projection. */
-            txFeePct: clamp(num(s.txFee, 2) / 100, 0, 1),
             uptimePct: clamp(num(s.uptime, 100) / 100, 0, 1),
             hodlPct: clamp(num(s.hodlRatio, 0) / 100, 0, 1),
             btcTreasury: Math.max(0, num(s.btcTreasury, 0)),
@@ -173,15 +160,7 @@ var CalcEngine = (function() {
 
         var cumulBtcHeld = p.btcTreasury;
         var cumulBtcMined = 0;
-        var cumulBtcSold = 0;
         var cumulCashFlow = -totalCapex - p.infrastructureCost;
-        /* The deepest the PURE CASH position ever goes, i.e. how much money has to come
-           from outside before the treasury is sold. cumulCashFlow + reinvestPool is that
-           position exactly: every capex, salvage and settlement line lands in one of the
-           two, and nothing unrealised is in either. totalPL cannot answer this -- it adds
-           heldBtcValue, so a plan funded entirely out of pocket still reports a profit
-           while its bank account is empty. */
-        var minCashPosition = cumulCashFlow;
         var cumulElecCost = 0;
         var breakEvenPeriod = null;
         var minerBatches = [{ period: 0, count: p.machineCount }];
@@ -192,43 +171,6 @@ var CalcEngine = (function() {
         var cumulSalvageValue = 0;
         var additionAccum = 0;
         var totalScheduledAdded = 0;
-
-        /* WHAT THE FLEET IS STILL WORTH, which the projection used to say was nothing.
-
-           totalPL counted the BTC you hold at the end and every dollar you spent, but not
-           the MACHINES you own at the end -- so a horizon that stops partway through a
-           fleet's life wrote off whatever was left of it. At the shipped 60-month default
-           against a 48-month lifespan that is a fleet 11 months old, bought for $270,900 at
-           month 49 and carried at zero: $238,919 of kit, expensed in full.
-
-           It is worst exactly where nobody looks for it. Extending the horizon from 48 to 49
-           months made Total P/L FALL by $249,588, because month 49 buys a replacement fleet
-           and the model books it as a pure loss. That one-month cliff is what flipped the
-           buy-and-hold verdict at the default, and it made mining look worse than buying in
-           most scenarios -- which is not what a real operator sees, because a real operator
-           still owns the machines.
-
-           IT IS ALSO WHAT MADE THE COMPARISON UNFAIR. buyHoldNetGain is a NET GAIN: buy-and-
-           hold starts at zero because the money became an asset it still holds. Mining
-           started at minus the whole capex because the money became an asset valued at zero.
-           The two lines were never measuring the same thing.
-
-           Straight-line from capex down to the salvage percentage over the machine's life,
-           which is the only depreciation curve this model already implies: a machine that
-           reaches lifespanMonths yields exactly capex x salvagePct on retirement, and this
-           returns exactly that at age == lifespan. No double count -- a retired batch has
-           count 0 and is skipped, and its salvage has already been credited to cash. */
-        function fleetValueAt(periodIdx) {
-            var v = 0;
-            for (var fb = 0; fb < minerBatches.length; fb++) {
-                var fBatch = minerBatches[fb];
-                if (fBatch.count <= 0) continue;
-                var lifeLeft = (lifespanPeriods - (periodIdx - fBatch.period)) / lifespanPeriods;
-                lifeLeft = Math.min(1, Math.max(0, lifeLeft));
-                v += fBatch.count * p.capex * (p.salvagePct + (1 - p.salvagePct) * lifeLeft);
-            }
-            return v;
-        }
 
         /* Buy & hold: CGT applies to the GAIN on exit, never to the money put in.
 
@@ -309,10 +251,7 @@ var CalcEngine = (function() {
 
             var currentHashrateH = p.hashrateTH * activeMachines * 1e12;
             var currentPowerKW = p.powerKW * activeMachines;
-            /* Subsidy plus fees. The fee share is expressed against the subsidy, so it
-               scales with the halving the same way a real block does. */
-            var dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward *
-                                 (1 + p.txFeePct)) / (difficulty * TWO_POW_32);
+            var dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward) / (difficulty * TWO_POW_32);
             var dailyBTCNet = dailyBTCGross * (1 - p.poolFeePct) * p.uptimePct;
             var periodBTCMined = dailyBTCNet * daysPerPeriod;
             var periodElecCost = currentPowerKW * 24 * daysPerPeriod * p.elecCost * p.uptimePct;
@@ -335,30 +274,6 @@ var CalcEngine = (function() {
             var taxableMiningIncome = Math.max(0, grossMiningRevenue - periodElecCost);
             var taxOnMiningIncome = p.taxAdjustmentEnabled ? (taxableMiningIncome * p.miningIncomeTaxRate) : 0;
 
-            /* WHO PAYS THE POWER -- the HODL slider decides how much is sold, and the bill
-               is charged as a cash cost whatever that comes to.
-
-               THIS WAS BRIEFLY CHANGED to sell the minimum needed to cover the bill, on the
-               grounds that at HODL 100 nothing is sold and the power is therefore funded from
-               outside. That description is accurate and the conclusion drawn from it was
-               wrong, so the reasoning is worth keeping where the next person can find it.
-
-               Forcing a cover-sale makes the projection take a TREASURY DECISION on the
-               operator's behalf, and it takes the worst available one. On a site that is
-               under water on power it sells every coin it mines, at the price of the month it
-               mined them, to chase a bill it can never meet: at $0.12/kWh that emptied a
-               10.09 BTC treasury and turned a $90,653 loss into $1,086,017. Nobody runs a
-               mine that way. They curtail, or they fund opex from elsewhere and keep the
-               coins -- which is exactly what this branch already models.
-
-               What this measures is the FLEET: what it produced, minus what it cost to run.
-               The treasury policy sits on top of that as the HODL ratio, which is the
-               operator's to set. Keeping the two separate is why the model works at all;
-               entangling them is what broke it.
-
-               The honest caveat the switch was reaching for is real and is reported instead
-               of modelled: peakCashDeficit says how much cash the plan needs from outside,
-               and at HODL 100 that is capex plus every power bill in the horizon. */
             var btcHeld = periodBTCMined * p.hodlPct;
             var btcSold = periodBTCMined * (1 - p.hodlPct);
             var cashFromSales = btcSold * btcPrice;
@@ -380,7 +295,6 @@ var CalcEngine = (function() {
             }
 
             cumulBtcMined += periodBTCMined;
-            cumulBtcSold += btcSold;
             cumulBtcHeld += btcHeld;
             heldCostBasis += btcHeld * btcPrice;
             cumulElecCost += periodElecCost;
@@ -395,30 +309,12 @@ var CalcEngine = (function() {
             // direction. That was a proposed fix and it is wrong.
             if (!(p.reinvestMode && p.capex > 0 && periodCashFlow > 0)) cumulCashFlow += periodCashFlow;
 
-            // Sampled AFTER every cash movement of the period, so a month that both pays a
-            // bill and buys a replacement fleet is measured at its true low point.
-            var cashPosition = cumulCashFlow + reinvestPool;
-            if (cashPosition < minCashPosition) minCashPosition = cashPosition;
-
             // Value if liquidated now, net of capital gains on the held BTC
             var heldValueNow = cumulBtcHeld * btcPrice;
             var heldGainNow = heldValueNow - heldCostBasis;
             var cgtOnHeldNow = (p.taxAdjustmentEnabled && heldGainNow > 0) ? heldGainNow * p.capitalGainsTaxRate : 0;
-            /* TWO MEASURES, because they answer two questions and one of them was being
-               asked to do both.
-
-               liquidValue is cash plus coin: what you could realise without selling a
-               machine. That is what BREAK-EVEN means to an operator -- when the outlay has
-               come back -- so it stays on this measure. Folding the fleet's book value in
-               would make every scenario break even in period 1, since day one you have spent
-               the capex and own exactly the capex in machines. True, and useless.
-
-               totalEconomicValue adds what the fleet is still worth, and that is the one the
-               chart, the table and the headline use, because it is the only one comparable
-               to buy-and-hold's net gain. */
-            var liquidValue = cumulCashFlow + reinvestPool + heldValueNow - cgtOnHeldNow;
-            var totalEconomicValue = liquidValue + fleetValueAt(i);
-            if (breakEvenPeriod === null && liquidValue >= 0) breakEvenPeriod = i + 1;
+            var totalEconomicValue = cumulCashFlow + reinvestPool + heldValueNow - cgtOnHeldNow;
+            if (breakEvenPeriod === null && totalEconomicValue >= 0) breakEvenPeriod = i + 1;
 
             var buyHoldCurrentNet = buyHoldNetGain(btcPrice);
             if (overtakePeriod === null && totalEconomicValue > buyHoldCurrentNet) overtakePeriod = i + 1;
@@ -436,7 +332,6 @@ var CalcEngine = (function() {
                 machines: activeMachines, machinesBought: machinesBoughtThisPeriod,
                 scheduledAdded: scheduledThisPeriod, retiredThisPeriod: retiredThisPeriod,
                 replacedThisPeriod: replacedThisPeriod, pnlBtc: periodBTCMined,
-                btcSold: btcSold, btcHeld: btcHeld,
                 btcHodlCumul: cumulBtcHeld, usdValue: cumulBtcHeld * btcPrice,
                 elecCost: periodElecCost, netCashFlow: periodCashFlow, cumulPL: totalEconomicValue,
                 isHalving: halvingPeriodIdxs.some(function(x) { return x.idx === i; })
@@ -457,10 +352,7 @@ var CalcEngine = (function() {
         // retired miners, which is paid into the pool -- simply disappeared from the headline,
         // so switching reinvest ON while it bought nothing made Total P/L $135,000 WORSE.
         // This is also what makes the last table row equal the card.
-        // The fleet you still own, on the same terms as the last row of the table -- this is
-        // what keeps the card and the bottom of its own table equal.
-        var residualFleetValue = fleetValueAt(p.numPeriods - 1);
-        var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld + residualFleetValue;
+        var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld;
         var roi = totalInitialInvestment > 0 ? ((totalPL / totalInitialInvestment) * 100) : 0;
 
         var buyHoldFinalNet = buyHoldNetGain(finalBtcPrice);
@@ -470,8 +362,7 @@ var CalcEngine = (function() {
         // Day-1 snapshot
         var initHashrateH = p.hashrateTH * p.machineCount * 1e12;
         var initPowerKW = p.powerKW * p.machineCount;
-        var dailyBTCDay1 = (initHashrateH * SECONDS_PER_DAY * getBlockReward(startMs) *
-                            (1 + p.txFeePct)) / (difficulty0 * TWO_POW_32);
+        var dailyBTCDay1 = (initHashrateH * SECONDS_PER_DAY * getBlockReward(startMs)) / (difficulty0 * TWO_POW_32);
         var dailyBTCDay1Net = dailyBTCDay1 * (1 - p.poolFeePct) * p.uptimePct;
         var dailyRevenueDay1 = dailyBTCDay1Net * p.btcPrice0;
         var dailyElecDay1 = initPowerKW * 24 * p.elecCost * p.uptimePct;
@@ -495,17 +386,9 @@ var CalcEngine = (function() {
 
             totalInitialInvestment: totalInitialInvestment,
             cumulBtcMined: cumulBtcMined,
-            cumulBtcSold: cumulBtcSold,
             cumulBtcHeld: cumulBtcHeld,
             cumulElecCost: cumulElecCost,
-            /* Total cash that must come from outside before anything is liquidated. Always
-               at least the day-one investment, and MORE whenever opex or replacement capex
-               is not settled out of production -- which at the shipped defaults is every
-               month of the horizon. */
-            peakCashDeficit: Math.max(0, -minCashPosition),
-            externalOpexFunded: Math.max(0, (Math.max(0, -minCashPosition)) - totalInitialInvestment),
             cumulSalvageValue: cumulSalvageValue,
-            residualFleetValue: residualFleetValue,
             finalBtcPrice: finalBtcPrice,
             heldBtcValue: heldBtcValue,
             totalPL: totalPL,

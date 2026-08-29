@@ -488,40 +488,9 @@ ok(opening.roi > 0, 'and shows a positive return', opening.roi.toFixed(1) + '%')
    step keeps hashprice flat in USD — bitcoin worth more and proportionally
    harder to mine — which is the neutral assumption. So the invariant is that
    they match, not that they are zero. */
-/* THE INVARIANT IS FLAT HASHPRICE, NOT MATCHING RATES.
- *
- * This asserted priceChange === diffChange, on the stated grounds that holding the two in
- * step keeps revenue per terahash flat in USD and is therefore the neutral assumption. That
- * is true only BETWEEN halvings. Across one it is false, and the shipped horizon contains
- * the April 2028 halving: with the two rates equal, hashprice was flat for twenty months and
- * then permanently halved, taking the day-one margin from $582 to $119 and never recovering.
- * The rule written to stop the page flattering mining was quietly doing the opposite.
- *
- * The economics the old rule was reaching for: hashrate arrives until revenue per terahash
- * meets cost per terahash, so in equilibrium difficulty tracks price x SUBSIDY, not price
- * alone. Equal rates assume miners keep adding machines while revenue per machine halves.
- *
- * So measure the thing itself. Revenue per machine in USD, first period against last, out of
- * the projection the page actually opens on -- which catches the rigged direction (price up,
- * difficulty flat) and the bearish one (difficulty ignoring the halving) with one check, and
- * cannot be satisfied by choosing two numbers that happen to be equal. */
-(function () {
-    var rows = opening.tableRows;
-    var first = rows[0], last = rows[rows.length - 1];
-    var perMachineFirst = (first.pnlBtc * first.btcPrice) / first.machines;
-    var perMachineLast = (last.pnlBtc * last.btcPrice) / last.machines;
-    var ratio = perMachineLast / perMachineFirst;
-    ok(ratio > 0.85 && ratio < 1.18,
-       'revenue per machine is held roughly flat in USD across the whole horizon',
-       'month 1 $' + perMachineFirst.toFixed(2) + '/mo against month ' + rows.length +
-       ' $' + perMachineLast.toFixed(2) + '/mo, a factor of ' + ratio.toFixed(3));
-
-    /* And that the horizon really does contain a halving, or the check above is measuring a
-       straight line and proving nothing about the hard case. */
-    ok(rows.some(function (r) { return r.isHalving; }),
-       '  and the horizon spans a halving, so that is a real result',
-       'no halving in ' + rows.length + ' periods');
-})();
+ok(parseFloat(defaults.priceChange) === parseFloat(defaults.diffChange),
+   'price growth and difficulty growth are assumed in step',
+   'price ' + defaults.priceChange + '%/mo against difficulty ' + defaults.diffChange + '%/mo');
 ok(parseFloat(defaults.priceChange) <= 3, 'the assumed price growth is not extravagant',
    defaults.priceChange + '%/mo');
 ok(parseFloat(defaults.uptime) >= 90 && parseFloat(defaults.uptime) < 100,
@@ -645,14 +614,7 @@ var PT = {
     btcPrice: 100000, priceChange: 0, difficulty: 127.48, diffChange: 0,
     hashrate: 270, power: 3.645, elecCost: 0.05, poolFee: 1, uptime: 100,
     capex: 3010, machineCount: 66, infrastructureCost: 0,
-    /* LIFESPAN MATCHES THE HORIZON so the fleet is fully consumed by the end.
-       totalPL now credits machines still standing at the horizon, and at 12 months of a
-       60-month life that was $162,239 of kit -- six times the gap this fixture exists to
-       measure, so the flip below stopped being about tax and started being about
-       leftover hardware. Running the fleet to end of life against salvageValue 0 is also
-       the honest shape for the question being asked: I earn $198,660, do I spend it on
-       miners or on coin, and what am I left holding. */
-    investPeriod: 12, periodLength: 'month', minerLifespan: 12,
+    investPeriod: 12, periodLength: 'month', minerLifespan: 60,
     salvageValue: 0, autoReplace: false, reinvest: false, hodlRatio: 100,
     startDate: '2026-01-01',
     taxAdjustment: true, miningIncomeTaxRate: 20, capitalGainsTaxRate: 20

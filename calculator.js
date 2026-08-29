@@ -32,7 +32,7 @@ function getBlockReward(date) {
 // ===== DOM REFS =====
 const inputIds = [
     'btcPrice', 'priceChange', 'difficulty', 'diffChange', 'investPeriod',
-    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'txFee', 'poolFee', 'uptime', 'hodlRatio'
+    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'poolFee', 'uptime', 'hodlRatio'
 ];
 const el = {};
 inputIds.forEach(id => el[id] = document.getElementById(id));
