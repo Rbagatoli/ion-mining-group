@@ -83,7 +83,24 @@
    within them ONLY the detail layer — 96 slot-layers, every one of them detail. inside,
    back, asics, end, side and top are byte-identical, so no machine box, no rack, no shell
    and no roof moved; only line work on the faces and the new run. hosting, asic, pad-now
-   and lf-now are untouched. */
+   and lf-now are untouched.
+
+   Re-baselined once more because the cooler was the one solid object in a drawing whose
+   entire point is that you can see into it. The roof above it says "only the far half
+   survives the cutaway" and draws z -1.22..0.00; the cooler was drawn z -1.00..+1.00,
+   straight across the cut line and over the open half. Built as mass rather than line work
+   — which is what makes it survive a phone — it put an opaque lid on the machines the
+   cutaway exists to show: measured, a container's own cooler covered 18-22% of its own
+   machines at rest and up to 42% at 45 degrees. It now ends at the same cut plane the roof
+   does, with its cut outlined the way the container outlines its own, and that falls to
+   0.5-1.3% at rest and 7-17% at 45. The flow and return moved behind the frame for the same
+   reason: in front of it is the half that is not there.
+
+   Same three scenes, same single layer as the pass before it — site, pad-ion and lf-ion,
+   detail only. hosting and asic are byte-identical again, which is the check that matters
+   here: the hosting page draws its own cooler from the same KIT.COOLER dimensions but its
+   own geometry, and it is a whole container rather than a cutaway of a yard, so it should
+   NOT have moved. It did not. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';

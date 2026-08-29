@@ -506,20 +506,35 @@
          * Face winding follows boxFaces() exactly, so frontFacing() culls these the way it
          * culls a box: the two caps are wound oppositely because one faces -x and the other
          * +x, and getting that wrong shows the frame's own back wall through its front. */
-        var COOL_PLINTH = COOLER.plinth, COOL_SLOPE = COOLER.slope, COOL_RIDGE = COOLER.ridge;
-        var zc0 = z0 + COOL_Z, zc1 = z1 - COOL_Z;
-        var zr0 = K.z - COOL_RIDGE / 2, zr1 = K.z + COOL_RIDGE / 2;
+        /* THE COOLER IS CUT AWAY WITH THE REST OF THE CONTAINER.
+           It was not, and it is the one solid thing in a drawing whose whole point is that
+           you can see into it. The roof above says "only the far half survives the cutaway"
+           and draws z -1.22..0.00; this frame was drawn z -1.00..+1.00, straight across the
+           cut line and over the open half. Being mass rather than line work — which is what
+           makes it survive a phone — that put an opaque lid on the machines: measured, a
+           container's own cooler covered 18-22% of its own machines at rest and up to 42%
+           at 45 degrees, on top of the 19% the front row already takes off the back one.
+           Every other surface in here reads as glass and this one did not.
+
+           So the frame stands on the FAR HALF of the roof, ending at the same cut plane the
+           roof does. It is not a smaller cooler pretending to be a whole one: it is a whole
+           one, sliced where the container is sliced, which is what every other surface here
+           already does. The near half is the half you are looking through. */
+        var COOL_PLINTH = COOLER.plinth, COOL_SLOPE = COOLER.slope;
+        var zc0 = z0 + COOL_Z;                    // far edge, as before
+        var zc1 = K.z - 0.06;                     // the cut plane, just shy of the roof's
+        var zr0 = zc0 + (zc1 - zc0) * 0.34;       // ridge sits over the far third
+        var zr1 = zc1;                            // and runs out to the cut
         var cyb = K.h + COOL_PLINTH, cyt = cyb + COOL_SLOPE;
 
-        // The plinth the frame stands on, full footprint.
-        addBox(L, { x: (cx0 + cx1) / 2, y: K.h, z: K.z,
+        // The plinth the frame stands on.
+        addBox(L, { x: (cx0 + cx1) / 2, y: K.h, z: (zc0 + zc1) / 2,
                     w: cx1 - cx0, h: COOL_PLINTH, d: zc1 - zc0 }, yaw);
 
-        // The two coil faces, and the ridge deck between them.
-        var faceFront = [[cx0, cyb, zc1], [cx1, cyb, zc1], [cx1, cyt, zr1], [cx0, cyt, zr1]];
+        /* One coil face and the ridge deck. The near face is in the cut-away half and is
+           not drawn, exactly as the container's near wall is not. */
         var faceBack  = [[cx1, cyb, zc0], [cx0, cyb, zc0], [cx0, cyt, zr0], [cx1, cyt, zr0]];
         var faceRidge = [[cx0, cyt, zr0], [cx0, cyt, zr1], [cx1, cyt, zr1], [cx1, cyt, zr0]];
-        if (frontFacing(faceFront, yaw)) L.side += poly(faceFront, yaw);
         if (frontFacing(faceBack,  yaw)) L.side += poly(faceBack,  yaw);
         if (frontFacing(faceRidge, yaw)) L.top  += poly(faceRidge, yaw);
 
@@ -528,29 +543,36 @@
         if (frontFacing(capL, yaw)) L.end += poly(capL, yaw);
         if (frontFacing(capR, yaw)) L.end += poly(capR, yaw);
 
-        /* Eight coil divisions up the leaning face. These are the same eight the first
-           version drew, but they now sit on a lit surface instead of standing in for one,
-           so they can be quiet: on the phone they wash out and the frame still reads. */
+        /* The cut edge, drawn as an edge. The container outlines its own cut at z1 the same
+           way; without it the frame ends in mid-air and reads as broken rather than sliced. */
+        L.detail += line([cx0, cyt, zr1], [cx1, cyt, zr1], yaw);
+        L.detail += line([cx0, cyb, zc1], [cx0, cyt, zr1], yaw);
+        L.detail += line([cx1, cyb, zc1], [cx1, cyt, zr1], yaw);
+
+        /* Eight coil divisions up the leaning face — the far one, which is the one left. */
         var COILS = 8;
         for (var cq = 0; cq < COILS; cq++) {
             var px = cx0 + (cx1 - cx0) * (cq + 0.5) / COILS;
-            L.detail += line([px, cyb, zc1], [px, cyt, zr1], yaw);
+            L.detail += line([px, cyb, zc0], [px, cyt, zr0], yaw);
         }
 
         /* The fans that pull through the bank, lying flat in the ridge and therefore drawn
            with ringY: ring() would stand them on edge, out of the deck they sit in. */
+        var fz2 = (zr0 + zr1) / 2;                // centred in what is left of the ridge
         for (var cf = 0; cf < 2; cf++) {
             var fx = cx0 + (cx1 - cx0) * (cf ? 0.76 : 0.24);
-            L.detail += ringY(fx, cyt + 0.01, K.z, 0.26, yaw, 12);
-            L.detail += ringY(fx, cyt + 0.01, K.z, 0.10, yaw, 8);
+            L.detail += ringY(fx, cyt + 0.01, fz2, 0.26, yaw, 12);
+            L.detail += ringY(fx, cyt + 0.01, fz2, 0.10, yaw, 8);
         }
 
-        /* Flow and return, running the roof in front of the frame and dropping down the end
-           wall into the manifolds. Separated in z rather than in y: at roof level the pair
-           has to clear the plinth, and depth is the axis with room for it. They merge into
-           one run on a phone, which is the right thing to lose — the frame is the tell, and
-           these are the pipes serving it. */
-        var hz = zc1 + 0.07;
+        /* Flow and return, and they run BEHIND the frame now rather than in front of it.
+           In front is the half the cutaway takes away, so a pipe there was drawn over open
+           air above the machines. Along the far roof edge they are on surface that survives
+           the cut, which is also where the plumbing on a real one would be least in the way.
+           Separated in z rather than in y: at roof level the pair has to clear the plinth,
+           and depth is the axis with room for it. They merge into one run on a phone, which
+           is the right thing to lose — the frame is the tell, these are the pipes to it. */
+        var hz = zc0 - 0.12;
         L.detail += line([cx0, K.h + 0.05, hz], [cx1, K.h + 0.05, hz], yaw);
         L.detail += line([cx0, K.h + 0.05, hz + 0.09], [cx1, K.h + 0.05, hz + 0.09], yaw);
         L.detail += line([cx1, K.h + 0.05, hz], [x1 + 0.02, K.h * 0.62, hz], yaw);
