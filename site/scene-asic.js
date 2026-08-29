@@ -115,7 +115,7 @@
        seen. Inset from the board on every edge: a plate that reached the board
        edge would read as a second board rather than as something clamped to it. */
     var PLATE_Z = NEAR_Z + BOARD.d / 2 + 0.055;
-    /* Lifted 160 mm off the bottom of the board rather than 80. At 80 the plate's
+    /* Lifted 16 mm off the bottom of the board rather than 8. At 8 the plate's
        own bottom bolt line landed a tenth of a unit above the strip of
        capacitors on the bare board below it, and the two rows of small rings
        merged into one band of clutter along the bottom of the machine. */
@@ -211,7 +211,7 @@
        render to find out. Drawn together they shared a set of layer buckets,
        and the engine is explicit that buckets cannot express occlusion between
        two solids of one object — only between objects, through the depth sort.
-       The two couplings are 740 mm apart in z, so at the resting angle the far
+       The two couplings are 74 mm apart in z, so at the resting angle the far
        one's body painted straight over the near one's tube stub and the pair
        read as one lump with a spare pipe behind it. Separated, the sort puts
        whichever is nearer in front, at every angle. */
@@ -691,7 +691,7 @@
        nothing at all outside the blind end.
 
        It still needs three because the two couplings have to sort against EACH
-       OTHER. They are 740 mm apart across the machine, which is far enough that
+       OTHER. They are 74 mm apart across the machine, which is far enough that
        at most angles one is clearly in front of the other, and the engine can
        only express that between objects. See the note over portOf.
 
@@ -737,12 +737,23 @@
                symmetric — a fan module standing proud at each end — so it swept
                a circle centred on its own middle and SHIFT_X was 0. This machine
                has plumbing on one end and flat plate on the other, so spinning
-               it about its centre throws the port block round a circle 23% wider
-               than the chassis needs, and the mobile crop is sized to the widest
-               angle. Turning it about a point 300 mm toward the ports balances
-               the two: the widest thing in the sweep stops being the couplings
-               and becomes the blind corner, and the machine itself draws about
-               15% larger inside the same fixed window. */
+               it about its centre throws the port block round a circle 28.7%
+               wider than the chassis alone needs (2.449 against 1.903), and the
+               mobile crop is sized to the widest angle. Turning it about a point
+               30 mm toward the ports balances the two: the widest thing in the
+               sweep stops being the couplings and becomes the blind corner, and
+               the sweep radius drops 2.449 -> 2.307, so the machine draws 6.2%
+               larger inside the same fixed window.
+
+               6.2%, NOT THE 15% THIS USED TO CLAIM, and 300 mm was a tenfold
+               slip for 30. Measured over allPoints() about the pivot the engine
+               actually uses — project() does px = p[0] + SHIFT_X, so the pivot
+               is at MINUS SHIFT_X, and computing it about +SHIFT_X reports the
+               shift making things worse. The best centre available anywhere is
+               0.225, worth 9.4%, so 15% was not merely optimistic: no shift
+               could have bought it. The 0.30 is kept over the 0.225 because the
+               difference is 3 points and 0.30 is where the couplings stop being
+               the widest thing, which is the effect the sweep is for. */
             SHIFT_X: 0.30,
             PERIOD: 44000,
         },

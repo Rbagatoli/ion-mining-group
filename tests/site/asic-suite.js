@@ -158,7 +158,14 @@ ok(A.PORTS.out < X0 && A.PORTS.face === X0,
 /* THE BLIND END IS FLUSH, and that is the S21 Pro's exhaust fan module being
    gone rather than merely undrawn. Anything outside the shell at that end would
    be an aperture by another name. */
-const past = A.objects().filter(o => o.box.x + o.box.w / 2 > X1 + 0.101);
+/* The body is skipped BY NAME, not cleared by an epsilon. Its box is the chassis's own
+   depth-sort volume, padded 0.10 past the shell at each end so the sort has something to
+   order; it is not a fitting and cannot stand proud of itself. This used to read
+   `> X1 + 0.101` — one thousandth of a unit clear of that padding — so any change to the
+   padding, which has nothing to do with whether the blind end is plate, flipped this into a
+   false positive naming `body`. A named exclusion says what is meant and does not move when
+   the sort box does. */
+const past = A.objects().filter(o => o.id !== 'body' && o.box.x + o.box.w / 2 > X1 + 0.001);
 ok(past.length === 0,
    'and nothing at all stands proud of the blind end: that face is flat plate',
    past.map(o => o.id).join(', ') || 'clear');
@@ -492,7 +499,7 @@ ok(Math.abs(mny - (A.VB.h - mxy)) < 25, 'and stays vertically centred',
 
 /* THE TURNTABLE IS OFF-CENTRE AND HAS TO EARN IT. The S21 Pro was symmetric —
    a fan module proud at each end — and turned about its own middle. This
-   machine has 600 mm of plumbing on one end and flat plate on the other, so
+   machine has 60 mm of plumbing on one end and flat plate on the other, so
    spinning it about its centre throws the couplings round the widest circle in
    the sweep, and the mobile crop is a fixed window sized to that circle. */
 {
@@ -639,7 +646,7 @@ ok(code.indexOf('ringY(bx, BUS_Y') >= 0 && code.indexOf('ringY(s[0], y1') >= 0,
 {
     /* Pick the angle where each face is WIDEST, not the first angle at which it
        is merely visible. The first such angle is nearly edge-on — the blind end
-       projects to a strip 27 units across — and a seam inset 130 mm from an
+       projects to a strip 27 units across — and a seam inset 13 mm from an
        edge that is 27 units long has nowhere to be. */
     const widestYaw = faceKey => {
         let bestA = 0, bestY = null;

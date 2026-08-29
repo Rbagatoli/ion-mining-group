@@ -358,15 +358,62 @@
         for (var i = 0; i < mine.length; i++) {
             var u = mine[i], f = boxFaces(u);
             for (var k in f) if (frontFacing(f[k], yaw)) L.asics += poly(f[k], yaw);
-            var fz = u.z + u.d/2 + 0.008, ccy = u.y + u.h/2;
-            var rr = Math.min(u.h, u.w/2) * 0.36;
-            L.detail += ring(u.x - u.w * 0.24, ccy, fz, rr, yaw, 8);
-            L.detail += ring(u.x + u.w * 0.24, ccy, fz, rr, yaw, 8);
-            // Control panel strip and status LED, as on a real S21.
-            L.detail += line([u.x - u.w * 0.42, u.y + u.h - 0.07, fz],
-                             [u.x - u.w * 0.06, u.y + u.h - 0.07, fz], yaw);
+            /* SEALED FACES. What stood here was a twin fan ring at 0.36 of the machine's
+               half-width, commented "as on a real S21" — and it was, which is the problem.
+               The S21+ Hyd has no fans and no apertures at all. Those two rings measured
+               5.9 px each on a 16.3 px face at desktop, so twelve of every sixteen pixels
+               of every one of the thirty machines in a container were a part the hardware
+               does not have. The container shell was switched to hydro around them and
+               they were left wearing the old machine.
+
+               NOTHING REPLACES THEM ON THE FACE, and that is the measurement talking. The
+               coupling this machine really has would be 2.7 px across here against 21 px
+               on the hosting page, where it is drawn properly. Drawing it at fan size so
+               it survived would put a wrong-sized part back exactly where the wrong part
+               was. What says hydro at this scale is the loop running past the rack, below
+               — a pipe run reads at any size, a 2.7 px ring does not. */
+            var fz = u.z + u.d/2 + 0.008;
+            /* Control strip and status LED — parts it does have. Shifted right, off the
+               stretch of face the column's riser climbs, the same move scene-hosting.js
+               makes for the same reason. */
+            L.detail += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
+                             [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
             L.detail += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
         }
+
+        /* THE LOOP, WHICH THIS CONTAINER DID NOT HAVE AT ALL.
+           The roof cooler's flow and return drop down the end wall "into the manifolds" —
+           and there were no manifolds. The outside of the container was converted to hydro
+           and the inside was left as an air-cooled hall with the fans filed off.
+
+           SIZED FOR THIS DRAWING, NOT COPIED FROM THE HOSTING PAGE. A machine here is
+           16 px across against 59 px there, so scene-hosting's numbers do not survive the
+           trip: its supply/return risers sit 0.09 apart, which is 1.7 px here and merges
+           into one line.
+
+           THE RUN ONLY, NOT THE BRANCHES. A riser per column was drawn first and then
+           taken out again, on the measurement: ten of them changed the container's detail
+           layer by 240 bytes of 5,672, and rendered side by side the two versions are
+           indistinguishable — because the vertical lattice a reader sees in here is the
+           far wall's corrugation and the rack uprights, both of which were always there,
+           and a riser lands in the same register as a structural line it cannot be told
+           apart from. Ten lines that read as something else are worse than none.
+
+           What does read is the run itself: two horizontal pipes the length of the rack,
+           which is a shape nothing else in the container makes. The hosting page draws the
+           branches and the couplings because a machine is 59 px there and they land on
+           their own machine. Here the loop says it exists, and that is the whole of what
+           this drawing can honestly claim at this size. */
+        var manZ = rz + AS.d / 2 + 0.05;          // just in front of the rack face
+        var manY = 0.055, manSep = 0.16;          // ~3 px apart at desktop: separable, just
+        L.detail += line([rx0 - 0.2, manY, manZ], [rx0 + span + 0.2, manY, manZ], yaw);
+        L.detail += line([rx0 - 0.2, manY + manSep, manZ], [rx0 + span + 0.2, manY + manSep, manZ], yaw);
+        /* Up the door-end wall to meet the roof cooler's downcomers, which drop to
+           K.h * 0.62 on the outside of that same end. Without it the run stops in mid-air
+           and the loop the roof half of this drawing promises has no other half. */
+        L.detail += line([rx0 + span + 0.2, manY, manZ], [rx0 + span + 0.2, K.h * 0.62, manZ], yaw);
+        L.detail += line([rx0 + span + 0.2, manY + manSep, manZ],
+                         [rx0 + span + 0.2, K.h * 0.62, manZ], yaw);
 
         // --- In front of the machines ---
         // Cable tray under the ceiling.

@@ -69,7 +69,21 @@
    re-baseline: it draws four hydro containers through the same KIT.container as the two
    scenes that moved, so it proves the container itself did not change in this pass — only
    how many of them each scene places, and what the hosting page draws with its own geometry.
-   pad-now and lf-now are identical too; they have no containers to place. */
+   pad-now and lf-now are identical too; they have no containers to place.
+
+   Re-baselined again for the machines INSIDE those containers, which the pass above missed
+   entirely. KIT.container() was still drawing two fan rings on every machine face — thirty
+   machines a container, four containers, with the comment "as on a real S21" — so the shell
+   had been converted to hydro around contents that were still air-cooled. It also drew no
+   coolant loop at all, while the roof cooler's downcomers were commented as dropping "into
+   the manifolds". The fan rings are gone, the control strip and LED stay, and a supply and
+   return run the length of the rack and rise at the door end to meet those downcomers.
+
+   The blast radius is the whole argument for this one: site, pad-ion and lf-ion moved, and
+   within them ONLY the detail layer — 96 slot-layers, every one of them detail. inside,
+   back, asics, end, side and top are byte-identical, so no machine box, no rack, no shell
+   and no roof moved; only line work on the faces and the new run. hosting, asic, pad-now
+   and lf-now are untouched. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
