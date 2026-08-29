@@ -100,7 +100,32 @@
    detail only. hosting and asic are byte-identical again, which is the check that matters
    here: the hosting page draws its own cooler from the same KIT.COOLER dimensions but its
    own geometry, and it is a whole container rather than a cutaway of a yard, so it should
-   NOT have moved. It did not. */
+   NOT have moved. It did not.
+
+   Re-baselined once more after an adversarial pass over the coolant run that pass added.
+   Three reviewers converged on the same four defects, all of them mine and all confirmed by
+   computing the coordinates rather than by looking:
+
+     - the two "risers" were ONE LINE. Both ran at the same x and the same z and ended at the
+       same point, so the second was a strict sub-segment of the first, and the supply/return
+       pair collapsed to a single pipe at the one place the drawing has to show two.
+     - the riser did not reach the downcomers it was commented as meeting: 1.5 m short, so
+       the run still ended in mid-air, higher up.
+     - it did not climb "the door-end wall" either. It stood 0.90 m shy of that wall, in the
+       aisle, and inside the PDU's own x span — and being in 'detail', the last layer
+       painted, it drew over the cabinet's front face.
+     - a comment sized a coupling at "21 px on the hosting page". 21 px was the old FAN ring
+       on that page. The coupling is 7.9 px, which is what scene-hosting.js itself calls
+       "about 8 px".
+
+   The run now leaves at the blind end — the end the hydro switch emptied, away from the PDU
+   and the door hardware — with the pair separated in x as well as z, because 0.09 of z is
+   0.79 px and reads as one line. Measured after: risers 4.4-5.0 px apart through the
+   readable band, both pipe ends clear of the PDU's drawn face, and the four ends meeting the
+   four downcomer feet at 0.000 px over a full revolution because they are now the same
+   points by construction.
+
+   Same three scenes, detail only, hosting and asic byte-identical again. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';

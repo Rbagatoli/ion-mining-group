@@ -322,6 +322,18 @@
         var z0 = K.z - K.d/2, z1 = K.z + K.d/2;
         var y1 = K.h;
 
+        /* THE ROOF COOLER'S FOOTPRINT, DECLARED ONCE AND UP HERE. Three separate things
+           downstream need it and they are spread across the function: the roof ribs have to
+           stop at its edges, the frame itself is built from it, and the manifolds inside have
+           to rise to meet the pipes that come down off it. That last one is why this moved:
+           computed a second time next to the frame, it was below the manifold code that
+           needed it, so the pipes were laid out against an undefined z and only looked
+           connected because nothing checked. */
+        var COOL_X = COOLER.inX, COOL_Z = COOLER.inZ;
+        var cx0 = x0 + COOL_X, cx1 = x1 - COOL_X;
+        var coolZ0 = z0 + COOL_Z;                 // far edge of the frame
+        var hz = coolZ0 - 0.12;                   // the roof pair, just behind it
+
         // Interior surfaces, seen from within through the cutaway.
         L.inside += polyInside([[x0,0,z0],[x1,0,z0],[x1,0,z1],[x0,0,z1]], yaw);
         L.inside += polyInside([[x0,0,z0],[x0,y1,z0],[x1,y1,z0],[x1,0,z0]], yaw);
@@ -367,15 +379,18 @@
                they were left wearing the old machine.
 
                NOTHING REPLACES THEM ON THE FACE, and that is the measurement talking. The
-               coupling this machine really has would be 2.7 px across here against 21 px
-               on the hosting page, where it is drawn properly. Drawing it at fan size so
+               coupling this machine really has would be 2.8 px across here against 7.9 px
+               on the hosting page, where it is drawn properly — 7.9 is what that file itself calls
+               "about 8 px". (This read 21 px, which was the old FAN ring on that page.) Drawing it at fan size so
                it survived would put a wrong-sized part back exactly where the wrong part
                was. What says hydro at this scale is the loop running past the rack, below
                — a pipe run reads at any size, a 2.7 px ring does not. */
             var fz = u.z + u.d/2 + 0.008;
-            /* Control strip and status LED — parts it does have. Shifted right, off the
-               stretch of face the column's riser climbs, the same move scene-hosting.js
-               makes for the same reason. */
+            /* Control strip and status LED — parts it does have. Shifted right to sit where
+               scene-hosting.js puts them, so the two drawings of one machine agree. Not, as
+               this once said, to clear "the column's riser": there is no per-column riser in
+               this drawing. Ten of them were drawn and removed again — see the note on the
+               run below — and the comment outlived the geometry by one edit. */
             L.detail += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
                              [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
             L.detail += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
@@ -406,14 +421,63 @@
            this drawing can honestly claim at this size. */
         var manZ = rz + AS.d / 2 + 0.05;          // just in front of the rack face
         var manY = 0.055, manSep = 0.16;          // ~3 px apart at desktop: separable, just
-        L.detail += line([rx0 - 0.2, manY, manZ], [rx0 + span + 0.2, manY, manZ], yaw);
-        L.detail += line([rx0 - 0.2, manY + manSep, manZ], [rx0 + span + 0.2, manY + manSep, manZ], yaw);
-        /* Up the door-end wall to meet the roof cooler's downcomers, which drop to
-           K.h * 0.62 on the outside of that same end. Without it the run stops in mid-air
-           and the loop the roof half of this drawing promises has no other half. */
-        L.detail += line([rx0 + span + 0.2, manY, manZ], [rx0 + span + 0.2, K.h * 0.62, manZ], yaw);
-        L.detail += line([rx0 + span + 0.2, manY + manSep, manZ],
-                         [rx0 + span + 0.2, K.h * 0.62, manZ], yaw);
+        /* STOPS SHORT OF THE PDU. The cabinet stands at x1 - 1.0, up to a metre NEARER the
+           viewer than these pipes, so it is in front of them in the scene — but they are in
+           'detail', the last layer painted, and a hairline in the last layer goes over a
+           filled face however far behind it the pipe really is. Running the full rack put
+           both pipes across the cabinet's front. Ending at the last column served is the
+           honest stop anyway: past that there is nothing to feed. */
+        var manX0 = rx0 - 0.2, manX1 = rx0 + span - 0.32;
+        L.detail += line([manX0, manY, manZ], [manX1, manY, manZ], yaw);
+        L.detail += line([manX0, manY + manSep, manZ], [manX1, manY + manSep, manZ], yaw);
+
+        /* UP THE BLIND END TO THE ROOF COOLER, and every part of that sentence was wrong in
+           the first version. It ran up at rx0 + span + 0.2, which is 0.90 m short of the
+           door-end wall it claimed to climb — inside the PDU, in the aisle — and it stopped
+           1.5 m from the downcomers it claimed to meet, so the run still ended in mid-air,
+           just higher up. Worse, the pair was one line: both segments shared an x, a z and a
+           top point, so the second was a sub-segment of the first and the supply/return pair
+           collapsed to a single pipe at the one place the drawing has to show two.
+
+           It rises at the BLIND end now, not the door end. That end lost its intake louvres
+           in the switch to hydro and has nothing on it, while the door end carries the PDU,
+           the locking bars and the hinges. The roof pair drops there to match.
+
+           WHAT IS NOT DRAWN BETWEEN THEM IS THE CDU. scene-hosting.js draws one — pumps and
+           a plate exchanger, with its own callout — because the machine loop and the roof
+           loop are two loops and something has to move heat between them. This drawing does
+           not draw it, the same way it does not draw the branches, the couplings, the
+           network switch or the spares cabinet that page also has: at 16 px a machine and
+           one container of four, it shows that a loop exists and leaves what is in it to the
+           page that can hold it. So read these two pipes as the run leaving toward the plant,
+           not as coolant going straight from the rack to the roof. The hosting page is the
+           one making a claim about the topology; this one is making a claim about the yard.
+
+           At rest the back row shows about 71% of its line work — the front row takes the
+           rest, and the manifold sits at floor level, which is the first thing a container in
+           front of it hides. That is the yard, not the pipe: the back row's PDU goes the same
+           way. It comes back as the drawing turns.
+
+           The two pipes are separated up the wall in BOTH x and z. Two verticals at one x
+           and one z are collinear whatever heights they span, which is the trap the first
+           version fell into; and z alone is not enough here either, at 0.79 px apart. The z
+           offset is the roof pair's own 0.09, so the four ends meet at four points rather
+           than approximately, and the x offset is what makes them read as two. */
+        var riseX = manX0, yTop = K.h * 0.62;
+        [0, 1].forEach(function (i) {
+            var y = manY + i * manSep, pz = hz + i * 0.09;
+            /* SEPARATED IN X, and that is the second thing the first version got wrong. Two
+               verticals at one x and one z are collinear whatever heights they span, so the
+               pair was literally one line. Moving them apart in Z instead fixes the geometry
+               and not the drawing: measured, 0.09 of z is 0.79 px apart at rest, still one
+               line to look at, and the band behind the cooler is only 0.22 deep so no z
+               separation that fits gets past about 1.9 px. X is the axis with room — 0.22
+               here is 4.2 px — and the aisle in front of the rack has it to give. */
+            var rxi = riseX + i * 0.22;
+            L.detail += line([rxi, y, manZ], [rxi, y, pz], yaw);          // back under the rack
+            L.detail += line([rxi, y, pz], [rxi, yTop, pz], yaw);         // up the blind end
+            L.detail += line([rxi, yTop, pz], [x0 - 0.02, yTop, pz], yaw); // out to the downcomer
+        });
 
         // --- In front of the machines ---
         // Cable tray under the ceiling.
@@ -434,10 +498,7 @@
         // Roof: only the far half survives the cutaway.
         var roof = [[x0,y1,z0],[x0,y1,K.z],[x1,y1,K.z],[x1,y1,z0]];
         if (frontFacing(roof, yaw)) L.top += poly(roof, yaw);
-        /* Footprint of the roof cooler. Needed up here as well as further down where the
-           cooler is built, because the roof ribs have to stop at its edges. */
-        var COOL_X = COOLER.inX, COOL_Z = COOLER.inZ;
-        var cx0 = x0 + COOL_X, cx1 = x1 - COOL_X;
+        /* cx0/cx1 are declared at the top of this function; the ribs stop at them. */
         for (var r2 = 1; r2 < ribs; r2++) {
             var rx2 = x0 + K.w * r2 / ribs;
             /* A rib under the cooler paints into 'detail', which is above every filled
@@ -521,7 +582,7 @@
            one, sliced where the container is sliced, which is what every other surface here
            already does. The near half is the half you are looking through. */
         var COOL_PLINTH = COOLER.plinth, COOL_SLOPE = COOLER.slope;
-        var zc0 = z0 + COOL_Z;                    // far edge, as before
+        var zc0 = coolZ0;                         // far edge, declared at the top
         var zc1 = K.z - 0.06;                     // the cut plane, just shy of the roof's
         var zr0 = zc0 + (zc1 - zc0) * 0.34;       // ridge sits over the far third
         var zr1 = zc1;                            // and runs out to the cut
@@ -572,11 +633,16 @@
            Separated in z rather than in y: at roof level the pair has to clear the plinth,
            and depth is the axis with room for it. They merge into one run on a phone, which
            is the right thing to lose — the frame is the tell, these are the pipes to it. */
-        var hz = zc0 - 0.12;
+        // hz is declared at the top: the manifolds inside need it before this point.
         L.detail += line([cx0, K.h + 0.05, hz], [cx1, K.h + 0.05, hz], yaw);
         L.detail += line([cx0, K.h + 0.05, hz + 0.09], [cx1, K.h + 0.05, hz + 0.09], yaw);
-        L.detail += line([cx1, K.h + 0.05, hz], [x1 + 0.02, K.h * 0.62, hz], yaw);
-        L.detail += line([cx1, K.h + 0.05, hz + 0.09], [x1 + 0.02, K.h * 0.62, hz + 0.09], yaw);
+        /* Down the BLIND end, not the door end. That end lost its intake louvres to the
+           hydro switch and carries nothing; the door end carries the PDU inside and the
+           locking bars and hinges outside. The manifolds below rise to exactly these two
+           feet — [x0 - 0.02, K.h * 0.62, hz] and the same at hz + 0.09 — so the loop closes
+           at a point rather than near one. */
+        L.detail += line([cx0, K.h + 0.05, hz], [x0 - 0.02, K.h * 0.62, hz], yaw);
+        L.detail += line([cx0, K.h + 0.05, hz + 0.09], [x0 - 0.02, K.h * 0.62, hz + 0.09], yaw);
 
         // Roof-mounted uplink with a dish and guy lines.
         // Only one container carries the uplink; a second mast is clutter.
