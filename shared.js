@@ -299,10 +299,28 @@ function initNav(activePage) {
 
         // Post-auth handler — called after sign-in from any method
         window.handlePostAuth = function() {
-            SyncEngine.pullAll(function(pulled) {
+            SyncEngine.pullAll(function(pulled, held) {
+                /* A HELD-BACK STORE IS SAID OUT LOUD, BEFORE THE RELOAD. The pull now refuses
+                   any store whose cloud copy is missing records this device already has, and a
+                   refusal the user never sees is the same silence the guard was added to end:
+                   they would reload, find their own data intact, and never learn that the cloud
+                   copy is behind and about to be merged over it on the next save. */
+                if (held && held.length) {
+                    var what = held.map(function (h) {
+                        return h.key + ' — ' + h.missing.length + ' record' +
+                               (h.missing.length === 1 ? '' : 's') + ' only on this device';
+                    }).join('\n');
+                    window.alert(
+                        'Signed in, and ' + held.length + ' store' +
+                        (held.length === 1 ? ' was' : 's were') + ' NOT overwritten from the ' +
+                        'cloud:\n\n' + what + '\n\nNothing was lost. This device keeps what it ' +
+                        'has, and the next save pushes it up — cloud records merge in rather ' +
+                        'than replacing yours. If you expected the cloud copy to win, export ' +
+                        'from here first.');
+                }
                 if (pulled > 0) {
                     location.reload();
-                } else {
+                } else if (!held || !held.length) {
                     SyncEngine.pushAll();
                 }
             });

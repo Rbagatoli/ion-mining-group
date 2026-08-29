@@ -125,11 +125,37 @@ later against real history rather than starting from nothing.
 version, entry count or timestamp. Firestore persistence is not enabled
 (`firebase-config.js` never calls `enablePersistence`), so writes queued offline are memory-only.
 
-**Why it is not addressed here.** It predates the workspace and affects every store, so fixing it
-inside the project work would hide a general problem inside a specific change.
+**CLOSED, and generally rather than for `projects` alone.**
 
-**What to build.** For the projects key at least, refuse a pull that would reduce the project
-count or drop a project the local store has, and say so rather than doing it silently.
+`pullVerdict(key, localRaw, remoteData)` is a pure function — no firebase, no signed-in user, no
+network — and `pullAll()` is now transport around it. Nine stores declare a record container
+(`projects`, `sites`, `crmLog`, `crmFollowups`, `contacts`, `crmDocuments`, `crmEnrichment`,
+`fleet`, `prospectSearches`); a key with none is pulled unguarded and the verdict SAYS SO rather
+than reporting itself safe.
+
+**It compares ids, not counts.** "Fewer records" misses the case that matters most: two devices
+each add a project offline, then one signs in. Three and three — a length check writes, and one
+project is gone. That case is the assertion the design turns on.
+
+**It refuses rather than merging.** Merging means deciding which copy of a record present in
+BOTH wins, and nothing here can answer that yet — item 5 below. Refusing keeps both copies, and
+the next ordinary save pushes local up under `merge:true`, which set-unions the maps.
+
+**The two directions are not symmetric**, which the first version got wrong. An unreadable LOCAL
+copy blocks nothing — the store's own `read()` would reject it anyway. An unreadable REMOTE
+written over readable local records destroys them twice: the bytes replace real data, then
+`read()` rejects the shape and falls back to empty. That is refused whenever there is anything
+to lose.
+
+**The user is told before the reload.** A refusal nobody sees is the same silence the guard was
+added to end.
+
+`tests/sync-pull.test.js`, 58 assertions, 10 mutations all caught. `sync.js` also gained
+`module.exports`, which every other module in the repo has and it did not — which is why the
+pull path had never had a unit test of any kind. The container names are checked against the
+modules that own the data, by creating a record through each store's own writer: a name invented
+in sync.js and never checked would make `idsIn()` return null forever and the guard would be
+decoration.
 
 ---
 

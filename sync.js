@@ -45,7 +45,6 @@ var SyncEngine = (function() {
         contacts:          { lsKey: 'protonContacts' },
         crmEnrichment:     { lsKey: 'protonCrmEnrichment' },
         crmDocuments:      { lsKey: 'protonCrmDocuments' },
-
         /* The execution workspace. Registered here at the same time the store is created
            rather than afterwards: an unregistered store is a single-browser store, and this one
            holds budget commitments and payment applications. */
@@ -199,6 +198,120 @@ var SyncEngine = (function() {
     }
 
     // Pull all data from Firestore on sign-in
+    /* ===== A PULL MUST NOT LOSE RECORDS THIS DEVICE ALREADY HAS =====
+     *
+     * pullAll() used to write every remote document straight into localStorage with no
+     * comparison of any kind -- no version, no timestamp, no record count. On sign-in that is a
+     * silent overwrite: a device holding twelve projects, signing into an account whose cloud
+     * copy has three, ends up with three and reloads the page to show you so. Firestore
+     * persistence is never enabled (firebase-config.js does not call enablePersistence), so
+     * anything written while offline lives only in memory and is exactly what a pull destroys.
+     *
+     * THE GUARD IS A SET COMPARISON, NOT A COUNT. "Fewer records" would miss the case that
+     * matters most: a remote copy with the same number of records but a DIFFERENT one missing --
+     * two devices each adding a project offline, then one signing in. Comparing ids catches
+     * that; comparing lengths does not.
+     *
+     * IT REFUSES RATHER THAN MERGING, deliberately. Merging means deciding which copy of a
+     * record present in BOTH wins, and nothing in this repo can answer that yet: sync.js:79
+     * writes updatedAt on every save and nothing reads it. That tiebreak is separately filed.
+     * Refusing keeps both copies intact -- local stays, remote stays -- and the next ordinary
+     * save pushes local up under merge:true, which set-unions the maps. Losing nothing and
+     * saying so beats resolving it wrongly and silently.
+     *
+     * A KEY WITH NO DECLARED CONTAINER IS PULLED UNGUARDED, AND SAID SO. Guessing at a shape
+     * would produce a guard that quietly passes on stores it cannot actually read, which is the
+     * decorative-guard failure this codebase keeps finding. The verdict names them instead. */
+    var RECORD_CONTAINER = {
+        projects:          'byProject',      // map keyed by id
+        sites:             'sites',          // array of records
+        crmLog:            'entries',
+        crmFollowups:      'items',
+        contacts:          'contacts',
+        crmDocuments:      'items',
+        crmEnrichment:     'byProspect',     // map keyed by prospect id
+        fleet:             'miners',
+        prospectSearches:  'items'
+    };
+
+    /* Ids of the records in a parsed store, or NULL when the shape is not one this can read.
+       Null is not an empty set: an empty set would say "this store has nothing to lose", which
+       is the reassuring answer and would clear every pull. */
+    function idsIn(parsed, container) {
+        if (!container || !parsed || typeof parsed !== 'object') return null;
+        var box = parsed[container];
+        if (!box || typeof box !== 'object') return null;
+        var out = [], i;
+        if (Array.isArray(box)) {
+            for (i = 0; i < box.length; i++) {
+                if (!box[i] || typeof box[i] !== 'object' ||
+                    box[i].id === undefined || box[i].id === null) return null;
+                out.push(String(box[i].id));
+            }
+            return out;
+        }
+        for (var k in box) if (Object.prototype.hasOwnProperty.call(box, k)) out.push(String(k));
+        return out;
+    }
+
+    /* The whole decision, as a pure function of the two copies, so it can be tested without
+       firebase, without a signed-in user and without a network. */
+    function pullVerdict(key, localRaw, remoteData) {
+        var container = RECORD_CONTAINER[key];
+        var v = { key: key, write: true, guarded: false, missing: [],
+                  localCount: null, remoteCount: null, reason: null };
+        if (!container) { v.reason = 'no record container declared for this store'; return v; }
+        if (localRaw === null || localRaw === undefined || localRaw === '') {
+            v.guarded = true;
+            v.reason = 'nothing stored on this device yet, so the pull cannot lose anything';
+            return v;
+        }
+        var localParsed;
+        try { localParsed = JSON.parse(localRaw); } catch (e) { localParsed = null; }
+        var localIds = idsIn(localParsed, container);
+        var remoteIds = idsIn(remoteData, container);
+        if (localIds === null) {
+            /* Nothing readable here to lose. A store this cannot parse is one the module's own
+               read() will reject and replace anyway, so the remote copy can only be an
+               improvement. */
+            v.reason = 'the local copy is not in a shape this can compare';
+            return v;
+        }
+        if (remoteIds === null) {
+            /* THE OTHER DIRECTION IS NOT SYMMETRIC, and treating it as such was a bug in the
+               first version of this function. An unreadable REMOTE written over readable local
+               records destroys them twice over: the bytes replace real data, and then the
+               store's own read() rejects the shape and falls back to empty. Refused whenever
+               there is actually something here to lose. */
+            v.localCount = localIds.length;
+            if (localIds.length) {
+                v.guarded = true;
+                v.write = false;
+                v.reason = 'the cloud copy is not in a shape this can read, and this device has ' +
+                           localIds.length + ' record' + (localIds.length === 1 ? '' : 's') +
+                           ' that overwriting it would destroy';
+                return v;
+            }
+            v.reason = 'the cloud copy is not in a shape this can compare, and this device has ' +
+                       'no records to lose';
+            return v;
+        }
+        v.guarded = true;
+        v.localCount = localIds.length;
+        v.remoteCount = remoteIds.length;
+        var have = {};
+        for (var i = 0; i < remoteIds.length; i++) have[remoteIds[i]] = true;
+        for (var j = 0; j < localIds.length; j++) {
+            if (!have[localIds[j]]) v.missing.push(localIds[j]);
+        }
+        if (v.missing.length) {
+            v.write = false;
+            v.reason = 'the cloud copy is missing ' + v.missing.length + ' record' +
+                       (v.missing.length === 1 ? '' : 's') + ' this device already has';
+        }
+        return v;
+    }
+
     function pullAll(callback) {
         if (!ProtonAuth.isSignedIn()) return;
         var db = getDb();
@@ -209,13 +322,20 @@ var SyncEngine = (function() {
         var ref = db.collection('users').doc(user.uid).collection('data');
         ref.get().then(function(snapshot) {
             _syncing = true;
-            var pulled = 0;
+            var pulled = 0, held = [], unguarded = [];
 
             snapshot.forEach(function(doc) {
                 var key = doc.id;
                 if (SYNC_KEYS[key] && doc.data() && doc.data().data) {
                     var lsKey = SYNC_KEYS[key].lsKey;
                     var remoteData = doc.data().data;
+
+                    /* currency is a bare string, not a record store, and has no container --
+                       pullVerdict returns write:true unguarded for it, which is correct. */
+                    var v = pullVerdict(key, localStorage.getItem(lsKey), remoteData);
+                    v.lsKey = lsKey;
+                    if (!v.write) { held.push(v); return; }
+                    if (!v.guarded) unguarded.push(key);
 
                     if (key === 'currency') {
                         localStorage.setItem(lsKey, remoteData);
@@ -228,10 +348,15 @@ var SyncEngine = (function() {
 
             setTimeout(function() { _syncing = false; }, 100);
 
-            if (typeof callback === 'function') callback(pulled);
+            if (held.length) {
+                console.warn('[Sync] Held back ' + held.length + ' store(s) whose cloud copy ' +
+                             'is missing records this device has:',
+                             held.map(function (h) { return h.key + ' (' + h.missing.length + ')'; }).join(', '));
+            }
+            if (typeof callback === 'function') callback(pulled, held, unguarded);
         }).catch(function(err) {
             console.warn('[Sync] Pull all failed:', err.message);
-            if (typeof callback === 'function') callback(0);
+            if (typeof callback === 'function') callback(0, [], []);
         });
     }
 
@@ -262,7 +387,16 @@ var SyncEngine = (function() {
         pullAll: pullAll,
         pushAll: pushAll,
         SYNC_KEYS: SYNC_KEYS,
+        RECORD_CONTAINER: RECORD_CONTAINER,
+        // Exported so the pull guard can be tested as a pure function: no firebase, no signed-in
+        // user, no network. The rest of pullAll is transport around this decision.
+        pullVerdict: pullVerdict,
+        idsIn: idsIn,
         isSyncing: function() { return _syncing; }
     };
 
 })();
+
+/* Every other module in this repo ends with this and sync.js did not, which is why the pull
+   path had never had a unit test of any kind. */
+if (typeof module !== 'undefined' && module.exports) module.exports = SyncEngine;
