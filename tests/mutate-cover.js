@@ -1,6 +1,6 @@
 /* Proves tests/calc-cover.test.js can fail.
  *
- * A suite of 61 assertions that passes is worth nothing until something has watched it go
+ * A suite of 52 assertions that passes is worth nothing until something has watched it go
  * red for the right reason. Each mutation below is a plausible way to get the sell-to-cover
  * logic wrong -- most of them produce a projection that still looks entirely reasonable on
  * screen, which is exactly why they need a guard rather than a reading.
@@ -18,12 +18,12 @@ var ENGINE = path.join(ROOT, 'calc-engine.js');
 var TEST = path.join(__dirname, 'calc-cover.test.js');
 
 var MUTATIONS = [
-    ['the HODL ratio goes back to splitting GROSS production instead of the remainder',
-     'btcHeld = btcAfterCosts * p.hodlPct;', 'btcHeld = periodBTCMined * p.hodlPct;'],
-
-    ['the bill is taken off the top but never actually sold for',
+    ['the sale comes from the HODL slider alone again, so HODL 100 sells nothing',
      'btcSold = btcToCover + btcAfterCosts * (1 - p.hodlPct);',
-     'btcSold = btcAfterCosts * (1 - p.hodlPct);'],
+     'btcSold = periodBTCMined * (1 - p.hodlPct);'],
+
+    ['the HODL ratio splits GROSS production instead of what is left after the bill',
+     'btcHeld = btcAfterCosts * p.hodlPct;', 'btcHeld = periodBTCMined * p.hodlPct;'],
 
     ['coins go to the bill but the remainder is not debited, creating BTC out of nothing',
      'var btcAfterCosts = periodBTCMined - btcToCover;', 'var btcAfterCosts = periodBTCMined;'],
@@ -31,23 +31,36 @@ var MUTATIONS = [
     ['the cover is no longer capped at production, so an uncoverable bill invents coins',
      'var btcToCover = Math.min(periodBTCMined,', 'var btcToCover = Math.min(Infinity,'],
 
-    ['an absent coverElec key starts meaning ON, silently rewriting saved scenarios',
-     'coverElec: !!s.coverElec,', 'coverElec: s.coverElec !== false,'],
-
     ['the tax bill is left uncovered, so it comes from outside capital again',
      '(periodElecCost + taxOnMiningIncome) / btcPrice);', '(periodElecCost) / btcPrice);'],
 
-    ['the cover is priced at the opening price, not the price of the month it happened',
+    ['the cover is priced at the opening price, not the month it happened in',
      '(periodElecCost + taxOnMiningIncome) / btcPrice);',
      '(periodElecCost + taxOnMiningIncome) / p.btcPrice0);'],
 
-    ['savingsElec no longer wins, so power is paid twice',
-     'if (p.coverElec && !p.savingsElec && btcPrice > 0) {', 'if (p.coverElec && btcPrice > 0) {'],
+    ['savingsElec stops being the exception, so the bill is settled twice over',
+     'if (!p.savingsElec && btcPrice > 0) {', 'if (btcPrice > 0) {'],
 
-    ['the cash low-water mark is never updated, so peakCashDeficit only ever sees day one',
+    ['the cash low-water mark is never updated, so peakCashDeficit only sees day one',
      'if (cashPosition < minCashPosition) minCashPosition = cashPosition;', ''],
 
-    ['peakCashDeficit forgets the reinvest pool, double-counting cash the pool still holds',
+    ['the fleet you still own goes back to being worth nothing, the 48-to-49 cliff',
+     'var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld + residualFleetValue;',
+     'var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld;'],
+
+    ['the fleet depreciates to zero instead of to its salvage value',
+     'v += fBatch.count * p.capex * (p.salvagePct + (1 - p.salvagePct) * lifeLeft);',
+     'v += fBatch.count * p.capex * lifeLeft;'],
+
+    ['depreciation runs backwards, so a new fleet is worth salvage and an old one capex',
+     '(lifespanPeriods - (periodIdx - fBatch.period)) / lifespanPeriods;',
+     '(periodIdx - fBatch.period) / lifespanPeriods;'],
+
+    ['the per-period fleet value is read at day one, so the table stops ageing the kit',
+     'var totalEconomicValue = liquidValue + fleetValueAt(i);',
+     'var totalEconomicValue = liquidValue + fleetValueAt(0);'],
+
+    ['peakCashDeficit forgets the reinvest pool, double-counting cash the pool holds',
      'var cashPosition = cumulCashFlow + reinvestPool;', 'var cashPosition = cumulCashFlow;'],
 ];
 

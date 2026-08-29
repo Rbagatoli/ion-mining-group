@@ -482,6 +482,7 @@ ${JSON.stringify(crumbs, null, 2)}
 </script>
 </head>
 <body>
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
 
 ${nav('', CTA['index.html'])}
 
@@ -523,6 +524,7 @@ ${related.map((r) => '        <a class="bp-rel-item" href="' + r.meta.href + '">
 ${footerFor()}
 
 <script src="./site.js${stamp}"></script>
+<script src="./hero-anim.js${stamp}"></script>
 <script src="./cart.js${stamp}"></script>
 </body>
 </html>

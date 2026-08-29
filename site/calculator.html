@@ -13,7 +13,12 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=d345c5cc">
+<<<<<<< Updated upstream
+<link rel="stylesheet" href="./styles.css?v=1e7c35e9">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+=======
+<link rel="stylesheet" href="./styles.css?v=1e7c35e9">
+>>>>>>> Stashed changes
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -24,6 +29,7 @@
 <!-- ===== /SHARE CARD ===== -->
 </head>
 <body>
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
 
 <nav class="nav">
   <div class="nav-inner">
@@ -98,7 +104,6 @@
 
 <!-- ===== HEADER ===== -->
 <section class="hero-zone">
-  <canvas class="anim-field anim-field--head" data-w="1440" data-h="360" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="calc-head">
       <p class="eyebrow">Mining calculator</p>
@@ -187,6 +192,11 @@
               <div><dt>Spent on power</dt><dd id="outPowerSpend">—</dd></div>
               <div><dt>BTC still held</dt><dd id="outHeldBtc">—</dd></div>
               <div><dt>Value of held BTC</dt><dd id="outHeldValue">—</dd></div>
+              <!-- The machines you still own. Booked at zero until now, which wrote off
+                   whatever was left of a fleet the horizon stopped partway through and made
+                   the buy-and-hold comparison meaningless: that side is a NET gain, because
+                   its money is still an asset it holds. -->
+              <div><dt>Fleet value at end</dt><dd id="outFleetValue">—</dd></div>
               <div><dt>BTC price at end</dt><dd id="outFinalPrice">—</dd></div>
               <div class="is-total"><dt>Total profit or loss</dt><dd id="outTotalPl">—</dd></div>
             </dl>
@@ -286,7 +296,13 @@
             <div class="field">
               <label for="diffChange">Monthly Difficulty Change</label>
               <div class="calc-unit">
-                <input id="diffChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
+                <input id="diffChange" type="number" step="0.01" value="0.81" data-default="0.81"><span class="cu-post">%</span></div>
+              <p class="calc-explain">Hashrate arrives until revenue per terahash meets cost per
+                terahash, so in equilibrium difficulty tracks <strong>price &times; block
+                subsidy</strong> &mdash; not price alone. Over this horizon price rises 3.2&times;
+                and the 2028 halving cuts the subsidy in half, so difficulty can rise 1.61&times;.
+                Setting it equal to price growth assumes miners keep adding machines while the
+                revenue per machine halves.</p>
             </div>
             <p class="calc-hint calc-hint--warn" id="marketNote">BTC price and network difficulty are fetched when this page loads. If that does not land, the figures shown are from <strong>20 August 2026</strong> &mdash; BTC $72,684, difficulty 127.48&nbsp;T &mdash; and are <strong>not live data</strong>, so set them yourself.</p>
             <div class="field">
@@ -427,6 +443,14 @@
                 <input id="elecCost" type="number" min="0" step="0.001" value="0.04" data-default="0.04"><span class="cu-post">/kWh</span></div>
             </div>
             <div class="field">
+              <label for="txFee">Transaction Fees</label>
+              <div class="calc-unit">
+                <input id="txFee" type="number" min="0" max="100" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
+              <p class="calc-explain">Paid on top of the block subsidy, as a share of it. Left out
+                entirely until now, which understated every projection &mdash; and understated it
+                most after a halving, when fees are a larger share of what a miner earns.</p>
+            </div>
+            <div class="field">
               <label for="poolFee">Pool Fee</label>
               <div class="calc-unit">
                 <input id="poolFee" type="number" min="0" max="100" step="0.1" value="2.5" data-default="2.5"><span class="cu-post">%</span></div>
@@ -497,20 +521,12 @@
               </div>
             </div>
 
-            <label class="calc-switch">
-              <input id="coverElec" type="checkbox" data-default="false">
-              <span class="cs-track" aria-hidden="true"></span>
-              <span class="cs-body">
-                <span class="cs-title">Sell to Cover Power</span>
-                <span class="cs-desc">The power bill &mdash; and mining income tax, if the tax model
-                  is on &mdash; comes off the top of each period&rsquo;s production. The HODL ratio
-                  then applies to what is left, so 100% means keep everything after the power is paid</span>
-              </span>
-            </label>
-            <p class="calc-hint">The site pays its own running costs, so nothing but the up-front
-              investment comes from outside. With this off and HODL at 100%, no BTC is ever sold
-              and every power bill is funded from your own capital &mdash; still charged against
-              the return, but it is a bill you have to be able to pay.</p>
+            <p class="calc-hint">Off, the site settles its own power bill out of what
+              it mines: the minimum is sold each period and the HODL ratio applies to
+              what is left, so nothing but the up-front investment comes from outside.
+              On, no BTC is sold to meet the bill and the cost leaves the projection
+              entirely &mdash; the return then excludes
+              <span id="outPowerSpendInline">the power spend</span> completely.</p>
             <label class="calc-switch">
               <input id="savingsElec" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
@@ -688,11 +704,20 @@
   </div>
 </footer>
 
-<script src="./site.js?v=d345c5cc"></script>
-<script src="./hero-anim.js?v=d345c5cc"></script>
-<script src="./cart.js?v=d345c5cc"></script>
-<script src="./miner-db.js?v=d345c5cc"></script>
-<script src="./calc-engine.js?v=d345c5cc"></script>
-<script src="./calculator.js?v=d345c5cc"></script>
+<<<<<<< Updated upstream
+<script src="./site.js?v=1e7c35e9"></script>
+<script src="./hero-anim.js?v=1e7c35e9"></script>
+<script src="./cart.js?v=1e7c35e9"></script>
+<script src="./miner-db.js?v=1e7c35e9"></script>
+<script src="./calc-engine.js?v=1e7c35e9"></script>
+<script src="./calculator.js?v=1e7c35e9"></script>
+=======
+<script src="./site.js?v=1e7c35e9"></script>
+<script src="./hero-anim.js?v=1e7c35e9"></script>
+<script src="./cart.js?v=1e7c35e9"></script>
+<script src="./miner-db.js?v=1e7c35e9"></script>
+<script src="./calc-engine.js?v=1e7c35e9"></script>
+<script src="./calculator.js?v=1e7c35e9"></script>
+>>>>>>> Stashed changes
 </body>
 </html>

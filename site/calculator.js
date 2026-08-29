@@ -29,10 +29,10 @@
         'energyBasis', 'energyValue', 'gasBtuPerCf', 'heatRate',
         'elecCost', 'btcPrice', 'priceChange', 'difficulty', 'diffChange',
         'periodLength', 'investPeriod',
-        'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
+        'txFee', 'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
-        'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'coverElec', 'taxAdjustment',
+        'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
         'preTaxCapital',
     ];
 
@@ -209,6 +209,7 @@
             capex: num(el.capex.value, 0),
             machineCount: machineCount,
             elecCost: num(el.elecCost.value, 0),
+            txFee: num(el.txFee.value, 0),
             poolFee: num(el.poolFee.value, 0),
             uptime: num(el.uptime.value, 100),
             hodlRatio: num(el.hodlRatio.value, 0),
@@ -223,7 +224,6 @@
             additionCapex: !!el.additionCapex.checked,
             reinvest: !!el.reinvest.checked,
             savingsElec: !!el.savingsElec.checked,
-            coverElec: !!el.coverElec.checked,
             taxAdjustment: !!el.taxAdjustment.checked,
             preTaxCapital: !!(el.preTaxCapital && el.preTaxCapital.checked),
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),
@@ -754,16 +754,20 @@
         setText('outInvestment', money(r.totalInitialInvestment));
         setText('outBtcMined', btc(r.cumulBtcMined) + ' BTC');
         setText('outBtcSold', btc(r.cumulBtcSold) + ' BTC');
-        /* The HODL ratio changes what it is a ratio OF when costs come off the top.
-           Saying "keep all BTC" while the engine is holding production net of the power
-           bill would leave the two disagreeing on screen. */
-        setText('hodlBasis', p.coverElec && !p.savingsElec
-            ? 'what is left after the power bill' : 'everything mined');
+        /* The HODL ratio changes what it is a ratio OF with the settlement path. By
+           default the costs come off the top and the slider splits the remainder; under
+           savingsElec nothing is sold for the bill and it splits gross production. Saying
+           "keep all BTC" while the engine holds production net of the power bill would
+           leave the label and the arithmetic disagreeing on screen. */
+        setText('hodlBasis', p.savingsElec
+            ? 'everything mined' : 'what is left after the power bill');
         setText('outPowerSpend', money(r.cumulElecCost));
         setText('outCashRequired', money(r.peakCashDeficit));
+        setText('outPowerSpendInline', money(r.cumulElecCost));
         setSigned('outTotalPl', money(r.totalPL), r.totalPL);
         setText('outHeldBtc', btc(r.cumulBtcHeld) + ' BTC');
         setText('outHeldValue', money(r.heldBtcValue));
+        setText('outFleetValue', money(r.residualFleetValue));
         setText('outFinalPrice', money(r.finalBtcPrice));
 
         // Benchmark. Not a Proton claim — just the obvious alternative use of the
@@ -815,10 +819,7 @@
             if (r.externalOpexFunded > 0) {
                 msgs.push('This plan needs ' + money(r.peakCashDeficit) + ' of cash, not the ' +
                     money(r.totalInitialInvestment) + ' shown as up-front investment. ' +
-                    ((p.coverElec || p.savingsElec)
-                        ? 'Replacing worn machines is capital, so it is not settled out of production.'
-                        : 'No BTC is being sold, so running costs come out of your own capital. ' +
-                          'Turn on "Sell to Cover Power" to settle them from mined BTC instead.'));
+                    'Replacing worn machines is capital, so it is not settled out of production.');
             }
             /* savingsElec keeps the power bill off the P/L entirely, which is the one
                setting here that can make a return look better than the business is. It
@@ -1201,19 +1202,6 @@
             var v = num(el.hodlRatio.value, 0);
             el.hodlSlider.value = String(Math.min(100, Math.max(0, v)));
         });
-
-        /* The two settlement switches contradict each other: one pays the power bill
-           out of mined BTC, the other keeps it off the books entirely. The engine
-           already ignores coverElec when savingsElec is on, but leaving both checked
-           would show a switch that visibly does nothing — so checking either clears
-           the other rather than letting the UI lie about which one is in force. */
-        function exclusive(a, b) {
-            el[a].addEventListener('change', function () {
-                if (el[a].checked && el[b].checked) { el[b].checked = false; render(); }
-            });
-        }
-        exclusive('coverElec', 'savingsElec');
-        exclusive('savingsElec', 'coverElec');
 
         /* Tax rates are meaningless with the toggle off, so they are removed
            rather than greyed — the same reveal the desk tool does. */

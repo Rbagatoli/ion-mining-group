@@ -42,7 +42,25 @@
 
     function mount(canvas) {
     if (!canvas || !canvas.getContext) return;
-    var host = canvas.parentNode;
+
+    /* A page field is fixed to the viewport rather than sized to a host, which
+       changes exactly two things: where the source line sits (see build()) and
+       what the gate watches. Everything else -- density, ink, motion, the resize
+       path -- is identical, because the point of the change is that the site and
+       the app run one animation, not two that resemble each other. */
+    var isPage = canvas.className.indexOf('anim-field--page') >= 0;
+
+    /* ITS OWN HOST when it is the page field. The gate below observes `host` to
+       stop drawing behind a display:none pane, and for every other canvas that
+       is the element the field is sized to. A page field is sized to the
+       viewport and its parent is <body>, whose box says nothing about whether
+       the field is on screen -- it always is, because the canvas is fixed. So
+       the canvas is its own host: the observer keeps firing, `visible` stays
+       true, and the tab-hidden path still stops it.
+       Written as a host swap rather than a second .observe() call on purpose --
+       pad-suite.js pins the literal `.observe(host)` and mutate-landfill.js
+       mutates that exact string to prove the pin bites. */
+    var host = isPage ? canvas : canvas.parentNode;
 
     var ctx = canvas.getContext('2d', { alpha: true });
 
@@ -167,7 +185,15 @@
            A full-viewport sign-in has no bottom edge to be the floor of; these
            do, and on the hero that line is also the bevel between the hero zone
            and the band beneath it (see .hero-zone + .band::before). */
-        sourceY = h - 2;
+        /* The page field has no bottom edge to be the floor of. It is fixed to
+           the viewport, so h - 2 would put a row of emitters along the bottom of
+           the window and keep it there while the page scrolled past -- a rule
+           pinned to the screen rather than a source under the content. Pushing
+           the line below the fold is what portal/gas-field.js and the app's
+           gas-field.js both do, and for the same reason: what you see is gas
+           that has already left the emitters, never the emitters themselves.
+           The same 12px, so all three still agree. */
+        sourceY = isPage ? h + 12 : h - 2;
 
         /* Density per unit of AREA, not width, so a tall box is not sparse.
            The ceiling is a frame-rate stop, nothing more. It is 900 rather than

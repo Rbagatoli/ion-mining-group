@@ -316,6 +316,14 @@
                 </div>
             </div>
             <div class="input-group">
+                <label>Transaction Fees</label>
+                <div class="input-wrapper" id="wrap-txFee">
+                    <input type="number" id="txFee" value="2" min="0" max="100" step="0.1">
+                    <span class="suffix">%</span>
+                </div>
+                <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Paid on top of the block subsidy, as a share of it &mdash; and a larger share of a miner's income after each halving</div>
+            </div>
+            <div class="input-group">
                 <label>Pool Fee</label>
                 <div class="input-wrapper" id="wrap-poolFee">
                     <input type="number" id="poolFee" value="2" min="0" max="100" step="0.1">
@@ -395,16 +403,6 @@
                         <span class="suffix">%</span>
                     </div>
                     <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
-                </div>
-            </div>
-            <div class="reinvest-row" id="coverElecRow" style="margin-top:8px">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="coverElecToggle">
-                    <span class="slider"></span>
-                </label>
-                <div class="reinvest-info">
-                    <strong>Sell to Cover Power</strong><br>
-                    <span style="font-size:11px">Sell the minimum BTC each period to pay that period's power bill — and mining income tax, if on — and hold the rest. The site pays its own running costs</span>
                 </div>
             </div>
             <div class="reinvest-row" id="savingsElecRow" style="margin-top:8px">

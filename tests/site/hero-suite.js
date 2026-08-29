@@ -379,6 +379,74 @@ ok(/\.reveal\s*\{[^}]*opacity:\s*0/.test(css),
 ok(/prefers-reduced-motion[\s\S]{0,400}\.reveal[^}]*opacity:\s*1/.test(css),
    '  reduced motion still shows everything (and still masks this class of bug in testing)');
 
+
+/* ---------- 13. The field is the whole backdrop, not the top of it ----------
+
+   The site used to run the gas field inside a page header and nowhere else, so
+   twelve of the eighteen pages had no field at all and the six that did showed
+   it above the fold and then stopped. The operator app has never worked that
+   way -- shared.css pins #gasField to the viewport and every panel sits over it.
+   These pin the ported arrangement, because every part of it is invisible when
+   it breaks: a page that quietly loses its canvas, its driver, or its stacking
+   just looks like a page with a black background. */
+const PAGES = fs.readdirSync(D).filter(f => f.endsWith('.html'));
+ok(PAGES.length >= 18, 'every page in site/ is being checked', PAGES.length + ' pages');
+
+const noField = PAGES.filter(f =>
+    (fs.readFileSync(D + f, 'utf8').match(/anim-field anim-field--page/g) || []).length !== 1);
+ok(noField.length === 0,
+   '  every page carries exactly one page-wide field',
+   noField.join(', '));
+
+/* The canvas is fixed, so where it sits in the document does not affect where it
+   paints -- but it must not be inside a section, because .hero-zone and .dg-wrap
+   are position:relative and a future transform or filter on an ancestor would
+   turn it into that ancestor's containing block and shrink the field to it. */
+const notBodyChild = PAGES.filter(f => {
+    const src = fs.readFileSync(D + f, 'utf8');
+    return src.indexOf('<body>\n<canvas class="anim-field anim-field--page') < 0 &&
+           src.indexOf('<body>\r\n<canvas class="anim-field anim-field--page') < 0;
+});
+ok(notBodyChild.length === 0,
+   '  and it is the first child of <body>, out of every section\'s reach',
+   notBodyChild.join(', '));
+
+const noDriver = PAGES.filter(f => fs.readFileSync(D + f, 'utf8').indexOf('hero-anim.js') < 0);
+ok(noDriver.length === 0, '  and loads the driver that paints it', noDriver.join(', '));
+
+const stillHead = PAGES.filter(f => fs.readFileSync(D + f, 'utf8').indexOf('anim-field--head') >= 0);
+ok(stillHead.length === 0,
+   '  and no page still has a header-only field doubling up over the page one',
+   stillHead.join(', '));
+
+/* Fixed, or it scrolls away with the header it replaced. Negative z-index, or it
+   paints over the copy: this site has no `body > * { z-index: 1 }` to lift
+   content the way shared.css does, so the field has to go under instead. */
+const pageRule = rule('.anim-field--page');
+ok(/position:\s*fixed/.test(pageRule),
+   '  the page field is fixed to the viewport, not to a section');
+ok(/z-index:\s*-1/.test(pageRule),
+   '  and sits behind the copy but in front of the body light field at -2');
+
+/* One animation, three files -- the same rule portal-frontend.test.js applies to
+   the ink and motion constants. A viewport-sized field puts its emitters below
+   the fold; only a field with a real bottom edge burns on it. */
+const heroCode = fs.readFileSync(D + 'hero-anim.js', 'utf8');
+const appCode = fs.readFileSync(REPO_ROOT + 'gas-field.js', 'utf8');
+ok(/sourceY = isPage \? h \+ 12 : h - 2;/.test(heroCode),
+   '  a page field burns below the fold, a hosted one on its own bottom edge');
+ok(/sourceY = h \+ 12;/.test(appCode),
+   '  and the app still uses the same 12px, so the two have not drifted');
+
+/* The one place the page field must NOT reach. The drawings are translucent so a
+   container's racks read through its own walls; section 11 above is the occluder
+   that keeps the dg canvas's own particles out of that volume. A fixed field
+   behind a see-through panel would put them straight back, and the occluder
+   cannot subtract from a field it does not own. */
+const dgRule = rule('.dg-wrap');
+ok(/background-color:\s*var\(--black\)/.test(dgRule),
+   '  .dg-wrap is opaque, so the page field cannot rise through a machine');
+
 console.log('');
 console.log(fail ? fail + ' FAILED' : 'ALL OK');
 process.exitCode = fail ? 1 : 0;

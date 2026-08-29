@@ -32,7 +32,7 @@ function getBlockReward(date) {
 // ===== DOM REFS =====
 const inputIds = [
     'btcPrice', 'priceChange', 'difficulty', 'diffChange', 'investPeriod',
-    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'poolFee', 'uptime', 'hodlRatio'
+    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'txFee', 'poolFee', 'uptime', 'hodlRatio'
 ];
 const el = {};
 inputIds.forEach(id => el[id] = document.getElementById(id));
@@ -44,8 +44,6 @@ const additionCapexToggle = document.getElementById('additionCapexToggle');
 const additionCapexRow = document.getElementById('additionCapexRow');
 const savingsElecToggle = document.getElementById('savingsElecToggle');
 const savingsElecRow = document.getElementById('savingsElecRow');
-const coverElecToggle = document.getElementById('coverElecToggle');
-const coverElecRow = document.getElementById('coverElecRow');
 const autoReplaceToggle = document.getElementById('autoReplaceToggle');
 const autoReplaceRow = document.getElementById('autoReplaceRow');
 const taxAdjustmentToggle = document.getElementById('taxAdjustmentToggle');
@@ -146,7 +144,6 @@ function saveSettings() {
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
     settings.savingsElec = savingsElecToggle.checked;
-    settings.coverElec = coverElecToggle.checked;
     settings.autoReplace = autoReplaceToggle.checked;
     settings.taxAdjustment = taxAdjustmentToggle.checked;
     settings.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -177,12 +174,6 @@ function loadSettings() {
         if (s.savingsElec) {
             savingsElecToggle.checked = true;
             savingsElecRow.classList.add('active');
-        }
-        // Absent means off, matching the unchecked box: a settings blob saved before this
-        // switch existed must reopen as the projection its author saw.
-        if (s.coverElec) {
-            coverElecToggle.checked = true;
-            coverElecRow.classList.add('active');
         }
         // Defaults to on (matches the checked attribute in the markup)
         if (s.autoReplace === false) {
@@ -437,7 +428,6 @@ function currentSettings() {
     s.reinvest = reinvestToggle.checked;
     s.additionCapex = additionCapexToggle.checked;
     s.savingsElec = savingsElecToggle.checked;
-    s.coverElec = coverElecToggle.checked;
     s.autoReplace = autoReplaceToggle.checked;
     s.taxAdjustment = taxAdjustmentToggle.checked;
     s.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -461,8 +451,8 @@ function recalculate() {
        note beside the slider has to follow the switch rather than state a fixed meaning. */
     const hodlBasis = document.getElementById('hodlBasis');
     if (hodlBasis) {
-        hodlBasis.textContent = (r.params.coverElec && !r.params.savingsElec)
-            ? 'what is left after the power bill' : 'everything mined';
+        hodlBasis.textContent = r.params.savingsElec
+            ? 'everything mined' : 'what is left after the power bill';
     }
     const reinvestHint = document.getElementById('reinvestHint');
     if (r.params.reinvestMode && r.params.hodlPct >= 1) reinvestHint.textContent = 'HODL is 100% \u2014 no fiat to reinvest';
@@ -589,24 +579,8 @@ reinvestToggle.addEventListener('change', () => {
     reinvestRow.classList.toggle('active', reinvestToggle.checked);
     recalculate();
 });
-/* The two settlement switches contradict each other -- one pays the power bill out of
-   mined BTC, the other keeps it off the books entirely -- so checking either clears the
-   other. The engine already ignores coverElec when savingsElec is on; without this the
-   desk would be showing a toggle that visibly does nothing. */
 savingsElecToggle.addEventListener('change', () => {
-    if (savingsElecToggle.checked && coverElecToggle.checked) {
-        coverElecToggle.checked = false;
-        coverElecRow.classList.remove('active');
-    }
     savingsElecRow.classList.toggle('active', savingsElecToggle.checked);
-    recalculate();
-});
-coverElecToggle.addEventListener('change', () => {
-    if (coverElecToggle.checked && savingsElecToggle.checked) {
-        savingsElecToggle.checked = false;
-        savingsElecRow.classList.remove('active');
-    }
-    coverElecRow.classList.toggle('active', coverElecToggle.checked);
     recalculate();
 });
 autoReplaceToggle.addEventListener('change', () => {
@@ -1059,7 +1033,6 @@ function loadScenario(id) {
     reinvestToggle.checked = !!v.reinvest;
     additionCapexToggle.checked = v.additionCapex !== false;
     savingsElecToggle.checked = !!v.savingsElec;
-    coverElecToggle.checked = !!v.coverElec;
     autoReplaceToggle.checked = v.autoReplace !== false;
     taxAdjustmentToggle.checked = !!v.taxAdjustment;
     var ptc = document.getElementById('preTaxCapital');
@@ -1071,7 +1044,6 @@ function loadScenario(id) {
     reinvestRow.classList.toggle('active', reinvestToggle.checked);
     additionCapexRow.classList.toggle('active', additionCapexToggle.checked);
     savingsElecRow.classList.toggle('active', savingsElecToggle.checked);
-    coverElecRow.classList.toggle('active', coverElecToggle.checked);
     autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
     taxAdjustmentRow.classList.toggle('active', taxAdjustmentToggle.checked);
     taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';
