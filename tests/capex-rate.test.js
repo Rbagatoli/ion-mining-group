@@ -33,7 +33,9 @@ global.SiteSources = require(path.join(ROOT, 'site-sources.js'));
 global.SiteCapex = require(path.join(ROOT, 'site-capex.js'));
 var SS = global.SiteSources;
 var SC = global.SiteCapex;
-var SI = require(path.join(ROOT, 'site-infrastructure.js'));
+/* On the global too: site-capex.js's collection component looks SiteInfrastructure up by name to
+   ask whether a field is already in the ground, and a local binding is invisible to that. */
+var SI = global.SiteInfrastructure = require(path.join(ROOT, 'site-infrastructure.js'));
 
 console.log('\n=== one rate, one home ===');
 eq('the card carries the collection rate', SC.rates().collectionPerKw, 550);
@@ -48,14 +50,21 @@ eq('and moves the capital-avoided model with it', SI.rates().collection, 700);
 SC.reset();
 eq('reset puts it back', SI.rates().collection, 550);
 
-/* What did NOT change, pinned so the rate move is not mistaken for closing it: the stack still
-   prices no collection component, so a greenfield landfill is still never charged for the field
-   it would have to drill. */
+/* THE GAP IS CLOSED, and the assertion that pinned it open never worked. It passed
+   `usable_kw: 2000` to a function that reads powerPotentialKw, so stack() bailed at the capacity
+   check, returned zero components, and every() over an empty array said yes. It would have kept
+   saying yes after the component was added. The fixture below uses a field stack() reads, and
+   the first assertion proves it priced something before the rest are trusted. */
 var greenfield = SC.stack(
-    { usable_kw: 2000, development_stage: 'raw_resource', energy_type: 'landfill_gas' }, {});
-ok('the stack still has no collection component at any stage',
-   greenfield.components.every(function (c) { return c.id !== 'collection'; }),
+    { powerPotentialKw: 2000, development_stage: 'raw_resource', energyType: 'landfill_gas',
+      sourceDetail: { collectionSystem: 'No' } }, {});
+ok('the fixture prices a real stack', greenfield.components.length > 5,
+   greenfield.components.length + ' components');
+var gc = greenfield.components.filter(function (c) { return c.id === 'collection'; })[0];
+ok('the stack now prices a collection component', !!gc,
    greenfield.components.map(function (c) { return c.id; }).join(', '));
+ok('at the rate on the shared card', gc && gc.usd === SC.rates().collectionPerKw * 2000,
+   gc ? String(gc.usd) : 'absent');
 
 console.log('\n=== neither reader moved ===');
 var cands = [];

@@ -745,13 +745,13 @@
      which needs SiteCapex for its rate card; jurisdictions is read by the scorer too.
      Loaded BEFORE project-gates.js, which reads SiteOpportunity at gate time. -->
 <script src="./jurisdictions.js?v=384"></script>
-<script src="./site-capex.js?v=384"></script>
+<script src="./site-capex.js?v=393"></script>
 <script src="./site-infrastructure.js?v=384"></script>
 <script src="./site-opportunity.js?v=384"></script>
 <script src="./project-gates.js?v=384"></script>
 <!-- The budget ledger. After project-gates.js because it routes writes through ProjectData.mutate,
      and after site-capex.js because seedFromEstimate reads SiteCapex.stack(). -->
-<script src="./project-budget.js?v=385"></script>
+<script src="./project-budget.js?v=393"></script>
 <!-- Right-sizing. site-capacity.js first: project-sizing.js reads LFG_MW_PER_MMSCFD and the
      parasitic rates off it, and prospecting.js reads the same two to draw the live reference
      figure beside the capacity field. One definition of the conversion, on both sides. -->

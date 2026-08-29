@@ -52,13 +52,41 @@ check each project against `SiteData` and flag rather than repair.
 `site-infrastructure.js`), but no `collection` component in the stack at any stage. A greenfield
 landfill is therefore never charged for the wellfield it would have to drill.
 
-**Why it is deferred.** Closing it moves every all-in figure in the app, including the ranked
-table's All-in $/kW column and every capital-avoided comparison. That is a re-baselining, not a
-fix, and it wants its own change with its own before/after digest.
+**CLOSED, and the deferral's own reasoning was wrong.**
 
-**Where it is already recorded.** `site-capex.js:80` and an assertion in
-`tests/site-infrastructure.test.js` that holds the gap open so the rate move is not mistaken for
-having closed it.
+**The blast radius was assumed, not measured, and it was out by three orders of magnitude.**
+"Closing it moves every all-in figure in the app" — measured against the real catalogue, it moves
+**15 of 11,823**, or 0.1%, and the catalogue median is unchanged at $1,650/kW. The reason is the
+thing that makes the component correct: it asks `site-infrastructure.js` whether a field is
+already in the ground rather than charging every landfill. 11,767 candidates already have
+collection or are under a statutory mandate.
+
+**The digest.** On the 15 rows that moved: median $2,606 -> $3,156/kW, +21%, $3.45M of capital
+now charged that was not before. Zero rows moved down. Largest single: `lmop_180904-0`, 2,246 kW,
++$1,235,300.
+
+**The mandate is not charged, and that is the whole point.** 37 landfills sit under a statutory
+deadline where the OPERATOR must install collection whether or not you appear — $17.0M of
+somebody else's capital. Charging it would have priced away the single best reason to be early
+on those sites, which is the opening argument of `site-infrastructure.js`.
+
+**Three states refuse to price rather than guess.** A shut wellfield does not borrow
+`REFURB_RETAINED`, which was fitted to gas engines — pipe in the ground decays differently and
+giving it an engine's curve is the same category error the balance-of-plant floor exists to
+avoid. A site with no published status is unknown. And `absent` on a plant recorded as built is a
+contradiction — three real rows — reported as unknown naming both sources, because charging would
+bill a plant for a field it must already have and calling it avoided would trust a stage over a
+published field.
+
+**The assertion that pinned the gap open never worked.** It read
+`stack({ usable_kw: 2000, ... }).components.every(c => c.id !== 'collection')`, and `stack()`
+does not read `usable_kw` — it reads `powerPotentialKw`. The fixture failed the capacity check,
+returned zero components, and `[].every(...)` is vacuously true. It would have gone on passing
+the day the component was added, which is the one event it existed to catch. Both copies of it,
+in `tests/site-infrastructure.test.js` and `tests/capex-rate.test.js`, are now real assertions
+against a fixture that prices. Two test files also had to expose `SiteInfrastructure` on the
+global: they required it into a local binding, invisible to the `typeof` lookup the component
+uses.
 
 ---
 

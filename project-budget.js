@@ -56,7 +56,14 @@ var ProjectBudget = (function () {
                 'rate behind them is one real quote' },
         { id: 'miners',                label: 'Miners',                  fromCapex: true },
         { id: 'carrying_cost',         label: 'Carrying cost',           fromCapex: true },
-        { id: 'collection',            label: 'Gas collection',          fromCapex: false },
+        /* fromCapex flipped when the estimator learned to price a wellfield. The flag is
+           descriptive — nothing branches on it — but a category claiming the estimate has no
+           opinion about it, while seedFromEstimate is now seeding it, is a comment that lies to
+           the next reader. Note what seeding still cannot do: the project snapshot carries no
+           sourceDetail, so a seeded project has no published collection status and the component
+           lands as 'unknown' and is skipped by name. That is honest, and it is why the seed
+           reports what it would not price. */
+        { id: 'collection',            label: 'Gas collection',          fromCapex: true },
         { id: 'conditioning',          label: 'Gas conditioning',        fromCapex: false },
         { id: 'engineering',           label: 'Engineering',             fromCapex: false },
         { id: 'contingency',           label: 'Contingency',             fromCapex: false },

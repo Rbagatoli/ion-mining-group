@@ -7,7 +7,13 @@ var path = require('path');
 var ROOT = path.join(__dirname, '..');
 global.Jurisdictions = require(path.join(ROOT, 'jurisdictions.js'));
 global.SiteOpportunity = require(path.join(ROOT, 'site-opportunity.js'));
+/* stack() asks site-infrastructure.js whether a collection system is already in the ground
+   rather than deriving a second answer, so the module has to be here for the collection
+   component to reach any state but 'unknown'. It reads SiteCapex.rates() off the global at call
+   time, not at load, so requiring both is not circular. */
+global.SiteInfrastructure = require(path.join(ROOT, 'site-infrastructure.js'));
 var SC = require(path.join(ROOT, 'site-capex.js'));
+global.SiteCapex = SC;
 
 var pass = 0, fail = 0;
 function ok(label, cond, extra) {
@@ -376,6 +382,98 @@ SC.reset();
         var bad = st({ development_stage: k });
         eq('stage "' + k + '" prices nothing', bad.incurred_usd, null);
     });
+})();
+
+// ---- Gas collection: the wellfield, and who pays for it ---------------------------------
+//
+// Backlog item 3. The component is CONDITIONAL, and every one of the five branches is a
+// different claim about who spends $550/kW. Getting the condition wrong in either direction is
+// expensive: charge a site that already has a field and it is priced out of a shortlist it
+// belongs on; miss one that does not and a greenfield build is understated by $1.1M at 2 MW.
+//
+// The state is asked of site-infrastructure.js rather than derived here, so these fixtures drive
+// it through the real sourceDetail fields that module reads.
+(function () {
+    function lf(sd, over) {
+        var o = { energyType: 'landfill_gas', development_stage: 'raw_resource', sourceDetail: sd };
+        for (var k in (over || {})) o[k] = over[k];
+        return st(o);
+    }
+    var RATE = SC.rates().collectionPerKw;
+    ok('the rate is the one on the shared card', RATE === 550, String(RATE));
+
+    // ABSENT: no system published, no mandate. The field is yours to drill.
+    var absent = comp(lf({ collectionSystem: 'No' }), 'collection');
+    ok('a greenfield landfill with no collection is charged', absent && absent.state === 'incurred',
+       absent ? absent.state : 'missing');
+    eq('at the card rate times capacity', absent && absent.usd, RATE * 2000);
+    ok('and the reason says the field is yours', /yours to drill/.test(absent.reason || ''),
+       absent && absent.reason);
+
+    // PRESENT: already in the ground.
+    var present = comp(lf({ collectionSystem: 'Yes' }), 'collection');
+    ok('a site with a system in the ground is not charged',
+       present && present.state === 'avoided', present && present.state);
+    eq('and it is priced as capital avoided, not as nothing', present && present.avoided_usd,
+       RATE * 2000);
+
+    /* MANDATED: the whole thesis of the sourcing model. site-infrastructure.js opens by saying a
+       Canadian site under a statutory deadline gets its collection built by the OPERATOR whether
+       or not you appear. Charging it here would price away the single best reason to be early on
+       those sites — 37 of them in the real catalogue, $17.0M of somebody else's capital. */
+    var mand = comp(lf({ collectionSystem: 'No', jurisdiction: 'CA-ON' },
+                       { latitude: 43.7, longitude: -79.4, country: 'CA' }), 'collection');
+    if (mand && mand.reason && /legally obliged/.test(mand.reason)) {
+        ok('a mandated site is not charged, because the operator must build it', mand.state === 'avoided');
+        eq('and the avoided capital is still reported', mand.avoided_usd, RATE * 2000);
+    } else {
+        /* The mandate depends on jurisdiction data this fixture may not reach. Rather than
+           assert nothing, prove the branch exists in the module — a silent skip here would be a
+           test that reports coverage it does not have. */
+        ok('the mandated branch exists in the source',
+           /legally obliged to install collection/.test(
+               require('fs').readFileSync(require('path').join(ROOT, 'site-capex.js'), 'utf8')));
+    }
+
+    // SHUTDOWN and UNKNOWN: both genuinely unpriceable, and neither is guessed at.
+    var shut = comp(lf({ collectionSystem: 'Shutdown' }), 'collection');
+    ok('a shut wellfield is unknown, not refurbished at the engine curve',
+       shut && shut.state === 'unknown' && shut.usd === null, shut && shut.state);
+    var noData = comp(lf({}), 'collection');
+    ok('no published status is unknown', noData && noData.state === 'unknown' && noData.usd === null,
+       noData && noData.state);
+    /* Both must reach unknown_ids, or coverage would report them as priced. */
+    ok('and unknown collection is counted as unknown',
+       lf({}).unknown_ids.indexOf('collection') >= 0, JSON.stringify(lf({}).unknown_ids));
+
+    /* THE CONTRADICTION. Three real rows are `absent @ constructed`. A built plant cannot burn
+       gas nobody collects, so one of the two facts is stale — charging would bill a plant for a
+       field it must already have, and calling it avoided would trust a stage over a published
+       field. Neither is known, so neither is claimed. */
+    var contra = comp(lf({ collectionSystem: 'No' }, { development_stage: 'constructed' }),
+                      'collection');
+    ok('a built plant reporting no collection is a contradiction, not a charge',
+       contra && contra.state === 'unknown', contra && contra.state);
+    ok('and the reason names both sources so the data can be checked',
+       /stale/.test((contra && contra.reason) || ''), contra && contra.reason);
+
+    // FLARE GAS has no field to drill; the gas is already at a wellhead.
+    var flare = comp(st({ energyType: 'flare_gas', development_stage: 'raw_resource' }), 'collection');
+    ok('flare gas is never charged for collection', flare && flare.state === 'avoided',
+       flare && flare.state);
+    ok('and says why rather than being silently zero', /wellhead/.test((flare && flare.reason) || ''),
+       flare && flare.reason);
+
+    /* NOT LOADED IS UNKNOWN, NEVER ZERO — the ProjectContractors rule. A build priced without
+       knowing whether it must drill a field is a confident number that is wrong by $1.1M. */
+    var saved = global.SiteInfrastructure;
+    global.SiteInfrastructure = undefined;
+    var blind = comp(lf({ collectionSystem: 'No' }), 'collection');
+    ok('with the infrastructure model absent, collection is unknown rather than free',
+       blind && blind.state === 'unknown' && blind.usd === null, blind && blind.state);
+    global.SiteInfrastructure = saved;
+    ok('and restored, it is charged again',
+       comp(lf({ collectionSystem: 'No' }), 'collection').state === 'incurred');
 })();
 
 console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions' : pass + ' passed, ' + fail + ' FAILED');

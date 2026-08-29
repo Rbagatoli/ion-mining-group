@@ -409,7 +409,84 @@ var SiteCapex = (function() {
         stageComponent('permitting_development', 'Permitting & development',
             R.permittingFlatUsd, 'permitting', '$' + fmt(R.permittingFlatUsd) + ' flat');
 
-        // 3. Generation equipment, gated on who owns it.
+        /* 3. GAS COLLECTION — the wellfield, headers, condensate knockout and blower that get
+         *    the gas out of the ground and to the plant. Backlog item 3, and it was deferred on
+         *    a blast-radius assumption that turned out not to hold.
+         *
+         *    THE STATE IS ASKED, NOT DERIVED. site-infrastructure.js already reads the published
+         *    collection status off the source row and reconciles it against the statutory
+         *    mandate, and it is the module the whole capital-avoided model is built on. Deriving
+         *    a second answer here would give the app two views of whether a field is in the
+         *    ground, and they would agree until an LMOP revision made them disagree. Same rule
+         *    procurement.js follows in asking ProjectGates.permitIssued().
+         *
+         *    MANDATED IS AVOIDED, AND IT IS THE WHOLE THESIS. A site under a statutory deadline
+         *    gets its collection system built by the OPERATOR whether or not you appear —
+         *    site-infrastructure.js opens by saying exactly that. Charging it here would price
+         *    away the single best reason to be early on those sites. Measured across the real
+         *    catalogue: 37 mandated landfills, $17.0M of collection capital somebody else pays.
+         *
+         *    NOT LOADED IS UNKNOWN, NEVER ZERO, matching how ProjectContractors treats missing
+         *    variations: a build priced without knowing whether it must drill a field is a
+         *    confident number that is wrong by up to $550/kW.
+         */
+        var isLandfill = String(pick(rec, 'energy_type', 'energyType') || '') === 'landfill_gas';
+        var collFull = R.collectionPerKw * kw;
+        if (!isLandfill) {
+            add('collection', 'Gas collection', 'avoided', 0, null,
+                'flare gas arrives at a wellhead that already exists — there is no field to drill',
+                { avoided_usd: 0 });
+        } else if (typeof SiteInfrastructure === 'undefined' || !SiteInfrastructure.inventory) {
+            add('collection', 'Gas collection', 'unknown', null, null,
+                'the infrastructure model is not loaded, so whether a field is already in the ' +
+                'ground cannot be read');
+            out.unknown_ids.push('collection');
+        } else {
+            var coll = SiteInfrastructure.inventory(rec).collection;
+            var built = (stage === 'constructed' || stage === 'energized' || stage === 'operating');
+            if (coll === 'present') {
+                add('collection', 'Gas collection', 'avoided', 0,
+                    '$' + R.collectionPerKw + '/kW if you had to drill it',
+                    'a collection system is already in the ground', { avoided_usd: collFull });
+            } else if (coll === 'mandated') {
+                add('collection', 'Gas collection', 'avoided', 0,
+                    '$' + R.collectionPerKw + '/kW if you had to drill it',
+                    'the operator is legally obliged to install collection by the statutory ' +
+                    'deadline, so this capital is theirs and not yours',
+                    { avoided_usd: collFull });
+            } else if (coll === 'absent' && built) {
+                /* A CONTRADICTION, REPORTED RATHER THAN RESOLVED. Three real rows are
+                   `absent @ constructed`: a plant that is built cannot be burning gas nobody
+                   collects, so one of the two facts is stale. Charging would bill a plant for a
+                   field it must already have; calling it avoided would trust a stage over a
+                   published field. Neither is known, so neither is claimed. */
+                add('collection', 'Gas collection', 'unknown', null, null,
+                    'the source says no collection system while the asset is recorded as ' +
+                    stage.replace(/_/g, ' ') + ' — a built plant cannot burn gas nobody ' +
+                    'collects, so one of the two is stale and the site row settles it');
+                out.unknown_ids.push('collection');
+            } else if (coll === 'absent') {
+                add('collection', 'Gas collection', 'incurred', collFull,
+                    '$' + R.collectionPerKw + '/kW — wells, headers, knockout and blower',
+                    'no collection system published and no statutory deadline forcing one, so ' +
+                    'this field is yours to drill');
+            } else {
+                /* 'shutdown' and 'unknown' both land here and both are genuinely unpriceable.
+                   A shut wellfield is HDPE in the ground with silted wells, collapsed laterals
+                   and failed condensate traps in some unknown proportion — and it deliberately
+                   does NOT borrow the REFURB_RETAINED curve above, which was fitted to gas
+                   ENGINES. Giving pipe an engine's decay rate is the same category error the
+                   balance-of-plant floor exists to avoid, in the other direction. */
+                add('collection', 'Gas collection', 'unknown', null, null,
+                    coll === 'shutdown'
+                        ? 'the field is in the ground but shut; wellfield condition is not ' +
+                          'knowable from the published data and only a rework quote settles it'
+                        : 'no collection status published for this site');
+                out.unknown_ids.push('collection');
+            }
+        }
+
+        // 4. Generation equipment, gated on who owns it.
         var own = generationOwnership(rec, stage);
         var genFull = R.generationPerKw * kw;
         if (own === 'producer' || own === 'operator') {

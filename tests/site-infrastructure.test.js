@@ -13,7 +13,10 @@ global.SiteCapex = require(path.join(ROOT, 'site-capex.js'));
 var SS = global.SiteSources;
 var LS = require(path.join(ROOT, 'source-landfill.js'));
 var CA = require(path.join(ROOT, 'source-landfill-ca.js'));
-var SI = require(path.join(ROOT, 'site-infrastructure.js'));
+/* Exposed on the global as well as bound locally: site-capex.js's collection component asks
+   `typeof SiteInfrastructure` rather than deriving a second answer about whether a field is in
+   the ground, and a module required into a local variable is invisible to that lookup. */
+var SI = global.SiteInfrastructure = require(path.join(ROOT, 'site-infrastructure.js'));
 
 var pass = 0, fail = 0;
 function ok(label, cond, got) {
@@ -50,16 +53,29 @@ ok('treatment and electrical likewise',
    modules, so two declarations of the same $550 would drift the moment anyone edited the card,
    and would show up as a variance against a budget rather than as a bug.
 
-   WHAT HAS NOT CHANGED is the thing the old comment was really about: site-capex still prices no
-   collection COMPONENT at any stage, so a greenfield landfill is still never charged for the
-   field it would have to drill. The rate moving does not close that gap, and the assertion below
-   pins the gap open so nobody mistakes one for the other. */
+   THE GAP IS NOW CLOSED, and the assertion that used to pin it open was checking nothing.
+
+   It read `stack({ usable_kw: 2000, ... }).components.every(c => c.id !== 'collection')`. stack()
+   does not read usable_kw — it reads powerPotentialKw or ctx.capacityKw — so the fixture failed
+   the capacity check, returned EARLY with zero components, and `[].every(...)` is vacuously
+   true. It would have gone on passing the day somebody added a collection component, which is
+   the one event it existed to catch. An assertion that passes for a reason other than the one
+   written beside it is worse than none, because the next reader trusts the comment.
+
+   Both halves are asserted below against a fixture the stack actually prices. */
 ok('the collection rate comes off the shared capex card, not a second declaration',
    SI.rates().collection === SiteCapex.rates().collectionPerKw &&
    SiteCapex.rates().collectionPerKw === 550);
-ok('and the capex STACK still prices no collection component at any stage',
-   SiteCapex.stack({ usable_kw: 2000, development_stage: 'raw_resource', energy_type: 'landfill_gas' }, {})
-     .components.every(function (c) { return c.id !== 'collection'; }));
+var greenfield = SiteCapex.stack(
+    { powerPotentialKw: 2000, development_stage: 'raw_resource', energyType: 'landfill_gas',
+      sourceDetail: { collectionSystem: 'No' } }, {});
+ok('the fixture actually prices, so the assertions below are not checking an empty list',
+   greenfield.components.length > 5, greenfield.components.length + ' components');
+var coll = greenfield.components.filter(function (c) { return c.id === 'collection'; })[0];
+ok('the stack now HAS a collection component', !!coll);
+ok('and a greenfield landfill with no collection is charged for the field it must drill',
+   coll && coll.state === 'incurred' && coll.usd === 550 * 2000,
+   coll ? coll.state + ' ' + coll.usd : 'absent');
 
 console.log('\n=== generation is read from the field, not inferred from status ===');
 /* The brief proposed operational/construction/shutdown -> "generation present". Measured on the
