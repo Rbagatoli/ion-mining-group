@@ -454,6 +454,28 @@
 
         /* An empty result names what is actually switched on, with a way to undo each one.
            The old message guessed at causes and was frequently wrong. */
+        /* CAPACITY AUDIT. Quiet by construction: the block collapses to nothing when there
+           is nothing to report, so it is a finding rather than a permanent fixture. */
+        .capa-why { margin:8px 0 10px; font-size:12px; line-height:1.55; color:var(--plat-400);
+                    max-width:74ch; }
+        .capa-note { margin:8px 0 0; font-size:11.5px; line-height:1.5; color:var(--plat-500);
+                     max-width:74ch; }
+        .capa-list { list-style:none; margin:0; padding:0; }
+        .capa-row { display:flex; align-items:center; gap:12px; padding:6px 0;
+                    border-top:1px solid var(--line); font-size:12px; }
+        .capa-name { flex:1 1 auto; color:var(--plat-200); }
+        .capa-nums { font-family:var(--mono); font-size:11.5px; color:var(--plat-400);
+                     white-space:nowrap; }
+        /* The old figure struck through rather than merely dimmed: it is not a lesser number,
+           it is one that was never true. */
+        .capa-was { text-decoration:line-through; color:var(--plat-500); }
+        .capa-now { color:var(--btc-300); }
+        .capa-delta { color:var(--plat-500); }
+        .capa-fix { background:var(--btc-wash); border:1px solid var(--line-btc);
+                    border-radius:var(--radius); color:var(--btc-300); font-size:10.5px;
+                    letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+                    padding:4px 10px; cursor:pointer; }
+        .capa-fix:hover { background:var(--btc-500); color:var(--plat-000); }
         /* The More filters row: a quiet divider so the drawer reads as secondary to the three
            controls above it rather than as another field. */
         .src-morerow { margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
@@ -980,6 +1002,11 @@ blank on each site rather than being guessed.</p>
              previously sat below every filter control on the page. -->
         <div class="src-saved" id="srcSaved"></div>
 
+        <!-- CAPACITY AUDIT. Draws nothing unless a saved prospect holds a capacity figure that
+             matches its candidate's GROSS number to the kW, which is what the old save path
+             wrote and not what a person types. Self-contained in capacity-audit-ui.js. -->
+        <div class="capa-audit" id="capAudit"></div>
+
         <!-- REFINE. Every remaining control behind one disclosure. Whether it is open is
              remembered, and it opens itself whenever a filter is non-default, so a search in
              progress is never hidden behind a closed panel. -->
@@ -1451,6 +1478,10 @@ commercial terms are your assumptions.</p>
      SiteCapacity.usableKwFor, so a field named usable_kw never carries the gross. Without it
      toSite reports usable_kw as null, which is honest but useless on this page. -->
 <script src="./site-capacity.js?v=387"></script>
+<!-- Reads ProspectStore and SiteData, writes through SiteData. Deliberately outside
+     map-sourcing.js: a diagnostic panel must not be able to break the map. -->
+<script src="./capacity-audit.js?v=388"></script>
+<script src="./capacity-audit-ui.js?v=388"></script>
 <script src="./site-sources.js?v=387"></script>
 <script src="./site-model.js?v=380"></script>
 <script src="./project-model.js?v=384"></script>
@@ -1567,5 +1598,23 @@ commercial terms are your assumptions.</p>
 <script src="./alerts.js?v=338"></script>
 <script src="./onboarding.js?v=338"></script>
 <script src="./gas-field.js?v=353"></script>
+<script>
+/* The capacity audit draws once the catalogue is in, because a scan run before it would
+   classify every saved prospect as unmatched and read as a clean bill of health on a page
+   that had simply not finished loading. ProspectStore.loaded() is the signal map-sourcing.js
+   itself uses. Bounded rather than open-ended: if the catalogue never arrives the panel stays
+   silent instead of polling forever. */
+(function () {
+    var tries = 0;
+    (function waitForCatalogue() {
+        if (typeof CapacityAuditUi === "undefined") return;
+        var ready = typeof ProspectStore !== "undefined" && ProspectStore.loaded &&
+                    ProspectStore.loaded();
+        if (ready) { CapacityAuditUi.render("capAudit"); return; }
+        if (++tries > 120) return;              // two minutes, then give up quietly
+        setTimeout(waitForCatalogue, 1000);
+    })();
+})();
+</script>
 </body>
 </html>

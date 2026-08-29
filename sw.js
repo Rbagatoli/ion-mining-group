@@ -38,12 +38,14 @@ const ASSETS = [
   './cycle.js',
   './cycle-indicators.js',
   './site-capacity.js',
-  // capacity-audit.js and capacity-audit-ui.js belong here and are deliberately NOT listed yet:
-  // both files are still uncommitted work. addAll() is atomic, so a name with no file behind it
-  // in the deployed tree rejects the whole install and precaches NOTHING — one dangling entry
-  // costs offline entirely, not one file. They go in with the commit that adds the files, and
-  // tests/workspace-reach.test.js now asks git rather than the filesystem so that pairing is
+  // Listed now that both files are committed, which is the pairing the previous commit held
+  // these back for: addAll() is atomic, so a name with no file behind it in the deployed tree
+  // rejects the whole install and precaches NOTHING. tests/workspace-reach.test.js asks git
+  // rather than the filesystem, so it refuses an entry for a file that is not in the repo AND
+  // demands an entry for a script a precached page loads — the two together make this pairing
   // enforced rather than remembered.
+  './capacity-audit.js',
+  './capacity-audit-ui.js',
   './map-sourcing.js',
   './site-catalog.js',
   './site-engine.js',

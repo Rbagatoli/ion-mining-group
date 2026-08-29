@@ -117,18 +117,29 @@ showing what they always showed.
 always downward: -7.0% median, -20.1% on landfill gas because the gas cap binds on 2,056 of
 2,064 rows. Coastal Plains RDF: 5,000 kW recorded against 3,607 kW the gas supports.
 
-**Why it is not addressed here.** `usable_kw` carries no provenance. site-capacity.js:50 is
-explicit that a user-entered figure must beat the model — and a typed measurement and a
-machine-written default are indistinguishable in the stored record, so a blind migration would
-silently overwrite real measurements with modelled ones. That is a worse failure than the one it
-would fix.
+**Why it was not migrated.** `usable_kw` carries no provenance. site-capacity.js:50 is explicit
+that a user-entered figure must beat the model — and a typed measurement and a machine-written
+default are indistinguishable in the stored record, so a blind migration would silently overwrite
+real measurements with modelled ones. That is a worse failure than the one it would fix, and an
+unrecoverable one.
 
-**What to build.** Detection rather than migration, on the map where the candidate is in hand: a
-saved `usable_kw` that exactly equals its candidate's `powerPotentialKw` while differing from
-`usableKwFor(c)` is almost certainly machine-written, since a person typing 3,607 by hand and
-landing exactly on the gross is implausible. Flag those rows and offer to recompute one at a
-time, with the old and new figures both on screen. A field recording where the number came from
-would remove the guesswork entirely and is the better fix if the prospect model is ever opened.
+**BUILT, as detection rather than migration.** `capacity-audit.js` and `capacity-audit-ui.js`,
+on the map, where the candidate is in hand. A saved `usable_kw` that equals its candidate's
+`powerPotentialKw` to the kW while differing from `usableKwFor(c)` is machine-written with very
+high confidence — a person typing a capacity does not land exactly on the gross. Those rows are
+flagged and recomputed one at a time with both figures on screen, the verdict re-taken at the
+moment of writing rather than trusted from when the panel was drawn, and each correction logged
+against the prospect. Every record lands in exactly one of five buckets so the counts add up: a
+scan that quietly dropped what it could not judge would read as a clean bill of health. The panel
+draws nothing when there is nothing to say, except for unmatched records, which ARE something to
+say. 49 assertions in `tests/capacity-audit.test.js`.
+
+**What is still open.** The provenance field itself. The detector infers machine-written from an
+exact match on the gross, which is strong evidence and not a record; a catalogue rebuild can move
+the gas volume so a correctly-saved record matches neither figure, and it is reported as `typed`
+and left alone — a deliberate false negative in the safe direction. A field recording where the
+number came from would remove the inference entirely, and is the better fix if the prospect model
+is ever opened.
 
 ---
 
