@@ -301,6 +301,20 @@
         .pd-stagepick { display:inline-flex; flex-direction:column; gap:4px;
                         font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
                         color:var(--plat-500); }
+        /* Aligned to the bottom of the picker beside it, so the two read as one control group:
+           what stage this is, and the one move you are most likely to want. It carries the
+           accent because it is the only thing in this header that DOES something -- everything
+           else there is a fact. */
+        .pd-advance { align-self:flex-end; margin-left:12px;
+                      background:var(--btc-wash); border:1px solid var(--line-btc);
+                      border-radius:var(--radius); color:var(--btc-300); cursor:pointer;
+                      font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+                      padding:6px 12px; }
+        .pd-advance:hover { background:var(--btc-300); color:var(--bg); }
+        /* The board's missing sentence. Prose, not a control: it is read once and then never
+           again, so it sits above the columns rather than competing with them. */
+        .pb-hint { margin:0 0 10px; font-size:12px; color:var(--plat-400);
+                   max-width:74ch; line-height:1.55; }
         .pd-sec { max-width:900px; border:1px solid var(--line); background:var(--panel);
                   border-radius:var(--radius); margin:0 0 14px; }
         .pd-sec h3 { margin:0; padding:10px 14px 8px; font-size:11px; letter-spacing:.12em;
@@ -615,6 +629,13 @@
     </section>
 
     <section id="boardSection" hidden>
+        <!-- Both halves are load-bearing. Dragging is the board's only way to move a card and it
+             has no affordance -- draggable="true" is set on the article and nothing on screen
+             says so. And clicking a card deliberately OPENS it rather than selecting it, which
+             is the right call and is also exactly what makes a reader conclude the board cannot
+             move anything. Saying both is what stops that conclusion. -->
+        <p class="pb-hint">Drag a card between columns to move a prospect through the pipeline.
+            Clicking one opens it instead — the stage can also be changed from there.</p>
         <div class="pb-wrap" id="pboard"></div>
         <p class="p-note" id="boardNote"></p>
     </section>
@@ -667,10 +688,10 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=340"></script>
-<script src="./prospect-detail.js?v=382"></script>
+<script src="./prospect-detail.js?v=391"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
-<script src="./prospecting.js?v=340"></script>
+<script src="./prospecting.js?v=391"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>

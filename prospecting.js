@@ -558,10 +558,35 @@
             }
             var n = window.prompt('Note for this move? (optional)');
             if (n) opts.note = n;
+            moveStage(to, opts);
+        });
+
+        /* THE ADVANCE BUTTON, which is the same move with the destination already decided.
+           Deliberately shares moveStage() with the picker rather than repeating it: two paths
+           that do the same thing differently are how one of them quietly stops logging. */
+        var adv = document.getElementById('pdAdvance');
+        if (adv) adv.addEventListener('click', function () {
+            var to = this.getAttribute('data-to');
+            if (!to) return;
+            var opts = {};
+            var note = window.prompt('Note for this move? (optional)');
+            if (note) opts.note = note;
+            moveStage(to, opts);
+        });
+
+        /* setStage RETURNS NULL FOR AN UNKNOWN STAGE, WHICH IS NOT { ok:false }.
+           This handler used to check only `r.ok === false`, so a stage the model does not
+           recognise fell straight through to drawDetail() and the dropdown snapped back with no
+           message at all -- a silent no-op, which is the exact shape of "there is no way to push
+           a prospect forward". The board's drop handler already said so; this did not. It cannot
+           normally happen, because crm-config pushes its keys into site-model through
+           registerStages(), but "cannot happen" is what the last four bugs here had in common. */
+        function moveStage(to, opts) {
             var r = SiteData.setStage(id, to, opts);
             if (r && r.ok === false) window.alert(r.err);
+            else if (!r) window.alert('That stage is not on the pipeline, so nothing was changed.');
             drawDetail();
-        });
+        }
 
         /* THE CHECKLIST SAVES AS YOU TOUCH IT. Research happens in the middle of
            doing something else -- a tab open on ECHO, a licence number in the

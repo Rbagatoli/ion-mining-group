@@ -1017,6 +1017,47 @@ var ProspectDetail = (function () {
         return '<section class="pd-sec"><h3>Procurement</h3>' + procurementBlock(p) + '</section>';
     }
 
+    /* ---- Moving the prospect on ----
+     *
+     * THE PICKER SAYS WHAT STAGE THIS IS. THE BUTTON SAYS WHAT TO DO NEXT.
+     *
+     * A <select> is a correct control and it does not read as one here: it sits in the header
+     * beside four read-only facts, under a 10.5px uppercase label in the dimmest colour on the
+     * page, which is the styling of a field caption rather than of an action. Both ways to move
+     * a prospect existed and worked, and both were missed -- the board's only mechanism is a
+     * drag with no affordance, and clicking a card there deliberately OPENS it instead. A
+     * feature nobody can find is not meaningfully different from one that was never wired,
+     * which is the lesson the whole procurement panel already taught this workspace.
+     *
+     * So this names the destination and is a button. It does not replace the picker: the picker
+     * still goes backwards, sideways and to Dead, which are all real moves.
+     */
+    function nextStage(rec) {
+        if (typeof CrmConfig === 'undefined' || !CrmConfig.stages) return null;
+        var list = CrmConfig.stages();
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].key !== rec.stage) continue;
+            var next = list[i + 1];
+            if (!next) return null;             // already at the end of the pipeline
+            /* DEAD IS NEVER AN ADVANCE. site-model.js:390 refuses it without a reason from the
+               configured list, so a one-click "advance" here would open a prompt menu demanding
+               a decision -- which is not what a button labelled Advance should do. It is an
+               outcome you record, and the picker is where you record it. Keyed by name because
+               the model special-cases it by name; if that ever generalises to a flag, ask the
+               model rather than re-deriving the rule here. */
+            if (next.key === 'dead') return null;
+            return next;
+        }
+        return null;                            // a stage the config no longer lists
+    }
+
+    function advanceControl(rec) {
+        var n = nextStage(rec);
+        if (!n) return '';
+        return '<button type="button" class="pd-advance" id="pdAdvance" ' +
+               'data-to="' + esc(n.key) + '">Advance to ' + esc(n.label) + '</button>';
+    }
+
     function render(prospectId, hostId) {
         var host = document.getElementById(hostId || 'pdetail');
         if (!host) return null;
@@ -1051,6 +1092,7 @@ var ProspectDetail = (function () {
             '<label class="pd-stagepick">Stage<select id="pdStage">' +
                 optionList(stages, function (s) { return s.key; }, function (s) { return s.label; }) +
             '</select></label>' +
+            advanceControl(rec) +
         '</div>' +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
         procurementSection(rec) +
