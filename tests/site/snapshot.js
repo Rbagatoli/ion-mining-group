@@ -25,7 +25,51 @@
    bug that made the tanks draw their own back walls, was caught by no suite in
    this project and by this snapshot least of all, since it never looked. The
    home fixture keeps its original filename so its existing baseline stays
-   valid and still proves the home scene did not move. */
+   valid and still proves the home scene did not move.
+
+   Re-baselined again for the hydro switch: the containers lost their air cooling
+   (two exhaust fans, nine intake louvres, a filter frame) and gained a dry cooler
+   on the roof, and the uplink mast moved to the door end to stop rising through
+   it. Checked before recapturing, and the blast radius is the argument for it:
+
+     - Only site, pad-ion and lf-ion moved. asic (318 paths), hosting (208),
+       pad-now (246) and lf-now (246) came back byte-identical, which is what
+       proves the kit change reached every scene that draws a hydro container and
+       no scene that does not. hosting is untouched here because it draws its own
+       cutaway rather than KIT.container; it changes in its own pass.
+     - Within those three, only end, side, top and detail moved. inside, back,
+       asics and ground are byte-identical, so nothing below the roofline shifted
+       — no rack, no machine, no floor.
+     - The only leaders and hits that moved are cool and net, the two anchors
+       deliberately re-aimed: cool onto the roof cooler from the vanished intake
+       end, net with the mast.
+
+   All three are intended, so the old fixtures could not be kept.
+
+   Re-baselined again for the rest of the hydro switch, which moved four scenes for three
+   separate reasons. Checked before recapturing:
+
+     - site and pad-ion went from two containers to FOUR, laid out 2x2, because the site is
+       now drawn as a ~5.7 MW facility: 4 x 240 slots x 5,925 W = 5.688 MW, denominated in
+       the load the machines actually draw and not the container's 2.4 MW nameplate. The
+       slot ids therefore went contA/contB -> cont0..cont3, which is most of the diff.
+       site also drops BASE_SCALE 28 -> 18.3 and SHIFT_X -3.28 -> -10.15: a second column of
+       12.19 m boxes is the whole of that cost, measured against the fixed 780-unit band the
+       callout columns leave.
+     - hosting lost its air cooling (nine louvres, two filter frames, four exhaust fan rings,
+       a fan pair on every machine face) and gained a coolant loop, manifolds, a CDU and the
+       same roof dry cooler every other container carries. Its airflow run became a coolant
+       run, three of its eight callouts were rewritten, and the CDU and spares cabinet moved
+       so the cabinet stopped painting over column 0's machines.
+     - asic stopped being an Antminer S21 Pro and became an S21+ Hyd.: 450 x 219 x 293 mm
+       with four 140 mm fans -> 339 x 173 x 207 mm with none, plus OD10 coupling ports, cold
+       plates and a header with six jumpers.
+
+   lf-ion came back BYTE-IDENTICAL (822 path strings), which is the useful part of this
+   re-baseline: it draws four hydro containers through the same KIT.container as the two
+   scenes that moved, so it proves the container itself did not change in this pass — only
+   how many of them each scene places, and what the hosting page draws with its own geometry.
+   pad-now and lf-now are identical too; they have no containers to place. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';

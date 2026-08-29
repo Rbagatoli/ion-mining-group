@@ -2,7 +2,7 @@
 
    The same collection system with our kit on it. The flare comes down to a
    pilot, and the gas the blower was sending to it goes through treatment, into
-   an engine, and out to two containers of miners.
+   an engine, and out to four containers of miners.
 
    Everything shared with state one comes from landfill-geometry.js, unchanged,
    so the crossfade moves only what actually changes. The kit is the same modules
@@ -49,8 +49,12 @@
        not actually see. Pulling the cell's toe back and moving the row out fixed
        what no amount of restyling would have.
 
-       Spacing between the two containers is 4.8 m, matching scene-pad-ion.js, so
-       a visitor who has seen either drawing recognises the same yard. */
+       Both yards are now 2x2, but they are NOT spaced alike and the comment that
+       used to claim they were is gone with the 4.8 m it cited. Row centres are
+       7.5 m here and 5.4 m on the wellpad, because the wellpad has 9.15 m of
+       clear ground where this site has 14.25 m — the tank battery, its berm and
+       the plant row have already spent the back of a 22 m pad. Same yard, same
+       equipment, different amount of room to put it in. */
     var GAS  = { x: -10.0, y: 0, z: 9.2, w: KIT.GAS.w,  h: KIT.GAS.h,  d: KIT.GAS.d };
     var GEN  = { x:  -6.0, y: 0, z: 9.2, w: KIT.GEN.w,  h: KIT.GEN.h,  d: KIT.GEN.d };
     var XFMR = { x:  -2.4, y: 0, z: 9.2, w: KIT.XFMR.w, h: KIT.XFMR.h, d: KIT.XFMR.d };

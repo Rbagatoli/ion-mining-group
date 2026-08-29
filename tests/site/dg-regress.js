@@ -62,6 +62,12 @@ function subpathAreas(d) {
 //        (a stack head, a bushing) is legitimately far from.
 {
   const slotOf = { gas: 'gas', gen: 'gen', xfmr: 'xfmr' };   // rest live on a container
+  /* WHICH container. This was hardcoded to 'contB' when there were two of them and the
+     near one was always called that. With a 2x2 yard the slots are cont0..cont3 and which
+     one the callouts point into is the scene's business, so it says: ANCHOR_SLOT. No
+     fallback — a missing export must fail here rather than silently measure leaders
+     against a slot that does not exist and report a gap of 1e9 for every callout. */
+  if (!D.ANCHOR_SLOT) fail('scene-site.js exports no ANCHOR_SLOT; leaders cannot be checked');
   // Distance from a point to a line SEGMENT, not to its endpoints: a leader
   // landing mid-edge is on the drawing.
   const segDist = (p, a, b) => {
@@ -106,7 +112,7 @@ function subpathAreas(d) {
   for (const yaw of [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2]) {
     const cache = {};
     for (const co of D.CALLOUTS) {
-      const sid = slotOf[co.id] || 'contB';
+      const sid = slotOf[co.id] || D.ANCHOR_SLOT;
       if (!cache[sid]) cache[sid] = segmentsOf(sid, yaw);
       const tip = D.calloutAnchor(co, yaw);
       let best = 1e9;

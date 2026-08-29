@@ -30,6 +30,12 @@
     var GEN  = { w: 5.4,   h: 2.2,  d: 2.1 };
     var XFMR = { w: 1.5,   h: 2.0,  d: 1.5 };
     var CONT = { w: 12.19, h: 2.59, d: 2.44 };
+    /* The dry cooler standing on that shell. Module level, and exported, because the
+       scenes need these numbers too — for the hover region that highlights the cooler
+       and for the object box that has to be tall enough to contain it. A second copy
+       of them in three scene files is three chances to drift. */
+    var COOLER = { inX: 0.90, inZ: 0.22, plinth: 0.13, slope: 0.62, ridge: 0.62 };
+    COOLER.h = COOLER.plinth + COOLER.slope + 0.01;   // + the fan rings lying in the ridge
 
     /* Translate a helper bundle. Every function that takes world coordinates
        gets them offset first; the ones that consume already-offset points
@@ -284,7 +290,12 @@
     var COLS = 10, TIERS = 3;
     var AS   = { w: 0.86, h: 0.5, d: 0.8 };
 
-    function mastOf(K) { return { x: K.x + 3.4, y: K.h, z: K.z - 0.5, w: 0.1, h: 1.5, d: 0.1 }; }
+    /* Out at the door end of the roof, not mid-span. Mid-span is where the dry cooler
+       now stands, and a mast at K.x + 3.4 rose straight through it — the pole painting
+       over the frame it was supposed to be standing beside. K.x + 5.6 clears the
+       cooler's far edge (K.x + 6.095 - COOLER.inX) by 0.4 and still lands 0.5 inside
+       the container end. */
+    function mastOf(K) { return { x: K.x + 5.6, y: K.h, z: K.z - 0.5, w: 0.1, h: 1.5, d: 0.1 }; }
     function pduOf(K)  { return { x: K.x + K.w / 2 - 1.0, y: 0, z: K.z + K.d / 2 - 0.5,
                                   w: 0.7, h: 1.75, d: 0.45 }; }
 
@@ -302,6 +313,7 @@
        it needs no placement shim. */
     function container(H, K, yaw) {
         var addBox = H.addBox, line = H.line, ring = H.ring, ringX = H.ringX,
+            ringY = H.ringY,
             poly = H.poly, polyInside = H.polyInside, boxFaces = H.boxFaces,
             frontFacing = H.frontFacing, newLayers = H.newLayers;
 
@@ -375,8 +387,17 @@
         // Roof: only the far half survives the cutaway.
         var roof = [[x0,y1,z0],[x0,y1,K.z],[x1,y1,K.z],[x1,y1,z0]];
         if (frontFacing(roof, yaw)) L.top += poly(roof, yaw);
+        /* Footprint of the roof cooler. Needed up here as well as further down where the
+           cooler is built, because the roof ribs have to stop at its edges. */
+        var COOL_X = COOLER.inX, COOL_Z = COOLER.inZ;
+        var cx0 = x0 + COOL_X, cx1 = x1 - COOL_X;
         for (var r2 = 1; r2 < ribs; r2++) {
             var rx2 = x0 + K.w * r2 / ribs;
+            /* A rib under the cooler paints into 'detail', which is above every filled
+               face, so it would show straight through the frame standing on it — and at
+               the same slant and weight as the coil divisions, which is exactly what made
+               the first version of this read as corrugation rather than as a cooler. */
+            if (rx2 > cx0 - 0.12 && rx2 < cx1 + 0.12) continue;
             L.detail += line([rx2, y1 + 0.006, z0], [rx2, y1 + 0.006, K.z], yaw);
         }
 
@@ -410,20 +431,83 @@
             addBox(L, { x: dx + 0.02, y: hy, z: z0 + 0.06, w: 0.06, h: 0.16, d: 0.1 }, yaw);
             addBox(L, { x: dx + 0.02, y: hy, z: z1 - 0.06, w: 0.06, h: 0.16, d: 0.1 }, yaw);
         }
-        // Exhaust fans on the door end.
-        L.detail += ring(dx, K.h * 0.52, z0 + K.d * 0.3, 0.52, yaw, 12);
-        L.detail += ring(dx, K.h * 0.52, z0 + K.d * 0.3, 0.34, yaw, 10);
-        L.detail += ring(dx, K.h * 0.52, z0 + K.d * 0.7, 0.52, yaw, 12);
-        L.detail += ring(dx, K.h * 0.52, z0 + K.d * 0.7, 0.34, yaw, 10);
+        /* ---- THE DRY COOLER ON THE ROOF ----
+         *
+         * What used to be here was air cooling: two exhaust fans punched through the door end
+         * and nine intake louvres with a filter frame on the other. A hydro container has
+         * neither. Air never crosses the machines at all — the heat leaves in water, and the
+         * only place it meets air is the closed dry cooler sitting on the roof.
+         *
+         * That is the whole tell. A hydro container and an air-cooled one are the same white
+         * box; what says which it is, is the object on the roof. So it is built as MASS, in
+         * the filled face layers, rather than as line work in 'detail'.
+         *
+         * The first attempt drew the coils as eight leaning quads in 'detail' — correct
+         * geometry, invisible drawing. At yaw 0 the container's depth projects almost
+         * straight down the screen, so each quad collapsed to a sliver 38 units tall and 8
+         * wide, landing at the same slant and weight as the 33 roof ribs already there. It
+         * read as slightly uneven corrugation. The quads and their fin lines survive here,
+         * but as divisions ON a filled frame instead of as the frame itself.
+         *
+         * Fills are also what survives the phone. At a 390 viewport the whole drawing is
+         * 350 x 129 and this container about 97 px of it, which leaves the cooler a band
+         * around 10 px tall — far too little for texture, just enough for a silhouette that
+         * breaks the flat roof line. Hence the A-frame: two coil faces leaning up to a
+         * ridge with the fans in it, drawn into side/top/end so it catches the same lit
+         * faces as the container it stands on.
+         *
+         * Face winding follows boxFaces() exactly, so frontFacing() culls these the way it
+         * culls a box: the two caps are wound oppositely because one faces -x and the other
+         * +x, and getting that wrong shows the frame's own back wall through its front. */
+        var COOL_PLINTH = COOLER.plinth, COOL_SLOPE = COOLER.slope, COOL_RIDGE = COOLER.ridge;
+        var zc0 = z0 + COOL_Z, zc1 = z1 - COOL_Z;
+        var zr0 = K.z - COOL_RIDGE / 2, zr1 = K.z + COOL_RIDGE / 2;
+        var cyb = K.h + COOL_PLINTH, cyt = cyb + COOL_SLOPE;
 
-        // Intake louvres and filter frame on the cooling end.
-        var lx = x0 - 0.105;
-        for (var l = 1; l <= 9; l++) {
-            var ly = K.h * l / 10;
-            L.detail += line([lx, ly, z0 + 0.17], [lx, ly, z1 - 0.17], yaw);
+        // The plinth the frame stands on, full footprint.
+        addBox(L, { x: (cx0 + cx1) / 2, y: K.h, z: K.z,
+                    w: cx1 - cx0, h: COOL_PLINTH, d: zc1 - zc0 }, yaw);
+
+        // The two coil faces, and the ridge deck between them.
+        var faceFront = [[cx0, cyb, zc1], [cx1, cyb, zc1], [cx1, cyt, zr1], [cx0, cyt, zr1]];
+        var faceBack  = [[cx1, cyb, zc0], [cx0, cyb, zc0], [cx0, cyt, zr0], [cx1, cyt, zr0]];
+        var faceRidge = [[cx0, cyt, zr0], [cx0, cyt, zr1], [cx1, cyt, zr1], [cx1, cyt, zr0]];
+        if (frontFacing(faceFront, yaw)) L.side += poly(faceFront, yaw);
+        if (frontFacing(faceBack,  yaw)) L.side += poly(faceBack,  yaw);
+        if (frontFacing(faceRidge, yaw)) L.top  += poly(faceRidge, yaw);
+
+        var capL = [[cx0, cyb, zc0], [cx0, cyb, zc1], [cx0, cyt, zr1], [cx0, cyt, zr0]];
+        var capR = [[cx1, cyb, zc1], [cx1, cyb, zc0], [cx1, cyt, zr0], [cx1, cyt, zr1]];
+        if (frontFacing(capL, yaw)) L.end += poly(capL, yaw);
+        if (frontFacing(capR, yaw)) L.end += poly(capR, yaw);
+
+        /* Eight coil divisions up the leaning face. These are the same eight the first
+           version drew, but they now sit on a lit surface instead of standing in for one,
+           so they can be quiet: on the phone they wash out and the frame still reads. */
+        var COILS = 8;
+        for (var cq = 0; cq < COILS; cq++) {
+            var px = cx0 + (cx1 - cx0) * (cq + 0.5) / COILS;
+            L.detail += line([px, cyb, zc1], [px, cyt, zr1], yaw);
         }
-        L.detail += line([lx, K.h * 0.08, z0 + 0.17], [lx, K.h * 0.92, z0 + 0.17], yaw);
-        L.detail += line([lx, K.h * 0.08, z1 - 0.17], [lx, K.h * 0.92, z1 - 0.17], yaw);
+
+        /* The fans that pull through the bank, lying flat in the ridge and therefore drawn
+           with ringY: ring() would stand them on edge, out of the deck they sit in. */
+        for (var cf = 0; cf < 2; cf++) {
+            var fx = cx0 + (cx1 - cx0) * (cf ? 0.76 : 0.24);
+            L.detail += ringY(fx, cyt + 0.01, K.z, 0.26, yaw, 12);
+            L.detail += ringY(fx, cyt + 0.01, K.z, 0.10, yaw, 8);
+        }
+
+        /* Flow and return, running the roof in front of the frame and dropping down the end
+           wall into the manifolds. Separated in z rather than in y: at roof level the pair
+           has to clear the plinth, and depth is the axis with room for it. They merge into
+           one run on a phone, which is the right thing to lose — the frame is the tell, and
+           these are the pipes serving it. */
+        var hz = zc1 + 0.07;
+        L.detail += line([cx0, K.h + 0.05, hz], [cx1, K.h + 0.05, hz], yaw);
+        L.detail += line([cx0, K.h + 0.05, hz + 0.09], [cx1, K.h + 0.05, hz + 0.09], yaw);
+        L.detail += line([cx1, K.h + 0.05, hz], [x1 + 0.02, K.h * 0.62, hz], yaw);
+        L.detail += line([cx1, K.h + 0.05, hz + 0.09], [x1 + 0.02, K.h * 0.62, hz + 0.09], yaw);
 
         // Roof-mounted uplink with a dish and guy lines.
         // Only one container carries the uplink; a second mast is clutter.
@@ -432,8 +516,11 @@
             addBox(L, mast, yaw);
             L.detail += ring(mast.x, K.h + 1.5, mast.z, 0.46, yaw, 12);
             L.detail += ring(mast.x, K.h + 1.5, mast.z, 0.2, yaw, 8);
-            L.detail += line([mast.x, K.h + 1.3, mast.z], [mast.x - 0.7, K.h, mast.z], yaw);
-            L.detail += line([mast.x, K.h + 1.3, mast.z], [mast.x + 0.7, K.h, mast.z], yaw);
+            /* Guyed across the depth rather than along the length. Along the length the
+               near stay landed on the cooler and the far one overhung the container end;
+               across, both stays reach bare roof on a container this close to its end. */
+            L.detail += line([mast.x, K.h + 1.3, mast.z], [mast.x, K.h, mast.z - 0.7], yaw);
+            L.detail += line([mast.x, K.h + 1.3, mast.z], [mast.x, K.h, mast.z + 0.7], yaw);
         }
 
         // Step at the door end.
@@ -442,7 +529,7 @@
         }
 
     return {
-        GAS: GAS, GEN: GEN, XFMR: XFMR, CONT: CONT,
+        GAS: GAS, GEN: GEN, XFMR: XFMR, CONT: CONT, COOLER: COOLER,
         COLS: COLS, TIERS: TIERS, AS: AS,
         mastOf: mastOf, pduOf: pduOf, racksFor: racksFor,
         place: place, gas: gas, gen: gen, xfmr: xfmr, container: container,

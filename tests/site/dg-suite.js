@@ -78,7 +78,10 @@ if (esc) fail(`${esc} rack dimensions escape their own container`);
 if (!D.RACKS.every(r => r.z < r.cont.z)) fail('racks are not against their far wall');
 const perCont = D.CONTAINERS.map(K => D.RACKS.filter(r => r.cont === K).length);
 if (new Set(perCont).size !== 1) fail(`uneven racks per container: ${perCont.join('/')}`);
-if (D.CONTAINERS.length !== 2) fail(`expected 2 containers, got ${D.CONTAINERS.length}`);
+/* FOUR, not two: the yard is a 2x2 of hydro containers, 4 x 240 slots at 5,925 W each.
+   Still asserted rather than derived from D, because a scene that silently lost a container
+   would otherwise surface only as a fixture diff and read as an intentional re-baseline. */
+if (D.CONTAINERS.length !== 4) fail(`expected 4 containers, got ${D.CONTAINERS.length}`);
 console.log(`racks: ${D.RACKS.length} units across ${D.CONTAINERS.length} containers ` +
             `(${perCont.join('+')}), each inside its own shell  OK`);
 
@@ -95,9 +98,12 @@ for (const yaw of sweep(24)) {
 }
 {
   const f0 = D.frame(0, null);
-  const cont = f0.slots.find(s => s.id === 'contB');
+  /* The anchor container the callouts point into. Was 'contB' — a name that stopped
+     existing when the yard went to cont0..cont3, and .inside would have thrown on
+     undefined rather than reporting anything useful. */
+  const cont = f0.slots.find(s => s.id === D.ANCHOR_SLOT);
+  if (!cont) fail('no slot matches ANCHOR_SLOT ' + D.ANCHOR_SLOT);
   if (!cont.inside.length) fail('container interior is empty');
-  if (D.CONTAINERS.length !== 2) fail(`expected 2 containers, got ${D.CONTAINERS.length}`);
   if (!cont.asics.length) fail('no ASIC geometry');
   if (!cont.top.length) fail('container roof is empty');
   const total = f0.slots.reduce((a, s) => a + KEYS.reduce((b, k) => b + s[k].length, 0), 0);
@@ -148,6 +154,44 @@ else console.log(`leaders: ${D.CALLOUTS.length} welded to anchors at 13 angles  
   }
   if (orders.size < 2) fail('slot order never changes — the sort is inert');
   console.log(`depth sort: ${D.SLOTS} slots, ${orders.size} distinct orders across the sweep, always back-to-front  OK`);
+}
+
+// --- 10. index.html's baked frame matches the scene it was baked from ---
+/* TWO WAYS THE HOME PAGE CAN SHIP A LIE, NEITHER OF WHICH ANYTHING CHECKED.
+
+   THE SLOT GROUPS. build-diagram.js bakes a static SVG into the page with one <g> per
+   renderable, and diagram-engine.js looks every one of them up by id at mount:
+   `g[LAYERS[li]] = byId('dg-s' + s + '-' + LAYERS[li]); if (!g[...]) ok = false;`. Add a
+   container to the scene without re-running the generator and the lookup fails, mounting
+   is abandoned, and the page quietly serves the OLD baked drawing for ever. It does not
+   throw and it does not look broken — it looks out of date, which is exactly how the
+   hosting page shipped an air-cooled container after the switch to hydro.
+
+   THE COUNT IN THE ALT TEXT. landfill-copy-suite.js already derives the container count
+   from scene.objects() and checks energy.html's alt against it — but it never reads
+   index.html, so the home page was the one drawing whose alt could say "two shipping
+   containers" over a picture of four with nothing to catch it. Same derivation, same
+   guarantee, applied to the page that was missing it. */
+{
+  const fs = require('fs');
+  const html = fs.readFileSync(REPO_ROOT + 'site/index.html', 'utf8');
+
+  const groups = new Set((html.match(/id="dg-s(\d+)-/g) || []).map(m => m.match(/\d+/)[0]));
+  if (groups.size !== D.SLOTS)
+    fail(`index.html bakes ${groups.size} slot groups but the scene has ${D.SLOTS} renderables — ` +
+         `run tools/build-diagram.js, or the diagram will not mount and the page will serve the stale frame`);
+
+  const WORD = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six' };
+  const boxes = D.objects().filter(o => /^cont/.test(o.id)).length;
+  const alt = (html.match(/aria-label="([^"]*containerised[^"]*)"/) || [])[1] || '';
+  if (!alt) fail('index.html has no aria-label on the site diagram');
+  else if (alt.indexOf(WORD[boxes] + ' shipping container') < 0)
+    fail(`index.html alt says "${(alt.match(/(one|two|three|four|five|six) shipping containers?/) ||
+          ['no count'])[0]}" but the scene draws ${boxes}`);
+
+  if (!bad)
+    console.log(`page: ${groups.size} baked slot groups match ${D.SLOTS} renderables, ` +
+                `and the alt text says "${WORD[boxes]}"  OK`);
 }
 
 process.exitCode = bad;

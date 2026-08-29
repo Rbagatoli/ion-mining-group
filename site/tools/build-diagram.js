@@ -39,7 +39,7 @@ const PAGES = {
     views: [
       { key: 'site', name: 'site', module: '../scene-site.js',
         script: 'scene-site.js', prefix: '',
-        alt: 'Interactive cutaway of a containerised bitcoin mining deployment: gas conditioning, generation, a transformer, and two shipping containers of ASIC miners. Drag to rotate, scroll to zoom.' },
+        alt: 'Interactive cutaway of a containerised bitcoin mining deployment: gas conditioning, generation, a transformer, and four shipping containers of hydro-cooled ASIC miners. Drag to rotate, scroll to zoom.' },
     ],
   },
   hosting: {
@@ -49,19 +49,28 @@ const PAGES = {
     insertBefore: '<!-- ===== TERMS ===== -->',
     eyebrow: 'Inside the container',
     heading: 'Where your machines actually sit.',
-    lede: 'The same list again, as a place: filtered air in one end, your racks in the middle, metering on every circuit, and the heat leaving the far end. Pull the slider to go from the whole container down to a single machine.',
+    lede: 'The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.',
     link: 'hosting',
     chain: 'cont',
+    /* scene-hosting.js reads KIT.COOLER so its roof cooler cannot drift from the one
+       site-kit.js draws on every other container. Without this the page loaded the scene
+       before SiteKit existed, the module threw, and hosting.html silently fell back to its
+       baked static frame — which was still the old air-cooled drawing. The figure looked
+       merely un-updated rather than broken, which is the worst way for it to fail. */
+    deps: ['site-kit.js'],
     scale: { lo: 'Whole container', hi: 'One machine',
              label: 'Detail level: the whole container, or one machine' },
     views: [
       { key: 'cont', name: 'hosting', module: '../scene-hosting.js',
         script: 'scene-hosting.js', prefix: '',
-        alt: 'Interactive cutaway of a hosting container: filtered intake, cold aisle, racked ASIC miners, metered power distribution, network, spares, and hot aisle exhaust. Drag to rotate, scroll to zoom.' },
+        alt: 'Interactive cutaway of a hydro-cooled hosting container: a closed coolant loop with supply and return manifolds, racked ASIC miners on quick-disconnect couplings, the coolant distribution unit, metered power distribution, network, spares, and the dry cooler on the roof. Drag to rotate, scroll to zoom.' },
       { key: 'asic', name: 'asic', module: '../scene-asic.js',
         script: 'scene-asic.js', prefix: 'a-',
-        alt: 'Interactive cutaway of an Antminer S21 Pro: four 140 mm fans in two stacked pairs, three hashboards under finned heatsinks, copper busbars, the integrated power supply, and the control board. Drag to rotate, scroll to zoom.',
-        note: 'Modelled on an Antminer S21 Pro &mdash; 450 &times; 219 &times; 293 mm, four 140 mm fans, three hashboards.' },
+        /* "Antminer S21+ Hyd." keeps its trailing period: asic-suite.js builds both of these
+           strings from MODEL.name, so the machine the page names and the machine the drawing
+           is proportioned from cannot drift apart. Dropping the period fails the suite. */
+        alt: 'Interactive cutaway of an Antminer S21+ Hyd. Two OD10 coolant ports on a sealed end plate, three hashboards under clamped cold plates, copper busbars, the integrated power supply, and the control board. It has no fans. Drag to rotate, scroll to zoom.',
+        note: 'Modelled on an Antminer S21+ Hyd. &mdash; 339 &times; 173 &times; 207 mm, hydro-cooled on an OD10 loop, no fans, three hashboards.' },
     ],
   },
   energy: {
@@ -130,7 +139,7 @@ const PAGES = {
             alt: 'Interactive drawing of a wellpad as it operates today: wellhead, separator, tank battery, and a lit flare stack burning the gas that has no customer. Drag to rotate, scroll to zoom.' },
           { key: 'ion', name: 'padion', module: '../scene-pad-ion.js',
             script: 'scene-pad-ion.js', prefix: 'i-',
-            alt: 'The same wellpad with Proton on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and two containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
+            alt: 'The same wellpad with Proton on it: the flare down to a pilot, and a tie-in running gas through a conditioning skid, an enclosed genset, a transformer, and four containers of miners — the same equipment drawn on the home page. Drag to rotate, scroll to zoom.',
             note: 'The flare stack stays. It remains permitted and available for upsets, and for any time you take the gas back.' },
         ],
       },
@@ -337,9 +346,29 @@ function splice(cfg, section, scripts) {
      drives them — emitting the element without the driver leaves a dead canvas. */
   scripts = ['hero-anim.js'].concat(scripts);
 
-  if (!html.includes('src="./diagram-engine.js"')) {
-    html = html.replace('<script src="./site.js"></script>',
-      '<script src="./site.js"></script>\n<script src="./diagram-engine.js"></script>');
+  /* STAMPED OR NOT.
+
+     tools/build-asset-stamp.js rewrites these same tags to carry ?v=<hash>, and it runs
+     AFTER this generator. So on any page that has been stamped even once, every match below
+     that looked for a bare `<script src="./x.js"></script>` found nothing, and the whole
+     remove-and-reorder block quietly did nothing at all.
+
+     That is not theoretical. hosting.html needed site-kit.js the moment scene-hosting.js
+     started reading KIT.COOLER for its roof cooler. The dep was declared here, this generator
+     printed its usual success line, and not one tag moved — so the page loaded the scene
+     before SiteKit existed, the module threw, and the figure fell back to its baked static
+     frame. It looked merely out of date rather than broken.
+
+     Matching the optional stamp is what build-asset-stamp.js itself does (see its REF regex),
+     and it makes this block idempotent from either direction. */
+  var stamped = function (file) {
+    return new RegExp('<script src="\\./' + file.replace(/\./g, '\\.') +
+                      '(?:\\?v=[0-9a-f]+)?"></script>', 'g');
+  };
+
+  if (!stamped('diagram-engine.js').test(html)) {
+    html = html.replace(stamped('site.js'),
+      function (m) { return m + '\n<script src="./diagram-engine.js"></script>'; });
   }
 
   /* Emit the whole block in declared order, every run.
@@ -354,11 +383,13 @@ function splice(cfg, section, scripts) {
      from a module that has to have run first — so the tags are removed and
      rewritten as one ordered block, which is also idempotent. */
   scripts.forEach(s => {
-    html = html.replace(`\n<script src="./${s}"></script>`, '');
+    html = html.replace(new RegExp('\\n?' + stamped(s).source, 'g'), '');
   });
-  html = html.replace('<script src="./diagram-engine.js"></script>',
-    '<script src="./diagram-engine.js"></script>\n' +
-    scripts.map(s => `<script src="./${s}"></script>`).join('\n'));
+  /* Re-emitted WITHOUT a stamp. build-asset-stamp.js runs after this and puts the current
+     hash back on every tag; writing a stale one here would be a hash that never matched. */
+  html = html.replace(stamped('diagram-engine.js'), function (m) {
+    return m + '\n' + scripts.map(s => `<script src="./${s}"></script>`).join('\n');
+  });
   fs.writeFileSync(OUT, html);
 }
 

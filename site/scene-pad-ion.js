@@ -50,9 +50,58 @@
     function mkCont(x, z, mast) {
         return { x: x, y: 0, z: z, w: KIT.CONT.w, h: KIT.CONT.h, d: KIT.CONT.d, mast: mast };
     }
-    var CONTA = mkCont(4.5, 4.0, false);
-    var CONTB = mkCont(4.5, 8.8, true);
-    var CONTAINERS = [CONTA, CONTB];
+
+    /* FOUR CONTAINERS, TWO BY TWO — the same grid scene-landfill-ion.js draws,
+       declared as two axes so the count lives in one place and everything below
+       (renderables, hover boxes, the power spine, the callout anchor) derives
+       from CONTAINERS.
+
+       THE PAD COSTS NOTHING IN SCALE AND EVERYTHING IN DEPTH. Four containers
+       here do not move the framing at all: the swept envelope is set by the
+       flare on one side and the tank battery on the other, and the yard sits
+       inside it — BASE_SCALE stays 16 and the "now" state it shares a camera
+       with is untouched. What the pad does not have is ground.
+
+       COLUMNS AT -6.7 AND 6.7. Two 12.19 m boxes plus the landfill's own 1.21 m
+       lateral gap is 25.6 m, and the pad is 44 m wide, so width is not the
+       problem. What bounds the east edge is the flare line: it turns north at
+       x 13.4 and runs the length of the yard at 2.6 m, which is inside a
+       container. A right column centred at 6.7 puts the shell's outermost face
+       at 12.98, clearing that pipe by 0.16 m. Centring the pair on x 0 also
+       puts the yard on the pivot, which is where SHIFT_X = 0 already looks.
+
+       ROWS AT 4.2 AND 9.6 — 5.4 M CENTRES, NOT THE LANDFILL'S 7.5. This is the
+       one number the wellpad cannot copy. The landfill's yard has 14.25 m of
+       clear ground between the front face of its plant row and the front edge
+       of its graded pad; the wellpad has 9.15 m, because the pad is 22 m deep
+       and the tank battery, its berm and the plant row have already spent the
+       back of it. Two rows of container plus the landfill's own 1.13 m working
+       gap need 9.94 m. The pad is 0.79 m short of the landfill's spacing before
+       a single millimetre of margin, so 7.5 m centres would stand the front row
+       off the graded surface.
+
+       At 5.4 m centres and 20 degrees of pitch, 57% of each back-row container
+       is still clear of the roof in front of it — measured by rasterising the
+       slots in paint order, not estimated. That is better than the 49% the
+       two-container version gets from its 4.8 m spacing, and well short of the
+       84% the landfill gets from 7.5. Four containers here are countable, but
+       they are not as countable as the landfill's four, and no arrangement that
+       keeps them on the pad makes them so. */
+    var CONT_X = [-6.7, 6.7];
+    var CONT_Z = [4.2, 9.6];
+
+    var CONTAINERS = [];
+    CONT_Z.forEach(function (cz, r) {
+        CONT_X.forEach(function (cx, c) {
+            CONTAINERS.push(mkCont(cx, cz, r === CONT_Z.length - 1 && c === CONT_X.length - 1));
+        });
+    });
+
+    var YARD = {
+        x: (CONT_X[0] + CONT_X[CONT_X.length - 1]) / 2,
+        z: (CONT_Z[0] + CONT_Z[CONT_Z.length - 1]) / 2,
+        h: KIT.CONT.h
+    };
 
     var RACKS = [];
     CONTAINERS.forEach(function (K) { RACKS = RACKS.concat(KIT.racksFor(K)); });
@@ -76,7 +125,7 @@
           at: [XFMR.x, XFMR.h, XFMR.z + XFMR.d / 2] },
         { id: 'cont',  side: 'r', y: 190, title: 'The load',
           desc: 'Machines that will buy every Mcf you can send, at the wellhead',
-          at: [CONTB.x + 2.0, CONTB.h, CONTB.z + CONTB.d / 2] },
+          at: [YARD.x, YARD.h, YARD.z] },
         { id: 'keep',  side: 'r', y: 310, title: 'Your flare stays',
           desc: 'Still permitted, still there for upsets and for when you take the gas back',
           at: [P.FLARE.x, P.FLARE_H * 0.55, P.FLARE.z] },
@@ -122,8 +171,20 @@
         L.detail += ringY(P.SEP.x + 1.0, ty + 0.3, P.SEP.z + 2.4, 0.3, yaw, 8);
         // Conditioned gas to the engine, and power on to the containers.
         P.pipe(H, yaw, L, [GAS.x + GAS.w / 2, ty, GAS.z], [GEN.x - GEN.w / 2, ty, GEN.z]);
-        P.pipe(H, yaw, L, [XFMR.x, 2.4, XFMR.z], [XFMR.x, 2.4, CONTA.z]);
-        P.pipe(H, yaw, L, [XFMR.x, 2.4, CONTA.z], [CONTA.x - CONTA.w / 2, 2.4, CONTA.z]);
+        /* Power on to the containers: east along the plant row, forward up the
+           LATERAL aisle between the two columns, then a spine down the
+           transverse aisle with a spur to each box. Both legs are routed up an
+           aisle on purpose — a riser taken straight off the transformer at
+           XFMR.x would run at 2.4 m through the back-left container, which is
+           0.19 m shorter than that. */
+        var py = 2.4;
+        P.pipe(H, yaw, L, [XFMR.x, py, XFMR.z], [YARD.x, py, XFMR.z]);
+        P.pipe(H, yaw, L, [YARD.x, py, XFMR.z], [YARD.x, py, YARD.z]);
+        P.pipe(H, yaw, L, [CONT_X[0], py, YARD.z], [CONT_X[CONT_X.length - 1], py, YARD.z]);
+        CONTAINERS.forEach(function (c) {
+            var face = c.z < YARD.z ? c.z + c.d / 2 : c.z - c.d / 2;
+            P.pipe(H, yaw, L, [c.x, py, YARD.z], [c.x, py, face]);
+        });
         return L;
     }
 
@@ -158,12 +219,14 @@
           build: function (H, yaw) { return KIT.gen(H, yaw, GEN); } },
         { id: 'xfmr',   at: [XFMR.x, XFMR.h / 2, XFMR.z],
           build: function (H, yaw) { return KIT.xfmr(H, yaw, XFMR); } },
-        { id: 'contA',  at: [CONTA.x, CONTA.h / 2, CONTA.z],
-          build: function (H, yaw) { return KIT.container(H, CONTA, yaw); } },
-        { id: 'contB',  at: [CONTB.x, CONTB.h / 2, CONTB.z],
-          build: function (H, yaw) { return KIT.container(H, CONTB, yaw); } },
         { id: 'flare',  at: [P.FLARE.x, P.FLARE_H / 2, P.FLARE.z], build: buildFlare },
-    ];
+    ].concat(CONTAINERS.map(function (c, i) {
+        /* ONE SLOT EACH, not one slot for the yard: the depth sort works per
+           slot, so four containers sharing a slot would paint in a fixed order
+           and the back row would draw over the front one as the pad turns. */
+        return { id: 'cont' + i, at: [c.x, c.h / 2, c.z],
+                 build: function (H, yaw) { return KIT.container(H, c, yaw); } };
+    }));
 
     function objects() {
         return [
@@ -176,13 +239,13 @@
                                    w: GEN.w + 0.9, h: GEN.h + 1.6, d: GEN.d + 0.9 } },
             { id: 'xfmr',   box: { x: XFMR.x, y: 0, z: XFMR.z,
                                    w: XFMR.w + 0.9, h: XFMR.h + 0.9, d: XFMR.d + 0.7 } },
-            { id: 'contA',  box: { x: CONTA.x, y: 0, z: CONTA.z,
-                                   w: CONTA.w + 0.3, h: CONTA.h + 0.3, d: CONTA.d + 0.3 } },
-            { id: 'contB',  box: { x: CONTB.x, y: 0, z: CONTB.z,
-                                   w: CONTB.w + 0.3, h: CONTB.h + 1.8, d: CONTB.d + 0.3 } },
             { id: 'flare',  box: { x: P.FLARE.x, y: 0, z: P.FLARE.z,
                                    w: 3.2, h: P.FLARE_H + 1.2, d: 3.2 } },
-        ];
+        ].concat(CONTAINERS.map(function (c, i) {
+            return { id: 'cont' + i, box: { x: c.x, y: 0, z: c.z,
+                                            w: c.w + 0.3, h: c.h + (c.mast ? 1.8 : KIT.COOLER.h + 0.14),
+                                            d: c.d + 0.3 } };
+        }));
     }
 
     /* ---------- Hover regions ---------- */
@@ -215,8 +278,9 @@
             [GAS.x, y, GAS.z],
             [GEN.x, y, GEN.z],
             [XFMR.x, y, XFMR.z],
-            [XFMR.x, y, CONTA.z],
-            [CONTA.x - CONTA.w / 2 - 0.4, y, CONTA.z],
+            [YARD.x, y, XFMR.z],
+            [YARD.x, y, YARD.z],
+            [CONT_X[0], y, YARD.z],
         ];
         var d = '';
         for (var i = 0; i < pts.length; i++) {

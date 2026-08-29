@@ -259,8 +259,34 @@ function subpathAreas(d) {
 
 // --- 13. The browser build mounts and responds ---
 {
-  const ENGINE = fs.readFileSync(REPO_ROOT + 'site/diagram-engine.js', 'utf8');
-  const SCENE  = fs.readFileSync(REPO_ROOT + 'site/scene-hosting.js', 'utf8');
+  /* THE SANDBOX LOADS WHAT THE PAGE LOADS, IN THE PAGE'S ORDER.
+
+     This used to read two hardcoded files, engine + scene, and that is precisely how the
+     figure shipped broken. scene-hosting.js started reading KIT.COOLER so its roof cooler
+     could not drift from site-kit.js's; hosting.html was never given a site-kit.js tag; and
+     this check could not see the difference, because its sandbox was not the page. The
+     module threw on load in a real browser and the page fell back to its baked static frame
+     — the old air-cooled drawing — while the suite went green.
+
+     Deriving the list from hosting.html's own tags means the sandbox cannot drift from the
+     page again: if a dep is dropped from the page, it is dropped here too and this check
+     fails, which is the failure the browser would have had. Only the scripts that the
+     diagram chain needs are run — site.js, cart.js and hero-anim.js drive page furniture,
+     want a real DOM, and are not what this is testing. */
+  const pageScripts = [...html.matchAll(/<script src="\.\/([^"?]+\.js)(?:\?v=[0-9a-f]+)?"><\/script>/g)]
+    .map(m => m[1]);
+  const NOT_DIAGRAM = new Set(['site.js', 'cart.js', 'hero-anim.js', 'scene-asic.js']);
+  const chain = pageScripts.filter(s => !NOT_DIAGRAM.has(s));
+
+  if (chain[0] !== 'diagram-engine.js')
+    fail(`hosting.html must load diagram-engine.js before any scene; got ${chain[0]}`);
+  if (chain.indexOf('site-kit.js') < 0)
+    fail('hosting.html does not load site-kit.js, which scene-hosting.js needs for KIT.COOLER — ' +
+         'the scene will throw on load and the page will fall back to its static frame');
+  if (chain.indexOf('site-kit.js') > chain.indexOf('scene-hosting.js'))
+    fail('hosting.html loads site-kit.js after scene-hosting.js; the scene reads it at module scope');
+  if (chain[chain.length - 1] !== 'scene-hosting.js')
+    fail(`the diagram chain must end at scene-hosting.js; got ${chain[chain.length - 1]}`);
   const handlers = {};
   let writes = 0;
   const mkEl = id => {
@@ -305,8 +331,9 @@ function subpathAreas(d) {
   sb.self = sb; sb.IntersectionObserver = sb.window.IntersectionObserver;
   sb.require = () => { throw new Error('scene must use the global engine in browser mode'); };
   vm.createContext(sb);
-  vm.runInContext(ENGINE, sb, { filename: 'diagram-engine.js' });
-  vm.runInContext(SCENE, sb, { filename: 'scene-hosting.js' });
+  for (const s of chain) {
+    vm.runInContext(fs.readFileSync(REPO_ROOT + 'site/' + s, 'utf8'), sb, { filename: s });
+  }
 
   const H = handlers['siteDiagram'] || {};
   /* Hover and keyboard belong to the drawing. The pointer gestures moved to the
