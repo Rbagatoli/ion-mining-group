@@ -1,6 +1,6 @@
 /* Proves tests/calc-cover.test.js can fail.
  *
- * A suite of 52 assertions that passes is worth nothing until something has watched it go
+ * A suite of 36 assertions that passes is worth nothing until something has watched it go
  * red for the right reason. Each mutation below is a plausible way to get the sell-to-cover
  * logic wrong -- most of them produce a projection that still looks entirely reasonable on
  * screen, which is exactly why they need a guard rather than a reading.
@@ -18,32 +18,6 @@ var ENGINE = path.join(ROOT, 'calc-engine.js');
 var TEST = path.join(__dirname, 'calc-cover.test.js');
 
 var MUTATIONS = [
-    ['the sale comes from the HODL slider alone again, so HODL 100 sells nothing',
-     'btcSold = btcToCover + btcAfterCosts * (1 - p.hodlPct);',
-     'btcSold = periodBTCMined * (1 - p.hodlPct);'],
-
-    ['the HODL ratio splits GROSS production instead of what is left after the bill',
-     'btcHeld = btcAfterCosts * p.hodlPct;', 'btcHeld = periodBTCMined * p.hodlPct;'],
-
-    ['coins go to the bill but the remainder is not debited, creating BTC out of nothing',
-     'var btcAfterCosts = periodBTCMined - btcToCover;', 'var btcAfterCosts = periodBTCMined;'],
-
-    ['the cover is no longer capped at production, so an uncoverable bill invents coins',
-     'var btcToCover = Math.min(periodBTCMined,', 'var btcToCover = Math.min(Infinity,'],
-
-    ['the tax bill is left uncovered, so it comes from outside capital again',
-     '(periodElecCost + taxOnMiningIncome) / btcPrice);', '(periodElecCost) / btcPrice);'],
-
-    ['the cover is priced at the opening price, not the month it happened in',
-     '(periodElecCost + taxOnMiningIncome) / btcPrice);',
-     '(periodElecCost + taxOnMiningIncome) / p.btcPrice0);'],
-
-    ['savingsElec stops being the exception, so the bill is settled twice over',
-     'if (!p.savingsElec && btcPrice > 0) {', 'if (btcPrice > 0) {'],
-
-    ['the cash low-water mark is never updated, so peakCashDeficit only sees day one',
-     'if (cashPosition < minCashPosition) minCashPosition = cashPosition;', ''],
-
     ['the fleet you still own goes back to being worth nothing, the 48-to-49 cliff',
      'var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld + residualFleetValue;',
      'var totalPL = cumulCashFlow + reinvestPool + heldBtcValue - cgtOnHeld;'],
@@ -59,6 +33,25 @@ var MUTATIONS = [
     ['the per-period fleet value is read at day one, so the table stops ageing the kit',
      'var totalEconomicValue = liquidValue + fleetValueAt(i);',
      'var totalEconomicValue = liquidValue + fleetValueAt(0);'],
+
+    ['break-even starts counting book value, so every scenario pays back in period 1',
+     'if (breakEvenPeriod === null && liquidValue >= 0) breakEvenPeriod = i + 1;',
+     'if (breakEvenPeriod === null && totalEconomicValue >= 0) breakEvenPeriod = i + 1;'],
+
+    ['transaction fees stop being paid, understating every projection',
+     'var dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward *',
+     'var dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward * 0 +'],
+
+    ['the fee share is left unclamped, so a typo can double a five-year projection',
+     'txFeePct: clamp(num(s.txFee, 2) / 100, 0, 1),',
+     'txFeePct: num(s.txFee, 2) / 100,'],
+
+    ['a cover-sale is forced back in, emptying the treasury of an underwater site',
+     'var btcSold = periodBTCMined * (1 - p.hodlPct);',
+     'var btcSold = Math.min(periodBTCMined, Math.max(periodBTCMined * (1 - p.hodlPct), periodElecCost / btcPrice));'],
+
+    ['the cash low-water mark is never updated, so peakCashDeficit only sees day one',
+     'if (cashPosition < minCashPosition) minCashPosition = cashPosition;', ''],
 
     ['peakCashDeficit forgets the reinvest pool, double-counting cash the pool holds',
      'var cashPosition = cumulCashFlow + reinvestPool;', 'var cashPosition = cumulCashFlow;'],

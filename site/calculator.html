@@ -14,10 +14,10 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <<<<<<< Updated upstream
-<link rel="stylesheet" href="./styles.css?v=1e7c35e9">
+<link rel="stylesheet" href="./styles.css?v=8e7eaa8d">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 =======
-<link rel="stylesheet" href="./styles.css?v=1e7c35e9">
+<link rel="stylesheet" href="./styles.css?v=8e7eaa8d">
 >>>>>>> Stashed changes
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
@@ -474,9 +474,10 @@
                  basis is written by the script rather than fixed here. Left as a flat
                  "keep all BTC" it would contradict the switch: with costs coming off the
                  top, 100% keeps everything the power bill did not take. -->
-            <p class="calc-explain">Of <span id="hodlBasis">everything mined</span>:
-              <strong>100%</strong> = keep it all &nbsp;|&nbsp; <strong>0%</strong> = sell it all
-              &nbsp;|&nbsp; <strong>50%</strong> = sell half, hold half</p>
+            <p class="calc-explain">Of everything mined: <strong>100%</strong> = keep it all
+              &nbsp;|&nbsp; <strong>0%</strong> = sell it all &nbsp;|&nbsp; <strong>50%</strong> =
+              sell half, hold half. Electricity is charged as a cost either way &mdash; at 100%
+              nothing is sold to meet it, so see <em>Cash required from outside</em> below.</p>
 
             <label class="calc-switch">
               <input id="taxAdjustment" type="checkbox" data-default="false">
@@ -521,12 +522,10 @@
               </div>
             </div>
 
-            <p class="calc-hint">Off, the site settles its own power bill out of what
-              it mines: the minimum is sold each period and the HODL ratio applies to
-              what is left, so nothing but the up-front investment comes from outside.
-              On, no BTC is sold to meet the bill and the cost leaves the projection
-              entirely &mdash; the return then excludes
-              <span id="outPowerSpendInline">the power spend</span> completely.</p>
+            <p class="calc-hint">Off, electricity is charged against the return as the cost it
+              is. On, it leaves the projection entirely &mdash; the figures are then computed as
+              though the power were free, which is a way to model funding opex from other income
+              and not a claim that it costs nothing.</p>
             <label class="calc-switch">
               <input id="savingsElec" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
@@ -705,19 +704,19 @@
 </footer>
 
 <<<<<<< Updated upstream
-<script src="./site.js?v=1e7c35e9"></script>
-<script src="./hero-anim.js?v=1e7c35e9"></script>
-<script src="./cart.js?v=1e7c35e9"></script>
-<script src="./miner-db.js?v=1e7c35e9"></script>
-<script src="./calc-engine.js?v=1e7c35e9"></script>
-<script src="./calculator.js?v=1e7c35e9"></script>
+<script src="./site.js?v=8e7eaa8d"></script>
+<script src="./hero-anim.js?v=8e7eaa8d"></script>
+<script src="./cart.js?v=8e7eaa8d"></script>
+<script src="./miner-db.js?v=8e7eaa8d"></script>
+<script src="./calc-engine.js?v=8e7eaa8d"></script>
+<script src="./calculator.js?v=8e7eaa8d"></script>
 =======
-<script src="./site.js?v=1e7c35e9"></script>
-<script src="./hero-anim.js?v=1e7c35e9"></script>
-<script src="./cart.js?v=1e7c35e9"></script>
-<script src="./miner-db.js?v=1e7c35e9"></script>
-<script src="./calc-engine.js?v=1e7c35e9"></script>
-<script src="./calculator.js?v=1e7c35e9"></script>
+<script src="./site.js?v=8e7eaa8d"></script>
+<script src="./hero-anim.js?v=8e7eaa8d"></script>
+<script src="./cart.js?v=8e7eaa8d"></script>
+<script src="./miner-db.js?v=8e7eaa8d"></script>
+<script src="./calc-engine.js?v=8e7eaa8d"></script>
+<script src="./calculator.js?v=8e7eaa8d"></script>
 >>>>>>> Stashed changes
 </body>
 </html>

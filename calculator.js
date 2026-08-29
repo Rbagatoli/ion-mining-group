@@ -447,13 +447,6 @@ function recalculate() {
 
     // Contextual input hints
     additionCapexRow.style.display = r.params.monthlyMinerAdditions > 0 ? '' : 'none';
-    /* The HODL ratio changes what it is a ratio OF once costs come off the top, so the
-       note beside the slider has to follow the switch rather than state a fixed meaning. */
-    const hodlBasis = document.getElementById('hodlBasis');
-    if (hodlBasis) {
-        hodlBasis.textContent = r.params.savingsElec
-            ? 'everything mined' : 'what is left after the power bill';
-    }
     const reinvestHint = document.getElementById('reinvestHint');
     if (r.params.reinvestMode && r.params.hodlPct >= 1) reinvestHint.textContent = 'HODL is 100% \u2014 no fiat to reinvest';
     else if (r.params.reinvestMode && r.params.capex <= 0) reinvestHint.textContent = 'Set Machine CAPEX > $0 for reinvest';

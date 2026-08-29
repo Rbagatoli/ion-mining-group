@@ -335,56 +335,32 @@ var CalcEngine = (function() {
             var taxableMiningIncome = Math.max(0, grossMiningRevenue - periodElecCost);
             var taxOnMiningIncome = p.taxAdjustmentEnabled ? (taxableMiningIncome * p.miningIncomeTaxRate) : 0;
 
-            /* WHO PAYS THE POWER -- the two settlement worlds this calculator has always
-               had, with the first one now doing what it was written to do.
+            /* WHO PAYS THE POWER -- the HODL slider decides how much is sold, and the bill
+               is charged as a cash cost whatever that comes to.
 
-               The original wrote these as two branches identical but for `- periodElecCost`,
-               which is how you can tell the intent: the default was meant to settle the bill
-               out of mined revenue, and savingsElec was the exception where the money comes
-               from outside. The intent was never in doubt. What was missing is that nothing
-               ever made the SALE big enough. btcSold came from the HODL slider alone, so the
-               bill was funded from revenue only while (1 - hodl) x production happened to
-               exceed it -- true up to about HODL 26% over a 60-month horizon at the shipped
-               defaults, and false at the 100% an operator running a treasury actually sets.
-               Above the crossover the shortfall silently became outside capital: at HODL 100
-               cashFromSales was 0, periodCashFlow was exactly minus the bill, and the page
-               reported a 386% return on a plan quietly consuming $1.2M of cash.
+               THIS WAS BRIEFLY CHANGED to sell the minimum needed to cover the bill, on the
+               grounds that at HODL 100 nothing is sold and the power is therefore funded from
+               outside. That description is accurate and the conclusion drawn from it was
+               wrong, so the reasoning is worth keeping where the next person can find it.
 
-               So the default now takes the period's cash costs OFF THE TOP and lets the
-               slider split what remains. At HODL 100 that means "hold everything after the
-               power is paid", which is what the setting was always meant to say.
+               Forcing a cover-sale makes the projection take a TREASURY DECISION on the
+               operator's behalf, and it takes the worst available one. On a site that is
+               under water on power it sells every coin it mines, at the price of the month it
+               mined them, to chase a bill it can never meet: at $0.12/kWh that emptied a
+               10.09 BTC treasury and turned a $90,653 loss into $1,086,017. Nobody runs a
+               mine that way. They curtail, or they fund opex from elsewhere and keep the
+               coins -- which is exactly what this branch already models.
 
-               WHAT THE RATIO IS A RATIO OF. Off the top, not a floor under sales. The
-               alternative -- apply the ratio to gross production and let the bill push sales
-               up only when it happens to be the larger number -- makes the slider govern a
-               quantity nobody is deciding, and its meaning shifts as the bill moves. Off the
-               top, halving the slider halves the stack, at any power price.
+               What this measures is the FLEET: what it produced, minus what it cost to run.
+               The treasury policy sits on top of that as the HODL ratio, which is the
+               operator's to set. Keeping the two separate is why the model works at all;
+               entangling them is what broke it.
 
-               btcToCover is capped at periodBTCMined. Production that cannot cover the bill
-               leaves a real shortfall and it stays visible as negative cash; quietly
-               borrowing against next month would rebuild the very assumption this removes.
-
-               taxOnMiningIncome comes off the top alongside the power because it falls due in
-               the same period, in cash, against the same production. With the tax model off
-               it is zero and this reads as power alone. Replacement and expansion capex are
-               NOT covered -- they are capital, they are charged straight to cumulCashFlow,
-               and peakCashDeficit is what reports them. */
-            var btcHeld, btcSold;
-            if (!p.savingsElec && btcPrice > 0) {
-                var btcToCover = Math.min(periodBTCMined,
-                                          (periodElecCost + taxOnMiningIncome) / btcPrice);
-                var btcAfterCosts = periodBTCMined - btcToCover;
-                btcHeld = btcAfterCosts * p.hodlPct;
-                btcSold = btcToCover + btcAfterCosts * (1 - p.hodlPct);
-            } else {
-                /* savingsElec, the exception: the bill is funded from income or savings, so
-                   nothing is sold to meet it and the slider splits gross production. The
-                   cost also leaves the P/L entirely on this path -- see periodCashFlow
-                   below, which is what makes this the flattering setting rather than merely
-                   a different one. */
-                btcHeld = periodBTCMined * p.hodlPct;
-                btcSold = periodBTCMined * (1 - p.hodlPct);
-            }
+               The honest caveat the switch was reaching for is real and is reported instead
+               of modelled: peakCashDeficit says how much cash the plan needs from outside,
+               and at HODL 100 that is capex plus every power bill in the horizon. */
+            var btcHeld = periodBTCMined * p.hodlPct;
+            var btcSold = periodBTCMined * (1 - p.hodlPct);
             var cashFromSales = btcSold * btcPrice;
             var periodCashFlow = p.savingsElec
                 ? cashFromSales - taxOnMiningIncome

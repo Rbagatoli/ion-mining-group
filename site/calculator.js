@@ -754,16 +754,8 @@
         setText('outInvestment', money(r.totalInitialInvestment));
         setText('outBtcMined', btc(r.cumulBtcMined) + ' BTC');
         setText('outBtcSold', btc(r.cumulBtcSold) + ' BTC');
-        /* The HODL ratio changes what it is a ratio OF with the settlement path. By
-           default the costs come off the top and the slider splits the remainder; under
-           savingsElec nothing is sold for the bill and it splits gross production. Saying
-           "keep all BTC" while the engine holds production net of the power bill would
-           leave the label and the arithmetic disagreeing on screen. */
-        setText('hodlBasis', p.savingsElec
-            ? 'everything mined' : 'what is left after the power bill');
         setText('outPowerSpend', money(r.cumulElecCost));
         setText('outCashRequired', money(r.peakCashDeficit));
-        setText('outPowerSpendInline', money(r.cumulElecCost));
         setSigned('outTotalPl', money(r.totalPL), r.totalPL);
         setText('outHeldBtc', btc(r.cumulBtcHeld) + ' BTC');
         setText('outHeldValue', money(r.heldBtcValue));
