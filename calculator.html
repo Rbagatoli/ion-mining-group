@@ -342,8 +342,9 @@
             <div style="margin-top:12px; padding:10px; background:var(--panel-solid); border-radius: var(--radius); border:1px solid var(--line);">
                 <div style="font-size:11px; color:var(--plat-500); margin-bottom:4px;">HODL Ratio</div>
                 <div style="font-size:12px; color:var(--text);">
-                    <strong>100%</strong> = Keep all BTC &nbsp;|&nbsp;
-                    <strong>0%</strong> = Sell all &nbsp;|&nbsp;
+                    Of <span id="hodlBasis">everything mined</span>:
+                    <strong>100%</strong> = Keep it all &nbsp;|&nbsp;
+                    <strong>0%</strong> = Sell it all &nbsp;|&nbsp;
                     <strong>50%</strong> = Sell half, hold half
                 </div>
             </div>
@@ -394,6 +395,16 @@
                         <span class="suffix">%</span>
                     </div>
                     <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
+                </div>
+            </div>
+            <div class="reinvest-row" id="coverElecRow" style="margin-top:8px">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="coverElecToggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="reinvest-info">
+                    <strong>Sell to Cover Power</strong><br>
+                    <span style="font-size:11px">Sell the minimum BTC each period to pay that period's power bill — and mining income tax, if on — and hold the rest. The site pays its own running costs</span>
                 </div>
             </div>
             <div class="reinvest-row" id="savingsElecRow" style="margin-top:8px">

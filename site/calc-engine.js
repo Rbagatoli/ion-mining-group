@@ -99,6 +99,11 @@ var CalcEngine = (function() {
             // makes a scenario missing the key compute differently from the same scenario
             // once loaded into the form.
             savingsElec: !!s.savingsElec,
+            /* Absent means OFF, matching the unchecked box in the markup. Deliberately
+               NOT defaulted on: it changes the headline return of every scenario, and a
+               link saved before this existed must still open as the number its sender
+               saw. */
+            coverElec: !!s.coverElec,
             autoReplace: s.autoReplace !== false,
             reinvestMode: !!s.reinvest,
             deductAdditionCapex: s.additionCapex !== false,
@@ -160,7 +165,15 @@ var CalcEngine = (function() {
 
         var cumulBtcHeld = p.btcTreasury;
         var cumulBtcMined = 0;
+        var cumulBtcSold = 0;
         var cumulCashFlow = -totalCapex - p.infrastructureCost;
+        /* The deepest the PURE CASH position ever goes, i.e. how much money has to come
+           from outside before the treasury is sold. cumulCashFlow + reinvestPool is that
+           position exactly: every capex, salvage and settlement line lands in one of the
+           two, and nothing unrealised is in either. totalPL cannot answer this -- it adds
+           heldBtcValue, so a plan funded entirely out of pocket still reports a profit
+           while its bank account is empty. */
+        var minCashPosition = cumulCashFlow;
         var cumulElecCost = 0;
         var breakEvenPeriod = null;
         var minerBatches = [{ period: 0, count: p.machineCount }];
@@ -276,6 +289,52 @@ var CalcEngine = (function() {
 
             var btcHeld = periodBTCMined * p.hodlPct;
             var btcSold = periodBTCMined * (1 - p.hodlPct);
+
+            /* SELL TO COVER -- the period's cash costs come off the top, and the HODL
+               ratio governs what is left.
+
+               The only two settlement policies before this were a fixed HODL percentage
+               and savingsElec, and NEITHER describes a site that pays its own way. At the
+               shipped HODL of 100 nothing is ever sold, so cashFromSales is zero and
+               periodCashFlow is exactly minus the power bill: the electricity is funded
+               from outside capital every single month while the whole stack is carried to
+               the terminal price. The cost is still charged against totalPL, so the
+               headline is not free power -- but it is the return of an operator writing
+               cheques, not of a business settling its bills out of production, and at the
+               defaults those differ by 187 points of ROI.
+
+               WHAT THE RATIO IS A RATIO OF. With this on, the bill is taken first and the
+               slider then splits the REMAINDER -- so 100% means "hold everything after
+               the power is paid", which is what an operator running this policy means by
+               it, rather than "hold everything and pay the power from savings". The
+               alternative reading, applying the ratio to gross production and treating
+               the bill as a floor under sales, makes the slider govern a quantity nobody
+               is deciding: at HODL 40 with a bill worth half of production it would hold
+               40% and sell 60%, and the bill would come out of that 60% or not depending
+               on which number happened to be larger. Off the top is the meaning that
+               stays stable as the bill moves.
+
+               At HODL 100 both readings agree exactly -- sell the bill, hold the rest --
+               which is why this only ever changes a scenario someone deliberately moved
+               the slider on.
+
+               btcToCover is capped at periodBTCMined. Production that cannot cover the
+               bill leaves a real shortfall and it stays visible as negative cash --
+               quietly borrowing against next month would rebuild the exact assumption
+               this switch exists to remove.
+
+               taxOnMiningIncome comes off the top alongside the power because it falls
+               due in the same period, in cash, against the same production. With the tax
+               model off it is zero and this reads as power alone. Replacement and
+               expansion capex are NOT covered: they are capital, they are charged
+               straight to cumulCashFlow, and peakCashDeficit is what reports them. */
+            if (p.coverElec && !p.savingsElec && btcPrice > 0) {
+                var btcToCover = Math.min(periodBTCMined,
+                                          (periodElecCost + taxOnMiningIncome) / btcPrice);
+                var btcAfterCosts = periodBTCMined - btcToCover;
+                btcHeld = btcAfterCosts * p.hodlPct;
+                btcSold = btcToCover + btcAfterCosts * (1 - p.hodlPct);
+            }
             var cashFromSales = btcSold * btcPrice;
             var periodCashFlow = p.savingsElec
                 ? cashFromSales - taxOnMiningIncome
@@ -295,6 +354,7 @@ var CalcEngine = (function() {
             }
 
             cumulBtcMined += periodBTCMined;
+            cumulBtcSold += btcSold;
             cumulBtcHeld += btcHeld;
             heldCostBasis += btcHeld * btcPrice;
             cumulElecCost += periodElecCost;
@@ -308,6 +368,11 @@ var CalcEngine = (function() {
             // pool by exactly that amount, so subtracting it again double-counts in the other
             // direction. That was a proposed fix and it is wrong.
             if (!(p.reinvestMode && p.capex > 0 && periodCashFlow > 0)) cumulCashFlow += periodCashFlow;
+
+            // Sampled AFTER every cash movement of the period, so a month that both pays a
+            // bill and buys a replacement fleet is measured at its true low point.
+            var cashPosition = cumulCashFlow + reinvestPool;
+            if (cashPosition < minCashPosition) minCashPosition = cashPosition;
 
             // Value if liquidated now, net of capital gains on the held BTC
             var heldValueNow = cumulBtcHeld * btcPrice;
@@ -332,6 +397,7 @@ var CalcEngine = (function() {
                 machines: activeMachines, machinesBought: machinesBoughtThisPeriod,
                 scheduledAdded: scheduledThisPeriod, retiredThisPeriod: retiredThisPeriod,
                 replacedThisPeriod: replacedThisPeriod, pnlBtc: periodBTCMined,
+                btcSold: btcSold, btcHeld: btcHeld,
                 btcHodlCumul: cumulBtcHeld, usdValue: cumulBtcHeld * btcPrice,
                 elecCost: periodElecCost, netCashFlow: periodCashFlow, cumulPL: totalEconomicValue,
                 isHalving: halvingPeriodIdxs.some(function(x) { return x.idx === i; })
@@ -386,8 +452,15 @@ var CalcEngine = (function() {
 
             totalInitialInvestment: totalInitialInvestment,
             cumulBtcMined: cumulBtcMined,
+            cumulBtcSold: cumulBtcSold,
             cumulBtcHeld: cumulBtcHeld,
             cumulElecCost: cumulElecCost,
+            /* Total cash that must come from outside before anything is liquidated. Always
+               at least the day-one investment, and MORE whenever opex or replacement capex
+               is not settled out of production -- which at the shipped defaults is every
+               month of the horizon. */
+            peakCashDeficit: Math.max(0, -minCashPosition),
+            externalOpexFunded: Math.max(0, (Math.max(0, -minCashPosition)) - totalInitialInvestment),
             cumulSalvageValue: cumulSalvageValue,
             finalBtcPrice: finalBtcPrice,
             heldBtcValue: heldBtcValue,

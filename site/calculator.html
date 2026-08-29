@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=38690663">
+<link rel="stylesheet" href="./styles.css?v=ba3710d8">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -178,7 +178,12 @@
             <h3>Over <span id="outHorizon">—</span></h3>
             <dl>
               <div><dt>Up-front investment</dt><dd id="outInvestment">—</dd></div>
+              <!-- The up-front figure is not what the plan costs to run. With BTC held
+                   rather than sold, every power bill and every replacement fleet is
+                   money from outside, and the row above says nothing about it. -->
+              <div><dt>Cash required from outside</dt><dd id="outCashRequired">—</dd></div>
               <div><dt>BTC mined</dt><dd id="outBtcMined">—</dd></div>
+              <div><dt>BTC sold to pay costs</dt><dd id="outBtcSold">—</dd></div>
               <div><dt>Spent on power</dt><dd id="outPowerSpend">—</dd></div>
               <div><dt>BTC still held</dt><dd id="outHeldBtc">—</dd></div>
               <div><dt>Value of held BTC</dt><dd id="outHeldValue">—</dd></div>
@@ -441,7 +446,13 @@
                   <input id="hodlRatio" type="number" min="0" max="100" step="1" value="100" data-default="100"><span class="cu-post">%</span></div>
               </div>
             </div>
-            <p class="calc-explain"><strong>100%</strong> = keep all BTC &nbsp;|&nbsp; <strong>0%</strong> = sell all &nbsp;|&nbsp; <strong>50%</strong> = sell half, hold half</p>
+            <!-- WHAT THE RATIO IS A RATIO OF changes with "Sell to Cover Power", so the
+                 basis is written by the script rather than fixed here. Left as a flat
+                 "keep all BTC" it would contradict the switch: with costs coming off the
+                 top, 100% keeps everything the power bill did not take. -->
+            <p class="calc-explain">Of <span id="hodlBasis">everything mined</span>:
+              <strong>100%</strong> = keep it all &nbsp;|&nbsp; <strong>0%</strong> = sell it all
+              &nbsp;|&nbsp; <strong>50%</strong> = sell half, hold half</p>
 
             <label class="calc-switch">
               <input id="taxAdjustment" type="checkbox" data-default="false">
@@ -486,6 +497,20 @@
               </div>
             </div>
 
+            <label class="calc-switch">
+              <input id="coverElec" type="checkbox" data-default="false">
+              <span class="cs-track" aria-hidden="true"></span>
+              <span class="cs-body">
+                <span class="cs-title">Sell to Cover Power</span>
+                <span class="cs-desc">The power bill &mdash; and mining income tax, if the tax model
+                  is on &mdash; comes off the top of each period&rsquo;s production. The HODL ratio
+                  then applies to what is left, so 100% means keep everything after the power is paid</span>
+              </span>
+            </label>
+            <p class="calc-hint">The site pays its own running costs, so nothing but the up-front
+              investment comes from outside. With this off and HODL at 100%, no BTC is ever sold
+              and every power bill is funded from your own capital &mdash; still charged against
+              the return, but it is a bill you have to be able to pay.</p>
             <label class="calc-switch">
               <input id="savingsElec" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
@@ -663,11 +688,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=38690663"></script>
-<script src="./hero-anim.js?v=38690663"></script>
-<script src="./cart.js?v=38690663"></script>
-<script src="./miner-db.js?v=38690663"></script>
-<script src="./calc-engine.js?v=38690663"></script>
-<script src="./calculator.js?v=38690663"></script>
+<script src="./site.js?v=ba3710d8"></script>
+<script src="./hero-anim.js?v=ba3710d8"></script>
+<script src="./cart.js?v=ba3710d8"></script>
+<script src="./miner-db.js?v=ba3710d8"></script>
+<script src="./calc-engine.js?v=ba3710d8"></script>
+<script src="./calculator.js?v=ba3710d8"></script>
 </body>
 </html>

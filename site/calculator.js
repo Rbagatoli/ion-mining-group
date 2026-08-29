@@ -32,7 +32,7 @@
         'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
-        'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
+        'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'coverElec', 'taxAdjustment',
         'preTaxCapital',
     ];
 
@@ -223,6 +223,7 @@
             additionCapex: !!el.additionCapex.checked,
             reinvest: !!el.reinvest.checked,
             savingsElec: !!el.savingsElec.checked,
+            coverElec: !!el.coverElec.checked,
             taxAdjustment: !!el.taxAdjustment.checked,
             preTaxCapital: !!(el.preTaxCapital && el.preTaxCapital.checked),
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),
@@ -752,7 +753,14 @@
         setText('outHorizon', p.numPeriods + ' ' + (p.numPeriods === 1 ? unit1 : unit));
         setText('outInvestment', money(r.totalInitialInvestment));
         setText('outBtcMined', btc(r.cumulBtcMined) + ' BTC');
+        setText('outBtcSold', btc(r.cumulBtcSold) + ' BTC');
+        /* The HODL ratio changes what it is a ratio OF when costs come off the top.
+           Saying "keep all BTC" while the engine is holding production net of the power
+           bill would leave the two disagreeing on screen. */
+        setText('hodlBasis', p.coverElec && !p.savingsElec
+            ? 'what is left after the power bill' : 'everything mined');
         setText('outPowerSpend', money(r.cumulElecCost));
+        setText('outCashRequired', money(r.peakCashDeficit));
         setSigned('outTotalPl', money(r.totalPL), r.totalPL);
         setText('outHeldBtc', btc(r.cumulBtcHeld) + ' BTC');
         setText('outHeldValue', money(r.heldBtcValue));
@@ -796,6 +804,29 @@
             var msgs = [];
             if (p.elecCost === 0) {
                 msgs.push('Power is set to $0.00/kWh, so nothing is being charged for electricity.');
+            }
+            /* THE MOST MISREAD THING ON THIS PAGE. "Up-front investment" is not what the
+               plan costs to run, and at the shipped HODL of 100 the gap is not small: no
+               BTC is ever sold, so every power bill is funded out of pocket and the page
+               will happily print a 386% return on $301,000 while the plan consumes $1.2M
+               of cash. The cost IS charged against the P/L -- this is not hidden power --
+               but a reader who takes the return as self-funding has read it wrong, and
+               nothing on the page told them otherwise. */
+            if (r.externalOpexFunded > 0) {
+                msgs.push('This plan needs ' + money(r.peakCashDeficit) + ' of cash, not the ' +
+                    money(r.totalInitialInvestment) + ' shown as up-front investment. ' +
+                    ((p.coverElec || p.savingsElec)
+                        ? 'Replacing worn machines is capital, so it is not settled out of production.'
+                        : 'No BTC is being sold, so running costs come out of your own capital. ' +
+                          'Turn on "Sell to Cover Power" to settle them from mined BTC instead.'));
+            }
+            /* savingsElec keeps the power bill off the P/L entirely, which is the one
+               setting here that can make a return look better than the business is. It
+               is a legitimate way to model an operator funding opex from other income,
+               but the figure has to be named or the ROI reads as if the power were free. */
+            if (p.savingsElec && r.cumulElecCost > 0) {
+                msgs.push('Electricity is being paid from savings, so ' + money(r.cumulElecCost) +
+                    ' of power is excluded from the profit and loss and from the return.');
             }
             warn.textContent = msgs.join(' ');
             warn.hidden = msgs.length === 0;
@@ -1170,6 +1201,19 @@
             var v = num(el.hodlRatio.value, 0);
             el.hodlSlider.value = String(Math.min(100, Math.max(0, v)));
         });
+
+        /* The two settlement switches contradict each other: one pays the power bill
+           out of mined BTC, the other keeps it off the books entirely. The engine
+           already ignores coverElec when savingsElec is on, but leaving both checked
+           would show a switch that visibly does nothing — so checking either clears
+           the other rather than letting the UI lie about which one is in force. */
+        function exclusive(a, b) {
+            el[a].addEventListener('change', function () {
+                if (el[a].checked && el[b].checked) { el[b].checked = false; render(); }
+            });
+        }
+        exclusive('coverElec', 'savingsElec');
+        exclusive('savingsElec', 'coverElec');
 
         /* Tax rates are meaningless with the toggle off, so they are removed
            rather than greyed — the same reveal the desk tool does. */
