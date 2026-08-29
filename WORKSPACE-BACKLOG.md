@@ -9,40 +9,70 @@ can find is indistinguishable from an oversight.
 
 ---
 
-## 1. A project whose prospect no longer exists is silently fine
+## 1 & 2. ~~Dangling prospect references, and the advisory delete~~ — CLOSED TOGETHER
 
-**What.** `ProjectData` snapshots `{prospect_id, name, lat, lng, source, development_stage}` at
-promotion, and the project deliberately outlives its prospect — a ledger should not evaporate
-because a research record was tidied up. But nothing surfaces the dangling reference. A project
-whose `prospect.prospect_id` resolves to nothing locally looks exactly like one whose prospect is
-present.
+**Built as `project-link-audit.js` / `project-link-audit-ui.js`.** One mechanism, as the backlog
+said it would be: resolve every project's `prospect_id` against `SiteData` on read, flag, and
+repair nothing.
 
-**Why it is not a bug today.** The snapshot carries everything the workspace needs to render, so
-nothing breaks. It is invisible rather than broken.
+**Seven states, and three of them exist to avoid crying wolf about the system working as
+designed.** `retired` — a cancelled project whose prospect was deliberately deleted, which
+`site-model.js` allows on purpose so the prospect is reclaimable and `tests/project-model.test.js`
+pins as intended. Without it every tidied-up project reports with the same count and sentence as
+a live project whose id now names a different landfill. `linked_unverified` — the check could not
+conclude; it never merges into `linked` or `repointed` and carries no control, because offering a
+clear would invite clearing something never established. And a device that has never pulled the
+prospect list says so **once** and classifies nothing, rather than reporting every project as
+broken: that is an alarm about the sync state wearing the costume of an alarm about the ledger,
+and it would fire on every fresh install. `SiteData.storeState()` exists so the two can be told
+apart — `list()` returns `[]` for never-written, unreadable and genuinely-empty alike.
 
-**Why it matters later.** Two ways to get here and both are ordinary: the prospect was deleted
-after the project was cancelled, or the catalogue was rebuilt and the id churned
-(`map-sourcing.js:4191` — "prospect ids change when a catalog is rebuilt"). The second is silent
-and can point the id at a *different* landfill. Someone will eventually wonder why a project has
-no linked prospect, and the answer will be a year old by then.
+**`development_stage` is deliberately NOT a discriminator.** `ProjectGates.syncDevelopmentStage()`
+writes it onto the prospect whenever a gate move earns it, while the snapshot is frozen so a later
+edit cannot reprice a sanctioned budget. Comparing them would flag every project that ever
+advanced a gate.
 
-**What to build.** A resolve-on-read check that records `unresolved_since` rather than repairing
-anything — the sites document may simply be the stale one, so auto-repair would be guessing.
-Surface unresolved projects as a list the user clears by hand.
+**Coordinates are the only real discriminator, and the bounds are measured.** `data/landfills.json`
+has 407 LMOP ids carrying more than one row — 1,382 pairs that are the same physical landfill,
+**maximum separation 0.0000 km, zero name differences**. So 150 m is a coordinate-rounding
+tolerance, not an identity radius. 5 km is reasoned, not measured, and is explicitly not an
+identity radius either: **83 rows have a genuinely different landfill within 1 km** and 263 within
+5 km. Anything between the two bounds is unknown and says so.
+
+**The backlog's own framing of item 1 was wrong.** A catalogue rebuild never touches
+`protonMiningSites`; it replaces `ProspectStore` candidates. Every `SiteData.update()` call site
+was checked and not one writes `id`, `name`, `latitude` or `longitude`. So a snapshot can only
+disagree with `SiteData` when the sites array was replaced wholesale — a sync pull, a restore, an
+import. That is what `repointed` and `ambiguous` catch, and the module claims nothing more.
+
+**Item 2 is covered by the same read.** `remove()` cannot promise a cross-device guarantee it has
+no transport for; the audit surfaces the result afterwards. `remove()` also stopped re-deriving
+`liveFor()` — it guarded on `hasLive` and then called `forProspect` unguarded and read `live.id`
+off whatever came back, so the guard named a different function from the one the next line called.
+
+97 assertions; 19 mutations, 17 caught. Surfaced on **Today**, because a project whose prospect is gone has
+no prospect page to be drawn on.
 
 ---
 
-## 2. The delete refusal is advisory across devices
+## 10. The map merges a rebuilt candidate onto the old saved record
 
-**What.** `SiteData.remove()` refuses a prospect with a live project. `sites` and `projects` are
-two independent last-write-wins Firestore documents, so a device that has not pulled the projects
-document does not see the project and allows the delete.
+**What.** `map-sourcing.js:5593`: `var existing = findSavedSite(c.id); if (existing)
+SiteData.update(existing.id, changes)`. After a catalogue rebuild an id can name a **different**
+landfill, and saving the prospect form then writes the new candidate's contacts, stage, operator,
+rates and distress signals onto the old record. `update()` never touches `id`, `name`, `latitude`
+or `longitude`, so the record keeps the old landfill's identity and acquires the new one's
+research.
 
-**Why it is not fixable in `remove()`.** The function cannot promise a cross-device guarantee it
-has no transport for. Pretending otherwise would be worse than the gap.
+**Why the link audit does not catch it.** Every field the audit can compare still agrees — the
+snapshot and the saved record have the same id, name and coordinates — so it correctly reports
+`linked`. The hybrid is invisible to it by construction. Found while writing that module; it is
+the real churn hazard, and it is a different bug from the one the audit was built for.
 
-**What to build.** Reconciliation in the workspace, sharing the mechanism with item 1: on read,
-check each project against `SiteData` and flag rather than repair.
+**What to build.** `findSavedSite()` should confirm identity before merging, not just match an id:
+compare the candidate's coordinates against the saved record's with the same bounds the link audit
+uses, and refuse the merge — surfacing it — when they disagree. The bounds are already measured
+and already exported.
 
 ---
 
@@ -214,7 +244,7 @@ planted above every new handler.
 
 Kept below as written, because the reasoning is why the census exists.
 
-## ~~8. Nine write paths still have no control behind them~~
+### The original entry, kept because it is why the census exists
 
 **What.** `tests/workspace-reach.test.js` asserts that every module writing a per-project
 collection has AT LEAST ONE writer something calls, and prints the ones nothing calls. Nine are

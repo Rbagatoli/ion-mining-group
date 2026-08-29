@@ -168,6 +168,36 @@
            opposite claims and must not share a rendering. */
         .pd-refused { margin:0; padding:12px 14px; font-size:12px; color:var(--plat-400);
                       max-width:70ch; line-height:1.55; }
+        /* ---- The project/prospect link audit ----
+           On Today because a project whose prospect is gone has no prospect page. Quiet by
+           construction: the block collapses to nothing when every link resolves, so it is a
+           finding rather than a permanent fixture. */
+        .pla-block { border:1px solid var(--line-btc); background:var(--panel);
+                     border-radius:var(--radius); margin:0 0 14px; max-width:900px;
+                     padding:12px 14px; }
+        .pla-head { margin:0; font-size:12.5px; line-height:1.6; color:var(--plat-300);
+                    max-width:74ch; }
+        .pla-warn { color:var(--btc-300); }
+        .pla-quiet { margin:8px 0 0; font-size:11.5px; line-height:1.55;
+                     color:var(--plat-500); max-width:74ch; }
+        .pla-list { list-style:none; margin:10px 0 0; padding:0; }
+        .pla-row { display:grid; grid-template-columns:1fr 2fr auto; gap:6px 12px;
+                   align-items:baseline; padding:7px 0; border-top:1px solid var(--line);
+                   font-size:12px; }
+        .pla-what { color:var(--plat-200); }
+        .pla-state { display:block; font-family:var(--mono); font-size:10px;
+                     letter-spacing:.06em; text-transform:uppercase; color:var(--btc-300); }
+        .pla-why { color:var(--plat-400); line-height:1.5; }
+        .pla-since { display:block; font-family:var(--mono); font-size:10.5px;
+                     color:var(--plat-600); }
+        .pla-do { display:flex; gap:6px; }
+        /* The only control, and it records rather than repairs. */
+        .pla-ack-btn { background:none; border:1px solid var(--line); cursor:pointer;
+                       border-radius:var(--radius); color:var(--plat-400); font-size:10px;
+                       letter-spacing:.05em; text-transform:uppercase; padding:3px 8px; }
+        .pla-ack-btn:hover { color:var(--btc-300); border-color:var(--line-btc); }
+        .pla-ack { font-size:11px; color:var(--plat-500); font-style:italic; }
+        @media (max-width:560px) { .pla-row { grid-template-columns:1fr; } }
         /* ---- Budget (Stage 4) ----
            Three money columns, always, because budgeted -> committed -> spent is the whole
            point of the ledger and a single "cost so far" would undo it. Tabular figures so the
@@ -704,6 +734,11 @@
     <div id="prospectNav"></div>
 
     <section id="todaySection">
+        <!-- The link audit sits ABOVE the follow-ups because it is the rarer and the
+             worse news, and because it is the only project-wide surface there is: a
+             project whose prospect is gone has no prospect page to be drawn on. It
+             renders nothing at all when every link resolves. -->
+        <div id="plaudit"></div>
         <div id="ptoday"></div>
     </section>
 
@@ -738,8 +773,8 @@
 <script src="./backup.js?v=375"></script>
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=340"></script>
-<script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=384"></script>
+<script src="./site-model.js?v=395"></script>
+<script src="./project-model.js?v=395"></script>
 <!-- The scorer, so a gate advance can say what it did to the score rather than only
      that it happened. site-opportunity needs SiteInfrastructure for capital_avoided,
      which needs SiteCapex for its rate card; jurisdictions is read by the scorer too.
@@ -747,7 +782,7 @@
 <script src="./jurisdictions.js?v=384"></script>
 <script src="./site-capex.js?v=393"></script>
 <script src="./site-infrastructure.js?v=384"></script>
-<script src="./site-opportunity.js?v=384"></script>
+<script src="./site-opportunity.js?v=395"></script>
 <script src="./project-gates.js?v=384"></script>
 <!-- The budget ledger. After project-gates.js because it routes writes through ProjectData.mutate,
      and after site-capex.js because seedFromEstimate reads SiteCapex.stack(). -->
@@ -767,6 +802,11 @@
      variations against each contract. Both are reached from inside a render, not at load, so
      nothing here depends on the order of these tags. -->
 <script src="./project-contractors.js?v=390"></script>
+<!-- Reads ProjectData and SiteData, writes only the reconciliation mark through
+     ProjectData.mutate. Asks SiteOpportunity for the distance formula rather than
+     carrying a fourth copy of haversine. -->
+<script src="./project-link-audit.js?v=395"></script>
+<script src="./project-link-audit-ui.js?v=395"></script>
 <!-- Before the board, because publish() pushes the configured stage list into
      site-model.js and the board draws its columns from that list. -->
 <script src="./crm-config.js?v=383"></script>
@@ -779,10 +819,10 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=340"></script>
-<script src="./prospect-detail.js?v=392"></script>
+<script src="./prospect-detail.js?v=395"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
-<script src="./prospecting.js?v=392"></script>
+<script src="./prospecting.js?v=395"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>

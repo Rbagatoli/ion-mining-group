@@ -747,6 +747,21 @@
     }
 
     function drawToday() {
+        /* THE LINK AUDIT FIRST, and outside the ProspectToday guard on purpose: the two are
+           independent panels sharing a screen, and letting a missing follow-ups module take the
+           reconciliation down with it would hide the rarer and worse news. It wires its own
+           controls and draws nothing when every link resolves. */
+        if (typeof ProjectLinkAuditUi !== 'undefined') {
+            var scanned = ProjectLinkAuditUi.render('plaudit');
+            /* Stamping is a WRITE, so it happens once per draw of this screen rather than on
+               every render: the date recorded is when the workspace first SAW the link fail,
+               and re-deriving it on a redraw after an acknowledgement would move it. record()
+               refuses a scan that classified nothing, so a device with no prospect list cannot
+               stamp every project it holds. */
+            if (scanned && scanned.state === 'ready' && typeof ProjectLinkAudit !== 'undefined') {
+                ProjectLinkAudit.record(scanned);
+            }
+        }
         if (typeof ProspectToday === 'undefined') return;
         ProspectToday.render('ptoday');
         /* Marking a follow-up done is the one action this screen takes, and it

@@ -504,6 +504,10 @@ var SiteOpportunity = (function() {
 
     return {
         score: score,
+        /* Exported so the link audit can ask the module that already owns the formula how far
+           apart two coordinates are, rather than the workspace carrying a fourth copy of
+           haversine that agrees with this one until somebody edits one of them. */
+        haversineKm: haversineKm,
         contactTier: contactTier,
         landfillWeights: landfillWeights,
         LANDFILL_WEIGHTS: LANDFILL_WEIGHTS,

@@ -203,6 +203,42 @@ var ProjectData = (function () {
 
         p.notes = typeof p.notes === 'string' ? p.notes : '';
 
+        /* THE RECONCILIATION MARK, and it is an OBSERVATION rather than a derived value.
+         *
+         * Which projects are unresolved, how many, and in which state are recomputed on every
+         * read and stored nowhere, for the reason at the top of this file. What cannot be
+         * recomputed from anything is WHEN the reference was first seen to fail, HOW MUCH the
+         * observing device could see when it said so, and whether a person has since looked at
+         * it and decided to leave it alone.
+         *
+         * Not inside p.prospect: that is rebuilt as a fixed literal above, so a key added there
+         * is dropped on the next read(). Unknown top-level keys survive the copy loop.
+         *
+         * NO STATE IS STORED HERE. The verdict is recomputed every read; keeping the one taken
+         * at stamping time guarantees the two disagree the moment anything changes, and would
+         * put a second copy of the state vocabulary in a file that cannot ask for the first.
+         *
+         * Created only when the record already carries one, so an unmarked project's stored
+         * bytes are untouched — which is what makes "the scan writes nothing" assertable. */
+        if (p.prospect_link && typeof p.prospect_link === 'object' &&
+            !Array.isArray(p.prospect_link)) {
+            var m = p.prospect_link;
+            p.prospect_link = {
+                unresolved_since:          text(m.unresolved_since),
+                /* The evidence behind the stamp: a claim made while 400 prospects were visible
+                   is worth more than the same claim made while 3 were. Nothing else records it. */
+                unresolved_seen_prospects: num(m.unresolved_seen_prospects),
+                acknowledged_at:           text(m.acknowledged_at),
+                acknowledged_by:           text(m.acknowledged_by, 120),
+                acknowledged_note:         text(m.acknowledged_note, 300),
+                /* Cleared is a value written, not a key removed -- merge cannot express a
+                   removal. cleared_at:null IS expressible, which is what lets a fresh failure
+                   after a clear re-stamp rather than being suppressed forever. */
+                cleared_at:                text(m.cleared_at),
+                cleared_seen_prospects:    num(m.cleared_seen_prospects)
+            };
+        }
+
         /* DELIVERABLE STATE, keyed by gate then by item. Not one of COLLECTIONS: those are the
            many-per-project ledgers whose emptiness remove() checks, and a cancelled project
            should not be un-removable because somebody once ticked a checkbox.
@@ -456,8 +492,12 @@ var ProjectData = (function () {
     /* Minted and snapshot fields are refused by NAME rather than stripped. Silently dropping a
        key the caller believed it set is the same class of bug as the whitelist this file exists
        to avoid. */
+    /* prospect_link is sealed like deliverables: it is written by the link audit through
+       mutate(), and letting update() set it would let any caller stamp a reconciliation
+       observation without having made one. */
     var SEALED = ['id', 'seq', 'created', 'prospect', 'gate', 'gate_entered_at',
-                  'deleted_at', 'deleted_reason', 'deliverables'].concat(COLLECTIONS);
+                  'deleted_at', 'deleted_reason', 'deliverables',
+                  'prospect_link'].concat(COLLECTIONS);
 
     function update(id, patch) {
         var d = draft();

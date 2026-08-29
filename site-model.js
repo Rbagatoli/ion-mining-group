@@ -352,9 +352,15 @@ var SiteData = (function() {
            last-write-wins documents, so a device that has not yet pulled the projects doc will
            not see the project and will allow the delete. That is a reconciliation problem for
            the workspace to surface, not something this function can promise. */
-        if (typeof ProjectData !== 'undefined' && ProjectData.hasLive &&
-            ProjectData.hasLive(id)) {
-            var live = ProjectData.forProspect(id).filter(function(p) { return p.gate !== 'cancelled'; })[0];
+        /* ONE CALL, AND GUARDED ON THE FUNCTION IT ACTUALLY MAKES. This used to test
+           ProjectData.hasLive and then rebuild liveFor()'s answer with an UNGUARDED
+           forProspect(), reading live.id off whatever came back. Two things wrong with that: the
+           guard named a different function from the one the next line called, and liveFor()
+           already is this filter (project-model.js:344-347), so the workspace had two copies of
+           "which project counts as live" and only one of them was tested. */
+        var live = (typeof ProjectData !== 'undefined' && ProjectData.liveFor)
+            ? ProjectData.liveFor(id) : null;
+        if (live) {
             return { ok: false, err: 'This prospect is being built as project ' + live.id +
                      ' (' + live.name + '). Cancel the project first.' };
         }
@@ -462,8 +468,47 @@ var SiteData = (function() {
         return add(SiteSources.toSite(cand, overrides));
     }
 
+    /* WHY THIS EXISTS SEPARATELY FROM list().
+     *
+     * getData() collapses four different facts into one empty array: the key was never written,
+     * the JSON did not parse, `sites` was not an array, and a store that genuinely holds no
+     * prospects. Every caller that only wants records is right not to care.
+     *
+     * A caller about to conclude something FROM the absence of a record has to care, because
+     * "this device has never pulled the prospect list" and "that prospect was deleted" are
+     * opposite answers reached through the same empty array — and one of them is a reason to
+     * say nothing at all rather than to raise an alarm on every project at once.
+     *
+     * Recorded and deliberately not fixed here: getData() ignores _v entirely, so a sites
+     * document from a future build is read and normalized rather than refused, unlike
+     * ProjectData.read(). This reports what it can see; version-blocking `sites` is its own
+     * change with its own risk. */
+    function storeState() {
+        var raw;
+        try { raw = localStorage.getItem(KEY); }
+        catch (e) {
+            return { state: 'unreadable', count: null,
+                     reason: 'Local storage could not be read on this device.' };
+        }
+        if (raw === null || raw === '') {
+            return { state: 'absent', count: null,
+                     reason: 'No prospect list has ever been written on this device.' };
+        }
+        var parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+        if (!parsed || !Array.isArray(parsed.sites)) {
+            return { state: 'unreadable', count: null,
+                     reason: 'The saved prospect list could not be read on this device.' };
+        }
+        return { state: parsed.sites.length ? 'ready' : 'empty',
+                 count: parsed.sites.length,
+                 reason: parsed.sites.length ? null
+                       : 'The prospect list is readable and holds nothing.' };
+    }
+
     return {
         getData: getData,
+        storeState: storeState,
         list: list,
         get: get,
         add: add,

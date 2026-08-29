@@ -1,6 +1,6 @@
 // Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
 // than leaving the superseded copies of the two panels beside the new ones.
-const CACHE_NAME = 'proton-mining-v394';
+const CACHE_NAME = 'proton-mining-v395';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -105,6 +105,8 @@ const ASSETS = [
   // script tags on the page; this is the same fact for the offline copy of that page.
   './procurement.js',
   './project-contractors.js',
+  './project-link-audit.js',
+  './project-link-audit-ui.js',
   './jurisdictions.js',
   './price-history.js',
   './network-history.js',
