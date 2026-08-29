@@ -446,6 +446,18 @@
                                                      this.value));
             });
         }
+        /* Blank means unknown, and it has to survive the round trip: parseFloat('') is NaN and
+           the model would refuse it, so an emptied field is sent as null deliberately rather
+           than as a number that happens not to be one. */
+        var procWks = host4 ? host4.querySelectorAll('.pd-proc-wk') : [];
+        for (var s4 = 0; s4 < procWks.length; s4++) {
+            procWks[s4].addEventListener('change', function () {
+                var p = liveProject(); if (!p) return;
+                var v = this.value === '' ? null : parseFloat(this.value);
+                applied(ProjectProcurement.updateItem(p.id, this.getAttribute('data-pid'),
+                                                      { lead_time_weeks: v }));
+            });
+        }
         var procRms = host4 ? host4.querySelectorAll('.pd-proc-rm') : [];
         for (var s3 = 0; s3 < procRms.length; s3++) {
             procRms[s3].addEventListener('click', function () {
@@ -453,6 +465,88 @@
                 var why = window.prompt('Remove this item from the schedule. Why?');
                 if (why === null) return;
                 applied(ProjectProcurement.removeItem(p.id, this.getAttribute('data-pid'), why));
+            });
+        }
+
+        /* ---- Budget (Stage 4) ----
+           Ninety-three passing assertions and, until now, no control anywhere that called a
+           single one of its writers. */
+        var budSeed = document.getElementById('pdBudSeed');
+        if (budSeed) budSeed.addEventListener('click', function () {
+            var p = liveProject(); if (!p) return;
+            if (!window.confirm('Seed the opening budget from the capex estimate?' + NEWLINE + NEWLINE +
+                'This can only be done once, while the ledger is empty — the estimate is the ' +
+                'OPENING budget, so re-seeding one in flight would overwrite what actually ' +
+                'happened with what was predicted.')) return;
+            var res = ProjectBudget.seedFromEstimate(p.id);
+            if (applied(res) && res.skipped && res.skipped.length) {
+                /* Named, never silent. A component the estimator reports as unknown is skipped
+                   rather than seeded at zero, because a zero budget reads as "this costs
+                   nothing" and produces a 100% overrun on the first invoice. */
+                window.alert('Seeded ' + res.seeded + ' lines. Not seeded, because the estimate ' +
+                    'reports no figure for them: ' + res.skipped.join(', ') + '.');
+            }
+        });
+
+        var budForm = document.getElementById('pdBudForm');
+        if (budForm) budForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = liveProject(); if (!p) return;
+            function amt(elId) { var v = fieldValue(elId); return v === '' ? null : parseFloat(v); }
+            var res = ProjectBudget.addLine(p.id, {
+                category: fieldValue('pdBudCat'),
+                vendor: fieldValue('pdBudVendor').trim(),
+                budgeted_amount: amt('pdBudB'),
+                committed_amount: amt('pdBudC'),
+                spent_amount: amt('pdBudS')
+            });
+            if (applied(res) && res.flag) {
+                /* Committing money before exclusivity is executed is money at risk of being
+                   spent diligencing a site somebody else can still take. The model raises it;
+                   swallowing it here would make the warning pointless. */
+                window.alert(res.flag);
+            }
+        });
+
+        /* Inline amounts, committing on change, like the enrichment checklist. */
+        var budAmts = host4 ? host4.querySelectorAll('.pd-bud-amt') : [];
+        for (var b1 = 0; b1 < budAmts.length; b1++) {
+            budAmts[b1].addEventListener('change', function () {
+                var p = liveProject(); if (!p) return;
+                var patch = {};
+                patch[this.getAttribute('data-field')] = parseFloat(this.value);
+                applied(ProjectBudget.updateLine(p.id, this.getAttribute('data-lid'), patch));
+            });
+        }
+        var budRms = host4 ? host4.querySelectorAll('.pd-bud-rm') : [];
+        for (var b2 = 0; b2 < budRms.length; b2++) {
+            budRms[b2].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                var why = window.prompt('Remove this budget line. Why?');
+                if (why === null) return;
+                applied(ProjectBudget.removeLine(p.id, this.getAttribute('data-lid'), why));
+            });
+        }
+        /* A REVISION SUPERSEDES, IT DOES NOT OVERWRITE. reviseChangeOrder leaves the original on
+           the timeline with the new entry pointing back at it, so what was approved first stays
+           visible — quietly editing an approved change order is how a cumulative change figure
+           stops being a record of anything. */
+        var budRevs = host4 ? host4.querySelectorAll('.pd-bud-rev') : [];
+        for (var b3 = 0; b3 < budRevs.length; b3++) {
+            budRevs[b3].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                var coid = this.getAttribute('data-coid');
+                var why = window.prompt('Why is this change order being revised?');
+                if (!why) return;
+                var cost = window.prompt('Revised cost impact (blank to leave it):');
+                if (cost === null) return;
+                var days = window.prompt('Revised schedule impact in days (blank to leave it):');
+                if (days === null) return;
+                applied(ProjectBudget.reviseChangeOrder(p.id, coid, {
+                    reason: why,
+                    cost_impact: cost === '' ? null : parseFloat(cost),
+                    schedule_impact_days: days === '' ? null : parseFloat(days)
+                }));
             });
         }
 
@@ -499,6 +593,27 @@
             }));
         });
 
+        var ctIns = host4 ? host4.querySelectorAll('.pd-ct-ins-set') : [];
+        for (var c1 = 0; c1 < ctIns.length; c1++) {
+            ctIns[c1].addEventListener('change', function () {
+                var p = liveProject(); if (!p) return;
+                /* Clearing the date is a real edit — a certificate can be withdrawn — and the
+                   model reports an undated contractor as unverified rather than covered, which
+                   is the honest reading. So an emptied field goes through as null. */
+                applied(ProjectContractors.updateContractor(p.id, this.getAttribute('data-cid'),
+                    { insurance_expiry: this.value === '' ? null : this.value }));
+            });
+        }
+        var ctRms = host4 ? host4.querySelectorAll('.pd-ct-rm') : [];
+        for (var c2 = 0; c2 < ctRms.length; c2++) {
+            ctRms[c2].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                var why = window.prompt('Remove this contractor. Why?');
+                if (why === null) return;
+                applied(ProjectContractors.removeContractor(p.id, this.getAttribute('data-cid'), why));
+            });
+        }
+
         /* One handler for every row button, dispatching on data-do. The alternative is six
            querySelectorAll loops that differ only in a string. */
         var acts = host4 ? host4.querySelectorAll('.pd-ct-act') : [];
@@ -508,7 +623,11 @@
                 var what = this.getAttribute('data-do');
                 var aid = this.getAttribute('data-aid');
                 var coid = this.getAttribute('data-coid');
-                if (what === 'certify') {
+                if (what === 'reject') {
+                    var why = window.prompt('Why is this application being rejected?');
+                    if (!why) return;
+                    applied(ProjectContractors.rejectPayApp(p.id, aid, why));
+                } else if (what === 'certify') {
                     /* A name, because certifying is a person agreeing money is owed. The model
                        refuses an empty one; asking here means the refusal is rare. */
                     var who = window.prompt('Who is certifying this application?');

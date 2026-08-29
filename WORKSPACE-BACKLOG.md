@@ -143,7 +143,24 @@ is ever opened.
 
 ---
 
-## 8. Nine write paths still have no control behind them
+## 8. ~~Nine write paths still have no control behind them~~ — CLOSED
+
+**Closed.** All nine now have a control, and `tests/workspace-reach.test.js` prints no
+`no caller yet` line. The Budget section is the bulk of it: category rows carrying the variance,
+the lines under them with budgeted/committed/spent editable in place and committing on change,
+a seed-from-estimate control offered only while the ledger is empty, and change orders with
+Revise on the approved ones. The other four are row controls on panels that already existed —
+an inline lead time on a procurement item, an inline insurance date and a remove on a
+contractor, and Reject beside Certify on a submitted payment application.
+
+`tests/budget-panel.test.js` asserts reachability by rendering the panel and loading
+prospecting.js for real rather than reading source, because a control that renders and is never
+wired is the failure three stages shipped with. 13 mutations, 13 caught, including a throw
+planted above every new handler.
+
+Kept below as written, because the reasoning is why the census exists.
+
+## ~~8. Nine write paths still have no control behind them~~
 
 **What.** `tests/workspace-reach.test.js` asserts that every module writing a per-project
 collection has AT LEAST ONE writer something calls, and prints the ones nothing calls. Nine are

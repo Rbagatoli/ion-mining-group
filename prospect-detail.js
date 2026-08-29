@@ -639,7 +639,16 @@ var ProspectDetail = (function () {
            so the schedule still shows the money went out — procurement.js refuses the other way
            round too, and this keeps the button from offering what the model will decline. */
         var canRemove = r.item.status !== 'ordered' && r.item.status !== 'delivered';
+        /* The lead time inline, because it is the field that actually changes: a catalogue
+           figure becomes a quoted one, and a quote gets withdrawn. Blank is a real value and
+           means unknown, so the input is deliberately not given a placeholder of 0 — the module
+           treats absent and zero as different statements and typing over that here would
+           reintroduce the reassuring default it was built to refuse. */
         return '<span class="pd-proc-do">' +
+            '<input class="pd-proc-wk" type="number" min="0" step="1" ' +
+                'data-pid="' + esc(r.item.id) + '" title="Lead time in weeks; blank is unknown" ' +
+                'value="' + esc(r.item.lead_time_weeks === null ? '' :
+                                String(r.item.lead_time_weeks)) + '" aria-label="Lead weeks">' +
             '<select class="pd-proc-set" data-pid="' + esc(r.item.id) + '" ' +
                 'aria-label="Status">' + opts + '</select>' +
             (canRemove ? '<button type="button" class="pd-proc-rm" data-pid="' +
@@ -705,6 +714,203 @@ var ProspectDetail = (function () {
         for (var i = 0; i < rows.length; i++) list += procRow(rows[i]);
         return '<p class="pd-proc-head">' + lines.join(' ') + '</p>' +
                '<ul class="pd-proc">' + list + '</ul>' + procForm();
+    }
+
+    /* ---- Budget (Stage 4, reachable at last) ----
+     *
+     * The ledger has had ninety-three passing assertions and no way in since it was built: no
+     * control anywhere added a line, edited one, removed one, or seeded the opening budget from
+     * the estimate. tests/workspace-reach.test.js found it, and this is the other half.
+     *
+     * THREE STATES, THREE COLUMNS, NEVER ONE NUMBER. budgeted -> committed -> spent is the
+     * distinction the module exists for: once a PO is issued the money is effectively gone, and
+     * a panel reporting only what has been invoiced hides the exposure until the invoice lands.
+     * Showing a single "cost so far" would undo the entire model.
+     *
+     * AT RISK IS NEVER FOLDED IN. Diligence money is spent on a project that can still die.
+     * totals() holds it out of the capital figures and so does this — a project that has spent
+     * $200K proving a site unviable must not read like one that has started building.
+     */
+    var BUD_COLS = [
+        { key: 'budgeted',  label: 'Budgeted' },
+        { key: 'committed', label: 'Committed' },
+        { key: 'spent',     label: 'Spent' }
+    ];
+
+    function budLineRow(l) {
+        /* INLINE INPUTS THAT COMMIT ON CHANGE, matching the enrichment checklist above: budget
+           work happens in the middle of doing something else — an invoice open in another tab —
+           and a ledger with a Save button is one that gets half-filled and abandoned. */
+        var f = ['budgeted_amount', 'committed_amount', 'spent_amount'].map(function (k) {
+            return '<input class="pd-bud-amt" type="number" min="0" step="1" ' +
+                   'data-lid="' + esc(l.id) + '" data-field="' + esc(k) + '" ' +
+                   'value="' + esc(String(l[k] === null || l[k] === undefined ? 0 : l[k])) + '" ' +
+                   'aria-label="' + esc(k.replace(/_/g, ' ')) + '">';
+        }).join('');
+        return '<li class="pd-bud-line">' +
+            '<span class="pd-bud-what">' +
+                (l.vendor ? esc(l.vendor) : absent('no vendor')) +
+                (l.seeded ? ' <span class="pd-bud-seeded">from estimate</span>' : '') +
+                (l.notes ? '<span class="pd-bud-note">' + esc(l.notes) + '</span>' : '') +
+            '</span>' +
+            '<span class="pd-bud-amts">' + f + '</span>' +
+            '<button type="button" class="pd-bud-rm" data-lid="' + esc(l.id) + '" ' +
+                'title="Remove this line">&times;</button>' +
+        '</li>';
+    }
+
+    function budCatRow(c) {
+        /* Variance is null where nothing was budgeted, and the two reasons for that are
+           different claims: the estimator priced it at zero deliberately (site acquisition on a
+           raw resource), or nobody planned for it at all. project-budget keeps them apart and so
+           does this — "unbudgeted" is a question, "priced at zero" is an answer. */
+        var v = '';
+        if (c.variance === null) {
+            v = c.unbudgeted ? '<span class="pd-warn">unbudgeted</span>'
+              : (c.zero_contradicted ? '<span class="pd-warn">priced at zero, and spent</span>'
+                                     : '<span class="pd-bud-quiet">priced at zero</span>');
+        } else if (c.variance > 0) {
+            v = '<span class="pd-warn">+' + esc(fmtUsd(c.variance)) +
+                ' (' + esc(String(c.variance_pct)) + '%)</span>';
+        } else if (c.variance < 0) {
+            v = esc(fmtUsd(c.variance)) + ' (' + esc(String(c.variance_pct)) + '%)';
+        } else {
+            v = 'on budget';
+        }
+        return '<li class="pd-bud-cat">' +
+            '<span class="pd-bud-catname">' + esc(c.label) + '</span>' +
+            '<span class="pd-bud-catnums">' +
+                esc(fmtUsd(c.budgeted)) + ' &middot; ' + esc(fmtUsd(c.committed)) +
+                ' &middot; ' + esc(fmtUsd(c.spent)) +
+            '</span>' +
+            '<span class="pd-bud-var">' + v + '</span>' +
+        '</li>';
+    }
+
+    var CO_LABEL = { proposed: 'proposed', approved: 'approved', rejected: 'rejected' };
+
+    function budChangeRow(c, project) {
+        var who = c.contractor_id && project.contractors[c.contractor_id];
+        return '<li class="pd-bud-co">' +
+            '<span class="pd-bud-what">' + esc(c.description || c.id) +
+                (who ? ' <span class="pd-bud-quiet">' + esc(who.name) + '</span>' : '') +
+                (c.revised_at ? ' <span class="pd-bud-seeded">revised</span>' : '') +
+            '</span>' +
+            '<span class="pd-bud-catnums">' + esc(fmtUsd(c.cost_impact)) + ' &middot; ' +
+                esc(String(c.schedule_impact_days)) + 'd</span>' +
+            '<span class="pd-bud-var">' + esc(CO_LABEL[c.status] || c.status) + '</span>' +
+            /* Revising an APPROVED change order only. A proposed one is decided, not revised,
+               and CrmLog.supersede exists so the original stays on the timeline with the new one
+               pointing back at it — quietly editing an approved change is how a cumulative
+               change figure stops recording anything. */
+            (c.status === 'approved'
+                ? '<button type="button" class="pd-bud-rev" data-coid="' + esc(c.id) +
+                  '">Revise</button>' : '<span></span>') +
+        '</li>';
+    }
+
+    function budgetForm(project) {
+        var opts = '';
+        for (var i = 0; i < ProjectBudget.CATEGORIES.length; i++) {
+            var c = ProjectBudget.CATEGORIES[i];
+            opts += '<option value="' + esc(c.id) + '">' + esc(c.label) + '</option>';
+        }
+        return '<form id="pdBudForm" class="pd-bud-form">' +
+            '<select id="pdBudCat" aria-label="Category">' + opts + '</select>' +
+            '<input id="pdBudVendor" type="text" placeholder="Vendor" maxlength="120">' +
+            '<input id="pdBudB" type="number" min="0" step="1" placeholder="Budgeted $">' +
+            '<input id="pdBudC" type="number" min="0" step="1" placeholder="Committed $">' +
+            '<input id="pdBudS" type="number" min="0" step="1" placeholder="Spent $">' +
+            '<button type="submit">Add line</button>' +
+            '<span class="pd-bud-hint">One figure is enough. Committed is the one that matters ' +
+                'and the one nothing tracked before: once a PO is issued the money is gone, ' +
+                'and a ledger showing only what has been invoiced looks fine right up until ' +
+                'it does not.</span>' +
+        '</form>';
+    }
+
+    function budgetBlock(project) {
+        if (typeof ProjectBudget === 'undefined') return '';
+        var t = ProjectBudget.totals(project);
+        var lines = ProjectBudget.lines(project);
+        var cats = ProjectBudget.byCategory(project);
+        var cos = ProjectBudget.changeOrders(project);
+
+        var head = [];
+        if (t.authorised === null) {
+            head.push('<span class="pd-warn">No authorised budget is recorded, so nothing can ' +
+                      'be measured against one.</span>');
+        } else {
+            head.push(fmtUsd(t.committed) + ' committed of ' + fmtUsd(t.authorised) + ' authorised.');
+            if (t.remaining !== null && t.remaining < 0) {
+                head.push('<span class="pd-warn">' + fmtUsd(-t.remaining) +
+                          ' over the authorised budget.</span>');
+            } else if (t.remaining !== null) {
+                head.push(fmtUsd(t.remaining) + ' remaining.');
+            }
+        }
+        if (t.spent) head.push(fmtUsd(t.spent) + ' of that has actually been invoiced.');
+        /* Its own sentence, always, because folding it into committed is the specific lie this
+           ledger refuses to tell. */
+        if (t.at_risk_committed || t.at_risk_spent) {
+            head.push('<span class="pd-warn">' + fmtUsd(t.at_risk_committed) +
+                      ' committed at risk on diligence, held out of the capital figures.</span>');
+        }
+        if (t.change_order_count) {
+            head.push(t.change_order_count + ' approved change order' +
+                (t.change_order_count === 1 ? '' : 's') + ': ' + fmtUsd(t.change_order_value) +
+                (t.change_order_pct === null ? '' : ' (' + t.change_order_pct + '% of authorised)') +
+                ' and ' + t.change_order_days + ' days.');
+        }
+        /* Null and zero are opposite claims here and the module is explicit about it: a ratio of
+           0 means the contingency is gone, which is the loudest thing this ledger says; null
+           means none was ever set aside, and a freshly seeded project always lands there. */
+        if (t.contingency_ratio === null) {
+            if (t.contingency_budgeted === 0 && lines.length) {
+                head.push('No contingency is budgeted, so there is no ratio to watch.');
+            }
+        } else if (t.contingency_ratio <= 25) {
+            head.push('<span class="pd-warn">Contingency is ' + t.contingency_ratio +
+                      '% of what is left to spend.</span>');
+        } else {
+            head.push('Contingency is ' + t.contingency_ratio + '% of what is left to spend.');
+        }
+
+        if (!lines.length) {
+            /* The seed is offered only here. seedFromEstimate() refuses once any line exists,
+               because the estimate is the OPENING budget and re-seeding a ledger in flight would
+               overwrite what actually happened with what was predicted. */
+            return '<p class="pd-basis">No budget lines yet. Seeding from the capex estimate ' +
+                   'makes the model\'s own numbers the opening budget, so estimate-versus-actual ' +
+                   'falls out for free instead of being reconstructed later.</p>' +
+                   '<p class="pd-bud-seedrow">' +
+                   '<button type="button" id="pdBudSeed">Seed from the estimate</button></p>' +
+                   budgetForm(project);
+        }
+
+        var catHtml = '';
+        for (var i = 0; i < cats.length; i++) {
+            catHtml += budCatRow(cats[i]);
+            for (var j = 0; j < lines.length; j++) {
+                if (lines[j].category === cats[i].id) catHtml += budLineRow(lines[j]);
+            }
+        }
+        var coHtml = '';
+        for (var k = 0; k < cos.length; k++) coHtml += budChangeRow(cos[k], project);
+
+        return '<p class="pd-bud-head">' + head.join(' ') + '</p>' +
+               '<p class="pd-bud-cols">Budgeted &middot; Committed &middot; Spent</p>' +
+               '<ul class="pd-bud">' + catHtml + '</ul>' +
+               (coHtml ? '<p class="pd-bud-sub">Change orders</p><ul class="pd-bud">' +
+                         coHtml + '</ul>' : '') +
+               budgetForm(project);
+    }
+
+    function budgetSection(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        if (!p) return '';
+        return '<section class="pd-sec"><h3>Budget</h3>' + budgetBlock(p) + '</section>';
     }
 
     /* ---- Contractors (Stage 7) ----
@@ -774,8 +980,13 @@ var ProspectDetail = (function () {
     function appActions(a) {
         var id = esc(a.id);
         if (a.status === 'submitted') {
+            /* Reject beside Certify, because the two are the same decision and offering only the
+               agreeing half is how an application nobody accepts sits as 'submitted' forever
+               and quietly inflates the waiting-to-be-certified count. */
             return '<button type="button" class="pd-ct-act" data-do="certify" data-aid="' + id +
-                   '">Certify</button>';
+                   '">Certify</button>' +
+                   '<button type="button" class="pd-ct-act" data-do="reject" data-aid="' + id +
+                   '">Reject</button>';
         }
         if (a.status === 'certified') {
             return '<button type="button" class="pd-ct-act" data-do="pay" data-aid="' + id +
@@ -829,6 +1040,19 @@ var ProspectDetail = (function () {
             '</span>' +
             '<span class="pd-ct-state">' + esc(CT_STATE[r.state] || r.state) + '</span>' +
             '<span class="pd-ct-when">' + esc(ctWhen(r)) + '</span>' +
+            /* The insurance date inline: it is the one field on a contractor that genuinely
+               changes, it expires on a schedule, and chasing a renewal is the most common edit
+               anybody makes here. The contract sum is deliberately NOT editable inline — the
+               model closes it at the first certificate and the way to change it after that is a
+               change order, so an input offering to would be inviting a refusal. */
+            '<span class="pd-ct-do">' +
+                '<input class="pd-ct-ins-set" type="date" data-cid="' + esc(c.id) + '" ' +
+                    'title="Certificate of insurance expires" ' +
+                    'value="' + esc(c.insurance_expiry || '') + '" aria-label="Insurance expiry">' +
+                (apps.length ? '' :
+                    '<button type="button" class="pd-ct-rm" data-cid="' + esc(c.id) +
+                    '" title="Remove this contractor">&times;</button>') +
+            '</span>' +
             nested +
         '</li>';
     }
@@ -1095,6 +1319,7 @@ var ProspectDetail = (function () {
             advanceControl(rec) +
         '</div>' +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
+        budgetSection(rec) +
         procurementSection(rec) +
         contractorsSection(rec) +
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
