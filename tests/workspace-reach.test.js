@@ -28,6 +28,7 @@
  */
 var fs = require('fs');
 var path = require('path');
+var cp = require('child_process');
 var ROOT = path.join(__dirname, '..');
 
 var pass = 0, fail = 0;
@@ -292,9 +293,51 @@ var absent = ASSETS.filter(function (a) { return !fs.existsSync(path.join(ROOT, 
 ok('every entry exists on disk', absent.length === 0,
    'addAll() is atomic — these reject the whole install and precache NOTHING: ' + absent.join(', '));
 
+/* AND EXISTS IN THE REPO, WHICH IS NOT THE SAME QUESTION AND IS THE ONE THAT MATTERS.
+ *
+ * The check above passed while sw.js named two files that would 404 on every deploy. They were
+ * present on this disk and UNTRACKED — somebody's work in progress — so existsSync() confirmed
+ * a fact about one laptop and nothing about what GitHub Pages would serve. The deployed tree is
+ * the git tree, so that is what has to be asked, and asking the filesystem instead is a check
+ * passing for a reason unrelated to what it claims.
+ *
+ * It is worth the extra assertion rather than folding into the one above because the two fail
+ * for different reasons and want different fixes: a name absent from disk is a typo, a name
+ * absent from git is a file somebody has not committed yet. */
+var tracked = null;
+try {
+    tracked = {};
+    cp.execSync('git ls-files', { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').forEach(function (f) { if (f.trim()) tracked[f.trim()] = true; });
+} catch (e) { tracked = null; }
+/* The oracle is proved before its silence is trusted, the same as every other scan here: an
+   empty or failed listing would clear every entry below by knowing about none of them. */
+ok('git could list the tracked files', tracked && Object.keys(tracked).length > 100,
+   tracked ? Object.keys(tracked).length + ' tracked' : 'git ls-files failed');
+ok('and the listing includes a file that is certainly tracked', !!(tracked && tracked['sw.js']));
+if (tracked && tracked['sw.js']) {
+    var untracked = ASSETS.filter(function (a) { return !tracked[a]; });
+    ok('every entry is committed to the repo', untracked.length === 0,
+       'present on this machine and NOT in the repo, so they 404 on deploy and — addAll() being ' +
+       'atomic — take the entire precache with them: ' + untracked.join(', '));
+}
+
+/* THE WHOLE SECTION ASKS ABOUT THE DEPLOYED TREE, WHICH IS THE GIT TREE.
+ *
+ * These two assertions pull in opposite directions the moment they disagree about which tree
+ * they mean, and that is not a flaw in either — it is the same question asked from both ends.
+ * ASSETS must not name a file that will not deploy; a page that DOES deploy must not load a
+ * script that is missing from ASSETS. Read against the working tree they contradict each other
+ * over any file in progress: an uncommitted map.html loading an uncommitted capacity-audit.js
+ * demands a precache entry that the tracked-entries check then rejects.
+ *
+ * Neither is wrong. Both were reading the wrong tree. An uncommitted script tag does not deploy
+ * either, so a script that is not in git is skipped here — and the moment somebody commits the
+ * module and the page together, this immediately requires the ASSETS entry. The pairing is
+ * enforced rather than remembered, which is the point. */
 var cachedPages = ASSETS.filter(function (a) { return /\.html$/.test(a); });
 ok('the list includes pages to check', cachedPages.length > 3);
-var swGaps = 0;
+var swGaps = 0, skipped = [];
 cachedPages.forEach(function (p) {
     /* The dot in the class is load-bearing: an earlier version of this scan used
        [a-z0-9-]+\.js and silently skipped chart.min.js on every page, then reported it as
@@ -303,12 +346,18 @@ cachedPages.forEach(function (p) {
     while ((m = re.exec(PAGE[p])) !== null) {
         if (seenHere[m[1]]) continue;
         seenHere[m[1]] = true;
+        if (tracked && !tracked[m[1]]) { skipped.push(p + ' -> ' + m[1]); continue; }
         swGaps++;
         ok(p + ' is precached with ' + m[1], !!cached[m[1]],
            m[1] + ' is loaded by ' + p + ' but is not in ASSETS, so the offline copy of that ' +
            'page runs without it');
     }
 });
+/* NAMED, NEVER SILENT. A scan that quietly drops rows reports full coverage over a subset, and
+   this file exists to catch exactly that shape of lie one layer up. */
+if (skipped.length) {
+    console.log('        not deployed yet, so not checked: ' + skipped.join(', '));
+}
 ok('the precache scan actually checked something', swGaps > 30, swGaps + ' page/script pairs');
 
 console.log('');

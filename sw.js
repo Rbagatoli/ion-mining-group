@@ -38,8 +38,12 @@ const ASSETS = [
   './cycle.js',
   './cycle-indicators.js',
   './site-capacity.js',
-  './capacity-audit.js',
-  './capacity-audit-ui.js',
+  // capacity-audit.js and capacity-audit-ui.js belong here and are deliberately NOT listed yet:
+  // both files are still uncommitted work. addAll() is atomic, so a name with no file behind it
+  // in the deployed tree rejects the whole install and precaches NOTHING — one dangling entry
+  // costs offline entirely, not one file. They go in with the commit that adds the files, and
+  // tests/workspace-reach.test.js now asks git rather than the filesystem so that pairing is
+  // enforced rather than remembered.
   './map-sourcing.js',
   './site-catalog.js',
   './site-engine.js',
@@ -86,9 +90,9 @@ const ASSETS = [
   './project-model.js',
   './project-gates.js',
   './project-budget.js',
-  // site-capacity.js, capacity-audit.js and capacity-audit-ui.js were all listed a second time
-  // here, having already been added with the cycle/capacity group above. addAll() dedupes by
-  // request so nothing was broken by it, which is why three redundant entries survived a review
+  // site-capacity.js was listed a second time here, having already been added with the
+  // cycle/capacity group above, and so were the two capacity-audit files. addAll() dedupes by
+  // request so nothing was broken by it, which is why the redundant entries survived a review
   // -- but a precache list is read as an inventory, and a name appearing twice invites the next
   // reader to wonder which one is authoritative.
   './project-sizing.js',
