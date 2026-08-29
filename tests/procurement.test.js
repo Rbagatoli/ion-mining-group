@@ -258,6 +258,134 @@ console.log('\n=== a project with nothing in it does not throw ===');
     eq('state of nothing is unknown', P.state(null, project(), NOW), 'unknown');
 }
 
+/* ===== The writers =====
+ *
+ * The module shipped with none, and nothing else in the repo wrote `project.procurement`, so the
+ * panel reported "nothing on the schedule yet" on every project forever. That is the same
+ * OUTCOME as the array bug above, reached from the other end, and no test caught it because
+ * every module involved was correct on its own.
+ *
+ * These run against the real store — SiteData, ProjectData, the localStorage shim above — so
+ * the fixtures are built by the owning module's writer rather than by this file, which is the
+ * rule the array bug taught.
+ */
+console.log('\n=== putting something on the schedule ===');
+var PDW = require(path.join(ROOT, 'project-model.js'));
+global.ProjectData = PDW;
+global.CrmConfig = require(path.join(ROOT, 'crm-config.js'));
+global.CrmLog = require(path.join(ROOT, 'crm-log.js'));
+global.SiteData = require(path.join(ROOT, 'site-model.js'));
+var SiteData = global.SiteData;
+
+var PID = null;
+function freshProject() {
+    for (var k in _store) delete _store[k];
+    [global.CrmConfig, global.CrmLog, PDW].forEach(function (m) { if (m && m.reset) m.reset(); });
+    SiteData.add(SiteData.normalize({ id: 'p1', name: 'Pinelands Park LF',
+                                      development_stage: 'raw_resource' }));
+    PID = PDW.promote('p1', { capacity_kw: 1959, annual_cost_of_capital_pct: 11,
+                              budget_authorised_usd: 5400000,
+                              target_energization: day(330) }).project.id;
+    return PID;
+}
+function live() { return PDW.get(PID); }
+function only() { return P.schedule(live(), NOW)[0]; }
+
+{
+    freshProject();
+    var add = P.addItem(PID, { description: 'Genset 2MW', vendor: 'Jenbacher',
+                               lead_time_weeks: 44 });
+    ok('an item is added', add.ok, add.err);
+    eq('and the schedule can see it', P.schedule(live(), NOW).length, 1);
+    eq('dated back from the energisation date', only().order_by, day(330 - 44 * 7));
+    eq('it starts planned', only().item.status, 'planned');
+
+    /* THE BLANK LEAD TIME HAS TO BE RECORDABLE, or the distinction the whole module rests on
+       is unreachable: the genset nobody has quoted is exactly the one worth seeing, and an item
+       refused at the door is not 'unknown', it is invisible. */
+    var vague = P.addItem(PID, { description: 'Transformer' });
+    ok('an item with no lead time is accepted', vague.ok, vague.err);
+    var undated = P.schedule(live(), NOW).filter(function (r) { return r.state === 'unknown'; });
+    eq('and lands as undated rather than as scheduled', undated.length, 1);
+    eq('with no order date invented for it', undated[0].order_by, null);
+
+    ok('a description is required', !P.addItem(PID, { lead_time_weeks: 4 }).ok);
+    ok('a negative lead time is refused', !P.addItem(PID, { description: 'x',
+                                                            lead_time_weeks: -3 }).ok);
+    ok('and a need-by that is not a date', !P.addItem(PID, { description: 'x',
+                                                             need_by: 'next spring' }).ok);
+}
+
+console.log('\n=== ordering against an unissued permit is recorded, and said out loud ===');
+{
+    freshProject();
+    var id = P.addItem(PID, { description: 'Genset 2MW', lead_time_weeks: 44,
+                              permit_required: true }).id;
+    global.ProjectGates = { permitIssued: function () { return false; } };
+    eq('it reads as blocked first', only().state, 'blocked');
+    var res = P.setStatus(PID, id, 'ordered');
+    /* NOT REFUSED. The purchase order is placed by a person, not by this module; refusing would
+       stop the record and not the deposit, and an item filed as still planned when the money is
+       gone is the worse of the two. Same argument recordPayment() makes. */
+    ok('ordering it anyway is allowed', res.ok, res.err);
+    ok('and the caller is handed a notice naming the risk',
+       /at risk/i.test(res.notice || ''), res.notice);
+    eq('the schedule now shows it ordered', only().state, 'ordered');
+    delete global.ProjectGates;
+
+    var clean = P.setStatus(PID, id, 'delivered');
+    ok('a status move with nothing stepped over carries no notice', clean.ok && !clean.notice);
+    ok('an unknown status is refused', !P.setStatus(PID, id, 'shipped').ok);
+}
+
+console.log('\n=== an item is removed as a tombstone, and only before it is bought ===');
+{
+    freshProject();
+    var id = P.addItem(PID, { description: 'Spare rotor', lead_time_weeks: 6 }).id;
+    var rm = P.removeItem(PID, id, 'ordered by the EPC instead');
+    ok('a planned item can be removed', rm.ok, rm.err);
+    eq('and it leaves the schedule', P.schedule(live(), NOW).length, 0);
+    /* Firestore's merge cannot express a key removal, so a deleted key returns on the next pull
+       with no sign it ever went. The record stays and carries the reason. */
+    ok('but the record survives in storage, marked',
+       localStorage.getItem(PDW.KEY).indexOf('ordered by the EPC instead') > 0);
+
+    var bought = P.addItem(PID, { description: 'Genset', lead_time_weeks: 44 }).id;
+    P.setStatus(PID, bought, 'ordered');
+    var no = P.removeItem(PID, bought, 'changed our mind');
+    ok('an ordered item cannot be deleted', !no.ok);
+    ok('and it says to cancel instead, so the money still shows',
+       /cancel/i.test(no.err || ''), no.err);
+    eq('it is still on the schedule', P.schedule(live(), NOW).length, 1);
+}
+
+console.log('\n=== editing an item, and what editing cannot reach ===');
+{
+    freshProject();
+    var id = P.addItem(PID, { description: 'Genset', lead_time_weeks: 44 }).id;
+    ok('the lead time can be corrected', P.updateItem(PID, id, { lead_time_weeks: 52 }).ok);
+    eq('and the order date moves with it', only().order_by, day(330 - 52 * 7));
+    /* Clearing it back to unknown is a real edit: a quote can be withdrawn. */
+    ok('it can be cleared back to unknown', P.updateItem(PID, id, { lead_time_weeks: null }).ok);
+    eq('and the item goes undated rather than to zero weeks', only().state, 'unknown');
+    /* Refused by NAME rather than stripped. status moves through setStatus(), which is the one
+       that knows what ordering against an unissued permit means. */
+    ok('status cannot be set through updateItem', !P.updateItem(PID, id, { status: 'ordered' }).ok);
+    ok('nor can a field nobody named', !P.updateItem(PID, id, { days_late: 0 }).ok);
+    ok('and no such item is refused', !P.updateItem(PID, 'nope', { vendor: 'x' }).ok);
+}
+
+console.log('\n=== nothing derived reaches storage ===');
+{
+    freshProject();
+    P.addItem(PID, { description: 'Genset', lead_time_weeks: 44 });
+    var raw = localStorage.getItem(PDW.KEY);
+    ['order_by', 'days_late', 'permit_blocked', '"state"'].forEach(function (k) {
+        ok('no ' + k + ' in the stored bytes', raw.indexOf(k.charAt(0) === '"' ? k : '"' + k + '"') < 0);
+    });
+    ok('but the item itself is there', raw.indexOf('"lead_time_weeks":44') > 0);
+}
+
 console.log('');
 console.log(fail ? '  ' + fail + ' FAILED, ' + pass + ' passed' : '  all ' + pass + ' passed');
 process.exitCode = fail ? 1 : 0;

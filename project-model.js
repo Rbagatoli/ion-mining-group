@@ -77,9 +77,20 @@ var ProjectData = (function () {
 
     /* The many-per-project collections. Created empty at promotion so a Stage 4 build can write
        into them without guarding, and named here so normalizeProject() can guarantee they exist
-       on a record written by an older build. */
+       on a record written by an older build.
+     *
+     * 'milestones' WAS HERE AND IS GONE. It was declared with the others and then nothing was
+     * ever built behind it: no writer, no reader, and no other mention of the word anywhere in
+     * the repo. tests/workspace-reach.test.js found it on its first run, alongside the two real
+     * gaps it was written to catch, and a collection nothing writes is not a deferral -- it is a
+     * slot that makes remove() refuse for a reason that cannot occur and invites the next reader
+     * to assume a feature exists. Adding it back is this one string; building it is the work.
+     *
+     * Removing it changes nothing for stored records. normalizeProject() carries unknown keys
+     * through untouched, by design, so a project written before this keeps its empty
+     * `milestones: {}` rather than having it stripped. */
     var COLLECTIONS = ['budget_lines', 'procurement', 'contractors',
-                       'change_orders', 'pay_apps', 'milestones'];
+                       'change_orders', 'pay_apps'];
 
     // Firestore's document ceiling is 1 MiB. These are bytes of serialised JSON, before
     // Firestore's own per-field name and type overhead, which is why the gate is well under it.

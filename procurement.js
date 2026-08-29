@@ -29,9 +29,21 @@
  * synthetic { due_date }, so the order-by date is late in exactly the sense a follow-up is.
  *
  * WHERE THE ITEMS LIVE. In the project record's `procurement` collection, which
- * project-model.js creates empty at promotion for this. This module owns no storage and reads
- * no localStorage: it is given a project and returns derived values. That keeps it testable
- * without a storage shim, and keeps one writer for the project document.
+ * project-model.js creates empty at promotion for this.
+ *
+ * THE READS TOOK NO STORAGE AND THE WRITES GO THROUGH ProjectData.mutate(). The first version
+ * of this file said it owned no storage at all and reached for none, which was true and left
+ * the schedule with no way to put anything on it: nothing in the repo wrote
+ * `project.procurement`, so the panel reported "nothing on the schedule yet" on every project,
+ * permanently. That is the same OUTCOME as the array-shaped-collection bug this module already
+ * had -- a panel reporting emptiness forever -- reached from the other end, and no test caught
+ * it because every module involved was correct on its own.
+ *
+ * The reason given for owning no storage was that it "keeps one writer for the project
+ * document". Going through ProjectData.mutate() keeps that promise exactly: mutate() IS the one
+ * writer, it normalizes and commits, and project-budget.js and project-contractors.js both write
+ * their collections through it and stay testable behind the same localStorage shim. The reads
+ * below still take a project and return derived values, so the arithmetic is unchanged.
  */
 var ProjectProcurement = (function () {
     'use strict';
@@ -168,6 +180,11 @@ var ProjectProcurement = (function () {
             if (Object.prototype.hasOwnProperty.call(m, k)) {
                 var it = m[k];
                 if (it && typeof it === 'object') {
+                    /* A TOMBSTONE, NOT A KEY REMOVAL, so removeItem() has to be skipped here.
+                       Firestore's merge cannot express a key removal, so a deleted item returns
+                       on the next pull with no sign it was ever removed. Matching
+                       ProjectBudget.lines() and ProjectContractors' reader. */
+                    if (it.deleted_at) continue;
                     /* The map key is the identity. An item whose own id disagrees with the key
                        it is filed under would sort and render under one and be written back
                        under the other. */
@@ -217,10 +234,162 @@ var ProjectProcurement = (function () {
         return out;
     }
 
+    // ---- writes, all through ProjectData.mutate() --------------------------------------
+
+    function newId() {
+        var s = '';
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            var a = new Uint8Array(6);
+            crypto.getRandomValues(a);
+            for (var i = 0; i < a.length; i++) s += ('0' + a[i].toString(16)).slice(-2);
+        } else { s = 'noRng' + Date.now().toString(36); }
+        return 'pi_' + s;
+    }
+    function nowIso() { return new Date().toISOString(); }
+    function trim(v, max) {
+        if (v === null || v === undefined) return null;
+        var s = String(v).trim();
+        if (!s) return null;
+        return max ? s.slice(0, max) : s;
+    }
+    function needModel() {
+        return (typeof ProjectData === 'undefined' || !ProjectData.mutate)
+            ? { ok: false, err: 'The project model is not loaded.' } : null;
+    }
+
+    /* ONLY THE DESCRIPTION IS REQUIRED, and the lead time deliberately is not.
+     *
+     * The header argues that a missing lead time must read as 'unknown' rather than as zero,
+     * which only means anything if a missing one can actually be recorded. Refusing the item
+     * until somebody has a number would push the genset nobody has quoted yet off the schedule
+     * entirely -- and an item that is not on the schedule is not unknown, it is invisible. The
+     * one the buyer has not chased is exactly the one worth seeing. */
+    function addItem(projectId, fields) {
+        var bad = needModel(); if (bad) return bad;
+        var f = fields || {};
+        var desc = trim(f.description, 300);
+        if (!desc) return { ok: false, err: 'An item needs a description.' };
+        if (f.lead_time_weeks !== undefined && f.lead_time_weeks !== null &&
+            f.lead_time_weeks !== '' && leadWeeks(f) === null) {
+            return { ok: false, err: 'A lead time is a number of weeks and cannot be negative.' };
+        }
+        if (f.need_by !== undefined && f.need_by !== null && f.need_by !== '' && !isDay(f.need_by)) {
+            return { ok: false, err: 'A need-by date must be a date, as YYYY-MM-DD.' };
+        }
+        if (f.status !== undefined && f.status !== null && f.status !== '' &&
+            STATUSES.indexOf(String(f.status)) < 0) {
+            return { ok: false, err: 'Unknown status: ' + f.status + '.' };
+        }
+        var id = newId();
+        var res = ProjectData.mutate(projectId, function (p) {
+            p.procurement[id] = normalizeItem({
+                id: id,
+                description: desc,
+                vendor: trim(f.vendor, 120) || '',
+                lead_time_weeks: leadWeeks(f),
+                need_by: isDay(f.need_by) ? f.need_by : null,
+                permit_required: !!f.permit_required,
+                status: STATUSES.indexOf(String(f.status)) >= 0 ? String(f.status) : 'planned',
+                created: nowIso(), updated: nowIso()
+            });
+        });
+        return res.ok ? { ok: true, err: null, id: id, project: res.project, notice: res.notice }
+                      : res;
+    }
+
+    var EDITABLE = ['description', 'vendor', 'lead_time_weeks', 'need_by', 'permit_required'];
+
+    function updateItem(projectId, itemId, patch) {
+        var bad = needModel(); if (bad) return bad;
+        var p0 = patch || {};
+        for (var k in p0) {
+            if (!Object.prototype.hasOwnProperty.call(p0, k)) continue;
+            /* Refused by NAME rather than stripped, matching ProjectData.update(). status is not
+               here on purpose: it moves through setStatus(), which is the one that knows what
+               ordering against an unissued permit means. */
+            if (EDITABLE.indexOf(k) < 0) {
+                return { ok: false, err: k + ' cannot be changed through updateItem().' };
+            }
+        }
+        if (Object.prototype.hasOwnProperty.call(p0, 'description') && !trim(p0.description, 300)) {
+            return { ok: false, err: 'An item needs a description.' };
+        }
+        if (Object.prototype.hasOwnProperty.call(p0, 'need_by') &&
+            p0.need_by !== null && !isDay(p0.need_by)) {
+            return { ok: false, err: 'A need-by date must be a date, as YYYY-MM-DD.' };
+        }
+        if (Object.prototype.hasOwnProperty.call(p0, 'lead_time_weeks') &&
+            p0.lead_time_weeks !== null && leadWeeks(p0) === null) {
+            return { ok: false, err: 'A lead time is a number of weeks and cannot be negative.' };
+        }
+        return ProjectData.mutate(projectId, function (p) {
+            var it = p.procurement[itemId];
+            if (!it || it.deleted_at) throw new Error('No such item.');
+            for (var i = 0; i < EDITABLE.length; i++) {
+                if (Object.prototype.hasOwnProperty.call(p0, EDITABLE[i])) {
+                    it[EDITABLE[i]] = p0[EDITABLE[i]];
+                }
+            }
+            p.procurement[itemId] = normalizeItem(it);
+            p.procurement[itemId].updated = nowIso();
+        });
+    }
+
+    /* ORDERING AGAINST AN UNISSUED PERMIT IS ALLOWED, AND SAID OUT LOUD.
+     *
+     * The temptation is to refuse it, since blocked is the state this module invented to make
+     * that situation visible. But people do place deposits at risk, deliberately, and refusing
+     * would not stop the purchase order -- it would stop the RECORD of it, and an item recorded
+     * as still planned when the deposit is gone is worse than one recorded as ordered early.
+     * Same argument ProjectContractors.recordPayment() makes about a cheque that is already
+     * written. The move goes through and the caller is handed a notice naming what was stepped
+     * over, so it can be shown rather than discovered. */
+    function setStatus(projectId, itemId, status) {
+        var bad = needModel(); if (bad) return bad;
+        if (STATUSES.indexOf(String(status)) < 0) {
+            return { ok: false, err: 'Unknown status: ' + status + '.' };
+        }
+        var warn = null;
+        var res = ProjectData.mutate(projectId, function (p) {
+            var it = p.procurement[itemId];
+            if (!it || it.deleted_at) throw new Error('No such item.');
+            if (String(status) === 'ordered' && permitBlocked(normalizeItem(it), p)) {
+                warn = 'Recorded as ordered. The air permit is not issued yet, so this was ' +
+                       'ordered at risk — the deposit is exposed if the permit changes the ' +
+                       'specification.';
+            }
+            it.status = String(status);
+            it.updated = nowIso();
+        });
+        if (!res.ok) return res;
+        return { ok: true, err: null, project: res.project, notice: warn || res.notice };
+    }
+
+    /* A tombstone, for the reason project-model.js gives: Firestore's merge cannot express a key
+       removal, so a deleted item returns on the next pull with no record of having gone. */
+    function removeItem(projectId, itemId, reason) {
+        var bad = needModel(); if (bad) return bad;
+        return ProjectData.mutate(projectId, function (p) {
+            var it = p.procurement[itemId];
+            if (!it || it.deleted_at) throw new Error('No such item.');
+            if (it.status === 'ordered' || it.status === 'delivered') {
+                throw new Error('this item is already ' + it.status + '. Cancel it instead, so ' +
+                                'the schedule still shows that it was bought');
+            }
+            it.deleted_at = nowIso();
+            it.deleted_reason = trim(reason, 300);
+            it.updated = it.deleted_at;
+        });
+    }
+
     return {
         STATUSES: STATUSES,
         SETTLED: SETTLED,
         DUE_SOON_DAYS: DUE_SOON_DAYS,
+        addItem: addItem,
+        updateItem: updateItem,
+        setStatus: setStatus,
+        removeItem: removeItem,
         leadWeeks: leadWeeks,
         needBy: needBy,
         orderBy: orderBy,

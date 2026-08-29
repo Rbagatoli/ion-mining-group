@@ -213,7 +213,9 @@ var re = /class="(pd-ct[a-z0-9 -]*)/g, m;
 while ((m = re.exec(SRC)) !== null) {
     m[1].split(/\s+/).forEach(function (c) { if (c) emitted[c] = true; });
 }
-['pd-ct-warn', 'pd-ct-note'].forEach(function (c) { emitted[c] = true; });
+/* Built by concatenation and so invisible to the scan above, exactly like the tone suffixes:
+   `class="pd-ct-app' + warn + '"`. Named here so they are still checked. */
+['pd-ct-warn', 'pd-ct-note', 'pd-ct-app-warn'].forEach(function (c) { emitted[c] = true; });
 var names = Object.keys(emitted).sort();
 ok('the renderer emits the classes this checks', names.length >= 6, names.join(', '));
 names.forEach(function (c) {

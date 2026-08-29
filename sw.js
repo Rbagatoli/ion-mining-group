@@ -1,4 +1,6 @@
-const CACHE_NAME = 'proton-mining-v387';
+// Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
+// than leaving the superseded copies of the two panels beside the new ones.
+const CACHE_NAME = 'proton-mining-v390';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -36,6 +38,8 @@ const ASSETS = [
   './cycle.js',
   './cycle-indicators.js',
   './site-capacity.js',
+  './capacity-audit.js',
+  './capacity-audit-ui.js',
   './map-sourcing.js',
   './site-catalog.js',
   './site-engine.js',
@@ -82,8 +86,19 @@ const ASSETS = [
   './project-model.js',
   './project-gates.js',
   './project-budget.js',
-  './site-capacity.js',
+  // site-capacity.js, capacity-audit.js and capacity-audit-ui.js were all listed a second time
+  // here, having already been added with the cycle/capacity group above. addAll() dedupes by
+  // request so nothing was broken by it, which is why three redundant entries survived a review
+  // -- but a precache list is read as an inventory, and a name appearing twice invites the next
+  // reader to wonder which one is authoritative.
   './project-sizing.js',
+  // The two ledger modules, missing since Stages 6 and 7. Offline, prospecting.html loaded
+  // without them and both panels opened with a typeof guard, so the Procurement and Contractors
+  // sections simply did not render -- which looks exactly like a project that has neither, and
+  // is the graceful-degradation path doing real harm. tests/workspace-reach.test.js asserts the
+  // script tags on the page; this is the same fact for the offline copy of that page.
+  './procurement.js',
+  './project-contractors.js',
   './jurisdictions.js',
   './price-history.js',
   './network-history.js',

@@ -132,47 +132,56 @@ would remove the guesswork entirely and is the better fix if the prospect model 
 
 ---
 
-## 8. Two stages of ledger have no way in
+## 8. Nine write paths still have no control behind them
 
-**What.** `procurement.js` (Stage 6) and `project-contractors.js` (Stage 7) both read their
-collections and neither stage shipped a form. `ProjectProcurement` owns no storage at all --
-nothing anywhere writes `project.procurement`, so the schedule panel says "Nothing is on the
-procurement schedule yet" on every project, permanently. `ProjectContractors` does have
-writers, and they are tested, but no UI calls them: the register reads "No contractors on this
-build yet" until somebody opens a console.
+**What.** `tests/workspace-reach.test.js` asserts that every module writing a per-project
+collection has AT LEAST ONE writer something calls, and prints the ones nothing calls. Nine are
+currently stranded:
 
-**Why this is worth writing down rather than shrugging at.** It is the same OUTCOME as the
-array-shaped-collection bug that was just fixed -- a panel that reports emptiness forever on a
-build that is not empty -- reached by a different route. That one was caught because a test
-finally consulted the owning module about the shape. This one no test can catch, because every
-module involved is correct on its own and the tests populate the collections through the API.
-A feature is inert whether the reader is broken or the writer was never built, and only one of
-those two failures has anything pointed at it.
+```
+ProjectBudget.seedFromEstimate, .addLine, .updateLine, .removeLine, .reviseChangeOrder
+ProjectProcurement.updateItem
+ProjectContractors.updateContractor, .removeContractor, .rejectPayApp
+```
 
-**Why it was not closed here.** Stage 6 shipped module-plus-panel and that shape was reviewed
-and accepted; Stage 7 matched it deliberately rather than quietly changing the deal mid-
-sequence. The forms are also a different kind of work -- event wiring in `prospecting.js`,
-which already carries eight submit handlers -- and folding them into the model commit would
-mix a ledger with a UI in one diff.
+**Why the biggest one is `ProjectBudget`.** Five of the nine are the budget ledger, and four of
+those are the ledger itself: there is no way to add, edit or remove a budget line, and no way to
+seed the opening budget from the capex estimate. Stage 4 built the categories, the
+three-state arithmetic and ninety-three passing assertions, and the only part of it a user can
+reach is the change-order form added with the contractors panel. Estimate-versus-actual, which
+is the whole reason the categories are SiteCapex's, cannot be produced by anybody.
 
-**What to build.** An add-item form on the procurement section and an add-contractor form on
-the contractors section, each wired in `prospecting.js` beside the existing `pdPromote` and
-document handlers, plus the three payment actions (`certifyPayApp`, `recordPayment`,
-`recordWaiver`) as row buttons. The model side is done and refuses everything it should, so
-this is wiring rather than design. Until then both panels are honest about being empty and
-wrong about why.
+**Why these are not asserted as failures.** Closing them is building UI, not fixing a defect,
+and a suite that goes red for work not yet done stops being read -- which is how a red test
+becomes a permanently ignored one. The census asserts the condition that is a genuine bug (a
+ledger with NO reachable writer, which is what ProjectBudget was until this pass) and prints
+the rest so the number is visible rather than implied.
+
+**What to build.** A Budget section on the project, in the shape the other two now have: the
+lines by category with variance, a seed-from-estimate control, and add/edit/remove. The other
+four are row-level conveniences on panels that already exist -- an edit control on a procurement
+item, edit and remove on a contractor, and a reject button beside Certify.
 
 ---
 
-## 9. `procurement.js` and `project-contractors.js` are not in the service worker precache
+## 9. The reach census does not follow transitive dependencies
 
-**What.** `sw.js` ASSETS lists the modules the app caches for offline use. Neither new module
-is in it, and the file has four duplicate entries already, so the edit was left for whoever is
-holding the uncommitted `sw.js` change rather than done twice.
+**What.** `workspace-reach.test.js` check 3 asserts that a module a RENDERER guards with a soft
+`typeof` is loaded on the pages that render it. It deliberately stops there. `project-gates.js`
+softly guards `CrmDocuments`, `CrmEnrichment` and `SiteOpportunity`; `contacts.html` and
+`map.html` load it -- because `project-model.js` needs it for `setGate` and `SiteData.remove`'s
+refusal -- without loading those three.
 
-**What goes wrong.** Offline, `prospecting.html` loads without them. Both panels open with a
-`typeof` guard, so the sections silently do not render -- the graceful-degradation path, which
-looks exactly like a project with no procurement items and no contractors. The guard is right;
-it is the reason the failure is quiet.
+**Why it is not a bug today.** Neither page can reach `canAdvance()`, so the guarded branches
+never run there. All three also fail in the safe direction: `docKinds()` returns `{}` so a
+document-backed deliverable reads as NOT satisfied, and `readiness()` returns null rather than a
+flattering number. A gate would refuse to advance rather than wrongly advancing.
 
-**What to build.** Add both to ASSETS in the same pass that removes the duplicates.
+**Why it is not asserted.** Nothing statically proves the branches are unreachable, and deciding
+it needs reachability analysis. The alternative -- an exception list naming these three -- is a
+guard that guards nothing, and would go stale the moment a page grew a gate control.
+
+**What to build, if anything.** The cheap version is to stop loading `project-gates.js` on pages
+that never advance a gate, which removes the question rather than answering it. Worth checking
+that `project-model.js` genuinely tolerates its absence there first: it guards every call, but
+that guard has never been exercised on those pages either.

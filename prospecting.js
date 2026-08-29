@@ -391,6 +391,154 @@
             drawDetail();
         });
 
+        /* ---- The two ledgers (Stages 6 and 7) ----
+         *
+         * Both panels were built read-only and both reported empty forever, because nothing
+         * anywhere called their writers. Every handler below is the missing half. They all take
+         * the same shape as the handlers above: read the fields, call the model, show what it
+         * refused, redraw.
+         *
+         * NOTHING HERE VALIDATES ANYTHING. The models refuse a lead time that is not a number, a
+         * retainage larger than its certificate, a payment on an uncertified application and a
+         * contract sum edited after the first certificate, each with a sentence saying why. A
+         * second set of checks in the UI would drift from those and start refusing things the
+         * model allows -- and the message the user reads would be the weaker of the two. */
+        function liveProject() {
+            return (typeof ProjectData !== 'undefined' && ProjectData.liveFor)
+                ? ProjectData.liveFor(id) : null;
+        }
+        /* Shown rather than swallowed. commit() returns a notice at 60% of the size ceiling, and
+           setStatus() returns one when something is ordered against an unissued permit -- both
+           are things the operator has to be told, and both arrive on a SUCCESSFUL write. */
+        function applied(res) {
+            if (!res) return false;
+            if (!res.ok) { window.alert(res.err); return false; }
+            if (res.notice) window.alert(res.notice);
+            drawDetail();
+            return true;
+        }
+        function today() { return new Date().toISOString().slice(0, 10); }
+
+        var procForm = document.getElementById('pdProcForm');
+        if (procForm) procForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = liveProject(); if (!p) return;
+            var weeks = fieldValue('pdProcWeeks');
+            var permitEl = document.getElementById('pdProcPermit');
+            applied(ProjectProcurement.addItem(p.id, {
+                description: fieldValue('pdProcDesc').trim(),
+                vendor: fieldValue('pdProcVendor').trim(),
+                /* Blank stays blank. Coercing an empty field to 0 here would defeat the whole
+                   distinction the module is built on: zero means off-the-shelf, absent means
+                   nobody has asked the vendor yet. */
+                lead_time_weeks: weeks === '' ? null : parseFloat(weeks),
+                need_by: fieldValue('pdProcNeed') || null,
+                permit_required: !!(permitEl && permitEl.checked)
+            }));
+        });
+
+        var host4 = document.getElementById('pdetail');
+        var sets = host4 ? host4.querySelectorAll('.pd-proc-set') : [];
+        for (var s2 = 0; s2 < sets.length; s2++) {
+            sets[s2].addEventListener('change', function () {
+                var p = liveProject(); if (!p) return;
+                applied(ProjectProcurement.setStatus(p.id, this.getAttribute('data-pid'),
+                                                     this.value));
+            });
+        }
+        var procRms = host4 ? host4.querySelectorAll('.pd-proc-rm') : [];
+        for (var s3 = 0; s3 < procRms.length; s3++) {
+            procRms[s3].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                var why = window.prompt('Remove this item from the schedule. Why?');
+                if (why === null) return;
+                applied(ProjectProcurement.removeItem(p.id, this.getAttribute('data-pid'), why));
+            });
+        }
+
+        var ctForm = document.getElementById('pdCtForm');
+        if (ctForm) ctForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = liveProject(); if (!p) return;
+            var val = fieldValue('pdCtValue');
+            applied(ProjectContractors.addContractor(p.id, {
+                name: fieldValue('pdCtName').trim(),
+                trade: fieldValue('pdCtTrade').trim(),
+                // Same rule as the lead time: unpriced is a state, not a zero.
+                contract_value_usd: val === '' ? null : parseFloat(val),
+                insurance_expiry: fieldValue('pdCtIns') || null
+            }));
+        });
+
+        var paForm = document.getElementById('pdPaForm');
+        if (paForm) paForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = liveProject(); if (!p) return;
+            var ret = fieldValue('pdPaRet');
+            applied(ProjectContractors.addPayApp(p.id, fieldValue('pdPaWho'), {
+                number: fieldValue('pdPaNo').trim(),
+                period_to: fieldValue('pdPaPeriod'),
+                certified_usd: parseFloat(fieldValue('pdPaAmt')),
+                /* Retainage is the one figure whose blank IS a zero, and the model says why:
+                   no deduction recorded means none was taken, and that errs toward more money
+                   counted as paid and therefore more exposure reported. */
+                retained_usd: ret === '' ? 0 : parseFloat(ret)
+            }));
+        });
+
+        var coForm = document.getElementById('pdCoForm');
+        if (coForm) coForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = liveProject(); if (!p) return;
+            applied(ProjectBudget.addChangeOrder(p.id, {
+                description: fieldValue('pdCoDesc').trim(),
+                reason: fieldValue('pdCoWhy').trim(),
+                cost_impact: parseFloat(fieldValue('pdCoCost')),
+                schedule_impact_days: parseFloat(fieldValue('pdCoDays')),
+                contractor_id: fieldValue('pdCoWho') || null
+            }));
+        });
+
+        /* One handler for every row button, dispatching on data-do. The alternative is six
+           querySelectorAll loops that differ only in a string. */
+        var acts = host4 ? host4.querySelectorAll('.pd-ct-act') : [];
+        for (var a2 = 0; a2 < acts.length; a2++) {
+            acts[a2].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                var what = this.getAttribute('data-do');
+                var aid = this.getAttribute('data-aid');
+                var coid = this.getAttribute('data-coid');
+                if (what === 'certify') {
+                    /* A name, because certifying is a person agreeing money is owed. The model
+                       refuses an empty one; asking here means the refusal is rare. */
+                    var who = window.prompt('Who is certifying this application?');
+                    if (who === null) return;
+                    applied(ProjectContractors.certifyPayApp(p.id, aid, who));
+                } else if (what === 'pay') {
+                    var when = window.prompt('Date the payment was made (YYYY-MM-DD):', today());
+                    if (when === null) return;
+                    var res = ProjectContractors.recordPayment(p.id, aid, { paid_on: when });
+                    if (applied(res) && res.waiver === 'none') {
+                        /* Said at the moment the money leaves, not only in the head count. The
+                           payment is recorded either way -- refusing it would hide the exposure
+                           rather than prevent it -- so this is a reminder, not a gate. */
+                        window.alert('Recorded. No lien waiver is on file for this application, ' +
+                                     'so it is counted as exposure until one is.');
+                    }
+                } else if (what === 'cond' || what === 'uncond') {
+                    var kind = (what === 'cond') ? 'conditional' : 'unconditional';
+                    var on = window.prompt('Date on the ' + kind + ' waiver (YYYY-MM-DD):', today());
+                    if (on === null) return;
+                    applied(ProjectContractors.recordWaiver(p.id, aid, kind, { on: on }));
+                } else if (what === 'approveco' || what === 'rejectco') {
+                    var by = window.prompt('Who is deciding this variation?');
+                    if (by === null) return;
+                    applied(ProjectBudget.decideChangeOrder(p.id, coid,
+                        what === 'approveco' ? 'approved' : 'rejected', by));
+                }
+            });
+        }
+
         var stage = document.getElementById('pdStage');
         if (stage) stage.addEventListener('change', function () {
             var to = this.value;

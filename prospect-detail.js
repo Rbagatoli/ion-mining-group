@@ -624,15 +624,59 @@ var ProspectDetail = (function () {
         return 'order by ' + r.order_by + ' — ' + (-d) + ' days';
     }
 
+    /* THE DERIVED STATE AND THE STORED STATUS ARE DIFFERENT THINGS, and the row carries both.
+       'late' is computed from the dates and nobody can set it; 'ordered' is a fact somebody
+       records. A single control showing one and setting the other would let an operator think
+       they had cleared a late item by typing at it. */
+    function procActions(r) {
+        var opts = '';
+        for (var i = 0; i < ProjectProcurement.STATUSES.length; i++) {
+            var s = ProjectProcurement.STATUSES[i];
+            opts += '<option value="' + esc(s) + '"' +
+                    (r.item.status === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+        }
+        /* Removal only for something not yet bought. An ordered item is cancelled, not deleted,
+           so the schedule still shows the money went out — procurement.js refuses the other way
+           round too, and this keeps the button from offering what the model will decline. */
+        var canRemove = r.item.status !== 'ordered' && r.item.status !== 'delivered';
+        return '<span class="pd-proc-do">' +
+            '<select class="pd-proc-set" data-pid="' + esc(r.item.id) + '" ' +
+                'aria-label="Status">' + opts + '</select>' +
+            (canRemove ? '<button type="button" class="pd-proc-rm" data-pid="' +
+                esc(r.item.id) + '" title="Remove this item">&times;</button>' : '') +
+        '</span>';
+    }
+
     function procRow(r) {
         var tone = PROC_TONE[r.state] ? ' pd-proc-' + PROC_TONE[r.state] : '';
         return '<li class="pd-proc-row' + tone + '">' +
             '<span class="pd-proc-what">' +
                 (r.item.description ? esc(r.item.description) : absent('unnamed item')) +
+                (r.item.vendor ? ' <span class="pd-proc-vendor">' + esc(r.item.vendor) + '</span>' : '') +
             '</span>' +
             '<span class="pd-proc-state">' + esc(PROC_STATE[r.state] || r.state) + '</span>' +
             '<span class="pd-proc-when">' + esc(procWhen(r)) + '</span>' +
+            procActions(r) +
         '</li>';
+    }
+
+    /* The lead time is the only field with no placeholder value and no default. Leaving it blank
+       is a real answer — it is what puts the item on the schedule as 'undated' rather than off
+       it — so the label says so instead of the form implying a number is required. */
+    function procForm() {
+        return '<form id="pdProcForm" class="pd-proc-form">' +
+            '<input id="pdProcDesc" type="text" placeholder="Item, e.g. 2MW genset" ' +
+                'maxlength="300" required>' +
+            '<input id="pdProcVendor" type="text" placeholder="Vendor" maxlength="120">' +
+            '<input id="pdProcWeeks" type="number" min="0" step="1" placeholder="Lead wks">' +
+            '<label class="pd-proc-need">Need by<input id="pdProcNeed" type="date"></label>' +
+            '<label class="pd-proc-perm">' +
+                '<input id="pdProcPermit" type="checkbox"> Needs the air permit' +
+            '</label>' +
+            '<button type="submit">Add</button>' +
+            '<span class="pd-proc-hint">Leave the lead time blank if nobody has quoted one — ' +
+                'the item shows as undated rather than dropping off the schedule.</span>' +
+        '</form>';
     }
 
     function procurementBlock(project) {
@@ -642,7 +686,8 @@ var ProspectDetail = (function () {
         if (!rows.length) {
             return '<p class="pd-basis">Nothing is on the procurement schedule yet. Long-lead ' +
                    'items belong here as soon as they are known, because the order date is ' +
-                   'worked back from the energisation date and is often already close.</p>';
+                   'worked back from the energisation date and is often already close.</p>' +
+                   procForm();
         }
         var s = ProjectProcurement.summary(project, now);
         var lines = [];
@@ -659,7 +704,7 @@ var ProspectDetail = (function () {
         var list = '';
         for (var i = 0; i < rows.length; i++) list += procRow(rows[i]);
         return '<p class="pd-proc-head">' + lines.join(' ') + '</p>' +
-               '<ul class="pd-proc">' + list + '</ul>';
+               '<ul class="pd-proc">' + list + '</ul>' + procForm();
     }
 
     /* ---- Contractors (Stage 7) ----
@@ -719,9 +764,64 @@ var ProspectDetail = (function () {
         return r.committed_usd === null ? '' : fmtUsd(r.committed_usd) + ' contracted';
     }
 
-    function ctRow(r) {
+    /* THE WAIVER IS SHOWN ON EVERY PAID APPLICATION, INCLUDING WHEN THERE IS NONE.
+       A blank where the waiver should be reads as "not applicable"; the word 'none' reads as an
+       answer, which is what it is. Same reason the model files an absent waiver as 'none'
+       rather than as unknown. */
+    var WAIVER_LABEL = { none: 'no waiver', conditional: 'conditional',
+                         unconditional: 'unconditional' };
+
+    function appActions(a) {
+        var id = esc(a.id);
+        if (a.status === 'submitted') {
+            return '<button type="button" class="pd-ct-act" data-do="certify" data-aid="' + id +
+                   '">Certify</button>';
+        }
+        if (a.status === 'certified') {
+            return '<button type="button" class="pd-ct-act" data-do="pay" data-aid="' + id +
+                   '">Record payment</button>';
+        }
+        if (a.status === 'paid' && a.waiver !== 'unconditional') {
+            /* Both offered, because they are different documents and the conditional one is
+               often all that exists on the day. Recording the weaker one honestly beats
+               recording nothing, and the register keeps saying so until the swap. */
+            return (a.waiver === 'none'
+                ? '<button type="button" class="pd-ct-act" data-do="cond" data-aid="' + id +
+                  '">Conditional waiver</button>' : '') +
+                '<button type="button" class="pd-ct-act" data-do="uncond" data-aid="' + id +
+                '">Unconditional waiver</button>';
+        }
+        return '';
+    }
+
+    function appRow(a) {
+        var net = ProjectContractors.netOf(a);
+        var warn = (a.status === 'paid' && a.waiver !== 'unconditional') ? ' pd-ct-app-warn' : '';
+        return '<li class="pd-ct-app' + warn + '">' +
+            '<span class="pd-ct-app-no">' +
+                esc(a.number || a.period_to || a.id) + '</span>' +
+            '<span class="pd-ct-app-amt">' +
+                (net === null ? absent('no amount') : esc(fmtUsd(net))) +
+                (a.retained_usd ? ' <span class="pd-ct-ret">' + esc(fmtUsd(a.retained_usd)) +
+                    ' held</span>' : '') +
+            '</span>' +
+            '<span class="pd-ct-app-st">' + esc(a.status) +
+                (a.status === 'paid' ? ' &middot; ' + esc(WAIVER_LABEL[a.waiver] || a.waiver) : '') +
+            '</span>' +
+            '<span class="pd-ct-app-do">' + appActions(a) + '</span>' +
+        '</li>';
+    }
+
+    function ctRow(r, project) {
         var tone = CT_TONE[r.state] ? ' pd-ct-' + CT_TONE[r.state] : '';
         var c = r.contractor;
+        var apps = ProjectContractors.appsFor(project, c.id);
+        var nested = '';
+        if (apps.length) {
+            var inner = '';
+            for (var i = 0; i < apps.length; i++) inner += appRow(apps[i]);
+            nested = '<ul class="pd-ct-apps">' + inner + '</ul>';
+        }
         return '<li class="pd-ct-row' + tone + '">' +
             '<span class="pd-ct-who">' +
                 (c.name ? esc(c.name) : absent('unnamed contractor')) +
@@ -729,7 +829,94 @@ var ProspectDetail = (function () {
             '</span>' +
             '<span class="pd-ct-state">' + esc(CT_STATE[r.state] || r.state) + '</span>' +
             '<span class="pd-ct-when">' + esc(ctWhen(r)) + '</span>' +
+            nested +
         '</li>';
+    }
+
+    function ctOptions(rows) {
+        var out = '';
+        for (var i = 0; i < rows.length; i++) {
+            var c = rows[i].contractor;
+            out += '<option value="' + esc(c.id) + '">' +
+                   esc(c.name || c.id) + '</option>';
+        }
+        return out;
+    }
+
+    /* Three forms rather than one, because they are three different acts on three different
+       cadences: a firm is added once, an application arrives monthly, and a variation happens
+       when the scope changes. Folding them into one control with a mode switch would make the
+       common case carry the rare one's fields. */
+    function ctForms(project, rows) {
+        var opts = ctOptions(rows);
+        var add = '<form id="pdCtForm" class="pd-ct-form">' +
+            '<input id="pdCtName" type="text" placeholder="Contractor" maxlength="120" required>' +
+            '<input id="pdCtTrade" type="text" placeholder="Trade" maxlength="60">' +
+            '<input id="pdCtValue" type="number" min="0" step="1" placeholder="Contract $">' +
+            '<label class="pd-ct-ins">Insurance to<input id="pdCtIns" type="date"></label>' +
+            '<button type="submit">Add contractor</button>' +
+            '<span class="pd-ct-hint">The contract value can be left blank until it is priced. ' +
+                'The insurance date cannot be inferred, and a firm with no date recorded reads ' +
+                'as unverified rather than covered.</span>' +
+        '</form>';
+        if (!opts) return add;
+
+        var app = '<form id="pdPaForm" class="pd-ct-form">' +
+            '<select id="pdPaWho" aria-label="Contractor">' + opts + '</select>' +
+            '<input id="pdPaNo" type="text" placeholder="App no." maxlength="40">' +
+            '<label class="pd-ct-ins">Period to<input id="pdPaPeriod" type="date" required></label>' +
+            '<input id="pdPaAmt" type="number" min="0" step="1" placeholder="Certified $" required>' +
+            '<input id="pdPaRet" type="number" min="0" step="1" placeholder="Retainage $">' +
+            '<button type="submit">Add application</button>' +
+        '</form>';
+
+        /* A variation is raised here rather than on a budget screen because this is where the
+           over-certification it explains is visible. It is the same ProjectBudget change order
+           the ledger counts — one record, not a contractor-local copy. */
+        var vary = '<form id="pdCoForm" class="pd-ct-form">' +
+            '<select id="pdCoWho" aria-label="Contract varied">' +
+                '<option value="">No contract (project cost)</option>' + opts + '</select>' +
+            '<input id="pdCoDesc" type="text" placeholder="Variation" maxlength="300" required>' +
+            '<input id="pdCoWhy" type="text" placeholder="Reason" maxlength="500" required>' +
+            '<input id="pdCoCost" type="number" step="1" placeholder="Cost $" required>' +
+            '<input id="pdCoDays" type="number" step="1" placeholder="Days" required>' +
+            '<button type="submit">Raise variation</button>' +
+            '<span class="pd-ct-hint">Both impacts are required, even at zero: a change with no ' +
+                'schedule impact is a claim, and the cumulative figure is only honest if nobody ' +
+                'could opt out of half of it.</span>' +
+        '</form>';
+        return add + app + vary;
+    }
+
+    /* Proposed variations, listed only while they are proposed. An approved one has already
+       moved the contract value and shows up there; a rejected one is not pending anything. */
+    function variationBlock(project) {
+        if (typeof ProjectBudget === 'undefined' || !ProjectBudget.changeOrders) return '';
+        var cos = ProjectBudget.changeOrders(project).filter(function (c) {
+            return c.status === 'proposed';
+        });
+        if (!cos.length) return '';
+        var out = '';
+        for (var i = 0; i < cos.length; i++) {
+            var c = cos[i];
+            var who = c.contractor_id && project.contractors[c.contractor_id];
+            out += '<li class="pd-ct-app">' +
+                '<span class="pd-ct-app-no">' + esc(c.description || c.id) + '</span>' +
+                '<span class="pd-ct-app-amt">' + esc(fmtUsd(c.cost_impact)) +
+                    ' &middot; ' + esc(String(c.schedule_impact_days)) + 'd</span>' +
+                '<span class="pd-ct-app-st">' +
+                    (who ? esc(who.name) : absent('no contract')) + '</span>' +
+                '<span class="pd-ct-app-do">' +
+                    '<button type="button" class="pd-ct-act" data-do="approveco" data-coid="' +
+                        esc(c.id) + '">Approve</button>' +
+                    '<button type="button" class="pd-ct-act" data-do="rejectco" data-coid="' +
+                        esc(c.id) + '">Reject</button>' +
+                '</span>' +
+            '</li>';
+        }
+        return '<p class="pd-ct-sub">Variations awaiting a decision. Until one is approved it ' +
+               'changes no contract value, so the work it covers still reads as ' +
+               'over-certified.</p><ul class="pd-ct-apps pd-ct-cos">' + out + '</ul>';
     }
 
     function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
@@ -741,7 +928,8 @@ var ProspectDetail = (function () {
         if (!rows.length) {
             return '<p class="pd-basis">No contractors on this build yet. A firm belongs here ' +
                    'as soon as it is selected, because the window where nobody has checked its ' +
-                   'insurance is the window before the contract is signed.</p>';
+                   'insurance is the window before the contract is signed.</p>' +
+                   ctForms(project, rows);
         }
         var e = ProjectContractors.exposure(project, now);
         var lines = [];
@@ -788,9 +976,11 @@ var ProspectDetail = (function () {
         if (!lines.length) lines.push('Every contractor is insured, paid and waived.');
 
         var list = '';
-        for (var i = 0; i < rows.length; i++) list += ctRow(rows[i]);
+        for (var i = 0; i < rows.length; i++) list += ctRow(rows[i], project);
         return '<p class="pd-ct-head">' + lines.join(' ') + '</p>' +
-               '<ul class="pd-ct">' + list + '</ul>';
+               '<ul class="pd-ct">' + list + '</ul>' +
+               variationBlock(project) +
+               ctForms(project, rows);
     }
 
     /* Its own section for the same reason procurement has one: it is answered on a different
