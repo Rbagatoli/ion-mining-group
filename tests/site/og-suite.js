@@ -118,7 +118,13 @@ function alphaOf(sel) {
     var m = /rgba\([^)]*?([\d.]+)\)/.exec(seg);
     return m ? parseFloat(m[1]) : null;
 }
-[['top', '.dg-top'], ['side', '.dg-side'], ['end', '.dg-end']].forEach(function (pair) {
+/* 'asics' is in this list because it was NOT, and it drifted. The three shell faces were
+   bound from the day this check was written; the machines were left out, so when .dg-asics
+   moved from 0.10 to 0.22 to stop the racks reading as part of the container, nothing
+   required the card to follow. A share card is the drawing fourteen pages advertise
+   themselves with, and it would have kept lighting the machines the old way indefinitely. */
+[['top', '.dg-top'], ['side', '.dg-side'], ['end', '.dg-end'],
+ ['asics', '.dg-asics']].forEach(function (pair) {
     var want = alphaOf(pair[1]);
     var i = og.indexOf(pair[0] + ':    { fill: ');
     if (i < 0) i = og.indexOf(pair[0] + ':   { fill: ');

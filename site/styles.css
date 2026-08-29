@@ -680,6 +680,35 @@ p + p { margin-top: 16px; }
     z-index: 0;
     opacity: 0.85;
 }
+
+/* THE PAGE FIELD — the whole backdrop, not the top of it.
+
+   The site used to run this animation inside a 360px header and nowhere else,
+   so twelve of the eighteen pages had no field at all and the six that did
+   showed it above the fold and then stopped. The operator app has never worked
+   that way: shared.css pins #gasField to the viewport and every panel sits over
+   it, so the gas is behind the whole page. This is that arrangement, ported.
+
+   FIXED, NOT ABSOLUTE, so the field belongs to the viewport rather than to a
+   section — it does not scroll away, and it does not need a host tall enough to
+   matter. inset: 0 comes from the base rule and means the viewport once the
+   position changes; nothing here restates it.
+
+   z-index -1 RATHER THAN THE APP'S z-index 0. shared.css can afford 0 because
+   it also declares `body > * { position: relative; z-index: 1 }`, lifting every
+   element on every page. This site has no such rule and adding one would
+   restack eighteen pages of already-tuned layering. -1 gets the same result
+   from the other direction: behind content, which is z-index auto, and still in
+   front of body::before, which is -2. The light field stays underneath, the
+   sections stay transparent over the top, and nothing else moves.
+
+   It must stay OUT of the .anim-field opacity rule -- hero-suite.js asserts
+   exactly one rule in this file sets a field opacity and that it is the base
+   one, which is what stopped three selectors disagreeing about brightness. */
+.anim-field--page {
+    position: fixed;
+    z-index: -1;
+}
 /* WHERE 0.85 CAME FROM. The portal's sign-in field is the reference the whole
    look was tuned against: its canvas is undimmed and its scrim clears to
    rgba(0,0,0,0.12) at the edges, so a producer signing in sees the rise at
@@ -2092,7 +2121,21 @@ a.fac:hover .fac-go { color: var(--btc-200); }
        the orange one. The flame IS the bottom perimeter, the same way it is at
        the foot of the hero zone. */
     border-bottom: none;
-    background: var(--panel);
+    /* OPAQUE, now that a page-wide field runs behind everything.
+       --panel is rgba(255,255,255,0.015), which is a tint and not a surface, so
+       with .anim-field--page fixed behind the document the gas would come
+       straight through the panel and up through the machines. That is precisely
+       what the occluder below exists to stop -- the drawings are translucent so
+       you can read a container's racks through its own walls, and particles
+       inside that volume read as dirt on the glass. The dg canvas subtracts the
+       drawing's silhouette from ITS field; it cannot subtract anything from a
+       field it does not own.
+       The cost is the body light field no longer reaching under these seven
+       panels. It is a low-alpha gradient and the panel has its own border and
+       its own field, so it reads as a panel either way -- whereas unoccluded
+       gas through a machine reads as a bug. */
+    background-color: var(--black);
+    background-image: linear-gradient(var(--panel), var(--panel));
     overflow: hidden;
 }
 
@@ -2220,8 +2263,22 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
 .dg-back   { fill: none; stroke: rgba(229, 228, 226, 0.42); stroke-width: 0.7; }
 
-.dg-asics  { fill: rgba(229, 228, 226, 0.10);
-             stroke: var(--line-mid); stroke-width: 0.6; }
+/* THE MACHINES ARE THE SUBJECT AND THEY WERE THE DARKEST THING IN THE DRAWING.
+   At fill 0.10 a machine body resolved to L 22.8 on a container interior of L 0.0, inside a
+   shell whose faces run L 45.6 to L 95.8 — so the brightest thing on a machine was its own
+   control strip at L 164, in 'detail'. What a reader picked out was a row of bright dashes
+   floating in a dark hole, with no bodies under them: on the home page, where a machine is
+   16 px wide, the racks read as part of the container rather than as things in it.
+
+   0.22 puts a body at L 50.2, just clear of the darkest shell face, so a machine reads as an
+   object without becoming brighter than the box it sits in. The stroke is spelled out rather
+   than taken from --line-mid, which 50 other rules share and which cannot be moved for this.
+   stroke-width stays 0.6: at these sizes the separation between one machine and the next
+   comes from the edge's contrast, not its thickness.
+
+   tests/site/og-suite.js binds this to build-og.js so the share cards stay lit like the page. */
+.dg-asics  { fill: rgba(229, 228, 226, 0.22);
+             stroke: rgba(229, 228, 226, 0.34); stroke-width: 0.6; }
 
 /* Everything in front: fans, louvres, seams, hinges, panels, dishes. */
 .dg-detail {

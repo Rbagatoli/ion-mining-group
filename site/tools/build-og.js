@@ -37,7 +37,7 @@ const WEIGHT = {
     ground: { fill: 0.04, stroke: 0.13 },
     inside: { fill: 0.62, dark: true },
     back:   { stroke: 0.42 },
-    asics:  { fill: 0.10, stroke: 0.24 },
+    asics:  { fill: 0.22, stroke: 0.34 },
     end:    { fill: 0.20 },
     side:   { fill: 0.30 },
     top:    { fill: 0.42 },
