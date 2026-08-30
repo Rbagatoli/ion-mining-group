@@ -91,9 +91,19 @@ var avoided = cands.map(function (c) {
                return x.id + ':' + x.perKw + ':' + x.fullUsd + ':' + x.discount + ':' + x.avoidedUsd;
            }).join(',');
 }).sort();
+/* powerPotentialKw, NOT usable_kw. stack() reads powerPotentialKw or ctx.capacityKw and has
+   never read usable_kw, so this digest was computed over 11,829 stacks that ALL bailed at the
+   capacity check and returned zero components. It pinned "stack() returns nothing", which is
+   why adding a whole collection component to the stack did not move it. Same mistake, in the
+   digest, as the assertion that was pinning the collection gap open a few commits ago -- and it
+   is the more dangerous copy, because a digest reads as total coverage.
+   sourceDetail is passed too: without it the collection component cannot reach any state but
+   'unknown', so the digest would be blind to the branch that prices a wellfield. */
 var stacks = cands.map(function (c) {
-    var m = SC.stack({ usable_kw: c.powerPotentialKw, development_stage: c.developmentStage || null,
-                       energy_type: c.energyType }, {});
+    var m = SC.stack({ powerPotentialKw: c.powerPotentialKw,
+                       development_stage: c.developmentStage || null,
+                       energyType: c.energyType, sourceDetail: c.sourceDetail || {} },
+                     { asOf: NOW });
     if (!m) return c.id + '|null';
     return c.id + '|' + m.incurred_usd + '|' + m.avoided_usd + '|' + m.all_in_capital_usd + '|' +
            m.coverage + '|' + (m.components || []).map(function (x) {
@@ -104,10 +114,28 @@ var stacks = cands.map(function (c) {
 var aDigest = crypto.createHash('sha256').update(avoided.join('\n')).digest('hex');
 var sDigest = crypto.createHash('sha256').update(stacks.join('\n')).digest('hex');
 
+/* A DIGEST OVER NOTHING IS A DIGEST THAT PASSES FOREVER. Both serialisations are proved to
+   have priced something before either digest is trusted -- the stack one silently did not for
+   its whole life. */
+/* Split on the field, not indexOf('|null|'): mandateFactor is null on every non-mandated site,
+   so a substring test says "unpriced" about 11,825 rows that priced perfectly well. Checking
+   for a marker that appears somewhere in the line is not checking the field that matters. */
+function pricedCount(rows) {
+    return rows.filter(function (s) { return s.split('|')[1] !== 'null'; }).length;
+}
+var pricedStacks = pricedCount(stacks);
+ok('the stack serialisation actually priced candidates', pricedStacks > 10000,
+   pricedStacks + ' of ' + cands.length + ' priced');
+var pricedAvoided = pricedCount(avoided);
+ok('and so did the capitalAvoided one', pricedAvoided > 10000,
+   pricedAvoided + ' of ' + cands.length + ' priced');
+ok('the stack digest sees the collection component it is meant to guard',
+   stacks.join('\n').indexOf('collection:') >= 0);
+
 ok('capitalAvoided is unchanged across all ' + cands.length + ' candidates',
    aDigest === BASE.avoidedDigest,
    'baseline ' + BASE.avoidedDigest + '\n        now      ' + aDigest);
-ok('and stack() did not notice a rate being added to its card',
+ok('and stack() is unchanged across all ' + cands.length + ' candidates',
    sDigest === BASE.stackDigest,
    'baseline ' + BASE.stackDigest + '\n        now      ' + sDigest);
 

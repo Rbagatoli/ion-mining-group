@@ -109,6 +109,83 @@ ok('and a greenfield landfill with no collection is charged for the field it mus
    coll && coll.state === 'incurred' && coll.usd === 550 * 2000,
    coll ? coll.state + ' ' + coll.usd : 'absent');
 
+console.log('\n=== the shutdown discount is an age curve, on the two components that have one ===');
+/* The flat 0.35 was site-capex.js's bopRetained -- the balance-of-plant floor -- applied
+   universally with the age curve above it dropped. This restores the missing half; it does not
+   replace a wrong model with a right one, and the floor's reasoning is kept. */
+function shut(years, over) {
+    var d = new Date(Date.parse('2026-08-30T00:00:00Z') - years * 365.25 * 86400000);
+    var o = { id: 's', energyType: 'landfill_gas', powerPotentialKw: 2160,
+              latitude: 40, longitude: -74, existingGenerationKw: 2160,
+              sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown',
+                              projectShutdownDate: d.toISOString().slice(0, 10) } };
+    for (var k in (over || {})) o[k] = over[k];
+    return SI.capitalAvoided(o, { asOf: '2026-08-30' });
+}
+function part(res, id) {
+    return (res.components || []).filter(function (p) { return p.id === id; })[0] || {};
+}
+ok('a three-year-old shutdown retains far more than the floor',
+   part(shut(3), 'generation').discount === 0.75, part(shut(3), 'generation').discount);
+ok('and the row says the discount was computed from an age',
+   part(shut(3), 'generation').agedDiscount === true);
+ok('naming the age it used', part(shut(3), 'generation').yearsSinceShutdown === 3,
+   part(shut(3), 'generation').yearsSinceShutdown);
+/* THE FLOOR HOLDS. site-capex.js gives generation a balance-of-plant floor because the
+   foundation, enclosure, switchgear and controls survive an engine that does not, so a
+   thirty-year-old machine is still worth the floor even though the raw curve says scrap. */
+ok('a thirty-year-old shutdown floors at bopRetained rather than going to zero',
+   part(shut(30), 'generation').discount === SiteCapex.settings().bopRetained,
+   part(shut(30), 'generation').discount);
+/* AND GAS TREATMENT DELIBERATELY GETS NO FLOOR: a siloxane skid is vessels and media with its
+   own life, and giving it a generator's floor is the category error in the other direction. */
+ok('gas treatment is aged too', part(shut(3), 'gasTreatment').discount === 0.75);
+ok('but gets no floor, so thirty years is zero',
+   part(shut(30), 'gasTreatment').discount === 0,
+   part(shut(30), 'gasTreatment').discount);
+
+/* THE DIVERGENCES ARE MEASURED, NOT RECONCILED. site-capex.js has no refurb model for these,
+   and inventing one to satisfy consistency would be worse than the inconsistency. Crediting
+   idle switchgear at the 1.0 STAGE_RETAINED gives interconnection would assert it is as good
+   as new, which is the condition doubt the unverified banner exists to raise. */
+[3, 30].forEach(function (y) {
+    ok('electrical stays flat at ' + y + ' years, deliberately',
+       part(shut(y), 'electrical').discount === 0.35, part(shut(y), 'electrical').discount);
+    ok('civil stays flat at ' + y + ' years, deliberately',
+       part(shut(y), 'civil').discount === 0.35, part(shut(y), 'civil').discount);
+    ok('and both say they were not aged',
+       part(shut(y), 'electrical').agedDiscount === false &&
+       part(shut(y), 'civil').agedDiscount === false);
+});
+ok('a present collection system keeps its own discount',
+   part(shut(3), 'collection').discount === 0.60, part(shut(3), 'collection').discount);
+
+/* NO DATE FALLS BACK TO THE FLOOR AND SAYS SO, rather than going unknown. Losing a number that
+   exists today would be worse than carrying a conservative one, but a defaulted discount and a
+   computed one must not look the same. Not exercised by today's catalogue -- all 462
+   generation-shutdown sites publish a date -- so it is asserted from a fixture. */
+var undated = SI.capitalAvoided(
+    { id: 'u', energyType: 'landfill_gas', powerPotentialKw: 2160, latitude: 40, longitude: -74,
+      existingGenerationKw: 2160,
+      sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown' } },
+    { asOf: '2026-08-30' });
+ok('no shutdown date still yields a discount', part(undated, 'generation').discount === 0.35);
+ok('and the row shows it was defaulted, not computed',
+   part(undated, 'generation').agedDiscount === false &&
+   part(undated, 'generation').yearsSinceShutdown === null);
+
+/* ASKED, NOT COPIED. A second curve here would agree with site-capex.js until one was tuned. */
+ok('the curve is site-capex\'s, not a copy',
+   part(shut(7), 'generation').discount === SiteCapex.refurbRetained(7),
+   part(shut(7), 'generation').discount + ' vs ' + SiteCapex.refurbRetained(7));
+
+/* THE FULL BUILD MUST NOT MOVE. This changes a discount, and a discount only ever divides
+   avoided from required — if totalBuildUsd moved, something else changed too. */
+[0.5, 3, 12, 30].forEach(function (y) {
+    ok('full build is untouched at ' + y + ' years', shut(y).totalBuildUsd === 4125600,
+       shut(y).totalBuildUsd);
+});
+
 console.log('\n=== generation is read from the field, not inferred from status ===');
 /* The brief proposed operational/construction/shutdown -> "generation present". Measured on the
    artifact that asserts equipment on ~470 sites with none on record: only 14% of Construction and

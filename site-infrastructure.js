@@ -75,6 +75,64 @@ var SiteInfrastructure = (function() {
      * The asymmetry is the point. Mandated capital is the only kind you can count in full. */
     var CONDITION_DISCOUNT = { present: 0.60, shutdown: 0.35, mandated: 1.00, absent: 0, unknown: 0 };
 
+    /* ===== THE SHUTDOWN DISCOUNT IS AN AGE CURVE, NOT A FLAT RATE ========================
+     *
+     * The 0.35 above was never arbitrary: it is site-capex.js's bopRetained, the balance-of-plant
+     * floor, applied universally with the age curve that sits on top of it dropped. Its reasoning
+     * holds and is kept -- the foundation, enclosure, switchgear and controls survive an engine
+     * that does not. What was lost is that a mothballed three-year-old machine retains far more
+     * than the floor, and this credited it the same as a 1994 engine.
+     *
+     * So this restores the half that went missing rather than replacing a wrong model with a
+     * right one. Measured across the catalogue, 483 sites carry a shutdown component:
+     *
+     *   generation     +26%  ($520.1M -> $656.6M)   278 identical, 184 up, 0 down
+     *   gas treatment  -12%  ($144.5M -> $126.4M)   278 down, 184 up, 0 identical
+     *
+     * Generation is never credited LESS, because the floor holds underneath it. Gas treatment
+     * moves both ways and deliberately gets no floor: site-capex.js refuses it one, on the
+     * grounds that a siloxane skid is vessels and media with its own life and giving it a
+     * generator's floor is a category error.
+     *
+     * ONLY THESE TWO ARE UNIFIED, and the rest are divergences that are MEASURED rather than
+     * reconciled. site-capex.js has no refurb model for the others and inventing one to satisfy
+     * consistency would be worse than the inconsistency:
+     *
+     *   electrical  STAGE_RETAINED.constructed gives interconnection 1.0 -- fully inherited.
+     *               NOT adopted. Crediting idle switchgear at 100% asserts it is as good as new,
+     *               which is the very condition doubt the unverified banner exists to raise.
+     *               0.35 is conservative and errs in the safe direction.
+     *   civil       site-capex.js has no civil component at all. There is nothing to adopt.
+     *   collection  site-capex.js treats a present collection system as fully avoided; this
+     *               credits 0.60. Left as it is, for the same condition-doubt reason.
+     *
+     * ASKED, NOT RE-DERIVED. refurbRetained() and bopRetained live in site-capex.js, which owns
+     * the curve and has the tests for it. A second copy here would agree until one was tuned. */
+    function shutdownDiscount(rec, asOf, componentId) {
+        if (componentId !== 'generation' && componentId !== 'gasTreatment') {
+            return { discount: CONDITION_DISCOUNT.shutdown, aged: false, years: null };
+        }
+        if (typeof SiteCapex === 'undefined' || !SiteCapex.refurbRetained ||
+            !SiteCapex.yearsSinceShutdown) {
+            return { discount: CONDITION_DISCOUNT.shutdown, aged: false, years: null };
+        }
+        var years = SiteCapex.yearsSinceShutdown(rec, asOf);
+        var ret = SiteCapex.refurbRetained(years);
+        /* NO SHUTDOWN DATE FALLS BACK TO THE FLOOR, IT DOES NOT GO UNKNOWN. 13 components in the
+           catalogue have no published date. Dropping their avoided figure would remove a number
+           that exists today in exchange for a more honest silence, and a conservative number
+           carrying a flag beats no number -- but the row has to SAY the age input was missing,
+           or a reader cannot tell a computed discount from a defaulted one. */
+        if (ret === null) {
+            return { discount: CONDITION_DISCOUNT.shutdown, aged: false, years: null };
+        }
+        if (componentId === 'generation') {
+            var floor = (SiteCapex.settings && SiteCapex.settings().bopRetained);
+            if (typeof floor === 'number' && ret < floor) ret = floor;
+        }
+        return { discount: ret, aged: true, years: years };
+    }
+
     /* A mandate is only worth something if you arrive before the operator commits to a flare
      * design. Once the engineering is let, the collection system is being built to burn the gas
      * and adding generation later is a second project.
@@ -249,6 +307,11 @@ var SiteInfrastructure = (function() {
             total += full;
             var disc = Object.prototype.hasOwnProperty.call(CONDITION_DISCOUNT, p.state)
                 ? CONDITION_DISCOUNT[p.state] : 0;
+            var aged = false, agedYears = null;
+            if (p.state === 'shutdown') {
+                var sd = shutdownDiscount(c, o.asOf, p.id);
+                disc = sd.discount; aged = sd.aged; agedYears = sd.years;
+            }
             // A verified site is worth what it is, not what a stranger would discount it to.
             if (inv.conditionVerified && (p.state === 'present' || p.state === 'shutdown')) disc = 1;
             if (o.discountOverride && o.discountOverride[p.id] !== undefined) {
@@ -262,7 +325,12 @@ var SiteInfrastructure = (function() {
             out.components.push({
                 id: p.id, label: p.label, state: p.state,
                 perKw: Math.round(p.perKw * mult), fullUsd: Math.round(full),
-                discount: disc, avoidedUsd: Math.round(value)
+                discount: disc, avoidedUsd: Math.round(value),
+                /* aged:false on a shutdown row means the discount was DEFAULTED to the floor
+                   because no shutdown date is published, not computed from one. A reader has to
+                   be able to tell those apart; years is the input it was computed from. */
+                agedDiscount: aged, yearsSinceShutdown: agedYears === null ? null
+                                                        : Math.round(agedYears * 10) / 10
             });
         });
 
