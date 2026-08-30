@@ -160,7 +160,7 @@ var SCENARIOS = [
       hashrate: 335, power: 5.36, capex: 9000, machineCount: 1, elecCost: 0.05,
       minerAdditions: 3, additionCapex: false, autoReplace: false, btcTreasury: 2.5 },
     { btcPrice: 30000, difficulty: 200, investPeriod: 36, hashrate: 110, power: 3.25,
-      capex: 2200, machineCount: 1000, elecCost: 0.12, uptime: 100, savingsElec: true,
+      capex: 2200, machineCount: 1000, elecCost: 0.12, uptime: 100, coverElec: true,
       priceChange: 2, diffChange: 1.5, infrastructureCost: 400000 },
     /* Degenerate on purpose: zero must stay zero, not fall back to a default. */
     { btcPrice: 96000, difficulty: 125.86, investPeriod: 12, hashrate: 0, power: 0,
@@ -473,7 +473,7 @@ var opening = SiteEngine.computeProjection({
     autoReplace: defaults.autoReplace === 'true',
     additionCapex: defaults.additionCapex === 'true',
     reinvest: defaults.reinvest === 'true',
-    savingsElec: defaults.savingsElec === 'true',
+    coverElec: defaults.coverElec === 'true',
     taxAdjustment: defaults.taxAdjustment === 'true',
     startDate: '2026-08-20',
 });

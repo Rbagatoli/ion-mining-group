@@ -94,11 +94,23 @@ var CalcEngine = (function() {
             monthlyMinerAdditions: Math.max(0, int(s.minerAdditions, 0)),
             periodLength: periodLength,
             // Defaults must match the markup and loadSettings(): autoReplace and additionCapex
-            // are `checked` in the HTML, so an absent key means ON. reinvest/savingsElec/
+            // are `checked` in the HTML, so an absent key means ON. reinvest/coverElec/
             // taxAdjustment start unchecked, so an absent key means OFF. Getting this wrong
             // makes a scenario missing the key compute differently from the same scenario
             // once loaded into the form.
-            savingsElec: !!s.savingsElec,
+            /* REPLACES savingsElec, which is gone.
+
+               savingsElec meant "the power is paid from income or savings", and it implemented
+               that by removing the cost from the projection ENTIRELY -- the return came out as
+               though the electricity were free. That is the least defensible setting the page
+               had: a five-year bill of $1.5M simply left the arithmetic.
+
+               This is the opposite and honest version of the same idea. Instead of deleting
+               the cost, it names where the money comes from: the mined BTC. Each period sells
+               the minimum needed to pay that period's power, and the HODL ratio then governs
+               what is left. A scenario that carries the old savingsElec key gets nothing --
+               absent means off, and off is the behaviour that key used to sit next to. */
+            coverElec: !!s.coverElec,
             autoReplace: s.autoReplace !== false,
             reinvestMode: !!s.reinvest,
             deductAdditionCapex: s.additionCapex !== false,
@@ -274,12 +286,41 @@ var CalcEngine = (function() {
             var taxableMiningIncome = Math.max(0, grossMiningRevenue - periodElecCost);
             var taxOnMiningIncome = p.taxAdjustmentEnabled ? (taxableMiningIncome * p.miningIncomeTaxRate) : 0;
 
-            var btcHeld = periodBTCMined * p.hodlPct;
-            var btcSold = periodBTCMined * (1 - p.hodlPct);
+            /* WHO PAYS THE POWER.
+
+               OFF, and this is the default: the HODL ratio alone decides what is sold, and the
+               bill is charged as a cash cost whatever that comes to. At HODL 100 nothing is
+               sold, so the electricity is funded from outside the business -- see
+               peakCashDeficit, which reports exactly how much that is.
+
+               ON: the bill comes off the top of each period's production and the slider splits
+               what remains, so HODL 100 means "hold everything after the power is paid". This
+               is what an operator running a treasury actually means by holding everything.
+
+               CAPPED AT periodBTCMined, and the cap matters. A site whose production is worth
+               less than its power bill cannot pay it out of production no matter what this
+               says. It then sells everything it mines and the remainder stays visible as
+               negative cash rather than being quietly borrowed against next month. Do not read
+               that case as a recommendation: an operator facing it curtails or funds the bill
+               from elsewhere, and the second of those is what leaving this OFF models.
+
+               Electricity only. Mining income tax is a cash bill in the same period and is NOT
+               covered here -- with the tax model on, cash flow still goes negative by the tax,
+               which is correct: this switch is about the power bill and says so. */
+            var btcHeld, btcSold;
+            if (p.coverElec && btcPrice > 0) {
+                var btcToCover = Math.min(periodBTCMined, periodElecCost / btcPrice);
+                var btcAfterPower = periodBTCMined - btcToCover;
+                btcHeld = btcAfterPower * p.hodlPct;
+                btcSold = btcToCover + btcAfterPower * (1 - p.hodlPct);
+            } else {
+                btcHeld = periodBTCMined * p.hodlPct;
+                btcSold = periodBTCMined * (1 - p.hodlPct);
+            }
             var cashFromSales = btcSold * btcPrice;
-            var periodCashFlow = p.savingsElec
-                ? cashFromSales - taxOnMiningIncome
-                : cashFromSales - taxOnMiningIncome - periodElecCost;
+            /* The power is ALWAYS charged. It was only ever conditional because savingsElec
+               deleted it, and that setting is gone. */
+            var periodCashFlow = cashFromSales - taxOnMiningIncome - periodElecCost;
 
             var machinesBoughtThisPeriod = 0, reinvestSpent = 0;
             if (p.reinvestMode && p.capex > 0 && periodCashFlow > 0) {

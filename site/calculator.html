@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=445db3a1">
+<link rel="stylesheet" href="./styles.css?v=45bff1c9">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -487,13 +487,18 @@
             </div>
 
             <label class="calc-switch">
-              <input id="savingsElec" type="checkbox" data-default="false">
+              <input id="coverElec" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
               <span class="cs-body">
-                <span class="cs-title">Pay Electricity From Savings</span>
-                <span class="cs-desc">All BTC goes to treasury &mdash; electricity paid externally from income or savings</span>
+                <span class="cs-title">Pay Electricity From Mining Revenue</span>
+                <span class="cs-desc">Each period sells the minimum BTC needed to pay that period&rsquo;s power bill.
+                  The HODL ratio then applies to what is left, so 100% means keep everything after the power is paid</span>
               </span>
             </label>
+            <p class="calc-hint">Off, no BTC is sold to meet the bill and the electricity is funded
+              from your own capital &mdash; still charged against the return, but see
+              <em>Cash required from outside</em> above for what that actually comes to. Mining
+              income tax is not covered by this switch: it is a separate bill in the same period.</p>
             <label class="calc-switch">
               <input id="reinvest" type="checkbox" data-default="false">
               <span class="cs-track" aria-hidden="true"></span>
@@ -663,11 +668,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=445db3a1"></script>
-<script src="./hero-anim.js?v=445db3a1"></script>
-<script src="./cart.js?v=445db3a1"></script>
-<script src="./miner-db.js?v=445db3a1"></script>
-<script src="./calc-engine.js?v=445db3a1"></script>
-<script src="./calculator.js?v=445db3a1"></script>
+<script src="./site.js?v=45bff1c9"></script>
+<script src="./hero-anim.js?v=45bff1c9"></script>
+<script src="./cart.js?v=45bff1c9"></script>
+<script src="./miner-db.js?v=45bff1c9"></script>
+<script src="./calc-engine.js?v=45bff1c9"></script>
+<script src="./calculator.js?v=45bff1c9"></script>
 </body>
 </html>

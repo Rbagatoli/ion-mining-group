@@ -32,7 +32,7 @@
         'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
-        'autoReplace', 'additionCapex', 'reinvest', 'savingsElec', 'taxAdjustment',
+        'autoReplace', 'additionCapex', 'reinvest', 'coverElec', 'taxAdjustment',
         'preTaxCapital',
     ];
 
@@ -222,7 +222,7 @@
             autoReplace: !!el.autoReplace.checked,
             additionCapex: !!el.additionCapex.checked,
             reinvest: !!el.reinvest.checked,
-            savingsElec: !!el.savingsElec.checked,
+            coverElec: !!el.coverElec.checked,
             taxAdjustment: !!el.taxAdjustment.checked,
             preTaxCapital: !!(el.preTaxCapital && el.preTaxCapital.checked),
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),

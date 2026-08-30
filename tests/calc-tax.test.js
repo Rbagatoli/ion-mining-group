@@ -30,7 +30,7 @@ var DEFAULTS = {
     elecCost: 0.055, poolFee: 2, uptime: 100, hodlRatio: 100,
     btcPrice: 96000, priceChange: 2, diffChange: 3, difficulty: 125.86,
     investPeriod: 48, periodLength: 'month', btcTreasury: 0,
-    reinvest: false, savingsElec: false,
+    reinvest: false, coverElec: false,
     taxAdjustment: false, miningIncomeTaxRate: 35, capitalGainsTaxRate: 15
 };
 function run(over) {

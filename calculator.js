@@ -42,8 +42,8 @@ const reinvestToggle = document.getElementById('reinvestToggle');
 const reinvestRow = document.getElementById('reinvestRow');
 const additionCapexToggle = document.getElementById('additionCapexToggle');
 const additionCapexRow = document.getElementById('additionCapexRow');
-const savingsElecToggle = document.getElementById('savingsElecToggle');
-const savingsElecRow = document.getElementById('savingsElecRow');
+const coverElecToggle = document.getElementById('coverElecToggle');
+const coverElecRow = document.getElementById('coverElecRow');
 const autoReplaceToggle = document.getElementById('autoReplaceToggle');
 const autoReplaceRow = document.getElementById('autoReplaceRow');
 const taxAdjustmentToggle = document.getElementById('taxAdjustmentToggle');
@@ -143,7 +143,7 @@ function saveSettings() {
     settings.periodLength = periodLengthSel.value;
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
-    settings.savingsElec = savingsElecToggle.checked;
+    settings.coverElec = coverElecToggle.checked;
     settings.autoReplace = autoReplaceToggle.checked;
     settings.taxAdjustment = taxAdjustmentToggle.checked;
     settings.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -171,9 +171,9 @@ function loadSettings() {
             additionCapexToggle.checked = true;
             additionCapexRow.classList.add('active');
         }
-        if (s.savingsElec) {
-            savingsElecToggle.checked = true;
-            savingsElecRow.classList.add('active');
+        if (s.coverElec) {
+            coverElecToggle.checked = true;
+            coverElecRow.classList.add('active');
         }
         // Defaults to on (matches the checked attribute in the markup)
         if (s.autoReplace === false) {
@@ -427,7 +427,7 @@ function currentSettings() {
     s.periodLength = periodLengthSel.value;
     s.reinvest = reinvestToggle.checked;
     s.additionCapex = additionCapexToggle.checked;
-    s.savingsElec = savingsElecToggle.checked;
+    s.coverElec = coverElecToggle.checked;
     s.autoReplace = autoReplaceToggle.checked;
     s.taxAdjustment = taxAdjustmentToggle.checked;
     s.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -572,8 +572,8 @@ reinvestToggle.addEventListener('change', () => {
     reinvestRow.classList.toggle('active', reinvestToggle.checked);
     recalculate();
 });
-savingsElecToggle.addEventListener('change', () => {
-    savingsElecRow.classList.toggle('active', savingsElecToggle.checked);
+coverElecToggle.addEventListener('change', () => {
+    coverElecRow.classList.toggle('active', coverElecToggle.checked);
     recalculate();
 });
 autoReplaceToggle.addEventListener('change', () => {
@@ -1025,7 +1025,7 @@ function loadScenario(id) {
     if (v.periodLength) periodLengthSel.value = v.periodLength;
     reinvestToggle.checked = !!v.reinvest;
     additionCapexToggle.checked = v.additionCapex !== false;
-    savingsElecToggle.checked = !!v.savingsElec;
+    coverElecToggle.checked = !!v.coverElec;
     autoReplaceToggle.checked = v.autoReplace !== false;
     taxAdjustmentToggle.checked = !!v.taxAdjustment;
     var ptc = document.getElementById('preTaxCapital');
@@ -1036,7 +1036,7 @@ function loadScenario(id) {
     // Keep the toggle rows' visual state in step with the restored values
     reinvestRow.classList.toggle('active', reinvestToggle.checked);
     additionCapexRow.classList.toggle('active', additionCapexToggle.checked);
-    savingsElecRow.classList.toggle('active', savingsElecToggle.checked);
+    coverElecRow.classList.toggle('active', coverElecToggle.checked);
     autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
     taxAdjustmentRow.classList.toggle('active', taxAdjustmentToggle.checked);
     taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';
