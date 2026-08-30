@@ -66,6 +66,38 @@ ok('treatment and electrical likewise',
 ok('the collection rate comes off the shared capex card, not a second declaration',
    SI.rates().collection === SiteCapex.rates().collectionPerKw &&
    SiteCapex.rates().collectionPerKw === 550);
+
+/* ---- A PAD IS NOT A STARTUP ------------------------------------------------------------
+ *
+ * capitalAvoided()'s 'Civil / pad' component sourced its rate from commissioningPerKw --
+ * startup, tuning, emissions testing, first fire. Two unrelated facts on one number, and
+ * setRate() is public, so editing the startup rate moved the displayed cost of a pad: on a
+ * 2,160 kW site, $129,600 to $432,000, and the full build with it. A wrong number shown
+ * confidently.
+ *
+ * BOTH DIRECTIONS ARE ASSERTED. "civil does not follow commissioning" is equally true of a
+ * rate that is wired to nothing at all, so the second half proves the new wire carries. */
+SiteCapex.reset();
+ok('civil is priced from its own rate', SI.rates().civil === SiteCapex.rates().civilPerKw,
+   SI.rates().civil);
+ok('and that rate is still 60, so nothing re-baselined', SiteCapex.rates().civilPerKw === 60,
+   SiteCapex.rates().civilPerKw);
+SiteCapex.setRate('commissioningPerKw', 200);
+ok('editing the startup rate no longer moves the pad', SI.rates().civil === 60, SI.rates().civil);
+SiteCapex.reset();
+SiteCapex.setRate('civilPerKw', 200);
+ok('editing the civil rate does move it', SI.rates().civil === 200, SI.rates().civil);
+SiteCapex.reset();
+/* The identity digest for the decoupling: it is a structural change and every figure on the
+   panel must be untouched by it. 2,160 kW, collection present, generation shut. */
+var IDENT = SI.capitalAvoided(
+    { id: 'ident', energyType: 'landfill_gas', powerPotentialKw: 2160,
+      latitude: 40, longitude: -74, existingGenerationKw: 2160,
+      sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown' } },
+    { asOf: '2026-08-30' });
+ok('the 2,160 kW digest: full build', IDENT.totalBuildUsd === 4125600, IDENT.totalBuildUsd);
+ok('the 2,160 kW digest: capital avoided', IDENT.avoidedUsd === 1740960, IDENT.avoidedUsd);
+ok('the 2,160 kW digest: still to spend', IDENT.requiredUsd === 2384640, IDENT.requiredUsd);
 var greenfield = SiteCapex.stack(
     { powerPotentialKw: 2000, development_stage: 'raw_resource', energyType: 'landfill_gas',
       sourceDetail: { collectionSystem: 'No' } }, {});

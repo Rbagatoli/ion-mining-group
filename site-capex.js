@@ -60,6 +60,26 @@ var SiteCapex = (function() {
 
         // Startup, tuning, emissions testing, first fire, punch list.
         commissioningPerKw: 60,
+        /* GENERATION-SIDE CIVIL: the genset foundation and pad, access and drainage around it.
+         *
+         * IT EXISTS BECAUSE site-infrastructure.js WAS PRICING A PAD AT THE STARTUP RATE.
+         * Its capitalAvoided() has a 'Civil / pad' component -- the inventory genuinely tracks
+         * whether a pad went in with the gensets -- and it sourced that component's rate from
+         * commissioningPerKw, which is startup, tuning and emissions testing. Two unrelated
+         * facts tied to one number: setRate('commissioningPerKw', 200) moved the displayed cost
+         * of a pad from $129,600 to $432,000 on a 2,160 kW site, and the full build with it.
+         * Same value, so nothing re-baselines; the point is that the two can now move apart.
+         *
+         * NOT the mining-side pad, which is inside miningInfraPerKw and stays whole: that $450
+         * is one real quoted Alberta figure covering pads, containers, transformer, switchgear
+         * and comms for the MINING load, and splitting it would destroy the audit trail on it.
+         * This is the concrete under the engines, which an acquisition can inherit and a
+         * greenfield cannot.
+         *
+         * WEAKEST-EVIDENCED RATE ON THE CARD, and it inherits that from the number it was
+         * borrowing rather than from any costing of its own. It is carried at the value it has
+         * always had so this change moves nothing, and it wants a real figure. */
+        civilPerKw: 60,
 
         // Siloxane removal, moisture knockout, H2S scrubbing. APPLIED ONLY where the source
         // publishes requiresGasTreatment — a derived gate on a published fact, not a guess.

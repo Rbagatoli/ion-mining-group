@@ -55,7 +55,8 @@ var SiteInfrastructure = (function() {
         generationPerKw: 900,
         gasTreatmentPerKw: 250,
         interconnectionPerKw: 150,
-        commissioningPerKw: 60
+        commissioningPerKw: 60,
+        civilPerKw: 60
     };
 
     // The stress-test band the brief asked for. Applied to every component at once, because the
@@ -102,7 +103,10 @@ var SiteInfrastructure = (function() {
             generation:    (r && r.generationPerKw)      || FALLBACK_RATES.generationPerKw,
             gasTreatment:  (r && r.gasTreatmentPerKw)    || FALLBACK_RATES.gasTreatmentPerKw,
             electrical:    (r && r.interconnectionPerKw) || FALLBACK_RATES.interconnectionPerKw,
-            civil:         (r && r.commissioningPerKw)   || FALLBACK_RATES.commissioningPerKw
+            /* civilPerKw, NOT commissioningPerKw. This priced a pad at the startup-and-tuning
+               rate until site-capex.js grew a civil rate of its own; the value is unchanged, so
+               the coupling went and no figure moved. */
+            civil:         (r && r.civilPerKw)           || FALLBACK_RATES.civilPerKw
         };
     }
 
