@@ -32,7 +32,12 @@ function getBlockReward(date) {
 // ===== DOM REFS =====
 const inputIds = [
     'btcPrice', 'priceChange', 'difficulty', 'diffChange', 'investPeriod',
-    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'poolFee', 'uptime', 'hodlRatio'
+    'hashrate', 'power', 'capex', 'machineCount', 'minerAdditions', 'minerLifespan', 'salvageValue', 'btcTreasury', 'infrastructureCost', 'elecCost', 'poolFee', 'uptime', 'hodlRatio',
+    /* Replacement hardware and the depreciation basis. inputIds carries each of these through
+       el[], saveSettings, loadSettings, currentSettings and the recalculate listener, so the
+       desk tool needs no per-field wiring -- only the toggle below does. */
+    'replacementEfficiency', 'replacementHashrate', 'replacementPower', 'replacementCapex',
+    'replacementSizing', 'additionalReplacementCapital', 'infraDepreciationEligiblePct'
 ];
 const el = {};
 inputIds.forEach(id => el[id] = document.getElementById(id));
@@ -44,6 +49,8 @@ const additionCapexToggle = document.getElementById('additionCapexToggle');
 const additionCapexRow = document.getElementById('additionCapexRow');
 const coverElecToggle = document.getElementById('coverElecToggle');
 const coverElecRow = document.getElementById('coverElecRow');
+const replacementEnabledToggle = document.getElementById('replacementEnabledToggle');
+const replacementEnabledRow = document.getElementById('replacementEnabledRow');
 const autoReplaceToggle = document.getElementById('autoReplaceToggle');
 const autoReplaceRow = document.getElementById('autoReplaceRow');
 const taxAdjustmentToggle = document.getElementById('taxAdjustmentToggle');
@@ -144,6 +151,7 @@ function saveSettings() {
     settings.reinvest = reinvestToggle.checked;
     settings.additionCapex = additionCapexToggle.checked;
     settings.coverElec = coverElecToggle.checked;
+    settings.replacementEnabled = replacementEnabledToggle.checked;
     settings.autoReplace = autoReplaceToggle.checked;
     settings.taxAdjustment = taxAdjustmentToggle.checked;
     settings.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -174,6 +182,10 @@ function loadSettings() {
         if (s.coverElec) {
             coverElecToggle.checked = true;
             coverElecRow.classList.add('active');
+        }
+        if (s.replacementEnabled) {
+            replacementEnabledToggle.checked = true;
+            replacementEnabledRow.classList.add('active');
         }
         // Defaults to on (matches the checked attribute in the markup)
         if (s.autoReplace === false) {
@@ -428,6 +440,7 @@ function currentSettings() {
     s.reinvest = reinvestToggle.checked;
     s.additionCapex = additionCapexToggle.checked;
     s.coverElec = coverElecToggle.checked;
+    s.replacementEnabled = replacementEnabledToggle.checked;
     s.autoReplace = autoReplaceToggle.checked;
     s.taxAdjustment = taxAdjustmentToggle.checked;
     s.preTaxCapital = !!(document.getElementById('preTaxCapital') || {}).checked;
@@ -437,8 +450,61 @@ function currentSettings() {
     return s;
 }
 
+/* Derived replacement specs, per field. Same engine helpers the public calculator uses --
+   hashpriceAtPeriod and deriveReplacement -- so the desk and the site cannot disagree about
+   what a replacement costs. Typing into a field claims it and it stops re-deriving. */
+const replDirty = { replacementHashrate: false, replacementPower: false, replacementCapex: false };
+const REPL_DERIVED = ['replacementHashrate', 'replacementPower', 'replacementCapex'];
+REPL_DERIVED.forEach(id => {
+    el[id].addEventListener('input', () => { replDirty[id] = true; });
+});
+
+function applyReplacementDerivation(settings) {
+    const line = document.getElementById('replacementDerivation');
+    if (!replacementEnabledToggle.checked || typeof CalcEngine.deriveReplacement !== 'function') {
+        if (line) line.innerHTML = '&mdash;';
+        REPL_DERIVED.forEach(id => {
+            const t = document.getElementById('drv-' + id);
+            if (t) t.style.display = 'none';
+        });
+        return;
+    }
+    const cfg = CalcEngine.PERIOD_CONFIG[settings.periodLength] || CalcEngine.PERIOD_CONFIG.monthly;
+    const lifePeriods = Math.max(1, Math.round(
+        Math.max(1, Math.round(parseFloat(el.minerLifespan.value) || 36)) * (30.44 / cfg.days)));
+    const now = CalcEngine.hashpriceAtPeriod(settings, 0);
+    const then = CalcEngine.hashpriceAtPeriod(settings, lifePeriods);
+    const ratio = now > 0 ? then / now : 1;
+    const d = CalcEngine.deriveReplacement({
+        hashrateTH: parseFloat(el.hashrate.value) || 0,
+        powerKW: parseFloat(el.power.value) || 0,
+        capex: parseFloat(el.capex.value) || 0,
+        replacementJTH: parseFloat(el.replacementEfficiency.value) || 0,
+        hashpriceRatio: ratio
+    });
+    if (!replDirty.replacementHashrate) el.replacementHashrate.value = d.hashrateTH.toFixed(2);
+    if (!replDirty.replacementPower) el.replacementPower.value = d.powerKW.toFixed(3);
+    if (!replDirty.replacementCapex) el.replacementCapex.value = d.capex.toFixed(0);
+    REPL_DERIVED.forEach(id => {
+        const t = document.getElementById('drv-' + id);
+        if (t) t.style.display = replDirty[id] ? 'none' : '';
+        el[id].style.fontStyle = replDirty[id] ? '' : 'italic';
+    });
+    const move = (ratio - 1) * 100;
+    if (line) {
+        line.textContent = 'Derived: ' + Math.round((parseFloat(el.power.value) || 0) * 1000) +
+            'W / ' + el.replacementEfficiency.value + ' J/TH = ' + Math.round(d.hashrateTH) +
+            ' TH at $' + d.perTH.toFixed(2) + '/TH (hashprice ' +
+            (Math.abs(move) < 0.5 ? 'flat' : (move > 0 ? '+' : '') + move.toFixed(0) + '%') +
+            ' by period ' + lifePeriods + ') = $' + Math.round(d.capex).toLocaleString() +
+            '. Today’s price scaled by your own projection, not a forecast.';
+    }
+}
+
 function recalculate() {
-    const settings = currentSettings();
+    let settings = currentSettings();
+    applyReplacementDerivation(settings);
+    if (replacementEnabledToggle.checked) settings = currentSettings();
     const r = CalcEngine.computeProjection(settings);
     lastResult = r;
     halvingPeriodIdxs = r.halvingPeriodIdxs;   // read by the chart's halving-line plugin
@@ -576,6 +642,14 @@ coverElecToggle.addEventListener('change', () => {
     coverElecRow.classList.toggle('active', coverElecToggle.checked);
     recalculate();
 });
+replacementEnabledToggle.addEventListener('change', () => {
+    replacementEnabledRow.classList.toggle('active', replacementEnabledToggle.checked);
+    recalculate();
+});
+/* A <select> does fire 'input' in current browsers, but the shared listener below is bound on
+   'input' alone and this is the tool the desk quotes from -- 'change' costs nothing and removes
+   the question. */
+el.replacementSizing.addEventListener('change', recalculate);
 autoReplaceToggle.addEventListener('change', () => {
     autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
     recalculate();
@@ -1026,6 +1100,7 @@ function loadScenario(id) {
     reinvestToggle.checked = !!v.reinvest;
     additionCapexToggle.checked = v.additionCapex !== false;
     coverElecToggle.checked = !!v.coverElec;
+    replacementEnabledToggle.checked = !!v.replacementEnabled;
     autoReplaceToggle.checked = v.autoReplace !== false;
     taxAdjustmentToggle.checked = !!v.taxAdjustment;
     var ptc = document.getElementById('preTaxCapital');
@@ -1037,6 +1112,7 @@ function loadScenario(id) {
     reinvestRow.classList.toggle('active', reinvestToggle.checked);
     additionCapexRow.classList.toggle('active', additionCapexToggle.checked);
     coverElecRow.classList.toggle('active', coverElecToggle.checked);
+    replacementEnabledRow.classList.toggle('active', replacementEnabledToggle.checked);
     autoReplaceRow.classList.toggle('active', autoReplaceToggle.checked);
     taxAdjustmentRow.classList.toggle('active', taxAdjustmentToggle.checked);
     taxRateInputs.style.display = taxAdjustmentToggle.checked ? '' : 'none';

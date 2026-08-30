@@ -303,6 +303,28 @@ var DERIVED_INPUTS = ['startDate', 'siteKw'];
 var noControl = engineKeys.filter(function (k) {
     return DERIVED_INPUTS.indexOf(k) < 0 && !htmlIds[k];
 });
+
+/* AND THE SAME FOR THE DESK TOOL, which this check did not cover and should have.
+   Three features shipped to the public calculator and not to the internal one -- transaction
+   fees, the whole replacement-hardware section, and the depreciation basis -- so the desk was
+   running an engine with inputs it had no way to set. A figure quoted from one tool could not
+   be reproduced in the other, which is the entire premise of shipping the same engine in both.
+   The desk uses a different idiom for switches (id="fooToggle"), so both spellings count. */
+(function () {
+    var deskHtml = fs.readFileSync(D + 'calculator.html', 'utf8');
+    /* AN EXACT ID, and only that. The first version of this accepted "the name appears
+       somewhere in both files" as a fallback, which made it nearly vacuous -- renaming
+       id="txFee" to id="txFeeXX" still passed, because the string txFee is still present in
+       both. A check that cannot fail is worse than no check, since it reads as coverage. */
+    var missing = engineKeys.filter(function (k) {
+        if (DERIVED_INPUTS.indexOf(k) >= 0) return false;
+        return deskHtml.indexOf('id="' + k + '"') < 0 &&
+               deskHtml.indexOf('id="' + k + 'Toggle"') < 0;
+    });
+    ok(missing.length === 0,
+       'every engine input has a control on the DESK calculator too',
+       'no control for: ' + missing.join(', '));
+})();
 ok(noControl.length === 0, 'every engine input has a control on the page',
    'no control for: ' + noControl.join(', '));
 

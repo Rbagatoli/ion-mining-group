@@ -288,6 +288,68 @@
                     <span style="font-size:11px">Retired miners automatically replaced — you pay CAPEX minus salvage value</span>
                 </div>
             </div>
+
+            <!-- REPLACEMENT HARDWARE. Same set the public calculator carries; the desk tool
+                 must be able to express every scenario the site can, or a number quoted from
+                 one cannot be reproduced in the other. -->
+            <div class="reinvest-row" id="replacementEnabledRow" style="margin-top:8px">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="replacementEnabledToggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="reinvest-info">
+                    <strong>Replace With Different Hardware</strong><br>
+                    <span style="font-size:11px">Off, replacements are identical to the original machine</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Replacement Efficiency</label>
+                <div class="input-wrapper" id="wrap-replacementEfficiency">
+                    <input type="number" id="replacementEfficiency" value="13.5" min="0.1" step="0.1">
+                    <span class="suffix">J/TH</span>
+                </div>
+                <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Leave equal to the original and this changes nothing</div>
+            </div>
+            <div class="input-group">
+                <label>Replacement Hashrate <span id="drv-replacementHashrate" style="font-size:9px; color:var(--btc-300)">DERIVED</span></label>
+                <div class="input-wrapper" id="wrap-replacementHashrate">
+                    <input type="number" id="replacementHashrate" value="270" min="0" step="1">
+                    <span class="suffix">TH/s</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Replacement Power <span id="drv-replacementPower" style="font-size:9px; color:var(--btc-300)">DERIVED</span></label>
+                <div class="input-wrapper" id="wrap-replacementPower">
+                    <input type="number" id="replacementPower" value="3.645" min="0" step="0.001">
+                    <span class="suffix">kW</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Replacement CAPEX <span id="drv-replacementCapex" style="font-size:9px; color:var(--btc-300)">DERIVED</span></label>
+                <div class="input-wrapper" id="wrap-replacementCapex">
+                    <input type="number" id="replacementCapex" value="3010" min="0" step="10">
+                    <span class="suffix">$ each</span>
+                </div>
+                <div style="font-size:11px; color: var(--text-mid); margin-top:4px;" id="replacementDerivation">&mdash;</div>
+            </div>
+            <div class="input-group">
+                <label>Replacement Sizing</label>
+                <div class="input-wrapper" id="wrap-replacementSizing">
+                    <select id="replacementSizing">
+                        <option value="same_count">Same machine count — replace 1:1</option>
+                        <option value="same_power">Same power draw — refill the site's kW</option>
+                        <option value="same_capital">Same capital — spend what the old fleet is worth</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Additional Capital</label>
+                <div class="input-wrapper" id="wrap-additionalReplacementCapital">
+                    <input type="number" id="additionalReplacementCapital" value="0" min="0" step="1000">
+                    <span class="suffix">$</span>
+                </div>
+                <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Same-capital sizing only. Zero re-equips from salvage alone</div>
+            </div>
         </div>
 
         <!-- Operating Parameters -->
@@ -317,7 +379,7 @@
             </div>
             <div class="input-group">
                 <label>Pool Fee</label>
-                <div class="input-wrapper" id="wrap-poolFee">
+                <div class="input-wrapper" id="wrap-poolFee2">
                     <input type="number" id="poolFee" value="2" min="0" max="100" step="0.1">
                     <span class="suffix">%</span>
                 </div>
@@ -394,6 +456,14 @@
                         <span class="suffix">%</span>
                     </div>
                     <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Applied to gains on exit &mdash; both to buy &amp; hold and to appreciation of mined BTC you hold</div>
+                </div>
+                <div class="input-group">
+                    <label>Infrastructure Depreciable</label>
+                    <div class="input-wrapper" id="wrap-infraDepreciationEligiblePct">
+                        <input type="number" id="infraDepreciationEligiblePct" value="90" min="0" max="100" step="1">
+                        <span class="suffix">%</span>
+                    </div>
+                    <div style="font-size:11px; color: var(--text-mid); margin-top:4px;">Machines are always fully eligible. This is the infrastructure share that is equipment rather than land and soft costs</div>
                 </div>
             </div>
             <div class="reinvest-row" id="coverElecRow" style="margin-top:8px">
