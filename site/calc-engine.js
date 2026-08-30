@@ -12,6 +12,17 @@ var CalcEngine = (function() {
     var TWO_POW_32 = 4294967296;
     var CURRENT_BLOCK_REWARD = 3.125;
 
+    /* Section 461(l), the excess business loss limitation: business losses offsetting
+       non-business income are capped at roughly this per year for a single filer, and the
+       excess becomes an NOL carryforward -- still valuable, but realised over years rather
+       than at once.
+
+       NOT MODELLED AS A COMPUTATION, deliberately. It depends on filing status, other income
+       and prior-year NOLs, none of which this calculator knows, and a confidently wrong number
+       is worse than a note. It is used only to decide when to SAY something. One constant in
+       one place, so it can be moved when the figure indexes. */
+    var EXCESS_BUSINESS_LOSS_THRESHOLD = 330000;
+
     var PERIOD_CONFIG = {
         daily:   { days: 1,     perMonth: 30.44, label: 'days',   labelSingular: 'day' },
         weekly:  { days: 7,     perMonth: 4.348, label: 'weeks',  labelSingular: 'week' },
@@ -161,7 +172,23 @@ var CalcEngine = (function() {
                Gated on taxAdjustmentEnabled, because a pre-tax investment with no
                tax model is a contradiction: it would shrink the benchmark using a
                rate that is not being applied anywhere else. */
-            preTaxCapital: !!(s.taxAdjustment && s.preTaxCapital),
+            /* DEFAULTS ON when the tax model is on. Absent means ON, explicit false means
+               OFF -- the same convention autoReplace and additionCapex already use, so a
+               scenario that deliberately turned this off keeps it off.
+
+               The default moved because leaving it off makes the tax toggle actively
+               misleading: on the same scenario, turning tax on took mining's advantage from
+               -$90,883 to -$372,492, because the mining side was charged income tax while the
+               benchmark was handed the full pre-tax sum to buy coins with and charged nothing
+               for the privilege. With this on it goes to +$492,766. The verdict flips on which
+               toggle is set, which is not a thing a default should be quietly deciding. */
+            preTaxCapital: !!(s.taxAdjustment && s.preTaxCapital !== false),
+            /* WHAT FRACTION OF INFRASTRUCTURE IS DEPRECIABLE EQUIPMENT. Miners are equipment
+               and fully eligible; infrastructure is the line that mixes transformers and
+               containers with land and soft development costs, which are not. Applying a
+               blended percentage across both would understate the miners to compensate for
+               the infrastructure -- the wrong shape even where the total lands close. */
+            infraDepreciationEligiblePct: clamp(num(s.infraDepreciationEligiblePct, 90), 0, 100) / 100,
             // These were the only two ratios in this function still using `|| 0` -- the exact
             // idiom the NOTE above warns against -- and the only two left unclamped. Typing 350
             // produced a 350% tax and turned a profitable site into a $7.7M loss; typing -40
@@ -278,9 +305,29 @@ var CalcEngine = (function() {
            The mining side needs no matching adjustment: capex has never been
            taxed in this model, which is exactly what a first-year write-off
            means. The asymmetry was only ever on this side. */
-        var buyHoldSpend = p.preTaxCapital
-            ? totalInitialInvestment * (1 - p.miningIncomeTaxRate)
-            : totalInitialInvestment;
+        /* THE DEPLOYMENT BASIS, which is the largest tax advantage mining has and was
+           invisible until it was modelled.
+
+           Mining equipment takes 100% bonus depreciation -- permanently restored under OBBBA
+           for property acquired after 19 January 2025. Bitcoin does not: buying it is a
+           capital asset purchase with no deduction. So a dollar of pre-tax income buys a
+           FULL dollar of miners but only a post-tax dollar of coins.
+
+           Eligibility applies to the INFRASTRUCTURE line only. The machines are equipment;
+           the site line is what mixes depreciable kit with land and soft costs.
+
+           WHAT THIS DELIBERATELY DOES NOT DO. Section 461(l) caps business losses against
+           non-business income at ~$330k/yr for a single filer, above which the excess is an
+           NOL carried forward. Material participation under 469 is required or the losses are
+           passive. Property used predominantly outside the US is forced onto ADS by 168(g) --
+           straight-line, no bonus -- so a Canadian site gets none of this. And the shield is
+           worth nothing beyond income in the SAME year, which makes incremental hardware
+           purchases efficient and does not fund a lump-sum build. None of that is computed
+           here; all of it is said on screen. */
+        var deductibleBasis = totalCapex + (p.infrastructureCost * p.infraDepreciationEligiblePct);
+        var taxShieldValue = p.preTaxCapital ? deductibleBasis * p.miningIncomeTaxRate : 0;
+        var buyHoldSpend = totalInitialInvestment - taxShieldValue;
+        var deploymentRatio = buyHoldSpend > 0 ? totalInitialInvestment / buyHoldSpend : 0;
         var buyHoldBtcAmount = buyHoldSpend > 0 ? (buyHoldSpend / p.btcPrice0) : 0;
         function buyHoldNetGain(price) {
             /* Measured against the PRE-TAX figure, so the income tax paid to get
@@ -685,6 +732,12 @@ var CalcEngine = (function() {
             buyHoldBtcAmount: buyHoldBtcAmount,
             buyHoldSpend: buyHoldSpend,
             preTaxCapital: p.preTaxCapital,
+            deductibleBasis: deductibleBasis,
+            taxShieldValue: taxShieldValue,
+            deploymentRatio: deploymentRatio,
+            /* Only whether to SAY something, never a computed limitation. */
+            exceedsExcessBusinessLoss: taxShieldValue > EXCESS_BUSINESS_LOSS_THRESHOLD,
+            excessBusinessLossThreshold: EXCESS_BUSINESS_LOSS_THRESHOLD,
             buyHoldFinalValue: buyHoldFinalValue,
             buyHoldFinalNet: buyHoldFinalNet,
             miningAdvantage: miningAdvantage,

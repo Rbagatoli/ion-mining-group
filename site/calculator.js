@@ -35,6 +35,7 @@
         'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'coverElec', 'taxAdjustment',
+        'infraDepreciationEligiblePct',
         'preTaxCapital',
     ];
 
@@ -238,6 +239,7 @@
             preTaxCapital: !!(el.preTaxCapital && el.preTaxCapital.checked),
             miningIncomeTaxRate: num(el.miningIncomeTaxRate.value, 0),
             capitalGainsTaxRate: num(el.capitalGainsTaxRate.value, 0),
+            infraDepreciationEligiblePct: num(el.infraDepreciationEligiblePct.value, 90),
         };
         /* machineCount is handed back separately because the engine floors it at
            1 — it is used as a divisor downstream, so normalise() will not accept
@@ -780,6 +782,13 @@
            income the net is negative at a flat price by exactly the income tax
            paid to get in - which is the point being made, not an error. */
         setText('outBenchmarkValue', money(r.buyHoldFinalValue));
+        /* THE DEPLOYMENT ADVANTAGE, stated. A dollar of pre-tax income buys a full dollar of
+           miners and only a post-tax dollar of coins, and that gap is the largest tax effect
+           in the comparison -- it should not have to be inferred from two figures. */
+        setText('outDeploymentRatio', r.preTaxCapital && r.deploymentRatio > 0
+            ? r.deploymentRatio.toFixed(2) + 'x  (' + money(r.totalInitialInvestment) +
+              ' of miners against ' + money(r.buyHoldSpend) + ' of BTC)'
+            : 'Both sides deploy the same dollar');
         setSigned('outBenchmark', money(r.buyHoldFinalNet), r.buyHoldFinalNet);
         var benchLabel = $('outBenchmarkLabel');
         if (benchLabel) {
@@ -841,12 +850,31 @@
                 msgs.push('A replacement was capped by the site\u2019s available power. ' +
                     'Fewer machines were bought than the sizing asked for.');
             }
+            var ebl = $('eblNote');
+            if (ebl) {
+                /* Fires on the SIZE of the shield, not on a computed limitation. What the
+                   excess actually is depends on filing status, other income and prior-year
+                   NOLs, none of which this page knows. */
+                ebl.hidden = !r.exceedsExcessBusinessLoss;
+                ebl.textContent = r.exceedsExcessBusinessLoss
+                    ? 'This claims a ' + money(r.taxShieldValue) + ' deduction. Business losses ' +
+                      'offsetting non-business income are capped near ' +
+                      money(r.excessBusinessLossThreshold) + ' a year per filer under ' +
+                      'section 461(l); above that the excess carries forward as an NOL rather ' +
+                      'than offsetting other income immediately, so the benefit is realised ' +
+                      'over several years rather than in the placement year.'
+                    : '';
+            }
             warn.textContent = msgs.join(' ');
             warn.hidden = msgs.length === 0;
         }
 
-        setText('chartCaption', 'Position after each ' + unit1 +
-            ', against buying $' + int(r.totalInitialInvestment) + ' of BTC on day one.');
+        setText('chartCaption', r.preTaxCapital
+            ? 'Position after each ' + unit1 + ', against buying ' + money(r.buyHoldSpend) +
+              ' of BTC on day one — the post-tax remainder of the same ' +
+              money(r.totalInitialInvestment) + ' of pre-tax capital.'
+            : 'Position after each ' + unit1 + ', against buying $' +
+              int(r.totalInitialInvestment) + ' of BTC on day one.');
 
         drawChart(r);
         renderTable(r);

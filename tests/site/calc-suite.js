@@ -637,7 +637,16 @@ function pt(extra) {
     return SiteEngine.computeProjection(o);
 }
 
-var ptOff = pt({}), ptOn = pt({ preTaxCapital: true });
+/* BOTH CASES ARE NOW EXPLICIT. preTaxCapital defaults ON when the tax model is on, so
+   pt({}) is the pre-tax case, not the savings case. Naming both sides here means this
+   fixture states which world it is testing instead of inheriting it from a default that
+   has already moved once. */
+var ptOff = pt({ preTaxCapital: false }), ptOn = pt({ preTaxCapital: true });
+ok(pt({}).buyHoldSpend === ptOn.buyHoldSpend,
+   'an absent preTaxCapital now means ON, matching the checkbox',
+   'absent ' + pt({}).buyHoldSpend + ' vs explicit-on ' + ptOn.buyHoldSpend);
+ok(pt({ preTaxCapital: false }).buyHoldSpend !== ptOn.buyHoldSpend,
+   '  and an explicit false is still honoured, so old links do not move');
 
 ok(Math.abs(ptOff.buyHoldSpend - ptOff.totalInitialInvestment) < 0.01,
    'savings: the benchmark buys with the whole investment',

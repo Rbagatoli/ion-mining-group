@@ -51,9 +51,20 @@ var SCENARIOS = [
     ['zeros', { hashrate: 0, power: 0, capex: 0, machineCount: 1, elecCost: 0, uptime: 0,
                 investPeriod: 12 }],
     ['one machine, one period', { machineCount: 1, investPeriod: 1 }],
-    ['tax + treasury + growth', { taxAdjustment: true, miningIncomeTaxRate: 35, btcTreasury: 2.5,
-                                  minerAdditions: 4, autoReplace: true, minerLifespan: 30,
-                                  investPeriod: 66, salvageValue: 12 }],
+    /* preTaxCapital IS PINNED FALSE HERE, and that is not a dodge.
+       This baseline predates the deployment basis, when preTaxCapital defaulted off. It now
+       defaults ON whenever the tax model is on, which deliberately changes what the benchmark
+       is funded with -- $301,000 to $195,650 on this scenario. That is the approved change,
+       not a regression, so asserting it against a pre-change baseline would be asserting the
+       feature does nothing.
+       What this gate is for is the OTHER path: that everything unrelated to the deployment
+       basis still computes identically. So it pins the savings case, which genuinely should
+       not have moved, and the pre-tax case is covered by calc-deployment-basis.test.js
+       against hand-derived figures rather than against a stale engine. */
+    ['tax + treasury + growth (savings basis)',
+     { taxAdjustment: true, miningIncomeTaxRate: 35, btcTreasury: 2.5, preTaxCapital: false,
+       minerAdditions: 4, autoReplace: true, minerLifespan: 30,
+       investPeriod: 66, salvageValue: 12 }],
 ];
 
 var BASE = {
@@ -70,7 +81,7 @@ var BASE = {
    point: an undeclared new key fails rather than being waved through. */
 var ADDED_PARAM_KEYS = ['replacementEnabled', 'replacementHashrateTH', 'replacementPowerKW',
                         'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
-                        'siteKw'];
+                        'siteKw', 'infraDepreciationEligiblePct'];
 var ADDED_ROW_KEYS = ['hashpricePerTHDay',
                       'salvageCredited', 'replacementSpend', 'replacementNetOutlay',
                       'replacementClamped', 'fleetHashrateTH', 'fleetPowerKW',
@@ -81,7 +92,9 @@ var ADDED_ROW_KEYS = ['hashpricePerTHDay',
 var ADDED_RESULT_KEYS = ['replacementOriginalJTH', 'replacementNewJTH',
                          'replacementOriginalUsdPerTH', 'replacementNewUsdPerTH',
                          'replacementEfficiencyAnnualPct', 'difficultyAnnualPct',
-                         'rule1Violated', 'rule2Violated', 'replacementWasClamped'];
+                         'rule1Violated', 'rule2Violated', 'replacementWasClamped',
+                         'deductibleBasis', 'taxShieldValue', 'deploymentRatio',
+                         'exceedsExcessBusinessLoss', 'excessBusinessLossThreshold'];
 
 function stripAdded(r) {
     var out = {}, k;

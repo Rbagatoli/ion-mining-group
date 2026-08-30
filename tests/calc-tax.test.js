@@ -166,11 +166,26 @@ console.log('\n=== the parts that were already right ===');
     near('with a flat price there is no gain, so CGT changes nothing',
          flat.totalPL, noCgt.totalPL, 0.01);
 
-    // Buy-and-hold is taxed on the GAIN, never on the money put in.
-    var bh = run({ taxAdjustment: true, priceChange: 0, investPeriod: 12 });
+    /* Buy-and-hold is taxed on the GAIN, never on the money put in.
+
+       preTaxCapital IS EXPLICITLY OFF, because it now defaults on and would confound this.
+       These two assertions are about capital gains treatment: at a flat price there is no
+       gain, so the benchmark must come out exactly level. With the deployment basis in play
+       it correctly comes out NEGATIVE by the income tax paid to get into the coins, which is
+       a different and equally intended result -- asserted separately below. */
+    var bh = run({ taxAdjustment: true, priceChange: 0, investPeriod: 12, preTaxCapital: false });
     near('a flat price means buy-and-hold nets zero, not a loss', bh.buyHoldFinalNet, 0, 0.01);
     near('and its value is exactly what went in', bh.buyHoldFinalValue,
          bh.totalInitialInvestment, 0.01);
+
+    /* And the pre-tax case, which is the one the page now defaults to: at a flat price the
+       benchmark is out exactly the income tax it paid to buy coins with. Negative is correct
+       here, and it is the whole point of the deployment basis. */
+    var bhPre = run({ taxAdjustment: true, priceChange: 0, investPeriod: 12, preTaxCapital: true });
+    near('on pre-tax capital the benchmark is out exactly the tax it paid to get in',
+         bhPre.buyHoldFinalNet, -bhPre.totalInitialInvestment * 0.35, 0.01);
+    ok('which is a real difference from the savings case',
+       Math.abs(bhPre.buyHoldFinalNet - bh.buyHoldFinalNet) > 1);
 
     // Turning the toggle off must be identical to a zero rate.
     var offToggle = run({ taxAdjustment: false });

@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=13103e8a">
+<link rel="stylesheet" href="./styles.css?v=f74637f0">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -200,6 +200,9 @@
                    And it is not "the same dollar" any more once the pre-tax option is
                    on - that option exists precisely because it is not. -->
               <div><dt id="outBenchmarkLabel">What it buys in BTC</dt><dd id="outBenchmarkValue">—</dd></div>
+              <!-- The point of the whole tax comparison, stated rather than left to be
+                   inferred from two numbers that happen to sit near each other. -->
+              <div><dt>Deployment advantage</dt><dd id="outDeploymentRatio">—</dd></div>
               <div><dt>Its net, against the same outlay</dt><dd id="outBenchmark">—</dd></div>
               <div><dt>Difference</dt><dd id="outAdvantage">—</dd></div>
               <div><dt>Mining pulls ahead at</dt><dd id="outOvertake">—</dd></div>
@@ -547,7 +550,7 @@
                    meaningless without a rate to apply, and the engine ignores it when
                    the tax model is off for the same reason. -->
               <label class="calc-switch calc-switch--sub">
-                <input id="preTaxCapital" type="checkbox" data-default="false">
+                <input id="preTaxCapital" type="checkbox" checked data-default="true">
                 <span class="cs-track" aria-hidden="true"></span>
                 <span class="cs-body">
                   <span class="cs-title">This is pre-tax income</span>
@@ -556,7 +559,33 @@
                     first and only what is left buys coins.</span>
                 </span>
               </label>
-              <p class="calc-hint calc-hint--warn">A deferral, not an escape. It needs the mining
+              <!-- The distinction the default cannot make for you. -->
+              <p class="calc-explain"><strong>Turn this off if the money is savings.</strong>
+                Deploying income you have not been taxed on yet is not the same as deploying
+                capital you paid tax on years ago &mdash; in the second case both sides start
+                from the same figure and there is no write-off to claim.</p>
+
+              <div class="field">
+                <label for="infraDepreciationEligiblePct">Infrastructure Depreciable</label>
+                <div class="calc-unit">
+                  <input id="infraDepreciationEligiblePct" type="number" min="0" max="100" step="1" value="90" data-default="90"><span class="cu-post">%</span></div>
+                <p class="calc-explain">Machines are equipment and fully eligible. This is the
+                  share of the <em>infrastructure</em> line that is depreciable kit rather than
+                  land, permitting and soft development costs.</p>
+              </div>
+              <p class="calc-hint calc-hint--warn" id="eblNote" data-when="ebl" hidden></p>
+              <p class="calc-hint calc-hint--warn">A deferral, not an escape, and it is smaller in
+                practice than the ratio suggests.
+                <strong>You need matching income in the same year</strong> &mdash; the shield is
+                worth nothing beyond the income it offsets, which makes incremental hardware
+                purchases efficient and does not fund a lump-sum build.
+                <strong>Material participation</strong> under &sect;469 is required: a passively
+                held site produces passive losses that only offset passive income.
+                <strong>US-sited only</strong> &mdash; property used predominantly outside the
+                United States is forced onto the Alternative Depreciation System under
+                &sect;168(g): straight-line, longer recovery, no bonus depreciation, so a
+                Canadian site gets none of this.
+                It needs the mining
                 to be an active trade or business, passive-activity rules can suspend it, and the
                 depreciation is recaptured as ordinary income when the machines are sold.
                 <a href="./why-mining.html#tax">What this depends on</a> &mdash; and it is not tax
@@ -752,11 +781,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=13103e8a"></script>
-<script src="./hero-anim.js?v=13103e8a"></script>
-<script src="./cart.js?v=13103e8a"></script>
-<script src="./miner-db.js?v=13103e8a"></script>
-<script src="./calc-engine.js?v=13103e8a"></script>
-<script src="./calculator.js?v=13103e8a"></script>
+<script src="./site.js?v=f74637f0"></script>
+<script src="./hero-anim.js?v=f74637f0"></script>
+<script src="./cart.js?v=f74637f0"></script>
+<script src="./miner-db.js?v=f74637f0"></script>
+<script src="./calc-engine.js?v=f74637f0"></script>
+<script src="./calculator.js?v=f74637f0"></script>
 </body>
 </html>
