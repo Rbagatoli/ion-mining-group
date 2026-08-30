@@ -857,12 +857,10 @@
                    NOLs, none of which this page knows. */
                 ebl.hidden = !r.exceedsExcessBusinessLoss;
                 ebl.textContent = r.exceedsExcessBusinessLoss
-                    ? 'This claims a ' + money(r.taxShieldValue) + ' deduction. Business losses ' +
-                      'offsetting non-business income are capped near ' +
-                      money(r.excessBusinessLossThreshold) + ' a year per filer under ' +
-                      'section 461(l); above that the excess carries forward as an NOL rather ' +
-                      'than offsetting other income immediately, so the benefit is realised ' +
-                      'over several years rather than in the placement year.'
+                    ? 'This claims a ' + money(r.taxShieldValue) + ' deduction, above the ' +
+                      money(r.excessBusinessLossThreshold) + ' section 461(l) cap per filer. ' +
+                      'The excess carries forward as an NOL, so the benefit lands over several ' +
+                      'years rather than this one.'
                     : '';
             }
             warn.textContent = msgs.join(' ');
