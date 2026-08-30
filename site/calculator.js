@@ -31,7 +31,7 @@
         'periodLength', 'investPeriod',
         'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
-        'replacementEnabled', 'replacementHashrate', 'replacementPower',
+        'replacementEnabled', 'replacementEfficiency', 'replacementHashrate', 'replacementPower',
         'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'coverElec', 'taxAdjustment',
@@ -691,6 +691,10 @@
     function render() {
         if (typeof CalcEngine === 'undefined') return;
         var got = collect();
+        /* Derive BEFORE projecting, so the projection consumes the values the user is looking
+           at rather than last frame's. */
+        var derived = applyReplacementDerivation(got.settings);
+        if (el.replacementEnabled.checked) got = collect();
         var r = CalcEngine.computeProjection(got.settings);
         var p = r.params;
         var unit = r.periodConfig.label;
@@ -810,7 +814,14 @@
             }
             /* RULE 1 -- efficiency is never free. Warn, never block: a distressed purchase
                or a discounted forward batch is a real thing the user may be modelling. */
-            if (r.rule1Violated) {
+            /* RULE 1 IS SUPPRESSED WHILE CAPEX IS DERIVED. The rule was written against a
+               static view of the market, where better efficiency at flat or lower $/TH is a
+               contradiction. Under the hashprice model it is the EXPECTED outcome -- $/TH
+               falls with hashprice regardless of what the machines do -- so firing here would
+               be warning about the model's own arithmetic. It comes straight back the moment
+               someone types a price by hand, because a hand-typed number that improves
+               efficiency for free is still worth flagging. */
+            if (r.rule1Violated && replDirty.replacementCapex) {
                 msgs.push('The replacement is more efficient (' +
                     r.replacementOriginalJTH.toFixed(1) + ' to ' + r.replacementNewJTH.toFixed(1) +
                     ' J/TH) at the same or lower cost per terahash ($' +
@@ -964,6 +975,75 @@
         });
     }
 
+    /* ---------- replacement hardware, derived from the scenario ----------
+
+       WHAT IS DERIVED AND WHAT IS ASSUMED. Efficiency is the user's assumption -- nobody can
+       compute what machine will exist in four years. Everything else falls out of arithmetic
+       the calculator is already doing: hashrate is watts over J/TH, and cost is today's price
+       per terahash scaled by this scenario's own hashprice projection.
+
+       DIRTY IS TRACKED PER FIELD, not per section. Someone may want a specific hashrate while
+       still letting the cost derive, and collapsing that into one flag would force them to
+       hand-maintain numbers they had no opinion about. */
+    var replDirty = { replacementHashrate: false, replacementPower: false, replacementCapex: false };
+    var REPL_DERIVED = ['replacementHashrate', 'replacementPower', 'replacementCapex'];
+
+    function replacementRatio(settings) {
+        if (typeof CalcEngine.hashpriceAtPeriod !== 'function') return { ratio: 1, period: 0 };
+        /* The FIRST replacement event: a machine bought at period 0 retires once it has run
+           its full lifespan. Expressed in periods so weekly and daily horizons work. */
+        var cfg = CalcEngine.PERIOD_CONFIG[settings.periodLength] ||
+                  CalcEngine.PERIOD_CONFIG.monthly;
+        var lifePeriods = Math.max(1, Math.round(
+            Math.max(1, Math.round(num(el.minerLifespan.value, 36))) * (30.44 / cfg.days)));
+        var now = CalcEngine.hashpriceAtPeriod(settings, 0);
+        var then = CalcEngine.hashpriceAtPeriod(settings, lifePeriods);
+        return { ratio: now > 0 ? then / now : 1, period: lifePeriods, now: now, then: then };
+    }
+
+    /* Writes the derived values into whichever fields the user has not claimed. Called on
+       every render, so changing price growth or difficulty moves the cost immediately -- that
+       visibility is the point, since hashprice is the input doing the work. */
+    function applyReplacementDerivation(settings) {
+        var out = { ratio: 1 };
+        if (!el.replacementEnabled.checked) { setText('replacementDerivation', ''); return out; }
+
+        var hr = replacementRatio(settings);
+        var d = CalcEngine.deriveReplacement({
+            hashrateTH: num(el.hashrate.value, 0),
+            powerKW: num(el.power.value, 0),
+            capex: num(el.capex.value, 0),
+            replacementJTH: num(el.replacementEfficiency.value, 0),
+            hashpriceRatio: hr.ratio
+        });
+        out = d; out.ratio = hr.ratio;
+
+        if (!replDirty.replacementHashrate) el.replacementHashrate.value = d.hashrateTH.toFixed(2);
+        if (!replDirty.replacementPower) el.replacementPower.value = d.powerKW.toFixed(3);
+        if (!replDirty.replacementCapex) el.replacementCapex.value = d.capex.toFixed(0);
+
+        REPL_DERIVED.forEach(function (id) {
+            var tag = document.querySelector('small[data-drv="' + id + '"]');
+            if (tag) tag.hidden = !!replDirty[id];
+            el[id].classList.toggle('is-derived', !replDirty[id]);
+        });
+
+        /* THE ARITHMETIC, ON SCREEN. A derived number that cannot be checked by hand is a
+           black box, and this one is a chain of three multiplications. */
+        var watts = num(el.power.value, 0) * 1000;
+        var jth = num(el.replacementEfficiency.value, 0);
+        var move = (hr.ratio - 1) * 100;
+        var unit = CalcEngine.PERIOD_CONFIG[settings.periodLength];
+        var unitName = unit ? unit.labelSingular : 'period';
+        setText('replacementDerivation',
+            'Derived: ' + int(watts) + 'W / ' + jth + ' J/TH = ' + int(d.hashrateTH) +
+            ' TH at $' + d.perTH.toFixed(2) + '/TH (hashprice ' +
+            (Math.abs(move) < 0.5 ? 'flat' : (move > 0 ? '+' : '') + move.toFixed(0) + '%') +
+            ' by ' + unitName + ' ' + hr.period + ') = ' + money(d.capex) +
+            '. Today\u2019s price scaled by your own projection \u2014 not a forecast.');
+        return out;
+    }
+
     /* ---------- the scenario lives in the URL ----------
 
        Someone can spend real time tuning thirty-odd inputs here. Without this
@@ -977,7 +1057,20 @@
        than a second table of defaults that would drift away from the markup.
 
        Keys are the element ids. Longer than short codes, but there is no
-       mapping to keep in sync and the URL is legible when something is wrong. */
+       mapping to keep in sync and the URL is legible when something is wrong.
+
+       ONE EXCEPTION, and it is the only one: `replacementDirty`. Every other parameter is an
+       element whose value IS the state, so there is nothing to keep in sync. Dirty state has
+       no element -- there is no input whose value is "the user edited capex" -- so it is
+       written as a comma-separated list of field ids and handled explicitly at both ends.
+
+       The alternative was to infer dirty from a mismatch against the derived value, which
+       needs no new parameter and fails silently for anyone who types the number the
+       calculator already suggested. That is a normal thing to do, so inference was rejected.
+
+       THE DERIVED FIELDS ARE ALWAYS WRITTEN when replacementEnabled is on, regardless of
+       whether they match data-default. A derived default is not a fixed one, so the
+       differs-from-default test that governs every other field cannot decide them. */
 
     /* hodlSlider mirrors hodlRatio, so writing both would be writing the same
        number twice; it is restored from its partner instead. */
@@ -1006,11 +1099,24 @@
             parts.push('minerModel=' + encodeURIComponent(model));
         }
 
+        /* Replacement fields are derived, so "differs from default" says nothing about
+           whether they are worth writing. Write them all, or a reopened link re-derives from
+           the wrong basis and silently shows different hardware. */
+        var forceWrite = {};
+        if (el.replacementEnabled && el.replacementEnabled.checked) {
+            ['replacementEfficiency', 'replacementHashrate', 'replacementPower',
+             'replacementCapex', 'replacementSizing',
+             'additionalReplacementCapital'].forEach(function (id) { forceWrite[id] = 1; });
+            var dirtyList = REPL_DERIVED.filter(function (id) { return replDirty[id]; });
+            if (dirtyList.length) parts.push('replacementDirty=' + dirtyList.join(','));
+        }
+
         scenarioIds().forEach(function (id) {
             var n = el[id];
             if (!n || id === 'minerModel') return;
             var def = n.getAttribute('data-default');
             if (def === null) return;
+            if (forceWrite[id]) { parts.push(id + '=' + encodeURIComponent(n.value)); return; }
             if (n.type === 'checkbox') {
                 if (!!n.checked !== (def === 'true')) parts.push(id + '=' + (n.checked ? '1' : '0'));
                 return;
@@ -1052,7 +1158,9 @@
            values of a misspelled parameter returned identical results. Still forgiving (an
            old link must keep opening) but no longer silent. */
         (function () {
-            var known = scenarioIds().concat(['mode', 'minerModel']);
+            /* replacementDirty is real but element-less, so it is named here rather than
+               discovered from IDS. See the note on encodeScenario. */
+            var known = scenarioIds().concat(['mode', 'minerModel', 'replacementDirty']);
             var unknown = Object.keys(params).filter(function (k) { return known.indexOf(k) < 0; });
             if (unknown.length && typeof console !== 'undefined' && console.warn) {
                 console.warn('Calculator: ignoring unrecognised URL parameter(s): ' +
@@ -1077,6 +1185,15 @@
             else n.value = params[id];
             pinned[id] = true;
         });
+
+        /* Restore dirty state BEFORE the first render, so a field the sender had edited is
+           not immediately overwritten by the derivation on the way in. */
+        if (typeof params.replacementDirty === 'string') {
+            REPL_DERIVED.forEach(function (id) { replDirty[id] = false; });
+            params.replacementDirty.split(',').forEach(function (id) {
+                if (REPL_DERIVED.indexOf(id) >= 0) replDirty[id] = true;
+            });
+        }
 
         if (el.hodlSlider && el.hodlRatio) {
             el.hodlSlider.value = String(Math.min(100, Math.max(0, num(el.hodlRatio.value, 0))));
@@ -1233,6 +1350,44 @@
             var v = num(el.hodlRatio.value, 0);
             el.hodlSlider.value = String(Math.min(100, Math.max(0, v)));
         });
+
+        /* Typing into a derived field claims it. Tracked on 'input' rather than 'change' so
+           it takes effect on the first keystroke, before the value is committed -- otherwise
+           the next render would overwrite what is being typed. */
+        REPL_DERIVED.forEach(function (id) {
+            el[id].addEventListener('input', function () { replDirty[id] = true; });
+        });
+
+        /* Without this a mistyped value can never go back to being derived. */
+        var recalc = $('replacementRecalc');
+        if (recalc) {
+            recalc.addEventListener('click', function () {
+                REPL_DERIVED.forEach(function (id) { replDirty[id] = false; });
+                render();
+            });
+        }
+
+        /* SAME_POWER AND SAME_COUNT COLLAPSE while power is still derived: the replacement
+           keeps the original power envelope, so refilling the same kW buys the same number of
+           machines. Rather than leave a selector that appears broken, it is disabled and says
+           why until someone edits the power. */
+        function syncSizingState() {
+            var collapsed = el.replacementEnabled.checked && !replDirty.replacementPower;
+            el.replacementSizing.disabled = collapsed && el.replacementSizing.value !== 'same_capital';
+            var note = $('replacementSizingNote');
+            if (note) {
+                note.hidden = !collapsed;
+                note.textContent = collapsed
+                    ? 'Replacement power is unchanged from the original, so refilling the same ' +
+                      'kW buys the same number of machines \u2014 same power and same count are ' +
+                      'the same policy here. Edit replacement power to make them diverge.'
+                    : '';
+            }
+        }
+        el.replacementPower.addEventListener('input', syncSizingState);
+        el.replacementEnabled.addEventListener('change', syncSizingState);
+        if (recalc) recalc.addEventListener('click', syncSizingState);
+        syncSizingState();
 
         /* Tax rates are meaningless with the toggle off, so they are removed
            rather than greyed — the same reveal the desk tool does. */

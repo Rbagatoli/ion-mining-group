@@ -51,6 +51,29 @@ var CalcEngine = (function() {
         return reward;
     }
 
+    /* HASHPRICE -- revenue per TH/s per day, in USD, for the NETWORK.
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       The 1e12 cancels: BTC/day per TH is (1e12 x 86400 x reward) / (difficulty x 2^32),
+       and difficulty is diffT x 1e12, so the expression reduces to the form below.
+
+       IT IS GROSS, AND THAT IS DELIBERATE. Pool fee and uptime are NOT applied, even though
+       the production path applies both. Hashprice is a property of the network, not of your
+       site: two operators running the same machine at different uptimes with different pools
+       must see the same market price for hardware, because they are bidding in the same
+       market. This will look like an inconsistency with dailyBTCNet to anyone comparing the
+       two, and it is not -- do not "fix" it by applying poolFeePct and uptimePct here.
+
+       NO CIRCULARITY, and it is worth stating because the replacement feature depends on it:
+       hashprice is a function of btcPrice, difficulty and blockReward ONLY, all three of
+       which are exogenous inputs. The fleet's own hashrate never feeds network difficulty in
+       this model, so this series can be computed before the fleet is simulated -- which is
+       what makes a replacement price derivable from it at all. If difficulty ever becomes
+       endogenous, that assumption breaks and this comment is where to start. */
+    function hashpricePerTHDay(btcPrice, difficulty, blockReward) {
+        if (!(difficulty > 0)) return 0;
+        return (1e12 * SECONDS_PER_DAY * blockReward * btcPrice) / (difficulty * TWO_POW_32);
+    }
+
     function num(v, fallback) {
         var n = parseFloat(v);
         return isFinite(n) ? n : fallback;
@@ -533,6 +556,7 @@ var CalcEngine = (function() {
 
             tableRows.push({
                 period: i + 1, btcPrice: btcPrice, diffT: difficulty / 1e12, blockReward: blockReward,
+                hashpricePerTHDay: hashpricePerTHDay(btcPrice, difficulty, blockReward),
                 machines: activeMachines, machinesBought: machinesBoughtThisPeriod,
                 scheduledAdded: scheduledThisPeriod, retiredThisPeriod: retiredThisPeriod,
                 replacedThisPeriod: replacedThisPeriod, pnlBtc: periodBTCMined,
@@ -682,8 +706,69 @@ var CalcEngine = (function() {
         };
     }
 
+    /* Hashprice at any period index, including one BEYOND the modelled horizon. A machine
+       that retires in month 48 of a 36-month projection still has a price, and the field
+       describing it should not go blank just because the table stops earlier. Uses exactly
+       the same growth arithmetic computeProjection does. */
+    function hashpriceAtPeriod(settings, periodIndex) {
+        var p = normalise(settings);
+        var cfg = PERIOD_CONFIG[p.periodLength];
+        var days = cfg.days;
+        var priceStep = Math.pow(1 + p.monthlyPriceChangePct, days / 30.44) - 1;
+        var diffStep = Math.pow(1 + p.monthlyDiffChangePct, days / 30.44) - 1;
+        var i = Math.max(0, periodIndex);
+        var price = p.btcPrice0 * Math.pow(1 + priceStep, i);
+        var diff = (p.difficultyT * 1e12) * Math.pow(1 + diffStep, i);
+        var reward = getBlockReward(p.startDate.getTime() + i * days * 86400000);
+        return hashpricePerTHDay(price, diff, reward);
+    }
+
+    /* THE REPLACEMENT PRICE, derived rather than assumed.
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       $/TH tracks HASHPRICE, not efficiency. That is the whole model, and it is the opposite
+       of the intuition. Over six years efficiency roughly doubled while $/TH fell about three
+       quarters: hashprice went ~$112 -> ~$35/PH/day (-69%) and S19 Pro -> S21+ Hyd went
+       ~$24.50 -> ~$6.58/TH (-73%). December 2025 is the clean demonstration -- Bitmain cut to
+       $3-4/TH because hashprice fell to ~$35/PH/day, not because the machines changed. ASICs
+       are priced off expected earnings.
+
+       The efficiency premium visible on any given day is a NEW-GENERATION premium that decays
+       as a generation matures, which this calculator's own machine list shows: S21 Pro and
+       S21+ Hyd are both 15 J/TH at $10.26 and $6.58/TH. Same efficiency, different points on
+       the age curve. A replacement four years out is mature hardware from a newer generation,
+       not that year's flagship -- so pricing it at today's flagship premium would be wrong.
+
+       IT IS NOT A FORECAST. It is today's price per terahash scaled by the user's own
+       projection of hashprice, and the copy on screen says exactly that. The $/TH-to-hashprice
+       relationship is inferred from a handful of observations over six years: directionally
+       sound, better than assuming a fixed premium, not precise. */
+    function deriveReplacement(opts) {
+        var o = opts || {};
+        var origHashrateTH = Math.max(0, num(o.hashrateTH, 0));
+        var origPowerKW = Math.max(0, num(o.powerKW, 0));
+        var origCapex = Math.max(0, num(o.capex, 0));
+        var jth = Math.max(1e-9, num(o.replacementJTH, 0));
+        var ratio = Math.max(0, num(o.hashpriceRatio, 1));
+
+        var origWatts = origPowerKW * 1000;
+        var currentPerTH = origHashrateTH > 0 ? origCapex / origHashrateTH : 0;
+        var newPerTH = currentPerTH * ratio;
+        var newHashrateTH = origWatts / jth;
+        return {
+            hashrateTH: newHashrateTH,
+            powerKW: origPowerKW,          // same power envelope unless the user says otherwise
+            capex: newHashrateTH * newPerTH,
+            currentPerTH: currentPerTH,
+            perTH: newPerTH,
+            ratio: ratio
+        };
+    }
+
     return {
         computeProjection: computeProjection,
+        hashpricePerTHDay: hashpricePerTHDay,
+        hashpriceAtPeriod: hashpriceAtPeriod,
+        deriveReplacement: deriveReplacement,
         getBlockReward: getBlockReward,
         normalise: normalise,
         PERIOD_CONFIG: PERIOD_CONFIG,

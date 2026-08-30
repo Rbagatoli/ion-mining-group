@@ -252,6 +252,74 @@ console.log('\n=== reinvest buys the generation that is current ===');
        off.tableRows.filter(function (t) { return t.boughtReplacementSpec; }).length, 0);
 })();
 
+// ---- 7. the derived replacement price -----------------------------------------------------------
+//
+// $/TH tracks HASHPRICE, not efficiency. Over six years efficiency roughly doubled while $/TH
+// fell about three quarters, and December 2025 is the clean demonstration: Bitmain cut to
+// $3-4/TH because hashprice had fallen, not because the machines changed.
+
+console.log('\n=== replacement cost derives from the hashprice projection ===');
+(function () {
+    var S = { btcPrice: 78200, priceChange: 2, difficulty: 125.81, diffChange: 2,
+              periodLength: 'monthly', investPeriod: 60, hashrate: 395, power: 5.925,
+              capex: 2600, machineCount: 45, minerLifespan: 48, salvageValue: 10,
+              autoReplace: true, elecCost: 0.06, poolFee: 2.5, uptime: 100, hodlRatio: 100,
+              startDate: '2026-08-29' };
+
+    /* THE CORRECTED WORKED EXAMPLE. The spec originally said hashprice was flat to month 48
+       under 2%/2% and the replacement came out at $3,250. It is not flat: price and difficulty
+       cancel, but the April 2028 halving lands at month ~21 and halves the subsidy with
+       nothing offsetting it. Ratio is 0.500, and the replacement is CHEAP -- which is the
+       model working, and exactly what happened in December 2025. */
+    var h0 = CalcEngine.hashpriceAtPeriod(S, 0);
+    var h48 = CalcEngine.hashpriceAtPeriod(S, 48);
+    near('hashprice at month 49 is HALF the opening, not equal to it', h48 / h0, 0.500, 0.001);
+    ok('  and the horizon really does span a halving',
+       CalcEngine.computeProjection(S).tableRows.some(function (t) { return t.isHalving; }));
+
+    var d = CalcEngine.deriveReplacement({ hashrateTH: 395, powerKW: 5.925, capex: 2600,
+                                           replacementJTH: 12, hashpriceRatio: h48 / h0 });
+    near('5,925W / 12 J/TH = 493.75 TH', d.hashrateTH, 5925 / 12, 1e-9);
+    near('current $/TH is capex over hashrate', d.currentPerTH, 2600 / 395, 1e-9);
+    near('derived capex is $1,625, NOT the $3,250 the flat-hashprice reading gave',
+         d.capex, 1625, 1);
+    ok('  and $3,250 is what you would get if the halving were ignored',
+       Math.abs((5925 / 12) * (2600 / 395) - 3250) < 1);
+
+    /* Same power envelope by default: the efficiency gain shows up entirely as hashrate. */
+    near('power is unchanged unless the user changes it', d.powerKW, 5.925, 1e-9);
+
+    // NO-OP: efficiency equal to the original must reproduce the original machine exactly.
+    var same = CalcEngine.deriveReplacement({ hashrateTH: 395, powerKW: 5.925, capex: 2600,
+                                              replacementJTH: (5.925 * 1000) / 395,
+                                              hashpriceRatio: 1 });
+    near('identical efficiency at ratio 1 reproduces the original hashrate', same.hashrateTH, 395, 1e-9);
+    near('  and the original capex', same.capex, 2600, 1e-9);
+
+    /* HASHPRICE SENSITIVITY -- the edges the spec says a static curve cannot get right. */
+    var bull = CalcEngine.hashpriceAtPeriod(Object.assign({}, S, { priceChange: 5 }), 48) /
+               CalcEngine.hashpriceAtPeriod(Object.assign({}, S, { priceChange: 5 }), 0);
+    ok('bull case: price outruns difficulty, replacement hardware gets EXPENSIVE',
+       bull > h48 / h0, 'ratio ' + bull.toFixed(3) + ' against ' + (h48 / h0).toFixed(3));
+    var flatBtc = CalcEngine.hashpriceAtPeriod(Object.assign({}, S, { priceChange: 0 }), 48) /
+                  CalcEngine.hashpriceAtPeriod(Object.assign({}, S, { priceChange: 0 }), 0);
+    ok('flat BTC across a halving: replacement hardware gets CHEAP',
+       flatBtc < h48 / h0, 'ratio ' + flatBtc.toFixed(3));
+    ok('  and cheaper still than the 2%/2% case', flatBtc < 0.5);
+
+    /* GROSS, not net. Two operators with different uptimes and pools bid in the same hardware
+       market, so hashprice must not carry either. */
+    var netted = Object.assign({}, S, { uptime: 50, poolFee: 10 });
+    near('hashprice ignores uptime and pool fee',
+         CalcEngine.hashpriceAtPeriod(netted, 0), h0, 1e-12);
+
+    /* Beyond the modelled horizon: a machine retiring in month 48 of a 36-month projection
+       still has a price, and the field must not go blank. */
+    var shortRun = Object.assign({}, S, { investPeriod: 36 });
+    ok('hashprice is available past the end of the table',
+       CalcEngine.hashpriceAtPeriod(shortRun, 48) > 0);
+})();
+
 console.log('');
 console.log(fail === 0 ? 'ALL PASS — ' + pass + ' assertions'
                        : pass + ' passed, ' + fail + ' FAILED');

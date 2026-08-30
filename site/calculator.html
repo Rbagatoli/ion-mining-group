@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=a33f3be6">
+<link rel="stylesheet" href="./styles.css?v=13103e8a">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -372,24 +372,47 @@
               </label>
 
               <div class="field">
-                <label for="replacementHashrate">Replacement Hashrate</label>
+                <label for="replacementEfficiency">Replacement Efficiency</label>
+                <div class="calc-unit">
+                  <input id="replacementEfficiency" type="number" min="0.1" step="0.1" value="13.5" data-default="13.5"><span class="cu-post">J/TH</span></div>
+                <p class="calc-explain">The one thing you set. Everything below is derived from
+                  it and from this scenario&rsquo;s own hashprice projection. Historical
+                  improvement has run roughly 18&ndash;19%/yr (S19&nbsp;Pro 29.5&nbsp;J/TH to
+                  S23&nbsp;Hydro 9.5&nbsp;J/TH over about six years) and is decelerating as
+                  process node gains slow &mdash; context, not a default. Leave it equal to the
+                  original machine and enabling this changes nothing.</p>
+              </div>
+
+              <div class="field">
+                <label for="replacementHashrate">Replacement Hashrate <small data-drv="replacementHashrate">derived</small></label>
                 <div class="calc-unit">
                   <input id="replacementHashrate" type="number" min="0" step="1" value="270" data-default="270"><span class="cu-post">TH/s</span></div>
               </div>
               <div class="field">
-                <label for="replacementPower">Replacement Power</label>
+                <label for="replacementPower">Replacement Power <small data-drv="replacementPower">derived</small></label>
                 <div class="calc-unit">
                   <input id="replacementPower" type="number" min="0" step="0.001" value="3.645" data-default="3.645"><span class="cu-post">kW</span></div>
               </div>
               <div class="field">
-                <label for="replacementCapex">Replacement CAPEX</label>
+                <label for="replacementCapex">Replacement CAPEX <small data-drv="replacementCapex">derived</small></label>
                 <div class="calc-unit"><span class="cu-pre">$</span>
                   <input id="replacementCapex" type="number" min="0" step="10" value="3010" data-default="3010"><span class="cu-post">per machine</span></div>
               </div>
-              <p class="calc-explain">Efficiency carries a price. Real hardware:
-                S21&nbsp;Pro 15&nbsp;J/TH at ~$10.26/TH, S21&nbsp;XP&nbsp;Hyd 12&nbsp;J/TH at
-                ~$14.59/TH, S23&nbsp;Hydro 9.5&nbsp;J/TH at ~$22.33/TH. $/TH rises steeply as
-                J/TH falls.</p>
+
+              <p class="calc-explain" id="replacementDerivation">&mdash;</p>
+              <p class="calc-actions-inline">
+                <button type="button" class="btn btn--ghost btn--sm" id="replacementRecalc">Recalculate from scenario</button>
+              </p>
+
+              <p class="calc-hint calc-hint--warn">Cost per terahash tracks <strong>hashprice</strong>,
+                not efficiency. Over six years efficiency roughly doubled while $/TH fell about
+                three quarters &mdash; and in December 2025 Bitmain cut to $3&ndash;4/TH because
+                hashprice had fallen, not because the machines changed. The premium you see on a
+                new generation decays as it matures: this calculator&rsquo;s own list has the
+                S21&nbsp;Pro and S21+&nbsp;Hyd both at 15&nbsp;J/TH but $10.26 and $6.58/TH.
+                <strong>This is not a forecast</strong> &mdash; it is today&rsquo;s price scaled
+                by your own hashprice projection, and the relationship behind it is inferred
+                from a handful of observations across six years. Directionally sound, not precise.</p>
 
               <div class="field">
                 <label for="replacementSizing">Replacement Sizing</label>
@@ -398,6 +421,7 @@
                   <option value="same_power">Same power draw &mdash; refill the site's kW</option>
                   <option value="same_capital">Same capital &mdash; spend what the old fleet is worth</option>
                 </select>
+                <p class="calc-explain" id="replacementSizingNote" data-when="sizing-collapsed" hidden></p>
                 <p class="calc-explain">At a power-capped site the constraint is kilowatts, not
                   machine count: a more efficient replacement means more machines on the same
                   bill. 45 machines at 3.51&nbsp;kW is 158&nbsp;kW, which 5.925&nbsp;kW
@@ -728,11 +752,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=a33f3be6"></script>
-<script src="./hero-anim.js?v=a33f3be6"></script>
-<script src="./cart.js?v=a33f3be6"></script>
-<script src="./miner-db.js?v=a33f3be6"></script>
-<script src="./calc-engine.js?v=a33f3be6"></script>
-<script src="./calculator.js?v=a33f3be6"></script>
+<script src="./site.js?v=13103e8a"></script>
+<script src="./hero-anim.js?v=13103e8a"></script>
+<script src="./cart.js?v=13103e8a"></script>
+<script src="./miner-db.js?v=13103e8a"></script>
+<script src="./calc-engine.js?v=13103e8a"></script>
+<script src="./calculator.js?v=13103e8a"></script>
 </body>
 </html>

@@ -71,7 +71,8 @@ var BASE = {
 var ADDED_PARAM_KEYS = ['replacementEnabled', 'replacementHashrateTH', 'replacementPowerKW',
                         'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
                         'siteKw'];
-var ADDED_ROW_KEYS = ['salvageCredited', 'replacementSpend', 'replacementNetOutlay',
+var ADDED_ROW_KEYS = ['hashpricePerTHDay',
+                      'salvageCredited', 'replacementSpend', 'replacementNetOutlay',
                       'replacementClamped', 'fleetHashrateTH', 'fleetPowerKW',
                       'boughtReplacementSpec'];
 /* Top-level result keys the replacement feature publishes. Declared for the same reason as

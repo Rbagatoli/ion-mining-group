@@ -3694,6 +3694,18 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 /* The replacement marker: a continuation of the row above it, not a period of its own. Quieter
    than the halving tint and indented, so scanning the period column is not interrupted by rows
    that have no period number. */
+/* DERIVED vs EDITED. A derived field is muted and carries a "derived" tag; the moment the
+   user types, both go away and it reads as a normal input. Making that visible is the whole
+   point -- a number the calculator worked out and a number you chose must not look the same. */
+.calc-sub small[data-drv] {
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--btc-300); border: 1px solid var(--line-btc);
+    padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+}
+.calc-sub small[data-drv][hidden] { display: none; }
+.calc-sub input.is-derived { color: var(--text-dim); font-style: italic; }
+.calc-actions-inline { margin: 6px 0 2px; }
+
 .calc-table tr.is-replace td {
     background: rgba(255, 255, 255, 0.02);
     color: var(--text-dim);
