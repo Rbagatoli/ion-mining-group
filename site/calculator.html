@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=01db3307">
+<link rel="stylesheet" href="./styles.css?v=a33f3be6">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -352,6 +352,66 @@
                 <span class="cs-desc">Retired miners automatically replaced &mdash; you pay CAPEX minus salvage value</span>
               </span>
             </label>
+            <!-- REPLACEMENT HARDWARE.
+                 Collapsed by default: the calculator must not get busier for the people who
+                 do not need this. <details> rather than script-driven, so it still opens
+                 with JavaScript off and needs no state of its own. -->
+            <details class="calc-sub" id="replacementBlock">
+              <summary class="calc-sub-head">Replacement hardware</summary>
+              <p class="calc-explain">By default a retired miner is replaced by an identical
+                one at the same CAPEX, forever, while difficulty compounds &mdash; a coherent
+                assumption, and a pessimistic one. Set what you would actually buy instead.</p>
+
+              <label class="calc-switch">
+                <input id="replacementEnabled" type="checkbox" data-default="false">
+                <span class="cs-track" aria-hidden="true"></span>
+                <span class="cs-body">
+                  <span class="cs-title">Replace With Different Hardware</span>
+                  <span class="cs-desc">Off, replacements are identical to the original machine</span>
+                </span>
+              </label>
+
+              <div class="field">
+                <label for="replacementHashrate">Replacement Hashrate</label>
+                <div class="calc-unit">
+                  <input id="replacementHashrate" type="number" min="0" step="1" value="270" data-default="270"><span class="cu-post">TH/s</span></div>
+              </div>
+              <div class="field">
+                <label for="replacementPower">Replacement Power</label>
+                <div class="calc-unit">
+                  <input id="replacementPower" type="number" min="0" step="0.001" value="3.645" data-default="3.645"><span class="cu-post">kW</span></div>
+              </div>
+              <div class="field">
+                <label for="replacementCapex">Replacement CAPEX</label>
+                <div class="calc-unit"><span class="cu-pre">$</span>
+                  <input id="replacementCapex" type="number" min="0" step="10" value="3010" data-default="3010"><span class="cu-post">per machine</span></div>
+              </div>
+              <p class="calc-explain">Efficiency carries a price. Real hardware:
+                S21&nbsp;Pro 15&nbsp;J/TH at ~$10.26/TH, S21&nbsp;XP&nbsp;Hyd 12&nbsp;J/TH at
+                ~$14.59/TH, S23&nbsp;Hydro 9.5&nbsp;J/TH at ~$22.33/TH. $/TH rises steeply as
+                J/TH falls.</p>
+
+              <div class="field">
+                <label for="replacementSizing">Replacement Sizing</label>
+                <select id="replacementSizing" data-default="same_count">
+                  <option value="same_count">Same machine count &mdash; replace 1:1</option>
+                  <option value="same_power">Same power draw &mdash; refill the site's kW</option>
+                  <option value="same_capital">Same capital &mdash; spend what the old fleet is worth</option>
+                </select>
+                <p class="calc-explain">At a power-capped site the constraint is kilowatts, not
+                  machine count: a more efficient replacement means more machines on the same
+                  bill. 45 machines at 3.51&nbsp;kW is 158&nbsp;kW, which 5.925&nbsp;kW
+                  machines fill 26 deep &mdash; not 27, which would draw 160&nbsp;kW.</p>
+              </div>
+              <div class="field">
+                <label for="additionalReplacementCapital">Additional Capital <small>same-capital sizing only</small></label>
+                <div class="calc-unit"><span class="cu-pre">$</span>
+                  <input id="additionalReplacementCapital" type="number" min="0" step="1000" value="0" data-default="0"></div>
+                <p class="calc-explain">Zero means re-equip using only what the old fleet is
+                  worth. Injecting capital should be a number you type, not an assumption.</p>
+              </div>
+            </details>
+
             <label class="calc-switch">
               <input id="additionCapex" type="checkbox" checked data-default="true">
               <span class="cs-track" aria-hidden="true"></span>
@@ -668,11 +728,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=01db3307"></script>
-<script src="./hero-anim.js?v=01db3307"></script>
-<script src="./cart.js?v=01db3307"></script>
-<script src="./miner-db.js?v=01db3307"></script>
-<script src="./calc-engine.js?v=01db3307"></script>
-<script src="./calculator.js?v=01db3307"></script>
+<script src="./site.js?v=a33f3be6"></script>
+<script src="./hero-anim.js?v=a33f3be6"></script>
+<script src="./cart.js?v=a33f3be6"></script>
+<script src="./miner-db.js?v=a33f3be6"></script>
+<script src="./calc-engine.js?v=a33f3be6"></script>
+<script src="./calculator.js?v=a33f3be6"></script>
 </body>
 </html>

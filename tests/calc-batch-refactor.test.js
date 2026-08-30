@@ -7,6 +7,19 @@
 //
 // JSON.stringify is the comparator on purpose: it catches a value that moved in its last bits,
 // which is the specific risk when a scalar multiply becomes a sum.
+//
+// THE GUARANTEE IS ADDITIVE-ONLY, not literally "the same JSON". The replacement feature adds
+// fields to params and to every table row, so the raw strings must differ -- params is an echo
+// of the normalised inputs and by definition grows when inputs do. What must NOT happen is any
+// pre-existing value changing. So this asserts three things separately:
+//
+//   1. everything outside params and outside the new row fields is byte-identical
+//   2. every params key that existed before holds an identical value, and none was removed
+//   3. the keys that appeared are EXACTLY the expected additive set -- an unexpected new key
+//      is a failure, because it means something was added without being declared here
+//
+// Point 3 is what stops this degrading into "ignore anything new", which would let a renamed
+// field pass as an addition plus a deletion.
 
 var OLD = require(require('path').join(__dirname, 'fixtures-calc-engine-prebatch.js'));
 var NEW = require(require('path').join(__dirname, '..', 'calc-engine.js'));
@@ -53,26 +66,82 @@ var BASE = {
     startDate: '2026-08-29',
 };
 
+/* Declared, not inferred. Adding a field to the engine means adding it here, which is the
+   point: an undeclared new key fails rather than being waved through. */
+var ADDED_PARAM_KEYS = ['replacementEnabled', 'replacementHashrateTH', 'replacementPowerKW',
+                        'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
+                        'siteKw'];
+var ADDED_ROW_KEYS = ['salvageCredited', 'replacementSpend', 'replacementNetOutlay',
+                      'replacementClamped', 'fleetHashrateTH', 'fleetPowerKW',
+                      'boughtReplacementSpec'];
+/* Top-level result keys the replacement feature publishes. Declared for the same reason as
+   the others: this list failing is how an undeclared addition announces itself. It already
+   caught the guard-rail fields being added without being listed here. */
+var ADDED_RESULT_KEYS = ['replacementOriginalJTH', 'replacementNewJTH',
+                         'replacementOriginalUsdPerTH', 'replacementNewUsdPerTH',
+                         'replacementEfficiencyAnnualPct', 'difficultyAnnualPct',
+                         'rule1Violated', 'rule2Violated', 'replacementWasClamped'];
+
+function stripAdded(r) {
+    var out = {}, k;
+    for (k in r) {
+        if (k !== 'params' && k !== 'tableRows' && ADDED_RESULT_KEYS.indexOf(k) < 0) out[k] = r[k];
+    }
+    out.tableRows = (r.tableRows || []).map(function (row) {
+        var t = {};
+        for (var rk in row) { if (ADDED_ROW_KEYS.indexOf(rk) < 0) t[rk] = row[rk]; }
+        return t;
+    });
+    return out;
+}
+
 var fail = 0;
 SCENARIOS.forEach(function (c) {
     var s = {}; for (var k in BASE) s[k] = BASE[k];
     for (var j in c[1]) s[j] = c[1][j];
-    var a = JSON.stringify(OLD.computeProjection(s));
-    var b = JSON.stringify(NEW.computeProjection(s));
-    if (a === b) {
-        console.log('  ok    ' + c[0] + '   (' + a.length + ' chars identical)');
-    } else {
-        fail++;
-        console.log('  FAIL  ' + c[0]);
-        // Locate the first divergence so a drift is diagnosable rather than just red.
+    var ro = OLD.computeProjection(s), rn = NEW.computeProjection(s);
+
+    var a = JSON.stringify(stripAdded(ro));
+    var b = JSON.stringify(stripAdded(rn));
+    var problems = [];
+
+    if (a !== b) {
         for (var x = 0; x < Math.max(a.length, b.length); x++) {
             if (a[x] !== b[x]) {
-                console.log('        first difference at char ' + x);
-                console.log('        old: ...' + a.slice(Math.max(0, x - 70), x + 40));
-                console.log('        new: ...' + b.slice(Math.max(0, x - 70), x + 40));
+                problems.push('value changed at char ' + x +
+                              '\n        old: ...' + a.slice(Math.max(0, x - 70), x + 40) +
+                              '\n        new: ...' + b.slice(Math.max(0, x - 70), x + 40));
                 break;
             }
         }
+    }
+
+    var ka = Object.keys(ro.params), kb = Object.keys(rn.params);
+    var removed = ka.filter(function (k2) { return kb.indexOf(k2) < 0; });
+    if (removed.length) problems.push('params keys REMOVED: ' + removed.join(', '));
+    var moved = ka.filter(function (k2) {
+        return kb.indexOf(k2) >= 0 &&
+               JSON.stringify(ro.params[k2]) !== JSON.stringify(rn.params[k2]);
+    });
+    if (moved.length) problems.push('pre-existing params CHANGED: ' + moved.join(', '));
+    var rka = Object.keys(ro), rkb = Object.keys(rn);
+    var addedResult = rkb.filter(function (k2) { return rka.indexOf(k2) < 0; });
+    var undeclaredResult = addedResult.filter(function (k2) { return ADDED_RESULT_KEYS.indexOf(k2) < 0; });
+    if (undeclaredResult.length) problems.push('undeclared new result keys: ' + undeclaredResult.join(', '));
+    var removedResult = rka.filter(function (k2) { return rkb.indexOf(k2) < 0; });
+    if (removedResult.length) problems.push('result keys REMOVED: ' + removedResult.join(', '));
+
+    var added = kb.filter(function (k2) { return ka.indexOf(k2) < 0; });
+    var undeclared = added.filter(function (k2) { return ADDED_PARAM_KEYS.indexOf(k2) < 0; });
+    if (undeclared.length) problems.push('undeclared new params keys: ' + undeclared.join(', '));
+
+    if (!problems.length) {
+        console.log('  ok    ' + c[0] + '   (' + a.length + ' chars identical, ' +
+                    added.length + ' declared additions)');
+    } else {
+        fail++;
+        console.log('  FAIL  ' + c[0]);
+        problems.forEach(function (m) { console.log('        ' + m); });
     }
 });
 
@@ -91,6 +160,6 @@ if (!(pr.totalMinersRetired > 0 && pr.totalScheduledAdded > 0 && pr.totalMachine
 }
 
 console.log('');
-console.log(fail === 0 ? 'BYTE-IDENTICAL across ' + SCENARIOS.length + ' scenarios'
+console.log(fail === 0 ? 'UNCHANGED (additive-only) across ' + SCENARIOS.length + ' scenarios'
                        : fail + ' SCENARIO(S) DIVERGED');
 process.exit(fail === 0 ? 0 : 1);

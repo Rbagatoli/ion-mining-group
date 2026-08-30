@@ -70,6 +70,12 @@ var CalcEngine = (function() {
     // and ratios are clamped so a 200% pool fee cannot invert revenue.
     function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
+    /* How a replacement fleet is sized. same_count is the historical behaviour and the
+       default. same_power is the right one for a power-capped site, where the constraint
+       is kilowatts and a more efficient machine means MORE machines on the same bill.
+       same_capital sizes from what the retiring fleet is worth. */
+    var REPLACEMENT_SIZINGS = { same_count: 1, same_power: 1, same_capital: 1 };
+
     function normalise(s) {
         s = s || {};
         var periodLength = PERIOD_CONFIG[s.periodLength] ? s.periodLength : 'monthly';
@@ -141,7 +147,30 @@ var CalcEngine = (function() {
             // claimed it was taxed. Defaults now match the markup: 35 and 15.
             miningIncomeTaxRate: s.taxAdjustment ? clamp(num(s.miningIncomeTaxRate, 35), 0, 100) / 100 : 0,
             capitalGainsTaxRate: s.taxAdjustment ? clamp(num(s.capitalGainsTaxRate, 15), 0, 100) / 100 : 0,
-            startDate: s.startDate ? new Date(s.startDate) : new Date()
+            startDate: s.startDate ? new Date(s.startDate) : new Date(),
+
+            /* ---- REPLACEMENT HARDWARE ----------------------------------------------
+               All inert while replacementEnabled is false, which is the default. The
+               specs fall back to the ORIGINAL machine, so a scenario that enables the
+               feature without filling them in replaces like for like rather than with a
+               zero-hashrate machine.
+
+               Resolved against the raw inputs rather than the normalised ones because
+               this object is still being built; num() applies the same guards either
+               way, and a blank field means "same as original" rather than zero. */
+            replacementEnabled: !!s.replacementEnabled,
+            replacementHashrateTH: Math.max(0, num(s.replacementHashrate, num(s.hashrate, 335))),
+            replacementPowerKW: Math.max(0, num(s.replacementPower, num(s.power, 5.36))),
+            replacementCapex: Math.max(0, num(s.replacementCapex, num(s.capex, 0))),
+            replacementSizing: REPLACEMENT_SIZINGS[s.replacementSizing] ? s.replacementSizing : 'same_count',
+            /* Zero is the honest default for same_capital: it answers "what can I
+               re-equip with using only what the old fleet is worth", which is the
+               constrained question and the one that matches how this is actually
+               funded. Injecting capital should require typing a number. */
+            additionalReplacementCapital: Math.max(0, num(s.additionalReplacementCapital, 0)),
+            /* 0 means "no ceiling". Set from the site's available kW in energy mode so a
+               replacement cannot silently overdraw the site. */
+            siteKw: Math.max(0, num(s.siteKw, 0))
         };
     }
 
@@ -186,10 +215,26 @@ var CalcEngine = (function() {
            scalars the old code multiplied by, so the sums below are arithmetically the same
            expression regrouped, and the projection is byte-identical. The replacement feature
            lands on top of this. */
-        function makeBatch(period, count) {
+        var ORIGINAL_SPEC = { hashrateTH: p.hashrateTH, powerKW: p.powerKW, capex: p.capex };
+        /* Falls back to the SAME OBJECT when the feature is off, so every downstream read
+           is literally the original spec and no path can diverge by rounding. */
+        var REPLACEMENT_SPEC = p.replacementEnabled
+            ? { hashrateTH: p.replacementHashrateTH, powerKW: p.replacementPowerKW,
+                capex: p.replacementCapex }
+            : ORIGINAL_SPEC;
+
+        function makeBatch(period, count, spec) {
+            spec = spec || ORIGINAL_SPEC;
             return { period: period, count: count,
-                     hashrateTH: p.hashrateTH, powerKW: p.powerKW, capex: p.capex };
+                     hashrateTH: spec.hashrateTH, powerKW: spec.powerKW, capex: spec.capex };
         }
+
+        /* THE GENERATION BOUNDARY for reinvest purchases. Buying the replacement spec in
+           month 6 means purchasing 2030 hardware in 2026; buying the original spec in
+           month 50 means the opposite. Both are wrong at one end. The first replacement
+           event is the defensible line: before it the market still sells the old machine,
+           after it the operator has demonstrably moved generation. */
+        var firstReplacementPeriod = null;
         var minerBatches = [makeBatch(0, p.machineCount)];
         var activeMachines = p.machineCount;
         var reinvestPool = 0;
@@ -237,12 +282,17 @@ var CalcEngine = (function() {
             var difficulty = difficulty0 * Math.pow(1 + diffChangePerPeriod, i);
             var blockReward = getBlockReward(periodMs);
 
-            var retiredThisPeriod = 0, salvageThisPeriod = 0;
+            var retiredThisPeriod = 0, salvageThisPeriod = 0, retiredPowerKW = 0;
             for (var b = 0; b < minerBatches.length; b++) {
                 var batch = minerBatches[b];
                 if (batch.count > 0 && (i - batch.period) >= lifespanPeriods) {
                     retiredThisPeriod += batch.count;
-                    salvageThisPeriod += batch.count * p.capex * p.salvagePct;
+                    /* batch.capex, not p.capex: salvage is a percentage of what the RETIRING
+                       machine cost, not of whatever is in the capex box now. Identical while
+                       the fleet is uniform -- makeBatch copies p.capex -- and load-bearing
+                       the moment a replacement carries its own price. */
+                    salvageThisPeriod += batch.count * batch.capex * p.salvagePct;
+                    retiredPowerKW += batch.count * batch.powerKW;
                     activeMachines -= batch.count;
                     batch.count = 0;
                 }
@@ -250,12 +300,64 @@ var CalcEngine = (function() {
             totalMinersRetired += retiredThisPeriod;
             cumulSalvageValue += salvageThisPeriod;
 
-            var replacedThisPeriod = 0;
+            var replacedThisPeriod = 0, replacementSpend = 0, replacementClamped = false;
             if (p.autoReplace && retiredThisPeriod > 0) {
-                replacedThisPeriod = retiredThisPeriod;
-                activeMachines += replacedThisPeriod;
-                minerBatches.push(makeBatch(i, replacedThisPeriod));
-                cumulCashFlow -= replacedThisPeriod * p.capex * (1 - p.salvagePct);
+                if (!p.replacementEnabled) {
+                    /* THE ORIGINAL PATH, LEFT LITERALLY ALONE. The general form below is
+                       algebraically the same thing when the specs match -- spend minus
+                       salvage equals count x capex x (1 - salvagePct) -- but not bit for
+                       bit: a*c - a*c*s and a*c*(1-s) round differently, and the whole
+                       regression gate for this feature is that the disabled path does not
+                       move. Deriving this from the general form would break it. */
+                    replacedThisPeriod = retiredThisPeriod;
+                    activeMachines += replacedThisPeriod;
+                    minerBatches.push(makeBatch(i, replacedThisPeriod));
+                    cumulCashFlow -= replacedThisPeriod * p.capex * (1 - p.salvagePct);
+                    replacementSpend = replacedThisPeriod * p.capex;
+                } else {
+                    var want;
+                    if (p.replacementSizing === 'same_power') {
+                        /* The constraint at a fixed site is kilowatts, not machine count:
+                           45 machines at 3.51 kW is 158 kW, and 5.925 kW replacements fill
+                           it 26 deep, not 27 -- 27 would draw 160.0 kW against a 158.0
+                           target. floor(), never round(). */
+                        want = REPLACEMENT_SPEC.powerKW > 0
+                            ? Math.floor(retiredPowerKW / REPLACEMENT_SPEC.powerKW) : 0;
+                    } else if (p.replacementSizing === 'same_capital') {
+                        var budget = salvageThisPeriod + p.additionalReplacementCapital;
+                        want = REPLACEMENT_SPEC.capex > 0
+                            ? Math.floor(budget / REPLACEMENT_SPEC.capex) : 0;
+                    } else {
+                        want = retiredThisPeriod;
+                    }
+
+                    /* THE SITE CEILING. Never silently exceed the available kW: measure what
+                       the survivors already draw and only fill the room that is left. */
+                    if (p.siteKw > 0 && REPLACEMENT_SPEC.powerKW > 0) {
+                        var survivingKw = 0;
+                        for (var sb = 0; sb < minerBatches.length; sb++) {
+                            if (minerBatches[sb].count > 0) {
+                                survivingKw += minerBatches[sb].count * minerBatches[sb].powerKW;
+                            }
+                        }
+                        var room = Math.floor(Math.max(0, p.siteKw - survivingKw) /
+                                              REPLACEMENT_SPEC.powerKW);
+                        if (want > room) { want = room; replacementClamped = true; }
+                    }
+
+                    replacedThisPeriod = Math.max(0, want);
+                    if (replacedThisPeriod > 0) {
+                        activeMachines += replacedThisPeriod;
+                        minerBatches.push(makeBatch(i, replacedThisPeriod, REPLACEMENT_SPEC));
+                    }
+                    /* Gross spend on the NEW machines, less the gross salvage of the OLD
+                       ones. Two different prices and, under same_power or same_capital, two
+                       different counts -- which is exactly why the old single-capex
+                       expression could not be reused. */
+                    replacementSpend = replacedThisPeriod * REPLACEMENT_SPEC.capex;
+                    cumulCashFlow -= (replacementSpend - salvageThisPeriod);
+                }
+                if (firstReplacementPeriod === null) firstReplacementPeriod = i;
             }
 
             if (!p.autoReplace && salvageThisPeriod > 0) {
@@ -377,17 +479,23 @@ var CalcEngine = (function() {
                deleted it, and that setting is gone. */
             var periodCashFlow = cashFromSales - taxOnMiningIncome - periodElecCost;
 
+            /* Which generation a reinvest purchase buys. Resolves to ORIGINAL_SPEC -- the
+               same object, so p.capex exactly -- whenever the feature is off or no
+               replacement has happened yet, which keeps the disabled path bit-identical. */
+            var buySpec = (p.replacementEnabled && firstReplacementPeriod !== null &&
+                           i >= firstReplacementPeriod) ? REPLACEMENT_SPEC : ORIGINAL_SPEC;
+            var buySpecIsReplacement = (buySpec !== ORIGINAL_SPEC);
             var machinesBoughtThisPeriod = 0, reinvestSpent = 0;
-            if (p.reinvestMode && p.capex > 0 && periodCashFlow > 0) {
+            if (p.reinvestMode && buySpec.capex > 0 && periodCashFlow > 0) {
                 reinvestPool += periodCashFlow;
-                while (reinvestPool >= p.capex) {
-                    reinvestPool -= p.capex;
+                while (reinvestPool >= buySpec.capex) {
+                    reinvestPool -= buySpec.capex;
                     activeMachines++;
                     totalMachinesBought++;
                     machinesBoughtThisPeriod++;
-                    reinvestSpent += p.capex;
+                    reinvestSpent += buySpec.capex;
                 }
-                if (machinesBoughtThisPeriod > 0) minerBatches.push(makeBatch(i, machinesBoughtThisPeriod));
+                if (machinesBoughtThisPeriod > 0) minerBatches.push(makeBatch(i, machinesBoughtThisPeriod, buySpec));
             }
 
             cumulBtcMined += periodBTCMined;
@@ -428,6 +536,18 @@ var CalcEngine = (function() {
                 machines: activeMachines, machinesBought: machinesBoughtThisPeriod,
                 scheduledAdded: scheduledThisPeriod, retiredThisPeriod: retiredThisPeriod,
                 replacedThisPeriod: replacedThisPeriod, pnlBtc: periodBTCMined,
+                /* THE REPLACEMENT MARKER. salvageCredited and replacementNetOutlay are both
+                   reported because they answer different questions: gross is what the old
+                   machines were worth, net is what left the account. Collapsing them into one
+                   "salvage" line makes the cash column unreadable at exactly the moment it
+                   starts mattering -- when the price AND the count both change. */
+                salvageCredited: salvageThisPeriod,
+                replacementSpend: replacementSpend,
+                replacementNetOutlay: replacementSpend - salvageThisPeriod,
+                replacementClamped: replacementClamped,
+                fleetHashrateTH: fleetHashrateTH,
+                fleetPowerKW: currentPowerKW,
+                boughtReplacementSpec: buySpecIsReplacement,
                 btcHodlCumul: cumulBtcHeld, usdValue: cumulBtcHeld * btcPrice,
                 elecCost: periodElecCost, netCashFlow: periodCashFlow, cumulPL: totalEconomicValue,
                 isHalving: halvingPeriodIdxs.some(function(x) { return x.idx === i; })
@@ -468,8 +588,54 @@ var CalcEngine = (function() {
         var dailyTaxDay1 = p.taxAdjustmentEnabled
             ? (Math.max(0, dailyRevenueDay1 - dailyElecDay1) * p.miningIncomeTaxRate) : 0;
 
+        /* ---- GUARD RAILS -------------------------------------------------------------
+           Both rules exist because efficiency improvement and difficulty growth are the SAME
+           phenomenon seen from two sides. When the network moves from 15 J/TH to 10 J/TH the
+           same megawatts produce 50% more hashrate, and that IS difficulty growth. A model
+           that grants an efficiency bonus on top of a difficulty assumption is counting one
+           industry trend twice.
+
+           Upgrading is not a gain. It is the cost of staying level: a miner who re-equips on
+           schedule roughly holds their share of the network, and one who replaces like for
+           like loses share. These warn rather than block -- a distressed purchase or a
+           forward batch at a discount is a real thing -- but they must be visible. */
+        var origJTH = p.hashrateTH > 0 ? (p.powerKW * 1000) / p.hashrateTH : 0;
+        var replJTH = p.replacementHashrateTH > 0
+            ? (p.replacementPowerKW * 1000) / p.replacementHashrateTH : 0;
+        var origUsdPerTH = p.hashrateTH > 0 ? p.capex / p.hashrateTH : 0;
+        var replUsdPerTH = p.replacementHashrateTH > 0
+            ? p.replacementCapex / p.replacementHashrateTH : 0;
+
+        /* RULE 1 -- efficiency is never free. Every observed generation of hardware charges a
+           premium for it: S21 Pro 15 J/TH at ~$10/TH, S21 XP Hyd 12 J/TH at ~$15/TH, S23
+           Hydro 9.5 J/TH at ~$22/TH. $/TH rises steeply as J/TH falls. A replacement that is
+           more efficient at the same or lower $/TH contradicts every price observed. */
+        var rule1Violated = !!(p.replacementEnabled && origJTH > 0 && replJTH > 0 &&
+                               replJTH < origJTH && replUsdPerTH <= origUsdPerTH);
+
+        /* RULE 2 -- difficulty rises BECAUSE the fleet upgrades. Annualise the implied
+           efficiency gain over the machine's life and compare it to annualised difficulty
+           growth. Efficiency improving faster than difficulty asserts that the rest of the
+           network stands still while you re-equip. */
+        var lifeYears = p.lifespanMonths / 12;
+        var effAnnualPct = (p.replacementEnabled && origJTH > 0 && replJTH > 0 && lifeYears > 0)
+            ? (1 - Math.pow(replJTH / origJTH, 1 / lifeYears)) * 100 : 0;
+        var diffAnnualPct = (Math.pow(1 + p.monthlyDiffChangePct, 12) - 1) * 100;
+        var rule2Violated = !!(p.replacementEnabled && effAnnualPct > diffAnnualPct);
+
+        var replacementWasClamped = tableRows.some(function (t) { return t.replacementClamped; });
+
         return {
             params: p,
+            replacementOriginalJTH: origJTH,
+            replacementNewJTH: replJTH,
+            replacementOriginalUsdPerTH: origUsdPerTH,
+            replacementNewUsdPerTH: replUsdPerTH,
+            replacementEfficiencyAnnualPct: effAnnualPct,
+            difficultyAnnualPct: diffAnnualPct,
+            rule1Violated: rule1Violated,
+            rule2Violated: rule2Violated,
+            replacementWasClamped: replacementWasClamped,
             periodConfig: pCfg,
             halvingPeriodIdxs: halvingPeriodIdxs,
 

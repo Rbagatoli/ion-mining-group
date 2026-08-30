@@ -290,7 +290,19 @@ var engineKeys = [];
     }
 })();
 ok(engineKeys.length >= 25, 'found the engine input list', 'only ' + engineKeys.length);
-var noControl = engineKeys.filter(function (k) { return k !== 'startDate' && !htmlIds[k]; });
+/* DERIVED INPUTS, exempted one by one with a reason rather than by a blanket rule -- the
+   whole value of this check is that a new engine input without a control fails it.
+     startDate  the clock, not a setting
+     siteKw     the site's available power in energy mode. It has no control because it is
+                COMPUTED from controls: energyValue x energyBasis through gasBtuPerCf and
+                heatRate. Those four are asserted below, so the derivation is still covered. */
+var DERIVED_INPUTS = ['startDate', 'siteKw'];
+['energyValue', 'energyBasis', 'gasBtuPerCf', 'heatRate'].forEach(function (k) {
+    ok(!!htmlIds[k], '  siteKw is derived from ' + k + ', which does have a control');
+});
+var noControl = engineKeys.filter(function (k) {
+    return DERIVED_INPUTS.indexOf(k) < 0 && !htmlIds[k];
+});
 ok(noControl.length === 0, 'every engine input has a control on the page',
    'no control for: ' + noControl.join(', '));
 

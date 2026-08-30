@@ -3691,6 +3691,16 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 .calc-table th:first-child, .calc-table td:first-child { text-align: left; }
 .calc-table td { text-align: right; padding: 8px 14px; color: var(--plat-300); white-space: nowrap; border-bottom: 1px solid rgba(229,228,226,0.05); }
 .calc-table tr.is-halving td { background: rgba(247, 147, 26, 0.045); }
+/* The replacement marker: a continuation of the row above it, not a period of its own. Quieter
+   than the halving tint and indented, so scanning the period column is not interrupted by rows
+   that have no period number. */
+.calc-table tr.is-replace td {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding-left: 26px;
+    border-top: none;
+}
 .calc-table .tag {
     font-size: 8.5px; letter-spacing: 0.14em; color: var(--btc-300);
     border: 1px solid var(--line-btc); padding: 1px 5px; margin-left: 6px;

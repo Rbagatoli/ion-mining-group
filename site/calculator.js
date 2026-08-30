@@ -31,6 +31,8 @@
         'periodLength', 'investPeriod',
         'poolFee', 'uptime', 'hodlRatio', 'hodlSlider', 'minerLifespan', 'salvageValue',
         'minerAdditions', 'btcTreasury', 'infrastructureCost',
+        'replacementEnabled', 'replacementHashrate', 'replacementPower',
+        'replacementCapex', 'replacementSizing', 'additionalReplacementCapital',
         'miningIncomeTaxRate', 'capitalGainsTaxRate',
         'autoReplace', 'additionCapex', 'reinvest', 'coverElec', 'taxAdjustment',
         'preTaxCapital',
@@ -212,6 +214,15 @@
             poolFee: num(el.poolFee.value, 0),
             uptime: num(el.uptime.value, 100),
             hodlRatio: num(el.hodlRatio.value, 0),
+            replacementEnabled: !!el.replacementEnabled.checked,
+            replacementHashrate: num(el.replacementHashrate.value, num(el.hashrate.value, 335)),
+            replacementPower: num(el.replacementPower.value, num(el.power.value, 5.36)),
+            replacementCapex: num(el.replacementCapex.value, num(el.capex.value, 0)),
+            replacementSizing: el.replacementSizing.value,
+            additionalReplacementCapital: num(el.additionalReplacementCapital.value, 0),
+            /* The site ceiling only exists in energy mode, where a real kW figure is known.
+               In machines mode there is no site to overdraw, so 0 disables the clamp. */
+            siteKw: derived ? derived.kw : 0,
             minerLifespan: Math.round(num(el.minerLifespan.value, 36)),
             salvageValue: num(el.salvageValue.value, 0),
             minerAdditions: Math.round(num(el.minerAdditions.value, 0)),
@@ -797,6 +808,28 @@
             if (p.elecCost === 0) {
                 msgs.push('Power is set to $0.00/kWh, so nothing is being charged for electricity.');
             }
+            /* RULE 1 -- efficiency is never free. Warn, never block: a distressed purchase
+               or a discounted forward batch is a real thing the user may be modelling. */
+            if (r.rule1Violated) {
+                msgs.push('The replacement is more efficient (' +
+                    r.replacementOriginalJTH.toFixed(1) + ' to ' + r.replacementNewJTH.toFixed(1) +
+                    ' J/TH) at the same or lower cost per terahash ($' +
+                    r.replacementOriginalUsdPerTH.toFixed(2) + ' to $' +
+                    r.replacementNewUsdPerTH.toFixed(2) + '/TH). Every observed generation of ' +
+                    'hardware charges a premium for efficiency.');
+            }
+            /* RULE 2 -- difficulty rises BECAUSE the fleet upgrades. Hardware improving
+               faster than difficulty assumes the rest of the network stands still. */
+            if (r.rule2Violated) {
+                msgs.push('This replacement implies ' + r.replacementEfficiencyAnnualPct.toFixed(1) +
+                    '%/yr efficiency improvement against ' + r.difficultyAnnualPct.toFixed(1) +
+                    '%/yr difficulty growth. Difficulty rises because the fleet upgrades, so ' +
+                    'the faster figure assumes the rest of the network does not.');
+            }
+            if (r.replacementWasClamped) {
+                msgs.push('A replacement was capped by the site\u2019s available power. ' +
+                    'Fewer machines were bought than the sizing asked for.');
+            }
             warn.textContent = msgs.join(' ');
             warn.hidden = msgs.length === 0;
         }
@@ -832,6 +865,22 @@
                 '<td class="' + (row.cumulPL >= 0 ? 'is-up' : 'is-down') + '">' +
                     money(row.cumulPL) + '</td>' +
                 '</tr>');
+            /* THE REPLACEMENT MARKER, on its own row beneath the period it belongs to. Gross
+               salvage and net outlay are BOTH shown: gross is what the old machines were
+               worth, net is what left the account, and they are different numbers the moment
+               the replacement has its own price. A single "salvage" line would make the cash
+               column unreadable exactly when it starts mattering. */
+            if (row.retiredThisPeriod > 0 || row.replacedThisPeriod > 0) {
+                out.push('<tr class="is-replace"><td colspan="8">' +
+                    int(row.retiredThisPeriod) + ' retired, salvage credited ' +
+                    money(row.salvageCredited) + ' &middot; ' +
+                    int(row.replacedThisPeriod) + ' purchased for ' + money(row.replacementSpend) +
+                    ' &middot; net outlay ' + money(row.replacementNetOutlay) +
+                    ' &middot; fleet now ' + int(row.fleetHashrateTH) + ' TH/s at ' +
+                    row.fleetPowerKW.toFixed(1) + ' kW' +
+                    (row.replacementClamped ? ' &middot; capped by site power' : '') +
+                    '</td></tr>');
+            }
         });
         body.innerHTML = out.join('');
         setText('calcTableNote', rows.length > out.length
@@ -996,6 +1045,20 @@
             try { params[k] = decodeURIComponent(raw.split('+').join(' ')); }
             catch (e) { params[k] = raw; }
         });
+
+        /* UNKNOWN KEYS ARE NAMED, not silently dropped. Passing hodl=0 instead of
+           hodlRatio=0, or machines=45 instead of machineCount=45, used to render a normal
+           page with default values and no indication anything was wrong -- two different
+           values of a misspelled parameter returned identical results. Still forgiving (an
+           old link must keep opening) but no longer silent. */
+        (function () {
+            var known = scenarioIds().concat(['mode', 'minerModel']);
+            var unknown = Object.keys(params).filter(function (k) { return known.indexOf(k) < 0; });
+            if (unknown.length && typeof console !== 'undefined' && console.warn) {
+                console.warn('Calculator: ignoring unrecognised URL parameter(s): ' +
+                             unknown.join(', ') + '. Known parameters are: ' + known.join(', '));
+            }
+        })();
 
         /* The model goes first because selecting one rewrites the three spec
            fields. Anything explicit in the link is applied after, so a
