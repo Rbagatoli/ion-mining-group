@@ -427,6 +427,51 @@ SC.reset();
        ids.join(', '));
 })();
 
+// ---- New and used are different markets -------------------------------------------------
+(function () {
+    var NEWR = SC.ratesFor('new'), USED = SC.ratesFor('used'), RAW = SC.usedRates();
+    ok('ratesFor("new") is rates() exactly, so every existing caller is unchanged',
+       Object.keys(NEWR).every(function (k) { return NEWR[k] === SC.rates()[k]; }));
+    ok('generation is cheaper used', USED.generationPerKw < NEWR.generationPerKw,
+       USED.generationPerKw + ' vs ' + NEWR.generationPerKw);
+
+    /* A COMPONENT WITH NO SECONDARY MARKET COSTS THE SAME, AND THE CARD SAYS SO RATHER THAN
+       IMPLYING IT. Two separate facts, both asserted: the resolved rate is equal, AND the raw
+       USED_RATES entry is equal. The resolved one alone is satisfied by an entry that differs
+       but is never read -- which is exactly what the code does today, so a drifting value there
+       would be invisible until somebody flipped its USED_MARKET flag. */
+    Object.keys(SC.USED_MARKET).forEach(function (k) {
+        if (SC.USED_MARKET[k]) return;
+        ok('"' + k + '" resolves to the same rate in either market', USED[k] === NEWR[k],
+           USED[k] + ' vs ' + NEWR[k]);
+        ok('and its card entry is equal too, not merely unread', RAW[k] === SC.rates()[k],
+           RAW[k] + ' vs ' + SC.rates()[k]);
+    });
+    /* And the flag itself is asked rather than inferred from the rates being equal -- "no used
+       market" and "a used market that happens to price the same" are different statements, and
+       the UI has to say the first rather than showing a saving of zero. */
+    ok('collection reports no used market', SC.hasUsedMarket('collectionPerKw') === false);
+    ok('civil reports no used market', SC.hasUsedMarket('civilPerKw') === false);
+    ok('generation reports one', SC.hasUsedMarket('generationPerKw') === true);
+    ok('and the markets are enumerated', SC.MARKETS.join(',') === 'new,used', SC.MARKETS.join(','));
+
+    /* Every used rate names a real rate, and every rate has a used entry -- the same two-way
+       census RATE_BASIS gets, for the same reason: a rename would otherwise leave one behind. */
+    Object.keys(RAW).forEach(function (k) {
+        ok('used rate "' + k + '" names a rate that exists', SC.rates()[k] !== undefined);
+    });
+    Object.keys(SC.rates()).forEach(function (k) {
+        ok('rate "' + k + '" has a used entry, even if it is the same number',
+           RAW[k] !== undefined);
+    });
+    var okSet = SC.setUsedRate('generationPerKw', 250);
+    ok('used rates are editable', okSet && SC.ratesFor('used').generationPerKw === 250);
+    ok('and editing one does not touch the new card', SC.rates().generationPerKw === 900);
+    SC.reset();
+    ok('reset restores both', SC.ratesFor('used').generationPerKw === 225 &&
+       SC.rates().generationPerKw === 900);
+})();
+
 // ---- Gas collection: the wellfield, and who pays for it ---------------------------------
 //
 // Backlog item 3. The component is CONDITIONAL, and every one of the five branches is a

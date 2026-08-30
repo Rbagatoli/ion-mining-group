@@ -3148,7 +3148,12 @@ var MapSourcing = (function() {
      * passes for a figure that cannot change between them. The cache is cleared whenever the
      * result set is rebuilt, for the same reason evaluateAt's is. */
     var _capCache = {};
+    var _capMarket = null;          // null = let the model default from what is on the ground
     function clearCapitalCache() { _capCache = {}; }
+    function setCapMarket(m) {
+        _capMarket = (m === 'new' || m === 'used') ? m : null;
+        clearCapitalCache();
+    }
 
     function capitalFor(c) {
         if (!c || c.energyType !== 'landfill_gas') return null;
@@ -3170,7 +3175,12 @@ var MapSourcing = (function() {
         var r = SiteInfrastructure.capitalAvoided(probe, {
             kw: usableKwFor(c),
             asOf: new Date().toISOString().slice(0, 10),
-            band: _capBand
+            band: _capBand,
+            /* null lets the model default from what is on the ground -- used only where the
+               generation is SHUT. The toggle overrides that; nothing is remembered across a
+               reload, because it is a way of asking a question rather than a fact about the
+               site. */
+            market: _capMarket
         });
         _capCache[c.id] = r;
         return r;
@@ -4706,7 +4716,32 @@ var MapSourcing = (function() {
                     fmtUsd(cap.requiredUsd) + '</span></div>' +
                 '<div><span class="k">Full build</span><span class="v">' +
                     fmtUsd(cap.totalBuildUsd) + '</span></div>' +
+                (cap.requiredSavingUsd
+                    ? '<div><span class="k">Saved by buying used</span><span class="v pos">' +
+                      fmtUsd(cap.requiredSavingUsd) + '</span></div>' : '') +
                 '</div>';
+
+            /* THE MARKET TOGGLE. The sentence under it is the point: somebody will read the
+               saving shrinking on a better site as a bug, so the relationship is stated rather
+               than left as two numbers to be compared. */
+            html += '<div class="src-capmkt">' +
+                '<span class="k">Equipment priced</span>' +
+                '<button type="button" class="src-mktbtn' + (_capMarket === null ? ' is-on' : '') +
+                    '" data-mkt="auto">auto</button>' +
+                '<button type="button" class="src-mktbtn' + (_capMarket === 'new' ? ' is-on' : '') +
+                    '" data-mkt="new">new</button>' +
+                '<button type="button" class="src-mktbtn' + (_capMarket === 'used' ? ' is-on' : '') +
+                    '" data-mkt="used">used</button>' +
+                '<span class="src-mktnote">' +
+                    (cap.market === 'used'
+                        ? 'A used market exists for gensets, switchgear and treatment skids. It ' +
+                          'does not for a wellfield or a pad: those show no saving because there ' +
+                          'is nothing to buy second-hand, not because a rate is missing.'
+                        : 'Auto prices a site used only where its generation is SHUT, because ' +
+                          'there you are replacing or recommissioning units. At a running plant ' +
+                          'you inherit the equipment rather than buying it, and the condition ' +
+                          'discount already prices that.') +
+                '</span></div>';
 
             /* THE CONDITION LINE COMES FIRST, because it governs every figure under it. LMOP
                records that equipment was INSTALLED and nothing whatever about whether it still
@@ -4722,12 +4757,20 @@ var MapSourcing = (function() {
                   'Mark verified after inspection</button></div>';
 
             html += '<table class="src-captable"><thead><tr><th>Component</th><th>On site</th>' +
-                '<th class="num">Full cost</th><th class="num">Kept</th>' +
+                '<th>Market</th><th class="num">Full cost</th><th class="num">Kept</th>' +
                 '<th class="num">Avoided</th></tr></thead><tbody>';
             for (var xi = 0; xi < cap.components.length; xi++) {
                 var xc = cap.components[xi];
+                /* "no market" rather than "new": they are different statements, one a choice
+                   and the other the absence of one. A saving of zero against a wellfield reads
+                   as a rate somebody forgot to fill in. */
+                var mkt = xc.usedMarket
+                    ? '<span class="src-mkt s-' + esc(xc.market) + '">' + esc(xc.market) + '</span>'
+                    : '<span class="src-mkt s-none" title="Wells, concrete and services are not ' +
+                      'resold; there is no secondary market to price in">no market</span>';
                 html += '<tr><td>' + esc(xc.label) + '</td>' +
                     '<td><span class="src-coll s-' + esc(xc.state) + '">' + esc(xc.state) + '</span></td>' +
+                    '<td>' + mkt + '</td>' +
                     '<td class="num">' + (xc.fullUsd ? fmtUsd(xc.fullUsd) : gap('--')) + '</td>' +
                     '<td class="num">' + (xc.discount ? Math.round(xc.discount * 100) + '%' : gap('--')) + '</td>' +
                     '<td class="num">' + (xc.avoidedUsd ? fmtUsd(xc.avoidedUsd) : gap('--')) + '</td></tr>';
@@ -4745,6 +4788,19 @@ var MapSourcing = (function() {
                     ' — counted at ' + Math.round(cap.mandateFactor * 100) + '%. The operator ' +
                     'funds collection either way; the value is in arriving before the flare is ' +
                     'designed.</div>';
+            }
+
+            /* THE RESULT THAT READS AS A BUG. saving = (new - used) x kW x (1 - kept), so the
+               better the condition the less there is left to buy, and the less buying it used
+               saves. Measured on a 2,160 kW site: $488,160 at a three-year shutdown against
+               $1,142,640 at the catalogue median. Two numbers with no sentence between them
+               invite the reader to conclude the model is broken. */
+            if (cap.market === 'used' && cap.requiredSavingUsd) {
+                html += '<div class="src-sub2">Buying used saves ' +
+                    fmtUsd(cap.requiredSavingUsd) + ' off what you still have to spend, and it ' +
+                    'saves LESS the better the condition here: you only pay for what you do not ' +
+                    'inherit, so good condition means less to buy and therefore less to save by ' +
+                    'buying it cheaply. The two settings are not fighting each other.</div>';
             }
 
             html += '<div class="src-sub2">Priced at the capex model\'s ' + esc(cap.band) +
@@ -5513,6 +5569,21 @@ var MapSourcing = (function() {
            SiteData.update() only mutates a record that already exists, so a prospect nobody has
            saved yet is promoted first. That is the right side effect: you do not inspect a site
            you are not tracking. */
+        /* THE MARKET TOGGLE. Redraws the panel and the table, because the setting changes the
+           all-in figure every row is sorted and ranked on -- leaving the list showing new-build
+           numbers under a panel showing used ones is the disagreement these two surfaces exist
+           to be incapable of. Not persisted: it is a way of asking a question, and a remembered
+           answer would silently reprice a catalogue on a later visit. */
+        var mktBtns = document.querySelectorAll('.src-mktbtn');
+        for (var mb = 0; mb < mktBtns.length; mb++) {
+            mktBtns[mb].addEventListener('click', function() {
+                var m = this.getAttribute('data-mkt');
+                setCapMarket(m === 'auto' ? null : m);
+                renderDetail();
+                applyFilters();
+            });
+        }
+
         var verify = document.getElementById('srcVerifyInfra');
         if (verify) verify.addEventListener('click', function() {
             var cand = _selectedId ? ProspectStore.get(_selectedId) : null;

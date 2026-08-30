@@ -1,23 +1,24 @@
 {
-  "_comment": "Pins capitalAvoided() and stack() across every candidate. Re-cut for the shutdown-model unification: site-infrastructure.js's flat 0.35 shutdown discount was site-capex.js's bopRetained floor with the age curve above it dropped, and the curve is now asked for on generation and gasTreatment only. avoidedDigest therefore MOVED, deliberately — 462 sites of 11,829, 184 up and 278 down, +$118,368,647 avoided across the catalogue, and totalBuildUsd identical on every one because a discount only divides avoided from required. Electrical, civil and collection keep their flat discounts; site-capex.js has no refurb model for them and inventing one would be a category error.",
-  "_stack_digest_was_vacuous": "stackDigest ALSO moved, and for a different reason: the old serialisation passed usable_kw to stack(), which reads powerPotentialKw. Every one of the 11,829 stacks bailed at the capacity check and returned zero components, so the digest pinned 'stack() returns nothing' — which is why adding a whole collection component to the stack did not disturb it. The serialisation now passes powerPotentialKw and sourceDetail, the test asserts both serialisations actually priced something before trusting either digest, and it asserts the stack digest can see a collection component at all.",
-  "generated_from": "shutdown-model unification, on top of e3d4cff (civil rate) and 61fc2d4 (rate basis)",
+  "_comment": "Pins capitalAvoided() and stack() across every candidate. Re-cut for the new/used market dimension: capitalAvoided() now prices in a market, defaulting to 'used' on sites whose generation is SHUTDOWN and to 'new' everywhere else. 462 sites of 11,829 moved (3.9%); FULL BUILD -0.82% and STILL TO SPEND -0.81% across the catalogue. The default is deliberately narrow — including 'present' equipment would have fired on 10,682 sites (90.3%) and dropped the aggregate build 40.1%, because at a running plant you inherit equipment rather than buying it and the condition discount already prices that.",
+  "_independence": "Market and condition are independent multipliers: avoided = full(market) x discount(age). The used/new avoided ratio is asserted identical at four shutdown ages, and every component's discount is asserted equal across markets, because the avoided column moves on both axes and that is where an interaction would hide.",
+  "generated_from": "market dimension, on top of d1d8960 (shutdown unification), 61fc2d4 (rate basis), e3d4cff (civil rate)",
   "candidates": 11829,
-  "avoidedDigest": "8302159df4e02b6503d319e68c5427f71a14e0fc536c5d8d6e9f04aec4cfe70b",
+  "avoidedDigest": "34964e7cb3cc3e6f7493a57cd15f752b7750c95e62aba577e3efc57464761141",
   "stackDigest": "ce6a7148d81758f75a3bcbf641904cd6b0ce3609b3b4de50cc38ed8e48da1dff",
   "previous": {
-    "avoidedDigest": "27123d9691a817e6e773fa34076ea92805e188e4bdec57221af1c9afe55d5956",
-    "stackDigest": "b6cb9bf13244a1c4c6a5f65c5b2d0d1bcfee74087b69bcb900753be4be75cc72",
-    "note": "the previous stackDigest was over empty stacks and guarded nothing"
+    "avoidedDigest": "8302159df4e02b6503d319e68c5427f71a14e0fc536c5d8d6e9f04aec4cfe70b",
+    "stackDigest": "ce6a7148d81758f75a3bcbf641904cd6b0ce3609b3b4de50cc38ed8e48da1dff",
+    "note": "cut at the shutdown unification"
   },
   "collectionRate": 550,
   "bopRetained": 0.35,
+  "usedGenerationRate": 225,
   "sampleAvoided_agedOffTheFlatRate": [
-    "lmop_1018-1|9589300|9128700|18718000|high|false|null|collection:550:5390000:0.6:3234000,generation:900:8820000:0.5:4410000,gasTreatment:250:2450000:0.5:1225000,electrical:150:1470000:0.35:514500,civil:60:588000:0.35:205800",
-    "lmop_101803-0|5871000|5589000|11460000|high|false|null|collection:550:3300000:0.6:1980000,generation:900:5400000:0.5:2700000,gasTreatment:250:1500000:0.5:750000,electrical:150:900000:0.35:315000,civil:60:360000:0.35:126000"
+    "lmop_1018-1|5764850|5113150|10878000|high|false|null|collection:550:5390000:0.6:3234000,generation:225:2205000:0.5:1102500,gasTreatment:190:1862000:0.5:931000,electrical:85:833000:0.35:291550,civil:60:588000:0.35:205800",
+    "lmop_101803-0|3529500|3130500|6660000|high|false|null|collection:550:3300000:0.6:1980000,generation:225:1350000:0.5:675000,gasTreatment:190:1140000:0.5:570000,electrical:85:510000:0.35:178500,civil:60:360000:0.35:126000"
   ],
   "sampleAvoided_flooredAtBopRetained": [
-    "lmop_100-0|1229600|1826400|3056000|high|false|null|collection:550:880000:0.6:528000,generation:900:1440000:0.35:504000,gasTreatment:250:400000:0.2:80000,electrical:150:240000:0.35:84000,civil:60:96000:0.35:33600"
+    "lmop_100-0|796000|980000|1776000|high|false|null|collection:550:880000:0.6:528000,generation:225:360000:0.35:126000,gasTreatment:190:304000:0.2:60800,electrical:85:136000:0.35:47600,civil:60:96000:0.35:33600"
   ],
   "verified": "both digests recomputed from the test's own serialisation; sensitivity re-confirmed by nudging a rate"
 }

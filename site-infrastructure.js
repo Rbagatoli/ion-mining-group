@@ -133,6 +133,46 @@ var SiteInfrastructure = (function() {
         return { discount: ret, aged: true, years: years };
     }
 
+    /* Component id -> the key it is priced from on the shared card. Needed so a component can
+       ask whether it has a secondary market at all, rather than the UI inferring "no saving"
+       from a used rate that merely equals the new one. */
+    var RATE_KEY = {
+        collection: 'collectionPerKw', generation: 'generationPerKw',
+        gasTreatment: 'gasTreatmentPerKw', electrical: 'interconnectionPerKw',
+        civil: 'civilPerKw'
+    };
+
+    /* ===== WHICH MARKET IS THIS BUILD BEING PRICED IN ====================================
+     *
+     * Defaulted from what is on the ground rather than asked every time. If a site already has
+     * idle or standing generation on it, the buyer is in the secondary market BY DEFINITION --
+     * they are recommissioning what is there or replacing it with comparable second-hand units,
+     * and pricing that at new-equipment rates overstates the build by more than 2x. A raw
+     * resource or a permitted site with nothing built is a new-equipment build.
+     *
+     * A DEFAULT, NOT A DECISION. Every component can be overridden, and the site-level setting
+     * can be overridden, because the model does not know whether this particular buyer intends
+     * to buy new. */
+    function defaultMarket(inv) {
+        if (!inv) return 'new';
+        /* SHUTDOWN ONLY, NOT PRESENT, and the difference is 462 sites against 10,682.
+         *
+         * The argument for defaulting to the secondary market is about IDLE equipment: a buyer
+         * taking on shut units is recommissioning them or replacing them with comparable
+         * second-hand ones, and pricing that at new-equipment rates overstates the build by more
+         * than 2x. It does not extend to a RUNNING plant. There you are not buying the equipment
+         * at all -- you are inheriting it, and the condition discount already prices exactly
+         * that. Layering a used-market rate on top would discount the same equipment twice for
+         * two different reasons.
+         *
+         * Measured before choosing: 'present' is the overwhelmingly common state -- 10,220 sites
+         * against 462 shut -- so including it would default 90.3% of the catalogue to used and
+         * drop the aggregate full build by 40.1%, $65bn, on an inference nobody made. A default
+         * that reprices nine tenths of the data becomes invisible and then load-bearing. This
+         * one fires on 3.9%, which is the population the argument was about. */
+        return inv.generation === 'shutdown' ? 'used' : 'new';
+    }
+
     /* A mandate is only worth something if you arrive before the operator commits to a flare
      * design. Once the engineering is let, the collection system is being built to burn the gas
      * and adding generation later is a second project.
@@ -154,8 +194,15 @@ var SiteInfrastructure = (function() {
         return isFinite(n) ? n : null;
     }
 
-    function rates() {
-        var r = (typeof SiteCapex !== 'undefined' && SiteCapex.rates) ? SiteCapex.rates() : null;
+    /* The rate card, in a market. No argument is 'new' and is byte-identical to what this
+       always returned, so every existing caller is unchanged by construction rather than by
+       promise. */
+    function rates(market) {
+        var r = null;
+        if (typeof SiteCapex !== 'undefined') {
+            r = (market === 'used' && SiteCapex.ratesFor) ? SiteCapex.ratesFor('used')
+              : (SiteCapex.rates ? SiteCapex.rates() : null);
+        }
         return {
             collection:    (r && r.collectionPerKw)      || FALLBACK_RATES.collectionPerKw,
             generation:    (r && r.generationPerKw)      || FALLBACK_RATES.generationPerKw,
@@ -293,18 +340,46 @@ var SiteInfrastructure = (function() {
         out.mandateMonths = months;
         out.mandateFactor = mf;
 
-        var parts = [
-            { id: 'collection',   label: 'Gas collection',  state: inv.collection,   perKw: R.collection },
-            { id: 'generation',   label: 'Generation',      state: inv.generation,   perKw: R.generation },
-            { id: 'gasTreatment', label: 'Gas treatment',   state: inv.gasTreatment, perKw: R.gasTreatment },
-            { id: 'electrical',   label: 'Electrical',      state: inv.electrical,   perKw: R.electrical },
-            { id: 'civil',        label: 'Civil / pad',     state: inv.civil,        perKw: R.civil }
-        ];
+        /* THE MARKET THIS BUILD IS PRICED IN. Site-level default from what is on the ground,
+           overridable per component. RNEW is kept alongside so the panel can show the delta as
+           a number rather than leaving the reader to compare two screenshots. */
+        var market = (o.market === 'new' || o.market === 'used') ? o.market : defaultMarket(inv);
+        var RUSED = rates('used'), RNEW = rates('new');
+        out.market = market;
+        function marketFor(id) {
+            if (o.marketOverride && (o.marketOverride[id] === 'new' || o.marketOverride[id] === 'used')) {
+                return o.marketOverride[id];
+            }
+            return market;
+        }
+        function rateFor(id, mkt) {
+            var src = (mkt === 'used') ? RUSED : RNEW;
+            return src[id];
+        }
 
-        var total = 0, avoided = 0;
+        var parts = [
+            { id: 'collection',   label: 'Gas collection',  state: inv.collection },
+            { id: 'generation',   label: 'Generation',      state: inv.generation },
+            { id: 'gasTreatment', label: 'Gas treatment',   state: inv.gasTreatment },
+            { id: 'electrical',   label: 'Electrical',      state: inv.electrical },
+            { id: 'civil',        label: 'Civil / pad',     state: inv.civil }
+        ];
+        parts.forEach(function (p) {
+            p.market = marketFor(p.id);
+            p.perKw = rateFor(p.id, p.market);
+            p.newPerKw = rateFor(p.id, 'new');
+            /* Whether a secondary market EXISTS, asked of the module that owns the card. The UI
+               needs it to say "no used market" rather than showing a saving of zero, which reads
+               as a rate somebody forgot to fill in. */
+            p.usedMarket = (typeof SiteCapex !== 'undefined' && SiteCapex.hasUsedMarket && RATE_KEY[p.id])
+                ? SiteCapex.hasUsedMarket(RATE_KEY[p.id]) : false;
+        });
+
+        var total = 0, avoided = 0, totalAtNew = 0, avoidedAtNew = 0;
         parts.forEach(function(p) {
             var full = p.perKw * kw * mult;
             total += full;
+            totalAtNew += p.newPerKw * kw * mult;
             var disc = Object.prototype.hasOwnProperty.call(CONDITION_DISCOUNT, p.state)
                 ? CONDITION_DISCOUNT[p.state] : 0;
             var aged = false, agedYears = null;
@@ -322,8 +397,17 @@ var SiteInfrastructure = (function() {
             // somebody else's decision, not about the condition of anything.
             if (p.state === 'mandated' && mf !== null) value *= mf;
             avoided += value;
+            /* The same arithmetic at new rates, accumulated alongside, so STILL TO SPEND can be
+               compared too. The discount is identical in both -- market and condition are
+               independent multipliers and must never interact. */
+            var valueAtNew = p.newPerKw * kw * mult * disc;
+            if (p.state === 'mandated' && mf !== null) valueAtNew *= mf;
+            avoidedAtNew += valueAtNew;
             out.components.push({
                 id: p.id, label: p.label, state: p.state,
+                market: p.market, usedMarket: p.usedMarket,
+                newPerKw: Math.round(p.newPerKw * mult),
+                newFullUsd: Math.round(p.newPerKw * kw * mult),
                 perKw: Math.round(p.perKw * mult), fullUsd: Math.round(full),
                 discount: disc, avoidedUsd: Math.round(value),
                 /* aged:false on a shutdown row means the discount was DEFAULTED to the floor
@@ -337,6 +421,20 @@ var SiteInfrastructure = (function() {
         out.totalBuildUsd = Math.round(total);
         out.avoidedUsd = Math.round(avoided);
         out.requiredUsd = Math.round(total - avoided);
+        /* THE DELTA, AS A NUMBER. What this build would cost priced entirely new, and what the
+           market setting is saving off the figure that actually decides anything. Reported even
+           when it is zero, because "priced new" and "used, and it saved nothing" are different
+           statements and the second only happens where no secondary market exists. */
+        out.totalBuildAtNewUsd = Math.round(totalAtNew);
+        out.buildSavingUsd = Math.round(totalAtNew - total);
+        out.requiredAtNewUsd = Math.round(totalAtNew - avoidedAtNew);
+        /* THE SAVING SHRINKS AS YOU INHERIT MORE, and that is not a bug to hide. It is
+           (newRate - usedRate) x kw x (1 - discount): the more of the equipment is already on
+           site, the less of it you are buying, so the less buying it cheaply saves. The mirror
+           of the fact that inheriting equipment is worth less when the equipment is cheap. Both
+           are the same identity and the panel has to say so, or the two settings look like they
+           are fighting each other. */
+        out.requiredSavingUsd = Math.round((totalAtNew - avoidedAtNew) - (total - avoided));
         return out;
     }
 
@@ -356,6 +454,8 @@ var SiteInfrastructure = (function() {
         MANDATE_DECAY: MANDATE_DECAY,
         CONFIDENCE_MULT: CONFIDENCE_MULT,
         rates: rates,
+        defaultMarket: defaultMarket,
+        RATE_KEY: RATE_KEY,
         inventory: inventory,
         capitalAvoided: capitalAvoided,
         avoidedScore: avoidedScore,

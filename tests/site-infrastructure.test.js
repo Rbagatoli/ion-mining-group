@@ -94,7 +94,11 @@ var IDENT = SI.capitalAvoided(
     { id: 'ident', energyType: 'landfill_gas', powerPotentialKw: 2160,
       latitude: 40, longitude: -74, existingGenerationKw: 2160,
       sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown' } },
-    { asOf: '2026-08-30' });
+    /* market:'new' pinned explicitly. This fixture is a SHUT site, so it now defaults to the
+       secondary market -- and these three assertions are about the civil decoupling, not about
+       the market axis. Letting them ride the default would make them move for a reason that has
+       nothing to do with what they claim. */
+    { asOf: '2026-08-30', market: 'new' });
 ok('the 2,160 kW digest: full build', IDENT.totalBuildUsd === 4125600, IDENT.totalBuildUsd);
 ok('the 2,160 kW digest: capital avoided', IDENT.avoidedUsd === 1740960, IDENT.avoidedUsd);
 ok('the 2,160 kW digest: still to spend', IDENT.requiredUsd === 2384640, IDENT.requiredUsd);
@@ -120,7 +124,9 @@ function shut(years, over) {
               sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown',
                               projectShutdownDate: d.toISOString().slice(0, 10) } };
     for (var k in (over || {})) o[k] = over[k];
-    return SI.capitalAvoided(o, { asOf: '2026-08-30' });
+    /* market:'new' for the same reason: this block is about the age curve, and a shut site now
+       defaults to used, so an unpinned market would confound the two axes it is separating. */
+    return SI.capitalAvoided(o, { asOf: '2026-08-30', market: 'new' });
 }
 function part(res, id) {
     return (res.components || []).filter(function (p) { return p.id === id; })[0] || {};
@@ -185,6 +191,124 @@ ok('the curve is site-capex\'s, not a copy',
     ok('full build is untouched at ' + y + ' years', shut(y).totalBuildUsd === 4125600,
        shut(y).totalBuildUsd);
 });
+
+console.log('\n=== new and used are different markets, not different discounts ===');
+function mk(years, opts) {
+    var sd = { collectionSystem: 'Yes', projectStatus: 'Shutdown' };
+    if (years !== null) {
+        sd.projectShutdownDate = new Date(Date.parse('2026-08-30T00:00:00Z') -
+            years * 365.25 * 86400000).toISOString().slice(0, 10);
+    }
+    var o = { asOf: '2026-08-30' };
+    for (var k in (opts || {})) o[k] = opts[k];
+    return SI.capitalAvoided({ id: 'm', energyType: 'landfill_gas', powerPotentialKw: 2160,
+                               latitude: 40, longitude: -74, existingGenerationKw: 2160,
+                               sourceDetail: sd }, o);
+}
+function comp(r, id) {
+    return (r.components || []).filter(function (p) { return p.id === id; })[0] || {};
+}
+
+/* REGRESSION FIRST. Forced to new, every figure is what it was before the market axis existed. */
+var atNew = mk(null, { market: 'new' });
+ok('forced new: full build is unchanged', atNew.totalBuildUsd === 4125600, atNew.totalBuildUsd);
+ok('forced new: capital avoided is unchanged', atNew.avoidedUsd === 1740960, atNew.avoidedUsd);
+ok('forced new: still to spend is unchanged', atNew.requiredUsd === 2384640, atNew.requiredUsd);
+ok('and it reports the market it priced in', atNew.market === 'new', atNew.market);
+
+var atUsed = mk(null, { market: 'used' });
+ok('used generation is the quote net of commissioning',
+   comp(atUsed, 'generation').perKw === 225, comp(atUsed, 'generation').perKw);
+ok('and the full build falls to 2,397,600', atUsed.totalBuildUsd === 2397600, atUsed.totalBuildUsd);
+/* Interconnection and gas treatment have secondary markets too -- the saving is NOT generation
+   alone, which is what made the first estimate of this number wrong. */
+ok('electrical is priced used as well', comp(atUsed, 'electrical').perKw === 85,
+   comp(atUsed, 'electrical').perKw);
+ok('and gas treatment', comp(atUsed, 'gasTreatment').perKw === 190,
+   comp(atUsed, 'gasTreatment').perKw);
+
+/* NO USED MARKET MEANS UNCHANGED, ASSERTED RATHER THAN ASSUMED. A wellfield is drilled in place
+   and there is nothing to resell; concrete is concrete. */
+['collection', 'civil'].forEach(function (id) {
+    ok(id + ' costs the same in either market',
+       comp(atUsed, id).perKw === comp(atNew, id).perKw, comp(atUsed, id).perKw);
+    ok('and says it has no used market, rather than showing a saving of zero',
+       comp(atUsed, id).usedMarket === false);
+});
+ok('while generation says it does have one', comp(atUsed, 'generation').usedMarket === true);
+
+/* THE INDEPENDENCE THAT MATTERS, and the one place an interaction could hide: the avoided column
+   moves on BOTH axes, so a market rate leaking into the condition discount would look like a
+   plausible number. The discount is asserted identical across markets at four ages. */
+[null, 3, 12.7, 30].forEach(function (y) {
+    var n = mk(y, { market: 'new' }), u = mk(y, { market: 'used' });
+    ['generation', 'gasTreatment', 'electrical', 'civil', 'collection'].forEach(function (id) {
+        ok('at ' + y + ' years, ' + id + ' has the same discount in both markets',
+           comp(n, id).discount === comp(u, id).discount,
+           comp(n, id).discount + ' vs ' + comp(u, id).discount);
+    });
+    /* And the other direction: the market rate is the same whatever the age. */
+    ok('at ' + y + ' years, the used generation rate is unmoved by age',
+       comp(u, 'generation').perKw === 225, comp(u, 'generation').perKw);
+    ok('and the full build is unmoved by age in either market',
+       n.totalBuildUsd === 4125600 && u.totalBuildUsd === 2397600,
+       n.totalBuildUsd + ' / ' + u.totalBuildUsd);
+});
+/* Stated as the factorisation it is: avoided = full(market) x discount(age), so the ratio
+   between markets is constant across every age. If the two ever interacted this would drift. */
+var ratios = [null, 3, 12.7, 30].map(function (y) {
+    var n = mk(y, { market: 'new' }), u = mk(y, { market: 'used' });
+    return Math.round(comp(u, 'generation').avoidedUsd / comp(n, 'generation').avoidedUsd * 1e6);
+});
+ok('the used/new avoided ratio is identical at every age', ratios.every(function (r) {
+    return r === ratios[0];
+}), ratios.join(', '));
+/* AND IT EQUALS THE RATE RATIO EXACTLY, which is the assertion that actually pins the
+   factorisation. "Constant across ages" is also true of a uniform extra multiplier applied to
+   every used row -- a secret 0.9 on used values keeps every ratio equal to every other and
+   sails past the check above. Comparing the reported `discount` field does not catch it either,
+   because such a multiplier would not touch that field. Only the absolute ratio does. */
+var expected = Math.round(SiteCapex.usedRates().generationPerKw /
+                          SiteCapex.rates().generationPerKw * 1e6);
+ok('and it equals used/new rate exactly, so nothing else is multiplied in',
+   ratios[0] === expected, ratios[0] + ' vs ' + expected);
+/* The same absolutely, on the figure that decides anything. */
+var nNew = mk(12.7, { market: 'new' }), nUsed = mk(12.7, { market: 'used' });
+ok('full build scales by exactly the rate change and nothing more',
+   nUsed.totalBuildUsd === 2397600 && nNew.totalBuildUsd === 4125600,
+   nUsed.totalBuildUsd + ' / ' + nNew.totalBuildUsd);
+
+/* THE COUNTERINTUITIVE RESULT, pinned because somebody will read it as a bug: a site in BETTER
+   condition saves LESS by buying used, because you only pay for what you do not inherit. */
+var recent = mk(3, { market: 'new' }), median = mk(12.7, { market: 'new' });
+var recentSave = mk(3, { market: 'used' }), medianSave = mk(12.7, { market: 'used' });
+var rs = recent.requiredUsd - recentSave.requiredUsd;
+var ms = median.requiredUsd - medianSave.requiredUsd;
+ok('a three-year shutdown saves less than a median one', rs < ms, rs + ' vs ' + ms);
+ok('and the module reports that saving rather than leaving it to be computed',
+   mk(3, { market: 'used' }).requiredSavingUsd === rs,
+   mk(3, { market: 'used' }).requiredSavingUsd + ' vs ' + rs);
+
+/* THE DEFAULT: shutdown only. 462 sites against 10,682 -- a default that reprices nine tenths
+   of the catalogue becomes invisible and then load-bearing. */
+ok('a shut site defaults to used', mk(3).market === 'used', mk(3).market);
+var running = SI.capitalAvoided(
+    { id: 'r', energyType: 'landfill_gas', powerPotentialKw: 2160, latitude: 40, longitude: -74,
+      existingGenerationKw: 2160,
+      sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Operational' } },
+    { asOf: '2026-08-30' });
+ok('a RUNNING plant does not: you inherit that equipment rather than buying it, and the ' +
+   'condition discount already prices it', running.market === 'new', running.market);
+var raw = SI.capitalAvoided(
+    { id: 'g', energyType: 'landfill_gas', powerPotentialKw: 2160, latitude: 40, longitude: -74,
+      sourceDetail: { collectionSystem: 'No' } }, { asOf: '2026-08-30' });
+ok('and neither does a raw resource', raw.market === 'new', raw.market);
+
+/* Per-component override beats the site setting. */
+var mixed = mk(null, { market: 'new', marketOverride: { generation: 'used' } });
+ok('one component can be overridden', comp(mixed, 'generation').perKw === 225);
+ok('without moving the others', comp(mixed, 'electrical').perKw === 150,
+   comp(mixed, 'electrical').perKw);
 
 console.log('\n=== generation is read from the field, not inferred from status ===');
 /* The brief proposed operational/construction/shutdown -> "generation present". Measured on the

@@ -128,6 +128,61 @@ var SiteCapex = (function() {
      * component priced equipment-only would be silently short its installation everywhere it
      * is summed, and no caller subtracts or adds one. If one is ever needed it has to arrive
      * with the arithmetic that completes it. */
+    /* ===== NEW AND USED ARE DIFFERENT MARKETS, NOT DIFFERENT DISCOUNTS ===================
+     *
+     * The rates above price new equipment, which is right for a greenfield build and wrong for
+     * the acquisition strategy this tool exists to support. A real quote for two used Jenbacher
+     * J616s -- 5 MW -- came in at $600,000 equipment-only, roughly $900K-1.1M once rigging, gas
+     * train, exhaust, controls, foundation, freight and commissioning are added.
+     *
+     * THE QUOTE HAS TO HAVE COMMISSIONING TAKEN OUT BEFORE IT IS COMPARED. RATE_BASIS below
+     * says every equipment rate on this card is 'installed' and that installed EXCLUDES
+     * commissioning, because commissioningPerKw is its own component. $1.0M installed-and-
+     * running over 5 MW is $200/kW; commissioning is $60/kW of that, so the comparable figure
+     * is about $140-165/kW and $225 is deliberately conservative against it -- the quote was for
+     * two large units and smaller ones do not scale down as kindly.
+     *
+     * MARKET AND CONDITION ARE INDEPENDENT MULTIPLIERS. capitalAvoided() computes
+     * avoided = full x discount, so changing which market you price `full` in scales avoided and
+     * required proportionally and leaves the 0.35/0.60 condition discounts untouched. They must
+     * never interact: what you pay for a machine and whether the one on site still runs are
+     * different questions.
+     *
+     * A COMPONENT WITH NO USED MARKET HAS used === new, STATED RATHER THAN IMPLIED. A reader has
+     * to be able to see that collection carries no discount because no market exists for a
+     * wellfield -- it is drilled in place and there is nothing to resell -- rather than because
+     * somebody forgot to fill the column in. Same for civil, which is concrete, and for
+     * permitting and commissioning, which are services.
+     *
+     * WHAT THIS DOES NOT MODEL, deliberately: run hours, overhaul liability and remaining life
+     * on a used unit. A $200/kW engine with 60,000 hours on it is not the same asset as one with
+     * 8,000, and nothing here knows which you are buying. The panel says so. */
+    var USED_RATES = {
+        // Deep secondary market. The largest single saving, and the reason for this whole axis.
+        generationPerKw:      225,
+        // Transformers and switchgear trade actively; roughly 55% of new.
+        interconnectionPerKw: 85,
+        // A skid trades; the media and consumables inside it do not. ~75%.
+        gasTreatmentPerKw:    190,
+        // Some secondary market in containers and pads-worth of steel, thinner than the above.
+        miningInfraPerKw:     360,
+        /* NO USED MARKET. Equal to new, and equal ON PURPOSE. */
+        collectionPerKw:      550,    // wells and headers are installed in place; nothing resells
+        civilPerKw:           60,     // concrete
+        permittingFlatUsd:    160000, // a service
+        commissioningPerKw:   60      // a service
+    };
+    /* Which of those are genuine markets rather than a rate repeated so the table is square.
+       Exported so the UI can say "no used market" instead of showing a saving of zero, and so a
+       test can assert the no-market components are untouched by the setting. */
+    var USED_MARKET = {
+        generationPerKw: true, interconnectionPerKw: true, gasTreatmentPerKw: true,
+        miningInfraPerKw: true,
+        collectionPerKw: false, civilPerKw: false, permittingFlatUsd: false,
+        commissioningPerKw: false
+    };
+    var MARKETS = ['new', 'used'];
+
     var RATE_BASIS = {
         miningInfraPerKw:     'installed',   // states "install labour" in its own note
         generationPerKw:      'installed',   // states "installed" in its own note
@@ -239,12 +294,42 @@ var SiteCapex = (function() {
 
     var STAGES = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
 
-    var _rates = null, _acq = null, _settings = null;
+    var _rates = null, _acq = null, _settings = null, _used = null;
 
     function copy(o) { var out = {}; for (var k in o) if (has(o, k)) out[k] = o[k]; return out; }
     function has(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
 
     function rates() { if (!_rates) _rates = copy(DEFAULT_RATES); return _rates; }
+
+    /* The rate card priced in a given market. 'new' is rates() exactly, so every existing caller
+       is byte-identical and the regression is structural rather than promised. A used rate falls
+       back to the new one whenever the component has no secondary market, which is most of them.
+
+       USER EDITS TO THE NEW CARD ARE NOT INHERITED BY THE USED ONE, and that is deliberate: they
+       are two independent prices for the same thing, and silently deriving one from the other
+       would make a used rate move when somebody corrected a new one. */
+    function ratesFor(market) {
+        var r = rates();
+        if (market !== 'used') return r;
+        var out = {}, u = usedRates();
+        for (var k in r) {
+            if (!Object.prototype.hasOwnProperty.call(r, k)) continue;
+            out[k] = (USED_MARKET[k] && u[k] !== undefined) ? u[k] : r[k];
+        }
+        return out;
+    }
+    function usedRates() { if (!_used) _used = copy(USED_RATES); return _used; }
+    function setUsedRate(id, v) {
+        var n = Number(v);
+        if (!isFinite(n) || n < 0) return false;
+        if (!has(USED_RATES, id)) return false;
+        usedRates()[id] = n;
+        return true;
+    }
+    /* Whether a component is priced in a real secondary market or is simply carrying the new
+       rate because none exists. The UI needs this to say "no used market" rather than showing a
+       saving of zero, which reads as a rate somebody forgot to fill in. */
+    function hasUsedMarket(id) { return !!USED_MARKET[id]; }
     function acquisitionRates() { if (!_acq) _acq = copy(DEFAULT_ACQUISITION_PER_KW); return _acq; }
     function settings() { if (!_settings) _settings = copy(DEFAULT_SETTINGS); return _settings; }
 
@@ -267,7 +352,7 @@ var SiteCapex = (function() {
         settings()[key] = v;
         return true;
     }
-    function reset() { _rates = null; _acq = null; _settings = null; }
+    function reset() { _rates = null; _acq = null; _settings = null; _used = null; }
 
     function num(v) {
         if (v === null || v === undefined || v === '') return null;
@@ -693,6 +778,12 @@ var SiteCapex = (function() {
         // Exported so the basis can be asserted rather than described, and so a used rate can
         // ask what it is being compared against before it is calibrated.
         RATE_BASIS: RATE_BASIS,
+        MARKETS: MARKETS,
+        USED_MARKET: USED_MARKET,
+        ratesFor: ratesFor,
+        usedRates: usedRates,
+        setUsedRate: setUsedRate,
+        hasUsedMarket: hasUsedMarket,
         stageOf: stageOf,
         refurbRetained: refurbRetained,
         yearsSinceShutdown: yearsSinceShutdown,
