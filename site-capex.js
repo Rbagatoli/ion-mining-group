@@ -101,6 +101,44 @@ var SiteCapex = (function() {
         collectionPerKw: 550
     };
 
+    /* ===== WHAT EACH RATE IS A PRICE OF ==================================================
+     *
+     * Two of these said "installed" in prose, one said it was a service, and three said
+     * nothing. That is survivable while every rate is only ever added to another rate on the
+     * same basis, and it stops being survivable the moment a used-equipment price is quoted
+     * against one of them -- because a used quote is almost always EQUIPMENT-ONLY, and
+     * installation is 50-80% on top. Calibrating a used rate against a rate whose basis is
+     * unstated is how a build comes out half price on paper.
+     *
+     * So the basis is declared per rate and asserted, rather than described. A rate added
+     * without one fails tests/site-capex.test.js.
+     *
+     * 'installed'  delivered, set, connected and mechanically complete
+     * 'service'    labour and paperwork, no equipment in it at all
+     *
+     * INSTALLED HERE EXCLUDES COMMISSIONING, and this is the trap for the used-rate work.
+     * commissioningPerKw is its own line, so generation's $900 cannot also contain startup,
+     * tuning, emissions testing and first fire -- if it did, every build would be charged for
+     * commissioning twice. A used genset quote of "$600K equipment, call it $900K-1.1M
+     * installed and running" therefore does NOT compare with $900/kW: the running part has to
+     * come out first and land on commissioning, or the comparison flatters the used case by
+     * roughly $60/kW and the model double-counts.
+     *
+     * NOTHING ON THIS CARD IS EQUIPMENT-ONLY. There is deliberately no such basis value: a
+     * component priced equipment-only would be silently short its installation everywhere it
+     * is summed, and no caller subtracts or adds one. If one is ever needed it has to arrive
+     * with the arithmetic that completes it. */
+    var RATE_BASIS = {
+        miningInfraPerKw:     'installed',   // states "install labour" in its own note
+        generationPerKw:      'installed',   // states "installed" in its own note
+        collectionPerKw:      'installed',   // wells are drilled; there is no uninstalled wellfield
+        civilPerKw:           'installed',   // concrete, poured
+        interconnectionPerKw: 'installed',   // transformer, protection, relay, breaker, set and wired
+        gasTreatmentPerKw:    'installed',   // a skid, delivered and piped in
+        permittingFlatUsd:    'service',
+        commissioningPerKw:   'service'
+    };
+
     // What it costs to BUY the asset, per kW, by how far along it is.
     //
     // These five are the weakest-evidenced numbers in this module and the UI must say so loudest.
@@ -652,6 +690,9 @@ var SiteCapex = (function() {
 
     return {
         stack: stack,
+        // Exported so the basis can be asserted rather than described, and so a used rate can
+        // ask what it is being compared against before it is calibrated.
+        RATE_BASIS: RATE_BASIS,
         stageOf: stageOf,
         refurbRetained: refurbRetained,
         yearsSinceShutdown: yearsSinceShutdown,

@@ -384,6 +384,49 @@ SC.reset();
     });
 })();
 
+// ---- Every rate declares what it is a price of ------------------------------------------
+//
+// Two rates said "installed" in prose, one said it was a service, three said nothing. That is
+// survivable while rates are only added to other rates on the same basis, and it stops being
+// survivable the moment a used-equipment price is quoted against one — a used quote is almost
+// always EQUIPMENT-ONLY and installation is 50-80% on top, so calibrating against a rate whose
+// basis is unstated is how a build comes out half price on paper.
+//
+// The census is the point: a rate added without a basis fails here rather than being noticed
+// later by whoever is trying to compare against it.
+(function () {
+    var R = SC.rates(), B = SC.RATE_BASIS;
+    ok('a basis map is exported', !!B && typeof B === 'object');
+    var rateKeys = Object.keys(R).sort(), basisKeys = Object.keys(B).sort();
+    ok('the card has rates to check', rateKeys.length >= 7, rateKeys.join(', '));
+    rateKeys.forEach(function (k) {
+        ok('"' + k + '" declares what it is a price of', B[k] !== undefined, 'no basis');
+        ok('"' + k + '" declares a basis this understands',
+           B[k] === 'installed' || B[k] === 'service', B[k]);
+    });
+    /* The other direction: a basis for a rate that no longer exists is a stale claim, and it
+       would let a rate be renamed out from under its declaration without anything failing. */
+    basisKeys.forEach(function (k) {
+        ok('basis "' + k + '" names a rate that exists', R[k] !== undefined, 'no such rate');
+    });
+    /* NOTHING IS EQUIPMENT-ONLY, deliberately: such a rate would be short its installation
+       everywhere it is summed, and no caller adds one back. */
+    ok('no rate claims to be equipment-only',
+       rateKeys.every(function (k) { return B[k] !== 'equipment'; }));
+    /* THE TRAP FOR THE USED-RATE WORK. commissioning is its own line, so "installed" cannot
+       include it — a used quote of "$600K equipment, $900K-1.1M installed and running" has the
+       running part removed before it is compared with generationPerKw, or commissioning is
+       charged twice. Pinned as a structural fact rather than a comment. */
+    ok('commissioning is a separate line, so installed cannot include it',
+       R.commissioningPerKw > 0 && B.commissioningPerKw === 'service');
+    var priced = st({ development_stage: 'raw_resource', energyType: 'landfill_gas',
+                      sourceDetail: { collectionSystem: 'No' } });
+    var ids = priced.components.map(function (c) { return c.id; });
+    ok('and it is charged as its own component, not folded into generation',
+       ids.indexOf('commissioning') >= 0 && ids.indexOf('generation_equipment') >= 0,
+       ids.join(', '));
+})();
+
 // ---- Gas collection: the wellfield, and who pays for it ---------------------------------
 //
 // Backlog item 3. The component is CONDITIONAL, and every one of the five branches is a
