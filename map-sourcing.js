@@ -5833,8 +5833,19 @@ var MapSourcing = (function() {
         // A source that failed or dropped rows is reported, not swallowed.
         var errs = ProspectStore.errors();
         if (errs.length) {
-            status(errs.length + ' source' + (errs.length > 1 ? 's' : '') + ' failed: ' +
-                   errs.map(function(e) { return e.source; }).join(', '), 'var(--neg)');
+            /* THE REASON, NOT JUST THE NAME. This listed four source ids and dropped e.error
+               on the floor, so a page reporting every source broken said nothing whatever about
+               WHY -- and the adapters are the one part of the load that cannot be diagnosed
+               from the console, because each failure is caught and turned into a data row.
+               A message that names a problem without naming its cause costs more time than no
+               message, because it looks like it has already been investigated. */
+            status(errs.length + ' source' + (errs.length > 1 ? 's' : '') + ' failed. ' +
+                   errs.map(function(e) {
+                       return e.source + ': ' + (e.error || 'no reason reported');
+                   }).join(' | '), 'var(--neg)');
+            /* And in full to the console, where a stack is readable and a long message is not
+               truncated by a status bar. */
+            if (window.console) console.error('[Sourcing] sources failed', errs);
         }
 
         // Only the countries Proton operates in. The catalog still holds all 30,361 prospects and
