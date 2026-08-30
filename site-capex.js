@@ -461,7 +461,7 @@ var SiteCapex = (function() {
         ctx = ctx || {};
         var out = {
             components: [], incurred_usd: null, additional_usd: null, avoided_usd: null,
-            avoided_components: [], unknown_ids: [], coverage: 0,
+            avoided_components: [], unknown_ids: [], coverage: 0, market: 'new',
             months_to_revenue: null, stage: null, capacity_kw: null, capacity_basis: null
         };
         if (!rec || typeof rec !== 'object') { out.unknown_ids.push('prospect'); return out; }
@@ -482,14 +482,40 @@ var SiteCapex = (function() {
         out.capacity_kw = kw;
         out.capacity_basis = (rec.sourceDetail && rec.sourceDetail.capacityBasis) || null;
 
-        var R = rates(), A = acquisitionRates(), S = settings();
+        /* THE MARKET THIS STACK IS PRICED IN. Opt-in and defaulting to 'new', so every existing
+           caller and the catalogue digest are byte-identical -- unlike capitalAvoided(), this
+           does NOT default from what is on the ground. Two reasons. It prices things
+           capitalAvoided does not: acquisition has no new-versus-used price at all, and there is
+           no secondary ASIC market modelled, so a scenario default here would silently reprice
+           the miner-side majority of the figure on an inference nobody made. And the caller that
+           needs both routes wants BOTH, explicitly, rather than one guessed for it.
+           A component with no secondary market takes the new rate either way -- ratesFor()
+           resolves that, and site-capex owns which components have one. */
+        var market = (ctx.market === 'used') ? 'used' : 'new';
+        out.market = market;
+        var R = ratesFor(market), A = acquisitionRates(), S = settings();
         var retained = STAGE_RETAINED[stage];
         var years = yearsSinceShutdown(rec, ctx.asOf);
         var refurb = refurbRetained(years);
 
         var comps = [];
+        /* RATE_KEY_FOR maps a component id to the card key it is priced from, so a row can say
+           whether a secondary market exists for it at all. "no market" and "priced new" are
+           different statements and a reader must not have to infer the first from a saving of
+           zero. Components with no rate key -- miners, acquisition, carrying cost -- report null:
+           not "no market", but "this module does not know", which is the truth for ASICs. */
+        var RATE_KEY_FOR = {
+            mining_infrastructure: 'miningInfraPerKw', generation_equipment: 'generationPerKw',
+            interconnection: 'interconnectionPerKw', permitting_development: 'permittingFlatUsd',
+            commissioning: 'commissioningPerKw', gas_treatment: 'gasTreatmentPerKw',
+            collection: 'collectionPerKw'
+        };
         function add(id, label, state, usd, basis, reason, extra) {
             var c = { id: id, label: label, state: state, usd: usd, basis: basis || null, reason: reason || null };
+            c.market = market;
+            c.used_market = RATE_KEY_FOR[id]
+                ? ((typeof hasUsedMarket === 'function') ? hasUsedMarket(RATE_KEY_FOR[id]) : null)
+                : null;
             for (var k in (extra || {})) c[k] = extra[k];
             comps.push(c);
             return c;

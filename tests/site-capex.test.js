@@ -427,6 +427,61 @@ SC.reset();
        ids.join(', '));
 })();
 
+// ---- stack() prices in a market too, opt-in -------------------------------------------
+//
+// capitalAvoided() defaults from what is on the ground; stack() deliberately does NOT. It prices
+// things capitalAvoided does not -- acquisition has no new-versus-used price at all, and no
+// secondary ASIC market is modelled -- so a scenario default here would silently reprice the
+// miner-side majority of the figure on an inference nobody made. Opt-in, defaulting to 'new',
+// which is what makes the 11,829-candidate digest byte-identical.
+(function () {
+    var rec = { powerPotentialKw: 2160, energyType: 'landfill_gas',
+                development_stage: 'constructed', existingGenerationKw: 2160,
+                sourceDetail: { collectionSystem: 'Yes', projectStatus: 'Shutdown',
+                                projectShutdownDate: '2023-08-30', requiresGasTreatment: true } };
+    var base = { capacityKw: 2160, minerCapexUsd: 1365600, annualCostOfCapitalPct: 11,
+                 asOf: '2026-08-30' };
+    function at(m) {
+        var c = {}; for (var k in base) c[k] = base[k];
+        if (m) c.market = m;
+        return SC.stack(rec, c);
+    }
+    /* THE REGRESSION, and it is the whole reason this is opt-in. */
+    eq('no market given prices new', at(null).incurred_usd, at('new').incurred_usd);
+    eq('and says so', at(null).market, 'new');
+    ok('used is cheaper', at('used').incurred_usd < at('new').incurred_usd,
+       at('used').incurred_usd + ' vs ' + at('new').incurred_usd);
+
+    /* MINING INFRASTRUCTURE IS THE POINT OF EXTENDING stack() AT ALL. capitalAvoided cannot
+       reach it -- it is not one of its five gas-side components -- so without this the used
+       route understates by the containers, transformer and switchgear. */
+    var mi = comp(at('used'), 'mining_infrastructure');
+    var miNew = comp(at('new'), 'mining_infrastructure');
+    ok('mining infrastructure is priced used', mi.usd < miNew.usd, mi.usd + ' vs ' + miNew.usd);
+    ok('and it is a real secondary market, not a repeated rate', mi.used_market === true);
+
+    /* WHAT HAS NO USED PRICE SAYS null, NOT false. "there is no secondary market" (a wellfield)
+       and "this module does not know" (ASICs, a site purchase) are different claims, and a
+       reader must not take the second for the first. */
+    ok('miners report an unknown market rather than none',
+       comp(at('used'), 'miners').used_market === null,
+       String(comp(at('used'), 'miners').used_market));
+    ok('acquisition too', comp(at('used'), 'site_acquisition').used_market === null);
+    ok('while a wellfield reports none, definitely',
+       comp(at('used'), 'collection').used_market === false);
+
+    /* Miners and acquisition must cost the SAME in both routes -- if either moved, the used
+       total would be claiming a saving on something nothing here prices. */
+    eq('miners cost the same in both', comp(at('used'), 'miners').usd,
+       comp(at('new'), 'miners').usd);
+    eq('and so does the site', comp(at('used'), 'site_acquisition').usd,
+       comp(at('new'), 'site_acquisition').usd);
+
+    /* An unrecognised market is not an error and not a third mode: it is 'new'. */
+    var c2 = {}; for (var k2 in base) c2[k2] = base[k2]; c2.market = 'refurbished';
+    eq('an unknown market falls back to new', SC.stack(rec, c2).incurred_usd, at('new').incurred_usd);
+})();
+
 // ---- New and used are different markets -------------------------------------------------
 (function () {
     var NEWR = SC.ratesFor('new'), USED = SC.ratesFor('used'), RAW = SC.usedRates();
