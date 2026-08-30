@@ -1,3 +1,16 @@
+/* FROZEN. This is calc-engine.js as it stood immediately BEFORE the batch-spec refactor
+   (commit f4e219c), kept so calc-batch-refactor.test.js can prove the refactor changed
+   nothing.
+
+   DO NOT EDIT IT, and do not update it to match the live engine. Its entire value is that
+   it is the old arithmetic. A baseline that gets "fixed" alongside the thing it measures
+   stops measuring anything -- it would agree with any change ever made.
+
+   It becomes obsolete only when the replacement feature deliberately changes output for a
+   scenario that sets replacement parameters. Even then the no-replacement scenarios in that
+   test must still match this file exactly; if they stop matching, the default path moved and
+   that is a regression, not progress. */
+
 // ===== PROTON MINING — Mining Projection Engine =====
 // Pure projection math, extracted from calculator.js so it can be:
 //   1. called for scenarios that are NOT currently in the DOM (side-by-side comparison), and
@@ -175,22 +188,7 @@ var CalcEngine = (function() {
         var cumulCashFlow = -totalCapex - p.infrastructureCost;
         var cumulElecCost = 0;
         var breakEvenPeriod = null;
-        /* COHORTS CARRY THEIR OWN SPEC.
-
-           A batch used to be {period, count} and nothing else, so the fleet had cohorts for
-           AGE but not for SPEC: production was p.hashrateTH * activeMachines, one scalar
-           machine times one scalar count. That is correct only while every machine on site is
-           identical, which is exactly the assumption a replacement-hardware model has to break.
-
-           This commit is the move and nothing else. Every batch is populated from the same
-           scalars the old code multiplied by, so the sums below are arithmetically the same
-           expression regrouped, and the projection is byte-identical. The replacement feature
-           lands on top of this. */
-        function makeBatch(period, count) {
-            return { period: period, count: count,
-                     hashrateTH: p.hashrateTH, powerKW: p.powerKW, capex: p.capex };
-        }
-        var minerBatches = [makeBatch(0, p.machineCount)];
+        var minerBatches = [{ period: 0, count: p.machineCount }];
         var activeMachines = p.machineCount;
         var reinvestPool = 0;
         var totalMachinesBought = 0;
@@ -254,7 +252,7 @@ var CalcEngine = (function() {
             if (p.autoReplace && retiredThisPeriod > 0) {
                 replacedThisPeriod = retiredThisPeriod;
                 activeMachines += replacedThisPeriod;
-                minerBatches.push(makeBatch(i, replacedThisPeriod));
+                minerBatches.push({ period: i, count: replacedThisPeriod });
                 cumulCashFlow -= replacedThisPeriod * p.capex * (1 - p.salvagePct);
             }
 
@@ -271,53 +269,13 @@ var CalcEngine = (function() {
                 if (scheduledThisPeriod > 0) {
                     activeMachines += scheduledThisPeriod;
                     totalScheduledAdded += scheduledThisPeriod;
-                    minerBatches.push(makeBatch(i, scheduledThisPeriod));
+                    minerBatches.push({ period: i, count: scheduledThisPeriod });
                     if (p.deductAdditionCapex) cumulCashFlow -= scheduledThisPeriod * p.capex;
                 }
             }
 
-            /* Aggregated over cohorts rather than multiplied by a scalar count. This is the
-               seam the replacement feature needs, and it is behaviour-free today because every
-               cohort holds the same spec.
-
-               COUNTS ARE SUMMED BEFORE THEY ARE MULTIPLIED, and that is not a style choice.
-               The naive form -- adding count x spec per cohort -- is the same expression
-               regrouped, and floating point does not regroup for free: a 100-machine fleet
-               split across cohorts of 45, 26 and 29 gave an electricity line of
-               349.78003199999995 where the scalar gave 349.780032, and that ULP propagated
-               into cumulElecCost, cumulBtcMined and every table row downstream. Eight of
-               fourteen regression scenarios diverged on it.
-
-               Grouping by spec first reduces to exactly one multiply per distinct machine,
-               which is bit-for-bit the arithmetic the scalar version did while the fleet is
-               uniform -- and stays correct once it is not. Counts are integers, so summing
-               them is exact.
-
-               Placed exactly where the scalar version was, which matters: reinvest purchases
-               are pushed LATER in this same period, so they are correctly excluded here and
-               first produce in the period after they are bought. Moving this line up would
-               silently change that. */
-            var specGroups = [];
-            for (var hb = 0; hb < minerBatches.length; hb++) {
-                var hBatch = minerBatches[hb];
-                if (hBatch.count <= 0) continue;
-                var grp = null;
-                for (var gi = 0; gi < specGroups.length; gi++) {
-                    if (specGroups[gi].hashrateTH === hBatch.hashrateTH &&
-                        specGroups[gi].powerKW === hBatch.powerKW) { grp = specGroups[gi]; break; }
-                }
-                if (!grp) {
-                    grp = { hashrateTH: hBatch.hashrateTH, powerKW: hBatch.powerKW, count: 0 };
-                    specGroups.push(grp);
-                }
-                grp.count += hBatch.count;
-            }
-            var fleetHashrateTH = 0, currentPowerKW = 0;
-            for (var gj = 0; gj < specGroups.length; gj++) {
-                fleetHashrateTH += specGroups[gj].count * specGroups[gj].hashrateTH;
-                currentPowerKW += specGroups[gj].count * specGroups[gj].powerKW;
-            }
-            var currentHashrateH = fleetHashrateTH * 1e12;
+            var currentHashrateH = p.hashrateTH * activeMachines * 1e12;
+            var currentPowerKW = p.powerKW * activeMachines;
             var dailyBTCGross = (currentHashrateH * SECONDS_PER_DAY * blockReward) / (difficulty * TWO_POW_32);
             var dailyBTCNet = dailyBTCGross * (1 - p.poolFeePct) * p.uptimePct;
             var periodBTCMined = dailyBTCNet * daysPerPeriod;
@@ -387,7 +345,7 @@ var CalcEngine = (function() {
                     machinesBoughtThisPeriod++;
                     reinvestSpent += p.capex;
                 }
-                if (machinesBoughtThisPeriod > 0) minerBatches.push(makeBatch(i, machinesBoughtThisPeriod));
+                if (machinesBoughtThisPeriod > 0) minerBatches.push({ period: i, count: machinesBoughtThisPeriod });
             }
 
             cumulBtcMined += periodBTCMined;
