@@ -37,61 +37,35 @@ body {
    paints behind the body background and works there only because its <html> has none. This uses
    z-index:0 and relies on `body > * { position:relative; z-index:1 }` below, which already
    exists. */
+/* ==== THE GROUND IS BLACK. THE ONLY THING ON IT IS THE RISING PIXELS. ====================
+   This carried the "machinist field": three drifting platinum gradients on non-harmonic
+   periods (1870 / 2630 / 3400px) plus an 88px grid, at the site's own alphas. The reasoning
+   behind it was real -- the periods do not divide into each other, so the crests drift and
+   never land on a section boundary -- and it is not wanted here. It was never asked for. It
+   was restored alongside the gas field on my own judgment, and it is the reason the ground
+   read as washed grey with a visible grid rather than as black.
+
+   The request is black plus the rising pixels, and the rising pixels are #gasField, which is
+   a canvas and is untouched by this. Five layers of platinum wash competing with them is the
+   opposite of that.
+
+   Deleted rather than commented out this time. It has been switched off, back on, and off
+   again; a 25-line block of dead CSS carrying the argument for a decision that has now been
+   made twice is worse than a pointer to it. The full stack is in git at 3878dce:shared.css.
+
+   The rule itself stays, with no background, because .proton-nav and two overlays position
+   against the stacking context it establishes together with `body > * { z-index: 1 }`. */
 body::before {
-    /* The rgba(229,228,226,...) stops below are the only colour literals left in this file
-       on purpose: fourteen distinct alphas describing ONE gradient. Tokenising them would
-       mean fourteen tokens nothing else reads, which is the disease this migration cured.
-
-       THESE ARE THE SITE'S OWN ALPHAS. They were previously divided by roughly four, on the
-       reasoning that the app sits under dense tables and a canvas of sparks where the site's
-       field has nothing to compete with. That reasoning produced a page whose ground was the
-       same STRUCTURE as the site's and a quarter of its LIGHT, which is a different-looking
-       page -- the periods and the grid matched and none of it was visible.
-
-       Same four layers, same non-harmonic periods (1870 / 2630 / 3400px), same 88px machinist
-       grid, at full strength. Because the periods do not divide into each other the crests
-       drift down the page and never land on a section boundary. */
-    /* ==== THE MACHINIST FIELD IS ON ========================================
-       Reversed, as the note said it could be in one line. The four drifting layers and the
-       88px grid are the platinum half of this app's ground -- the gas field is the orange
-       half -- and the flat-black reference they were switched off for is not what this app
-       is. Non-harmonic periods (1870 / 2630 / 3400px) so the crests drift and never land on
-       a section boundary. */
     content: '';
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image:
-        linear-gradient(101deg,
-            transparent 6%,
-            rgba(229,228,226,0.028) 20%,
-            rgba(229,228,226,0.068) 33%,
-            rgba(246,245,243,0.095) 43%,
-            rgba(229,228,226,0.044) 55%,
-            rgba(229,228,226,0.011) 68%,
-            transparent 82%),
-        linear-gradient(259deg,
-            transparent 12%,
-            rgba(229,228,226,0.022) 32%,
-            rgba(229,228,226,0.058) 50%,
-            rgba(246,245,243,0.082) 60%,
-            rgba(229,228,226,0.022) 74%,
-            transparent 90%),
-        linear-gradient(180deg,
-            rgba(229,228,226,0.026) 0%, transparent 24%,
-            rgba(229,228,226,0.019) 48%, transparent 72%,
-            rgba(229,228,226,0.024) 100%),
-        linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
-    background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
-    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
     pointer-events: none;
 }
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
-    /* The grid tightens on a narrow screen so the cell stays a cell rather than becoming a
-       backdrop. The drifting layers are left alone -- they are sized in viewport-independent
-       pixels and read the same at any width. */
-    body::before { background-size: 100% 1870px, 100% 2630px, 100% 3400px, 56px 56px, 56px 56px; }
+    /* The narrow-screen override that tightened the machinist grid from 88px to 56px went with
+       the field itself: background-size on a rule that paints no background is a declaration
+       sizing nothing. */
     /* Opaque surfaces on mobile, where a translucent panel over a moving field costs a
        composite on every scroll frame. --surface, not the old hardcoded rgba(6,6,6,0.85),
        which ignored --bg entirely and so survived every previous palette change. */

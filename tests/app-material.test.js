@@ -176,12 +176,33 @@ var mismatched = PAGES.filter(function (p) {
 });
 eq('every page has the gas field canvas and its script together', mismatched.join(', ') || 'none', 'none');
 
+/* THE GROUND IS BLACK, AND THE ONLY THING ON IT IS THE RISING PIXELS.
+
+   This has been got wrong in both directions now. A re-skin hid the canvas and left a flat
+   black page with nothing on it; the repair brought the canvas back but also restored a
+   five-layer platinum gradient field and an 88px grid that were never asked for, so the ground
+   read as washed grey with a visible grid instead of as black. Both times the page had a
+   "background" and neither time was it the one requested.
+
+   These two assertions are a stated preference rather than a law of the codebase, and they are
+   written down precisely because a preference nobody records is a preference that gets
+   overridden by the next person with a reference screenshot. */
+
+var bodyRule = RULES.filter(function (r) { return r.sel === 'body'; })[0];
+ok('the page ground is black',
+   !!bodyRule && /background\s*:\s*var\(--black\)/.test(bodyRule.body));
+
 var bodyBefore = RULES.filter(function (r) { return r.sel === 'body::before'; });
-ok('body::before exists', bodyBefore.length > 0);
-eq('the machinist field is painting, not switched to none',
-   bodyBefore.filter(function (r) { return /background-image\s*:\s*none/.test(r.body); }).length, 0);
-ok('the machinist field declares its drifting layers',
-   bodyBefore.some(function (r) { return (r.body.match(/linear-gradient/g) || []).length >= 4; }));
+/* The rule stays even with nothing to paint: it establishes the stacking context that
+   `body > * { z-index: 1 }` and the fixed canvas at z-index 0 are ordered against. */
+ok('body::before still establishes the stacking context', bodyBefore.length > 0);
+
+/* Non-vacuous on purpose: this fails the moment ANY background image is painted over the
+   ground, rather than only catching the literal `background-image: none` it replaced -- which
+   passed trivially once the declaration was deleted rather than set to none. */
+var painted = bodyBefore.filter(function (r) { return /background-image\s*:/.test(r.body); })
+                        .map(function () { return 'body::before'; });
+eq('nothing washes over the black ground', painted.join(', ') || 'none', 'none');
 
 /* ---- 4. A SURFACE DOES NOT CHANGE ITS MIND UNDER THE POINTER ------------------------------ */
 
