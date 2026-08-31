@@ -342,8 +342,10 @@ main {
     border: none;
     border-radius: var(--radius-lg);
     padding: 20px 22px;
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    /* No backdrop-filter. It blurs what is BEHIND the element, and behind this one is an
+       opaque fill -- so it renders nothing while still promoting every card to its own
+       compositor layer, on pages that draw two hundred rows. It belongs with translucency
+       and it left with it. */
 }
 /* THE POLISHED LIP. One pseudo element is the whole difference between a panel and a machined
    plate. It used to sit at -1px so it capped the 1px border; there is no border now, so it
@@ -452,8 +454,8 @@ main {
        parent it cannot: any direct rule on the element wins over an inherited value, whatever
        its specificity and wherever it sits in the file. */
     color: var(--plat-000);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    /* No backdrop-filter -- see .card. The tile is the more numerous of the two by a wide
+       margin (22 on the dashboard alone), so the saved layer matters more here. */
     transition: background 0.18s;
 }
 .metric-card:hover { background-color: var(--card-2); }

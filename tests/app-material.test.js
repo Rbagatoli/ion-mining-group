@@ -183,16 +183,51 @@ eq('the machinist field is painting, not switched to none',
 ok('the machinist field declares its drifting layers',
    bodyBefore.some(function (r) { return (r.body.match(/linear-gradient/g) || []).length >= 4; }));
 
-/* ---- 4. THE FIELD IS ACTUALLY VISIBLE THROUGH THE CARDS ----------------------------------- */
+/* ---- 4. A SURFACE DOES NOT CHANGE ITS MIND UNDER THE POINTER ------------------------------ */
 
-/* An opaque card over a moving field hides it. Restoring the animation while leaving the cards
-   opaque restores something visible only in the gaps, which is not what was asked for. --card
-   must therefore carry an alpha channel. */
-var cardDecl = (TOKENS_C.match(/--card\s*:\s*([^;]+);/) || [])[1];
+/* Deliberately NOT an assertion that the card is opaque, nor that it is translucent. Either is
+   a legitimate design: the field can live in the ground with black windows in front of it, or
+   it can show through them. What is never right is a card whose RESTING and HOVER states
+   disagree, because then the animation switches on or off under the cursor.
+
+   That shipped. --card was made translucent and .metric-card:hover was left pointing at the
+   opaque --card-2, so hovering any tile snapped the field off behind it. Both rules were
+   individually reasonable and the bug existed only in the pair -- the same shape as the
+   specificity bug at the top of this file, which is why this file asserts relationships. */
+
+function tokenValue(name) {
+    var m = TOKENS_C.match(new RegExp('--' + name + '\\s*:\\s*([^;]+);'));
+    return m ? m[1].trim() : null;
+}
+/* Translucent means an rgba()/hsla() whose alpha is below 1. */
+function isTranslucent(v) {
+    if (!v) return false;
+    var m = v.match(/\b(?:rgba|hsla)\([^)]*?,\s*([01]?\.?\d*)\s*\)/i);
+    return !!m && parseFloat(m[1]) < 1;
+}
+
+var cardDecl = tokenValue('card');
 ok('--card is defined', !!cardDecl);
-ok('--card is translucent so the field shows through it',
-   !!cardDecl && /rgba?\([^)]*,[^)]*,[^)]*,\s*0?\.\d+\s*\)/.test(cardDecl),
-   'got ' + JSON.stringify(cardDecl));
+
+/* Whichever token the hover points at, resolved rather than assumed. */
+var hoverRule = RULES.filter(function (r) { return r.sel === '.metric-card:hover'; })[0];
+var hoverToken = hoverRule && (hoverRule.body.match(/background(?:-color)?\s*:\s*var\(--([\w-]+)\)/) || [])[1];
+
+ok('.metric-card:hover names a surface token', !!hoverToken, 'got ' + JSON.stringify(hoverToken));
+
+if (hoverToken) {
+    var restingT = isTranslucent(cardDecl);
+    var hoverT = isTranslucent(tokenValue(hoverToken));
+    eq('the stat tile does not change opacity under the pointer',
+       restingT === hoverT ? 'consistent'
+         : 'resting=' + (restingT ? 'translucent' : 'opaque') +
+           ' but hover(--' + hoverToken + ')=' + (hoverT ? 'translucent' : 'opaque'),
+       'consistent');
+}
+
+/* Whether or not the cards transmit, the field must exist in the GROUND. That is what the
+   #gasField and body::before assertions above carry, and they are the ones holding the
+   actual request. */
 
 /* ---- 5. A TONE RULE NEEDS A SURFACE TO PAINT ---------------------------------------------- */
 

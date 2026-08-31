@@ -170,12 +170,14 @@
        Separate names rather than edits, because --panel and --line are SHARED with
        site/styles.css and changing them would drift the app from the site and fail
        the parity assertion. Nothing above the inherited line moves. */
-    /* Translucent, not opaque, and the value is chosen so it does not LOOK translucent over
-       bare ground: 0.55 x 27 = 14.85 over #000 is #0f0f0f, the opaque colour this replaces.
-       The 45% that now passes through is what makes the gas field and the machinist grid
-       visible behind the cards instead of only between them. --card-2 stays opaque: it is a
-       card sitting ON a card, and buttons use it, and neither should transmit. */
-    --card:        rgba(27, 27, 27, 0.55);
+    /* OPAQUE, DELIBERATELY. This was briefly rgba(27,27,27,0.55) -- chosen so it composited to
+       exactly this colour over the black ground while passing 45% of the gas field through
+       every card. It worked, and it is not what is wanted: the field belongs to the GROUND.
+       A window is black, the rising pixels are behind it, and the two do not mix. That also
+       keeps the surface honest at every size -- a translucent card over a bright spark reads
+       as a different colour than the same card over empty ground, so a grid of tiles subtly
+       disagreed with itself depending on what was drifting underneath. */
+    --card:        #0f0f0f;
     --card-2:      #161616;   /* a card sitting on a card */
     --card-hover:  #1c1c1c;
     /* --dash was defined here for a dashed in-card separator and read by exactly one rule,
