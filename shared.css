@@ -51,11 +51,22 @@ body::before {
        Same four layers, same non-harmonic periods (1870 / 2630 / 3400px), same 88px machinist
        grid, at full strength. Because the periods do not divide into each other the crests
        drift down the page and never land on a section boundary. */
+    /* ==== THE MACHINIST FIELD IS OFF FOR THE KRAKEN PASS ====================
+       The four drifting layers and the 88px grid are kept in full below, commented, because
+       the reasoning behind them is real and measured -- non-harmonic periods so the crests
+       never land on a section boundary, at the site's own alphas because a quarter-strength
+       copy read as the same structure with none of the light. None of that is wrong. It is
+       for a different product: the reference ground is flat black with nothing on it, and a
+       drifting platinum field is the loudest thing separating this app from it.
+
+       Left as a comment rather than deleted so the argument survives and the decision is one
+       line to reverse. Restore by uncommenting and removing the flat rule below. */
     content: '';
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image:
+    background-image: none;
+/*  background-image:
         linear-gradient(101deg,
             transparent 6%,
             rgba(229,228,226,0.028) 20%,
@@ -78,7 +89,7 @@ body::before {
         linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
     background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
-    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
+    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;   */
     pointer-events: none;
 }
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
@@ -103,6 +114,12 @@ body::before {
    gas-field.js draws one composed still when motion is reduced, and a still
    field is a better answer than an empty black rectangle -- the backdrop is
    part of the page's material, not decoration layered on top of it. */
+/* THE GAS FIELD CANVAS, HIDDEN FOR THE KRAKEN PASS. It draws the drifting sparks that read as
+   a starfield behind the dashboard -- the second half of the textured ground, and the half a
+   CSS change cannot reach. Hidden rather than removed from the markup: gas-field.js still runs
+   and still owns the canvas, several pages embed it, and deleting the element would leave that
+   module addressing nothing. display:none also stops it painting, so it costs no frames.
+   One line to bring back. */
 #gasField {
     position: fixed;
     top: 0;
@@ -111,6 +128,7 @@ body::before {
     height: 100%;
     pointer-events: none;
     z-index: 0;
+    display: none;
 }
 
 body > * { position: relative; z-index: 1; }
@@ -319,33 +337,37 @@ main {
 }
 
 /* ===== GLASSMORPHISM CARD ===== */
+/* THE CARD LIFTS RATHER THAN OUTLINES.
+ *
+ * It was --panel (white at 1.5%) held together by a 13%-alpha hairline: the shape carried
+ * entirely by the border, which reads as a technical drawing. The reference reads as objects
+ * on a black ground -- no border at all, the edge found by a step in lightness.
+ *
+ * The sheen and the backdrop blur go with it. Both existed to make a nearly-transparent panel
+ * legible over moving content; an opaque surface needs neither, and the blur was costing a
+ * compositor layer per card on a page that draws two hundred rows. */
 .card {
     position: relative;
-    background-color: var(--panel);
-    /* Light from above-left, at an angle that matches no edge of the box. */
-    background-image: var(--sheen-panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 20px;
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    box-shadow: var(--shadow-card);
+    background-color: var(--card);
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
 }
-/* THE POLISHED LIP. The site's .card is otherwise byte-for-byte what the app
-   already had -- same --panel, same 1px --line border -- and this one pseudo
-   element is the whole difference between a panel and a machined plate. It sits
-   at -1px so it caps the border rather than floating inside it. */
-.card::before,
-.metric-card::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: -1px; right: -1px;
-    height: 1px;
-    background-image: var(--edge-plat);
-    pointer-events: none;
-    z-index: 2;
-}
-.card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--text); letter-spacing: 0.3px; }
+/* THE POLISHED LIP IS GONE, AND ITS REMOVAL IS THE POINT. It capped a 1px border at -1px to
+   turn a panel into a machined plate. There is no border to cap now, so at -1px it renders as
+   a bright line floating above a rounded corner -- the one element that would make the new
+   surface look broken rather than different. Kept as a rule with no declarations would be
+   worse than deleting it: a reader would think it still did something. */
+/* Tighter tracking as the size goes up, which is the opposite of the uppercase labels this
+   design used everywhere: large type wants negative tracking, small caps want positive. */
+.card h3 { font-size: 17px; font-weight: 600; margin-bottom: 14px; color: var(--plat-100); letter-spacing: -0.01em; }
+
+/* A card sitting on a card, and the dashed rule between rows inside one. Both are the details
+   that read as the reference at a glance: it separates a card's own rows with a dashed hairline
+   rather than putting solid rules between whole cards. */
+.card-inner { background: var(--card-2); border-radius: var(--radius); padding: 14px 16px; }
+.card-row + .card-row { border-top: 1px dashed var(--dash); }
+.card-row { padding: 13px 0; }
 
 /* ===== INPUTS ===== */
 .inputs-grid {
@@ -358,15 +380,17 @@ main {
 
 .input-group { margin-bottom: 12px; }
 .input-group label {
-    display: block; font-size: 12px; color: var(--text-mid); margin-bottom: 4px; font-weight: 500;
+    display: block; font-size: 13px; color: var(--plat-400); margin-bottom: 6px; font-weight: 500;
 }
+/* A FILLED FIELD, NOT AN OUTLINED ONE, and a tighter corner than the card holding it. Nesting
+   the same radius inside itself reads as a mistake; the inner corner has to be smaller than the
+   outer one or the gap between them looks uneven. The blur goes for the reason it went on the
+   card: an opaque fill has nothing to see through. */
 .input-wrapper {
-    display: flex; align-items: center; background: var(--panel-solid);
-    border: 1px solid var(--line); border-radius: var(--radius); overflow: visible;
+    display: flex; align-items: center; background: var(--card-2);
+    border: 1px solid transparent; border-radius: var(--radius-sm); overflow: visible;
     position: relative;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    transition: border-color 0.18s, background 0.18s;
 }
 .input-wrapper:focus-within {
     border-color: var(--btc-300); box-shadow: var(--shadow-card);
@@ -406,42 +430,58 @@ main {
 @media (max-width: 900px) { .metrics-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
 
+/* THE STAT TILE IS THE WHOLE RESEMBLANCE.
+ *
+ * It was an 11px uppercase label over a 20px value, centred, in a bordered translucent box --
+ * eight of them tiled, each shouting its label as loudly as its number. The reference does the
+ * opposite and it is the single most recognisable thing about it: a quiet sentence-case label
+ * in grey, then the number very large in white, LEFT ALIGNED so a column of them scans down the
+ * first digit rather than wandering with the width of each value.
+ *
+ * Centred numerals are the reason a grid of these reads as a control panel. Nothing lines up. */
 .metric-card {
     position: relative;
-    background-color: var(--panel); background-image: var(--sheen-panel);
-    border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 14px 16px; text-align: center;
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
-    box-shadow: var(--shadow-card);
-    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    background-color: var(--card);
+    border: none; border-radius: var(--radius);
+    padding: 16px 18px 18px; text-align: left;
+    transition: background 0.18s;
 }
-.metric-card:hover {
-    border-color: var(--line-btc);
-    box-shadow: var(--shadow-card);
-    transform: translateY(-2px);
-}
+.metric-card:hover { background-color: var(--card-2); }
 .metric-card .label {
-    font-size: 11px; color: var(--text-mid); text-transform: uppercase;
-    letter-spacing: 0.5px; margin-bottom: 4px;
+    font-size: 13px; color: var(--plat-400); text-transform: none;
+    letter-spacing: 0; margin-bottom: 7px; font-weight: 450;
 }
-.metric-card .value { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
-.metric-card .sub { font-size: 11px; color: var(--text-mid); margin-top: 2px; }
+/* Tabular figures so a column of numbers aligns digit-for-digit, and tight tracking because
+   large type needs it. font-variant-numeric is the difference between a dashboard and a
+   spreadsheet screenshot. */
+.metric-card .value {
+    font-size: 30px; font-weight: 600; letter-spacing: -0.025em;
+    color: var(--plat-000); line-height: 1.12;
+    font-variant-numeric: tabular-nums;
+}
+.metric-card .sub { font-size: 12.5px; color: var(--plat-500); margin-top: 5px; }
+/* Direction keeps its colour -- that is what colour is FOR on a number, and the two hues were
+   chosen against the accent and measured for contrast. What changes is that a value with no
+   direction is now white rather than orange: the reference colours a number only when it is
+   telling you which way it went. */
 .positive { color: var(--pos); }
 .negative { color: var(--neg); }
 .neutral  { color: var(--warn); }
+/* Still the accent, still only on the four things the token file allows it on. It is no longer
+   applied to every figure on the dashboard, which is what made the palette read as orange
+   rather than as black-and-platinum-with-an-accent. */
 .btc-orange { color: var(--btc-300); }
 /* Scoped to the two places the class is actually used on a NUMBER (20px and
    24px respectively, both verified in the page markup) rather than to
    .btc-orange at large: text-fill-color:transparent turns any element that
    later borrows the class into invisible text if it is not a glyph. */
 @supports (-webkit-background-clip: text) or (background-clip: text) {
+    /* Same decision on the figures: a live value keeps the accent, and loses the brushed
+       gradient inside the glyphs. At 30px the horizon lands mid-numeral. */
     .value.btc-orange,
     .chart-live-value.btc-orange {
-        background-image: var(--metal-btc-lit);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
+        background-image: none;
+        -webkit-text-fill-color: currentColor;
     }
 }
 
@@ -533,7 +573,10 @@ tbody tr.halving-row { background: var(--btc-wash); }
     letter-spacing: -0.032em;
     color: var(--plat-200);
 }
-.section-label { font-size: 18px; font-weight: 500; color: var(--plat-100); margin-bottom: 12px; letter-spacing: 0.2px; }
+/* Bigger and tighter, with the section's own weight carrying the hierarchy rather than a rule
+   or a colour. Positive tracking on 18px type is a small-caps habit applied where it does not
+   belong. */
+.section-label { font-size: 20px; font-weight: 650; color: var(--plat-000); margin-bottom: 14px; letter-spacing: -0.015em; }
 @supports (-webkit-background-clip: text) or (background-clip: text) {
     /* SOFT chrome, not the full flip. --metal-plat drops to #6d6c69 at 47% and back to #f2f1ef
        at 52%; across a 74px display heading that hard horizon is what makes it read as metal,
@@ -545,12 +588,17 @@ tbody tr.halving-row { background: var(--btc-wash); }
        landed mid-glyph and read as a rendering fault, which is why this was on
        the soft ramp. At 30px the horizon falls between the x-height and the
        baseline, where the site puts it. */
+    /* THE METAL FLIP IS OFF. The comment above is right about why it worked -- the hard
+       horizon at 47-52% is what made 30px type read as milled platinum rather than as grey.
+       That is the material this pass is leaving. A page title in the reference is plain white
+       and rather larger; the hierarchy comes from size and weight, not from surface.
+       The rule is kept and neutralised rather than deleted because the selector list below it
+       has children opting back OUT of a clipped parent, and removing the parent would leave
+       those overriding nothing -- the harder bug to see later. */
     .page-title {
-        background-image: var(--metal-plat);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
+        background-image: none;
+        -webkit-text-fill-color: currentColor;
+        color: var(--plat-000);
     }
     /* CHILDREN OPT BACK OUT. See the note above the selector list -- a clipped
        parent hands every nested element a transparent fill and no gradient to
@@ -767,21 +815,27 @@ footer {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 8px 20px;
-    font-size: 11.5px;
-    font-weight: 650;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    /* PILL, SENTENCE CASE, AND BIGGER. Uppercase at 11.5px with 0.12em tracking is a control
+       panel; the reference uses 15px sentence case in a fully round button, and that single
+       change does more for the resemblance than the colour does. Sentence case also stops the
+       label being 40% wider than the word it contains. */
+    padding: 11px 22px;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
     font-family: inherit;
-    border-radius: var(--radius);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
-    border: 1px solid var(--line-mid);
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s;
+    border: 1px solid transparent;
+    background: var(--card-2);
+    color: var(--plat-100);
 }
-/* The brushed sweep. Parked off the left edge and slid across on hover -- it is
-   the one thing that makes a flat fill read as a polished surface rather than a
-   coloured rectangle. transform and left only, so it cannot cost a repaint of
-   anything but itself, and pointer-events:none so it never eats the click. */
+/* THE BRUSHED SWEEP IS PARKED, NOT DELETED. It made a flat fill read as a polished metal
+   surface, which is exactly the material this pass is moving away from -- a soft pill has no
+   sheen to catch. The rule stays because .btn-secondary and .btn-connect override its gradient
+   by name; removing it would leave those overriding nothing, which is the harder bug to see.
+   The hover simply no longer moves it. */
 .btn::after {
     content: '';
     position: absolute;
@@ -792,30 +846,40 @@ footer {
     transition: left 0.55s cubic-bezier(0.3, 0, 0.2, 1);
     pointer-events: none;
 }
-.btn:hover::after { left: 145%; }
+.btn:hover::after { left: -130%; }   /* sweep disabled: see .btn::after */
+.btn:hover { background: var(--card-hover); color: var(--plat-000); }
+.btn:active { transform: scale(0.985); }
 /* THE PRIMARY BUTTON WAS NOT ORANGE, IT WAS 36% OF ORANGE. --line-btc is
    the brand orange at hairline opacity -- an edge colour -- and it was being used as a FIELD
    with orange text on top of it -- which is why "+ Add Miner" read as muted
    brown next to the site's CTAs. The site fills this button with metal and
    puts black on it. */
+/* FLAT, NOT BRUSHED. --metal-btc-btn is a five-stop gradient with a hard horizon; that is what
+   makes a button read as machined metal, and it is the single most off-reference thing left on
+   the page. The accent still marks the primary action -- that rule is the token file's and it
+   stands -- it simply marks it as a solid fill now.
+   Black on orange, not white: --on-accent is what the palette already uses for text on the
+   accent, and orange at #f7931a fails contrast against white. */
 .btn-primary {
-    background-image: var(--metal-btc-btn);
+    background: var(--btc-300);
+    background-image: none;
     color: var(--on-accent);
-    border-color: var(--line-btc-lit);
+    border-color: transparent;
 }
-.btn-primary:hover { border-color: var(--line-btc-lit-hover); }
+.btn-primary:hover { background: var(--btc-200); color: var(--on-accent); }
 /* Machined platinum edge rather than a flat grey line: the padding-box layer
    paints the field, the border-box layer paints the border with the gradient.
    --panel-solid rather than --panel because a border-box gradient cannot show
    through a translucent fill without the border bleeding into the field. */
+/* The two-layer padding-box/border-box trick painted a machined platinum edge around the
+   button. It is precise work and it is chrome; the reference has none. A filled grey pill in
+   its place, which is also one paint instead of two gradients. */
 .btn-secondary {
-    background:
-        linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
-        var(--metal-plat-flat) border-box;
+    background: var(--card-2);
     border-color: transparent;
     color: var(--plat-100);
 }
-.btn-secondary:hover { color: var(--plat-000); }
+.btn-secondary:hover { background: var(--card-hover); color: var(--plat-000); }
 .btn-secondary::after { background: var(--sheen-sweep-soft); }
 
 /* Delete dialog */

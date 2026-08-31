@@ -141,12 +141,41 @@
        Routing every radius and shadow through a token is what makes "square
        everywhere" grep-provable instead of aspirational, and reversible in one
        line if it ever turns out to be wrong. */
-    --radius: 0;
+    /* SOFT, AS OF THE KRAKEN PASS. This was 0, and the note above is the reason the
+       change is one line rather than a hundred and seventy-eight: every
+       border-radius in the app routes through this token and not one hard-codes a
+       pixel value. Verified before changing it -- shared.css 80, map.html 39,
+       prospecting.html 39, contacts 8, pay 7, workstation 5, literals 0.
+
+       These are app-only names. site/styles.css has no --radius, so rounding the
+       app does not touch the byte-identical parity tests/theme.test.js enforces on
+       the shared palette, and does not collide with the marketing site. The site
+       stays square; it says so about itself and means it. */
+    --radius: 14px;
+    --radius-sm: 10px;      /* inputs, chips, small controls */
+    --radius-lg: 20px;      /* the large surfaces: hero cards, modals */
+    --radius-pill: 999px;   /* buttons and tabs, which are fully round */
     /* The two things that are genuinely round rather than merely soft-cornered:
        the avatar and the range-slider thumb. Named so the lint can tell a
        deliberate circle from a corner nobody squared. */
     --knob: 50%;
     --shadow-card: none;
+
+    /* ---- Surfaces that LIFT rather than outline -----------------------------
+       The old panel is rgba(255,255,255,0.015) -- almost nothing -- with the
+       shape carried entirely by a 13%-alpha hairline. That reads as a technical
+       drawing, which was the point. The reference reads as objects sitting on a
+       black ground: no border at all, just a step in lightness.
+
+       Separate names rather than edits, because --panel and --line are SHARED with
+       site/styles.css and changing them would drift the app from the site and fail
+       the parity assertion. Nothing above the inherited line moves. */
+    --card:        #0f0f0f;
+    --card-2:      #161616;   /* a card sitting on a card */
+    --card-hover:  #1c1c1c;
+    /* Kraken's separator is a dashed hairline inside a card, not a solid rule
+       between them. It is the detail that most says "this product" at a glance. */
+    --dash: rgba(229, 228, 226, 0.16);
     /* Blur survives only where it does real work — the sticky nav and the modal
        scrim, both of which sit over moving content. */
     --blur: blur(16px) saturate(1.2);
