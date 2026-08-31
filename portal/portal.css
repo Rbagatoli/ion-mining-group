@@ -624,9 +624,24 @@ body.pt-app .pt-bg { display: none; }
 /* Cards were panels floating on black; on paper they are ruled blocks. The
    token swap alone leaves them almost invisible, because a 0.11 hairline on
    white is much quieter than the same alpha on black. */
+/* Lifted rather than outlined, and the lift is a SHADOW because paper has no step up in
+   lightness to find an edge with -- white on white. Three of them: a 1px ring standing in for
+   the hairline being removed, a contact shadow, and a wide soft one that does the lifting, all
+   in the ink colour rather than neutral grey so a card sits on the page and not on a smudge.
+
+   THE BORDER IS TRANSPARENT, NOT ABSENT, and it is declared HERE rather than in a later rule
+   for a reason worth stating. Four rules below colour these edges to mean something --
+   .pt-clickable:hover, .pt-rig--stale, .pt-rig--offline, and .pt-card:has(.pt-total) -- and
+   every one of them sets border-color. `border:` is a SHORTHAND: written after them at equal
+   specificity it resets their colour and all four die silently while remaining valid CSS.
+   Declared before them, they override it as they always did. */
 body.pt-app .pt-card {
     background: var(--surface-2);
-    border: 1px solid var(--line-mid);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 0 1px rgba(20, 20, 15, 0.045),
+                0 1px 2px rgba(20, 20, 15, 0.05),
+                0 6px 16px -6px rgba(20, 20, 15, 0.10);
 }
 /* Hover lifts toward the lighter surface rather than to white, so the whole set does not
    flash back to the brightness the theme just came down from. */
@@ -643,7 +658,12 @@ body.pt-app .pt-card.pt-clickable:hover {
 body.pt-app .pt-metric,
 body.pt-app .pt-rig {
     background: var(--surface-2);
-    border: 1px solid var(--line-mid);
+    /* Transparent, and before the two state rules below -- see the note on .pt-card. */
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 0 1px rgba(20, 20, 15, 0.045),
+                0 1px 2px rgba(20, 20, 15, 0.05),
+                0 6px 16px -6px rgba(20, 20, 15, 0.10);
 }
 /* Except where the border is carrying MEANING — a rig nobody has heard from,
    or one that is down. Those two keep their own colour and must not be flattened
@@ -709,6 +729,99 @@ body.pt-app .pt-head { border-bottom: 2px solid #f7931a; }
 body.pt-app .pt-demobar {
     background: #f7931a;
     color: var(--black);
+}
+
+/* ===== the paper portal in the app operator's form language ==============================
+
+   The operator app was restyled: lifted borderless cards, large left-aligned tabular figures
+   under quiet sentence-case labels, and no micro-caps anywhere. This carries that FORM across
+   to the client portal while the portal stays what it is -- paper.
+
+   EVERY RULE HERE IS SCOPED TO body.pt-app, and that is not tidiness. The sign-in front door
+   is styled by the same unscoped selectors as the signed-in view; it is explicitly staying as
+   it is, so an unscoped edit here would change a screen nobody asked to change.
+
+   WHAT DOES NOT COME ACROSS, and why, so nobody re-adds it as an oversight:
+
+     The metal. --metal-plat and --metal-btc-lit are LIGHT gradients -- whites and pale greys --
+     and they work by being clipped into text on a black ground. Clipped into text on white
+     paper they are near-invisible. There is no dark-on-light metal in the token file, and the
+     paper theme has already had to move the accent from #f7931a to #a65c00 to clear AA on
+     white. Metal on paper would be a legibility regression dressed as a finish.
+
+     The polished lip (--edge-plat) and the panel sheen (--sheen-panel). Both are white
+     highlights. On a white card they are white on white.
+
+   Metal DOES survive on a filled element, which supplies its own dark ground -- see the
+   part-paid pill at the end of this block. That is the one place it is real here. */
+
+/* The card lift -- transparent border, larger radius, three shadows -- is NOT here. It is
+   declared up with the other body.pt-app surface rules, ahead of .pt-rig--stale,
+   .pt-rig--offline, .pt-clickable:hover and .pt-card:has(.pt-total), because `border:` is a
+   shorthand and those four colour the edge to mean something. Written down here at equal
+   specificity it silently reset all four; the first version of this change did exactly that
+   and a stale machine lost its orange edge. */
+
+/* A shadow is a screen affordance. On paper it is toner spent on nothing, and a soft grey
+   halo around every card is exactly what makes a printed page look like a screenshot of a
+   web page rather than like a document. */
+@media print {
+    body.pt-app .pt-card,
+    body.pt-app .pt-metric,
+    body.pt-app .pt-rig {
+        box-shadow: none;
+        border-color: #ccc;
+    }
+}
+
+/* THE TILE. Label above value, quiet over loud, left aligned -- the app's stat tile exactly.
+   The markup order is flipped in index.html to match, rather than reversed visually with
+   flex, because a visual order that disagrees with the DOM is read out in the wrong order by
+   a screen reader. Flipping it also settles an inconsistency the portal already had: the rig
+   cards below put their label first and the metric tiles did not. */
+body.pt-app .pt-metric { padding: 16px 18px 18px; }
+body.pt-app .pt-metric-label {
+    font-size: 13px; text-transform: none; letter-spacing: 0;
+    color: var(--plat-500); margin: 0 0 7px;
+}
+body.pt-app .pt-metric-value {
+    font-size: 30px; letter-spacing: -0.025em; line-height: 1.12;
+    color: var(--plat-100);
+}
+/* The unit stays small beside a big figure, or "TH/s" grows to 30px with it. */
+body.pt-app .pt-metric-value .pt-unit { font-size: 14px; }
+
+/* The rig card's own stats are the same object one size down: they sit three-across inside a
+   card rather than being the card. */
+body.pt-app .pt-rig-stat .pt-stat-label {
+    font-size: 12.5px; text-transform: none; letter-spacing: 0;
+}
+body.pt-app .pt-rig-stat .pt-stat-value { font-size: 15px; }
+
+/* Section headings carried their hierarchy at 13px, which is smaller than the body text under
+   them. Size and weight do that job in the app and they do it here. */
+body.pt-app h2 {
+    font-size: 20px; font-weight: 650; letter-spacing: -0.015em;
+    color: var(--plat-100); margin: 34px 0 14px;
+}
+
+/* Badges: sentence case in a full pill, like every button in the app. 10px at 0.1em tracking
+   is a control panel, and this is a document. */
+body.pt-app .pt-pill {
+    font-size: 11.5px; letter-spacing: 0; text-transform: none;
+    padding: 4px 11px; border-radius: var(--radius-pill);
+}
+
+/* THE ONE PLACE METAL WORKS ON PAPER. A filled badge brings its own dark ground, so the
+   gradient has something to be seen against -- unlike clipped text, which would be borrowing
+   the white page. Same treatment as the app's primary button. */
+body.pt-app .pt-pill--part {
+    background-image: var(--metal-btc-btn);
+    border-color: transparent;
+}
+@media print {
+    /* A gradient prints as a muddy band. The flat brand orange is what it stands for. */
+    body.pt-app .pt-pill--part { background-image: none; background-color: #f7931a; }
 }
 
 /* ===== the hosting dashboard =====
