@@ -699,7 +699,18 @@ body.pt-app .pt-section-label { color: var(--btc-300); }
 /* The metric a hosting client is billed on, and the chart band for it, already use the accent.
    The statement total does too. What was missing was a mark on the card that CARRIES the
    total, so the eye finds it before reading a single figure. */
-body.pt-app .pt-card:has(.pt-total) { border-left: 3px solid var(--btc-300); }
+/* The two left corners are squared, and that is a consequence of rounding the card rather than
+   a decoration. border-radius applies to the border box, so where a 3px left border meets the
+   1px borders above and below it, the browser tapers one into the other around the arc: the
+   flag renders as a wedge, thick at top and bottom and pinching to nothing in the middle. With
+   the corners square the border has parallel sides again and reads as the bar it is meant to
+   be -- and it gives the card carrying the total a silhouette nothing else on the page has.
+   An inset box-shadow is not an alternative: it follows border-radius identically. */
+body.pt-app .pt-card:has(.pt-total) {
+    border-left: 3px solid var(--btc-300);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
 
 /* The demo bar is unchanged and stays the bright brand orange — see its own rule below. */
 
@@ -815,9 +826,45 @@ body.pt-app .pt-pill {
 /* THE ONE PLACE METAL WORKS ON PAPER. A filled badge brings its own dark ground, so the
    gradient has something to be seen against -- unlike clipped text, which would be borrowing
    the white page. Same treatment as the app's primary button. */
+/* THE INK GOES BLACK, AND THAT IS NOT A STYLE CHOICE.
+
+   Measured against white, --metal-btc-btn runs 3.21 / 2.30 / 1.43 / 2.30 / 2.91 / 1.57 -- every
+   stop under AA, and 1.43:1 where the specular highlight crosses the glyphs. The flat
+   var(--btc-300) this replaced was 5.06:1 on paper, so the first version of this rule took a
+   compliant badge on a billing document down to barely-there and kept the white ink it
+   inherited from .pt-pill--part.
+
+   Against BLACK the same gradient runs 6.55 / 9.14 / 14.64 / 9.14 / 7.21 / 13.36 -- worst stop
+   6.55:1, which is better than the flat pill it replaced. So the metal stays exactly as it
+   looks and the text stops fighting it. This is also what the rest of this file already does
+   with ink on orange: .pt-btn:hover and .pt-demobar both set color: var(--black). */
 body.pt-app .pt-pill--part {
     background-image: var(--metal-btc-btn);
     border-color: transparent;
+    color: var(--on-accent);
+}
+
+/* THE SAME TREATMENT ON THE OTHER TWO FILLED ACCENTS, which is the whole of "more of it".
+
+   Applied only where the element was ALREADY a solid orange fill -- the selected facility tab
+   and the selected chart range. Nothing new is tinted. That matters here: this stylesheet's
+   own argument for the paper theme is "a document with an orange rule and an orange figure on
+   it, not an orange interface", and painting metal onto things that were previously quiet
+   would break that while looking like it was following it.
+
+   Both carried color:#ffffff at 5.06:1 on the flat accent, so both take the same black ink for
+   the same measured reason as the pill above. */
+body.pt-app .pt-site.is-on,
+body.pt-app .fc-range.is-on {
+    background-image: var(--metal-btc-btn);
+    border-color: transparent;
+    color: var(--on-accent);
+}
+@media print {
+    body.pt-app .pt-site.is-on,
+    body.pt-app .fc-range.is-on {
+        background-image: none; background-color: #f7931a; color: #000000;
+    }
 }
 @media print {
     /* A gradient prints as a muddy band. The flat brand orange is what it stands for. */

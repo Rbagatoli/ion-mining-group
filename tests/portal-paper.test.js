@@ -219,6 +219,50 @@ var printKills = R.filter(function (r) {
 });
 ok('print suppresses the card shadow', printKills.length > 0);
 
+/* ---- 3b. METAL CARRIES DARK INK ------------------------------------------------------------ */
+
+/* --metal-btc-btn measured against WHITE runs 3.21 / 2.30 / 1.43 / 2.30 / 2.91 / 1.57 -- every
+   stop under AA, and 1.43:1 where the highlight crosses the glyphs. Against BLACK the same
+   gradient is 6.55 at worst. The first version of the metal pill kept the white ink it
+   inherited and took a 5.06:1 badge on a billing document down to 1.43:1, which looked good
+   and was not readable.
+
+   So: any element given a metal fill in the paper theme must state a dark ink itself. Stating
+   it matters -- inheriting leaves whatever the unscoped rule had, which is what went wrong. */
+
+var metalFills = R.filter(function (r) {
+    return r.sel.indexOf('body.pt-app') === 0 &&
+           /background-image\s*:\s*var\(--metal-/.test(r.body);
+});
+ok('the paper theme puts metal on its filled accents', metalFills.length >= 2,
+   'found ' + metalFills.length);
+
+var DARK_INK = /color\s*:\s*(var\(--on-accent\)|var\(--black\)|#000\b|#000000)/;
+var pale = metalFills.filter(function (r) { return !DARK_INK.test(r.body); })
+                     .map(function (r) { return r.sel; });
+eq('every metal fill states dark ink', pale.join(', ') || 'none', 'none');
+
+/* And a gradient prints as a muddy band, so each one has a flat fallback under @media print. */
+var metalSels = metalFills.map(function (r) { return r.sel; });
+var flattened = R.filter(function (r) {
+    return r.at.indexOf('print') >= 0 && /background-image\s*:\s*none/.test(r.body);
+}).map(function (r) { return r.sel; });
+var unflattened = metalSels.filter(function (s) { return flattened.indexOf(s) < 0; });
+eq('every metal fill flattens for print', unflattened.join(', ') || 'none', 'none');
+
+/* ---- 3c. THE TOTAL CARD'S FLAG IS A BAR, NOT A WEDGE --------------------------------------- */
+
+/* border-radius applies to the border box, so a 3px border-left meeting the 1px borders above
+   and below it tapers through the corner arc: thick at both ends, pinched in the middle. The
+   card only became round in the commit before this one, so the flag only became a wedge then. */
+var totalCard = R.filter(function (r) {
+    return /:has\(\.pt-total\)/.test(r.sel) && /border-left\s*:/.test(r.body);
+})[0];
+ok('the total card still carries its flag', !!totalCard);
+ok('and squares the corners the flag runs between',
+   !!totalCard && /border-top-left-radius\s*:\s*0/.test(totalCard.body) &&
+                  /border-bottom-left-radius\s*:\s*0/.test(totalCard.body));
+
 /* ---- 4. EVERY TILE READS LABEL THEN VALUE -------------------------------------------------- */
 
 /* The tiles are built in four separate template strings in portal/index.html. Missing one
