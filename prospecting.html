@@ -6,8 +6,8 @@
     <title>Proton Mining — Prospecting</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=340">
     <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./tokens.css?v=401">
-    <link rel="stylesheet" href="./shared.css?v=401">
+    <link rel="stylesheet" href="./tokens.css?v=403">
+    <link rel="stylesheet" href="./shared.css?v=403">
     <script src="./brand-migrate.js?v=340"></script>
     <script src="./theme.js?v=374"></script>
     <style>
@@ -27,7 +27,10 @@
                    padding-bottom:12px; }
         /* Lifted, not outlined. The stage tone moves off the top border and onto the column label:
    a 2px coloured rule capping a borderless card reads as a rendering fault. */
-        .pb-col { flex:0 0 248px; background:var(--card); border:none;
+        /* border-top is TRANSPARENT, not absent: .pb-col.t-active and its four siblings below
+           set border-top-color, and a colour needs a border to land on. */
+        .pb-col { flex:0 0 248px; background:var(--card);
+                  border:none; border-top:2px solid transparent;
                   border-radius:var(--radius-lg); padding-bottom:4px; }
         /* TONE, NOT STAGE NAME. Five rules cover any number of stages, so a stage
            added in the config arrives already styled — which is the whole point of
@@ -82,7 +85,9 @@
 
         /* ---- Today ---- */
         /* Same argument as the board column: the 2px tone rule was on the left edge. */
-        .pt-sec { border:none; background:var(--card); border-radius:var(--radius-lg);
+        /* Same as .pb-col: the four .pt-sec.t-* rules below colour this left edge. */
+        .pt-sec { border:none; border-left:2px solid transparent;
+                  background:var(--card); border-radius:var(--radius-lg);
                   margin:0 0 14px; max-width:900px; overflow:hidden; }
         .pt-sec.t-negative { border-left-color:var(--neg); }
         .pt-sec.t-active   { border-left-color:var(--btc-300); }

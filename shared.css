@@ -51,22 +51,17 @@ body::before {
        Same four layers, same non-harmonic periods (1870 / 2630 / 3400px), same 88px machinist
        grid, at full strength. Because the periods do not divide into each other the crests
        drift down the page and never land on a section boundary. */
-    /* ==== THE MACHINIST FIELD IS OFF FOR THE KRAKEN PASS ====================
-       The four drifting layers and the 88px grid are kept in full below, commented, because
-       the reasoning behind them is real and measured -- non-harmonic periods so the crests
-       never land on a section boundary, at the site's own alphas because a quarter-strength
-       copy read as the same structure with none of the light. None of that is wrong. It is
-       for a different product: the reference ground is flat black with nothing on it, and a
-       drifting platinum field is the loudest thing separating this app from it.
-
-       Left as a comment rather than deleted so the argument survives and the decision is one
-       line to reverse. Restore by uncommenting and removing the flat rule below. */
+    /* ==== THE MACHINIST FIELD IS ON ========================================
+       Reversed, as the note said it could be in one line. The four drifting layers and the
+       88px grid are the platinum half of this app's ground -- the gas field is the orange
+       half -- and the flat-black reference they were switched off for is not what this app
+       is. Non-harmonic periods (1870 / 2630 / 3400px) so the crests drift and never land on
+       a section boundary. */
     content: '';
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image: none;
-/*  background-image:
+    background-image:
         linear-gradient(101deg,
             transparent 6%,
             rgba(229,228,226,0.028) 20%,
@@ -89,7 +84,7 @@ body::before {
         linear-gradient(to right,  rgba(229,228,226,0.018) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(229,228,226,0.018) 1px, transparent 1px);
     background-size: 100% 1870px, 100% 2630px, 100% 3400px, 88px 88px, 88px 88px;
-    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;   */
+    background-repeat: repeat-y, repeat-y, repeat-y, repeat, repeat;
     pointer-events: none;
 }
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
@@ -114,12 +109,6 @@ body::before {
    gas-field.js draws one composed still when motion is reduced, and a still
    field is a better answer than an empty black rectangle -- the backdrop is
    part of the page's material, not decoration layered on top of it. */
-/* THE GAS FIELD CANVAS, HIDDEN FOR THE KRAKEN PASS. It draws the drifting sparks that read as
-   a starfield behind the dashboard -- the second half of the textured ground, and the half a
-   CSS change cannot reach. Hidden rather than removed from the markup: gas-field.js still runs
-   and still owns the canvas, several pages embed it, and deleting the element would leave that
-   module addressing nothing. display:none also stops it painting, so it costs no frames.
-   One line to bring back. */
 #gasField {
     position: fixed;
     top: 0;
@@ -128,7 +117,6 @@ body::before {
     height: 100%;
     pointer-events: none;
     z-index: 0;
-    display: none;
 }
 
 body > * { position: relative; z-index: 1; }
@@ -349,25 +337,37 @@ main {
 .card {
     position: relative;
     background-color: var(--card);
+    /* Light from above-left, at an angle that matches no edge of the box. */
+    background-image: var(--sheen-panel);
     border: none;
     border-radius: var(--radius-lg);
     padding: 20px 22px;
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
 }
-/* THE POLISHED LIP IS GONE, AND ITS REMOVAL IS THE POINT. It capped a 1px border at -1px to
-   turn a panel into a machined plate. There is no border to cap now, so at -1px it renders as
-   a bright line floating above a rounded corner -- the one element that would make the new
-   surface look broken rather than different. Kept as a rule with no declarations would be
-   worse than deleting it: a reader would think it still did something. */
+/* THE POLISHED LIP. One pseudo element is the whole difference between a panel and a machined
+   plate. It used to sit at -1px so it capped the 1px border; there is no border now, so it
+   sits at 0 and rides the top edge itself. It does not need insetting away from the rounded
+   corners: --edge-plat is transparent at both ends and only reaches 0.19 alpha across the
+   middle, so it has faded to nothing well before the radius starts. */
+.card::before,
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background-image: var(--edge-plat);
+    pointer-events: none;
+    z-index: 2;
+}
 /* Tighter tracking as the size goes up, which is the opposite of the uppercase labels this
    design used everywhere: large type wants negative tracking, small caps want positive. */
 .card h3 { font-size: 17px; font-weight: 600; margin-bottom: 14px; color: var(--plat-100); letter-spacing: -0.01em; }
 
-/* A card sitting on a card, and the dashed rule between rows inside one. Both are the details
-   that read as the reference at a glance: it separates a card's own rows with a dashed hairline
-   rather than putting solid rules between whole cards. */
-.card-inner { background: var(--card-2); border-radius: var(--radius); padding: 14px 16px; }
-.card-row + .card-row { border-top: 1px dashed var(--dash); }
-.card-row { padding: 13px 0; }
+/* .card-inner, .card-row and .card-row + .card-row were added by the same pass and removed
+   here: nothing in the app ever emitted either class. They were written speculatively against
+   the reference design rather than against this app's markup, and --dash existed only to serve
+   the one of them that used it. Three rules and a token that styled nothing. */
 
 /* ===== INPUTS ===== */
 .inputs-grid {
@@ -442,8 +442,18 @@ main {
 .metric-card {
     position: relative;
     background-color: var(--card);
+    background-image: var(--sheen-panel);
     border: none; border-radius: var(--radius);
     padding: 16px 18px 18px; text-align: left;
+    /* THE DEFAULT VALUE COLOUR LIVES HERE, NOT ON .value, AND THAT IS THE WHOLE FIX.
+       A number with no direction is white. A number with .positive/.negative/.neutral/
+       .btc-orange is coloured. Putting the white on `.metric-card .value` made it (0,2,0)
+       against those classes at (0,1,0) and silently beat all 325 of them. Inherited from the
+       parent it cannot: any direct rule on the element wins over an inherited value, whatever
+       its specificity and wherever it sits in the file. */
+    color: var(--plat-000);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
     transition: background 0.18s;
 }
 .metric-card:hover { background-color: var(--card-2); }
@@ -454,9 +464,11 @@ main {
 /* Tabular figures so a column of numbers aligns digit-for-digit, and tight tracking because
    large type needs it. font-variant-numeric is the difference between a dashboard and a
    spreadsheet screenshot. */
+/* No `color` here on purpose -- see .metric-card above. Size, weight and tabular figures are
+   the Kraken pass and they stay; the colour is the modifier classes' to set. */
 .metric-card .value {
     font-size: 30px; font-weight: 600; letter-spacing: -0.025em;
-    color: var(--plat-000); line-height: 1.12;
+    line-height: 1.12;
     font-variant-numeric: tabular-nums;
 }
 .metric-card .sub { font-size: 12.5px; color: var(--plat-500); margin-top: 5px; }
@@ -476,12 +488,12 @@ main {
    .btc-orange at large: text-fill-color:transparent turns any element that
    later borrows the class into invisible text if it is not a glyph. */
 @supports (-webkit-background-clip: text) or (background-clip: text) {
-    /* Same decision on the figures: a live value keeps the accent, and loses the brushed
-       gradient inside the glyphs. At 30px the horizon lands mid-numeral. */
     .value.btc-orange,
     .chart-live-value.btc-orange {
-        background-image: none;
-        -webkit-text-fill-color: currentColor;
+        background-image: var(--metal-btc-lit);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 }
 
@@ -588,17 +600,16 @@ tbody tr.halving-row { background: var(--btc-wash); }
        landed mid-glyph and read as a rendering fault, which is why this was on
        the soft ramp. At 30px the horizon falls between the x-height and the
        baseline, where the site puts it. */
-    /* THE METAL FLIP IS OFF. The comment above is right about why it worked -- the hard
-       horizon at 47-52% is what made 30px type read as milled platinum rather than as grey.
-       That is the material this pass is leaving. A page title in the reference is plain white
-       and rather larger; the hierarchy comes from size and weight, not from surface.
-       The rule is kept and neutralised rather than deleted because the selector list below it
-       has children opting back OUT of a clipped parent, and removing the parent would leave
-       those overriding nothing -- the harder bug to see later. */
+    /* THE METAL FLIP IS BACK ON. The hard horizon at 47-52% is the whole effect: it is what
+       makes 30px type read as milled platinum rather than as grey. It is sized to the element
+       box, so at the title's 30px the horizon crosses the middle of the letterform, which is
+       where it belongs. The children below still opt back out. */
     .page-title {
-        background-image: none;
-        -webkit-text-fill-color: currentColor;
-        color: var(--plat-000);
+        background-image: var(--metal-plat);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
     }
     /* CHILDREN OPT BACK OUT. See the note above the selector list -- a clipped
        parent hands every nested element a transparent fill and no gradient to
@@ -831,11 +842,10 @@ footer {
     background: var(--card-2);
     color: var(--plat-100);
 }
-/* THE BRUSHED SWEEP IS PARKED, NOT DELETED. It made a flat fill read as a polished metal
-   surface, which is exactly the material this pass is moving away from -- a soft pill has no
-   sheen to catch. The rule stays because .btn-secondary and .btn-connect override its gradient
-   by name; removing it would leave those overriding nothing, which is the harder bug to see.
-   The hover simply no longer moves it. */
+/* The brushed sweep. Parked off the left edge and slid across on hover -- it is
+   the one thing that makes a flat fill read as a polished surface rather than a
+   coloured rectangle. transform and left only, so it cannot cost a repaint of
+   anything but itself, and pointer-events:none so it never eats the click. */
 .btn::after {
     content: '';
     position: absolute;
@@ -846,40 +856,35 @@ footer {
     transition: left 0.55s cubic-bezier(0.3, 0, 0.2, 1);
     pointer-events: none;
 }
-.btn:hover::after { left: -130%; }   /* sweep disabled: see .btn::after */
-.btn:hover { background: var(--card-hover); color: var(--plat-000); }
+/* The sweep travels again. It is the thing that makes a metal fill read as a POLISHED surface
+   rather than as a coloured rectangle, and with the metal back it has something to catch. */
+.btn:hover::after { left: 145%; }
+/* No blanket hover background: it is a shorthand and would reset the metal background-image on
+   both variants. Each states its own below. */
 .btn:active { transform: scale(0.985); }
 /* THE PRIMARY BUTTON WAS NOT ORANGE, IT WAS 36% OF ORANGE. --line-btc is
    the brand orange at hairline opacity -- an edge colour -- and it was being used as a FIELD
    with orange text on top of it -- which is why "+ Add Miner" read as muted
    brown next to the site's CTAs. The site fills this button with metal and
    puts black on it. */
-/* FLAT, NOT BRUSHED. --metal-btc-btn is a five-stop gradient with a hard horizon; that is what
-   makes a button read as machined metal, and it is the single most off-reference thing left on
-   the page. The accent still marks the primary action -- that rule is the token file's and it
-   stands -- it simply marks it as a solid fill now.
-   Black on orange, not white: --on-accent is what the palette already uses for text on the
-   accent, and orange at #f7931a fails contrast against white. */
 .btn-primary {
-    background: var(--btc-300);
-    background-image: none;
+    background-image: var(--metal-btc-btn);
     color: var(--on-accent);
-    border-color: transparent;
+    border-color: var(--line-btc-lit);
 }
-.btn-primary:hover { background: var(--btc-200); color: var(--on-accent); }
+.btn-primary:hover { border-color: var(--line-btc-lit-hover); }
 /* Machined platinum edge rather than a flat grey line: the padding-box layer
    paints the field, the border-box layer paints the border with the gradient.
    --panel-solid rather than --panel because a border-box gradient cannot show
    through a translucent fill without the border bleeding into the field. */
-/* The two-layer padding-box/border-box trick painted a machined platinum edge around the
-   button. It is precise work and it is chrome; the reference has none. A filled grey pill in
-   its place, which is also one paint instead of two gradients. */
 .btn-secondary {
-    background: var(--card-2);
+    background:
+        linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+        var(--metal-plat-flat) border-box;
     border-color: transparent;
     color: var(--plat-100);
 }
-.btn-secondary:hover { background: var(--card-hover); color: var(--plat-000); }
+.btn-secondary:hover { color: var(--plat-000); }
 .btn-secondary::after { background: var(--sheen-sweep-soft); }
 
 /* Delete dialog */

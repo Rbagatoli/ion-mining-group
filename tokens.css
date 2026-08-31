@@ -170,12 +170,16 @@
        Separate names rather than edits, because --panel and --line are SHARED with
        site/styles.css and changing them would drift the app from the site and fail
        the parity assertion. Nothing above the inherited line moves. */
-    --card:        #0f0f0f;
+    /* Translucent, not opaque, and the value is chosen so it does not LOOK translucent over
+       bare ground: 0.55 x 27 = 14.85 over #000 is #0f0f0f, the opaque colour this replaces.
+       The 45% that now passes through is what makes the gas field and the machinist grid
+       visible behind the cards instead of only between them. --card-2 stays opaque: it is a
+       card sitting ON a card, and buttons use it, and neither should transmit. */
+    --card:        rgba(27, 27, 27, 0.55);
     --card-2:      #161616;   /* a card sitting on a card */
     --card-hover:  #1c1c1c;
-    /* Kraken's separator is a dashed hairline inside a card, not a solid rule
-       between them. It is the detail that most says "this product" at a glance. */
-    --dash: rgba(229, 228, 226, 0.16);
+    /* --dash was defined here for a dashed in-card separator and read by exactly one rule,
+       which itself styled a class no markup emits. Both are gone. */
     /* Blur survives only where it does real work — the sticky nav and the modal
        scrim, both of which sit over moving content. */
     --blur: blur(16px) saturate(1.2);
