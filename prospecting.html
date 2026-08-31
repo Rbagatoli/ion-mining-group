@@ -25,8 +25,10 @@
         /* ---- the board ---- */
         .pb-wrap { display:flex; gap:12px; align-items:flex-start; overflow-x:auto;
                    padding-bottom:12px; }
-        .pb-col { flex:0 0 232px; background:var(--panel); border:1px solid var(--line);
-                  border-top:2px solid var(--line-mid); border-radius:var(--radius); }
+        /* Lifted, not outlined. The stage tone moves off the top border and onto the column label:
+   a 2px coloured rule capping a borderless card reads as a rendering fault. */
+        .pb-col { flex:0 0 248px; background:var(--card); border:none;
+                  border-radius:var(--radius-lg); padding-bottom:4px; }
         /* TONE, NOT STAGE NAME. Five rules cover any number of stages, so a stage
            added in the config arrives already styled — which is the whole point of
            making stages configurable. The watchlist pills in map.html still key on
@@ -39,8 +41,8 @@
 
         .pb-colhead { display:flex; justify-content:space-between; align-items:baseline;
                       padding:10px 12px 2px; }
-        .pb-collabel { font-size:11px; letter-spacing:.12em; text-transform:uppercase;
-                       color:var(--plat-300); }
+        .pb-collabel { font-size:13.5px; letter-spacing:-0.005em; text-transform:none;
+                       font-weight:600; color:var(--plat-100); }
         .pb-colcount { font-family:var(--mono); font-size:11px; color:var(--plat-500); }
         .pb-colsub { padding:0 12px 8px; font-family:var(--mono); font-size:10.5px;
                      color:var(--plat-500); border-bottom:1px solid var(--line); }
@@ -48,8 +50,13 @@
         .pb-drop.is-over { background:var(--panel-hover); outline:1px dashed var(--btc-300);
                            outline-offset:-3px; }
 
-        .pb-card { background:var(--black); border:1px solid var(--line); border-radius:var(--radius);
-                   padding:9px 10px; cursor:grab; display:flex; flex-direction:column; gap:6px; }
+        /* A card ON a card, so it steps UP in lightness rather than down to black. Black-on-panel
+   worked when the column was nearly transparent and the border did the work; against an
+   opaque column it reads as a hole cut in the surface. */
+        .pb-card { background:var(--card-2); border:1px solid transparent;
+                   border-radius:var(--radius); padding:11px 12px; cursor:grab;
+                   display:flex; flex-direction:column; gap:7px; transition:background .15s; }
+        .pb-card:hover { background:var(--card-hover); }
         .pb-card:focus-visible { outline:1px solid var(--btc-300); outline-offset:1px; }
         .pb-card.is-dragging { opacity:.45; }
         .pb-card.is-stale { border-color:var(--neg-line); }
@@ -74,9 +81,9 @@
         .p-golink:hover { color:var(--btc-200); }
 
         /* ---- Today ---- */
-        .pt-sec { border:1px solid var(--line); border-left:2px solid var(--line-mid);
-                  background:var(--panel); border-radius:var(--radius); margin:0 0 14px;
-                  max-width:900px; }
+        /* Same argument as the board column: the 2px tone rule was on the left edge. */
+        .pt-sec { border:none; background:var(--card); border-radius:var(--radius-lg);
+                  margin:0 0 14px; max-width:900px; overflow:hidden; }
         .pt-sec.t-negative { border-left-color:var(--neg); }
         .pt-sec.t-active   { border-left-color:var(--btc-300); }
         .pt-sec.t-warm     { border-left-color:var(--btc-200); }
@@ -436,11 +443,13 @@
            again, so it sits above the columns rather than competing with them. */
         .pb-hint { margin:0 0 10px; font-size:12px; color:var(--plat-400);
                    max-width:74ch; line-height:1.55; }
-        .pd-sec { max-width:900px; border:1px solid var(--line); background:var(--panel);
-                  border-radius:var(--radius); margin:0 0 14px; }
-        .pd-sec h3 { margin:0; padding:10px 14px 8px; font-size:11px; letter-spacing:.12em;
-                     text-transform:uppercase; color:var(--plat-300);
-                     border-bottom:1px solid var(--line); }
+                .pd-sec { max-width:900px; border:none; background:var(--card);
+                  border-radius:var(--radius-lg); margin:0 0 16px; overflow:hidden; }
+        /* Sentence case, larger, and the rule under it goes: a heading does not need a line to be a
+   heading once it has size and weight. */
+        .pd-sec h3 { margin:0; padding:16px 18px 10px; font-size:16px; letter-spacing:-0.01em;
+                     text-transform:none; font-weight:600; color:var(--plat-000);
+                     border-bottom:none; }
         .pd-none { margin:0; padding:12px 14px; font-size:12px; color:var(--plat-500);
                    font-style:italic; }
         .pd-absent { color:var(--plat-600); font-style:italic; }
@@ -819,7 +828,7 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=340"></script>
-<script src="./prospect-detail.js?v=395"></script>
+<script src="./prospect-detail.js?v=402"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
 <script src="./prospecting.js?v=395"></script>

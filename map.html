@@ -404,11 +404,16 @@
         /* An unverified capital figure is never a bare number, anywhere it appears. */
         .src-unver { color:var(--warn); font-weight:600; cursor:help; }
 
-        .src-capsum { display:flex; flex-wrap:wrap; gap:18px; margin:2px 0 10px; }
+        .src-capsum { display:flex; flex-wrap:wrap; gap:28px; margin:4px 0 16px; }
         .src-capsum > div { display:flex; flex-direction:column; gap:2px; }
-        .src-capsum .k { font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em;
+        .src-capsum .k { font-size:13px; text-transform:none; letter-spacing:0;
                          color:var(--text-dim); }
-        .src-capsum .v { font-size:17px; font-weight:600; color:var(--text); }
+        /* Tabular figures so CAPITAL AVOIDED, STILL TO SPEND and FULL BUILD align digit for
+           digit when they sit side by side -- they are read against each other, and three
+           numbers that do not line up are three numbers you compare one at a time. */
+        .src-capsum .v { font-size:26px; font-weight:600; color:var(--plat-000);
+                         letter-spacing:-0.02em; font-variant-numeric:tabular-nums;
+                         line-height:1.15; }
         .src-capsum .v.pos { color:var(--btc-300); }
 
         /* Loud on purpose. This is the sentence that stops a shortlist figure being mistaken for
@@ -452,8 +457,8 @@
                           letter-spacing:0; }
         .src-captable { width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:8px; }
         .src-captable th {
-            text-align:left; font-weight:600; font-size:10px; text-transform:uppercase;
-            letter-spacing:0.1em; color:var(--text-dim); padding:0 8px 5px 0;
+            text-align:left; font-weight:500; font-size:12px; text-transform:none;
+            letter-spacing:0; color:var(--plat-500); padding:0 10px 8px 0;
             border-bottom:1px solid var(--line);
         }
         .src-captable td { padding:5px 8px 5px 0; border-bottom:1px solid var(--line);
@@ -758,8 +763,11 @@
 
         .src-detailgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:18px; }
         .src-detail dl { margin:0; }
-        .src-detail dt { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-mid); margin-top:9px; }
-        .src-detail dd { margin:1px 0 0; font-size:13px; color:var(--plat-100); font-weight:600; }
+        /* 10px uppercase was legible and it was a control panel. The label steps up to 12.5px
+           sentence case and the value gains a little room above it. */
+        .src-detail dt { font-size:12.5px; text-transform:none; letter-spacing:0;
+                         color:var(--plat-500); margin-top:13px; }
+        .src-detail dd { margin:3px 0 0; font-size:14.5px; color:var(--plat-100); font-weight:600; }
         .src-detail .section-label { margin:0 0 4px; }
         .src-assume { color:var(--warn); font-weight:400; font-size:11px; }
         .src-assumerow { margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -1541,7 +1549,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=399"></script>
+<script src="./map-sourcing.js?v=402"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
