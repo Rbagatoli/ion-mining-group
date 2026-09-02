@@ -238,9 +238,14 @@ function svgOf(D, alt, p) {
      roughly half the slot geometry again to every page, and it would buy
      nothing: the only reader is a canvas that JS also has to start, so with
      scripting off there is no field to occlude. */
+  /* The arrowheads ride along from frame() itself — f.flowHeads is computed by
+     the engine's exported flowHeads() from the very flow string above, so the
+     baked heads cannot drift from the runtime ones. host-suite.js holds the
+     two to byte parity the same way it does the slot layers. */
   return `<svg class="site-diagram" id="${p}siteDiagram" viewBox="0 0 ${D.VB.w} ${D.VB.h}" preserveAspectRatio="xMidYMid meet" tabindex="0" role="img" aria-label="${esc(alt)}">
         <path class="dg-occluder" id="${p}dg-occluder" d=""/>
-        <path class="dg-flow" id="${p}dg-flow" d="${f.flow}"/>${slots}
+        <path class="dg-flow" id="${p}dg-flow" d="${f.flow}"/>
+        <path class="dg-flow-heads" id="${p}dg-flow-heads" d="${f.flowHeads}"/>${slots}
         <path class="dg-highlight" id="${p}dg-highlight" d=""/>${leaders}${nodes}${hits}
       </svg>`;
 }

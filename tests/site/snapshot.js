@@ -125,7 +125,35 @@
    four downcomer feet at 0.000 px over a full revolution because they are now the same
    points by construction.
 
-   Same three scenes, detail only, hosting and asic byte-identical again. */
+   Same three scenes, detail only, hosting and asic byte-identical again.
+
+   Re-baselined for the legibility pass, which moved things for four separate reasons — each
+   implemented in isolation and adversarially reviewed before integration:
+
+     - Every scene gains the flowHeads key (see the note below this header): a NEW key, so
+       "flowHeads differs" on all seven scenes is the expected shape of that diff and no
+       existing path string should move for it.
+     - site gains a GROUND slot (SLOTS 7 -> 8): the graded pad and access road the energy
+       scenes always stood on, in their exact language, drawn 28.29 x 8.75 with the grid at
+       100-116 px columns at desktop. The four yard scenes now all stand on ground; the home
+       page was the only drawing that floated on black.
+     - site, pad-ion and lf-ion move in detail/end/side/top for the heat-rise marks above the
+       kit's dry coolers, and KIT.COOLER.h grew 0.76 -> 1.06 to keep the marks inside every
+       hover region and clip box sized from it — which also lifts the 'cool' callout anchors
+       0.30 m (measured: leaders still land on cooler geometry, 13-24 px clear of collisions).
+     - hosting moves for its own heat marks plus two measured cutaway additions (coolant
+       containment drain along the rack line; the marks) — detail ink 11,460 -> 11,758, still
+       well under the 11,726-byte pre-hydro noise ceiling this file's earlier entries cite.
+
+   pad-now and lf-now move ONLY in the flowHeads key; their geometry is byte-identical, which
+   is the isolation proof for this pass: nothing that does not draw a hydro cooler moved. */
+/* The snapshot now also records frame.flowHeads — the arrowheads the engine
+   derives from the flow path so the dashes have a direction. A new key rather
+   than a change to any existing one: every scene will report "flowHeads
+   differs" until the fixtures are recaptured, and that is the only failure
+   this addition should produce. Guarding it here matters because the heads are
+   generated in the engine, not the scenes — a regression there would move
+   every drawing on the site at once and no scene fixture would say so. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
@@ -168,6 +196,7 @@ function snap(D) {
       hits: f.hits.map(h => ({ id: h.id, d: h.d, area: Math.round(h.area * 1000) })),
       leaders: f.leaders,
       flow: f.flow,
+      flowHeads: f.flowHeads,
     };
   }
   // A highlight for every region too, since regionBoxes moves in the refactor.
@@ -189,6 +218,7 @@ function check(key, want, got) {
     const a = want.frames[y], b = got.frames[y];
     if (!b) { fail(`frame ${y} missing`); continue; }
     if (a.flow !== b.flow) fail(`flow differs at yaw ${y}`);
+    if (a.flowHeads !== b.flowHeads) fail(`flowHeads differs at yaw ${y}`);
     a.slots.forEach((sa, i) => {
       const sb = b.slots[i];
       if (!sb) return fail(`slot ${i} missing at yaw ${y}`);

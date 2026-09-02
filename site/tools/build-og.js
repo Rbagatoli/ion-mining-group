@@ -78,10 +78,20 @@ function render(sceneFile) {
 
         /* Fit what is actually DRAWN, not the viewBox. The scenes reserve a lot
            of vertical room for callout leaders, and fitting the box left the
-           drawing small and sitting low with a dead band across the top. */
+           drawing small and sitting low with a dead band across the top.
+
+           GROUND IS PAINTED BUT NOT FITTED. It is a backdrop that deliberately
+           runs off every frame it appears in — dg-crop already treats it that
+           way on the pages — and fitting it shrinks the subject: measured on
+           the energy card before this change, including the pad in the fit made
+           the plant 20% smaller (fit 795 units wide against the plant's 660).
+           With the home scene gaining a ground of its own, every card with
+           ground would have paid that. The paint loop below still draws it, so
+           the plant stands on its pad; it just no longer decides the framing. */
         let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
         frame.slots.forEach(slot => {
             scene.LAYERS.forEach(layer => {
+                if (layer === 'ground') return;
                 if (!WEIGHT[layer] || !slot[layer]) return;
                 parsePath(slot[layer]).forEach(sp => {
                     for (let k = 0; k + 1 < sp.pts.length; k += 2) {

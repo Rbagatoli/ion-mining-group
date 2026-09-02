@@ -81,6 +81,39 @@
     var GEN  = { x: -3.6, y: 0, z: 0, w: KIT.GEN.w,  h: KIT.GEN.h,  d: KIT.GEN.d };
     var XFMR = { x:  0.2, y: 0, z: 0, w: KIT.XFMR.w, h: KIT.XFMR.h, d: KIT.XFMR.d };
 
+    /* THE SCENE'S PIVOT, hoisted out of the view block (which still carries the
+       reasoning for its value) because the ground below now needs it too. */
+    var SHIFT_X = -10.15;
+
+    /* ---------- The graded yard ----------
+
+       THE YARD FLOATED. The energy page's drawings stand on a graded pad and
+       read as places; this one drew four containers and a gas train on bare
+       black and read as a product shot. Same fix in the same language as
+       pad-geometry.js / landfill-geometry.js: a faint slab folded into the
+       'ground' layer, a sparse grid, an edge, and the road that gets a
+       container truck in.
+
+       CENTRED ON THE PIVOT, AND THAT IS LOAD-BEARING. The ground must paint
+       first at every yaw, and the depth sort keys each slot off its anchor —
+       so the ground's anchor sits at x = -SHIFT_X, z = 0, where its swept
+       radius is zero and its depth never moves. See the anchor note on the
+       renderable for the measured margin.
+
+       44 x 14, NOT FITTED TO THE PLANT'S 37 x 8.6. The plant runs x -8.75
+       (gas skid edge) to 28.29 (right column shell) and z -5.32..3.32; the
+       slab leaves a 3.1..3.9 m apron in x and 2.7 m in z, about what the
+       wellpad's 44 x 22 leaves around its own kit. The cost is measured at
+       the corners: swept radius sqrt(22^2 + 8^2) = 23.4 m, whose near pass
+       crosses screen y 509 — 39 units below the 470 viewBox, clipped for a
+       moment twice per turn exactly as the landfill's ground already is at
+       y 511. dg-crop.js treats 'ground' as a backdrop that may bleed, and
+       the mobile crop stays fitted to the plant. */
+    var PAD  = { x: -SHIFT_X, y: -0.15, z: -1.0, w: 44, h: 0.15, d: 14 };
+    /* The way in, off the near edge by the train — off-pad and a shade lower,
+       as both exemplars draw it, so its edge does not z-fight the slab's. */
+    var ROAD = { x: -6.0, y: -0.2, z: 8.4, w: 5.0, h: 0.1, d: 4.8 };
+
     var MAST = mastOf(C), PDU = pduOf(C);   // one uplink serves the site
 
     var MODEL = { container: C, gas: GAS, genset: GEN, xfmr: XFMR, mast: MAST, pdu: PDU,
@@ -193,7 +226,56 @@
         return d;
     }
 
+    /* The slab, the grid, the edge, the road — all folded into the 'ground'
+       layer. addBox would route the slab's top face to 'top', which is the
+       brightness of a transformer lid: pad-geometry.js measured that against
+       its own plant and the machinery had nothing to stand out against. Same
+       scratch-bundle fold here for the same reason. */
+    function buildGround(H, yaw) {
+        var L = H.newLayers();
+        var G = H.newLayers();
+        H.addBox(G, PAD, yaw);
+        H.addBox(G, ROAD, yaw);
+        L.ground += G.top + G.side + G.end + G.detail + G.back;
+
+        var x0 = PAD.x - PAD.w / 2, x1 = PAD.x + PAD.w / 2;
+        var z0 = PAD.z - PAD.d / 2, z1 = PAD.z + PAD.d / 2;
+        /* 8 x 4 cells — 5.5 x 3.5 m. The wellpad's 5.5 m pitch survives its
+           scale of 16; at 18.3 it is roomier still, measured at yaw 0:
+           101..116 px between columns on a 1384 desktop, 47..54 px inside
+           the 390 phone crop, and the 3.5 m rows foreshorten to 25..31
+           viewBox units — the band the energy pads' 5.5 m rows land in (30)
+           at their flatter pitch. Inset 0.5 so the grid does not double the
+           outline. */
+        var i;
+        for (i = 1; i < 8; i++) {
+            var gx = x0 + PAD.w * i / 8;
+            L.ground += H.line([gx, 0.004, z0 + 0.5], [gx, 0.004, z1 - 0.5], yaw);
+        }
+        for (i = 1; i < 4; i++) {
+            var gz = z0 + PAD.d * i / 4;
+            L.ground += H.line([x0 + 0.5, 0.004, gz], [x1 - 0.5, 0.004, gz], yaw);
+        }
+        /* The pad edge, which the grid would otherwise only imply. */
+        L.ground += H.line([x0, 0.005, z0], [x1, 0.005, z0], yaw);
+        L.ground += H.line([x0, 0.005, z1], [x1, 0.005, z1], yaw);
+        L.ground += H.line([x0, 0.005, z0], [x0, 0.005, z1], yaw);
+        L.ground += H.line([x1, 0.005, z0], [x1, 0.005, z1], yaw);
+        return L;
+    }
+
     var RENDERABLES = [
+        /* THE ANCHOR IS A SORT KEY, NOT A POSITION, and it is 40 m underground
+           on purpose. The ground is a flat backdrop every other slot must
+           paint over at every yaw, but the depth sort only compares anchors —
+           a plausible anchor on the slab itself would drift in front of a
+           container's anchor at some angles and paint gravel over the box.
+           At the pivot the anchor's swept radius is zero, so its depth is the
+           constant -40 sin 26 = -17.5; the deepest any plant anchor reaches
+           is the gas skid's 0.85 sin 26 - 17.75 cos 26 = -15.6, measured over
+           the sweep, so the ground leads by 1.9 at its closest. dg-suite.js
+           test 9 sweeps 72 yaws and asserts the ground slot is always first. */
+        { id: 'ground', at: [-SHIFT_X, -40, 0], build: buildGround },
         { id: 'gas',  at: [GAS.x,  GAS.h  / 2, 0], build: function (H, yaw) { return buildGas(H, yaw); } },
         { id: 'gen',  at: [GEN.x,  GEN.h  / 2, 0], build: function (H, yaw) { return buildGen(H, yaw); } },
         { id: 'xfmr', at: [XFMR.x, XFMR.h / 2, 0], build: function (H, yaw) { return buildXfmr(H, yaw); } },
@@ -206,6 +288,16 @@
                  build: function (H, yaw) { return buildContainer(H, K, yaw); } };
     }));
 
+    /* NO 'ground' ENTRY, AND NOT BY OVERSIGHT. objects() feeds exactly two
+       consumers: allPoints(), which dg-suite test 4 sweeps to prove the PLANT
+       stays out of the callout columns (x 262..1018), and the container count
+       behind index.html's alt text. Hover never reads it — regions come from
+       regionBoxes() — and the engine mounts without it. The slab spans
+       x -11.85..32.15 precisely so it can run wide of the plant, the way the
+       energy scenes' ground sweeps x 123..1157: putting it in objects() would
+       fail test 4 while re-fitting nothing, because BASE_SCALE is hand-set to
+       the plant. dg-crop.js already classes the 'ground' slot as a backdrop
+       that may bleed, so the mobile crop stays fitted to the plant too. */
     function objects() {
         return [
             { id: 'gas',  box: { x: GAS.x,  y: 0, z: 0, w: GAS.w,  h: GAS.h + 2.9,  d: GAS.d } },
@@ -254,10 +346,11 @@
                6.9 m right when the second column arrived, so this moved with
                it. Left at the two-container value of -3.28 the same yard only
                fits at BASE_SCALE 13.66 — a quarter smaller again, for nothing
-               but an off-centre pivot. */
+               but an off-centre pivot. Declared up top now, because the pad
+               and the ground slot's anchor both have to sit on it. */
             BASE_SCALE: 18.3,
             ORIGIN: { x: 640, y: 253 },
-            SHIFT_X: -10.15,
+            SHIFT_X: SHIFT_X,
             PERIOD: 44000,
         },
         renderables: RENDERABLES,

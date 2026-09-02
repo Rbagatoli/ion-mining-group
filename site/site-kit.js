@@ -34,8 +34,25 @@
        scenes need these numbers too — for the hover region that highlights the cooler
        and for the object box that has to be tall enough to contain it. A second copy
        of them in three scene files is three chances to drift. */
-    var COOLER = { inX: 0.90, inZ: 0.22, plinth: 0.13, slope: 0.62, ridge: 0.62 };
-    COOLER.h = COOLER.plinth + COOLER.slope + 0.01;   // + the fan rings lying in the ridge
+    var COOLER = { inX: 0.90, inZ: 0.22, plinth: 0.13, slope: 0.62, ridge: 0.62,
+                   /* How far the heat-rise marks climb above the ridge. The hydro story
+                      used to END at this frame: water in, fans in the deck, and nothing
+                      anywhere saying heat actually leaves — the one thing the cooler is
+                      for. The marks are drawn in container() below; the height lives
+                      here because it is part of the cooler's envelope, not a free
+                      choice per scene. 0.30 m is 5.3 px above the ridge on the home
+                      page and 2.5 px on its phone crop — the desktop reads it, the
+                      phone rounds it away, and both of those are the intent. */
+                   rise: 0.30 };
+    /* h WAS plinth + slope + 0.01 (the fan rings lying in the ridge). It is the number
+       every scene sizes its clipping box and hover region from — scene-site.js and
+       scene-pad-ion.js both build their container boxes as K.h + COOLER.h + 0.14 — so if
+       the rise marks are not inside it, they are drawn above the box the clip check
+       sweeps and nothing anywhere is checking they stay on screen. Folding rise in here
+       grows those boxes automatically; measured against the swept-bbox checks, neither
+       yard scene's frame moves at all (their tops are set by the gas stack and the mast,
+       not the coolers) and scene-hosting.js restates its own box to absorb it. */
+    COOLER.h = COOLER.plinth + COOLER.slope + COOLER.rise + 0.01;
 
     /* Translate a helper bundle. Every function that takes world coordinates
        gets them offset first; the ones that consume already-offset points
@@ -624,6 +641,34 @@
             var fx = cx0 + (cx1 - cx0) * (cf ? 0.76 : 0.24);
             L.detail += ringY(fx, cyt + 0.01, fz2, 0.26, yaw, 12);
             L.detail += ringY(fx, cyt + 0.01, fz2, 0.10, yaw, 8);
+
+            /* HEAT LEAVING, which this drawing never said before. The loop climbs to the
+               roof, the fans lie in the ridge, and the story stopped there — nothing about
+               the frame says the heat goes anywhere. So: a broken rising stroke either
+               side of each fan, two dashes with a small sideways step at the break, which
+               is the oldest glyph there is for air you cannot draw. Over the FANS, not
+               spread along the deck, because the fans are where a dry cooler actually
+               discharges.
+
+               STATIC. The only animated things on the site are the flame and the flow
+               line, and a third animation family is a design decision nobody has made.
+
+               On the ridge that SURVIVES the cutaway: fz2 is the centre of the far
+               half's remaining deck (z < K.z by construction), so the marks rise from
+               drawn surface, never from the open half the cut takes away. Height is
+               COOLER.rise — see its note for the envelope arithmetic. Measured at the
+               real page sizes: 5.3 px of rise at desktop on the home page, 2.5 px on the
+               phone crop, where a 0.8-unit hairline is 0.4 px wide besides — the phone
+               loses them entirely rather than misreading them, which is the designed
+               degradation. The staggered pair heights are so four containers of them
+               read as shimmer rather than as a picket line. */
+            var mkT = cyt + COOLER.rise;
+            [[-0.28, 0.04, 0.06], [0.28, 0.08, -0.06]].forEach(function (mk) {
+                var mx = fx + mk[0], my = cyt + mk[1];
+                L.detail += line([mx, my, fz2], [mx, my + 0.11, fz2], yaw);
+                L.detail += line([mx + mk[2], my + 0.15, fz2],
+                                 [mx + mk[2], Math.min(my + 0.26, mkT), fz2], yaw);
+            });
         }
 
         /* Flow and return, and they run BEHIND the frame now rather than in front of it.

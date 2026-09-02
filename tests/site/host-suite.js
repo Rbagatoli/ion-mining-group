@@ -250,6 +250,14 @@ function subpathAreas(d) {
     if (attrAfter(html, `id="dg-hit${i}"`, 'd') !== h.d) fail(`#dg-hit${i} differs`);
     if (attrAfter(html, `id="dg-hit${i}"`, 'data-region') !== h.id) fail(`#dg-hit${i} wrong region`);
   });
+  /* The flow arrowheads too. They are derived in the engine from the flow path,
+     and the bake reads them off the same frame() — but a generator that quietly
+     stopped emitting the element, or baked it from a different frame, would
+     ship a page whose arrows disagree with the runtime's the moment JS mounts.
+     Same byte parity as the slot layers, against the same static frame. */
+  const heads = attrAfter(html, 'id="dg-flow-heads"', 'd');
+  if (heads === null) fail('#dg-flow-heads missing from hosting.html — run tools/build-diagram.js');
+  else if (heads !== f0.flowHeads) fail('#dg-flow-heads differs from runtime');
   for (const c of D.CALLOUTS) {
     if (!html.includes('>' + c.title + '<')) fail(`title missing from markup: ${c.title}`);
     if (!html.includes(`data-region="${c.id}"`)) fail(`no element tagged data-region="${c.id}"`);
@@ -527,6 +535,80 @@ function subpathAreas(d) {
 
   V.resetView();
   console.log(`browser: mounts, ${writes} attribute writes, hover + drag + zoom respond, no NaN  OK`);
+
+  /* ---- 13b. The heads element is OPTIONAL: a stale page must still mount ----
+     For exactly one deploy, every baked page lacks #dg-flow-heads (the generator
+     adds it; the pages in a visitor's service-worker cache do not have it). If the
+     engine treated the missing element as a mount failure, that deploy would
+     silently unmount every diagram on the site — the stale-frame failure dg-suite
+     test 10 documents, but engine-side.
+
+     The sandbox above CANNOT test this: its getElementById auto-vivifies every id
+     it is asked for, so byId('dg-flow-heads') can never come back null there, and
+     an adversarial pass proved the suite stays green with the null-guard replaced
+     by a bail. This second mount runs the same page-derived script chain against a
+     registry that answers null for the heads id specifically — the pre-deploy DOM
+     — and demands a working figure anyway. */
+  {
+    /* This sandbox MIRRORS the one above rather than slimming it. A first draft
+       stubbed raf, timers and element querySelector down to no-ops and mounted
+       zero attribute writes even WITH the heads element present — a check that
+       fails on a healthy engine proves nothing about a broken one. Only get2
+       differs: it answers null for the heads id, which is the whole test. */
+    const els2 = {}; let writes2 = 0; const handlers2 = {};
+    const mk2 = id => {
+      const cls = new Set(), attrs = {};
+      return { id, dataset: {},
+        setAttribute: (k, v) => {
+          if (/NaN|undefined|Infinity/.test(String(v))) throw new Error(`${id} ${k}=${v}`);
+          attrs[k] = v; writes2++;
+        },
+        getAttribute: k => (attrs[k] === undefined ? null : attrs[k]),
+        classList: { add: c=>cls.add(c), remove: c=>cls.delete(c), contains: c=>cls.has(c),
+                     toggle: (c,on)=>{ on?cls.add(c):cls.delete(c); } },
+        addEventListener: (ev, fn) => { (handlers2[id] = handlers2[id] || {})[ev] = fn; },
+        setPointerCapture(){}, releasePointerCapture(){}, hasPointerCapture:()=>false,
+        contains(n) { return n === this; },
+        closest: () => null,
+        querySelector: sel => { const m = sel.match(/data-region="([a-z]+)"/); return m ? mk2('b2-'+m[1]) : null; },
+      };
+    };
+    const get2 = id => /dg-flow-heads/.test(id) ? null : (els2[id] = els2[id] || mk2(id));
+    let rafQ2 = [], timers2 = [], timerId2 = 0;
+    const sb2 = { console, Math, Object, Array, String, Number, Set,
+      document: { hidden:false, readyState:'complete', getElementById:get2,
+                  querySelector: () => get2('wrap'),
+                  addEventListener: (ev, fn) => {
+                    (handlers2['document'] = handlers2['document'] || {})[ev] = fn;
+                  } },
+      window: { matchMedia: () => ({ matches:false }),
+                IntersectionObserver: function(){ return { observe(){} }; } },
+      requestAnimationFrame: cb => { rafQ2.push(cb); return rafQ2.length; },
+      cancelAnimationFrame: () => { rafQ2 = []; },
+      setTimeout: (cb, ms) => { timers2.push({ cb, ms, id: ++timerId2 }); return timerId2; },
+      clearTimeout: id => { timers2 = timers2.filter(t => t.id !== id); },
+    };
+    sb2.self = sb2; sb2.IntersectionObserver = sb2.window.IntersectionObserver;
+    sb2.require = () => { throw new Error('scene must use the global engine in browser mode'); };
+    vm.createContext(sb2);
+    for (const s of chain) vm.runInContext(fs.readFileSync(REPO_ROOT + 'site/' + s, 'utf8'), sb2, { filename: s });
+    const H2 = handlers2['siteDiagram'] || {};
+    /* Mount itself writes NOTHING in either sandbox — the first paint rides
+       requestAnimationFrame, which no part of this suite flushes; section 13's
+       1,100-odd writes all come from the interactions it drives. So the mount
+       probe here is the same one: bind, then hover, then count. Measured with
+       the guard healthy: heads-present paints 61 attributes on this hover,
+       heads-null paints 60 — the one missing write IS the skipped annotation. */
+    if (!H2.pointerover)
+      fail('with #dg-flow-heads missing the engine bound no hover handler — mount bailed instead of skipping the annotation');
+    else {
+      const w = writes2;
+      H2.pointerover({ target: { getAttribute: k => (k === 'data-region' ? 'pdu' : null) } });
+      if (writes2 === w)
+        fail('with #dg-flow-heads missing, hover no longer repaints — a stale cached page would show a dead figure for a whole deploy');
+    }
+    if (!bad) console.log('stale page: mounts and repaints with #dg-flow-heads absent — the heads element is an annotation, not a dependency  OK');
+  }
 }
 
 process.exitCode = bad;

@@ -153,6 +153,19 @@ else console.log(`leaders: ${D.CALLOUTS.length} welded to anchors at 13 angles  
     }
   }
   if (orders.size < 2) fail('slot order never changes — the sort is inert');
+  /* The ground is a flat backdrop whose anchor is pinned on the pivot, 40 m
+     down, precisely so its depth beats every plant anchor at every yaw (the
+     gas skid bottoms out at -15.6; the ground sits at -17.5). If a plant
+     anchor ever dips beneath it, the sort would still be back-to-front — the
+     check above cannot notice — it would just paint gravel over the plant.
+     So the invariant is stated directly: ground first, at all 72 yaws. */
+  let groundFirstBad = 0;
+  for (const yaw of sweep(72)) {
+    const first = D.frame(yaw, null).slots[0].id;
+    if (first !== 'ground' && !groundFirstBad++)
+      fail(`ground is not the back-most slot at ${(yaw*180/Math.PI).toFixed(0)}deg — '${first}' paints under it`);
+  }
+  if (!groundFirstBad) console.log('depth sort: the ground slot paints first at all 72 yaws  OK');
   console.log(`depth sort: ${D.SLOTS} slots, ${orders.size} distinct orders across the sweep, always back-to-front  OK`);
 }
 

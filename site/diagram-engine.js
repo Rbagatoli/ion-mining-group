@@ -166,6 +166,82 @@
         return LINKS[name];
     }
 
+    /* Arrowheads for the flow line, derived from the flow path itself.
+
+       The dashed orange run is the one animated element besides the rotation,
+       and nothing about it said which WAY anything moves — gas into engines,
+       power into containers, coolant round the loop. Direction was carried
+       solely by the dash drift: 17 viewBox units every 2.6 s, which on a still
+       frame is nothing at all.
+
+       Derived HERE rather than drawn by the scenes, so a head can never point
+       somewhere its line does not go: the input is the projected path string
+       scene.flow() already produced, and one closed triangle is emitted at the
+       END of each M...L... subpath, oriented along its arrival. On the home
+       scene that is the trunk plus the spur into each container; on the
+       hosting scene, the exit of each coolant circuit back into the CDU.
+
+       Emitted as a separate path, not folded into the flow, because .dg-flow's
+       dasharray applies to everything in its element and would chop a closed
+       triangle into confetti. The heads path takes a plain orange FILL.
+
+       Orientation walks BACK PAST short segments. Not for the idle turn — measured
+       over 2880 yaws at every scene's BASE_PITCH, no flow subpath's final segment
+       ever projects under 7.6 units (the home spurs bottom out at 14.4; pitch keeps
+       a horizontal run from going truly edge-on), so this walk-back never fires
+       while the drawing turns by itself. It exists for DRAGGED pitch: at PITCH_MIN
+       the same segments collapse to 1.7 units on the home page and 0.2 on the
+       machine, where 0.1-rounded coordinates would swing a head by tens of degrees
+       between frames. Direction is taken from the last point at least HEAD_MIN from
+       the terminus (at 2 units the 0.1 rounding is a sub-3-degree wobble), and a
+       subpath with no such point gets NO head: a run seen end-on has no direction
+       to show. Swept, heads drop out gracefully there — home 5 to 3, machine 2 to
+       0 — with no NaN anywhere in the pitch envelope.
+
+       Sizes are viewBox units, so the heads scale with the drawing exactly as
+       its stroke widths do — nothing in this stylesheet uses vector-effect.
+       Measured at the real page sizes rather than eyeballed: 9 units is 9.7 px
+       tip-to-base on the 1384px desktop page and 4.5-5.1 px in the 390px phone
+       crop (scale 0.503-0.562 px/unit depending on the wrap's zoom), against a
+       dash that is 3.0-3.4 px long and 1 px wide there — bigger than anything
+       the dashed line itself puts on screen, small enough that the five heads
+       on the home scene stay annotation rather than subject. Longer heads were
+       considered and rejected by geometry, not taste: the home spurs are about
+       14.5 units at rest, so an 11-unit head would swallow the very line that
+       gives it a context. */
+    var HEAD_LEN = 9;    // tip to base
+    var HEAD_HW  = 3.6;  // half-width of the base
+    var HEAD_MIN = 2;    // shortest projected run that still orients a head
+
+    function flowHeads(d) {
+        if (!d) return '';
+        var r1 = function (v) { return Math.round(v * 10) / 10; };
+        var out = '';
+        var subs = d.split('M');
+        for (var s = 0; s < subs.length; s++) {
+            var nums = subs[s].match(/-?\d+(?:\.\d+)?/g);
+            if (!nums || nums.length < 4) continue;
+            var n = nums.length - (nums.length % 2);
+            var ex = +nums[n - 2], ey = +nums[n - 1];
+            var px = null, py = null;
+            for (var i = n - 4; i >= 0; i -= 2) {
+                var cx = +nums[i], cy = +nums[i + 1];
+                if ((ex - cx) * (ex - cx) + (ey - cy) * (ey - cy) >=
+                    HEAD_MIN * HEAD_MIN) { px = cx; py = cy; break; }
+            }
+            if (px === null) continue;
+            var dx = ex - px, dy = ey - py;
+            var len = Math.sqrt(dx * dx + dy * dy);
+            var ux = dx / len, uy = dy / len;
+            var bx = ex - ux * HEAD_LEN, by = ey - uy * HEAD_LEN;
+            var wx = -uy * HEAD_HW, wy = ux * HEAD_HW;
+            out += 'M' + r1(ex) + ' ' + r1(ey) +
+                   'L' + r1(bx + wx) + ' ' + r1(by + wy) +
+                   'L' + r1(bx - wx) + ' ' + r1(by - wy) + 'Z';
+        }
+        return out;
+    }
+
     function createDiagram(scene) {
 
     /* ---------- View ---------- */
@@ -401,6 +477,11 @@
             return { id: id, d: h.d, area: h.area };
         }).sort(function (a, b) { return b.area - a.area; });
 
+        /* Built once and passed to flowHeads, not rebuilt there: the heads are
+           a pure function of this exact string, which is what lets the baked
+           page and the runtime agree byte for byte. */
+        var flowD = scene.flow(H, yaw);
+
         return {
             yaw: yaw,
             slots: order.map(function (o) {
@@ -410,7 +491,8 @@
             }),
             hits: hits,
             highlight: regionHighlight(hover, yaw),
-            flow: scene.flow(H, yaw),
+            flow: flowD,
+            flowHeads: flowHeads(flowD),
             leaders: CALLOUTS.map(function (co) {
                 var a = calloutAnchor(co, yaw), o2 = calloutOrigin(co);
                 return { id: co.id, x1: n1(o2[0]), y1: n1(o2[1]), x2: n1(a[0]), y2: n1(a[1]) };
@@ -517,6 +599,14 @@
                page without it should still get its drawing. */
             var occEl = byId('dg-occluder');
 
+            /* Optional for the same reason, with a sharper failure behind it:
+               the arrowheads were added to the engine before any page was
+               regenerated, so for one deploy every baked page lacks this
+               element. Folding it into the mandatory lookups above would have
+               unmounted every diagram on the site — the exact stale-frame
+               failure test 10 in dg-suite.js documents — over an annotation. */
+            var headsEl = byId('dg-flow-heads');
+
             var leaders = {}, bubbles = {};
             CALLOUTS.forEach(function (c) {
                 leaders[c.id] = byId('dg-lead-' + c.id);
@@ -563,6 +653,7 @@
                 }
                 hlEl.setAttribute('d', f.highlight);
                 flowEl.setAttribute('d', f.flow);
+                if (headsEl) headsEl.setAttribute('d', f.flowHeads);
                 for (var j = 0; j < f.leaders.length; j++) {
                     var Ld = f.leaders[j], el = leaders[Ld.id];
                     if (!el) continue;
@@ -1024,5 +1115,9 @@
         return api;
     }
 
-    return { createDiagram: createDiagram, sharedLink: sharedLink, LAYERS: LAYERS };
+    /* flowHeads is exported so the static bake and the tests call the SAME
+       function the runtime frame() uses — a reimplementation in the generator
+       is exactly the drift the parity checks exist to catch. */
+    return { createDiagram: createDiagram, sharedLink: sharedLink, LAYERS: LAYERS,
+             flowHeads: flowHeads };
 });

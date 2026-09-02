@@ -2301,6 +2301,22 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 }
 @keyframes dg-flow { to { stroke-dashoffset: -17; } }
 
+/* The arrowheads that give those dashes a direction. Without them the only
+   thing saying which way gas or power moves was the dash drift — 17 units
+   every 2.6 s — and on a still frame, nothing. A FILL, in its own element,
+   because the flow's dasharray applies to every subpath in its path and would
+   chop a closed triangle into confetti; no animation, because the line already
+   carries the motion and two things moving read as two elements. Opacity
+   matches .dg-flow so head and line meter as one stroke of orange. The engine
+   derives the geometry from the flow path itself — see flowHeads() in
+   diagram-engine.js — so this rule can never light a head the line does not
+   reach. */
+.dg-flow-heads {
+    fill: var(--btc-300);
+    stroke: none;
+    opacity: 0.9;
+}
+
 /* The flare flame, on the energy page. This is the one filled, coloured object
    in the entire drawing family, and it is a deliberate exception to "orange is
    a stroke, never a surface": a flare flame IS a surface, it is the subject of

@@ -343,6 +343,30 @@
                              [dx, RACK_Y0 + TIERS * TIER_DY, z0 + 0.5], yaw);
         }
 
+        /* NO STRIP LIGHTS, AND THEY WERE DRAWN AND MEASURED OUT. The real container has
+           an LED batten row over the rack line, and two versions of one were rendered at
+           the real page sizes: four twin-line fixtures at y1 - 0.05, and again at
+           y1 - 0.12 when the first landed on the bright roof band. The arithmetic said
+           the band between the tray and the top tier was free — 2.3 px below the tray
+           band, 3.6 px above the tier at desktop — and the render said that band is not
+           a band: it is the roofline's own gradient with seven cable drops running
+           through it, and at 1x the fixtures never separate from it. At the phone crop
+           the before and after images are indistinguishable. Detail that only exists at
+           3x zoom is ink, not information, so they went the way of the per-column
+           risers in site-kit.js. */
+
+        /* FLOOR DRAIN BY THE CDU. The one piece of floor hardware a water-cooled hall
+           actually has: the containment drain, and it belongs next to the cabinet with
+           the pumps in it. A ring lying in the floor (ringY — ring() would stand it on
+           edge) with one cross bar for the grate. Deliberately not a containment lip
+           along the rack line: a lip is a third horizontal hairline at floor level a few
+           pixels under the manifold pair, which is precisely the fused-bar failure the
+           manifold note documents. At desktop the drain is an 11 x 4 px ellipse on open
+           grating; at the phone crop it is 5 x 2 px and gone, which is the right way
+           down. */
+        L.detail += ringY(CDU.x + 1.0, 0.012, C.z + 0.35, 0.10, yaw, 8);
+        L.detail += line([CDU.x + 0.9, 0.012, C.z + 0.35], [CDU.x + 1.1, 0.012, C.z + 0.35], yaw);
+
         /* Supply and return manifolds, as boxes rather than lines. Each is only
            70 mm of pipe — under 4 units of viewBox — but it runs nearly the
            whole length of the container, and a filled bar that long still reads
@@ -485,6 +509,41 @@
         for (var cf = 0; cf < COOL_FAN.length; cf++) {
             L.detail += ringY(COOL_FAN[cf], COOL_YT + 0.01, C.z, 0.26, yaw, 12);
             L.detail += ringY(COOL_FAN[cf], COOL_YT + 0.01, C.z, 0.10, yaw, 8);
+
+            /* HEAT LEAVING — the same broken rising strokes site-kit.js draws over its
+               fans, and for the same reason: the loop's story ended at this frame with
+               nothing saying the heat goes anywhere. Same glyph, same COOLER.rise
+               envelope, because it is the same cooler photographed closer.
+
+               BASED 0.10 UP, NOT THE KIT'S 0.04, and that is the flow line's doing.
+               This scene runs its orange roof circuit along the ridge at z +/-0.14,
+               and the far leg projects about 3 units ABOVE the deck centre where
+               these marks stand — a mark based at 0.04 rises straight through it.
+               At 0.10 the nearest stroke measures 1.6 px clear of the flow path at
+               rest and 0.8 px at +/-45 deg — abutting inside the band a reader
+               actually studies. Over the full idle revolution the marks DO cross
+               the orange legs for roughly a third of the turn (measured, not
+               guessed): accepted, because the flow paints first (dg-flow precedes
+               the slot group), so a crossing is a platinum hairline tipping over
+               an orange edge — it reads as heat coming off the hot run, which is
+               the claim these marks exist to make.
+               Tops stay at COOLER.rise, so the marks live inside the same envelope
+               the objects() box below is sized from.
+
+               STATIC, as in the kit: flame and flow are the only animated families.
+               At the real sizes: 11.5 px of visible rise at desktop, 5.3 px at the
+               390 phone crop where the hairline is 0.4 px wide — present as the
+               faintest breath, gone before it can read as noise. */
+            /* [dx, base, step, len1, len2]: base + len1 + 0.04 gap + len2 tops out at
+               exactly COOLER.rise for both, so the stagger lives in the bases and the
+               envelope holds without a clamp leaving a sub-2px stub of second dash. */
+            [[-0.28, 0.10, 0.06, 0.09, 0.07], [0.28, 0.13, -0.06, 0.08, 0.05]]
+                .forEach(function (mk) {
+                    var mx = COOL_FAN[cf] + mk[0], my = COOL_YT + mk[1];
+                    L.detail += line([mx, my, C.z], [mx, my + mk[3], C.z], yaw);
+                    L.detail += line([mx + mk[2], my + mk[3] + 0.04, C.z],
+                                     [mx + mk[2], my + mk[3] + 0.04 + mk[4], C.z], yaw);
+                });
         }
 
         // Exterior end walls, corner castings, base rail.
@@ -609,10 +668,21 @@
            on it. It is what allPoints() feeds the clipping check, so a box that
            does not contain the drawing means the drawing is no longer being
            checked against the frame it has to fit in — and the cooler is the
-           highest thing in the scene. +0.14 over the cooler's own height, the
-           same clearance scene-site.js gives it. */
+           highest thing in the scene.
+
+           +0.01 NOW, NOT THE +0.14 IT CARRIED. COOL.h grew to include the
+           heat-rise marks (see COOLER.rise in site-kit.js), so the old 0.14 of
+           clearance would be counted on top of headroom the envelope already
+           holds — and this scene has no slack to waste on that: at BASE_SCALE 52
+           the swept bbox top was y 17 of a 6-unit limit, and every 0.05 m added
+           to this box costs about 2.2 of those units. Measured with the rise
+           folded in and the 0.14 dropped, the sweep tops out at y 9 — inside
+           the limit, with the box still 0.02 m proud of the tallest drawn
+           point (marks top at 3.64, box at 3.66). The yard scenes keep their
+           +0.14 because their frames are set by the gas stack and the mast,
+           not the cooler. */
         return [{ id: 'cont', box: { x: C.x, y: 0, z: C.z,
-                                     w: C.w + 0.3, h: C.h + COOL.h + 0.14, d: C.d + 0.3 } }];
+                                     w: C.w + 0.3, h: C.h + COOL.h + 0.01, d: C.d + 0.3 } }];
     }
 
     var SCENE = {
