@@ -317,21 +317,32 @@
             var cy = u.y + u.h / 2;
             var qx = u.x - u.w * 0.20;                    // where the couplings sit
             var b1 = u.x - u.w * 0.44, b2 = b1 + RISER_SEP;
-            L.detail += line([b1, cy - QD_DY, RISER_Z], [qx, cy - QD_DY, RISER_Z], yaw);
-            L.detail += line([b2, cy + QD_DY, RISER_Z], [qx, cy + QD_DY, RISER_Z], yaw);
-            L.detail += ring(qx, cy - QD_DY, RISER_Z, QD_R, yaw, 8);
-            L.detail += ring(qx, cy + QD_DY, RISER_Z, QD_R, yaw, 8);
+            /* 'inner', not 'detail': stubs and couplings live on the rack face,
+               and from behind the solid far wall below has to hide them or the
+               wall wears all 42 couplings on its outside — the kit container's
+               control-strip failure, at 3.6x the size. */
+            L.inner += line([b1, cy - QD_DY, RISER_Z], [qx, cy - QD_DY, RISER_Z], yaw);
+            L.inner += line([b2, cy + QD_DY, RISER_Z], [qx, cy + QD_DY, RISER_Z], yaw);
+            L.inner += ring(qx, cy - QD_DY, RISER_Z, QD_R, yaw, 8);
+            L.inner += ring(qx, cy + QD_DY, RISER_Z, QD_R, yaw, 8);
 
             /* Control strip and status LED. Both moved to the right of the face:
                the left third is the branches' now, and the strip used to run
                straight through where they climb. */
             var fz = u.z + u.d / 2 + 0.008;
-            L.detail += line([u.x + u.w * 0.02, u.y + u.h - 0.08, fz],
-                             [u.x + u.w * 0.32, u.y + u.h - 0.08, fz], yaw);
-            L.detail += ring(u.x + u.w * 0.42, u.y + u.h - 0.08, fz, 0.035, yaw, 6);
-            // Power and network tails at the back.
-            L.detail += line([u.x + u.w * 0.3, u.y + 0.06, u.z - u.d / 2 - 0.006],
-                             [u.x + u.w * 0.3, u.y - 0.14, u.z - u.d / 2 - 0.006], yaw);
+            L.inner += line([u.x + u.w * 0.02, u.y + u.h - 0.08, fz],
+                            [u.x + u.w * 0.32, u.y + u.h - 0.08, fz], yaw);
+            L.inner += ring(u.x + u.w * 0.42, u.y + u.h - 0.08, fz, 0.035, yaw, 6);
+            /* Power and network tails at the back — 'back', not 'inner'. A tail
+               hangs 0.87 m behind the machine face, which at the 22 deg pitch
+               projects 0.87 x sin(22) = 0.33 m (17 units) UP the face — so in
+               any layer painted after 'asics' the whole 0.2 m tail lands as a
+               hairline across the middle of its own machine's front. It lives in
+               the dark band with the rack uprights, so it takes their layer and
+               their rule: hidden by the machines from the front, by the far wall
+               from behind, and seen through the gaps at oblique yaws. */
+            L.back += line([u.x + u.w * 0.3, u.y + 0.06, u.z - u.d / 2 - 0.006],
+                           [u.x + u.w * 0.3, u.y - 0.14, u.z - u.d / 2 - 0.006], yaw);
         }
 
         // --- in front of the machines ---
@@ -339,8 +350,10 @@
         addBox(L, { x: C.x, y: y1 - 0.3, z: z0 + 0.5, w: C.w - 1.0, h: 0.1, d: 0.3 }, yaw);
         for (var d2b = 0; d2b < COLS; d2b++) {
             var dx = RACK_X0 + PITCH_X * (d2b + 0.5);
-            L.detail += line([dx, y1 - 0.3, z0 + 0.5],
-                             [dx, RACK_Y0 + TIERS * TIER_DY, z0 + 0.5], yaw);
+            /* 'inner': the drops hang inside the shell, and from behind they were
+               seven evenly spaced hairlines striping the far wall. */
+            L.inner += line([dx, y1 - 0.3, z0 + 0.5],
+                            [dx, RACK_Y0 + TIERS * TIER_DY, z0 + 0.5], yaw);
         }
 
         /* NO STRIP LIGHTS, AND THEY WERE DRAWN AND MEASURED OUT. The real container has
@@ -364,8 +377,10 @@
            manifold note documents. At desktop the drain is an 11 x 4 px ellipse on open
            grating; at the phone crop it is 5 x 2 px and gone, which is the right way
            down. */
-        L.detail += ringY(CDU.x + 1.0, 0.012, C.z + 0.35, 0.10, yaw, 8);
-        L.detail += line([CDU.x + 0.9, 0.012, C.z + 0.35], [CDU.x + 1.1, 0.012, C.z + 0.35], yaw);
+        /* 'inner': floor hardware, hidden with the floor once the far wall faces
+           the viewer. */
+        L.inner += ringY(CDU.x + 1.0, 0.012, C.z + 0.35, 0.10, yaw, 8);
+        L.inner += line([CDU.x + 0.9, 0.012, C.z + 0.35], [CDU.x + 1.1, 0.012, C.z + 0.35], yaw);
 
         /* Supply and return manifolds, as boxes rather than lines. Each is only
            70 mm of pipe — under 4 units of viewBox — but it runs nearly the
@@ -378,12 +393,14 @@
         addBox(L, { x: manX, y: MAN_Y + MAN_SEP, z: MAN_Z, w: manW, h: MAN_H, d: MAN_H }, yaw);
 
         // A branch off each manifold into every column, up the face of the rack.
+        // 'inner' with the couplings they feed: the loop is the drawing's whole
+        // subject, and from behind it was the loudest thing on the blank wall.
         for (var bc = 0; bc < COLS; bc++) {
             var bx = RACK_X0 + PITCH_X * (bc + 0.5) - AS.w * 0.44;
-            L.detail += line([bx, MAN_Y + MAN_H / 2, RISER_Z],
-                             [bx, RISER_TOP, RISER_Z], yaw);
-            L.detail += line([bx + RISER_SEP, MAN_Y + MAN_SEP + MAN_H / 2, RISER_Z],
-                             [bx + RISER_SEP, RISER_TOP, RISER_Z], yaw);
+            L.inner += line([bx, MAN_Y + MAN_H / 2, RISER_Z],
+                            [bx, RISER_TOP, RISER_Z], yaw);
+            L.inner += line([bx + RISER_SEP, MAN_Y + MAN_SEP + MAN_H / 2, RISER_Z],
+                            [bx + RISER_SEP, RISER_TOP, RISER_Z], yaw);
         }
 
         /* The CDU. Pump volutes low, the plate exchanger's stack of plates above
@@ -391,64 +408,91 @@
            make a coolant cabinet look like one rather than like a second spares
            locker standing beside the first. */
         addBox(L, CDU, yaw);
+        // Face detail in 'inner': the cabinet stands inside the shell, so from
+        // behind its volutes and plate stack drew on the outside of the wall.
         var cz = CDU.z + CDU.d / 2 + 0.006;
-        L.detail += ring(CDU.x - 0.17, 0.42, cz, 0.13, yaw, 10);
-        L.detail += ring(CDU.x + 0.17, 0.42, cz, 0.13, yaw, 10);
+        L.inner += ring(CDU.x - 0.17, 0.42, cz, 0.13, yaw, 10);
+        L.inner += ring(CDU.x + 0.17, 0.42, cz, 0.13, yaw, 10);
         for (var xp = 1; xp <= 5; xp++) {
             var xy = 0.95 + xp * 0.13;
-            L.detail += line([CDU.x - 0.28, xy, cz], [CDU.x + 0.28, xy, cz], yaw);
+            L.inner += line([CDU.x - 0.28, xy, cz], [CDU.x + 0.28, xy, cz], yaw);
         }
-        L.detail += line([CDU.x - 0.2, 1.80, cz], [CDU.x + 0.2, 1.80, cz], yaw);
-        L.detail += line([CDU.x - 0.2, 1.92, cz], [CDU.x + 0.2, 1.92, cz], yaw);
-        L.detail += line([CDU.x - 0.2, 1.80, cz], [CDU.x - 0.2, 1.92, cz], yaw);
-        L.detail += line([CDU.x + 0.2, 1.80, cz], [CDU.x + 0.2, 1.92, cz], yaw);
+        L.inner += line([CDU.x - 0.2, 1.80, cz], [CDU.x + 0.2, 1.80, cz], yaw);
+        L.inner += line([CDU.x - 0.2, 1.92, cz], [CDU.x + 0.2, 1.92, cz], yaw);
+        L.inner += line([CDU.x - 0.2, 1.80, cz], [CDU.x - 0.2, 1.92, cz], yaw);
+        L.inner += line([CDU.x + 0.2, 1.80, cz], [CDU.x + 0.2, 1.92, cz], yaw);
 
         /* Machine-side pair, out of the foot of the cabinet and onto the two
            manifolds; and the roof-side pair, out of the top and straight up
            through the roof into the cooler's plinth. The two pairs leave the
            same 0.8 m box, so they leave it at different heights AND different x:
            taken off one face at one x, four pipes project as two. */
-        L.detail += line([CDU.x - 0.28, 0.30, CDU.z - CDU.d / 2],
-                         [CDU.x - 0.28, MAN_Y + MAN_H / 2, MAN_Z], yaw);
-        L.detail += line([CDU.x + 0.28, 0.30, CDU.z - CDU.d / 2],
-                         [CDU.x + 0.28, MAN_Y + MAN_SEP + MAN_H / 2, MAN_Z], yaw);
-        L.detail += line([CDU.x - 0.10, CDU.h, CDU.z], [CDU.x - 0.10, COOL_YB, CDU.z], yaw);
-        L.detail += line([CDU.x + 0.10, CDU.h, CDU.z], [CDU.x + 0.10, COOL_YB, CDU.z], yaw);
+        L.inner += line([CDU.x - 0.28, 0.30, CDU.z - CDU.d / 2],
+                        [CDU.x - 0.28, MAN_Y + MAN_H / 2, MAN_Z], yaw);
+        L.inner += line([CDU.x + 0.28, 0.30, CDU.z - CDU.d / 2],
+                        [CDU.x + 0.28, MAN_Y + MAN_SEP + MAN_H / 2, MAN_Z], yaw);
+        /* The riser pair is 'inner' for its whole run, the above-roof stretch
+           included: it climbs at CDU.z (z +0.60), and the plinth's front face is
+           at COOL_Z1 (z +1.00) covering exactly the roof..plinth-top band the
+           pipes cross — so in 'detail' they striped the plinth's face from the
+           front, and in 'inner' the plinth hides the stretch that is physically
+           inside it. Nothing here is the kit's exterior ridge pair: this scene
+           draws no roof pipes, and the orange flow circuit is the only thing on
+           the ridge. */
+        L.inner += line([CDU.x - 0.10, CDU.h, CDU.z], [CDU.x - 0.10, COOL_YB, CDU.z], yaw);
+        L.inner += line([CDU.x + 0.10, CDU.h, CDU.z], [CDU.x + 0.10, COOL_YB, CDU.z], yaw);
 
         // PDU: breaker rows and a metering window.
         addBox(L, PDU, yaw);
+        // 'inner' from here to the spares rack: three cabinets' face detail, all
+        // standing inside the shell, all formerly worn by the wall from behind.
         var pz = PDU.z + PDU.d / 2 + 0.006;
         for (var p = 1; p <= 6; p++) {
-            L.detail += line([PDU.x - 0.24, PDU.h * p / 8, pz], [PDU.x + 0.24, PDU.h * p / 8, pz], yaw);
+            L.inner += line([PDU.x - 0.24, PDU.h * p / 8, pz], [PDU.x + 0.24, PDU.h * p / 8, pz], yaw);
         }
-        L.detail += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.86, pz], yaw);
-        L.detail += line([PDU.x - 0.2, PDU.h * 0.94, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
-        L.detail += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x - 0.2, PDU.h * 0.94, pz], yaw);
-        L.detail += line([PDU.x + 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
+        L.inner += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.86, pz], yaw);
+        L.inner += line([PDU.x - 0.2, PDU.h * 0.94, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
+        L.inner += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x - 0.2, PDU.h * 0.94, pz], yaw);
+        L.inner += line([PDU.x + 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
 
         // Network switch with port row, and its drop to the tray.
         addBox(L, SWITCH, yaw);
         var sz = SWITCH.z + SWITCH.d / 2 + 0.006;
         for (var s2 = 0; s2 < 8; s2++) {
             var sx = SWITCH.x - 0.2 + 0.4 * s2 / 7;
-            L.detail += line([sx, SWITCH.y + 0.1, sz], [sx, SWITCH.y + 0.2, sz], yaw);
+            L.inner += line([sx, SWITCH.y + 0.1, sz], [sx, SWITCH.y + 0.2, sz], yaw);
         }
-        L.detail += line([SWITCH.x, SWITCH.y + SWITCH.h, sz], [SWITCH.x, y1 - 0.3, sz], yaw);
+        L.inner += line([SWITCH.x, SWITCH.y + SWITCH.h, sz], [SWITCH.x, y1 - 0.3, sz], yaw);
 
         // Spares rack: three shelves of boards and PSUs.
         addBox(L, SPARES, yaw);
         var qz = SPARES.z + SPARES.d / 2 + 0.006;
         for (var q = 1; q <= 3; q++) {
             var qy = SPARES.h * q / 4;
-            L.detail += line([SPARES.x - 0.34, qy, qz], [SPARES.x + 0.34, qy, qz], yaw);
-            L.detail += line([SPARES.x - 0.16, qy, qz], [SPARES.x - 0.16, qy + 0.2, qz], yaw);
-            L.detail += line([SPARES.x + 0.16, qy, qz], [SPARES.x + 0.16, qy + 0.2, qz], yaw);
+            L.inner += line([SPARES.x - 0.34, qy, qz], [SPARES.x + 0.34, qy, qz], yaw);
+            L.inner += line([SPARES.x - 0.16, qy, qz], [SPARES.x - 0.16, qy + 0.2, qz], yaw);
+            L.inner += line([SPARES.x + 0.16, qy, qz], [SPARES.x + 0.16, qy + 0.2, qz], yaw);
         }
+
+        /* THE FAR WALL, AS A WALL — this shell never had one. The 'inside' poly
+           at z0 was the only far wall there was, and everything painted after it
+           showed: from behind, a 40 ft container wallpapered with its own
+           couplings, cable drops and cabinet faces (the owner's report, and the
+           before-sheet's yaw 180 tile). One quad, wound like boxFaces' back so
+           frontFacing culls it the way it culls a box, emitted HERE — after the
+           tray, manifolds, CDU, PDU, switch and spares fills that share the side
+           bucket, because within a layer the only order is emission order. */
+        var farWall = [[x1,0,z0],[x0,0,z0],[x0,y1,z0],[x1,y1,z0]];
+        if (frontFacing(farWall, yaw)) L.side += poly(farWall, yaw);
 
         // Roof: only the far half survives the cutaway.
         var roof = [[x0,y1,z0],[x0,y1,C.z],[x1,y1,C.z],[x1,y1,z0]];
-        if (frontFacing(roof, yaw)) L.top += poly(roof, yaw);
-        for (var r2 = 1; r2 < ribs; r2++) {
+        var roofFacing = frontFacing(roof, yaw);
+        if (roofFacing) L.top += poly(roof, yaw);
+        /* The rib loop keys on the roof's own facing, as in the kit: ribs are
+           marks ON that surface, and a rib without its roof is a stripe across
+           whatever is behind it. */
+        if (roofFacing) for (var r2 = 1; r2 < ribs; r2++) {
             var rx2 = x0 + C.w * r2 / ribs;
             /* A rib under the cooler paints into 'detail', which is above every
                filled face, so it would show straight through the frame standing
@@ -497,8 +541,13 @@
 
         // Coil divisions up the leaning face, quiet because they sit on a lit
         // surface instead of standing in for one.
+        /* Guarded on faceFront's own facing — THIS cooler's divisions climb the
+           +z slope, not the kit's faceBack, so the guard follows the face they
+           actually ride: from behind, eight unguarded slants striped the solid
+           back slope. No cut-edge outline to guard here: this cooler is whole,
+           where the kit's is sliced with its container. */
         var COILS = 8;
-        for (var cq = 0; cq < COILS; cq++) {
+        if (frontFacing(faceFront, yaw)) for (var cq = 0; cq < COILS; cq++) {
             var px2 = COOL_X0 + (COOL_X1 - COOL_X0) * (cq + 0.5) / COILS;
             L.detail += line([px2, COOL_YB, COOL_Z1], [px2, COOL_YT, COOL_ZR1], yaw);
         }
@@ -555,9 +604,14 @@
             addBox(L, { x: pt[0], y: C.h - 0.32,  z: pt[1], w: 0.36, h: 0.32, d: 0.36 }, yaw);
         });
         addBox(L, { x: C.x, y: 0, z: z1 - 0.09, w: C.w, h: 0.28, d: 0.18 }, yaw);
-        L.detail += line([x0, y1, z1], [x1, y1, z1], yaw);
-        L.detail += line([x0, 0, z1], [x0, y1, z1], yaw);
-        L.detail += line([x1, 0, z1], [x1, y1, z1], yaw);
+        /* The cut edges are marks on the +z face, so they carry that face's
+           facing (the kit's base-rail rule): from behind, all three striped the
+           far wall — the full 12.19 m top edge the loudest line on it. */
+        if (frontFacing([[x0,0,z1],[x1,0,z1],[x1,y1,z1],[x0,y1,z1]], yaw)) {
+            L.detail += line([x0, y1, z1], [x1, y1, z1], yaw);
+            L.detail += line([x0, 0, z1], [x0, y1, z1], yaw);
+            L.detail += line([x1, 0, z1], [x1, y1, z1], yaw);
+        }
 
         /* The far end is BARE, and that is the finished state, not an omission.
            It used to carry nine louvre lines and two filter frames; on a hydro
@@ -567,13 +621,18 @@
 
         // Door end: seam and locking bars. The four exhaust fan rings that used
         // to sit between them are gone with the air they moved.
+        /* Guarded by the +x end plate's facing (winding copied from boxFaces'
+           right): from the blind-end views the seam, bars and rings drew on the
+           outside of the far end cap — hardware on a panel that faces away. */
         var dx2 = x1 + 0.105;
-        L.detail += line([dx2, 0.12, C.z], [dx2, y1 - 0.12, C.z], yaw);
-        for (var b = 0; b < 4; b++) {
-            var bz = z0 + C.d * (b + 0.5) / 4;
-            L.detail += line([dx2, 0.16, bz], [dx2, y1 - 0.16, bz], yaw);
-            L.detail += ring(dx2, 0.5, bz, 0.07, yaw, 6);
-            L.detail += ring(dx2, y1 - 0.5, bz, 0.07, yaw, 6);
+        if (frontFacing([[x1,0,z1],[x1,0,z0],[x1,y1,z0],[x1,y1,z1]], yaw)) {
+            L.detail += line([dx2, 0.12, C.z], [dx2, y1 - 0.12, C.z], yaw);
+            for (var b = 0; b < 4; b++) {
+                var bz = z0 + C.d * (b + 0.5) / 4;
+                L.detail += line([dx2, 0.16, bz], [dx2, y1 - 0.16, bz], yaw);
+                L.detail += ring(dx2, 0.5, bz, 0.07, yaw, 6);
+                L.detail += ring(dx2, y1 - 0.5, bz, 0.07, yaw, 6);
+            }
         }
 
         return L;
