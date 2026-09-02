@@ -153,19 +153,45 @@ else console.log(`leaders: ${D.CALLOUTS.length} welded to anchors at 13 angles  
     }
   }
   if (orders.size < 2) fail('slot order never changes — the sort is inert');
-  /* The ground is a flat backdrop whose anchor is pinned on the pivot, 40 m
-     down, precisely so its depth beats every plant anchor at every yaw (the
-     gas skid bottoms out at -15.6; the ground sits at -17.5). If a plant
-     anchor ever dips beneath it, the sort would still be back-to-front — the
-     check above cannot notice — it would just paint gravel over the plant.
-     So the invariant is stated directly: ground first, at all 72 yaws. */
-  let groundFirstBad = 0;
-  for (const yaw of sweep(72)) {
-    const first = D.frame(yaw, null).slots[0].id;
-    if (first !== 'ground' && !groundFirstBad++)
-      fail(`ground is not the back-most slot at ${(yaw*180/Math.PI).toFixed(0)}deg — '${first}' paints under it`);
+  /* The ground is a flat backdrop whose anchor is pinned on the pivot, a
+     kilometre down, precisely so its depth beats every plant anchor at every
+     yaw AND every pitch. Pitch is the axis this check originally ignored, and
+     it is the axis the bug lived on: depth is y sin(pitch) + rotZ cos(pitch),
+     and the viewer can DRAG pitch anywhere in [PITCH_MIN, PITCH_MAX] — the
+     old 40 m pin beat the plant at the baked 26 degrees and lost 357 of 360
+     yaws at PITCH_MIN's 3, gravel grid across the back row, owner-reported
+     from the live site with the sweep below all green at one pitch. If a
+     plant anchor dips beneath the pin the sort is still back-to-front — the
+     check above cannot notice — so the invariant is stated directly, for
+     EVERY scene with a ground slot, across the reachable pitch range. The
+     energy scenes ride along here rather than in their own suites because
+     the invariant and its failure mode are one thing; splitting it four ways
+     is how the pitch axis got dropped the first time. */
+  {
+    const GROUND_SCENES = { 'scene-site.js': D };
+    for (const f of ['scene-pad-now.js', 'scene-pad-ion.js',
+                     'scene-landfill-now.js', 'scene-landfill-ion.js'])
+      GROUND_SCENES[f] = require(REPO_ROOT + 'site/' + f);
+    let groundFirstBad = 0;
+    for (const name of Object.keys(GROUND_SCENES)) {
+      const S = GROUND_SCENES[name];
+      const pitches = [S.PITCH_MIN, 6, 10, 14, 18, 26].map(
+        (p, i) => i ? p * Math.PI / 180 : p).concat([S.PITCH_MAX]);
+      for (const p of pitches) {
+        S.setView({ pitch: p });
+        for (const yaw of sweep(72)) {
+          const first = S.frame(yaw, null).slots[0].id;
+          if (first !== 'ground' && !groundFirstBad++)
+            fail(`${name}: ground is not the back-most slot at yaw ` +
+                 `${(yaw*180/Math.PI).toFixed(0)}deg pitch ` +
+                 `${(p*180/Math.PI).toFixed(1)}deg — '${first}' paints under it`);
+        }
+        S.resetView();
+      }
+    }
+    if (!groundFirstBad)
+      console.log('depth sort: ground first across 72 yaws x 7 pitches x 5 scenes  OK');
   }
-  if (!groundFirstBad) console.log('depth sort: the ground slot paints first at all 72 yaws  OK');
   console.log(`depth sort: ${D.SLOTS} slots, ${orders.size} distinct orders across the sweep, always back-to-front  OK`);
 }
 

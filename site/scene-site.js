@@ -265,17 +265,22 @@
     }
 
     var RENDERABLES = [
-        /* THE ANCHOR IS A SORT KEY, NOT A POSITION, and it is 40 m underground
-           on purpose. The ground is a flat backdrop every other slot must
-           paint over at every yaw, but the depth sort only compares anchors —
-           a plausible anchor on the slab itself would drift in front of a
-           container's anchor at some angles and paint gravel over the box.
-           At the pivot the anchor's swept radius is zero, so its depth is the
-           constant -40 sin 26 = -17.5; the deepest any plant anchor reaches
-           is the gas skid's 0.85 sin 26 - 17.75 cos 26 = -15.6, measured over
-           the sweep, so the ground leads by 1.9 at its closest. dg-suite.js
-           test 9 sweeps 72 yaws and asserts the ground slot is always first. */
-        { id: 'ground', at: [-SHIFT_X, -40, 0], build: buildGround },
+        /* THE ANCHOR IS A SORT KEY, NOT A POSITION, and it is a kilometre
+           underground on purpose. The ground is a flat backdrop every other
+           slot must paint over at every yaw AND EVERY PITCH — the depth sort
+           only compares anchors, and depth is y sin(pitch) + rotZ cos(pitch),
+           so a pin that merely beats the plant at the baked 26 degrees loses
+           when the viewer DRAGS the pitch down. At y -40 the ground led the
+           gas skid (the deepest plant anchor, radius 17.75) by only 1.9 at
+           26 deg, and below 18 deg it started losing yaws: 357 of 360 gone
+           at PITCH_MIN's 3 deg — the owner's screenshot, gravel grid across
+           the back row. On the axis the anchor's rotZ is 0, so its depth is
+           the constant -1000 sin(pitch): -52.3 at 3 deg against a plant
+           floor near -17.7, and the margin only grows steeper. dg-suite.js
+           test 9 sweeps 72 yaws across the whole draggable pitch range and
+           asserts the ground slot is always first, in all five ground
+           scenes. */
+        { id: 'ground', at: [-SHIFT_X, -1000, 0], build: buildGround },
         { id: 'gas',  at: [GAS.x,  GAS.h  / 2, 0], build: function (H, yaw) { return buildGas(H, yaw); } },
         { id: 'gen',  at: [GEN.x,  GEN.h  / 2, 0], build: function (H, yaw) { return buildGen(H, yaw); } },
         { id: 'xfmr', at: [XFMR.x, XFMR.h / 2, 0], build: function (H, yaw) { return buildXfmr(H, yaw); } },

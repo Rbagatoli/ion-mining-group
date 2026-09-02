@@ -222,12 +222,15 @@
     var RENDERABLES = [
         /* Pinned FIRST two ways, because one was not enough: x = -SHIFT_X (0 here)
            and z = 0 put the anchor on the turntable axis, so its rotZ is 0 at every
-           yaw and its depth is a CONSTANT -y*sin(pitch); y -100 puts that constant
-           (-34.2 at this pitch) far below the deepest real anchor, which reaches
-           about -15 when the flare swings behind. A first draft used y -40 at the
-           slot's old x and still lost to a far anchor at 54 of 180 yaws — measured,
-           which is why the number is 100 and the axis trick is not optional. */
-        { id: 'ground', at: [0, -100, 0], build: buildGround },
+           yaw and its depth is a CONSTANT -y*sin(pitch). y is 1000 because the
+           viewer can DRAG the pitch down to 3 degrees, where sin is 0.052: y -100
+           held the baked 20 degrees comfortably and lost 360 of 360 yaws at 3 (the
+           deepest real anchor sits near -17 there, the pin at -100 only -5.2). A
+           first draft before that used y -40 at the slot's old x and lost 54 of
+           180 yaws at the BAKED pitch alone. Measured twice now, which is why the
+           number is 1000 and the axis trick is not optional — dg-suite.js sweeps
+           this scene's sort across the whole draggable pitch range. */
+        { id: 'ground', at: [0, -1000, 0], build: buildGround },
         { id: 'well',   at: [P.WELL.x, P.WELL_H * 0.5, P.WELL.z], build: buildWellSlot },
         { id: 'sep',    at: [P.SEP.x, P.SEP.y + P.SEP.h * 0.5, P.SEP.z], build: buildSepSlot },
         { id: 'tanks',  at: [(P.TANK_X[0] + P.TANK_X[2]) / 2, P.TANK_H * 0.5, P.TANK_Z], build: buildTankSlot },

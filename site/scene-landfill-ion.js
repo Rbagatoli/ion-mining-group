@@ -254,9 +254,10 @@
     }
 
     var RENDERABLES = [
-        /* Ground on the turntable axis (x = -SHIFT_X) at y -100: constant depth,
-           always first — scene-pad-ion.js's note carries the measured failure. */
-        { id: 'ground', at: [-6.0, -100, 0], build: buildGround },
+        /* Ground on the turntable axis (x = -SHIFT_X) at y -1000: constant depth,
+           always first at every pitch the viewer can drag to — scene-pad-ion.js's
+           note carries both measured failures. */
+        { id: 'ground', at: [-6.0, -1000, 0], build: buildGround },
         { id: 'cell',   at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildCellSlot },
         { id: 'plant',  at: [G.BLOWER.x, 1.0, G.BLOWER.z], build: buildPlantSlot },
         { id: 'tiein',  at: [(G.KO.x + GAS.x) / 2, 1.15, LANE_Z], build: buildTieIn },

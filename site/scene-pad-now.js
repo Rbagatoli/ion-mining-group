@@ -129,8 +129,8 @@
 
     var RENDERABLES = [
         /* Anchors mirror scene-pad-ion.js exactly — see its note for why the ground
-           anchor sits on the turntable axis at y -100 rather than anywhere honest. */
-        { id: 'ground', at: [0, -100, 0], build: buildGround },
+           anchor sits on the turntable axis at y -1000 rather than anywhere honest. */
+        { id: 'ground', at: [0, -1000, 0], build: buildGround },
         { id: 'well',   at: [P.WELL.x, P.WELL_H * 0.5, P.WELL.z], build: buildWellSlot },
         { id: 'sep',    at: [P.SEP.x, P.SEP.y + P.SEP.h * 0.5, P.SEP.z], build: buildSepSlot },
         { id: 'tanks',  at: [(P.TANK_X[0] + P.TANK_X[2]) / 2, P.TANK_H * 0.5, P.TANK_Z], build: buildTankSlot },

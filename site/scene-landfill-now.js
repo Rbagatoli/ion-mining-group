@@ -146,7 +146,7 @@
     }
 
     var RENDERABLES = [
-        { id: 'ground', at: [-6.0, -100, 0], build: buildGround },
+        { id: 'ground', at: [-6.0, -1000, 0], build: buildGround },
         { id: 'cell',   at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildCellSlot },
         { id: 'plant',  at: [G.BLOWER.x, 1.0, G.BLOWER.z], build: buildPlantSlot },
         { id: 'flare',  at: [G.FLARE.x, G.FLARE_H / 2, G.FLARE.z], build: buildFlare },
