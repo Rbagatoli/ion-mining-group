@@ -196,7 +196,18 @@ var LandfillCaSource = (function() {
                     ? null : p.hasRegisteredOffsetProject,
                 // Unchanged from the US adapter, and true of every landfill gas prospect
                 // anywhere. site-capex.js gates the treatment capex on this exact field.
-                requiresGasTreatment: true
+                requiresGasTreatment: true,
+                /* THE NAMED PERSON. ECCC's registry publishes a public contact for 93 of the
+                   156 facilities — name, position, direct telephone, email. This is the only
+                   dataset in the entire system that contains what an outreach call actually
+                   needs, and until this block it was read by nothing: shipped in the artifact,
+                   dropped here, invisible on every screen. Passed through as published; null
+                   for the 63 facilities ECCC lists none for, and absence is a statement
+                   ("ECCC publishes no contact"), never a blank. */
+                contactName: p.publicContact ? (p.publicContact.name || null) : null,
+                contactTitle: p.publicContact ? (p.publicContact.position || null) : null,
+                contactPhone: p.publicContact ? (p.publicContact.telephone || null) : null,
+                contactEmail: p.publicContact ? (p.publicContact.email || null) : null
             },
             raw: null
         };

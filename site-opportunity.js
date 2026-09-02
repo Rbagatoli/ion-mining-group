@@ -210,6 +210,13 @@ var SiteOpportunity = (function() {
         if (manual && (has(manual.contact_email) || has(manual.contact_phone))) {
             return { tier: 2, label: 'Company contact', score: 80 };
         }
+        // The REGISTRY publishes a named person with a direct line — ECCC does exactly this for
+        // 93 Canadian landfills (name, title, telephone, email). The same standing as a
+        // manually-entered named contact: it is a person you can ring today, and it outranks a
+        // bare company phone for the same reason tier 1 outranks tier 2.
+        if (op && has(op.contactName) && (has(op.email) || has(op.phone))) {
+            return { tier: 1, label: 'Named contact (registry)', score: 95 };
+        }
         // The regulator publishes a phone or address for the licensee — AER ST104 does this for
         // Alberta, which is why Canadian prospects are usually more actionable than US ones.
         if (op && (has(op.phone) || has(op.address))) {

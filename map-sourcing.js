@@ -4389,7 +4389,23 @@ var MapSourcing = (function() {
         var flare = (typeof SiteCatalog !== 'undefined' && SiteCatalog.operatorFor)
             ? SiteCatalog.operatorFor(c.id) : null;
         if (flare) return flare;
-        if (c.operator) return { operator: c.operator, source: c.operatorSource || null, licence: null };
+        if (c.operator) {
+            var rec = { operator: c.operator, source: c.operatorSource || null, licence: null };
+            /* THE PUBLISHED PERSON RIDES ALONG. ECCC's registry names a public contact — name,
+               title, direct phone, email — for 93 Canadian landfills, and site-opportunity's
+               contact tiers award "published contact" on exactly these fields of the operator
+               record. Without this merge those 93 scored tier 3 ("operator named, no contact")
+               while carrying a direct phone number in sourceDetail: the ranking called the
+               system's ONLY real contacts unreachable. */
+            var sd = c.sourceDetail || {};
+            if (sd.contactName || sd.contactPhone || sd.contactEmail) {
+                rec.contactName = sd.contactName || null;
+                rec.contactTitle = sd.contactTitle || null;
+                rec.phone = sd.contactPhone || null;
+                rec.email = sd.contactEmail || null;
+            }
+            return rec;
+        }
         return null;
     }
     function operatorName(c) {
@@ -5268,6 +5284,31 @@ var MapSourcing = (function() {
                 '<p class="src-note">Operator matching currently covers <strong>Alberta</strong> (AER well licences) and the ' +
                 '<strong>US</strong> (ND, TX, NM, CO). Elsewhere no public dataset links a flare to a company, so this stays ' +
                 'blank rather than naming whoever happens to be nearest.</p>';
+        }
+
+        /* THE PUBLISHED PERSON, ABOVE EVERYTHING ELSE IN THE BLOCK. ECCC's registry names a
+           public contact — name, title, direct telephone, email — for 93 Canadian landfills.
+           It is the only place in the whole system a real person is published, it shipped in
+           the artifact unread for its entire life, and when present it belongs at the top:
+           every route below it is a way of FINDING what this block already has. */
+        var sdp = c.sourceDetail || {};
+        if (sdp.contactName || sdp.contactPhone || sdp.contactEmail) {
+            var telDigits = sdp.contactPhone ? String(sdp.contactPhone).replace(/[^0-9+]/g, '') : null;
+            var telShown = telDigits && telDigits.length === 10
+                ? '(' + telDigits.slice(0, 3) + ') ' + telDigits.slice(3, 6) + '-' + telDigits.slice(6)
+                : sdp.contactPhone;
+            html += '<div class="src-registry">' +
+                (sdp.contactName ? '<div class="src-reg-row"><span class="src-reg-k">Named contact</span>' +
+                    '<span class="src-reg-v"><strong>' + esc(sdp.contactName) + '</strong>' +
+                    (sdp.contactTitle ? ' · ' + esc(sdp.contactTitle) : '') + '</span></div>' : '') +
+                (sdp.contactPhone ? '<div class="src-reg-row"><span class="src-reg-k">Direct phone</span>' +
+                    '<a class="src-reg-v" href="tel:' + esc(telDigits) + '">' + esc(telShown) + '</a></div>' : '') +
+                (sdp.contactEmail ? '<div class="src-reg-row"><span class="src-reg-k">Email</span>' +
+                    '<a class="src-reg-v" href="mailto:' + esc(sdp.contactEmail) + '">' +
+                    esc(sdp.contactEmail) + '</a></div>' : '') +
+                '</div>' +
+                '<p class="src-note">Published by the facility itself in its ECCC GHGRP filing — ' +
+                'the registry\'s public contact for exactly this kind of enquiry.</p>';
         }
 
         /* ROUTES TO A NUMBER, immediately above the boxes you would paste it
