@@ -194,6 +194,33 @@ var ProjectData = (function () {
         p.budget_authorised_usd = num(p.budget_authorised_usd);
         p.target_energization = isDay(p.target_energization) ? p.target_energization : null;
 
+        /* THE FACTS THE STACK PRICES A SANCTION ON, frozen at promotion like gas_mmscfd and for
+           the same reason: a later edit upstream must not silently reprice a build already
+           sanctioned. Without these, the opening budget was seeded from a three-field synthetic
+           record while the map priced the full candidate — measured on one real shutdown site,
+           $883,341 against $2,054,455 for the SAME landfill, and every later variance would have
+           been measured against the wrong one.
+
+           A fixed literal, not a passthrough: like p.prospect above, an unknown key here is
+           dropped on the next read rather than accumulating shape nobody declared. Null is a
+           real state throughout — a manually entered prospect has no candidate behind it, and
+           the stack already reports unpriceable components as unknown rather than guessing. */
+        if (p.capex_facts && typeof p.capex_facts === 'object' && !Array.isArray(p.capex_facts)) {
+            var cf = p.capex_facts;
+            p.capex_facts = {
+                existing_generation_kw: num(cf.existing_generation_kw),
+                project_shutdown_date: text(cf.project_shutdown_date, 20),
+                requires_gas_treatment: cf.requires_gas_treatment === true ? true
+                    : (cf.requires_gas_treatment === false ? false : null),
+                infra_condition_verified: cf.infra_condition_verified === true ? true : null,
+                acquisition_usd: num(cf.acquisition_usd),
+                market: (cf.market === 'used' || cf.market === 'new') ? cf.market : null,
+                captured_at: text(cf.captured_at)
+            };
+        } else {
+            p.capex_facts = null;
+        }
+
         p.cancelled_at = text(p.cancelled_at);
         p.cancelled_reason = text(p.cancelled_reason);
         // The tombstone. Set rather than removing the key, because Firestore's merge cannot
@@ -458,6 +485,22 @@ var ProjectData = (function () {
                from multiplying it by money. */
             horizon_years: num(f.horizon_years),
             horizon_basis: text(f.horizon_basis, 300),
+            /* Frozen from two places, candidate first. The caller passes f.capex_facts when it
+               has the sourced candidate in hand (the promotion form on a page that loads the
+               catalogue); the record itself supplies what the CRM already held. Where both know
+               a fact the candidate wins — it is the sourced truth the record was saved from. */
+            capex_facts: {
+                existing_generation_kw: f.capex_facts ? f.capex_facts.existing_generation_kw : null,
+                project_shutdown_date: f.capex_facts ? f.capex_facts.project_shutdown_date : null,
+                requires_gas_treatment: f.capex_facts ? f.capex_facts.requires_gas_treatment : null,
+                infra_condition_verified: (f.capex_facts && f.capex_facts.infra_condition_verified === true)
+                    ? true : (rec.infra_condition_verified === true ? true : null),
+                acquisition_usd: (f.capex_facts && f.capex_facts.acquisition_usd !== null &&
+                                  f.capex_facts.acquisition_usd !== undefined)
+                    ? f.capex_facts.acquisition_usd : num(rec.purchase_price_usd),
+                market: f.capex_facts ? f.capex_facts.market : null,
+                captured_at: nowIso()
+            },
             prospect: {
                 prospect_id: String(prospectId),
                 name: rec.name,

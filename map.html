@@ -1496,7 +1496,11 @@ commercial terms are your assumptions.</p>
 <script src="./network-history.js?v=338"></script>
 <script src="./calc-engine.js?v=338"></script>
 <script src="./jurisdictions.js?v=338"></script>
-<script src="./site-engine.js?v=338"></script>
+<!-- miner-db.js MUST precede site-engine.js: the engine prices its fleet unit from it and
+     throws if it is absent. That throw is deliberate — a silent fallback price is how an
+     S19j Pro+ figure survived an upgrade to the S21 Pro and understated every all-in. -->
+<script src="./miner-db.js?v=406"></script>
+<script src="./site-engine.js?v=406"></script>
 <script src="./site-flags.js?v=338"></script>
 <script src="./site-scoring.js?v=338"></script>
 <script src="./site-opportunity.js?v=368"></script>
@@ -1514,7 +1518,7 @@ commercial terms are your assumptions.</p>
 <script src="./capacity-audit-ui.js?v=388"></script>
 <script src="./site-sources.js?v=387"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=384"></script>
+<script src="./project-model.js?v=406"></script>
 <script src="./project-gates.js?v=384"></script>
 <script src="./site-catalog.js?v=338"></script>
 <script src="./source-flare-gas.js?v=338"></script>
@@ -1549,7 +1553,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=402"></script>
+<script src="./map-sourcing.js?v=406"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

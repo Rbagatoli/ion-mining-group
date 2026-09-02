@@ -68,7 +68,14 @@ var SITES = [
     site({ id: 's3', name: 'Dawson East',   nameplate_kw: 650, usable_kw: 500, purchase_price_usd: 225000, power_rate: 0.04, generator_ownership: 'producer' }),
     site({ id: 's4', name: 'Chauvin South', nameplate_kw: 750, usable_kw: 600, purchase_price_usd: 270000, power_rate: 0.04, generator_ownership: 'producer' })
 ];
-var EV = SITES.map(function(s) { return { site: s, metrics: SiteEngine.evaluate(s, MARKET) }; });
+// THE SPEC'S OWN INPUTS, STATED. The vendor-comparison table this section reproduces was
+// quoted at $2,400/unit — the S19j Pro+ price of its day. The engine's DEFAULT now tracks
+// MinerDB (the S21 Pro at whatever the price list says), so reproducing the historical table
+// requires the historical price to be passed, not inherited. Without this line the table
+// would silently re-derive from whatever MinerDB says this week, which is the circular
+// expectation this suite bans.
+var SPEC_CONFIG = { minerUnitCostUsd: 2400 };
+var EV = SITES.map(function(s) { return { site: s, metrics: SiteEngine.evaluate(s, MARKET, SPEC_CONFIG) }; });
 function m(name) {
     for (var i = 0; i < EV.length; i++) if (EV[i].site.name === name) return EV[i].metrics;
     throw new Error('no such fixture: ' + name);
@@ -104,6 +111,29 @@ ok('140-claim clean on Chauvin South',    worst(EV[3]) !== 'critical', 'got ' + 
 // falsy 0 as "unknown", reporting a site holding a critical flag as merely "warn".
 var mixed = [{ severity: 'warn' }, { severity: 'critical' }, { severity: 'info' }];
 eq('worstSeverity ranks critical above warn (falsy-zero regression)', SiteFlags.worstSeverity(mixed), 'critical');
+
+// ====================================================================================
+section('The fleet unit is priced from MinerDB — the seam that let $2,400 survive');
+
+// Two files each declared the price of one machine, and they diverged: site-engine carried the
+// S19j Pro+ price years after the fleet unit became the S21 Pro. These assertions compare the
+// two modules' views of the SAME fact, so they fail if anyone ever hardcodes the seam again —
+// in either file, in either direction.
+(function() {
+    var MinerDb = require(path.join(ROOT, 'miner-db.js'));
+    var unit = MinerDb.findByModel(SiteEngine.DEFAULT_CONFIG.minerModel);
+    ok('the default fleet unit exists in MinerDB', !!unit,
+       'model ' + SiteEngine.DEFAULT_CONFIG.minerModel);
+    eq('default unit cost is the MinerDB price', SiteEngine.DEFAULT_CONFIG.minerUnitCostUsd, unit.cost);
+    eq('default watts are the MinerDB power (kW x 1000)', SiteEngine.DEFAULT_CONFIG.minerWatts,
+       Math.round(unit.power * 1000));
+    eq('default TH is the MinerDB hashrate', SiteEngine.DEFAULT_CONFIG.minerTh, unit.hashrate);
+    // And the historical figure is gone from the default: if this fails at 2400, the literal
+    // crept back.
+    ok('the default no longer carries the S19j Pro+ price',
+       SiteEngine.DEFAULT_CONFIG.minerUnitCostUsd !== 2400,
+       'got ' + SiteEngine.DEFAULT_CONFIG.minerUnitCostUsd);
+})();
 
 // ====================================================================================
 section('Derived-metric formulas');

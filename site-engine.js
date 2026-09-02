@@ -13,6 +13,33 @@
 
 var SiteEngine = (function() {
 
+    // THE FLEET UNIT IS PRICED FROM MinerDB, NOT FROM A LITERAL HERE.
+    //
+    // It used to be a literal, and the literal was wrong: $2,400 is the Antminer S19j Pro+
+    // price, left behind when the default fleet unit was upgraded to the S21 Pro ($4,260 in
+    // miner-db.js). Every all-in capital figure in prospects mode was built on it — miners are
+    // usually the single largest all-in component, so each figure understated by roughly a
+    // fifth, invisibly, while the hardware page showed the right price for the same machine.
+    //
+    // The failure was the seam: two files each declared the price of one machine. So the seam
+    // is removed rather than reconciled — this engine now reads the unit it names from the one
+    // price list, and THROWS if it cannot. A throw, not a fallback: a silent default here is
+    // precisely how the $2,400 survived. map.html learned to load miner-db.js first the loud
+    // way. tests/site-engine.test.js pins DEFAULT_CONFIG to the MinerDB row so the two can
+    // never diverge again, whichever way prices move.
+    var FLEET_UNIT_MODEL = 'Antminer S21 Pro';
+    var _minerDb = (typeof MinerDB !== 'undefined') ? MinerDB
+        : (typeof require === 'function' ? require('./miner-db.js') : null);
+    if (!_minerDb) {
+        throw new Error('SiteEngine requires miner-db.js to be loaded first — ' +
+                        'the fleet unit (' + FLEET_UNIT_MODEL + ') is priced from it');
+    }
+    var _fleetUnit = _minerDb.findByModel(FLEET_UNIT_MODEL);
+    if (!_fleetUnit) {
+        throw new Error('SiteEngine fleet unit "' + FLEET_UNIT_MODEL + '" is not in MinerDB — ' +
+                        'if the model was renamed there, rename it here in the same commit');
+    }
+
     // ---- Constants, with the reasoning that picked them -------------------------------
 
     // Bitcoin targets one block per 10 minutes => 144/day. Same constant charts.js uses for
@@ -30,10 +57,12 @@ var SiteEngine = (function() {
     var HOURS_PER_MONTH = 720;
 
     var DEFAULT_CONFIG = {
-        // Antminer S21 Pro — the spec's default fleet unit.
-        minerWatts: 3510,
-        minerTh: 234,
-        minerUnitCostUsd: 2400,
+        // The default fleet unit, resolved from MinerDB above. minerWatts arrives as kW there
+        // and as watts here — the x1000 is a unit conversion, not a scale factor.
+        minerModel: FLEET_UNIT_MODEL,
+        minerWatts: Math.round(_fleetUnit.power * 1000),
+        minerTh: _fleetUnit.hashrate,
+        minerUnitCostUsd: _fleetUnit.cost,
         minerAlgorithm: 'SHA-256',
 
         hoursPerMonth: HOURS_PER_MONTH,

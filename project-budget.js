@@ -251,11 +251,45 @@ var ProjectBudget = (function () {
            every project precisely so the carrying cost seeded here is the one that was agreed;
            without it the opening budget would be priced at a rate the project never accepted and
            every later variance would be measured against the wrong number. */
+        /* THE SAME STACK THE MAP PRICED, not a three-field sketch of it. This call used to pass
+           only capacity, stage and energy type, so on a real shutdown site the seed came out at
+           $883,341 against the map's $2,054,455 for the same landfill: no shutdown discount
+           basis, no inherited generation, no treatment, no miners, no acquisition. Every fact
+           below is read from the promotion-frozen capex_facts block — never re-read from the
+           live prospect, so an upstream edit cannot silently reprice a sanctioned budget. */
+        var cf = project.capex_facts || {};
+
+        /* Miners are priced by the engine that owns the fleet unit, exactly as the map does.
+           No fallback arithmetic here: duplicating floor(kW/watts) x unit-cost with local
+           literals is how a stale miner price survived one upgrade already. If the engine is
+           not loaded the miner line is SKIPPED AND SAID, not silently zero. */
+        var minerCapexUsd = null;
+        if (typeof SiteEngine !== 'undefined') {
+            var probe = SiteEngine.evaluate({
+                nameplate_kw: kw, usable_kw: kw, purchase_price_usd: 0, power_rate: 0
+            }, {});
+            minerCapexUsd = probe.miner_capex_usd;
+        }
+
         var stack = SiteCapex.stack({
             powerPotentialKw: kw,
             development_stage: project.prospect.development_stage || null,
-            energy_type: 'landfill_gas'
-        }, { capacityKw: kw, annualCostOfCapitalPct: num(project.annual_cost_of_capital_pct) });
+            energy_type: 'landfill_gas',
+            shutdown_date: cf.project_shutdown_date || null,
+            existing_generation_kw: cf.existing_generation_kw,
+            sourceDetail: {
+                projectShutdownDate: cf.project_shutdown_date || null,
+                requiresGasTreatment: cf.requires_gas_treatment === true,
+                infraConditionVerified: cf.infra_condition_verified === true
+            }
+        }, {
+            capacityKw: kw,
+            annualCostOfCapitalPct: num(project.annual_cost_of_capital_pct),
+            minerCapexUsd: minerCapexUsd,
+            acquisitionUsd: (cf.acquisition_usd !== null && cf.acquisition_usd !== undefined)
+                ? cf.acquisition_usd : null,
+            market: cf.market || undefined
+        });
 
         var seeded = [], skipped = [];
         for (var i = 0; i < stack.components.length; i++) {
@@ -265,6 +299,7 @@ var ProjectBudget = (function () {
             seeded.push({ category: c.id, budgeted_amount: Math.round(c.usd),
                           notes: 'seeded from the estimate — ' + (c.basis || c.reason || '') });
         }
+        if (typeof SiteEngine === 'undefined') skipped.push('miners (site-engine.js not loaded)');
         if (!seeded.length) return { ok: false, err: 'The estimate priced nothing to seed from.' };
 
         var res = ProjectData.mutate(projectId, function (p) {

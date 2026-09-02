@@ -71,3 +71,7 @@ var MinerDB = (function() {
         findByModel: findByModel
     };
 })();
+
+// Node export, so SiteEngine can price its fleet unit from this file in tests exactly as it
+// does in the browser. One price list, both runtimes.
+if (typeof module !== 'undefined' && module.exports) module.exports = MinerDB;

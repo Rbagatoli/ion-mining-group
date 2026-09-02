@@ -304,11 +304,20 @@ var MapSourcing = (function() {
             purchase_price_usd: 0, power_rate: rate, usable_kw: usable
         }), scenarioMarket());
 
+        // THE MARKET REACHES THE ALL-IN, at last. stack() has accepted ctx.market since the
+        // used-rate card shipped, and nothing here ever passed it -- so the used/new toggle
+        // moved the avoided panel while every all-in figure quietly stayed priced new. The
+        // resolved market is taken from capitalFor() rather than from _capMarket directly so
+        // the two panels share ONE resolution, including the auto default that prices shutdown
+        // equipment used: two views disagreeing about which market they are in is exactly the
+        // seam this line closes.
+        var capForMarket = capitalFor(c);
         var capex = (typeof SiteCapex !== 'undefined')
             ? SiteCapex.stack(Object.assign({}, c, saved), {
                 capacityKw: usable,
                 minerCapexUsd: probe.miner_capex_usd,
                 acquisitionUsd: savedPrice,
+                market: (capForMarket && capForMarket.market) || _capMarket || undefined,
                 asOf: null
             })
             : null;
@@ -3153,6 +3162,10 @@ var MapSourcing = (function() {
     function setCapMarket(m) {
         _capMarket = (m === 'new' || m === 'used') ? m : null;
         clearCapitalCache();
+        // The all-in memo prices through stack(ctx.market) now, so it is stale the moment the
+        // market changes. Leaving it warm would show a used avoided-panel over a new all-in --
+        // the exact disagreement threading the market was meant to end.
+        _evalCache = {};
     }
 
     function capitalFor(c) {
@@ -4714,7 +4727,13 @@ var MapSourcing = (function() {
                     fmtUsd(cap.avoidedUsd) + '</span></div>' +
                 '<div><span class="k">Still to spend</span><span class="v">' +
                     fmtUsd(cap.requiredUsd) + '</span></div>' +
-                '<div><span class="k">Full build</span><span class="v">' +
+                /* GAS-SIDE, AND SAYS SO. This row used to be captioned "Full build", and on a
+                   measured shutdown site it was 55% short of the all-in figure rendered lower
+                   in the SAME panel -- it prices the gas-side stack only, no mining
+                   infrastructure, no miners, no acquisition. A number that reads as a total
+                   while omitting the largest components is the most expensive kind of wrong:
+                   it gets quoted. */
+                '<div><span class="k">Gas-side build</span><span class="v">' +
                     fmtUsd(cap.totalBuildUsd) + '</span></div>' +
                 (cap.requiredSavingUsd
                     ? '<div><span class="k">Saved by buying used</span><span class="v pos">' +
