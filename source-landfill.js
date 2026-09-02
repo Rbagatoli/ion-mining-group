@@ -58,7 +58,11 @@ var LandfillSource = (function() {
     function offtakeFor(p) {
         if (isShutdown(p)) return 'expired';
         var s = String(p.projectStatus || '').toLowerCase();
-        if (s === 'candidate' || s === 'future potential' || s === 'low potential') return 'none_merchant';
+        // 'no project' is the inventory sweep: a landfill EPA tracks with no energy project at
+        // all. Its gas was never committed to anyone — the same answer as a candidate's, for
+        // the same reason.
+        if (s === 'candidate' || s === 'future potential' || s === 'low potential' ||
+            s === 'no project') return 'none_merchant';
         return null;
     }
 
@@ -82,6 +86,20 @@ var LandfillSource = (function() {
                         (p.projectShutdownDate ? ' on ' + p.projectShutdownDate : ' (date not published)') +
                         (p.projectType ? ' — was a ' + String(p.projectType).toLowerCase() : '') +
                         '. Gas collection and interconnection remain in place.'
+            });
+        }
+        /* GAS BURNED FOR NOTHING. A no-project landfill flaring collected gas is the clearest
+           acquisition signal in the dataset: the collection system exists, the gas is measured
+           at the flare meter, and the owner is paying to destroy the product. Undated — the
+           inventory reports a rate, not an event — so decay scoring treats it as current. */
+        if (String(p.projectStatus || '').toLowerCase() === 'no project' &&
+            p.lfgFlaredMmscfd > 0) {
+            out.push({
+                type: 'lmop_flaring_no_project',
+                date: null,
+                source: 'EPA LMOP landfill inventory',
+                detail: 'Collected landfill gas is being flared — ' + p.lfgFlaredMmscfd +
+                        ' mmscfd destroyed with no energy project on site.'
             });
         }
         return out;

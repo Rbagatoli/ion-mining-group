@@ -383,8 +383,11 @@ var LMOP = require(path.join(ROOT, 'data', 'landfills.json')).projects;
 var shut = LMOP.filter(function(p) { return p.collectionSystem === 'Shutdown'; });
 var norm = shut.map(function(p) { return SS.normalize(LS.adapter.normalize(p), 'lmop-landfill'); });
 var avoided = norm.map(function(c) { return SI.capitalAvoided(c, { asOf: NOW }).avoidedUsd; });
-ok('all 31 collectionSystem = Shutdown sites carry non-zero avoided capital',
-   shut.length === 31 && avoided.every(function(v) { return v > 0; }),
+// 33 after the coverage sweep (was 31): two rescued project rows also carry a shutdown
+// wellfield. The property — every one prices non-zero avoided capital — is what matters;
+// the count only pins the fixture's reach.
+ok('all 33 collectionSystem = Shutdown sites carry non-zero avoided capital',
+   shut.length === 33 && avoided.every(function(v) { return v > 0; }),
    shut.length + ' sites, ' + avoided.filter(function(v) { return !(v > 0); }).length + ' at zero');
 
 // The ranking claim the whole brief rests on.

@@ -1,8 +1,8 @@
 {
-  "_comment": "Pre-extraction baseline for usableCapacity(). Generated from map-sourcing.js before the function moved to site-capacity.js. See tests/site-capacity.test.js.",
+  "_comment": "Pre-extraction baseline for usableCapacity(). Generated from map-sourcing.js before the function moved to site-capacity.js. See tests/site-capacity.test.js. RE-CUT 2026-09-02 for the landfill coverage sweep (+849 candidates, 30,517 -> 31,366): proven additive before recutting — 0 old ids repriced, 0 removed; samples unchanged byte-for-byte (the samples assertion passed across the recut, which is the point of keeping samples alongside the digest).",
   "generated_from": "map-sourcing.js @ 6aaf294",
-  "candidates": 30517,
-  "digest": "30e636ac20a1d6bb3cc55b015de939c50886524bec7641914e4b6ede0936cfe0",
+  "candidates": 31366,
+  "digest": "0c160f2a750864ae5f4e588cfa197619e01eec7517e285f65ebe55e9ffea92a1",
   "constants": {
     "PARASITIC": {
       "landfill_gas": 0.1,
@@ -246,5 +246,9 @@
         "gross": 1060
       }
     }
-  ]
+  ],
+  "previous": {
+    "candidates": 30517,
+    "digest": "30e636ac20a1d6bb3cc55b015de939c50886524bec7641914e4b6ede0936cfe0"
+  }
 }

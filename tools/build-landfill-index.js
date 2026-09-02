@@ -56,8 +56,20 @@ var STAGE_BY_STATUS = {
     'candidate':        'raw_resource',
     'future potential': 'raw_resource',
     'low potential':    'raw_resource',
+    // The landfill-inventory sweep below: a landfill with gas and no LMOP project row. Nothing
+    // is on site beyond whatever collection the record itself reports, so it enters at the
+    // bottom of the ladder like a candidate.
+    'no project':       'raw_resource',
     'unknown':          null              // genuinely unknown, and scored as unknown
 };
+
+// Waste in place -> continuous electrical potential, used ONLY when EPA publishes no gas figure
+// of any kind. ~0.78 MW per million tons is the first-order rule of thumb EPA's own LFGcost
+// screening uses for a producing landfill; it is a SCREEN, not a forecast, and every record
+// priced with it says so in capacityBasis. Before this fallback existed, any row without a
+// measured gas figure was dropped outright -- 1,483 of the 2,641 landfills in EPA's inventory,
+// including all 204 EPA-flagged Candidates, never entered the index at all.
+var MW_PER_MILLION_TONS_WIP = 0.78;
 
 function log(s) { console.log(s); }
 function progress(s) { if (process.stdout.isTTY) process.stdout.write('\r  ' + s + '   '); }
@@ -197,13 +209,72 @@ function round(v, dp) {
         log('  landing page unreachable (' + e.message + ') — using the last known URL');
     }
 
-    var dest = path.join(CACHE, 'lmop-projects.xlsx');
+    /* THE CACHE IS KEYED TO THE RELEASE, NOT TO THE FILENAME. download() reuses any existing
+       file, which was right until the day EPA shipped a new release: the scraper would resolve
+       the new URL and download() would silently hand back the old workbook forever. The release
+       date lives in EPA's URL path (/documents/2024-09/...), so it becomes part of the cache
+       name and a new release misses the cache by construction. */
+    function releaseTag(u) {
+        var m = /\/(\d{4}-\d{2})\//.exec(u);
+        return m ? m[1] : 'undated';
+    }
+    var dest = path.join(CACHE, 'lmop-projects-' + releaseTag(url) + '.xlsx');
     await download(url, dest);
     if (!isZip(dest)) {
         try { fs.unlinkSync(dest); } catch (e) {}
         throw new Error('downloaded file is not an xlsx — the URL probably returned an error page');
     }
     log('  ' + Math.round(fs.statSync(dest).size / 1024) + ' KB');
+
+    /* THE OTHER WORKBOOK — the landfill INVENTORY, ~2,641 landfills, of which the projects file
+       covers fewer than half. This is where the sites with gas and no project live: a landfill
+       collecting and FLARING gas with no energy project is the most approachable prospect class
+       there is (the owner is paying to destroy the resource), and every one of them is in this
+       file and absent from the other. Resolved by the same scrape with the same slash rule, and
+       the whole sweep degrades gracefully: if this workbook cannot be fetched the build still
+       produces the project index and says what it could not add. */
+    var lfUrl = url.replace(/\/lmopdata\.xlsx$/i, '/landfilllmopdata.xlsx');
+    var lfDest = path.join(CACHE, 'lmop-landfills-' + releaseTag(lfUrl) + '.xlsx');
+    var lfRows = null;
+    try {
+        await download(lfUrl, lfDest);
+        if (!isZip(lfDest)) {
+            try { fs.unlinkSync(lfDest); } catch (e2) {}
+            throw new Error('not an xlsx');
+        }
+        lfRows = xlsx.read(fs.readFileSync(lfDest)).sheet('LMOP Database') || null;
+        log('  landfill inventory: ' + (lfRows ? (lfRows.length - 1) + ' rows' : 'sheet not found'));
+    } catch (e) {
+        log('  landfill inventory unavailable (' + e.message + ') — sweep skipped this build');
+    }
+
+    /* The inventory, indexed by landfill id. Two consumers: coordinate recovery for project
+       rows whose own lat/lon cells are blank (the project sits ON the landfill, and the
+       inventory carries coordinates for nearly every landfill — this alone recovers shutdown
+       projects that were dropped for a blank cell, including a 5.2 MW one), and the no-project
+       sweep after the main loop. */
+    var lfIndex = {};
+    if (lfRows && lfRows.length > 1) {
+        var lhi = headerIndex(lfRows), lcol = colFinder(lfRows[lhi] || []);
+        var lc = {
+            lfid: lcol('landfill id'), ghgrp: lcol('ghgrp id'), name: lcol('landfill name'),
+            state: lcol('state'), address: lcol('physical address'), city: lcol('city'),
+            county: lcol('county'), zip: lcol('zip'),
+            lat: lcol('latitude'), lon: lcol('longitude'),
+            ownership: lcol('ownership type'), owner: lcol('landfill owner'),
+            operator: lcol('landfill operator'),
+            opened: lcol('year landfill opened'), closure: lcol('landfill closure year'),
+            lfStatus: lcol('current landfill status'),
+            wip: lcol('waste in place'),
+            generated: lcol('lfg generated'), collSystem: lcol('lfg collection system'),
+            collected: lcol('lfg collected'), flared: lcol('lfg flared')
+        };
+        for (var li = lhi + 1; li < lfRows.length; li++) {
+            var lr = lfRows[li];
+            var lid = str(lr[lc.lfid]);
+            if (lid) lfIndex[lid] = { r: lr, c: lc };
+        }
+    }
 
     log('[2/3] reading the project database');
     var rows = xlsx.read(fs.readFileSync(dest)).sheet('LMOP Database') || [];
@@ -232,7 +303,7 @@ function round(v, dp) {
 
     log('[3/3] deriving capacity, stage and distress');
     var out = [], dropped = { noLocation: 0, noCapacity: 0 };
-    var byStage = {}, shutdownCount = 0, ratedCount = 0, derivedCount = 0, badDates = 0;
+    var byStage = {}, shutdownCount = 0, ratedCount = 0, derivedCount = 0, badDates = 0, wipDerivedCount = 0, recoveredLocation = 0;
 
     for (var i = hi + 1; i < rows.length; i++) {
         var r = rows[i];
@@ -240,7 +311,23 @@ function round(v, dp) {
         if (!name) continue;
 
         var lat = num(r[c.lat]), lon = num(r[c.lon]);
-        if (lat === null || lon === null) { dropped.noLocation++; continue; }
+        var locationBasis = null;
+        if (lat === null || lon === null) {
+            // The project row's own cells are blank, but the project sits ON a landfill and the
+            // inventory workbook carries that landfill's coordinates. 29 project rows — 15 of
+            // them SHUTDOWN, one rated 5.2 MW — used to be dropped here for a blank cell their
+            // own landfill record could fill.
+            var lfRec = lfIndex[str(r[c.lfid])];
+            if (lfRec) {
+                lat = num(lfRec.r[lfRec.c.lat]);
+                lon = num(lfRec.r[lfRec.c.lon]);
+                if (lat !== null && lon !== null) {
+                    locationBasis = 'landfill inventory record';
+                    recoveredLocation++;
+                }
+            }
+            if (lat === null || lon === null) { dropped.noLocation++; continue; }
+        }
 
         var statusRaw = str(r[c.status]) || 'Unknown';
         var statusKey = statusRaw.toLowerCase();
@@ -266,7 +353,22 @@ function round(v, dp) {
         if (rated !== null && rated > 0) { kw = rated * 1000; basis = 'EPA rated MW capacity'; ratedCount++; }
         else if (flow !== null && flow > 0) { kw = flow * MW_PER_MMSCFD * 1000; basis = 'LFG flow to project at ' + MW_PER_MMSCFD + ' MW/mmscfd'; derivedCount++; }
         else if (collected !== null && collected > 0) { kw = collected * MW_PER_MMSCFD * 1000; basis = 'LFG collected at landfill at ' + MW_PER_MMSCFD + ' MW/mmscfd'; derivedCount++; }
-        else { dropped.noCapacity++; continue; }
+        else {
+            // No gas figure at all. This used to be an unconditional drop, and it discarded
+            // 1,483 of the 2,641 landfills EPA tracks — including all 204 rows EPA itself had
+            // flagged Candidate. Waste in place is the fourth basis: a screening figure, marked
+            // as one, never silently ranked alongside a measured gas flow.
+            var wipTons = c.wip >= 0 ? num(r[c.wip]) : null;
+            if (wipTons !== null && wipTons > 0) {
+                kw = (wipTons / 1e6) * MW_PER_MILLION_TONS_WIP * 1000;
+                basis = 'screening estimate from waste in place at ' + MW_PER_MILLION_TONS_WIP +
+                        ' MW per million tons';
+                wipDerivedCount++;
+            } else {
+                dropped.noCapacity++;
+                continue;
+            }
+        }
 
         var shutdownDate = c.shutdown >= 0 ? excelDate(r[c.shutdown]) : null;
         var startDate = c.start >= 0 ? excelDate(r[c.start]) : null;
@@ -298,6 +400,9 @@ function round(v, dp) {
             // string-split the id, which cannot distinguish "same landfill twice" from "one
             // project, two landfills". Consumed by tools/build-site-links.js.
             lfid: str(r[c.lfid]),
+            // Where the coordinates came from when the project row's own cells were blank.
+            // Null for the ~99% whose row carried its own; consumers can badge the rest.
+            locationBasis: locationBasis,
             name: name,
             projectName: str(r[c.projectName]),
             lat: round(lat, 5),
@@ -331,6 +436,115 @@ function round(v, dp) {
         });
     }
 
+    /* [2b/3] THE NO-PROJECT SWEEP — landfills in EPA's inventory with no project row at all.
+       Measured before this existed: 1,483 of 2,641 landfills absent from the index entirely,
+       219 of them at >=0.5 MW of potential, 120 with a collection system already in the ground,
+       13 actively flaring collected gas with nothing using it. That last class is the single
+       best prospect profile this business has — the owner is paying to run a flare — and none
+       of them could ever appear on the map.
+
+       INCLUSION IS A STATED CRITERION, NOT EVERYTHING: any measured gas figure, a collection
+       system in place, or waste in place at or above one million tons (EPA's own candidate
+       screening floor). What is excluded is counted and written into the artifact meta, so
+       "nothing with potential is missed" is checkable rather than asserted. */
+    var sweep = { added: 0, excludedNoSignal: 0, noCoords: 0, byBasis: {} };
+    var seenLfid = {};
+    for (var oi = 0; oi < out.length; oi++) { if (out[oi].lfid) seenLfid[out[oi].lfid] = 1; }
+    Object.keys(lfIndex).forEach(function (lid) {
+        if (seenLfid[lid]) return;
+        var e = lfIndex[lid], lr = e.r, lc2 = e.c;
+        var lat2 = num(lr[lc2.lat]), lon2 = num(lr[lc2.lon]);
+        if (lat2 === null || lon2 === null) { sweep.noCoords++; return; }
+
+        var collected2 = num(lr[lc2.collected]);
+        var flared2 = num(lr[lc2.flared]);
+        var generated2 = num(lr[lc2.generated]);
+        var wip2 = num(lr[lc2.wip]);
+        var collSys2 = str(lr[lc2.collSystem]);
+
+        /* Basis order is how directly the number was measured: gas actually collected at the
+           wellfield, then gas measured being flared, then EPA's modelled generation, then the
+           waste-in-place screen. Flared before generated on purpose — a flare meter is a
+           measurement, a decay model is not. */
+        var kw2 = null, basis2 = null;
+        if (collected2 !== null && collected2 > 0) {
+            kw2 = collected2 * MW_PER_MMSCFD * 1000;
+            basis2 = 'LFG collected at ' + MW_PER_MMSCFD + ' MW per mmscfd';
+        } else if (flared2 !== null && flared2 > 0) {
+            kw2 = flared2 * MW_PER_MMSCFD * 1000;
+            basis2 = 'LFG flared at ' + MW_PER_MMSCFD + ' MW per mmscfd — gas currently ' +
+                     'destroyed, no project using it';
+        } else if (generated2 !== null && generated2 > 0) {
+            kw2 = generated2 * MW_PER_MMSCFD * 1000;
+            basis2 = 'EPA modelled LFG generation at ' + MW_PER_MMSCFD + ' MW per mmscfd';
+        } else if (wip2 !== null && wip2 >= 1e6) {
+            kw2 = (wip2 / 1e6) * MW_PER_MILLION_TONS_WIP * 1000;
+            basis2 = 'screening estimate from waste in place at ' + MW_PER_MILLION_TONS_WIP +
+                     ' MW per million tons';
+        } else if (/^y/i.test(collSys2 || '')) {
+            /* A collection system with no published volume: the infrastructure is a fact and
+               the volume is not. Enters at a nominal figure so it ranks last rather than
+               vanishing, and the basis says exactly how little is known. */
+            kw2 = 100;
+            basis2 = 'collection system in place, no published gas volume — nominal 100 kW ' +
+                     'placeholder, verify on contact';
+        } else {
+            sweep.excludedNoSignal++;
+            return;
+        }
+
+        var ownership2 = str(lr[lc2.ownership]);
+        var counterparty2 = null;
+        if (ownership2) {
+            var o2 = ownership2.toLowerCase();
+            if (o2.indexOf('public') >= 0) counterparty2 = 'landfill_public';
+            else if (o2.indexOf('private') >= 0) counterparty2 = 'landfill_private';
+        }
+
+        sweep.added++;
+        sweep.byBasis[basis2.split(' at ')[0]] = (sweep.byBasis[basis2.split(' at ')[0]] || 0) + 1;
+        byStage['raw_resource'] = (byStage['raw_resource'] || 0) + 1;
+
+        out.push({
+            id: 'lmop_lf_' + String(lid).replace(/[^A-Za-z0-9-]/g, ''),
+            lfid: lid,
+            locationBasis: null,
+            name: str(lr[lc2.name]),
+            projectName: null,
+            lat: round(lat2, 5),
+            lon: round(lon2, 5),
+            state: str(lr[lc2.state]),
+            county: str(lr[lc2.county]),
+            city: str(lr[lc2.city]),
+            address: str(lr[lc2.address]),
+            zip: str(lr[lc2.zip]),
+            owner: str(lr[lc2.owner]),
+            ownershipType: ownership2,
+            counterpartyType: counterparty2,
+            projectStatus: 'No Project',
+            developmentStage: STAGE_BY_STATUS['no project'],
+            projectType: null,
+            powerPotentialKw: Math.round(kw2),
+            capacityBasis: basis2,
+            ratedMw: null,
+            actualMw: null,
+            lfgCollectedMmscfd: collected2,
+            lfgFlaredMmscfd: flared2,
+            lfgFlowToProjectMmscfd: null,
+            wasteInPlaceTons: wip2,
+            collectionSystem: collSys2,
+            landfillStatus: str(lr[lc2.lfStatus]),
+            landfillOpenedYear: num(lr[lc2.opened]),
+            landfillClosureYear: num(lr[lc2.closure]),
+            projectStartDate: null,
+            projectShutdownDate: null,
+            ghgrpId: str(lr[lc2.ghgrp])
+        });
+    });
+    log('  sweep: +' + sweep.added + ' no-project landfills (' +
+        sweep.excludedNoSignal + ' excluded with no gas signal and <1M tons, ' +
+        sweep.noCoords + ' without coordinates)');
+
     // Deterministic order.
     out.sort(function (a, b) { return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0); });
 
@@ -360,8 +574,16 @@ function round(v, dp) {
             capacityDerivedFromGas: derivedCount,
             droppedNoLocation: dropped.noLocation,
             droppedNoCapacity: dropped.noCapacity,
-            corruptShutdownDates: badDates
+            corruptShutdownDates: badDates,
+            capacityFromWasteInPlace: wipDerivedCount,
+            locationsRecoveredFromInventory: recoveredLocation,
+            sweep: sweep
         },
+        sweepNote: 'No-project landfills from the LMOP landfill inventory enter with ' +
+                   'projectStatus "No Project" when they carry any measured gas figure, a ' +
+                   'collection system, or >=1M tons waste in place (EPA\'s own candidate ' +
+                   'screening floor). sweep.excludedNoSignal counts the landfills that met ' +
+                   'none of those — the stated boundary of "no site with potential is missed".',
         projects: out
     });
 

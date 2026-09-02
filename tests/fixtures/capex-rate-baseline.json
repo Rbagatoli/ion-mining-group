@@ -1,14 +1,15 @@
 {
-  "_comment": "Pins capitalAvoided() and stack() across every candidate. Re-cut for the new/used market dimension: capitalAvoided() now prices in a market, defaulting to 'used' on sites whose generation is SHUTDOWN and to 'new' everywhere else. 462 sites of 11,829 moved (3.9%); FULL BUILD -0.82% and STILL TO SPEND -0.81% across the catalogue. The default is deliberately narrow — including 'present' equipment would have fired on 10,682 sites (90.3%) and dropped the aggregate build 40.1%, because at a running plant you inherit equipment rather than buying it and the condition discount already prices that.",
+  "_comment": "Re-cut for the landfill coverage sweep: build-landfill-index.js gained a waste-in-place capacity fallback (0.78 MW per million tons, the drop at the old line 269), an inventory-workbook sweep for no-project landfills, and coordinate recovery. +849 candidates (11,829 -> 12,678). ADDITIVE, PROVEN BEFORE RECUTTING: per-id serialisations of capitalAvoided and stack were computed under the old and new data files and compared — 0 old ids removed, 0 old ids repriced, 849 added. The digests move because the universe grew, not because any price did.",
   "_independence": "Market and condition are independent multipliers: avoided = full(market) x discount(age). The used/new avoided ratio is asserted identical at four shutdown ages, and every component's discount is asserted equal across markets, because the avoided column moves on both axes and that is where an interaction would hide.",
   "generated_from": "market dimension, on top of d1d8960 (shutdown unification), 61fc2d4 (rate basis), e3d4cff (civil rate)",
-  "candidates": 11829,
-  "avoidedDigest": "34964e7cb3cc3e6f7493a57cd15f752b7750c95e62aba577e3efc57464761141",
-  "stackDigest": "ce6a7148d81758f75a3bcbf641904cd6b0ce3609b3b4de50cc38ed8e48da1dff",
+  "candidates": 12678,
+  "avoidedDigest": "9902fc337389e7cebf1dcd89bb4eccba5a8abab93a5056c7ca9feb4e63555af1",
+  "stackDigest": "e21ed4ec66bed0d1318fb06935144bfe2545c8a07054bb538b52c44c3f5fdd1f",
   "previous": {
-    "avoidedDigest": "8302159df4e02b6503d319e68c5427f71a14e0fc536c5d8d6e9f04aec4cfe70b",
+    "candidates": 11829,
+    "avoidedDigest": "34964e7cb3cc3e6f7493a57cd15f752b7750c95e62aba577e3efc57464761141",
     "stackDigest": "ce6a7148d81758f75a3bcbf641904cd6b0ce3609b3b4de50cc38ed8e48da1dff",
-    "note": "cut at the shutdown unification"
+    "note": "Pins capitalAvoided() and stack() across every candidate. Re-cut for the new/used market dimension: capitalAvoided() now prices in a market,"
   },
   "collectionRate": 550,
   "bopRetained": 0.35,
@@ -20,5 +21,5 @@
   "sampleAvoided_flooredAtBopRetained": [
     "lmop_100-0|796000|980000|1776000|high|false|null|collection:550:880000:0.6:528000,generation:225:360000:0.35:126000,gasTreatment:190:304000:0.2:60800,electrical:85:136000:0.35:47600,civil:60:96000:0.35:33600"
   ],
-  "verified": "both digests recomputed from the test's own serialisation; sensitivity re-confirmed by nudging a rate"
+  "verified": "additive-check: old ids removed 0, old ids repriced 0, added 849 (2026-09-02)"
 }

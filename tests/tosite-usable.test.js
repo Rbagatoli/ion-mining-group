@@ -103,7 +103,10 @@ raw.projects.forEach(function (r) {
     try { var n = SS.normalize(A.adapter.normalize(r), 'lmop-landfill'); if (n) lf.push(n); }
     catch (e) { /* a row the adapter rejects was never a candidate */ }
 });
-eq('every landfill row is a candidate', lf.length, 1908);
+// 2,757 after the coverage sweep (was 1,908): the WIP capacity fallback kept 849 rows the old
+// builder dropped, and the inventory sweep added no-project landfills. The property under test
+// (every row becomes a candidate) is unchanged; only the universe grew.
+eq('every landfill row is a candidate', lf.length, 2757);
 var moved = 0, up = 0, grossSum = 0, useSum = 0;
 lf.forEach(function (c) {
     var u = SS.toSite(c, {}).usable_kw;
