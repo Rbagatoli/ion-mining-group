@@ -367,6 +367,9 @@
         .src-row .s { color:var(--text-mid); font-size:11px; margin-top:2px; }
         .src-row .kw { color:var(--btc-300); font-weight:600; text-align:right; white-space:nowrap; }
         .src-row .yr { color:var(--pos); font-size:10px; text-align:right; }
+        /* Capital still to spend, per row -- tabular so a scanned column of them lines up. */
+        .src-row .cap { color:var(--plat-200); font-size:11px; text-align:right;
+                        font-variant-numeric:tabular-nums; white-space:nowrap; }
         /* The opportunity score. The list is in ranked order, so without this the reason a row is
            near the top is invisible. */
         .src-row .sc { color:var(--text-mid); font-size:10px; text-align:right; margin-top:2px; }
@@ -1568,7 +1571,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=410"></script>
+<script src="./map-sourcing.js?v=411"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

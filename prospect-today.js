@@ -125,6 +125,13 @@ var ProspectToday = (function () {
         if (!host) return null;
         var d = build(nowMs);
         var html = '';
+        /* EMPTY SECTIONS COLLAPSE. Four always-rendered boxes of near-identical weight made
+           a normal morning read as a wall of grey, and the day's actual answer -- is anything
+           due -- had to be read out of 11px italics inside each one. A section renders only
+           when it has rows; the all-clears combine into one quiet line at the bottom, so
+           silence is still stated (an absent section could mean broken) without costing a
+           card each. */
+        var clear = [];
 
         var od = '';
         for (var i = 0; i < d.overdue.length; i++) {
@@ -138,9 +145,8 @@ var ProspectToday = (function () {
                 '<button type="button" class="pt-done" data-fid="' + esc(o.followup.id) + '">Done</button>',
                 o.prospect_id);
         }
-        html += section('Overdue', d.overdue.length,
-            od ? '<ul class="pt-list">' + od + '</ul>'
-               : '<p class="pt-none">Nothing overdue.</p>', 'negative');
+        if (od) html += section('Overdue', d.overdue.length, '<ul class="pt-list">' + od + '</ul>', 'negative');
+        else clear.push('nothing overdue');
 
         var dt = '';
         for (var j = 0; j < d.dueToday.length; j++) {
@@ -156,9 +162,8 @@ var ProspectToday = (function () {
                 '<button type="button" class="pt-done" data-fid="' + esc(t.followup.id) + '">Done</button>',
                 t.prospect_id);
         }
-        html += section('Due today', d.dueToday.length,
-            dt ? '<ul class="pt-list">' + dt + '</ul>'
-               : '<p class="pt-none">Nothing due today.</p>', 'active');
+        if (dt) html += section('Due today', d.dueToday.length, '<ul class="pt-list">' + dt + '</ul>', 'active');
+        else clear.push('nothing due today');
 
         var gq = '';
         for (var k = 0; k < d.goingQuiet.length; k++) {
@@ -172,9 +177,8 @@ var ProspectToday = (function () {
                 '<span class="pt-stage">' + esc(g.stage) + '</span><span></span>',
                 g.prospect_id);
         }
-        html += section('Going quiet', d.goingQuiet.length,
-            gq ? '<ul class="pt-list">' + gq + '</ul>'
-               : '<p class="pt-none">Nothing has gone quiet.</p>', 'warm');
+        if (gq) html += section('Going quiet', d.goingQuiet.length, '<ul class="pt-list">' + gq + '</ul>', 'warm');
+        else clear.push('nothing going quiet');
 
         var nc = '';
         for (var m = 0; m < d.neverContacted.length; m++) {
@@ -188,9 +192,15 @@ var ProspectToday = (function () {
                 '<span class="pt-stage">' + esc(n.stage) + '</span><span></span>',
                 n.prospect_id);
         }
-        html += section('Waiting on a first call', d.neverContacted.length,
-            nc ? '<ul class="pt-list">' + nc + '</ul>'
-               : '<p class="pt-none">Everything active has been contacted.</p>', 'neutral');
+        if (nc) html += section('Waiting on a first call', d.neverContacted.length,
+                                '<ul class="pt-list">' + nc + '</ul>', 'neutral');
+        else clear.push('everything active has been contacted');
+
+        if (clear.length) {
+            html += '<p class="pt-clear">' +
+                (clear.length === 4 ? 'All clear \u2014 ' : '') +
+                esc(clear.join(' \u00b7 ')) + '.</p>';
+        }
 
         host.innerHTML = html;
         return d;

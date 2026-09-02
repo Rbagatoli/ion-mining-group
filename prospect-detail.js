@@ -1218,6 +1218,47 @@ var ProspectDetail = (function () {
         return '<section class="pd-sec"><h3>Contractors</h3>' + contractorsBlock(p) + '</section>';
     }
 
+    /* The three figures the header leads with: usable capacity, capital required, all-in $/kW.
+       Priced through SiteCapex.stack exactly as the map's capital panel prices it — the same
+       code path, so the two views cannot show different dollars for one site. Absence is
+       stated per figure: a prospect with no capacity says so rather than pricing nothing. */
+    function headFigures(rec) {
+        var kw = rec.usable_kw !== null && rec.usable_kw !== undefined && rec.usable_kw !== ''
+            ? Number(rec.usable_kw)
+            : (rec.nameplate_kw !== null && rec.nameplate_kw !== undefined ? Number(rec.nameplate_kw) : null);
+        var required = null, allInPerKw = null;
+        if (kw !== null && kw > 0 && typeof SiteCapex !== 'undefined' && SiteCapex.stack) {
+            var minerCapex = null;
+            if (typeof SiteEngine !== 'undefined') {
+                var probe = SiteEngine.evaluate({ nameplate_kw: kw, usable_kw: kw,
+                                                  purchase_price_usd: 0, power_rate: 0 }, {});
+                minerCapex = probe.miner_capex_usd;
+            }
+            var st = SiteCapex.stack(rec, {
+                capacityKw: kw,
+                minerCapexUsd: minerCapex,
+                acquisitionUsd: (rec.purchase_price_usd !== null && rec.purchase_price_usd !== undefined &&
+                                 rec.purchase_price_usd !== '') ? Number(rec.purchase_price_usd) : null
+            });
+            if (st) {
+                if (st.incurred_usd !== null && st.incurred_usd !== undefined) required = st.incurred_usd;
+                if (st.all_in_capital_usd !== null && st.all_in_capital_usd !== undefined && kw > 0) {
+                    allInPerKw = st.all_in_capital_usd / kw;
+                }
+            }
+        }
+        function fig(label, value) {
+            return '<div class="pd-fig"><span class="pd-fig-l">' + label + '</span>' +
+                   '<span class="pd-fig-v">' + value + '</span></div>';
+        }
+        return '<div class="pd-figs">' +
+            fig('Usable capacity', kw === null ? absent('unknown') : mw(kw)) +
+            fig('Capital required', required === null ? absent('not priced') : fmtUsd(required)) +
+            fig('All-in $/kW', allInPerKw === null ? absent('not priced')
+                : fmtUsd(Math.round(allInPerKw)) + '<span class="pd-fig-unit">/kW</span>') +
+            '</div>';
+    }
+
     function projectBlock(rec) {
         if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
         var p = ProjectData.liveFor(rec.id);
@@ -1392,8 +1433,13 @@ var ProspectDetail = (function () {
             '<h2 class="pd-title">' + esc(rec.name || rec.id) + promotedPill(rec) + '</h2>' +
             '<a class="pd-sumlink" href="#s/' + esc(encodeURIComponent(rec.id)) + '">' +
                 'One-page summary</a>' +
+            /* THE MONEY IS ABOVE THE FOLD. The owner's stated need is "a solid idea of capital
+               required"; opening a prospect used to show its name at 19px and its capacity at
+               11px mono, and no dollar figure anywhere before the fold. Three figures in the
+               app's own idiom — quiet label over large tabular number — priced through the
+               same stack the map uses, so the two views cannot disagree. */
+            headFigures(rec) +
             '<div class="pd-facts">' +
-                '<span>' + mw(rec.usable_kw !== null ? rec.usable_kw : rec.nameplate_kw) + '</span>' +
                 '<span>' + esc(String(rec.energy_type || rec.source || 'unknown').replace(/_/g, ' ')) + '</span>' +
                 '<span>' + (days === null ? absent('not moved yet')
                                           : esc(String(days)) + ' days in stage') + '</span>' +

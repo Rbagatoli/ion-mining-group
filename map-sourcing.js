@@ -30,6 +30,15 @@ var MapSourcing = (function() {
     // come from Proton's own Alberta deals ($450/kW usable, ~$0.035/kWh).
     var _assume = { costPerKw: 450, powerRate: 0.035 };
 
+    /* $1.2M / $840K, for a 250-row list where '$1,204,500' per row is noise. One decimal under
+       ten of a unit, none above — '$12.0M' is false precision dressed as care. */
+    function fmtUsdCompact(v) {
+        if (v === null || v === undefined || !isFinite(v)) return '--';
+        var a = Math.abs(v), sign = v < 0 ? '-' : '';
+        if (a >= 1e6) return sign + '$' + (a / 1e6).toFixed(a < 1e7 ? 1 : 0).replace(/\.0$/, '') + 'M';
+        if (a >= 1e3) return sign + '$' + Math.round(a / 1e3) + 'K';
+        return sign + '$' + Math.round(a);
+    }
     function fmtUsd(v) {
         if (v === null || v === undefined || !isFinite(v)) return '--';
         var n = Math.round(v);
@@ -2734,6 +2743,18 @@ var MapSourcing = (function() {
                 (c.trend ? ' · ' + esc(c.trend) : '') + burningBadge(c) + '</div></div>' +
                 '<div><div class="kw">' + fmtKw(usableKwFor(c)) + '</div>' +
                 '<div class="yr">' + minersLabel(c) + '</div>' +
+                /* Capital required, compact, on every row. The number the owner actually
+                   decides on was computed for every candidate and visible only as a table
+                   column -- triaging the ranked list meant opening each site to learn whether
+                   it is a $200K inheritance or a $2M build. Blank when unpriced (flares):
+                   absence of a figure, not a zero. */
+                (function() {
+                    var cr = capitalFor(c);
+                    return (cr && cr.requiredUsd !== null && cr.requiredUsd !== undefined)
+                        ? '<div class="cap" title="Still to spend at the capex model\'s rates">' +
+                          fmtUsdCompact(cr.requiredUsd) + ' to spend</div>'
+                        : '';
+                })() +
                 // The score, because the list is in ranked order and the reason a row is near the
                 // top is otherwise invisible. Unscoreable stays blank rather than becoming a zero.
                 // It shows whatever the list is CURRENTLY ordered by: a column of opportunity
