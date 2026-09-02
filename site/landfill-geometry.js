@@ -432,6 +432,20 @@
                    the crown takes. That contrast down the face is the whole
                    reason the benches read. */
                 var flat = LEVEL_Y[lvl] === LEVEL_Y[lvl + 1];
+                /* FAR-HALF TERRACES DO NOT PAINT. A flat bench faces the sky, so
+                   frontFacing keeps it at every yaw — and 'top' paints after 'side',
+                   so under solid fills the far side's benches printed straight over
+                   the near skirt and the hill read as a ghost of itself (the same
+                   translucent-era debt the contour lines below already paid, in the
+                   comment that still said "every solid on this site is" translucent).
+                   Geometrically the far arc of a bench sits behind the level above
+                   it at this camera's pitch; culling it by the cell-centre depth
+                   test loses only slivers the crown cap covers anyway. */
+                if (flat) {
+                    var cx = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+                    var cz = (quad[0][2] + quad[1][2] + quad[2][2] + quad[3][2]) / 4;
+                    if (cellHalf(H, yaw, cx, cz) === 'far') continue;
+                }
                 L[flat ? 'top' : 'side'] += H.poly(quad, yaw);
             }
         }
@@ -475,8 +489,23 @@
 
     /* The wellfield. A riser and a head per well — small, repeated, and the thing
        that makes the mound read as a gas field rather than a hill. */
-    function buildWells(H, yaw, L) {
+    /* WHICH SIDE OF THE HILL. Wells and laterals live in the cell's slot and used to
+       paint after every dome quad, so the far slope's furniture bled through the near
+       face and the mound read as a ghost of itself — invisible under translucent
+       paint, glaring under solid (owner-reported, "still not working", 2026-09-02).
+       The callers now paint in two passes: half 'far' BEFORE the dome so the hill
+       covers it, 'near' after so it stands on the surface; undefined keeps the old
+       single-pass behaviour. The test is the base's depth against the cell centre's —
+       a silhouette-adjacent well can land either side of it, and either answer is
+       right there: pre-dome it is mostly hidden anyway, post-dome it is mostly
+       visible anyway. */
+    function cellHalf(H, yaw, x, z) {
+        return H.depthOf([x, 0, z], yaw) < H.depthOf([CELL.x, 0, CELL.z], yaw) ? 'far' : 'near';
+    }
+
+    function buildWells(H, yaw, L, half) {
         wells().forEach(function (w) {
+            if (half && cellHalf(H, yaw, w.x, w.z) !== half) return;
             var riser = { x: w.x, y: w.base, z: w.z,
                           w: WELL_R * 2, h: WELL_H, d: WELL_R * 2 };
             H.addBox(L, riser, yaw);
@@ -491,15 +520,19 @@
 
     /* The header main: a lateral from each well column down to a run along the
        toe, then in to the plant. */
-    function buildHeader(H, yaw, L) {
+    function buildHeader(H, yaw, L, half) {
         var y = HEADER_Y;
         var xs = WELL_GRID_X.map(function (bx) { return CELL.x + bx; });
 
-        /* the run along the toe */
-        P.pipe(H, yaw, L, [xs[0], y, HEADER_Z], [BLOWER.x, y, HEADER_Z]);
+        /* The toe run and the blower tie-in sit at the foot of the front slope, off
+           the hill — they ride in the 'near' pass (and in a legacy single pass). */
+        if (half !== 'far') {
+            /* the run along the toe */
+            P.pipe(H, yaw, L, [xs[0], y, HEADER_Z], [BLOWER.x, y, HEADER_Z]);
 
-        /* and in to the blower */
-        P.pipe(H, yaw, L, [BLOWER.x, y, HEADER_Z], [BLOWER.x, y, BLOWER.z + BLOWER.d / 2]);
+            /* and in to the blower */
+            P.pipe(H, yaw, L, [BLOWER.x, y, HEADER_Z], [BLOWER.x, y, BLOWER.z + BLOWER.d / 2]);
+        }
 
         /* EVERY WELL TIED BACK, OVER THE CAP.
 
@@ -516,6 +549,10 @@
            lateral is a few inches across, and eleven of them at pipe weight
            would bury the mound they are supposed to be lying on. */
         wells().forEach(function (w) {
+            /* A lateral travels with its well: a far well's run over the crown is
+               as hidden as the well itself, and splitting one line across the two
+               passes would leave it popping out of the hillside mid-descent. */
+            if (half && cellHalf(H, yaw, w.x, w.z) !== half) return;
             var STEP = 12;
             var prev = [w.x, w.base + WELL_H * 0.45, w.z];
             for (var i = 1; i <= STEP; i++) {

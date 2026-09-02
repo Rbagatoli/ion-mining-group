@@ -233,9 +233,15 @@
     }
     function buildCellSlot(H, yaw) {
         var L = H.newLayers();
+        /* Two passes around the dome — see landfill-geometry.js cellHalf(): the far
+           slope's wells and laterals paint BEFORE the hill so it covers them, the
+           near slope's after so they stand on it. One pass painted the far half
+           through the near face and the mound read as a ghost. */
+        G.buildWells(H, yaw, L, 'far');
+        G.buildHeader(H, yaw, L, 'far');
         G.buildCell(H, yaw, L);
-        G.buildWells(H, yaw, L);
-        G.buildHeader(H, yaw, L);
+        G.buildWells(H, yaw, L, 'near');
+        G.buildHeader(H, yaw, L, 'near');
         return L;
     }
     function buildPlantSlot(H, yaw) { var L = H.newLayers(); G.buildPlant(H, yaw, L); return L; }

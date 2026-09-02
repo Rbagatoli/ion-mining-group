@@ -127,9 +127,13 @@
     }
     function buildCellSlot(H, yaw) {
         var L = H.newLayers();
+        /* Two passes around the dome — see scene-landfill-ion.js's twin and
+           landfill-geometry.js cellHalf() for the ghost-mound failure this ends. */
+        G.buildWells(H, yaw, L, 'far');
+        G.buildHeader(H, yaw, L, 'far');
         G.buildCell(H, yaw, L);
-        G.buildWells(H, yaw, L);
-        G.buildHeader(H, yaw, L);
+        G.buildWells(H, yaw, L, 'near');
+        G.buildHeader(H, yaw, L, 'near');
         return L;
     }
     function buildPlantSlot(H, yaw) { var L = H.newLayers(); G.buildPlant(H, yaw, L); return L; }
