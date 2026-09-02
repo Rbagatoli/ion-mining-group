@@ -135,7 +135,18 @@ var ProspectStore = (function() {
                 if (f.tiers.indexOf(Jurisdictions.get(c.iso3).tier) < 0) continue;
             }
             if (q) {
-                var hay = (c.iso3 || '') + ' ' + (c.source || '') + ' ' + (c.energyType || '') + ' ' +
+                /* THE HAYSTACK IS WHAT A PERSON TYPES. This facet shipped dormant — no UI ever
+                   set f.search — and its haystack was iso3, source id, energy type and rounded
+                   coordinates, so the day a search box arrived, typing a landfill's NAME would
+                   have matched nothing. Name, operator, place and the record ids are what the
+                   owner actually knows about a site; the technical fields stay in, they cost
+                   nothing. County/city/state live on sourceDetail because they are not part of
+                   the shared shape — read defensively, since not every adapter publishes them. */
+                var sdq = c.sourceDetail || {};
+                var hay = (c.name || '') + ' ' + (c.operator || '') + ' ' +
+                          (sdq.county || '') + ' ' + (sdq.city || '') + ' ' + (sdq.state || '') + ' ' +
+                          (c.id || '') + ' ' + (sdq.lfid || '') + ' ' + (sdq.ghgrpId || '') + ' ' +
+                          (c.iso3 || '') + ' ' + (c.source || '') + ' ' + (c.energyType || '') + ' ' +
                           (c.lat === null ? '' : c.lat.toFixed(2)) + ' ' +
                           (c.lng === null ? '' : c.lng.toFixed(2));
                 if (hay.toLowerCase().indexOf(q) < 0) continue;
@@ -199,7 +210,15 @@ var ProspectStore = (function() {
         gridDistanceFor: gridDistanceFor,
         rejected: rejected,
         errors: errors,
-        reset: reset
+        reset: reset,
+        /* Test seam. filter() is the page's whole search pipeline and had zero coverage
+           because the only way to fill _all was four network adapters. Underscored, documented,
+           and used by tests/prospect-store.test.js only. */
+        _setAll: function (list) {
+            _all = list || [];
+            _byId = {};
+            for (var i = 0; i < _all.length; i++) _byId[_all[i].id] = _all[i];
+        }
     };
 })();
 

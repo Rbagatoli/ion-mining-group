@@ -533,7 +533,7 @@ var MapSourcing = (function() {
     // that country back, and the user's actual choice was silently overwritten for good. The
     // anchor starts at "Anywhere" every session, which makes that failure impossible rather than
     // merely unlikely.
-    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort'];
+    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fSearch'];
     var SRC_FILTER_KEY = 'protonMiningProspectSources';
     // The four scope controls were removed from this list IN THE SAME CHANGE that removed the
     // markup, deliberately. searchKey() builds its key from FILTER_CHECKS on both sides: leave an
@@ -825,7 +825,12 @@ var MapSourcing = (function() {
            and a future control could put it back. */
         var isoEl = document.getElementById('fCountry');
         var iso = (isoEl && isoEl.value) ? isoEl.value : null;
+        var searchEl = document.getElementById('fSearch');
         return {
+            /* Free text over name, operator, county, city, state and the record ids -- the
+               store's haystack was extended to match what a person actually types. Null when
+               blank so the facet costs nothing. */
+            search: (searchEl && searchEl.value.trim()) ? searchEl.value.trim() : null,
             collection: Object.keys(_collFilter),
             iso3: iso,
             // Applied whenever no single country is chosen. With one chosen, iso3 already
@@ -871,7 +876,14 @@ var MapSourcing = (function() {
     // never mentioned the ones that were. This enumerates the real state instead, so a screen
     // showing nothing can always be read.
     var FILTER_DEFAULTS = {
-        fMinKw: '0', fMaxKw: '5000', fYears: '0', fSort: 'persistence',
+        fMinKw: '0', fMaxKw: '5000', fYears: '0',
+        /* 'combined' -- the acquisition rank -- not 'persistence'. Persistence is a flare-survey
+           metric that saturates on landfills: 1,273 of 1,908 tie at 100, so the shipped default
+           opened on giant OPERATING landfills while only 60 of 683 shutdown projects -- the
+           business's actual target class -- reached the visible top 250. The combined axis is
+           the one whose own comment says it answers "what could I actually buy". */
+        fSort: 'combined',
+        fSearch: '',
         fRegion: '', fRadius: '250',
         fActive: false, fOperator: false, fBurning: false,
         fAcquisition: false
@@ -879,6 +891,7 @@ var MapSourcing = (function() {
     var FILTER_LABELS = {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
         fSort: 'Ranked by', fRadius: 'Search radius',
+        fSearch: 'Search',
 
         fActive: 'Flare seen in the latest survey',
         fOperator: 'Only sites with a named operator',
@@ -915,6 +928,15 @@ var MapSourcing = (function() {
         if (sizeMax && sizeMax.value !== FILTER_DEFAULTS.fMaxKw) {
             out.push({ key: 'fMaxKw', label: 'Maximum size: ' + fmtKw(parseFloat(sizeMax.value)),
                        clear: function() { sizeMax.value = FILTER_DEFAULTS.fMaxKw; paintSizeRange(); renderSizeHint(); } });
+        }
+
+        /* The search chip: of every control on the page this is the one most likely to be
+           quietly hiding what is sought, which is the exact bar activeFilters sets for
+           listing fCountry. */
+        var se = el('fSearch');
+        if (se && se.value.trim()) {
+            out.push({ key: 'fSearch', label: 'Search: “' + se.value.trim() + '”',
+                       clear: function() { se.value = ''; } });
         }
 
         // fSort is deliberately absent: a sort order hides nothing, so offering to clear it on an
@@ -1271,7 +1293,10 @@ var MapSourcing = (function() {
                 renderSourceFilter();
                 renderCollectionFilter();
                 _hasGenFilter = true;
-                setSize(1000, 3000);
+                /* 5000 is the slider's documented open top ('no ceiling'), not a size. At
+                   3000 this starter hid 178 of the 462 generator-standing shutdown sites --
+                   the exact sites its label promises. */
+                setSize(1000, 5000);
                 /* Every LMOP record is American, so the country clause this used
                    to set narrowed nothing and only existed to light the control
                    that has since been removed. */
@@ -1846,6 +1871,30 @@ var MapSourcing = (function() {
            visible numbers read 55, 84, 84, 78, 79 and looked broken, because it
            was ordered by a number that is nowhere on screen.
            The one the reader can see is the one that has to do the ordering. */
+        /* THE MONEY SORTS ASCEND. Every other axis ranks best-first as biggest-first; capital
+           required and all-in $/kW rank best-first as SMALLEST-first -- the reader is looking
+           for the cheapest way in. Nulls still last: unpriced is not cheap. */
+        if (sortBy === 'capital_required' || sortBy === 'all_in_per_kw') {
+            var moneyFor = (sortBy === 'capital_required')
+                ? function(c) { var r = capitalFor(c); return r ? r.requiredUsd : null; }
+                : function(c) {
+                    var m = evaluateAt(c);
+                    if (!m || !m.capex || m.capex.all_in_capital_usd === null ||
+                        m.capex.all_in_capital_usd === undefined) return null;
+                    var kw = usableKwFor(c);
+                    return kw > 0 ? m.capex.all_in_capital_usd / kw : null;
+                };
+            _filtered.sort(function(a, b) {
+                var av = moneyFor(a.candidate), bv = moneyFor(b.candidate);
+                if (av === null && bv === null) return 0;
+                if (av === null) return 1;
+                if (bv === null) return -1;
+                if (av !== bv) return av - bv;
+                var ak = a.candidate.powerPotentialKw, bk = b.candidate.powerPotentialKw;
+                return (bk === null || bk === undefined ? -1 : bk) -
+                       (ak === null || ak === undefined ? -1 : ak);
+            });
+        }
         if (sortBy === 'combined' || sortBy === 'score' || sortBy === 'capital_avoided') {
             /* CAPITAL AVOIDED SORTS ON DOLLARS, NOT ON THE SCORE. The scorer uses the SHARE of
                the build avoided, so a 500 kW site inheriting everything outranks a 5 MW site
@@ -2185,7 +2234,7 @@ var MapSourcing = (function() {
     //
     // The country select and the source chips are not in FILTER_DEFAULTS, so they are checked
     // directly; both are genuinely a departure from the baseline when set.
-    var BASELINE_IDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fRegion', 'fRadius',
+    var BASELINE_IDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fSearch', 'fRegion', 'fRadius',
                         'fActive', 'fOperator', 'fBurning', 'fAcquisition'];
     var _filterBaseline = null;
 
@@ -3034,7 +3083,9 @@ var MapSourcing = (function() {
         combined:        'best acquisition rank first',
         power_potential: 'largest first',
         jurisdiction:    'friendliest jurisdiction first',
-        capital_avoided: 'most capital already spent first'
+        capital_avoided: 'most capital already spent first',
+        capital_required: 'least still to spend first',
+        all_in_per_kw:   'cheapest all-in per kW first'
     };
     function sortDescription() {
         var el = document.getElementById('fSort');
@@ -5991,6 +6042,29 @@ var MapSourcing = (function() {
             /* And in full to the console, where a stack is readable and a long message is not
                truncated by a status bar. */
             if (window.console) console.error('[Sourcing] sources failed', errs);
+
+            /* A RETRY, because the failure was CACHED. ProspectStore.load() memoises whatever
+               it got -- including a partial result -- so a transient network failure on one
+               source stuck until a full page reload, and the status line above read as a
+               diagnosis when it was actually a dead end. The button resets the store and
+               reboots the prospects mode; the three sources that worked reload from HTTP cache
+               in milliseconds, so retrying everything costs less than machinery for retrying
+               one. */
+            var statusEl = document.getElementById('srcStatus');
+            if (statusEl && !document.getElementById('srcRetrySources')) {
+                var rb = document.createElement('button');
+                rb.id = 'srcRetrySources';
+                rb.className = 'src-linkbtn';
+                rb.textContent = 'Retry failed sources →';
+                rb.addEventListener('click', function() {
+                    rb.disabled = true;
+                    ProspectStore.reset();
+                    _booted = false;
+                    boot();
+                });
+                statusEl.appendChild(document.createTextNode(' '));
+                statusEl.appendChild(rb);
+            }
         }
 
         // Only the countries Proton operates in. The catalog still holds all 30,361 prospects and
@@ -6025,6 +6099,12 @@ var MapSourcing = (function() {
            they were re-ranking 30,361 rows twice per drag: once from the debounce
            below, once from here the moment the mouse came up. The second one
            always landed on the same values as the first. */
+        var searchTimer = null;
+        var searchBox = document.getElementById('fSearch');
+        if (searchBox) searchBox.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { applyFilters('fSearch'); }, 220);
+        });
         ['fCountry', 'fYears', 'fSort', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             // The id, not the Event — reconcileGeo has to know WHICH of the two geographic

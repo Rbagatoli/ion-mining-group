@@ -93,6 +93,8 @@
             border-color:var(--btc-300); box-shadow: var(--shadow-card);
         }
         .src-field select option { background:var(--surface); color:var(--text); }
+        /* The search box earns a little more width than a dropdown: names are long. */
+        .src-field-search input { min-width:180px; }
         .src-field textarea { resize:vertical; }
         .src-sizehint { font-size:11px; color:var(--plat-300); margin-top:8px; min-height:15px; }
 
@@ -1066,13 +1068,23 @@ blank on each site rather than being guessed.</p>
 <div class="src-field">
                 <label for="fSort">Rank by</label>
                 <select id="fSort">
-                    <option value="persistence" selected>Persistence</option>
+                    <!-- Acquisition rank is the default: persistence is a flare-survey metric
+                         that saturates on landfills (1,273 of 1,908 tie at 100), so the list
+                         opened on giant operating landfills instead of shutdown targets. -->
+                    <option value="combined" selected>Acquisition rank</option>
                     <option value="score">Overall score</option>
-                    <option value="combined">Acquisition rank</option>
+                    <option value="persistence">Persistence</option>
                     <option value="power_potential">Size</option>
                     <option value="jurisdiction">Jurisdiction</option>
                     <option value="capital_avoided">Capital avoided</option>
+                    <option value="capital_required">Still to spend (least first)</option>
+                    <option value="all_in_per_kw">All-in $/kW (cheapest first)</option>
                 </select>
+            </div>
+            <div class="src-field src-field-search">
+                <label for="fSearch">Search</label>
+                <input type="search" id="fSearch" placeholder="name, owner, county, state&hellip;"
+                       autocomplete="off">
             </div>
         </div>
         <div class="src-sizehint" id="srcSizeHint"></div>
@@ -1530,7 +1542,7 @@ commercial terms are your assumptions.</p>
 <script src="./source-landfill-ca.js?v=408"></script>
 <script src="./ghgrp-contacts.js?v=338"></script>
 <script src="./contact-routes.js?v=350"></script>
-<script src="./prospect-store.js?v=338"></script>
+<script src="./prospect-store.js?v=410"></script>
 <!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
      pushes the configured stage list into site-model.js, and the watchlist renders
      its stage chips from SiteData.STAGES on first paint — a later load would draw
@@ -1556,7 +1568,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=409"></script>
+<script src="./map-sourcing.js?v=410"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
