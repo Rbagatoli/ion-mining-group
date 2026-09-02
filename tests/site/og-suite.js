@@ -111,12 +111,21 @@ PAGES.forEach(function (p) {
 /* A card lit differently from the page it advertises is a small lie about what
    the visitor is about to see. */
 var css = fs.readFileSync(S + 'styles.css', 'utf8');
-function alphaOf(sel) {
-    var i = css.indexOf(sel);
-    if (i < 0) return null;
-    var seg = css.slice(i, css.indexOf('}', i));
-    var m = /rgba\([^)]*?([\d.]+)\)/.exec(seg);
-    return m ? parseFloat(m[1]) : null;
+/* Since the solid pass the bound value is an opaque rgb() triple, not an alpha.
+   The guard is the same guard: a card lit differently from the page it
+   advertises is a small lie, and 'asics' is in the list because it once was
+   not and drifted. Selector match is anchored to line start so the scoped
+   .dg-wrap--asic overrides (the machine's deliberate x-ray) are not what gets
+   read here. */
+function rgbOf(sel) {
+    var m = new RegExp('^\\' + sel + '\\b[^{]*\\{[^}]*rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)', 'm').exec(css);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+}
+function cardRGB(layer) {
+    /* Line-anchored, or 'side:' matches inside 'inside:' and reports the
+       interior's black as the wall colour — which is exactly what it did. */
+    var m = new RegExp('^\\s*' + layer + ':\\s*\\{[^}]*fillRGB:\\s*\\[(\\d+),\\s*(\\d+),\\s*(\\d+)\\]', 'm').exec(og);
+    return m ? [+m[1], +m[2], +m[3]] : null;
 }
 /* 'asics' is in this list because it was NOT, and it drifted. The three shell faces were
    bound from the day this check was written; the machines were left out, so when .dg-asics
@@ -125,14 +134,11 @@ function alphaOf(sel) {
    themselves with, and it would have kept lighting the machines the old way indefinitely. */
 [['top', '.dg-top'], ['side', '.dg-side'], ['end', '.dg-end'],
  ['asics', '.dg-asics']].forEach(function (pair) {
-    var want = alphaOf(pair[1]);
-    var i = og.indexOf(pair[0] + ':    { fill: ');
-    if (i < 0) i = og.indexOf(pair[0] + ':   { fill: ');
-    if (i < 0) i = og.indexOf(pair[0] + ':  { fill: ');
-    var got = i < 0 ? null : parseFloat(og.slice(og.indexOf('fill: ', i) + 6));
-    ok(want !== null && got !== null && Math.abs(want - got) < 1e-9,
+    var want = rgbOf(pair[1]);
+    var got = cardRGB(pair[0]);
+    ok(want !== null && got !== null && want.join(',') === got.join(','),
        'the card lights the ' + pair[0] + ' face like the site does',
-       'site ' + want + ', card ' + got);
+       'site rgb(' + (want || 'missing') + '), card rgb(' + (got || 'missing') + ')');
 });
 
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  og-suite: ALL OK');

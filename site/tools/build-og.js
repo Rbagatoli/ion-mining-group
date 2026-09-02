@@ -34,13 +34,18 @@ const BTC = [247, 147, 26];
 /* The site's own paint weights, so a card and the page it advertises are lit
    the same way. Kept in step with styles.css by og-suite.js. */
 const WEIGHT = {
-    ground: { fill: 0.04, stroke: 0.13 },
-    inside: { fill: 0.62, dark: true },
+    /* Solid faces since the solid pass, matching styles.css exactly: fillRGB is
+       the old alpha composited over black (0.42 x platinum = 96,96,95), painted
+       opaque so a card occludes the way the page now does. Strokes stay
+       translucent on both surfaces — a line never made a box see-through.
+       og-suite.js binds every fillRGB below to the stylesheet's rgb() values. */
+    ground: { fillRGB: [9, 9, 9], stroke: 0.13 },
+    inside: { fillRGB: [0, 0, 0] },
     back:   { stroke: 0.42 },
-    asics:  { fill: 0.22, stroke: 0.34 },
-    end:    { fill: 0.20 },
-    side:   { fill: 0.30 },
-    top:    { fill: 0.42 },
+    asics:  { fillRGB: [50, 50, 50], stroke: 0.34 },
+    end:    { fillRGB: [46, 46, 45] },
+    side:   { fillRGB: [69, 68, 68] },
+    top:    { fillRGB: [96, 96, 95] },
     detail: { stroke: 0.72 },
     flame:  { fill: 0.85, btc: true },
 };
@@ -123,8 +128,8 @@ function render(sceneFile) {
                 if (!d) return;
                 const col = w.btc ? BTC : (w.dark ? BLACK : PLAT);
                 c.drawPath(map(d), {
-                    fill: w.fill !== undefined ? col : null,
-                    fillAlpha: w.fill,
+                    fill: w.fillRGB ? w.fillRGB : (w.fill !== undefined ? col : null),
+                    fillAlpha: w.fillRGB ? 1 : w.fill,
                     stroke: w.stroke !== undefined ? PLAT : null,
                     strokeAlpha: w.stroke,
                     width: Math.max(0.8, scale * 0.9),

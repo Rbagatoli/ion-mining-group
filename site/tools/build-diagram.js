@@ -242,10 +242,16 @@ function svgOf(D, alt, p) {
      the engine's exported flowHeads() from the very flow string above, so the
      baked heads cannot drift from the runtime ones. host-suite.js holds the
      two to byte parity the same way it does the slot layers. */
+  /* FLOW ABOVE THE SLOTS since the solid pass. It used to paint first and glow
+     through the translucent metal; with opaque fills the ground quad simply
+     erased it — rendered at rest, the home page's trunk was gone entirely. The
+     energy path is the one annotation this site highlights, so it rides above
+     the drawing the way the leaders and callouts always have. Order is baked
+     here and only here: the engine re-points d attributes and never reorders. */
   return `<svg class="site-diagram" id="${p}siteDiagram" viewBox="0 0 ${D.VB.w} ${D.VB.h}" preserveAspectRatio="xMidYMid meet" tabindex="0" role="img" aria-label="${esc(alt)}">
-        <path class="dg-occluder" id="${p}dg-occluder" d=""/>
+        <path class="dg-occluder" id="${p}dg-occluder" d=""/>${slots}
         <path class="dg-flow" id="${p}dg-flow" d="${f.flow}"/>
-        <path class="dg-flow-heads" id="${p}dg-flow-heads" d="${f.flowHeads}"/>${slots}
+        <path class="dg-flow-heads" id="${p}dg-flow-heads" d="${f.flowHeads}"/>
         <path class="dg-highlight" id="${p}dg-highlight" d=""/>${leaders}${nodes}${hits}
       </svg>`;
 }

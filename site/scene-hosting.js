@@ -523,10 +523,11 @@
                rest and 0.8 px at +/-45 deg — abutting inside the band a reader
                actually studies. Over the full idle revolution the marks DO cross
                the orange legs for roughly a third of the turn (measured, not
-               guessed): accepted, because the flow paints first (dg-flow precedes
-               the slot group), so a crossing is a platinum hairline tipping over
-               an orange edge — it reads as heat coming off the hot run, which is
-               the claim these marks exist to make.
+               guessed): accepted, and since the solid pass the flow paints LAST
+               (the generator bakes dg-flow above the slot groups now, or opaque
+               paint would erase it), so a crossing is the orange run passing in
+               front of a heat hairline — pipe in front of the heat coming off
+               it, which is the same claim from the other side.
                Tops stay at COOLER.rise, so the marks live inside the same envelope
                the objects() box below is sized from.
 

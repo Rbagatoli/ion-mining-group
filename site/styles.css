@@ -2241,10 +2241,43 @@ a.fac:hover .fac-go { color: var(--btc-200); }
    The list lives in diagram-engine.js's OCCLUDING, with the full argument. */
 .dg-occluder { display: none; }
 
-.dg-top    { fill: rgba(229, 228, 226, 0.42); stroke: none; }
-.dg-side   { fill: rgba(229, 228, 226, 0.30); stroke: none; }
-.dg-end    { fill: rgba(229, 228, 226, 0.20); stroke: none; }
-.dg-inside { fill: rgba(0, 0, 0, 0.62);        stroke: none; }
+/* SOLID, NOT TRANSLUCENT — same shades, made opaque. Each value below is the
+   old rgba composited over the black page (0.42 x platinum = rgb(96,96,95) and
+   so on), so a face that overlaps nothing looks byte-identical to what shipped
+   before; what changes is that a face now HIDES what stands behind it, which is
+   what a steel box does. The x-ray look was an accident of implementation, not
+   a design: with everything at low alpha, the far row's shell glowed through
+   the near row's wall and a tank showed the pipes behind it, and the drawings
+   read as ghosts of a site rather than a site.
+
+   The cutaways survive untouched, because they were never transparency: the
+   container's near wall and the near half of its roof are simply NOT DRAWN, so
+   you still see every machine through the opening. The one drawing whose x-ray
+   really is alpha — the single machine, where the shell is see-through so the
+   boards and coolant loop show INSIDE it — keeps its translucent shell via the
+   scoped override on .dg-wrap--asic below.
+
+   Consequence paid elsewhere: the flow line used to paint underneath the slots
+   and glow through them; under opaque paint the ground quad simply erased it
+   (measured: the home trunk vanished entirely at rest). The generator now bakes
+   dg-flow and its arrowheads AFTER the slot groups — the energy path is the one
+   annotation this site highlights, and it rides above the metal. */
+.dg-top    { fill: rgb(96, 96, 95);  stroke: none; }
+.dg-side   { fill: rgb(69, 68, 68);  stroke: none; }
+.dg-end    { fill: rgb(46, 46, 45);  stroke: none; }
+.dg-inside { fill: rgb(0, 0, 0);     stroke: none; }
+
+/* THE ONE DELIBERATE X-RAY LEFT. The single machine's whole subject is its
+   inside — boards under cold plates, the OD10 loop, the busbars — and unlike
+   the containers it has no cutaway: nothing is left undrawn, so its shell being
+   SEE-THROUGH is the only way in. These are the exact translucent values every
+   drawing used before the solid pass; scoped to the machine's wrapper so the
+   container beside it on the same page stays steel. */
+.dg-wrap--asic .dg-top    { fill: rgba(229, 228, 226, 0.42); }
+.dg-wrap--asic .dg-side   { fill: rgba(229, 228, 226, 0.30); }
+.dg-wrap--asic .dg-end    { fill: rgba(229, 228, 226, 0.20); }
+.dg-wrap--asic .dg-inside { fill: rgba(0, 0, 0, 0.62); }
+.dg-wrap--asic .dg-asics  { fill: rgba(229, 228, 226, 0.22); }
 
 /* Hairlines that belong BEHIND the machines: far-wall corrugation, floor
    grating, rack uprights. Painting these after the ASICs stripes them across
@@ -2256,7 +2289,9 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     /* A faint fill, because this layer now carries the graded surface itself
        and not only the grid on it. The grid lines share the layer and are
        open subpaths, which enclose no area and so take no fill. */
-    fill: rgba(229, 228, 226, 0.04);
+    /* Solid like the shells above (0.04 composited = rgb(9,9,9)): a translucent
+       ground under opaque equipment read as a hole in the world. */
+    fill: rgb(9, 9, 9);
     stroke: var(--line);
     stroke-width: 0.5;
 }
@@ -2277,7 +2312,7 @@ a.fac:hover .fac-go { color: var(--btc-200); }
    comes from the edge's contrast, not its thickness.
 
    tests/site/og-suite.js binds this to build-og.js so the share cards stay lit like the page. */
-.dg-asics  { fill: rgba(229, 228, 226, 0.22);
+.dg-asics  { fill: rgb(50, 50, 50);   /* 0.22 composited — see the solid note above */
              stroke: rgba(229, 228, 226, 0.34); stroke-width: 0.6; }
 
 /* Everything in front: fans, louvres, seams, hinges, panels, dishes. */

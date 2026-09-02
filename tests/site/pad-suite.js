@@ -283,36 +283,66 @@ const wrapEl = cls => ({ tag: 'path', classes: [cls],
 const cutEl = cls => ({ tag: 'path', classes: [cls],
     ancestors: [{ tag: 'div', classes: ['dg-wrap', 'dg-wrap--cont'] },
                 { tag: 'div', classes: ['wrap'] }] });
-const alphaOf = v => { const m = v && v.value.match(/[\d.]+\s*\)$/); return m ? parseFloat(m[0]) : null; };
+/* MEASURED IN LUMINANCE NOW, NOT ALPHA. The faces went solid (owner decision,
+   September 2026: everything opaque except the deliberate x-rays — the container
+   cutaways, which are geometric, and the single machine, which keeps its
+   translucent shell via the --asic override). The invariants below are the SAME
+   invariants this block always held, restated on the 0..255 scale where a
+   translucent rgba and an opaque rgb can be compared: an rgba is composited
+   over the black page (a x luminance of its colour), an rgb is taken as-is.
+   The old parser took "the last number before )" — which read rgb(96,96,95) as
+   an alpha of 95 and failed three checks for the wrong reason. */
+const lumOf = v => {
+    if (!v) return null;
+    let m = /rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/.exec(v.value);
+    if (m) return +m[4] * (0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3]);
+    m = /rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/.exec(v.value);
+    if (m) return 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3];
+    return null;
+};
 
-const padTop = alphaOf(resolve(css, wrapEl('dg-top'), [], 'fill'));
-const cutTop = alphaOf(resolve(css, cutEl('dg-top'), [], 'fill'));
+const padTop = lumOf(resolve(css, wrapEl('dg-top'), [], 'fill'));
+const cutTop = lumOf(resolve(css, cutEl('dg-top'), [], 'fill'));
 ok(padTop !== null && cutTop !== null && padTop === cutTop,
    'the wellpad and the cutaways resolve to the same face weight',
    'pad ' + padTop + ' against cutaway ' + cutTop);
 
-const padSide = alphaOf(resolve(css, wrapEl('dg-side'), [], 'fill'));
-const padEnd = alphaOf(resolve(css, wrapEl('dg-end'), [], 'fill'));
-ok(padSide === alphaOf(resolve(css, cutEl('dg-side'), [], 'fill')) &&
-   padEnd === alphaOf(resolve(css, cutEl('dg-end'), [], 'fill')),
+const padSide = lumOf(resolve(css, wrapEl('dg-side'), [], 'fill'));
+const padEnd = lumOf(resolve(css, wrapEl('dg-end'), [], 'fill'));
+ok(padSide === lumOf(resolve(css, cutEl('dg-side'), [], 'fill')) &&
+   padEnd === lumOf(resolve(css, cutEl('dg-end'), [], 'fill')),
    'and so do the side and end faces', 'the sets have split again');
 
-/* Enough weight to have a body. Below roughly 0.3 a lit face drops under 3:1
-   against the ground and the boxes go back to being outlines. */
-ok(padTop >= 0.30, 'a lit face is heavy enough to read as a surface', 'top is ' + padTop);
-ok(padTop - padSide >= 0.08 && padSide - padEnd >= 0.06,
+/* Enough weight to have a body: below L~65 (the old 0.30 alpha) a lit face
+   drops under 3:1 against the ground and the boxes go back to being outlines. */
+ok(padTop >= 65, 'a lit face is heavy enough to read as a surface', 'top is L' + padTop.toFixed(0));
+ok(padTop - padSide >= 18 && padSide - padEnd >= 13,
    'the top-to-side-to-end steps still give the boxes volume',
-   padTop + ' / ' + padSide + ' / ' + padEnd);
+   [padTop, padSide, padEnd].map(v => v.toFixed(0)).join(' / '));
 
-/* And not so much weight that a cutaway stops being one. The interior is 0.62
-   black and the machines sit on it at 0.10, so what matters is that the shell
-   never approaches the interior's darkness from the other side. */
-ok(padTop <= 0.55, 'not so heavy that a cutaway shell reads as opaque', 'top is ' + padTop);
+/* THE SUCCESSOR TO "not so heavy that a cutaway shell reads as opaque". The
+   shell IS opaque now — that is the point of the solid pass — so the old
+   ceiling guarded a design that no longer exists. What it was FOR still needs
+   guarding: a cutaway must show what is racked inside it. That is carried by
+   the machines standing clear of the interior they sit in, so it is asserted
+   directly instead of through the shell's paint. */
+const cutInside = lumOf(resolve(css, cutEl('dg-inside'), [], 'fill'));
+const cutAsics = lumOf(resolve(css, cutEl('dg-asics'), [], 'fill'));
+ok(cutAsics !== null && cutInside !== null && cutAsics - cutInside >= 35,
+   'the machines stand clear of the cavity the cutaway opens',
+   'asics L' + cutAsics.toFixed(0) + ' on an interior of L' + cutInside.toFixed(0));
 
-const padDetail = alphaOf(resolve(css, wrapEl('dg-detail'), [], 'stroke'));
-ok(padDetail !== null && padDetail > padTop + 0.15,
+/* Line work over an OPAQUE face composites, so the check is the composite:
+   a 0.72 platinum stroke lands at 0.72 x 229 + 0.28 x face, and it has to
+   stand at least 1.5:1 over the face it is drawn on or seams and ribs sink
+   into the roof. That bounds the brightest face at L135 — the old <= 0.55
+   ceiling by another road. */
+const padDetailA = (v => { const m = v && /rgba\([^)]*?([\d.]+)\s*\)/.exec(v.value); return m ? +m[1] : null; })(
+    resolve(css, wrapEl('dg-detail'), [], 'stroke'));
+ok(padDetailA !== null && (padDetailA * 229 + (1 - padDetailA) * padTop) / padTop >= 1.5,
    'the line work sits clear of the fills instead of being buried by them',
-   'detail ' + padDetail + ' against a ' + padTop + ' face');
+   'stroke composites to L' + (padDetailA * 229 + (1 - padDetailA) * padTop).toFixed(0) +
+   ' on a L' + padTop.toFixed(0) + ' face');
 
 /* The variant is gone; nothing should still be reaching for it. */
 ['index.html', 'hosting.html', 'energy.html'].forEach(f => {
@@ -391,8 +421,10 @@ ok(inTop === 0, 'and not in the layer the equipment uses, which is what flattene
 /* The weights, resolved: ground must be far below a lit equipment face. */
 const groundFill = (() => {
     const r = css.slice(css.indexOf('.dg-ground {'), css.indexOf('}', css.indexOf('.dg-ground {')));
-    const m = r.match(/fill: rgba\([^)]*?([\d.]+)\)/);
-    return m ? parseFloat(m[1]) : null;
+    /* Solid since the solid pass: luminance of the rgb(), on the same 0..255
+       scale as padTop above, so the ratio below means what it always meant. */
+    const m = r.match(/fill: rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/);
+    return m ? 0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3] : null;
 })();
 /* Reads the one shared lit-face weight. This used to look for the solid
    variant's override; there is no variant any more, so it reads the base rule
