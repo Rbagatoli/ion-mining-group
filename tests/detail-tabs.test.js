@@ -51,6 +51,18 @@ ok('switching to economics redraws the trend chart',
 ok('first paint redraws it when economics is already active',
    /#dtab_econ'\)\.hidden\) \{[\s\S]{0,40}renderTrend\(c\);/.test(SRC.replace(/\r/g, '')));
 
+console.log('\n=== the chart block is conditional, not merely hidden ===');
+
+// kwByYear is the VIIRS flare survey series; a landfill never has one. renderTrend() hid only
+// the canvas for the no-series case, leaving the heading over an empty rounded box — invisible
+// inside the collapsed accordion, front-and-centre as a tab. The block must not be EMITTED
+// without a series; the canvas-hiding line stays as the second line of defence.
+ok('the trend block is emitted only when the source publishes a series',
+   /if \(c\.sourceDetail && c\.sourceDetail\.kwByYear\) \{[\s\S]{0,220}Power potential by survey year/
+       .test(SRC.replace(/\r/g, '')));
+ok('renderTrend still refuses a missing canvas',
+   /getElementById\('dTrend'\);[\s\S]{0,80}if \(!el/.test(SRC.replace(/\r/g, '')));
+
 console.log('\n=== the old accordion is gone from this panel ===');
 
 ok('no dgroup disclosures are emitted for the detail sections',

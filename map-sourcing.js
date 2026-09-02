@@ -5554,8 +5554,16 @@ var MapSourcing = (function() {
             '<span class="src-gap">' + SiteData.MANUAL_FIELDS.join(', ').replace(/_/g, ' ') + '</span></p></div>';
 
         mark('econ');
-        html += '<div class="src-trendwrap"><div class="section-label">Power potential by survey year</div>' +
-            '<div class="earnings-chart-container" style="height:150px;"><canvas id="dTrend"></canvas></div></div>';
+        /* ONLY WHEN THE SOURCE PUBLISHES A SERIES. kwByYear is the VIIRS flare survey; a
+           landfill never has one, and renderTrend() hid only the CANVAS for the no-series
+           case -- leaving the heading and an empty rounded box standing. Inside the collapsed
+           accordion nobody ever saw that; as a tab's first content it read as a broken chart.
+           No series, no block: absence of a per-year history is not a blank chart's worth of
+           news, and the section's other facts say what IS known. */
+        if (c.sourceDetail && c.sourceDetail.kwByYear) {
+            html += '<div class="src-trendwrap"><div class="section-label">Power potential by survey year</div>' +
+                '<div class="earnings-chart-container" style="height:150px;"><canvas id="dTrend"></canvas></div></div>';
+        }
 
         // ---- Assemble: call sheet, then four disclosures --------------------------------
         //
