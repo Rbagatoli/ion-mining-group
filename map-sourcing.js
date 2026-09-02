@@ -1052,6 +1052,11 @@ var MapSourcing = (function() {
     // should not jump between devices — a saved search is a considered piece of work.
     var SEARCH_KEY = 'protonMiningProspectSearches';
     var MAX_SEARCHES = 40;
+    /* The matched-id snapshot a recall diffs against. Capped: a search matching more than
+       this is a browse, not a shortlist, and its diff would be as long as the list -- and
+       forty searches times unbounded id arrays is how localStorage fills up. Over the cap
+       the snapshot is dropped and the recall says so rather than diffing nothing silently. */
+    var SEEN_CAP = 2000;
     var _searches = [];
     var _naming = false;              // the inline name field is open
 
@@ -1190,10 +1195,40 @@ var MapSourcing = (function() {
         saveFiltersSources();
         applyFilters();
 
+        /* THE DIFF IS THE POINT OF RECALLING A SEARCH. A prospecting business's daily
+           question is "what appeared since I last looked", and until now a recall answered
+           only "here are 214 prospects" -- the reader had to remember yesterday's 209.
+           The snapshot updates on every recall, so the diff is always against the last
+           LOOK, not the save. */
+        var diffNote = '';
+        var currentIds = _filtered.map(function(m) { return m.candidate.id; });
+        if (Array.isArray(s.seen)) {
+            var have = {}, seen = {};
+            currentIds.forEach(function(cid) { have[cid] = 1; });
+            s.seen.forEach(function(cid) { seen[cid] = 1; });
+            var added = 0, gone = 0;
+            currentIds.forEach(function(cid) { if (!seen[cid]) added++; });
+            s.seen.forEach(function(cid) { if (!have[cid]) gone++; });
+            diffNote = (added || gone)
+                ? ' ' + added + ' new' + (gone ? ', ' + gone + ' gone,' : '') +
+                  ' since ' + (s.seenAt || 'you last looked') + '.'
+                : ' Unchanged since ' + (s.seenAt || 'your last look') + '.';
+        }
+        if (currentIds.length <= SEEN_CAP) {
+            s.seen = currentIds;
+            s.seenAt = new Date().toISOString().slice(0, 10);
+            persistSearches();
+        } else if (Array.isArray(s.seen)) {
+            diffNote += ' (Now over ' + fmtInt(SEEN_CAP) + ' matches -- too broad to keep diffing.)';
+            delete s.seen; delete s.seenAt;
+            persistSearches();
+        }
+
         if (missing.length) {
             status('Applied "' + s.name + '" — but ' + missing.join(', ') + ' could not be restored.', 'var(--warn)');
         } else {
-            status('Applied "' + s.name + '" — ' + fmtInt(_filtered.length) + ' prospects.', 'var(--plat-200)');
+            status('Applied "' + s.name + '" — ' + fmtInt(_filtered.length) + ' prospects.' +
+                   diffNote, 'var(--plat-200)');
         }
     }
 
@@ -1222,6 +1257,13 @@ var MapSourcing = (function() {
         var next = captureSearch();
         next.name = name;
         next.at = new Date().toISOString().slice(0, 10);
+        /* Seed the diff snapshot at save time -- the first recall answers "what appeared
+           since I saved this", which is the question that makes saving worth doing. */
+        var seedIds = _filtered.map(function(m) { return m.candidate.id; });
+        if (seedIds.length <= SEEN_CAP) {
+            next.seen = seedIds;
+            next.seenAt = next.at;
+        }
 
         // Saving under a name you already used UPDATES that search. Two chips with the same label
         // would be indistinguishable, and "update" is the operation you actually want after
@@ -1887,11 +1929,13 @@ var MapSourcing = (function() {
             var moneyFor = (sortBy === 'capital_required')
                 ? function(c) { var r = capitalFor(c); return r ? r.requiredUsd : null; }
                 : function(c) {
+                    /* all_in_capital_usd is the ENGINE's top-level metric (see the detail
+                       panel's own read at renderDetail) -- not a field on the capex stack. */
                     var m = evaluateAt(c);
-                    if (!m || !m.capex || m.capex.all_in_capital_usd === null ||
-                        m.capex.all_in_capital_usd === undefined) return null;
+                    if (!m || m.all_in_capital_usd === null ||
+                        m.all_in_capital_usd === undefined) return null;
                     var kw = usableKwFor(c);
-                    return kw > 0 ? m.capex.all_in_capital_usd / kw : null;
+                    return kw > 0 ? m.all_in_capital_usd / kw : null;
                 };
             _filtered.sort(function(a, b) {
                 var av = moneyFor(a.candidate), bv = moneyFor(b.candidate);
@@ -4227,6 +4271,17 @@ var MapSourcing = (function() {
         // Only restore a selection that still exists. Prospect ids change when a catalog is
         // rebuilt, and a stale id would leave an empty panel claiming a site is open.
         if (saved.sel && ProspectStore.get(saved.sel)) _selectedId = saved.sel;
+
+        /* A DEEP LINK BEATS THE REMEMBERED SELECTION. prospecting.html's detail view links here
+           as #prospect/<id> -- ids are shared between the two pages by construction (map save
+           keeps the candidate id). Read once and cleared from the hash, so a reload afterwards
+           goes back to the remembered view rather than re-forcing the link's target. */
+        var m = /^#prospect\/(.+)$/.exec(location.hash || '');
+        if (m) {
+            var linked = decodeURIComponent(m[1]);
+            if (ProspectStore.get(linked)) _selectedId = linked;
+            try { history.replaceState(null, '', location.pathname + location.search); } catch (e2) {}
+        }
 
         paintTableHead();
     }

@@ -377,6 +377,31 @@
             var mm = parseFloat(fieldValue('pdGas'));
             var horizon = fieldValue('pdHorizon');
             var target = fieldValue('pdTarget');
+            /* THE CANDIDATE'S FACTS, FROZEN AT SANCTION. The detail view lazily loads the
+               landfill catalogue, so by the time anyone reaches this form the sourced candidate
+               is usually in hand -- and its shutdown date, inherited generation and treatment
+               requirement are what the budget seed prices. Read through the store rather than
+               copied onto the record, and passed only when loaded: promote() falls back to what
+               the record itself carries, and the stack reports what it cannot price as unknown
+               rather than guessing. */
+            var capexFacts = null;
+            if (typeof ProspectStore !== 'undefined' && ProspectStore.loaded &&
+                ProspectStore.loaded()) {
+                var cand = ProspectStore.get(id);
+                if (cand) {
+                    var csd = cand.sourceDetail || {};
+                    capexFacts = {
+                        existing_generation_kw: (cand.existingGenerationKw !== null &&
+                                                 cand.existingGenerationKw !== undefined)
+                            ? cand.existingGenerationKw : null,
+                        project_shutdown_date: csd.projectShutdownDate || null,
+                        requires_gas_treatment: csd.requiresGasTreatment === true ? true : null,
+                        infra_condition_verified: null,
+                        acquisition_usd: null,          // promote() reads the record's price
+                        market: null
+                    };
+                }
+            }
             var res = ProjectData.promote(id, {
                 capacity_kw: kw,
                 annual_cost_of_capital_pct: parseFloat(fieldValue('pdCoc')),
@@ -385,7 +410,8 @@
                 gas_mmscfd: isFinite(mm) ? mm : null,
                 gas_basis: isFinite(mm) ? 'entered at promotion' : null,
                 horizon_years: horizon === '' ? null : parseFloat(horizon),
-                horizon_basis: horizon === '' ? null : 'entered at promotion'
+                horizon_basis: horizon === '' ? null : 'entered at promotion',
+                capex_facts: capexFacts
             });
             if (!res.ok) { window.alert(res.err); return; }
             drawDetail();

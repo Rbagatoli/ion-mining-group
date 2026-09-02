@@ -1234,16 +1234,37 @@ var ProspectDetail = (function () {
                                                   purchase_price_usd: 0, power_rate: 0 }, {});
                 minerCapex = probe.miner_capex_usd;
             }
-            var st = SiteCapex.stack(rec, {
+            /* The candidate under the record, exactly as the map's evaluate does: the saved
+               record carries the owner's decisions, the candidate carries the sourced facts
+               (development stage, shutdown date, existing generation, treatment) the stack
+               prices condition and inheritance from. Bare, the stack honestly refuses the
+               all-in ("not priced"); merged, it prices the same dollars the map shows. */
+            var candHF = candidateFor(rec);
+            var st = SiteCapex.stack(Object.assign({}, candHF || {}, rec), {
                 capacityKw: kw,
                 minerCapexUsd: minerCapex,
                 acquisitionUsd: (rec.purchase_price_usd !== null && rec.purchase_price_usd !== undefined &&
                                  rec.purchase_price_usd !== '') ? Number(rec.purchase_price_usd) : null
             });
-            if (st) {
-                if (st.incurred_usd !== null && st.incurred_usd !== undefined) required = st.incurred_usd;
-                if (st.all_in_capital_usd !== null && st.all_in_capital_usd !== undefined && kw > 0) {
-                    allInPerKw = st.all_in_capital_usd / kw;
+            if (st && st.incurred_usd !== null && st.incurred_usd !== undefined) {
+                required = st.incurred_usd;
+            }
+            /* All-in is the ENGINE's figure, not the stack's -- the stack prices components,
+               the engine sums price + fleet + development into all_in_capital_usd. Same
+               two-step the map's evaluate does; reading it off the stack returned undefined
+               forever, which rendered as "not priced" on every prospect. */
+            if (st && typeof SiteEngine !== 'undefined') {
+                var em = SiteEngine.evaluate({
+                    nameplate_kw: kw, usable_kw: kw,
+                    purchase_price_usd: (rec.purchase_price_usd !== null &&
+                                         rec.purchase_price_usd !== undefined &&
+                                         rec.purchase_price_usd !== '')
+                        ? Number(rec.purchase_price_usd) : 0,
+                    power_rate: 0
+                }, {}, undefined, st);
+                if (em && em.all_in_capital_usd !== null && em.all_in_capital_usd !== undefined &&
+                    kw > 0) {
+                    allInPerKw = em.all_in_capital_usd / kw;
                 }
             }
         }
@@ -1268,6 +1289,104 @@ var ProspectDetail = (function () {
                    esc(fmtKw(p.capacity_kw)) + ' &middot; budget ' +
                    esc(fmtUsd(p.budget_authorised_usd)) + '</p>' +
                sizingBlock(p);
+    }
+
+    /* ---- The counterparty: who owns this landfill and how to reach them ----
+     *
+     * Everything here comes off the SOURCED candidate, joined live by the shared id -- never
+     * copied onto the saved record, because sourced data has its own rebuild cadence and a
+     * copy would go stale while looking authoritative (map-sourcing states the same rule).
+     * Before this section, the whole answer to "who do I call" -- GHGRP legal parent, mailing
+     * address, the ECCC named person, the routes to a number -- existed only in the map's
+     * panel and vanished from view the moment a prospect was saved and worked from here. */
+    function counterpartySection(rec) {
+        if (typeof ProspectStore === 'undefined') return '';
+        var html = '<section class="pd-sec"><h3>Counterparty</h3>';
+        var c = candidateFor(rec);
+        if (!c) {
+            if (_candErr) {
+                html += '<p class="pd-note">The source catalogue could not be loaded (' +
+                        esc(_candErr) + '), so the published counterparty record cannot be ' +
+                        'shown. What was typed into Contacts below still stands.</p>';
+            } else if (!(ProspectStore.loaded && ProspectStore.loaded())) {
+                html += '<p class="pd-note">Loading the source catalogue&hellip;</p>';
+            } else {
+                html += '<p class="pd-note">No catalogue record matches this prospect ' +
+                        '(manually entered, or a source row that left the dataset). The ' +
+                        'Contacts section below is the record of anyone reached.</p>';
+            }
+            return html + '</section>';
+        }
+
+        var sd = c.sourceDetail || {};
+
+        /* The ECCC named person first, where one is published — the only real contact in the
+           system, same standing as on the map. */
+        if (sd.contactName || sd.contactPhone || sd.contactEmail) {
+            var tel = sd.contactPhone ? String(sd.contactPhone).replace(/[^0-9+]/g, '') : null;
+            html += '<div class="pd-cp-person">' +
+                (sd.contactName ? '<strong>' + esc(sd.contactName) + '</strong>' +
+                    (sd.contactTitle ? ' · ' + esc(sd.contactTitle) : '') : '') +
+                (sd.contactPhone ? ' · <a href="tel:' + esc(tel) + '">' + esc(sd.contactPhone) + '</a>' : '') +
+                (sd.contactEmail ? ' · <a href="mailto:' + esc(sd.contactEmail) + '">' +
+                    esc(sd.contactEmail) + '</a>' : '') +
+                '</div>' +
+                '<p class="pd-note">Published by the facility in its ECCC GHGRP filing.</p>';
+        }
+
+        /* The legal owner and where to write, from the GHGRP registry (US). */
+        var gh = (typeof GhgrpContacts !== 'undefined' && GhgrpContacts.forCandidate)
+            ? GhgrpContacts.forCandidate(c) : null;
+        var ghAddr = gh && GhgrpContacts.addressLine ? GhgrpContacts.addressLine(gh) : null;
+        var owner = (gh && gh.parent) || c.operator || sd.owner || null;
+        if (owner) {
+            html += '<div class="pd-cp-owner">' +
+                '<span class="pd-cp-k">Legal owner</span><span>' + esc(owner) + '</span></div>';
+        }
+        if (ghAddr) {
+            html += '<div class="pd-cp-owner"><span class="pd-cp-k">Write to</span><span>' +
+                    esc(ghAddr) + '</span></div>';
+        }
+        if (!owner && !ghAddr && !(sd.contactName || sd.contactPhone)) {
+            html += '<p class="pd-note">No owner is published for this record.</p>';
+        }
+
+        /* Routes to a number, when no direct one is published — the same module the map uses,
+           so the two views hand out the same advice. */
+        if (typeof ContactRoutes !== 'undefined' && !sd.contactPhone) {
+            var rts = ContactRoutes.routes({
+                name: c.name,
+                owner: owner,
+                parent: gh ? gh.parent : null,
+                operator: c.operator,
+                county: sd.county || (gh ? gh.county : null),
+                city: sd.city || (gh ? gh.city : null),
+                state: sd.state || (gh ? gh.state : null),
+                address: gh ? gh.address : null,
+                frsId: gh ? gh.frsId : null,
+                counterpartyType: c.counterpartyType,
+                ownershipType: sd.ownershipType
+            });
+            if (rts.length) {
+                html += '<ul class="pd-cp-routes">';
+                for (var i = 0; i < rts.length; i++) {
+                    html += '<li><a href="' + esc(rts[i].url) + '" target="_blank" rel="noopener">' +
+                            esc(rts[i].label) + ' &rarr;</a>' +
+                            (rts[i].why ? '<span class="pd-cp-why">' + esc(rts[i].why) + '</span>' : '') +
+                            '</li>';
+                }
+                html += '</ul>';
+            }
+            var note = ContactRoutes.absenceNote
+                ? ContactRoutes.absenceNote({ sourceKind: c.source,
+                                              counterpartyType: c.counterpartyType })
+                : null;
+            if (note) {
+                html += '<p class="pd-note">' + esc(note) +
+                        ' Record whoever you reach in Contacts below.</p>';
+            }
+        }
+        return html + '</section>';
     }
 
     /* ---- The gate checklist (the machinery that had no caller) ----
@@ -1410,9 +1529,42 @@ var ProspectDetail = (function () {
                'data-to="' + esc(n.key) + '">Advance to ' + esc(n.label) + '</button>';
     }
 
+    /* ---- The sourced candidate, lazily ----
+     *
+     * The catalogue is 2.2MB of landfill artifacts and this page can be opened fifty times a
+     * day to drag one card, so it loads on the FIRST DETAIL OPEN rather than at boot. Until it
+     * arrives the counterparty section says "loading" and the panel re-renders itself when the
+     * data lands -- absence and latency are both stated, never blank.
+     *
+     * Landfill sources only, by id: discover() filters adapters, so the flare survey's 2MB and
+     * the facility file's 11.6MB never reach this page. */
+    var _candKicked = false, _candErr = null;
+    var _lastRender = null;
+    function candidateFor(rec) {
+        if (typeof ProspectStore === 'undefined' || !ProspectStore.load) return null;
+        if (ProspectStore.loaded && ProspectStore.loaded()) return ProspectStore.get(rec.id) || null;
+        if (!_candKicked) {
+            _candKicked = true;
+            ProspectStore.load(['lmop-landfill', 'eccc-landfill-ca'])
+                .then(function () {
+                    return (typeof GhgrpContacts !== 'undefined' && GhgrpContacts.load)
+                        ? GhgrpContacts.load() : null;
+                })
+                .then(function () {
+                    if (_lastRender) render(_lastRender.id, _lastRender.host);
+                })
+                .catch(function (e) {
+                    _candErr = e && e.message ? e.message : String(e);
+                    if (_lastRender) render(_lastRender.id, _lastRender.host);
+                });
+        }
+        return null;
+    }
+
     function render(prospectId, hostId) {
         var host = document.getElementById(hostId || 'pdetail');
         if (!host) return null;
+        _lastRender = { id: prospectId, host: hostId };
         var rec = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(prospectId) : null;
         if (!rec) {
             host.innerHTML = '<p class="pd-none">That prospect is not in the pipeline.</p>';
@@ -1433,6 +1585,11 @@ var ProspectDetail = (function () {
             '<h2 class="pd-title">' + esc(rec.name || rec.id) + promotedPill(rec) + '</h2>' +
             '<a class="pd-sumlink" href="#s/' + esc(encodeURIComponent(rec.id)) + '">' +
                 'One-page summary</a>' +
+            /* The other half of the map↔pipeline round trip: ids are shared, so the map can
+               open this exact prospect. Neither page could reach the other before -- the same
+               site meant a manual re-search on every crossing. */
+            '<a class="pd-sumlink" href="./map.html#prospect/' + esc(encodeURIComponent(rec.id)) +
+                '">See on map</a>' +
             /* THE MONEY IS ABOVE THE FOLD. The owner's stated need is "a solid idea of capital
                required"; opening a prospect used to show its name at 19px and its capacity at
                11px mono, and no dollar figure anywhere before the fold. Three figures in the
@@ -1458,6 +1615,7 @@ var ProspectDetail = (function () {
         contractorsSection(rec) +
         '<section class="pd-sec"><h3>Outstanding</h3>' + followBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Log an interaction</h3>' + logForm(prospectId) + '</section>' +
+        counterpartySection(rec) +
         '<section class="pd-sec"><h3>Contacts</h3>' + contactsBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Research</h3>' + enrichBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Documents</h3>' + docsBlock(prospectId) + '</section>' +

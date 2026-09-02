@@ -337,6 +337,19 @@
                       padding:2px 6px; }
         .pd-proc-rm:hover { color:var(--btc-300); border-color:var(--line-btc); }
 
+        /* ---- the counterparty block ---- */
+        .pd-cp-person { font-size:14px; color:var(--plat-100); margin:0 0 4px; }
+        .pd-cp-person a { color:var(--btc-300); text-decoration:none; }
+        .pd-cp-person a:hover { color:var(--btc-200); }
+        .pd-cp-owner { display:flex; gap:10px; font-size:12.5px; color:var(--plat-200);
+                       margin:0 0 6px; }
+        .pd-cp-k { color:var(--plat-500); flex:0 0 84px; }
+        .pd-cp-routes { list-style:none; margin:8px 0 10px; padding:0; }
+        .pd-cp-routes li { padding:5px 0; font-size:12.5px; }
+        .pd-cp-routes a { color:var(--btc-300); text-decoration:none; }
+        .pd-cp-routes a:hover { color:var(--btc-200); }
+        .pd-cp-why { display:block; font-size:11.5px; color:var(--plat-500); max-width:62ch; }
+
         /* ---- the gate checklist ---- */
         .pd-gate-list { list-style:none; margin:0 0 12px; padding:0; }
         .pd-gate-item { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
@@ -861,6 +874,18 @@
      parasitic rates off it, and prospecting.js reads the same two to draw the live reference
      figure beside the capacity field. One definition of the conversion, on both sides. -->
 <script src="./site-capacity.js?v=386"></script>
+<!-- The candidate catalogue, LANDFILL SOURCES ONLY. Everything known about who owns a prospect
+     -- the GHGRP legal parent, the mailing address, the ECCC named contact, the routes to a
+     phone number -- lives on the sourced candidate and was dropped the moment a prospect was
+     saved: this page never loaded the sources, so the CRM showed none of it. The two landfill
+     artifacts are ~2.2MB against the flare survey's 2MB and the facility file's 11.6MB, and
+     prospect-detail loads them LAZILY on the first detail open, not at page boot. -->
+<script src="./site-sources.js?v=412"></script>
+<script src="./source-landfill.js?v=412"></script>
+<script src="./source-landfill-ca.js?v=412"></script>
+<script src="./prospect-store.js?v=412"></script>
+<script src="./ghgrp-contacts.js?v=412"></script>
+<script src="./contact-routes.js?v=412"></script>
 <script src="./project-sizing.js?v=386"></script>
 <!-- The procurement schedule. After crm-followups.js, which owns the day comparator it calls,
      and after project-gates.js, whose permitIssued() decides whether a permit-required item can
@@ -889,10 +914,10 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=411"></script>
-<script src="./prospect-detail.js?v=411"></script>
+<script src="./prospect-detail.js?v=412"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
-<script src="./prospecting.js?v=409"></script>
+<script src="./prospecting.js?v=412"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>
