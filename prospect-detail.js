@@ -1254,12 +1254,19 @@ var ProspectDetail = (function () {
                two-step the map's evaluate does; reading it off the stack returned undefined
                forever, which rendered as "not priced" on every prospect. */
             if (st && typeof SiteEngine !== 'undefined') {
+                /* The STACK's resolved acquisition, not the record's raw field. The stack
+                   resolves a price (negotiated, recorded estimate, or the stage assumption)
+                   into incurred and subtracts it from additional expecting the engine to add
+                   it back as purchase_price_usd -- which the map does. Reading the record's
+                   purchase_price_usd (null on every real record; no UI writes it) fed the
+                   engine 0, so the all-in $/kW rendered LOWER than the capital-required
+                   figure beside it: acquisition silently missing from a number labelled
+                   all-in. */
                 var em = SiteEngine.evaluate({
                     nameplate_kw: kw, usable_kw: kw,
-                    purchase_price_usd: (rec.purchase_price_usd !== null &&
-                                         rec.purchase_price_usd !== undefined &&
-                                         rec.purchase_price_usd !== '')
-                        ? Number(rec.purchase_price_usd) : 0,
+                    purchase_price_usd: (st.acquisition_usd !== null &&
+                                         st.acquisition_usd !== undefined)
+                        ? Number(st.acquisition_usd) : 0,
                     power_rate: 0
                 }, {}, undefined, st);
                 if (em && em.all_in_capital_usd !== null && em.all_in_capital_usd !== undefined &&
@@ -1540,6 +1547,21 @@ var ProspectDetail = (function () {
      * the facility file's 11.6MB never reach this page. */
     var _candKicked = false, _candErr = null;
     var _lastRender = null;
+
+    /* THE OWNER REDRAWS, NEVER THIS MODULE. Calling the internal render() from the async load
+       callback replaced #pdetail's innerHTML about a second after the page's own drawDetail()
+       had rendered AND WIRED it -- prospecting.js attaches every listener in wireDetail(),
+       which only drawDetail() calls, so the refreshed DOM arrived with every button, select
+       and form on the panel dead. The event hands the redraw to whoever owns the wiring; a
+       page that has not registered simply keeps the pre-catalogue rendering, which is stale
+       but alive -- strictly better than fresh and dead. */
+    function refreshOwner() {
+        if (!_lastRender) return;
+        try {
+            document.dispatchEvent(new CustomEvent('prospect-detail:refresh',
+                { detail: { id: _lastRender.id } }));
+        } catch (e) { /* CustomEvent unsupported: keep the live pre-catalogue panel */ }
+    }
     function candidateFor(rec) {
         if (typeof ProspectStore === 'undefined' || !ProspectStore.load) return null;
         if (ProspectStore.loaded && ProspectStore.loaded()) return ProspectStore.get(rec.id) || null;
@@ -1550,12 +1572,10 @@ var ProspectDetail = (function () {
                     return (typeof GhgrpContacts !== 'undefined' && GhgrpContacts.load)
                         ? GhgrpContacts.load() : null;
                 })
-                .then(function () {
-                    if (_lastRender) render(_lastRender.id, _lastRender.host);
-                })
+                .then(function () { refreshOwner(); })
                 .catch(function (e) {
                     _candErr = e && e.message ? e.message : String(e);
-                    if (_lastRender) render(_lastRender.id, _lastRender.host);
+                    refreshOwner();
                 });
         }
         return null;
@@ -1588,8 +1608,16 @@ var ProspectDetail = (function () {
             /* The other half of the map↔pipeline round trip: ids are shared, so the map can
                open this exact prospect. Neither page could reach the other before -- the same
                site meant a manual re-search on every crossing. */
-            '<a class="pd-sumlink" href="./map.html#prospect/' + esc(encodeURIComponent(rec.id)) +
-                '">See on map</a>' +
+            /* mode=prospects in the QUERY, not just the hash: the map decides fleet-vs-prospects
+               from location.search. And only for a record the CATALOGUE actually holds -- for a
+               manually entered prospect the map would ignore the unknown id and quietly open on
+               whatever was selected last, which reads as showing the WRONG site rather than as
+               not having this one. The link appears when the lazy catalogue lands and the panel
+               re-renders. */
+            (candidateFor(rec)
+                ? '<a class="pd-sumlink" href="./map.html?mode=prospects#prospect/' +
+                  esc(encodeURIComponent(rec.id)) + '">See on map</a>'
+                : '') +
             /* THE MONEY IS ABOVE THE FOLD. The owner's stated need is "a solid idea of capital
                required"; opening a prospect used to show its name at 19px and its capacity at
                11px mono, and no dollar figure anywhere before the fold. Three figures in the

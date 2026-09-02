@@ -303,6 +303,14 @@ function round(v, dp) {
 
     log('[3/3] deriving capacity, stage and distress');
     var out = [], dropped = { noLocation: 0, noCapacity: 0 };
+    /* Landfills whose PROJECT rows were dropped (no coordinates anywhere, or nothing to
+       price). They had a project -- the sweep must not relabel them "No Project" and hang
+       a gas-flared-with-no-project distress signal on a site that in fact built one. */
+    var droppedLfid = {};
+    /* Statuses that mean a project actually existed. The workbook also rows-out landfills
+       that never had one (candidate, low potential, blank) -- a dropped row with one of
+       THOSE statuses is not evidence of a project, and excluding on it swept nothing. */
+    var REAL_PROJECT_STATUS = { shutdown: 1, operational: 1, construction: 1, planned: 1 };
     var byStage = {}, shutdownCount = 0, ratedCount = 0, derivedCount = 0, badDates = 0, wipDerivedCount = 0, recoveredLocation = 0;
 
     for (var i = hi + 1; i < rows.length; i++) {
@@ -326,7 +334,11 @@ function round(v, dp) {
                     recoveredLocation++;
                 }
             }
-            if (lat === null || lon === null) { dropped.noLocation++; continue; }
+            if (lat === null || lon === null) {
+                dropped.noLocation++;
+                if (str(r[c.lfid]) && REAL_PROJECT_STATUS[statusKey]) droppedLfid[str(r[c.lfid])] = 1;
+                continue;
+            }
         }
 
         var statusRaw = str(r[c.status]) || 'Unknown';
@@ -366,6 +378,7 @@ function round(v, dp) {
                 wipDerivedCount++;
             } else {
                 dropped.noCapacity++;
+                if (str(r[c.lfid]) && REAL_PROJECT_STATUS[statusKey]) droppedLfid[str(r[c.lfid])] = 1;
                 continue;
             }
         }
@@ -450,8 +463,10 @@ function round(v, dp) {
     var sweep = { added: 0, excludedNoSignal: 0, noCoords: 0, byBasis: {} };
     var seenLfid = {};
     for (var oi = 0; oi < out.length; oi++) { if (out[oi].lfid) seenLfid[out[oi].lfid] = 1; }
+    var sweepSkippedDropped = 0;
     Object.keys(lfIndex).forEach(function (lid) {
         if (seenLfid[lid]) return;
+        if (droppedLfid[lid]) { sweepSkippedDropped++; return; }
         var e = lfIndex[lid], lr = e.r, lc2 = e.c;
         var lat2 = num(lr[lc2.lat]), lon2 = num(lr[lc2.lon]);
         if (lat2 === null || lon2 === null) { sweep.noCoords++; return; }
@@ -541,6 +556,7 @@ function round(v, dp) {
             ghgrpId: str(lr[lc2.ghgrp])
         });
     });
+    sweep.skippedProjectDropped = sweepSkippedDropped;
     log('  sweep: +' + sweep.added + ' no-project landfills (' +
         sweep.excludedNoSignal + ' excluded with no gas signal and <1M tons, ' +
         sweep.noCoords + ' without coordinates)');

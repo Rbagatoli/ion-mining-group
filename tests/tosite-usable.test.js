@@ -106,7 +106,7 @@ raw.projects.forEach(function (r) {
 // 2,757 after the coverage sweep (was 1,908): the WIP capacity fallback kept 849 rows the old
 // builder dropped, and the inventory sweep added no-project landfills. The property under test
 // (every row becomes a candidate) is unchanged; only the universe grew.
-eq('every landfill row is a candidate', lf.length, 2757);
+eq('every landfill row is a candidate', lf.length, 2755);
 var moved = 0, up = 0, grossSum = 0, useSum = 0;
 lf.forEach(function (c) {
     var u = SS.toSite(c, {}).usable_kw;

@@ -495,9 +495,18 @@ var ProjectData = (function () {
                 requires_gas_treatment: f.capex_facts ? f.capex_facts.requires_gas_treatment : null,
                 infra_condition_verified: (f.capex_facts && f.capex_facts.infra_condition_verified === true)
                     ? true : (rec.infra_condition_verified === true ? true : null),
+                /* The record's REAL acquisition field is estimated_acquisition_cost -- that is
+                   what the map's save form writes and what its all-in prefers.
+                   purchase_price_usd is initialised null and no UI writes it, so freezing from
+                   it alone froze null on every real promotion and the seed silently fell back
+                   to the stage assumption. Same precedence as the map: candidate fact, then a
+                   negotiated price, then the recorded estimate. */
                 acquisition_usd: (f.capex_facts && f.capex_facts.acquisition_usd !== null &&
                                   f.capex_facts.acquisition_usd !== undefined)
-                    ? f.capex_facts.acquisition_usd : num(rec.purchase_price_usd),
+                    ? f.capex_facts.acquisition_usd
+                    : (num(rec.purchase_price_usd) !== null
+                        ? num(rec.purchase_price_usd)
+                        : num(rec.estimated_acquisition_cost)),
                 market: f.capex_facts ? f.capex_facts.market : null,
                 captured_at: nowIso()
             },

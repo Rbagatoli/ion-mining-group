@@ -329,6 +329,16 @@ var SyncEngine = (function() {
        Pure, like pullVerdict, and exported for the same reason: testable with no firebase, no
        user, no network. Returns the merged CONTAINER CONTENTS or null when union is not
        possible (an unreadable side) -- and null must stay a hold, never become a write. */
+    /* WHICH STORES A UNION CANNOT HURT. The union's safety argument was "deletion is a
+       tombstone, so a merge cannot resurrect" -- and that premise is TRUE for projects
+       (deleted_at, project-model.js) and for the append-only ledger, and FALSE for everything
+       else: sites, contacts, followups and documents all delete by filtering the record out
+       of the array, so a union would quietly bring every deleted record back from the other
+       copy and call the store resolved. Only the stores whose delete model is verified appear
+       here; a diverged store off this list falls back to the HOLD, which loses nothing and
+       says so on the console. Add a store only after reading its remove(). */
+    var UNION_SAFE = { projects: true, crmLog: true };
+
     function unionStores(localParsed, remoteData, container) {
         if (!container || !localParsed || !remoteData) return null;
         var lBox = localParsed[container], rBox = remoteData[container];
@@ -398,7 +408,7 @@ var SyncEngine = (function() {
                            the records the hold protected. Union failing (unreadable remote, a
                            container that changed shape) leaves the hold exactly as it was --
                            a failed merge must degrade to "touch nothing", never to "write". */
-                        if (v.missing && v.missing.length) {
+                        if (v.missing && v.missing.length && UNION_SAFE[key]) {
                             var localParsed2 = null;
                             try { localParsed2 = JSON.parse(localStorage.getItem(lsKey)); } catch (e2) {}
                             var merged = unionStores(localParsed2, remoteData,
@@ -471,6 +481,7 @@ var SyncEngine = (function() {
         // user, no network. The rest of pullAll is transport around this decision.
         pullVerdict: pullVerdict,
         unionStores: unionStores,
+        UNION_SAFE: UNION_SAFE,
         idsIn: idsIn,
         isSyncing: function() { return _syncing; }
     };

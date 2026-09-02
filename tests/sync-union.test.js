@@ -99,5 +99,28 @@ ok('and the union resolves it with nothing lost from either device',
    resolved.some(function (r) { return r.id === 'b'; }) &&
    resolved.some(function (r) { return r.id === 'c'; }));
 
+// ---- THE GATE: union only where deletion is a tombstone --------------------------------------
+// The union's safety argument -- "a merge cannot resurrect, deletes are tombstones" -- is TRUE
+// for projects (deleted_at) and the append-only ledger, and FALSE for sites, contacts,
+// followups and documents, which all delete by filtering the record out of the array. An
+// adversarial review caught the union resurrecting a hard-deleted contact and reporting the
+// store resolved. The gate keeps the union to the stores whose remove() has been read.
+ok('the gate exists', !!Sync.UNION_SAFE);
+ok('projects (tombstoned) may union', Sync.UNION_SAFE.projects === true);
+ok('the append-only ledger may union', Sync.UNION_SAFE.crmLog === true);
+['sites', 'contacts', 'crmFollowups', 'crmDocuments', 'prospectSearches', 'fleet']
+    .forEach(function (k) {
+        ok(k + ' (hard-delete or unversioned) may NOT union', !Sync.UNION_SAFE[k]);
+    });
+
+// The resurrection the gate prevents, demonstrated: device A deleted 'x' (filtered out, no
+// tombstone), device B still holds it. A union would bring it back looking alive.
+var resurrection = Sync.unionStores(
+    { contacts: [{ id: 'x', name: 'deleted on A but alive on B' }] },   // B's copy
+    { contacts: [] },                                                    // A's post-delete push
+    'contacts');
+ok('the pure union WOULD resurrect a hard-deleted record (which is why the gate exists)',
+   Array.isArray(resurrection) && resurrection.length === 1);
+
 console.log('\n' + (fail ? 'FAILED — ' + fail + ' of ' + (pass + fail) : 'ALL PASS — ' + pass + ' assertions'));
 if (fail) process.exit(1);

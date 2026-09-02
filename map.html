@@ -231,12 +231,19 @@
            detail columns instead of one. */
         body[data-map-mode="prospects"] .map-with-list {
             grid-template-columns:420px minmax(0,1fr); }
-        /* MIRRORED FOR THE TABLE. The scan list is narrow and the detail is wide;
-           the ranked table is the wide one, so in Table view the fixed column
-           swaps sides and the detail takes it. Giving fourteen columns the 420px
-           track would show about a third of them. */
+        /* THE TABLE GETS THE ROW, THE DETAIL GETS THE NEXT ONE. This used to mirror the List
+           view -- table 1fr, detail pinned to a 420px side track -- and the arithmetic never
+           worked: the ranked table is ten rows tall while the detail runs thousands of pixels,
+           so the page was a short table over a plain of dead space with a scroll-forever
+           column beside it. The detail now takes the FULL width below the table and its body
+           flows into columns (rule below), which divides the scrolling by however many
+           columns fit instead of forcing all of it through one 420px slot. */
         body[data-map-mode="prospects"][data-res-view="table"] .map-with-list {
-            grid-template-columns:minmax(0,1fr) 420px; }
+            grid-template-columns:minmax(0,1fr); }
+        body[data-map-mode="prospects"][data-res-view="table"] [data-widget="prospect-table"] {
+            grid-column:1 / -1; }
+        body[data-map-mode="prospects"][data-res-view="table"] .src-detailpane {
+            grid-column:1 / -1; grid-row:3; }
         body[data-map-mode="prospects"] .map-pane {
             grid-column:1 / -1; grid-row:1; }
         body[data-map-mode="prospects"] #srcListCard,
@@ -257,6 +264,18 @@
         body:not([data-detail])[data-map-mode="prospects"] [data-widget="prospect-table"] {
             grid-column:1 / -1; }
         .src-detailpane .card { margin-bottom:0; }
+        /* THE DETAIL FLOWS INTO COLUMNS. The grid comment above promised "enough for three
+           detail columns instead of one" and the pane stayed single-column anyway: every
+           section queued behind the last in one strip, and reading a prospect meant a
+           thousand-pixel scroll past empty flanks. column-width, not column-count, so the
+           pane makes as many columns as its track can afford -- three across the full width
+           under the table, two beside the scan list, one on a phone -- with no media queries
+           to drift out of date. Sections keep themselves whole (break-inside), and the wide
+           surfaces (the capital summary, the component table) span all columns rather than
+           folding a nine-row table into a 360px slot. */
+        #dBody { column-width:360px; column-gap:26px; }
+        #dBody > * { break-inside:avoid; }
+        #dBody > .src-detail-wide { column-span:all; }
         /* The count line carries the ordering now, so it is a heading rather than
            a footnote under the map. */
         .src-count { font-size:12px; color:var(--plat-300); }
@@ -1497,7 +1516,7 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="./firebase-config.js?v=338"></script>
-<script src="./sync.js?v=409"></script>
+<script src="./sync.js?v=413"></script>
 <script src="./auth-ui.js?v=338"></script>
 <script src="./backup.js?v=375"></script>
 <script src="./profile-panel.js?v=375"></script>
@@ -1533,7 +1552,7 @@ commercial terms are your assumptions.</p>
 <script src="./capacity-audit-ui.js?v=388"></script>
 <script src="./site-sources.js?v=387"></script>
 <script src="./site-model.js?v=380"></script>
-<script src="./project-model.js?v=406"></script>
+<script src="./project-model.js?v=413"></script>
 <script src="./project-gates.js?v=384"></script>
 <script src="./site-catalog.js?v=338"></script>
 <script src="./source-flare-gas.js?v=338"></script>
@@ -1571,7 +1590,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=412"></script>
+<script src="./map-sourcing.js?v=413"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

@@ -259,6 +259,14 @@
         wireDetail(id);
     }
 
+    /* The detail module asks for a redraw when its lazy catalogue lands; the redraw must come
+       through HERE because wireDetail() is where every listener lives. Redraw only if the same
+       prospect is still open -- the event can arrive after the user has navigated away. */
+    document.addEventListener('prospect-detail:refresh', function (e) {
+        var id = idFromHash();
+        if (id && e && e.detail && e.detail.id === id) drawDetail();
+    });
+
     function fieldValue(elId) {
         var el = document.getElementById(elId);
         return el ? el.value : '';
@@ -398,7 +406,15 @@
                         requires_gas_treatment: csd.requiresGasTreatment === true ? true : null,
                         infra_condition_verified: null,
                         acquisition_usd: null,          // promote() reads the record's price
-                        market: null
+                        /* The SAME market resolution the map's capital panel uses -- shutdown
+                           generation defaults to used equipment. Hardcoding null here priced
+                           every seeded budget on the NEW rate card: ~20% high on exactly the
+                           shutdown sites this business targets, while the map beside it said
+                           the used number. */
+                        market: (typeof SiteInfrastructure !== 'undefined' &&
+                                 SiteInfrastructure.inventory && SiteInfrastructure.defaultMarket)
+                            ? SiteInfrastructure.defaultMarket(SiteInfrastructure.inventory(cand))
+                            : null
                     };
                 }
             }

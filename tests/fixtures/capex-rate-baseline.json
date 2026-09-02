@@ -1,10 +1,10 @@
 {
-  "_comment": "Re-cut for the landfill coverage sweep: build-landfill-index.js gained a waste-in-place capacity fallback (0.78 MW per million tons, the drop at the old line 269), an inventory-workbook sweep for no-project landfills, and coordinate recovery. +849 candidates (11,829 -> 12,678). ADDITIVE, PROVEN BEFORE RECUTTING: per-id serialisations of capitalAvoided and stack were computed under the old and new data files and compared — 0 old ids removed, 0 old ids repriced, 849 added. The digests move because the universe grew, not because any price did.",
+  "_comment": "Re-cut for the landfill coverage sweep: build-landfill-index.js gained a waste-in-place capacity fallback (0.78 MW per million tons, the drop at the old line 269), an inventory-workbook sweep for no-project landfills, and coordinate recovery. +849 candidates (11,829 -> 12,678). ADDITIVE, PROVEN BEFORE RECUTTING: per-id serialisations of capitalAvoided and stack were computed under the old and new data files and compared — 0 old ids removed, 0 old ids repriced, 849 added. The digests move because the universe grew, not because any price did. RE-CUT 2026-09-02b: the no-project sweep now excludes landfills whose PROJECT rows were dropped for no-location/no-capacity — a dropped Shutdown row is still a project, and labelling its landfill No Project hung a false flaring-no-project distress signal on it. Subtractive by design and named: exactly 2 rows removed (lmop_lf_10641, lmop_lf_2197), 0 repriced, 0 added — verified per-id before this recut.",
   "_independence": "Market and condition are independent multipliers: avoided = full(market) x discount(age). The used/new avoided ratio is asserted identical at four shutdown ages, and every component's discount is asserted equal across markets, because the avoided column moves on both axes and that is where an interaction would hide.",
   "generated_from": "market dimension, on top of d1d8960 (shutdown unification), 61fc2d4 (rate basis), e3d4cff (civil rate)",
-  "candidates": 12678,
-  "avoidedDigest": "9902fc337389e7cebf1dcd89bb4eccba5a8abab93a5056c7ca9feb4e63555af1",
-  "stackDigest": "e21ed4ec66bed0d1318fb06935144bfe2545c8a07054bb538b52c44c3f5fdd1f",
+  "candidates": 12676,
+  "avoidedDigest": "21af54a2a1a5205da26d695e089aa58010de4c696b9fe299f3464d2a0f9fac21",
+  "stackDigest": "3f32d7d627a286dd9b3e1bbb9fd277d8f6cca82af5988c5ceb7e0dce2f4bc70f",
   "previous": {
     "candidates": 11829,
     "avoidedDigest": "34964e7cb3cc3e6f7493a57cd15f752b7750c95e62aba577e3efc57464761141",

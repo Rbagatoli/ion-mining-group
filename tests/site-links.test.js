@@ -154,7 +154,7 @@ console.log('\n=== nothing is deleted ===');
     ok('every referenced project id exists in the catalog',
        Object.keys(referenced).every(function(p) { return !!lfIds[p]; }));
     // Re-pinned for the coverage sweep: +849 rows, proven additive (0 repriced, 0 removed).
-    eq('the landfill catalog is unchanged in size', LF.length, 2757);
+    eq('the landfill catalog is unchanged in size', LF.length, 2755);
     eq('and the facility catalog too', FAC.length, 9765);
 })();
 

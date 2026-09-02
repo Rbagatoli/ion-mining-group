@@ -6338,7 +6338,12 @@ var MapSourcing = (function() {
         if (!_market || !_market.btcPriceUsd) warn.push('BTC price');
         if (!_market || !_market.networkHashratePh) warn.push('network hashrate');
 
-        if (warn.length) {
+        if (errs.length) {
+            /* NOTHING. The source-failure line and its retry button were painted above, and
+               status() rewrites textContent -- so the happy-path summary below was destroying
+               the failure report and the button in the same tick they were created. A boot
+               with failed sources ends on the failure, which is the truthful summary of it. */
+        } else if (warn.length) {
             status('Catalog loaded — ' + warn.join(' and ') + ' unavailable, economics incomplete', 'var(--warn)');
         } else if (restored) {
             // Say so explicitly: a restored search otherwise looks like the app ignored its own
