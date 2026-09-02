@@ -1407,7 +1407,10 @@ are looking at live or hypothetical values.</p>
                 <input type="text" id="scnTop" inputmode="decimal" autocomplete="off"></div>
             <div class="src-field"><label for="scnColour">Colour sites by</label>
                 <select id="scnColour">
-                    <option value="persistence" selected>Persistence</option>
+                    <!-- The default answers the same question as the Rank-by control: the
+                         best sites by the CURRENT ranking carry the brightest marks. -->
+                    <option value="rank" selected>Current ranking</option>
+                    <option value="persistence">Persistence</option>
                     <option value="margin">Margin at this scenario</option>
                 </select></div>
         </div>
@@ -1602,7 +1605,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=415"></script>
+<script src="./map-sourcing.js?v=416"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

@@ -1971,6 +1971,11 @@ var MapSourcing = (function() {
                        (ak === null || ak === undefined ? -1 : ak);
             });
         }
+        /* The map's rank colouring reads this. Rebuilt on every re-rank so the dots always
+           answer the CURRENT Rank-by choice; one pass, cheapest possible shape. */
+        _rankIndex = {};
+        for (var ri = 0; ri < _filtered.length; ri++) _rankIndex[_filtered[ri].candidate.id] = ri;
+
         saveFilters();
         renderPortfolio();
         paintSizeRange();
@@ -3735,7 +3740,27 @@ var MapSourcing = (function() {
      * before it arrives. Prefer it; fall back to a year ratio only when an adapter supplies
      * years and no percentage; and colour an unmeasured site differently rather than painting
      * it the same shade as one measured at the bottom of the scale. */
+    var _rankIndex = null;
+    /* Position in the ranked list, in the persistence ramp's own palette so the map does
+       not grow a second colour language: the top ten in the full accent, the first
+       quartile brightest, fading by quartile to the dimmest. Unranked (filtered out, or
+       painted before the first rank pass) is unmeasured grey, not lowest. */
+    function rankColor(c) {
+        if (!_rankIndex || !Object.prototype.hasOwnProperty.call(_rankIndex, c.id)) {
+            return ProtonTheme.textDim;
+        }
+        var i = _rankIndex[c.id];
+        if (i < 10) return ProtonTheme.btc;
+        var q = i / (_filtered.length || 1);
+        var P = ProtonTheme.persist;
+        if (q < 0.25) return P[3];
+        if (q < 0.50) return P[2];
+        if (q < 0.75) return P[1];
+        return P[0];
+    }
+
     function colorFor(c) {
+        if (_colourBy === 'rank') return rankColor(c);
         if (_colourBy === 'margin') return marginColor(c);
         var P = ProtonTheme.persist;
         var r = null;
@@ -3770,7 +3795,11 @@ var MapSourcing = (function() {
         if (margin < 0.30) return ProtonTheme.warn;  // thin
         return ProtonTheme.pos;                      // healthy
     }
-    var _colourBy = 'persistence';
+    /* 'rank' colours by position in the CURRENT ranking, so the map answers the same
+       question as the Rank-by control -- whatever the axis, including the ascending money
+       sorts where rank 1 is the cheapest way in. The other two modes stay: persistence is
+       a real question about flares, margin is the scenario bar's whole purpose. */
+    var _colourBy = 'rank';
     // ---- zoom-dependent point size -------------------------------------------------
     // globe.gl sizes points in DEGREES, so they scale with the globe: zooming in magnifies the
     // markers along with the terrain and a dense basin stays an unreadable blob no matter how
@@ -4069,7 +4098,12 @@ var MapSourcing = (function() {
                 ? 'Focused on 1 of ' + fmtInt(cands.length) + '. Click anywhere to show them all again.'
                 : (_filtered.length > MAP_DRAW_CAP
                     ? 'Showing the top 4,000 of ' + fmtInt(_filtered.length) + ' matches — narrow the filters to see the rest.'
-                    : fmtInt(cands.length) + ' plotted. Green = burning in every survey year.');
+                    : fmtInt(cands.length) + ' plotted. ' +
+                      (_colourBy === 'rank'
+                          ? 'Brightest = best by your current ranking; the top ten carry the full accent.'
+                          : _colourBy === 'margin'
+                          ? 'Green = healthy margin, amber = thin, red = below cash cost.'
+                          : 'Green = burning in every survey year.'));
         }
 
         var globe = MapBridge.globe();
@@ -6296,7 +6330,7 @@ var MapSourcing = (function() {
         });
         try {
             var savedColour = localStorage.getItem('protonMiningProspectColour');
-            if (savedColour === 'margin' || savedColour === 'persistence') {
+            if (savedColour === 'margin' || savedColour === 'persistence' || savedColour === 'rank') {
                 _colourBy = savedColour;
                 if (colourSel) colourSel.value = savedColour;
             }

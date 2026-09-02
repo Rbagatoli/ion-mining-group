@@ -177,6 +177,28 @@ ok('it promotes an untracked prospect before updating it',
 ok('...and clears the memo, or the figure on screen would not move',
    /clearCapitalCache\(\);[\s\S]{0,400}infra_condition_verified: true|infra_condition_verified: true[\s\S]{0,200}clearCapitalCache\(\)/.test(SRC));
 
+console.log('\n=== the map colours by the current ranking ===');
+/* The dots answer the Rank-by control now. Same source-level pinning as the rest of this
+   file: the mode exists and is the default, the index is rebuilt on every re-rank (stale
+   rank colouring would quietly disagree with the list beside it), both restore paths know
+   the value, and the note describes the legend actually in use. */
+ok('rank is a colour mode and the default',
+   /var _colourBy = 'rank';/.test(SRC) &&
+   /if \(_colourBy === 'rank'\) return rankColor\(c\);/.test(SRC));
+ok('the rank index is rebuilt when the result set re-sorts',
+   /_rankIndex = \{\};[\s\S]{0,200}_rankIndex\[_filtered\[ri\]\.candidate\.id\] = ri;/
+       .test(SRC.replace(/\r/g, '')));
+ok('unranked paints as unmeasured, not as lowest',
+   /hasOwnProperty\.call\(_rankIndex, c\.id\)\) \{[\s\S]{0,60}ProtonTheme\.textDim/
+       .test(SRC.replace(/\r/g, '')));
+ok('the top ten carry the full accent', /if \(i < 10\) return ProtonTheme\.btc;/.test(SRC));
+ok('the saved-colour whitelist knows the third value',
+   SRC.indexOf("savedColour === 'rank'") >= 0);
+ok('the map note describes the rank legend when it applies',
+   SRC.indexOf('Brightest = best by your current ranking') >= 0);
+ok('the control offers it, selected',
+   /<option value="rank" selected>/.test(HTML));
+
 console.log('\n' + (fail === 0 ? 'ALL PASS — ' + pass + ' assertions'
                                : pass + ' passed, ' + fail + ' FAILED'));
 process.exit(fail === 0 ? 0 : 1);
