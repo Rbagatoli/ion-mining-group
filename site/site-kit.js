@@ -89,6 +89,13 @@
         var addBox = H.addBox, line = H.line, ring = H.ring, ringX = H.ringX,
             newLayers = H.newLayers;
 
+        /* Face guards for the exterior marks below. H is the placement shim, so
+           these quads are evaluated at the placed position — facing computed at
+           the origin would be wrong for any skid off the pivot. */
+        var F = H.boxFaces(SELF);
+        var frontOn = H.frontFacing(F.front, yaw), backOn = H.frontFacing(F.back, yaw),
+            leftOn  = H.frontFacing(F.left,  yaw), rightOn = H.frontFacing(F.right, yaw);
+
         var L = newLayers();
         addBox(L, { x: (0), y: 0, z: 0, w: K.w + 0.6, h: 0.24, d: K.d + 0.5 }, yaw, ['top']);
         addBox(L, SELF, yaw);
@@ -119,32 +126,49 @@
         L.detail += line([(0) - 0.5, K.h + 1.2, -0.52], [(0) - 0.5, K.h + 1.2, 0.52], yaw);
         L.detail += line([(0) - 0.5, K.h + 1.2, 0.52], [(0) + 0.66, K.h + 1.2, 0.52], yaw);
 
-        // Inlet piping, an isolation valve and a pressure gauge.
-        L.detail += line([(0) - K.w/2 - 0.8, 0.5, 0], [(0) - K.w/2, 0.5, 0], yaw);
-        L.detail += ring((0) - K.w/2 - 0.45, 0.5, 0, 0.17, yaw, 8);
-        L.detail += line([(0) - K.w/2 - 0.45, 0.33, 0], [(0) - K.w/2 - 0.45, 0.67, 0], yaw);
-        L.detail += ring((0) - K.w/2 - 0.1, 1.15, 0.3, 0.12, yaw, 8);
-        L.detail += line([(0) - K.w/2 - 0.1, 0.5, 0.3], [(0) - K.w/2 - 0.1, 1.03, 0.3], yaw);
-
-        // Outlet riser into the vessel.
-        L.detail += line([(0) + K.w/2 + 0.05, 0.6, 0.35], [(0) + K.w/2 + 0.05, vy, 0.35], yaw);
-
-        // Skid handrail on the open side.
-        var hz = K.d/2 + 0.28;
-        L.detail += line([(0) - K.w/2 - 0.2, 1.05, hz], [(0) + K.w/2 + 0.2, 1.05, hz], yaw);
-        L.detail += line([(0) - K.w/2 - 0.2, 0.62, hz], [(0) + K.w/2 + 0.2, 0.62, hz], yaw);
-        [-1, 0, 1].forEach(function (i) {
-            var px = (0) + i * (K.w/2 + 0.2);
-            L.detail += line([px, 0.24, hz], [px, 1.05, hz], yaw);
-        });
-
-        // Access ladder on the body.
-        for (var rg = 1; rg <= 4; rg++) {
-            var ry = K.h * rg / 5;
-            L.detail += line([(0) - 0.3, ry, K.d/2 + 0.01], [(0) + 0.3, ry, K.d/2 + 0.01], yaw);
+        /* Inlet piping, an isolation valve and a pressure gauge. They stand
+           BESIDE the -x end, not on it, and that end is edge-on at yaw 0 — the
+           baked frame — so keying them to their own face would hide them in the
+           one view every page opens with. Opposite-face polarity instead: gone
+           only when the +x end definitively fronts, which is when the body
+           stands between them and the viewer. */
+        if (!rightOn) {
+            L.detail += line([(0) - K.w/2 - 0.8, 0.5, 0], [(0) - K.w/2, 0.5, 0], yaw);
+            L.detail += ring((0) - K.w/2 - 0.45, 0.5, 0, 0.17, yaw, 8);
+            L.detail += line([(0) - K.w/2 - 0.45, 0.33, 0], [(0) - K.w/2 - 0.45, 0.67, 0], yaw);
+            L.detail += ring((0) - K.w/2 - 0.1, 1.15, 0.3, 0.12, yaw, 8);
+            L.detail += line([(0) - K.w/2 - 0.1, 0.5, 0.3], [(0) - K.w/2 - 0.1, 1.03, 0.3], yaw);
         }
-        L.detail += line([(0) - 0.3, 0.24, K.d/2 + 0.01], [(0) - 0.3, K.h, K.d/2 + 0.01], yaw);
-        L.detail += line([(0) + 0.3, 0.24, K.d/2 + 0.01], [(0) + 0.3, K.h, K.d/2 + 0.01], yaw);
+
+        // Outlet riser into the vessel — the inlet's mirror, same polarity.
+        if (!leftOn)
+            L.detail += line([(0) + K.w/2 + 0.05, 0.6, 0.35], [(0) + K.w/2 + 0.05, vy, 0.35], yaw);
+
+        /* Skid handrail on the open side. 0.28 m proud is not "visible from
+           everywhere": at yaw 200 the two rails and three posts printed a
+           rectangle on the blank back of the skid. Hidden when the back
+           fronts. */
+        var hz = K.d/2 + 0.28;
+        if (!backOn) {
+            L.detail += line([(0) - K.w/2 - 0.2, 1.05, hz], [(0) + K.w/2 + 0.2, 1.05, hz], yaw);
+            L.detail += line([(0) - K.w/2 - 0.2, 0.62, hz], [(0) + K.w/2 + 0.2, 0.62, hz], yaw);
+            [-1, 0, 1].forEach(function (i) {
+                var px = (0) + i * (K.w/2 + 0.2);
+                L.detail += line([px, 0.24, hz], [px, 1.05, hz], yaw);
+            });
+        }
+
+        /* Access ladder on the body: 0.01 proud of the +z face, so it is a mark
+           ON that face and carries its facing — the container door-hardware
+           pattern. */
+        if (frontOn) {
+            for (var rg = 1; rg <= 4; rg++) {
+                var ry = K.h * rg / 5;
+                L.detail += line([(0) - 0.3, ry, K.d/2 + 0.01], [(0) + 0.3, ry, K.d/2 + 0.01], yaw);
+            }
+            L.detail += line([(0) - 0.3, 0.24, K.d/2 + 0.01], [(0) - 0.3, K.h, K.d/2 + 0.01], yaw);
+            L.detail += line([(0) + 0.3, 0.24, K.d/2 + 0.01], [(0) + 0.3, K.h, K.d/2 + 0.01], yaw);
+        }
         return L;
     
     }
@@ -158,6 +182,15 @@
         var addBox = H.addBox, line = H.line, ring = H.ring, ringX = H.ringX,
             newLayers = H.newLayers;
 
+        /* Face guards, judged at the placed position — H is the shim. CAB is
+           declared up here because its own front face guards its door
+           furniture below. */
+        var F = H.boxFaces(SELF);
+        var frontOn = H.frontFacing(F.front, yaw), leftOn = H.frontFacing(F.left, yaw),
+            rightOn = H.frontFacing(F.right, yaw);
+        var CAB = { x: (0) + 1.9, y: 0, z: K.d / 2 + 0.16, w: 0.75, h: 1.5, d: 0.3 };
+        var cabOn = H.frontFacing(H.boxFaces(CAB).front, yaw);
+
         var L = newLayers();
         addBox(L, { x: (0), y: 0, z: 0, w: K.w + 0.5, h: 0.22, d: K.d + 0.4 }, yaw, ['top']);
         addBox(L, SELF, yaw);
@@ -167,36 +200,44 @@
             addBox(L, { x: (0) + dx, y: K.h, z: -0.5, w: 0.24, h: 1.5, d: 0.24 }, yaw);
             L.detail += ring((0) + dx, K.h + 1.5, -0.5, 0.22, yaw, 8);
         });
-        // Radiator louvres on the cold end.
+        /* Radiator louvres, ON the -x face, and the fan seen through the slats
+           when that end shows. One guard for both: from every other side the
+           fan's far half printed on the body. */
         var gx = (0) - K.w / 2 - 0.006;
-        for (var i = 1; i <= 7; i++) {
+        if (leftOn) for (var i = 1; i <= 7; i++) {
             var gy = K.h * (i / 8);
             L.detail += line([gx, gy, -K.d/2 + 0.14], [gx, gy, K.d/2 - 0.14], yaw);
         }
         // Control cabinet on the aisle side.
-        addBox(L, { x: (0) + 1.9, y: 0, z: K.d / 2 + 0.16, w: 0.75, h: 1.5, d: 0.3 }, yaw);
-        for (var cl = 1; cl <= 2; cl++) {
+        addBox(L, CAB, yaw);
+        if (cabOn) for (var cl = 1; cl <= 2; cl++) {
             L.detail += line([(0) + 1.6, 1.5 * cl / 3, K.d/2 + 0.31],
                              [(0) + 2.2, 1.5 * cl / 3, K.d/2 + 0.31], yaw);
         }
-        // Bay seam, access panels, lifting lugs.
+        // Bay seam, access panels, lifting lugs. Seam and panels are 0.006
+        // proud of the +z face, so they are marks on it and carry its facing.
         var zf = K.d / 2 + 0.006;
-        L.detail += line([(0), 0.1, zf], [(0), K.h - 0.1, zf], yaw);
-        for (var s = 1; s <= 4; s++) {
-            var sx = (0) - K.w/2 + K.w * s / 5;
-            L.detail += line([sx, K.h * 0.24, zf], [sx, K.h * 0.78, zf], yaw);
+        if (frontOn) {
+            L.detail += line([(0), 0.1, zf], [(0), K.h - 0.1, zf], yaw);
+            for (var s = 1; s <= 4; s++) {
+                var sx = (0) - K.w/2 + K.w * s / 5;
+                L.detail += line([sx, K.h * 0.24, zf], [sx, K.h * 0.78, zf], yaw);
+            }
         }
         for (var lg = 0; lg < 4; lg++) {
             var lx = (0) - K.w/2 + K.w * (lg + 0.5) / 4;
             addBox(L, { x: lx, y: K.h, z: 0.62, w: 0.1, h: 0.16, d: 0.1 }, yaw);
         }
-        // Radiator fan behind the louvres, and the core hatching.
-        L.detail += ring(gx - 0.01, K.h * 0.52, 0, 0.62, yaw, 14);
-        L.detail += ring(gx - 0.01, K.h * 0.52, 0, 0.24, yaw, 10);
-        for (var sp = 0; sp < 4; sp++) {
-            var ang = sp * Math.PI / 4;
-            L.detail += line([gx - 0.01, K.h * 0.52 + Math.sin(ang) * 0.24, Math.cos(ang) * 0.24],
-                             [gx - 0.01, K.h * 0.52 + Math.sin(ang) * 0.62, Math.cos(ang) * 0.62], yaw);
+        // Radiator fan behind the louvres, and the core hatching — the -x
+        // end's mark, same guard as the louvres it is seen through.
+        if (leftOn) {
+            L.detail += ring(gx - 0.01, K.h * 0.52, 0, 0.62, yaw, 14);
+            L.detail += ring(gx - 0.01, K.h * 0.52, 0, 0.24, yaw, 10);
+            for (var sp = 0; sp < 4; sp++) {
+                var ang = sp * Math.PI / 4;
+                L.detail += line([gx - 0.01, K.h * 0.52 + Math.sin(ang) * 0.24, Math.cos(ang) * 0.24],
+                                 [gx - 0.01, K.h * 0.52 + Math.sin(ang) * 0.62, Math.cos(ang) * 0.62], yaw);
+            }
         }
 
         // Silencer drum lying on the roof between the stacks.
@@ -205,13 +246,15 @@
         L.detail += line([(0) - 0.55, K.h + 0.56, 0.45], [(0) + 0.55, K.h + 0.56, 0.45], yaw);
         L.detail += line([(0) - 0.55, K.h + 0.04, 0.45], [(0) + 0.55, K.h + 0.04, 0.45], yaw);
 
-        // Cabinet door split and handle.
-        L.detail += line([(0) + 1.9, 0.12, K.d/2 + 0.31],
-                         [(0) + 1.9, 1.38, K.d/2 + 0.31], yaw);
-        L.detail += ring((0) + 2.02, 0.75, K.d/2 + 0.32, 0.06, yaw, 6);
+        // Cabinet door split and handle — marks on the cabinet's own front.
+        if (cabOn) {
+            L.detail += line([(0) + 1.9, 0.12, K.d/2 + 0.31],
+                             [(0) + 1.9, 1.38, K.d/2 + 0.31], yaw);
+            L.detail += ring((0) + 2.02, 0.75, K.d/2 + 0.32, 0.06, yaw, 6);
+        }
 
-        // Engine inspection hatches along the lower body.
-        for (var hh = 0; hh < 3; hh++) {
+        // Engine inspection hatches along the lower body, on the +z face.
+        if (frontOn) for (var hh = 0; hh < 3; hh++) {
             var hx = (0) - K.w/2 + K.w * (hh + 0.5) / 3;
             L.detail += line([hx - 0.34, 0.5, zf], [hx + 0.34, 0.5, zf], yaw);
             L.detail += line([hx - 0.34, 1.12, zf], [hx + 0.34, 1.12, zf], yaw);
@@ -219,9 +262,14 @@
             L.detail += line([hx + 0.34, 0.5, zf], [hx + 0.34, 1.12, zf], yaw);
         }
 
-        // Gas train and its regulator running into the skid.
-        L.detail += line([(0) - K.w/2 - 0.9, 0.42, 0.4], [(0) - K.w/2, 0.42, 0.4], yaw);
-        addBox(L, { x: (0) - K.w/2 - 0.62, y: 0.42, z: 0.4, w: 0.26, h: 0.3, d: 0.26 }, yaw);
+        /* Gas train and its regulator, beside the -x end — the gas skid inlet's
+           polarity. The guard also covers the regulator's addBox: its fills
+           share the body's buckets and are emitted after them, so from behind
+           the little box painted itself over the body. */
+        if (!rightOn) {
+            L.detail += line([(0) - K.w/2 - 0.9, 0.42, 0.4], [(0) - K.w/2, 0.42, 0.4], yaw);
+            addBox(L, { x: (0) - K.w/2 - 0.62, y: 0.42, z: 0.4, w: 0.26, h: 0.3, d: 0.26 }, yaw);
+        }
         return L;
     
     }
@@ -234,6 +282,18 @@
         var SELF = { x: 0, y: 0, z: 0, w: K.w, h: K.h, d: K.d };
         var addBox = H.addBox, line = H.line, ring = H.ring, ringX = H.ringX,
             newLayers = H.newLayers;
+
+        /* Face guards, judged at the placed position — H is the shim. FINS is a
+           box whose front/back planes sit exactly at the fin banks' outer faces,
+           z = ±(K.d/2 + 0.22): the corrugation dashes below are marks on those
+           two planes and each side carries its own plane's facing, wound the way
+           boxFaces winds front and back. LV likewise guards its gland plate. */
+        var F = H.boxFaces(SELF);
+        var frontOn = H.frontFacing(F.front, yaw);
+        var FINS = H.boxFaces({ x: 0, y: 0.32, z: 0, w: K.w, h: K.h - 0.64, d: K.d + 0.44 });
+        var finOn = { '1': H.frontFacing(FINS.front, yaw), '-1': H.frontFacing(FINS.back, yaw) };
+        var LV = { x: (0) + K.w/2 + 0.18, y: 0.3, z: 0, w: 0.3, h: 0.7, d: 0.6 };
+        var lvOn = H.frontFacing(H.boxFaces(LV).right, yaw);
 
         var L = newLayers();
         addBox(L, SELF, yaw);
@@ -258,8 +318,11 @@
             L.detail += ring(bx, K.h + 0.2, -0.3, 0.13, yaw, 6);
             L.detail += ring(bx, K.h + 0.38, -0.3, 0.13, yaw, 6);
         }
-        // Fin corrugation, so the banks read as radiators rather than slabs.
+        /* Fin corrugation, so the banks read as radiators rather than slabs.
+           Guarded per side on its own outer plane: unguarded, the far bank's
+           dashes printed across the tank from every angle. */
         for (var side2 = -1; side2 <= 1; side2 += 2) {
+            if (!finOn[String(side2)]) continue;
             for (var f2 = 0; f2 < 5; f2++) {
                 var fx2 = (0) - K.w/2 + K.w * (f2 + 0.5) / 5;
                 var fz2 = side2 * (K.d/2 + 0.22);
@@ -270,17 +333,23 @@
             }
         }
 
-        // Tap changer on the end, with its drive shaft.
+        /* Tap changer on the end, with its drive shaft. The handwheel disc is
+           centred ON the changer's -x plane, half buried in the box: 'inner',
+           because the walls painted after it hide the buried half from every
+           side and always leave the free half — a face guard is all-or-nothing
+           and cannot split one ring down its diameter. */
         addBox(L, { x: (0) - K.w/2 - 0.16, y: 0.55, z: 0.25, w: 0.28, h: 0.62, d: 0.42 }, yaw);
-        L.detail += ring((0) - K.w/2 - 0.3, 0.86, 0.25, 0.12, yaw, 8);
+        L.inner += ring((0) - K.w/2 - 0.3, 0.86, 0.25, 0.12, yaw, 8);
 
-        // Oil level gauge and rating plate on the near face.
+        // Oil level gauge and rating plate — marks on the +z face.
         var nz = K.d/2 + 0.006;
-        L.detail += ring((0) + 0.42, 1.45, nz, 0.11, yaw, 8);
-        L.detail += line([(0) - 0.55, 1.3, nz], [(0) - 0.15, 1.3, nz], yaw);
-        L.detail += line([(0) - 0.55, 1.52, nz], [(0) - 0.15, 1.52, nz], yaw);
-        L.detail += line([(0) - 0.55, 1.3, nz], [(0) - 0.55, 1.52, nz], yaw);
-        L.detail += line([(0) - 0.15, 1.3, nz], [(0) - 0.15, 1.52, nz], yaw);
+        if (frontOn) {
+            L.detail += ring((0) + 0.42, 1.45, nz, 0.11, yaw, 8);
+            L.detail += line([(0) - 0.55, 1.3, nz], [(0) - 0.15, 1.3, nz], yaw);
+            L.detail += line([(0) - 0.55, 1.52, nz], [(0) - 0.15, 1.52, nz], yaw);
+            L.detail += line([(0) - 0.55, 1.3, nz], [(0) - 0.55, 1.52, nz], yaw);
+            L.detail += line([(0) - 0.15, 1.3, nz], [(0) - 0.15, 1.52, nz], yaw);
+        }
 
         // HV cable drops from the bushings down the end.
         for (var hv = 0; hv < 3; hv++) {
@@ -288,10 +357,13 @@
             L.detail += line([hx2, K.h + 0.55, -0.3], [hx2, K.h + 0.78, -0.62], yaw);
         }
 
-        // LV cable box and its gland plate.
-        addBox(L, { x: (0) + K.w/2 + 0.18, y: 0.3, z: 0, w: 0.3, h: 0.7, d: 0.6 }, yaw);
-        L.detail += line([(0) + K.w/2 + 0.34, 0.42, -0.2], [(0) + K.w/2 + 0.34, 0.42, 0.2], yaw);
-        L.detail += line([(0) + K.w/2 + 0.34, 0.86, -0.2], [(0) + K.w/2 + 0.34, 0.86, 0.2], yaw);
+        // LV cable box and its gland plate — the gland lines ride on the LV
+        // box's own +x face and carry its facing.
+        addBox(L, LV, yaw);
+        if (lvOn) {
+            L.detail += line([(0) + K.w/2 + 0.34, 0.42, -0.2], [(0) + K.w/2 + 0.34, 0.42, 0.2], yaw);
+            L.detail += line([(0) + K.w/2 + 0.34, 0.86, -0.2], [(0) + K.w/2 + 0.34, 0.86, 0.2], yaw);
+        }
 
         // Plinth under the tank.
         addBox(L, { x: (0), y: 0, z: 0, w: K.w + 0.34, h: 0.16, d: K.d + 0.3 }, yaw, ['top']);
@@ -505,18 +577,31 @@
 
         // --- In front of the machines ---
         // Cable tray under the ceiling.
+        /* The tray used to carry 19 cable-drop marks across its lid. They are
+           gone, and deliberately: the lid sits at y1 - 0.18 under the KEPT half
+           of the roof, and at this drawing's pitches (20 and 26 deg) a
+           sightline to it that clears the roof's cut edge re-enters the roof
+           plane at most 0.29 m later — still over the roof, which is 1.22 m
+           deep. Seeing the lid needs g * tan(pitch) < 0.18 over a gap g of at
+           least 0.66 m, i.e. a pitch under 15.3 deg that no scene uses; from
+           behind the far wall stands in the way and from the ends the plates
+           do. Marks that were 'detail' bled through the roof, marks in 'inner'
+           are covered by the lid's own fill, and marks nobody can ever see are
+           not drawn. */
         addBox(L, { x: K.x, y: y1 - 0.28, z: z0 + 0.42, w: K.w - 0.6, h: 0.1, d: 0.28 }, yaw);
-        for (var ct = 1; ct < 20; ct++) {
-            var cx3 = x0 + 0.3 + (K.w - 0.6) * ct / 20;
-            L.inner += line([cx3, y1 - 0.18, z0 + 0.3], [cx3, y1 - 0.18, z0 + 0.56], yaw);
-        }
 
         // PDU on the aisle side, so painting it after the machines is correct.
         var pdu = pduOf(K);
         addBox(L, pdu, yaw);
-        for (var p = 1; p <= 4; p++) {
-            L.inner += line([pdu.x - 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006],
-                            [pdu.x + 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006], yaw);
+        /* Breaker rows in 'detail' behind the cabinet's own front facing — the
+           door-hardware pattern. In 'inner' they were covered by the PDU's own
+           front fill (painted after 'inner') from the front and by the far wall
+           from behind: rows visible from nowhere, a blank cabinet at rest. */
+        if (frontFacing(boxFaces(pdu).front, yaw)) {
+            for (var p = 1; p <= 4; p++) {
+                L.detail += line([pdu.x - 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006],
+                                 [pdu.x + 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006], yaw);
+            }
         }
 
         /* THE FAR WALL, AS A WALL. It never existed as an exterior face — under
@@ -572,8 +657,11 @@
 
         // Door end: seam, locking bars, hinges — marks on the +x end plate, guarded
         // by its facing for the same reason the base rail's edges are.
-        var dx = x1 + 0.105;
-        if (frontFacing([[x1,0,z1],[x1,0,z0],[x1,y1,z0],[x1,y1,z1]], yaw)) {
+        /* Judged at the PLATE's face plane (x1 + 0.1), not the shell's x1: the
+           marks ride the plate, and tested at x1 they popped 0.22 deg before
+           and after their surface did. Same plane as the marks = flip-exact. */
+        var dx = x1 + 0.105, dfx = x1 + 0.1;
+        if (frontFacing([[dfx,0,z1],[dfx,0,z0],[dfx,y1,z0],[dfx,y1,z1]], yaw)) {
             L.detail += line([dx, 0.12, K.z], [dx, y1 - 0.12, K.z], yaw);
             for (var b2 = 0; b2 < 4; b2++) {
                 var bz = z0 + K.d * (b2 + 0.5) / 4;

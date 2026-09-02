@@ -182,7 +182,43 @@
    fed its bleed-by-design sweep into the callout-rail fit and failed it at x 209..1071.
    The 'now'/'ion' twins split identically so the crossfade cannot reorder a tank
    mid-slide. Slot ORDER at many yaws is most of this diff; the geometry inside each
-   builder is unchanged, only its slot assignment moved. */
+   builder is unchanged, only its slot assignment moved.
+
+   Re-baselined for the rest of stroke occlusion — the small kit and the partner-site
+   geometry (gas/gen/xfmr face guards; pad edges drawn only when a face owning them
+   shows; landfill wells, header stretches, laterals and yard boxes skipped when the
+   mound buries them) — plus three defects its adversarial review confirmed in the
+   part already shipped, all fixed in this same pass. Checked after recapturing:
+
+     - hosting moves in 'inner' and 'detail' ALONE, no shell layer: the CDU volutes,
+       plate lines and controller window, the PDU breaker rows and meter, the switch
+       ticks and the spares shelves — 38 strokes — left 'inner' for 'detail' behind
+       their own face's facing. In 'inner' they painted BEFORE the cabinet's own
+       front fill and were visible from no yaw at all (reviewer's pixel probes);
+       three callouts anchored featureless boxes. detail moves at exactly the three
+       sampled yaws where a cabinet front faces the camera (0, 45, 315).
+     - site and lf-ion/pad-ion move in 'inner' for the same defect in the kit: pdu
+       rows out to guarded 'detail', the 19 tray-lid drops deleted outright (a
+       sightline that clears the roof's cut edge re-enters the roof plane within
+       0.29 m at both drawing pitches — the drops were never visible except as x-ray
+       bleed through the roof), and the xfmr handwheel ring into 'inner' where the
+       walls painted after it hide its buried half.
+     - the landfills move in end/side/top because buried equipment is now SKIPPED,
+       not painted-and-covered, and in flow/flowHeads because the orange run is
+       clipped against the mound with the laterals' own march: for a third of the
+       turn it printed the header straight across the solid dome. Where it dips
+       behind the hill it now ends in an arrowhead AT the hillside — one new
+       subpath terminus per dip, which is the flowHeads diff.
+     - the door-furniture guard tests the PLATE's face plane (x1 + 0.1) instead of
+       the shell's x1 — flip-exact, closing the measured 0.22-degree band where
+       hardware painted on bare fills. No sampled yaw sits in that band, so no
+       fixture line moves for it; the render harness proves it at 346.72.
+     - asic came back BYTE-IDENTICAL, the control: nothing in this pass touches it.
+
+   Every relocation above was mutation-tested: each new guard inverted one at a
+   time kills its marks at yaw 0 AND prints them on the far wall at yaw 180
+   (288-2,021 px per guard, measured slot-major at full scale); the flow clip
+   un-clipped puts 5,817 px of orange back across the dome at yaw 180. */
 /* The snapshot now also records frame.flowHeads — the arrowheads the engine
    derives from the flow path so the dashes have a direction. A new key rather
    than a change to any existing one: every scene will report "flowHeads

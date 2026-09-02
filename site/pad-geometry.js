@@ -94,16 +94,33 @@
        So anything slender gets its silhouette drawn as well as filled. All
        twelve edges, because which four form the silhouette changes as the pad
        turns and the short ones cost nothing. */
+    /* ONLY THE EDGES A SOLID SHOWS. All twelve were drawn when the fills were
+       translucent and the extra eight read as the x-ray working; under solid
+       paint the far edges are the wireframe showing through the wall — every
+       pipe run, the flare column, and (via P.edges) the landfill's wells,
+       blower, kiosk, leach tank and sumps wore their own back edges on their
+       faces. An edge belongs to exactly two faces, and it is visible iff at
+       least one of them is: both facing = a near edge, one facing = the
+       silhouette, neither = behind the box. */
     function edges(H, yaw, L, b) {
         var x0 = b.x - b.w / 2, x1 = b.x + b.w / 2;
         var y0 = b.y,           y1 = b.y + b.h;
         var z0 = b.z - b.d / 2, z1 = b.z + b.d / 2;
+        var f = H.boxFaces(b), on = {};
+        for (var k in f) on[k] = H.frontFacing(f[k], yaw);
         var v = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+        /* SIDE[i] is the vertical face between corner v[i] and v[i+1], in the
+           winding boxFaces uses; the upright at v[i] joins SIDE[i-1] and
+           SIDE[i]. */
+        var SIDE = ['back', 'right', 'front', 'left'];
         for (var i = 0; i < 4; i++) {
             var a = v[i], c = v[(i + 1) % 4];
-            L.detail += H.line([a[0], y0, a[1]], [a[0], y1, a[1]], yaw);   // upright
-            L.detail += H.line([a[0], y0, a[1]], [c[0], y0, c[1]], yaw);   // round the bottom
-            L.detail += H.line([a[0], y1, a[1]], [c[0], y1, c[1]], yaw);   // round the top
+            if (on[SIDE[(i + 3) % 4]] || on[SIDE[i]])
+                L.detail += H.line([a[0], y0, a[1]], [a[0], y1, a[1]], yaw);   // upright
+            if (on[SIDE[i]] || on.bot)
+                L.detail += H.line([a[0], y0, a[1]], [c[0], y0, c[1]], yaw);   // round the bottom
+            if (on[SIDE[i]] || on.top)
+                L.detail += H.line([a[0], y1, a[1]], [c[0], y1, c[1]], yaw);   // round the top
         }
     }
 
@@ -196,7 +213,11 @@
                          [WELL.x + 0.55, WELL.h + 0.85, WELL.z], yaw);
         L.detail += line([WELL.x, WELL.h + 0.85, WELL.z - 0.55],
                          [WELL.x, WELL.h + 0.85, WELL.z + 0.55], yaw);
-        L.detail += ringY(WELL.x, WELL.h + 0.02, WELL.z, 0.5, yaw, 10);
+        /* Base flange: near arc only. The full ringY put its far arc across the
+           valve stack standing on it — the tree is 0.62 m wide, about 10 px at
+           BASE_SCALE 16, and the flange's 1.0 m diameter leaves ~3 px of far
+           arc proud of each side of the stack, riding over the solid boxes. */
+        L.detail += bandFront(H, yaw, WELL.x, WELL.h + 0.02, 0.5, WELL.z, -1, null);
         // Handwheels on the wing valves.
         L.detail += ringY(WELL.x - 0.62, WELL.h + 0.85, WELL.z, 0.2, yaw, 8);
         L.detail += ringY(WELL.x + 0.62, WELL.h + 0.85, WELL.z, 0.2, yaw, 8);
@@ -222,16 +243,23 @@
         addBox(L, SKID, yaw);
         addBox(L, SEP, yaw);
         var r = SEP.h / 2, cy = SEP.y + r;
-        L.detail += ringX(SEP.x - SEP.w / 2 - 0.01, cy, SEP.z, r, yaw, 14);
-        L.detail += ringX(SEP.x + SEP.w / 2 + 0.01, cy, SEP.z, r, yaw, 14);
+        /* Each dished end is a mark on its own end plate: unguarded, the far
+           end's ring showed straight through the solid vessel. */
+        var SF = H.boxFaces(SEP);
+        if (H.frontFacing(SF.left, yaw))
+            L.detail += ringX(SEP.x - SEP.w / 2 - 0.01, cy, SEP.z, r, yaw, 14);
+        if (H.frontFacing(SF.right, yaw))
+            L.detail += ringX(SEP.x + SEP.w / 2 + 0.01, cy, SEP.z, r, yaw, 14);
         // Saddles under the vessel.
         [-1.9, 1.9].forEach(function (o) {
             addBox(L, { x: SEP.x + o, y: SKID.h, z: SEP.z, w: 0.34, h: 0.3, d: SEP.d + 0.1 }, yaw);
         });
-        // Level gauge on the near flank, and a relief riser off the top.
-        L.detail += line([SEP.x + 1.2, SEP.y, SEP.z + SEP.d / 2 + 0.01],
-                         [SEP.x + 1.2, SEP.y + SEP.h, SEP.z + SEP.d / 2 + 0.01], yaw);
-        L.detail += ringY(SEP.x + 1.2, SEP.y + SEP.h * 0.5, SEP.z + SEP.d / 2 + 0.02, 0.12, yaw, 6);
+        // Level gauge on the near flank — a mark on the +z face, hidden with it.
+        if (H.frontFacing(SF.front, yaw)) {
+            L.detail += line([SEP.x + 1.2, SEP.y, SEP.z + SEP.d / 2 + 0.01],
+                             [SEP.x + 1.2, SEP.y + SEP.h, SEP.z + SEP.d / 2 + 0.01], yaw);
+            L.detail += ringY(SEP.x + 1.2, SEP.y + SEP.h * 0.5, SEP.z + SEP.d / 2 + 0.02, 0.12, yaw, 6);
+        }
         addBox(L, { x: SEP.x - 1.6, y: SEP.y + SEP.h, z: SEP.z,
                     w: PIPE * 1.6, h: 1.3, d: PIPE * 1.6 }, yaw);
         // Instrument cabinet on the skid.
@@ -279,15 +307,67 @@
         }
     }
 
+    /* The ground-plane direction of increasing depth — toward the viewer.
+       depthOf is linear, so the gradient falls out of two differences, and
+       SHIFT_X cancels in the subtraction: the direction is the same wherever
+       the scene is shimmed to. */
+    function viewDir(H, yaw) {
+        var o = H.depthOf([0, 0, 0], yaw);
+        var vx = H.depthOf([1, 0, 0], yaw) - o;
+        var vz = H.depthOf([0, 0, 1], yaw) - o;
+        var m = Math.sqrt(vx * vx + vz * vz) || 1;
+        return { x: vx / m, z: vz / m };
+    }
+
+    /* Does another tank stand between this point and the viewer? Plan-view
+       ray-vs-circle, cast along viewDir. Two dimensions are nearly enough at
+       this camera: the sightline climbs tan(20°) = 0.36 m per metre, so a ray
+       entering a neighbour's shell d metres out is truly blocked iff the band
+       height + 0.36 d stays under the 6.2 m shell top. Bands 1-4 (up to 4.13 m) cannot reach 6.2 within
+       the 3.9 m maximum entry run — always truly blocked. The top band at
+       5.17 m is over-culled where the entry run exceeds 2.8 m — an arc that
+       should peek past the neighbour's rim. Measured over a 360° sweep: the
+       worst wrongly-culled run projects 3.9 px at desktop (yaw 91°), a
+       hairline lying along the neighbour's own rim line. Accepted. */
+    function tankBlocks(v, px, pz, skip) {
+        for (var j = 0; j < TANK_X.length; j++) {
+            if (j === skip) continue;
+            var cx = TANK_X[j] - px, cz = TANK_Z - pz;
+            var t = cx * v.x + cz * v.z;             // closest approach, along the ray
+            if (t <= 0.01) continue;                 // circle is behind the sample
+            var dx = cx - t * v.x, dz = cz - t * v.z;
+            if (dx * dx + dz * dz < TANK_R * TANK_R) return true;
+        }
+        return false;
+    }
+
     /* The near half of a horizontal circle. On a solid cylinder the far half is
-       behind the wall and must not be drawn. */
-    function bandFront(H, yaw, tx, ty, r) {
+       behind the wall and must not be drawn.
+
+       cz used to be hardcoded TANK_Z, which pinned every band to the tank row;
+       the well flange and the flare bands need their own centres. The facing
+       test is the projected winding of the wall strip under the sample —
+       tankWall's own test — not the orthographic radial-direction one: under
+       perspective the visible half of a cylinder is LESS than 180°, and the
+       radial test overshot it, drawing arc tails past both limbs onto the wall.
+       skip/v add neighbour occlusion: a band sample another tank stands in
+       front of is dropped, and the arc re-opens on the far side. */
+    function bandFront(H, yaw, tx, ty, r, cz, skip, v) {
         var d = '', open = false;
+        var half = Math.PI / 40;
         for (var i = 0; i <= 40; i++) {
             var t = i / 40 * Math.PI * 2;
-            var p = [tx + Math.cos(t) * r, ty, TANK_Z + Math.sin(t) * r];
-            if (H.depthOf([Math.cos(t), 0, Math.sin(t)], yaw) <= 0) { open = false; continue; }
-            var q = H.project(p, yaw);
+            var px = tx + Math.cos(t) * r, pz = cz + Math.sin(t) * r;
+            var a = t - half, b = t + half;
+            var strip = [
+                [tx + Math.cos(a) * r, ty + 0.5, cz + Math.sin(a) * r],
+                [tx + Math.cos(b) * r, ty + 0.5, cz + Math.sin(b) * r],
+                [tx + Math.cos(b) * r, ty - 0.5, cz + Math.sin(b) * r],
+                [tx + Math.cos(a) * r, ty - 0.5, cz + Math.sin(a) * r],
+            ];
+            if (!H.frontFacing(strip, yaw)) { open = false; continue; }
+            if (v && tankBlocks(v, px, pz, skip)) { open = false; continue; }
+            var q = H.project([px, ty, pz], yaw);
             d += (open ? 'L' : 'M') + H.n1(q[0]) + ' ' + H.n1(q[1]);
             open = true;
         }
@@ -296,26 +376,36 @@
 
     function buildTanks(H, yaw, L) {
         var ringY = H.ringY, line = H.line;
+        var v = viewDir(H, yaw);
         TANK_X.forEach(function (tx, i) {
             tankWall(H, yaw, L, tx);
             for (var b = 1; b <= 5; b++) {
-                L.detail += bandFront(H, yaw, tx, TANK_H * b / 6, TANK_R + 0.01);
+                L.detail += bandFront(H, yaw, tx, TANK_H * b / 6, TANK_R + 0.01, TANK_Z, i, v);
             }
             L.top += ringY(tx, TANK_H + 0.01, TANK_Z, TANK_R, yaw, 22);
             L.detail += ringY(tx, TANK_H + 0.02, TANK_Z, 0.34, yaw, 8);   // thief hatch
             L.detail += line([tx, TANK_H + 0.02, TANK_Z],
                              [tx, TANK_H + 0.55, TANK_Z], yaw);           // vent riser
-            // Outlet nozzle at the base, facing the separator side.
-            L.detail += line([tx, 0.45, TANK_Z + TANK_R],
-                             [tx, 0.45, TANK_Z + TANK_R + 0.5], yaw);
+            /* Outlet nozzle at the base, facing the separator side. Tested at
+               its free end: when a shell — its own included — stands between
+               that end and the viewer, the whole 0.5 m stub is behind steel. */
+            if (!tankBlocks(v, tx, TANK_Z + TANK_R + 0.5, -1)) {
+                L.detail += line([tx, 0.45, TANK_Z + TANK_R],
+                                 [tx, 0.45, TANK_Z + TANK_R + 0.5], yaw);
+            }
             if (i === 0) {
-                for (var s = 1; s < 10; s++) {
+                /* Ladder rungs go when BOTH endpoints are behind a shell; the
+                   stile lives in 'back', the see-through weight, and stays. */
+                var lz = TANK_Z + TANK_R * 0.55;
+                var hid1 = tankBlocks(v, tx - TANK_R - 0.55, lz, -1);
+                var hid2 = tankBlocks(v, tx - TANK_R - 0.05, lz, -1);
+                if (!(hid1 && hid2)) for (var s = 1; s < 10; s++) {
                     var sy = TANK_H * s / 10;
-                    L.detail += line([tx - TANK_R - 0.55, sy, TANK_Z + TANK_R * 0.55],
-                                     [tx - TANK_R - 0.05, sy, TANK_Z + TANK_R * 0.55], yaw);
+                    L.detail += line([tx - TANK_R - 0.55, sy, lz],
+                                     [tx - TANK_R - 0.05, sy, lz], yaw);
                 }
-                L.back += line([tx - TANK_R - 0.55, 0, TANK_Z + TANK_R * 0.55],
-                               [tx - TANK_R - 0.55, TANK_H, TANK_Z + TANK_R * 0.55], yaw);
+                L.back += line([tx - TANK_R - 0.55, 0, lz],
+                               [tx - TANK_R - 0.55, TANK_H, lz], yaw);
             }
         });
         // Walkway linking the tank tops.
@@ -357,9 +447,13 @@
     function buildFlareStack(H, yaw, L) {
         var addBox = H.addBox, ringY = H.ringY, line = H.line, ringX = H.ringX;
         addBox(L, KO, yaw);
-        // Knockout drum reads as a vessel, not a crate.
-        L.detail += ringX(KO.x - KO.w / 2 - 0.01, KO.h / 2, KO.z, KO.h / 2 - 0.1, yaw, 12);
-        L.detail += ringX(KO.x + KO.w / 2 + 0.01, KO.h / 2, KO.z, KO.h / 2 - 0.1, yaw, 12);
+        // Knockout drum reads as a vessel, not a crate. Each dished end is a
+        // mark on its own end plate — the far one showed through the drum.
+        var KF = H.boxFaces(KO);
+        if (H.frontFacing(KF.left, yaw))
+            L.detail += ringX(KO.x - KO.w / 2 - 0.01, KO.h / 2, KO.z, KO.h / 2 - 0.1, yaw, 12);
+        if (H.frontFacing(KF.right, yaw))
+            L.detail += ringX(KO.x + KO.w / 2 + 0.01, KO.h / 2, KO.z, KO.h / 2 - 0.1, yaw, 12);
 
         var s = FLARE_R;
         var col = { x: FLARE.x, y: 0, z: FLARE.z, w: s * 2, h: FLARE_H, d: s * 2 };
@@ -368,25 +462,36 @@
            3-6% fill and does not read, which is what made the flame look like
            it was floating unattached above nothing. */
         edges(H, yaw, L, col);
+        var colF = H.boxFaces(col);
         // Guy wires to three anchors, which is most of what makes it read tall.
         [[-4.2, -2.6], [4.4, -1.8], [0.4, 4.6]].forEach(function (a) {
             L.back += line([FLARE.x, FLARE_H * 0.74, FLARE.z],
                            [FLARE.x + a[0], 0, FLARE.z + a[1]], yaw);
         });
+        /* Shell bands as near arcs: the full circles wrapped the far half of
+           every band around the outside of the solid column. The tip flange
+           below stays a full circle — an open rim, seen whole from a camera
+           pitched above it. */
         for (var b = 1; b < 6; b++) {
-            L.detail += ringY(FLARE.x, FLARE_H * b / 6, FLARE.z, s + 0.02, yaw, 8);
+            L.detail += bandFront(H, yaw, FLARE.x, FLARE_H * b / 6, s + 0.02, FLARE.z, -1, null);
         }
         L.detail += ringY(FLARE.x, FLARE_H, FLARE.z, s + 0.18, yaw, 10);   // tip flange
-        // Climbing ladder up the near face: two stiles and rungs.
-        var lx = FLARE.x, lz = FLARE.z + s + 0.16;
-        L.detail += line([lx - 0.2, 0.4, lz], [lx - 0.2, FLARE_H - 0.4, lz], yaw);
-        L.detail += line([lx + 0.2, 0.4, lz], [lx + 0.2, FLARE_H - 0.4, lz], yaw);
-        for (var r = 1; r < 14; r++) {
-            var ry = 0.4 + (FLARE_H - 0.8) * r / 14;
-            L.detail += line([lx - 0.2, ry, lz], [lx + 0.2, ry, lz], yaw);
+        /* Climbing ladder on the +z face, 0.16 proud — the gas skid handrail's
+           polarity: hidden only when the column's back definitively fronts, so
+           the edge-on views keep it. */
+        if (!H.frontFacing(colF.back, yaw)) {
+            var lx = FLARE.x, lz = FLARE.z + s + 0.16;
+            L.detail += line([lx - 0.2, 0.4, lz], [lx - 0.2, FLARE_H - 0.4, lz], yaw);
+            L.detail += line([lx + 0.2, 0.4, lz], [lx + 0.2, FLARE_H - 0.4, lz], yaw);
+            for (var r = 1; r < 14; r++) {
+                var ry = 0.4 + (FLARE_H - 0.8) * r / 14;
+                L.detail += line([lx - 0.2, ry, lz], [lx + 0.2, ry, lz], yaw);
+            }
         }
-        // The riser from the knockout drum up into the stack.
-        pipe(H, yaw, L, [KO.x + KO.w / 2, KO.h * 0.6, KO.z], [FLARE.x, KO.h * 0.6, FLARE.z]);
+        /* The riser from the knockout drum up into the stack — stopped at the
+           column's wall. Run to FLARE.x, its buried end box put a 0.52 m
+           (2 × PIPE) upright of edge line on the column's face. */
+        pipe(H, yaw, L, [KO.x + KO.w / 2, KO.h * 0.6, KO.z], [FLARE.x - FLARE_R, KO.h * 0.6, FLARE.z]);
     }
 
     /* Everything that is in both states, in paint order. */

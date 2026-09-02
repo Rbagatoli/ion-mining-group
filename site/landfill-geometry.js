@@ -503,9 +503,42 @@
         return H.depthOf([x, 0, z], yaw) < H.depthOf([CELL.x, 0, CELL.z], yaw) ? 'far' : 'near';
     }
 
+    /* The ground-plane direction of increasing depth — toward the viewer — and
+       the sightline's climb per metre of that travel. Both fall out of depthOf
+       by differencing (SHIFT_X cancels in the subtraction), so this reads the
+       scene's real pitch rather than assuming one. */
+    function viewDir(H, yaw) {
+        var o = H.depthOf([0, 0, 0], yaw);
+        var vx = H.depthOf([1, 0, 0], yaw) - o;
+        var vz = H.depthOf([0, 0, 1], yaw) - o;
+        var vy = H.depthOf([0, 1, 0], yaw) - o;
+        var m = Math.sqrt(vx * vx + vz * vz) || 1;
+        return { x: vx / m, z: vz / m, climb: vy / m };
+    }
+
+    /* Does the mound bury the sightline from p to the viewer? Marches the
+       orthographic sightline toward the viewer in 1 m steps against the same
+       lift() the mound is drawn from; 30 m of march covers the toe's worst
+       19.5 m half-extent (CELL.w/2 = 18.5 times the deepest lobe, 1.055) from
+       anywhere the yard puts a box. Once the line tops CELL.h nothing can
+       block it again, which ends most marches early. */
+    function capOccludes(H, yaw, v, px, py, pz) {
+        for (var d = 1; d <= 30; d++) {
+            var y = py + v.climb * d;
+            if (y >= CELL.h) return false;
+            if (capHeightAt(px + v.x * d, pz + v.z * d) > y) return true;
+        }
+        return false;
+    }
+
     function buildWells(H, yaw, L, half) {
+        var v = viewDir(H, yaw);
         wells().forEach(function (w) {
             if (half && cellHalf(H, yaw, w.x, w.z) !== half) return;
+            /* A well fully behind the hill is skipped whole rather than painted
+               and covered. The head-top is the highest point and therefore the
+               last to disappear: if it is buried, all of the well is. */
+            if (capOccludes(H, yaw, v, w.x, w.base + WELL_H + WELL_HEAD.h, w.z)) return;
             var riser = { x: w.x, y: w.base, z: w.z,
                           w: WELL_R * 2, h: WELL_H, d: WELL_R * 2 };
             H.addBox(L, riser, yaw);
@@ -523,15 +556,37 @@
     function buildHeader(H, yaw, L, half) {
         var y = HEADER_Y;
         var xs = WELL_GRID_X.map(function (bx) { return CELL.x + bx; });
+        var v = viewDir(H, yaw);
 
         /* The toe run and the blower tie-in sit at the foot of the front slope, off
            the hill — they ride in the 'near' pass (and in a legacy single pass). */
         if (half !== 'far') {
-            /* the run along the toe */
-            P.pipe(H, yaw, L, [xs[0], y, HEADER_Z], [BLOWER.x, y, HEADER_Z]);
+            /* The 24 m toe run, judged at its existing well-column joints: from
+               behind, the whole run is under the hill, and painted after the
+               dome it printed its pipe boxes across the face (the near pass
+               paints post-dome by design). A stretch is dropped when both of
+               its joints are buried; consecutive surviving stretches re-merge
+               into one pipe() call, so the seam uprights between them only
+               appear where the run actually meets the mound edge. */
+            var joints = [xs[0], xs[1], xs[2], BLOWER.x];
+            var hid = joints.map(function (jx) {
+                return capOccludes(H, yaw, v, jx, y, HEADER_Z);
+            });
+            var runFrom = null;
+            for (var s = 0; s < joints.length - 1; s++) {
+                var stretchHidden = hid[s] && hid[s + 1];
+                if (!stretchHidden && runFrom === null) runFrom = joints[s];
+                if ((stretchHidden || s === joints.length - 2) && runFrom !== null) {
+                    var runTo = stretchHidden ? joints[s] : joints[s + 1];
+                    P.pipe(H, yaw, L, [runFrom, y, HEADER_Z], [runTo, y, HEADER_Z]);
+                    runFrom = null;
+                }
+            }
 
-            /* and in to the blower */
-            P.pipe(H, yaw, L, [BLOWER.x, y, HEADER_Z], [BLOWER.x, y, BLOWER.z + BLOWER.d / 2]);
+            /* and in to the blower — gone only when both of its ends are. */
+            if (!(capOccludes(H, yaw, v, BLOWER.x, y, HEADER_Z) &&
+                  capOccludes(H, yaw, v, BLOWER.x, y, BLOWER.z + BLOWER.d / 2)))
+                P.pipe(H, yaw, L, [BLOWER.x, y, HEADER_Z], [BLOWER.x, y, BLOWER.z + BLOWER.d / 2]);
         }
 
         /* EVERY WELL TIED BACK, OVER THE CAP.
@@ -548,36 +603,117 @@
            slope instead of cutting through it. Hairlines rather than pipe: a
            lateral is a few inches across, and eleven of them at pipe weight
            would bury the mound they are supposed to be lying on. */
-        wells().forEach(function (w) {
-            /* A lateral travels with its well: a far well's run over the crown is
-               as hidden as the well itself, and splitting one line across the two
-               passes would leave it popping out of the hillside mid-descent. */
-            if (half && cellHalf(H, yaw, w.x, w.z) !== half) return;
+        /* Laterals are culled per SEGMENT against the cap instead of travelling
+           whole with their well: a far well's lateral crosses the ridge and
+           descends the near face, and painted pre-dome (the old rule) that
+           descent was covered by the very slope it lies on. All laterals ride
+           the near pass now — post-dome — and a segment is drawn unless both
+           of its ends are buried, so the run dies within one 1.9 m step of the
+           ridge instead of popping out of the hillside. */
+        if (half !== 'far') wells().forEach(function (w) {
             var STEP = 12;
             var prev = [w.x, w.base + WELL_H * 0.45, w.z];
+            var prevHid = capOccludes(H, yaw, v, prev[0], prev[1], prev[2]);
             for (var i = 1; i <= STEP; i++) {
                 var z = w.z + (HEADER_Z - w.z) * (i / STEP);
                 var cap = capHeightAt(w.x, z);
                 var pt = [w.x, (cap > 0 ? cap + 0.22 : y), z];
-                L.detail += H.line(prev, pt, yaw);
-                prev = pt;
+                var ptHid = capOccludes(H, yaw, v, pt[0], pt[1], pt[2]);
+                if (!(prevHid && ptHid)) L.detail += H.line(prev, pt, yaw);
+                prev = pt; prevHid = ptHid;
             }
         });
     }
 
+    /* A box or short pipe run the mound may stand in front of. Judged at the
+       top (a box's last point to disappear) and skipped whole rather than
+       painted and covered; a pipe goes only when both of its ends are gone. */
+    function boxIfSeen(H, yaw, L, b) {
+        var v = viewDir(H, yaw);
+        if (capOccludes(H, yaw, v, b.x, b.y + b.h, b.z)) return;
+        H.addBox(L, b, yaw);
+        P.edges(H, yaw, L, b);
+    }
+    function pipeIfSeen(H, yaw, L, a, b) {
+        var v = viewDir(H, yaw);
+        if (capOccludes(H, yaw, v, a[0], a[1], a[2]) &&
+            capOccludes(H, yaw, v, b[0], b[1], b[2])) return;
+        P.pipe(H, yaw, L, a, b);
+    }
+
+    /* THE ORANGE FLOW LINE, CLIPPED AGAINST THE MOUND. The engine draws the
+       flow above every slot at full alpha, so no paint order can hide it, and
+       for roughly a third of the turn it printed the header's whole run
+       straight across the solid dome — the loudest stroke left crossing a face
+       it does not belong to once everything else went solid. Clipped HERE, in
+       the geometry the two states share, with the same march the laterals use:
+       the polyline is sampled every 1.5 m and a sample segment survives unless
+       BOTH its ends are buried, so the run dies within a step of the
+       silhouette instead of riding the hillside.
+
+       Each break starts a new subpath, and the engine's flowHeads() puts an
+       arrowhead on every subpath terminus — so a run that dips behind the hill
+       now ends in a head AT the hillside, pointing in. That is the drawing
+       saying the gas goes BEHIND the mound, which is the true statement, in
+       place of the old one, which was that it goes through. */
+    function flowClip(H, yaw, pts) {
+        var v = viewDir(H, yaw);
+        var d = '', pen = false;
+        var prev = pts[0];
+        var prevHid = capOccludes(H, yaw, v, prev[0], prev[1], prev[2]);
+        for (var i = 1; i < pts.length; i++) {
+            var a = prev, b = pts[i];
+            var lx = b[0] - a[0], ly = b[1] - a[1], lz = b[2] - a[2];
+            var steps = Math.max(1, Math.ceil(Math.sqrt(lx * lx + ly * ly + lz * lz) / 1.5));
+            for (var s = 1; s <= steps; s++) {
+                var pt = [a[0] + lx * s / steps, a[1] + ly * s / steps, a[2] + lz * s / steps];
+                var hid = capOccludes(H, yaw, v, pt[0], pt[1], pt[2]);
+                if (prevHid && hid) pen = false;
+                else {
+                    if (!pen) {
+                        var q0 = H.project(prev, yaw);
+                        d += 'M' + H.n1(q0[0]) + ' ' + H.n1(q0[1]);
+                        pen = true;
+                    }
+                    var q = H.project(pt, yaw);
+                    d += 'L' + H.n1(q[0]) + ' ' + H.n1(q[1]);
+                }
+                prev = pt; prevHid = hid;
+            }
+        }
+        return d;
+    }
+
+    /* The flow's first leg, from the wellhead it starts at down to the toe: ON
+       the cap, sampled the way the laterals are, 60 mm above their hairline so
+       the marching dash rides the pipe it is the gas in. The old leg was one
+       straight line from head to toe, THROUGH the body of the mound — under
+       translucent paint that was x-ray, under solid paint plus the clip above
+       it would lose everything but its two ends and show gas teleporting from
+       the wellhead to the header. */
+    function flowDescent(w, y) {
+        var pts = [[w.x, w.base + WELL_H, w.z]];
+        var STEP = 12;
+        for (var i = 1; i <= STEP; i++) {
+            var z = w.z + (HEADER_Z - w.z) * (i / STEP);
+            var cap = capHeightAt(w.x, z);
+            pts.push([w.x, cap > 0 ? cap + 0.28 : y, z]);
+        }
+        return pts;
+    }
+
     /* Blower skid, knockout, and the pipe between them and the flare. */
     function buildPlant(H, yaw, L) {
-        H.addBox(L, BLOWER_SKID, yaw);
-        P.edges(H, yaw, L, BLOWER_SKID);
-        H.addBox(L, BLOWER, yaw);
-        P.edges(H, yaw, L, BLOWER);
+        boxIfSeen(H, yaw, L, BLOWER_SKID);
+        boxIfSeen(H, yaw, L, BLOWER);
+        boxIfSeen(H, yaw, L, KO);
 
-        H.addBox(L, KO, yaw);
-        P.edges(H, yaw, L, KO);
-
+        /* The runs stop at the walls they meet. Run to the box centres, each
+           buried end's own box put a 2 × PIPE upright of edge line on the
+           face of the vessel it disappeared into. */
         var y = 1.15;
-        P.pipe(H, yaw, L, [BLOWER.x + BLOWER.w / 2, y, BLOWER.z], [KO.x, y, KO.z]);
-        P.pipe(H, yaw, L, [KO.x, y, KO.z], [FLARE.x, y, FLARE.z]);
+        pipeIfSeen(H, yaw, L, [BLOWER.x + BLOWER.w / 2, y, BLOWER.z], [KO.x - KO.w / 2, y, KO.z]);
+        pipeIfSeen(H, yaw, L, [KO.x + KO.w / 2, y, KO.z], [FLARE.x - FLARE_R, y, FLARE.z]);
     }
 
     /* THERE IS NO HAUL ROAD ROUND THE TOE, AND IT WAS MEASURED RATHER THAN
@@ -605,37 +741,49 @@
        partner's existing plant, and the promise the page makes is that it stays
        exactly where it is. Kit that appeared only in the "with Proton" state would
        be saying we built their leachate tank. */
+    /* One shell band on a solid box, per side. P.edges' own-face rule is right
+       for a filled box and wrong for a hollow rim: a band is 0.001 high, so its
+       top face always fronts and all four of its edges drew — the far one
+       crossing the solid shroud 10 px from its near side at BASE_SCALE 12. A
+       band edge is a mark on its HOST's wall, and each side carries the host
+       face it wraps. */
+    function bandEdges(H, yaw, L, host, b) {
+        var f = H.boxFaces(host), on = {};
+        for (var k in f) on[k] = H.frontFacing(f[k], yaw);
+        var x0 = b.x - b.w / 2, x1 = b.x + b.w / 2;
+        var z0 = b.z - b.d / 2, z1 = b.z + b.d / 2, y = b.y;
+        if (on.back)  L.detail += H.line([x1, y, z0], [x0, y, z0], yaw);
+        if (on.right) L.detail += H.line([x1, y, z1], [x1, y, z0], yaw);
+        if (on.front) L.detail += H.line([x0, y, z1], [x1, y, z1], yaw);
+        if (on.left)  L.detail += H.line([x0, y, z0], [x0, y, z1], yaw);
+    }
+
     function buildYard(H, yaw, L) {
         var y = 0.55;
 
         /* Leachate tank, with two shell bands so a squat vessel reads as a
            vessel rather than a crate. */
-        H.addBox(L, LEACH, yaw);
-        P.edges(H, yaw, L, LEACH);
+        boxIfSeen(H, yaw, L, LEACH);
         [0.34, 0.68].forEach(function (t) {
-            P.edges(H, yaw, L, { x: LEACH.x, y: LEACH.h * t, z: LEACH.z,
-                                 w: LEACH.w * 1.04, h: 0.001, d: LEACH.d * 1.04 });
+            bandEdges(H, yaw, L, LEACH, { x: LEACH.x, y: LEACH.h * t, z: LEACH.z,
+                                          w: LEACH.w * 1.04, h: 0.001, d: LEACH.d * 1.04 });
         });
 
-        H.addBox(L, LEACH_PUMP, yaw);
-        P.edges(H, yaw, L, LEACH_PUMP);
-        P.pipe(H, yaw, L, [LEACH.x, y, LEACH.z + LEACH.d / 2],
-                          [LEACH.x, y, LEACH_PUMP.z - LEACH_PUMP.d / 2]);
+        boxIfSeen(H, yaw, L, LEACH_PUMP);
+        pipeIfSeen(H, yaw, L, [LEACH.x, y, LEACH.z + LEACH.d / 2],
+                              [LEACH.x, y, LEACH_PUMP.z - LEACH_PUMP.d / 2]);
 
         /* The riser out of the cell that feeds it. Leachate comes from under the
            cap, so the run starts at the toe rather than out in the open. */
-        P.pipe(H, yaw, L, [LEACH.x, y, CELL.z + CELL.d / 2],
-                          [LEACH.x, y, LEACH.z - LEACH.d / 2]);
+        pipeIfSeen(H, yaw, L, [LEACH.x, y, CELL.z + CELL.d / 2],
+                              [LEACH.x, y, LEACH.z - LEACH.d / 2]);
 
         /* Control kiosk, beside the blower it starts. */
-        H.addBox(L, KIOSK, yaw);
-        P.edges(H, yaw, L, KIOSK);
+        boxIfSeen(H, yaw, L, KIOSK);
 
         /* Condensate sumps, sitting on the header line. */
         SUMP_X.forEach(function (sx) {
-            var box = { x: sx, y: 0, z: HEADER_Z, w: SUMP.w, h: SUMP.h, d: SUMP.d };
-            H.addBox(L, box, yaw);
-            P.edges(H, yaw, L, box);
+            boxIfSeen(H, yaw, L, { x: sx, y: 0, z: HEADER_Z, w: SUMP.w, h: SUMP.h, d: SUMP.d });
         });
     }
 
@@ -652,11 +800,13 @@
         P.edges(H, yaw, L, shroud);
 
         /* Two bands up the shroud. An enclosed flare is a stack of shell courses
-           and the bands are what distinguish it from a plain box at this size. */
+           and the bands are what distinguish it from a plain box at this size.
+           Hollow rims, so they draw per side on the shroud's own facing — see
+           bandEdges. */
         [0.38, 0.72].forEach(function (t) {
             var y = 0.7 + (FLARE_H - 0.7) * t;
-            P.edges(H, yaw, L, { x: FLARE.x, y: y, z: FLARE.z,
-                                 w: FLARE_R * 2.12, h: 0.001, d: FLARE_R * 2.12 });
+            bandEdges(H, yaw, L, shroud, { x: FLARE.x, y: y, z: FLARE.z,
+                                           w: FLARE_R * 2.12, h: 0.001, d: FLARE_R * 2.12 });
         });
     }
 
@@ -680,6 +830,7 @@
         FLARE: FLARE, FLARE_H: FLARE_H, FLARE_R: FLARE_R, PIPE: PIPE, TIP: TIP,
         HEADER_Z: HEADER_Z,
         wells: wells, capHeightAt: capHeightAt, extraBoxes: extraBoxes,
+        flowClip: flowClip, flowDescent: flowDescent,
         pipe: P.pipe, edges: P.edges,
         buildPad: buildPad, buildCell: buildCell, buildWells: buildWells,
         buildHeader: buildHeader, buildPlant: buildPlant, buildYard: buildYard, buildFlare: buildFlare,

@@ -408,19 +408,29 @@
            make a coolant cabinet look like one rather than like a second spares
            locker standing beside the first. */
         addBox(L, CDU, yaw);
-        // Face detail in 'inner': the cabinet stands inside the shell, so from
-        // behind its volutes and plate stack drew on the outside of the wall.
+        /* Face detail in 'detail', gated by the face it rides — the door-hardware
+           pattern, NOT 'inner'. 'inner' paints before the shell buckets, so there
+           the cabinet's own front fill covered these marks from the front while
+           the far wall covered them from behind: 38 strokes across these four
+           cabinets, visible from no yaw at all, and three callouts anchored to
+           featureless boxes (the part-two reviewer's pixel probes). Guarded by
+           the cabinet's own front face, the marks travel with the surface they
+           are on: gone with it from behind, above its fill from the front. The
+           marks sit 6 mm proud of the tested plane, so the flip band is ~0.01
+           degree — edge-on hairlines, nothing readable. */
         var cz = CDU.z + CDU.d / 2 + 0.006;
-        L.inner += ring(CDU.x - 0.17, 0.42, cz, 0.13, yaw, 10);
-        L.inner += ring(CDU.x + 0.17, 0.42, cz, 0.13, yaw, 10);
-        for (var xp = 1; xp <= 5; xp++) {
-            var xy = 0.95 + xp * 0.13;
-            L.inner += line([CDU.x - 0.28, xy, cz], [CDU.x + 0.28, xy, cz], yaw);
+        if (frontFacing(boxFaces(CDU).front, yaw)) {
+            L.detail += ring(CDU.x - 0.17, 0.42, cz, 0.13, yaw, 10);
+            L.detail += ring(CDU.x + 0.17, 0.42, cz, 0.13, yaw, 10);
+            for (var xp = 1; xp <= 5; xp++) {
+                var xy = 0.95 + xp * 0.13;
+                L.detail += line([CDU.x - 0.28, xy, cz], [CDU.x + 0.28, xy, cz], yaw);
+            }
+            L.detail += line([CDU.x - 0.2, 1.80, cz], [CDU.x + 0.2, 1.80, cz], yaw);
+            L.detail += line([CDU.x - 0.2, 1.92, cz], [CDU.x + 0.2, 1.92, cz], yaw);
+            L.detail += line([CDU.x - 0.2, 1.80, cz], [CDU.x - 0.2, 1.92, cz], yaw);
+            L.detail += line([CDU.x + 0.2, 1.80, cz], [CDU.x + 0.2, 1.92, cz], yaw);
         }
-        L.inner += line([CDU.x - 0.2, 1.80, cz], [CDU.x + 0.2, 1.80, cz], yaw);
-        L.inner += line([CDU.x - 0.2, 1.92, cz], [CDU.x + 0.2, 1.92, cz], yaw);
-        L.inner += line([CDU.x - 0.2, 1.80, cz], [CDU.x - 0.2, 1.92, cz], yaw);
-        L.inner += line([CDU.x + 0.2, 1.80, cz], [CDU.x + 0.2, 1.92, cz], yaw);
 
         /* Machine-side pair, out of the foot of the cabinet and onto the two
            manifolds; and the roof-side pair, out of the top and straight up
@@ -444,34 +454,43 @@
 
         // PDU: breaker rows and a metering window.
         addBox(L, PDU, yaw);
-        // 'inner' from here to the spares rack: three cabinets' face detail, all
-        // standing inside the shell, all formerly worn by the wall from behind.
+        // Same gate as the CDU's, and for the next two cabinets: face marks in
+        // 'detail' behind their own face's facing.
         var pz = PDU.z + PDU.d / 2 + 0.006;
-        for (var p = 1; p <= 6; p++) {
-            L.inner += line([PDU.x - 0.24, PDU.h * p / 8, pz], [PDU.x + 0.24, PDU.h * p / 8, pz], yaw);
+        if (frontFacing(boxFaces(PDU).front, yaw)) {
+            for (var p = 1; p <= 6; p++) {
+                L.detail += line([PDU.x - 0.24, PDU.h * p / 8, pz], [PDU.x + 0.24, PDU.h * p / 8, pz], yaw);
+            }
+            L.detail += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.86, pz], yaw);
+            L.detail += line([PDU.x - 0.2, PDU.h * 0.94, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
+            L.detail += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x - 0.2, PDU.h * 0.94, pz], yaw);
+            L.detail += line([PDU.x + 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
         }
-        L.inner += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.86, pz], yaw);
-        L.inner += line([PDU.x - 0.2, PDU.h * 0.94, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
-        L.inner += line([PDU.x - 0.2, PDU.h * 0.86, pz], [PDU.x - 0.2, PDU.h * 0.94, pz], yaw);
-        L.inner += line([PDU.x + 0.2, PDU.h * 0.86, pz], [PDU.x + 0.2, PDU.h * 0.94, pz], yaw);
 
         // Network switch with port row, and its drop to the tray.
         addBox(L, SWITCH, yaw);
         var sz = SWITCH.z + SWITCH.d / 2 + 0.006;
-        for (var s2 = 0; s2 < 8; s2++) {
-            var sx = SWITCH.x - 0.2 + 0.4 * s2 / 7;
-            L.inner += line([sx, SWITCH.y + 0.1, sz], [sx, SWITCH.y + 0.2, sz], yaw);
+        if (frontFacing(boxFaces(SWITCH).front, yaw)) {
+            for (var s2 = 0; s2 < 8; s2++) {
+                var sx = SWITCH.x - 0.2 + 0.4 * s2 / 7;
+                L.detail += line([sx, SWITCH.y + 0.1, sz], [sx, SWITCH.y + 0.2, sz], yaw);
+            }
         }
+        /* The drop stays 'inner': it is not ON the face — a cable in the open
+           air above the box, so no fill of its own covers it from the front,
+           and the far wall (painted after 'inner') hides it from behind. */
         L.inner += line([SWITCH.x, SWITCH.y + SWITCH.h, sz], [SWITCH.x, y1 - 0.3, sz], yaw);
 
         // Spares rack: three shelves of boards and PSUs.
         addBox(L, SPARES, yaw);
         var qz = SPARES.z + SPARES.d / 2 + 0.006;
-        for (var q = 1; q <= 3; q++) {
-            var qy = SPARES.h * q / 4;
-            L.inner += line([SPARES.x - 0.34, qy, qz], [SPARES.x + 0.34, qy, qz], yaw);
-            L.inner += line([SPARES.x - 0.16, qy, qz], [SPARES.x - 0.16, qy + 0.2, qz], yaw);
-            L.inner += line([SPARES.x + 0.16, qy, qz], [SPARES.x + 0.16, qy + 0.2, qz], yaw);
+        if (frontFacing(boxFaces(SPARES).front, yaw)) {
+            for (var q = 1; q <= 3; q++) {
+                var qy = SPARES.h * q / 4;
+                L.detail += line([SPARES.x - 0.34, qy, qz], [SPARES.x + 0.34, qy, qz], yaw);
+                L.detail += line([SPARES.x - 0.16, qy, qz], [SPARES.x - 0.16, qy + 0.2, qz], yaw);
+                L.detail += line([SPARES.x + 0.16, qy, qz], [SPARES.x + 0.16, qy + 0.2, qz], yaw);
+            }
         }
 
         /* THE FAR WALL, AS A WALL — this shell never had one. The 'inside' poly
@@ -625,7 +644,14 @@
            right): from the blind-end views the seam, bars and rings drew on the
            outside of the far end cap — hardware on a panel that faces away. */
         var dx2 = x1 + 0.105;
-        if (frontFacing([[x1,0,z1],[x1,0,z0],[x1,y1,z0],[x1,y1,z1]], yaw)) {
+        /* Judged at the PLATE's face plane (x1 + 0.1), not the shell's x1: the
+           marks ride the plate, and tested at x1 they popped 0.22 deg before
+           and after their surface did — two frames a revolution of door
+           hardware on the container's bare fills (measured flips: guard
+           193.18/346.83 deg, plate face 193.40/346.61). Same plane as the
+           marks = flip-exact. */
+        var dpx = x1 + 0.1;
+        if (frontFacing([[dpx,0,z1],[dpx,0,z0],[dpx,y1,z0],[dpx,y1,z1]], yaw)) {
             L.detail += line([dx2, 0.12, C.z], [dx2, y1 - 0.12, C.z], yaw);
             for (var b = 0; b < 4; b++) {
                 var bz = z0 + C.d * (b + 0.5) / 4;

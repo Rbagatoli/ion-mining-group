@@ -323,16 +323,15 @@
         return [];
     }
 
-    /* The run that now ends in the containers rather than the flame: off the cap,
-       along the header, through the blower, into treatment, the engine, the
-       transformer, and the miners. */
+    /* The run that now ends in the containers rather than the flame: down the
+       cap, along the header, through the blower, into treatment, the engine,
+       the transformer, and the miners. Descent leg ON the cap (flowDescent)
+       and the whole run clipped against the dome (flowClip), exactly as in
+       scene-landfill-now.js — see the note there and on flowClip itself. */
     function buildFlow(H, yaw) {
-        var project = H.project, n1 = H.n1;
         var y = 0.42, ty = 1.15;
         var w0 = G.wells()[0];
-        var pts = [
-            [w0.x, w0.base + G.WELL_H, w0.z],
-            [w0.x, y, G.HEADER_Z],
+        var pts = G.flowDescent(w0, y).concat([
             [G.BLOWER.x, y, G.HEADER_Z],
             [G.BLOWER.x, ty, G.BLOWER.z],
             [G.KO.x, ty, G.KO.z],
@@ -343,13 +342,8 @@
             [XFMR.x, 2.4, XFMR.z],
             [XFMR.x, 2.4, YARD.z],
             [CONT_X[0], 2.4, YARD.z],
-        ];
-        var d = '';
-        for (var i = 0; i < pts.length; i++) {
-            var q = project(pts[i], yaw);
-            d += (i ? 'L' : 'M') + n1(q[0]) + ' ' + n1(q[1]);
-        }
-        return d;
+        ]);
+        return G.flowClip(H, yaw, pts);
     }
 
     var SCENE = {

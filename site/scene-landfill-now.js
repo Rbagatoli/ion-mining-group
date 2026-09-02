@@ -190,28 +190,28 @@
         return [];
     }
 
-    /* The run that ends in the flame: off the cap, along the header, through the
-       blower and the knockout, and up into the shroud. Same marching dashes the
-       other scenes use for energy going somewhere — here it goes nowhere. */
+    /* The run that ends in the flame: down the cap, along the header, through
+       the blower and the knockout, and up into the shroud. Same marching dashes
+       the other scenes use for energy going somewhere — here it goes nowhere.
+
+       Two things G does for this path that the old one lacked. The descent leg
+       rides the cap (flowDescent) instead of cutting a chord through the mound,
+       and the whole run is clipped against the dome (flowClip): the flow is
+       drawn above every slot, so for a third of the turn the header's stretch
+       behind the hill printed straight across the solid face. Where the run
+       dips behind, it now ends in an arrowhead at the hillside — see the note
+       on flowClip in landfill-geometry.js. */
     function buildFlow(H, yaw) {
-        var project = H.project, n1 = H.n1;
         var y = 0.42;
         var w0 = G.wells()[0];
-        var pts = [
-            [w0.x, w0.base + G.WELL_H, w0.z],
-            [w0.x, y, G.HEADER_Z],
+        var pts = G.flowDescent(w0, y).concat([
             [G.BLOWER.x, y, G.HEADER_Z],
             [G.BLOWER.x, 1.15, G.BLOWER.z],
             [G.KO.x, 1.15, G.KO.z],
             [G.FLARE.x, 1.15, G.FLARE.z],
             [G.FLARE.x, G.FLARE_H - 0.25, G.FLARE.z],
-        ];
-        var d = '';
-        for (var i = 0; i < pts.length; i++) {
-            var q = project(pts[i], yaw);
-            d += (i ? 'L' : 'M') + n1(q[0]) + ' ' + n1(q[1]);
-        }
-        return d;
+        ]);
+        return G.flowClip(H, yaw, pts);
     }
 
     var SCENE = {
