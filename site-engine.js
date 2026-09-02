@@ -27,7 +27,10 @@ var SiteEngine = (function() {
     // precisely how the $2,400 survived. map.html learned to load miner-db.js first the loud
     // way. tests/site-engine.test.js pins DEFAULT_CONFIG to the MinerDB row so the two can
     // never diverge again, whichever way prices move.
-    var FLEET_UNIT_MODEL = 'Antminer S21 Pro';
+    // The S21+ Hyd., owner's choice (2026-09): 395 TH at 5,925 W, quoted $2,500. The price
+    // lives in miner-db.js -- changing it THERE moves every figure; changing it here is the
+    // seam this block exists to prevent.
+    var FLEET_UNIT_MODEL = 'Antminer S21+ Hyd.';
     var _minerDb = (typeof MinerDB !== 'undefined') ? MinerDB
         : (typeof require === 'function' ? require('./miner-db.js') : null);
     if (!_minerDb) {

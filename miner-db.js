@@ -7,7 +7,9 @@ var MinerDB = (function() {
     var database = [
         // --- Bitmain Antminer S21 Series ---
         { model: 'Antminer S21 XP Hyd.',  hashrate: 473, power: 5.676, cost: 13500, efficiency: 12.0 },
-        { model: 'Antminer S21+ Hyd.',    hashrate: 395, power: 5.925, cost: 2649,  efficiency: 15.0 },
+        // Owner-quoted at $2,500 (2026-09) -- this is the fleet unit site-engine.js prices
+        // every prospect with, so this row IS the miner capex assumption everywhere.
+        { model: 'Antminer S21+ Hyd.',    hashrate: 395, power: 5.925, cost: 2500,  efficiency: 15.0 },
         { model: 'Antminer S21 Hyd.',     hashrate: 335, power: 5.360, cost: 9000,  efficiency: 16.0 },
         { model: 'Antminer S21e Hyd.',    hashrate: 332, power: 5.644, cost: 2070,  efficiency: 17.0 },
         { model: 'Antminer S21 XP',       hashrate: 270, power: 3.645, cost: 3010,  efficiency: 13.5 },

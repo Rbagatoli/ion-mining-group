@@ -2727,9 +2727,11 @@ var MapSourcing = (function() {
         var usable = usableKwFor(c);
         if (usable === null) return null;
         var n = Math.floor(usable * 1000 * (duty / 100) / MINER_WATTS);
+        var unit = SiteEngine.DEFAULT_CONFIG.minerModel + ' at ' +
+            fmtInt(MINER_WATTS) + ' W each';
         return note
-            ? '<span title="' + esc(note) + '">' + fmtInt(n) + ' miners*</span>'
-            : fmtInt(n) + ' miners';
+            ? '<span title="' + esc(note + ' — ' + unit) + '">' + fmtInt(n) + ' miners*</span>'
+            : '<span title="' + esc(unit) + '">' + fmtInt(n) + ' miners</span>';
     }
 
     function renderResults() {
@@ -4898,7 +4900,9 @@ var MapSourcing = (function() {
         mark('capacity');
         html += '<div class="src-detail"><div class="section-label">Derived capacity</div><dl>' +
             row('Power potential', fmtKw(c.powerPotentialKw) + rangeNote) +
-            row('Miners supported', fmtInt(m.max_miners)) +
+            row('Miners supported', fmtInt(m.max_miners) +
+                '<span class="src-assume"> × ' + esc(SiteEngine.DEFAULT_CONFIG.minerModel) +
+                ', ' + SiteEngine.DEFAULT_CONFIG.minerTh + ' TH</span>') +
             row('Hashrate', m.total_hashrate_ph === null ? '--' : m.total_hashrate_ph.toFixed(1) + ' PH/s') +
             row('Monthly BTC', m.monthly_btc === null ? gap('needs network data') : m.monthly_btc.toFixed(4)) +
             row('Location', c.offshore === true ? '<span style="color:var(--neg);">offshore — not viable</span>' : 'onshore') +

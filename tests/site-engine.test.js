@@ -74,7 +74,10 @@ var SITES = [
 // requires the historical price to be passed, not inherited. Without this line the table
 // would silently re-derive from whatever MinerDB says this week, which is the circular
 // expectation this suite bans.
-var SPEC_CONFIG = { minerUnitCostUsd: 2400 };
+// The WHOLE historical unit, not just its price: the table's max_miners figures were computed
+// at the S21 Pro's 3,510 W and its hashrates at 234 TH. The live default is the S21+ Hyd.
+// (395 TH, 5,925 W) and will move again; the spec's numbers must not move with it.
+var SPEC_CONFIG = { minerUnitCostUsd: 2400, minerWatts: 3510, minerTh: 234 };
 var EV = SITES.map(function(s) { return { site: s, metrics: SiteEngine.evaluate(s, MARKET, SPEC_CONFIG) }; });
 function m(name) {
     for (var i = 0; i < EV.length; i++) if (EV[i].site.name === name) return EV[i].metrics;
@@ -388,7 +391,10 @@ SiteSources.register({
     eq('commercial terms not invented by the source', wind.take_or_pay_pct, null);
 
     var windMetrics = SiteEngine.evaluate(wind, MARKET);
-    eq('the SAME engine evaluates a wind site', windMetrics.max_miners, Math.floor(2232 * 1000 / 3510));
+    // floor(usable x 1000 / watts) is the PROPERTY; the watts are whatever the fleet unit's
+    // are this year. Hardcoding 3510 pinned the S21 Pro forever.
+    eq('the SAME engine evaluates a wind site', windMetrics.max_miners,
+       Math.floor(2232 * 1000 / SiteEngine.DEFAULT_CONFIG.minerWatts));
     ok('wind site produces full economics', windMetrics.cash_cost_per_btc > 0, windMetrics.cash_cost_per_btc);
     ok('site-engine.js code names no energy source at all',
        !engineMentions('curtail') && !engineMentions('flare') && !engineMentions('biogas') &&
@@ -509,8 +515,16 @@ SiteSources.register({
            d50.max_power_rate_capital_usd < d100.max_power_rate_capital_usd);
         // And goes negative rather than null when capital cannot be recovered at ANY price.
         // Clamping to zero would hide "this does not work even if the gas is free".
+        //
+        // ITS OWN FIXTURE, because d20 stopped embodying the condition: the fleet unit moved to
+        // the S21+ Hyd. ($2,500 for 395 TH — a third of the S21 Pro's dollars-per-hash), and at
+        // that price the shared site's capital recovers even at 20% duty. A fixture that no
+        // longer produces the thing it asserts proves nothing, so this one is priced to be
+        // unrecoverable under ANY plausible unit: ten times the capital on the same gas.
+        var unrec = SiteEngine.evaluate(s({ purchase_price_usd: 5000000 }), MARKET, { uptimePct: 20 });
         ok('an unrecoverable capital rate is negative, not null or zero',
-           d20.max_power_rate_capital_usd < 0);
+           unrec.max_power_rate_capital_usd < 0,
+           'got ' + unrec.max_power_rate_capital_usd);
 
         // A shorter window is a harder test.
         var tight = SiteEngine.evaluate(s(), MARKET, { targetPaybackMonths: 12 });
