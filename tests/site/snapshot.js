@@ -146,7 +146,24 @@
        well under the 11,726-byte pre-hydro noise ceiling this file's earlier entries cite.
 
    pad-now and lf-now move ONLY in the flowHeads key; their geometry is byte-identical, which
-   is the isolation proof for this pass: nothing that does not draw a hydro cooler moved. */
+   is the isolation proof for this pass: nothing that does not draw a hydro cooler moved.
+
+   Re-baselined for the first half of stroke occlusion, the defect the solid pass exposed
+   and the owner spotted on the live site: fills went opaque but every hairline still rode
+   in 'detail', the last layer, so a container seen from behind wore its own manifolds and
+   machine strips on the outside of a blank wall — and the wall itself did not exist as an
+   exterior face, because the x-ray era never needed one. The engine gains an 'inner' layer
+   (after asics, before the shell faces) so interior line work is hidden by a wall exactly
+   when the wall faces the viewer; KIT.container() gains a real facing-culled far wall, and
+   its exterior marks (door hardware, roof ribs, base-rail edges, cooler coils, cut edges,
+   roof pipes) now carry their own face's facing guard.
+
+   Every fixture moves at minimum because LAYERS is part of the snapshot — the 'flame'
+   entry above is the precedent. Beyond that, only the scenes that draw KIT.container()
+   move geometrically (site, pad-ion, lf-ion: strip/manifold ink relocates detail->inner,
+   plus the new wall quads and guarded marks appearing/vanishing by facing). hosting and
+   asic move in the LAYERS list alone this pass — their own stroke occlusion is the second
+   half, running now, and lands as its own re-baseline. */
 /* The snapshot now also records frame.flowHeads — the arrowheads the engine
    derives from the flow path so the dashes have a direction. A new key rather
    than a change to any existing one: every scene will report "flowHeads

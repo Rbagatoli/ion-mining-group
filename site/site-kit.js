@@ -408,9 +408,12 @@
                this once said, to clear "the column's riser": there is no per-column riser in
                this drawing. Ten of them were drawn and removed again — see the note on the
                run below — and the comment outlived the geometry by one edit. */
-            L.detail += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
-                             [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
-            L.detail += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
+            /* 'inner', not 'detail': these live on the machine faces, and from behind
+               the solid far wall has to hide them or the wall wears the fleet's
+               control strips on its outside. */
+            L.inner += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
+                            [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
+            L.inner += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
         }
 
         /* THE LOOP, WHICH THIS CONTAINER DID NOT HAVE AT ALL.
@@ -445,8 +448,8 @@
            both pipes across the cabinet's front. Ending at the last column served is the
            honest stop anyway: past that there is nothing to feed. */
         var manX0 = rx0 - 0.2, manX1 = rx0 + span - 0.32;
-        L.detail += line([manX0, manY, manZ], [manX1, manY, manZ], yaw);
-        L.detail += line([manX0, manY + manSep, manZ], [manX1, manY + manSep, manZ], yaw);
+        L.inner += line([manX0, manY, manZ], [manX1, manY, manZ], yaw);
+        L.inner += line([manX0, manY + manSep, manZ], [manX1, manY + manSep, manZ], yaw);
 
         /* UP THE BLIND END TO THE ROOF COOLER, and every part of that sentence was wrong in
            the first version. It ran up at rx0 + span + 0.2, which is 0.90 m short of the
@@ -491,9 +494,13 @@
                separation that fits gets past about 1.9 px. X is the axis with room — 0.22
                here is 4.2 px — and the aisle in front of the rack has it to give. */
             var rxi = riseX + i * 0.22;
-            L.detail += line([rxi, y, manZ], [rxi, y, pz], yaw);          // back under the rack
-            L.detail += line([rxi, y, pz], [rxi, yTop, pz], yaw);         // up the blind end
-            L.detail += line([rxi, yTop, pz], [x0 - 0.02, yTop, pz], yaw); // out to the downcomer
+            L.inner += line([rxi, y, manZ], [rxi, y, pz], yaw);           // back under the rack
+            L.inner += line([rxi, y, pz], [rxi, yTop, pz], yaw);          // up the blind end
+            /* The stub OUT through the wall to the downcomer foot is exterior — inner
+               would let the end-wall box paint over it from the one side it should
+               show on, so it stays in detail behind a facing guard set below. */
+            if (frontFacing([[x0,0,z0],[x0,0,z1],[x0,y1,z1],[x0,y1,z0]], yaw))
+                L.detail += line([rxi, yTop, pz], [x0 - 0.02, yTop, pz], yaw);
         });
 
         // --- In front of the machines ---
@@ -501,22 +508,40 @@
         addBox(L, { x: K.x, y: y1 - 0.28, z: z0 + 0.42, w: K.w - 0.6, h: 0.1, d: 0.28 }, yaw);
         for (var ct = 1; ct < 20; ct++) {
             var cx3 = x0 + 0.3 + (K.w - 0.6) * ct / 20;
-            L.detail += line([cx3, y1 - 0.18, z0 + 0.3], [cx3, y1 - 0.18, z0 + 0.56], yaw);
+            L.inner += line([cx3, y1 - 0.18, z0 + 0.3], [cx3, y1 - 0.18, z0 + 0.56], yaw);
         }
 
         // PDU on the aisle side, so painting it after the machines is correct.
         var pdu = pduOf(K);
         addBox(L, pdu, yaw);
         for (var p = 1; p <= 4; p++) {
-            L.detail += line([pdu.x - 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006],
-                             [pdu.x + 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006], yaw);
+            L.inner += line([pdu.x - 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006],
+                            [pdu.x + 0.3, pdu.h * p / 5, pdu.z + pdu.d/2 + 0.006], yaw);
         }
+
+        /* THE FAR WALL, AS A WALL. It never existed as an exterior face — under
+           translucent paint the x-ray was everywhere, so the interior 'inside' poly
+           was the only far wall there was, and everything painted after it showed.
+           Solid paint made that a lie you could walk around to: from behind, the
+           container was wallpaper made of its own plumbing. One quad, wound like
+           boxFaces' back so frontFacing culls it the way it culls a box: drawn only
+           when its outside faces you, which is exactly when it must cover the
+           contents — and not drawn when you look in through the cutaway. Emitted
+           HERE, after every interior fill that shares the side bucket, because
+           within a layer the only order is emission order. */
+        var farWall = [[x1,0,z0],[x0,0,z0],[x0,y1,z0],[x1,y1,z0]];
+        var farWallFacing = frontFacing(farWall, yaw);
+        if (farWallFacing) L.side += poly(farWall, yaw);
 
         // Roof: only the far half survives the cutaway.
         var roof = [[x0,y1,z0],[x0,y1,K.z],[x1,y1,K.z],[x1,y1,z0]];
-        if (frontFacing(roof, yaw)) L.top += poly(roof, yaw);
-        /* cx0/cx1 are declared at the top of this function; the ribs stop at them. */
-        for (var r2 = 1; r2 < ribs; r2++) {
+        var roofFacing = frontFacing(roof, yaw);
+        if (roofFacing) L.top += poly(roof, yaw);
+        /* cx0/cx1 are declared at the top of this function; the ribs stop at them.
+           The whole loop now keys on the roof's own facing: ribs are marks ON that
+           surface, and under solid paint a rib without its roof is a stripe across
+           whatever else is there — the exact bleed the solid pass exists to end. */
+        if (roofFacing) for (var r2 = 1; r2 < ribs; r2++) {
             var rx2 = x0 + K.w * r2 / ribs;
             /* A rib under the cooler paints into 'detail', which is above every filled
                face, so it would show straight through the frame standing on it — and at
@@ -536,20 +561,26 @@
             addBox(L, { x: pt[0], y: K.h - 0.32,  z: pt[1], w: 0.36, h: 0.32, d: 0.36 }, yaw);
         });
 
-        // Base rail along the open side.
+        // Base rail along the open side. Its edge lines are marks on the +z face,
+        // so they carry that face's facing: from behind they striped the wall.
         addBox(L, { x: K.x, y: 0, z: z1 - 0.09, w: K.w, h: 0.28, d: 0.18 }, yaw);
-        L.detail += line([x0, y1, z1], [x1, y1, z1], yaw);
-        L.detail += line([x0, 0, z1], [x0, y1, z1], yaw);
-        L.detail += line([x1, 0, z1], [x1, y1, z1], yaw);
+        if (frontFacing([[x0,0,z1],[x1,0,z1],[x1,y1,z1],[x0,y1,z1]], yaw)) {
+            L.detail += line([x0, y1, z1], [x1, y1, z1], yaw);
+            L.detail += line([x0, 0, z1], [x0, y1, z1], yaw);
+            L.detail += line([x1, 0, z1], [x1, y1, z1], yaw);
+        }
 
-        // Door end: seam, locking bars, hinges.
+        // Door end: seam, locking bars, hinges — marks on the +x end plate, guarded
+        // by its facing for the same reason the base rail's edges are.
         var dx = x1 + 0.105;
-        L.detail += line([dx, 0.12, K.z], [dx, y1 - 0.12, K.z], yaw);
-        for (var b2 = 0; b2 < 4; b2++) {
-            var bz = z0 + K.d * (b2 + 0.5) / 4;
-            L.detail += line([dx, 0.16, bz], [dx, y1 - 0.16, bz], yaw);
-            L.detail += ring(dx, 0.5, bz, 0.07, yaw, 6);
-            L.detail += ring(dx, y1 - 0.5, bz, 0.07, yaw, 6);
+        if (frontFacing([[x1,0,z1],[x1,0,z0],[x1,y1,z0],[x1,y1,z1]], yaw)) {
+            L.detail += line([dx, 0.12, K.z], [dx, y1 - 0.12, K.z], yaw);
+            for (var b2 = 0; b2 < 4; b2++) {
+                var bz = z0 + K.d * (b2 + 0.5) / 4;
+                L.detail += line([dx, 0.16, bz], [dx, y1 - 0.16, bz], yaw);
+                L.detail += ring(dx, 0.5, bz, 0.07, yaw, 6);
+                L.detail += ring(dx, y1 - 0.5, bz, 0.07, yaw, 6);
+            }
         }
         for (var hg = 0; hg < 3; hg++) {
             var hy = 0.4 + hg * (y1 - 0.8) / 2;
@@ -622,14 +653,22 @@
         if (frontFacing(capR, yaw)) L.end += poly(capR, yaw);
 
         /* The cut edge, drawn as an edge. The container outlines its own cut at z1 the same
-           way; without it the frame ends in mid-air and reads as broken rather than sliced. */
-        L.detail += line([cx0, cyt, zr1], [cx1, cyt, zr1], yaw);
-        L.detail += line([cx0, cyb, zc1], [cx0, cyt, zr1], yaw);
-        L.detail += line([cx1, cyb, zc1], [cx1, cyt, zr1], yaw);
+           way; without it the frame ends in mid-air and reads as broken rather than sliced.
+           Guarded on the OPPOSITE of the coil face: the cut is the +z side, so it shows
+           exactly when the back face does not — from behind, these three lines striped the
+           solid coil bank. */
+        if (!frontFacing(faceBack, yaw)) {
+            L.detail += line([cx0, cyt, zr1], [cx1, cyt, zr1], yaw);
+            L.detail += line([cx0, cyb, zc1], [cx0, cyt, zr1], yaw);
+            L.detail += line([cx1, cyb, zc1], [cx1, cyt, zr1], yaw);
+        }
 
-        /* Eight coil divisions up the leaning face — the far one, which is the one left. */
+        /* Eight coil divisions up the leaning face — the far one, which is the one left.
+           They carry that face's facing: marks on a surface bleed when the surface turns
+           away, same rule as the roof ribs. */
+        var coilFaceOn = frontFacing(faceBack, yaw);
         var COILS = 8;
-        for (var cq = 0; cq < COILS; cq++) {
+        if (coilFaceOn) for (var cq = 0; cq < COILS; cq++) {
             var px = cx0 + (cx1 - cx0) * (cq + 0.5) / COILS;
             L.detail += line([px, cyb, zc0], [px, cyt, zr0], yaw);
         }
@@ -678,16 +717,23 @@
            Separated in z rather than in y: at roof level the pair has to clear the plinth,
            and depth is the axis with room for it. They merge into one run on a phone, which
            is the right thing to lose — the frame is the tell, these are the pipes to it. */
-        // hz is declared at the top: the manifolds inside need it before this point.
-        L.detail += line([cx0, K.h + 0.05, hz], [cx1, K.h + 0.05, hz], yaw);
-        L.detail += line([cx0, K.h + 0.05, hz + 0.09], [cx1, K.h + 0.05, hz + 0.09], yaw);
-        /* Down the BLIND end, not the door end. That end lost its intake louvres to the
-           hydro switch and carries nothing; the door end carries the PDU inside and the
-           locking bars and hinges outside. The manifolds below rise to exactly these two
-           feet — [x0 - 0.02, K.h * 0.62, hz] and the same at hz + 0.09 — so the loop closes
-           at a point rather than near one. */
-        L.detail += line([cx0, K.h + 0.05, hz], [x0 - 0.02, K.h * 0.62, hz], yaw);
-        L.detail += line([cx0, K.h + 0.05, hz + 0.09], [x0 - 0.02, K.h * 0.62, hz + 0.09], yaw);
+        /* hz is declared at the top: the manifolds inside need it before this point.
+           The pair sits BEHIND the cooler frame, so from the front it belongs hidden —
+           under solid paint an unguarded pipe there re-crossed the coil bank it had been
+           deliberately routed behind. Shown when the frame's back or the blind end faces
+           you, which are the views where the plumbing is the near side of the roof. */
+        if (frontFacing(faceBack, yaw) || farWallFacing ||
+            frontFacing([[x0,0,z0],[x0,0,z1],[x0,y1,z1],[x0,y1,z0]], yaw)) {
+            L.detail += line([cx0, K.h + 0.05, hz], [cx1, K.h + 0.05, hz], yaw);
+            L.detail += line([cx0, K.h + 0.05, hz + 0.09], [cx1, K.h + 0.05, hz + 0.09], yaw);
+            /* Down the BLIND end, not the door end. That end lost its intake louvres to
+               the hydro switch and carries nothing; the door end carries the PDU inside
+               and the locking bars and hinges outside. The manifolds below rise to exactly
+               these two feet — [x0 - 0.02, K.h * 0.62, hz] and the same at hz + 0.09 — so
+               the loop closes at a point rather than near one. */
+            L.detail += line([cx0, K.h + 0.05, hz], [x0 - 0.02, K.h * 0.62, hz], yaw);
+            L.detail += line([cx0, K.h + 0.05, hz + 0.09], [x0 - 0.02, K.h * 0.62, hz + 0.09], yaw);
+        }
 
         // Roof-mounted uplink with a dish and guy lines.
         // Only one container carries the uplink; a second mast is clutter.

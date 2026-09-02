@@ -43,6 +43,7 @@ const WEIGHT = {
     inside: { fillRGB: [0, 0, 0] },
     back:   { stroke: 0.42 },
     asics:  { fillRGB: [50, 50, 50], stroke: 0.34 },
+    inner:  { stroke: 0.72 },
     end:    { fillRGB: [46, 46, 45] },
     side:   { fillRGB: [69, 68, 68] },
     top:    { fillRGB: [96, 96, 95] },

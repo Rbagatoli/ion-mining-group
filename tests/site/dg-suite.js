@@ -86,7 +86,7 @@ console.log(`racks: ${D.RACKS.length} units across ${D.CONTAINERS.length} contai
             `(${perCont.join('+')}), each inside its own shell  OK`);
 
 // --- 6. Every slot layer is well formed at every angle ---
-const KEYS = ['inside','asics','end','side','top','detail'];
+const KEYS = ['inside','asics','inner','end','side','top','detail'];
 for (const yaw of sweep(24)) {
   const f = D.frame(yaw, null);
   if (f.slots.length !== D.SLOTS) { fail('slot count changed'); break; }

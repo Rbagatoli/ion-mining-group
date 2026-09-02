@@ -57,7 +57,17 @@
        lit flare on the energy page — sits on top of a 15 m stack and is the one
        filled, coloured object in the whole drawing family. Empty for every
        other scene, which costs one unused path per slot. */
-    var LAYERS = ['ground', 'inside', 'back', 'asics', 'end', 'side', 'top', 'detail', 'flame'];
+    /* 'inner' arrived with the solid pass and is the layer that makes solid paint honest.
+       Under translucent fills, every hairline could ride in 'detail' — the last layer —
+       because nothing truly covered anything and a manifold seen "through" a wall read as
+       the x-ray doing its job. Once the fills went opaque that became bleed-through: a
+       container viewed from behind wore its own plumbing and machine strips on the outside
+       of a blank steel wall. 'inner' paints AFTER the machines but BEFORE the shell faces,
+       so line work that belongs inside a box is hidden by the box exactly when the box
+       faces you, with no per-line culling anywhere. 'detail' remains for marks that live on
+       exterior surfaces (which guard themselves with frontFacing where their face can turn
+       away). */
+    var LAYERS = ['ground', 'inside', 'back', 'asics', 'inner', 'end', 'side', 'top', 'detail', 'flame'];
 
     /* Which layers the plant is SOLID in, for the occluder the gas field reads.
 
@@ -363,8 +373,8 @@
         };
     }
     function newLayers() {
-        return { ground: '', inside: '', back: '', asics: '', end: '', side: '',
-                 top: '', detail: '', flame: '' };
+        return { ground: '', inside: '', back: '', asics: '', inner: '', end: '',
+                 side: '', top: '', detail: '', flame: '' };
     }
 
     function addBox(L, b, yaw, skip) {
@@ -577,7 +587,11 @@
                 var g = {}, ok = true;
                 for (var li = 0; li < LAYERS.length; li++) {
                     g[LAYERS[li]] = byId('dg-s' + s + '-' + LAYERS[li]);
-                    if (!g[LAYERS[li]]) ok = false;
+                    /* 'inner' is OPTIONAL at mount, the arrowheads precedent: for one
+                       deploy every cached page was baked before the layer existed, and
+                       failing the whole mount over it would show a dead figure instead
+                       of one whose interior lines merely lack occlusion until refresh. */
+                    if (!g[LAYERS[li]] && LAYERS[li] !== 'inner') ok = false;
                 }
                 if (!ok) return;
                 slots.push(g);
@@ -631,7 +645,7 @@
                 for (var i = 0; i < f.slots.length; i++) {
                     var L = f.slots[i], g = slots[i];
                     for (var li = 0; li < LAYERS.length; li++) {
-                        g[LAYERS[li]].setAttribute('d', L[LAYERS[li]]);
+                        if (g[LAYERS[li]]) g[LAYERS[li]].setAttribute('d', L[LAYERS[li]]);
                     }
                     /* One union path for the WHOLE drawing, not one per slot.
                        A slot is a depth rank, not an object — frame() re-sorts

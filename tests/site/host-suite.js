@@ -573,7 +573,10 @@ function subpathAreas(d) {
         querySelector: sel => { const m = sel.match(/data-region="([a-z]+)"/); return m ? mk2('b2-'+m[1]) : null; },
       };
     };
-    const get2 = id => /dg-flow-heads/.test(id) ? null : (els2[id] = els2[id] || mk2(id));
+    /* Nulls BOTH one-deploy elements: the arrowheads path and — since the solid pass —
+       every slot's 'inner' group, which stale pages baked before the layer existed
+       cannot have. The engine treats each as optional; this is where that is proved. */
+    const get2 = id => /dg-flow-heads|dg-s\d+-inner$/.test(id) ? null : (els2[id] = els2[id] || mk2(id));
     let rafQ2 = [], timers2 = [], timerId2 = 0;
     const sb2 = { console, Math, Object, Array, String, Number, Set,
       document: { hidden:false, readyState:'complete', getElementById:get2,
