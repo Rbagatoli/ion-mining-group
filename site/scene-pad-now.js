@@ -103,16 +103,22 @@
        Two, so the depth sort can put the flare in front of or behind the tank
        battery as the pad turns. The shared furniture rides with the pad. */
 
+    /* Terrain only — the equipment moved to slots of its own with the solid pass.
+       Twin of scene-pad-ion.js's split; its buildGround note carries the measured
+       failure (the floor out-depthed the yard at 123 of 180 yaws and, opaque,
+       stamped straight over it). The 'now' state has no containers to stamp over,
+       but the two states share a camera and must sort identically or the
+       crossfade would reorder the same tanks mid-slide. */
     function buildGround(H, yaw) {
         var L = H.newLayers();
         P.buildPad(H, yaw, L);
         P.buildBerm(H, yaw, L);
-        P.buildWell(H, yaw, L);
-        P.buildSeparator(H, yaw, L);
-        P.buildTanks(H, yaw, L);
         P.buildPipes(H, yaw, L);
         return L;
     }
+    function buildWellSlot(H, yaw) { var L = H.newLayers(); P.buildWell(H, yaw, L); return L; }
+    function buildSepSlot(H, yaw)  { var L = H.newLayers(); P.buildSeparator(H, yaw, L); return L; }
+    function buildTankSlot(H, yaw) { var L = H.newLayers(); P.buildTanks(H, yaw, L); return L; }
 
     function buildFlare(H, yaw) {
         var L = H.newLayers();
@@ -122,13 +128,28 @@
     }
 
     var RENDERABLES = [
-        { id: 'ground', at: [-4.0, 1.6, -5.0], build: buildGround },
+        /* Anchors mirror scene-pad-ion.js exactly — see its note for why the ground
+           anchor sits on the turntable axis at y -100 rather than anywhere honest. */
+        { id: 'ground', at: [0, -100, 0], build: buildGround },
+        { id: 'well',   at: [P.WELL.x, P.WELL_H * 0.5, P.WELL.z], build: buildWellSlot },
+        { id: 'sep',    at: [P.SEP.x, P.SEP.y + P.SEP.h * 0.5, P.SEP.z], build: buildSepSlot },
+        { id: 'tanks',  at: [(P.TANK_X[0] + P.TANK_X[2]) / 2, P.TANK_H * 0.5, P.TANK_Z], build: buildTankSlot },
         { id: 'flare',  at: [P.FLARE.x, P.FLARE_H / 2, P.FLARE.z], build: buildFlare },
     ];
 
     function objects() {
         return [
-            { id: 'ground', box: { x: -4.0, y: 0, z: -5.0, w: 26, h: P.TANK_H, d: 10 } },
+            /* No 'ground' box: the pad is a backdrop that bleeds off the crop by
+               design (dg-crop's BACKDROP set), and boxing it would feed its full
+               sweep into allPoints() and the callout-rail fit — measured on the
+               landfills, that pushed the sweep to x 209..1071 and failed the rails.
+               scene-site.js set the precedent: terrain sorts first by its pinned
+               anchor and constrains nothing. */
+            { id: 'well',   box: { x: P.WELL.x, y: 0, z: P.WELL.z, w: 1.8, h: P.WELL_H + 0.3, d: 1.8 } },
+            { id: 'sep',    box: { x: P.SEP.x, y: 0, z: P.SEP.z, w: P.SEP.w + 0.6, h: P.SEP.y + P.SEP.h + 0.5, d: P.SEP.d + 0.6 } },
+            { id: 'tanks',  box: { x: (P.TANK_X[0] + P.TANK_X[2]) / 2, y: 0, z: P.TANK_Z,
+                                   w: (P.TANK_X[2] - P.TANK_X[0]) + P.TANK_R * 2 + 0.4,
+                                   h: P.TANK_H + 0.3, d: P.TANK_R * 2 + 0.4 } },
             { id: 'flare',  box: { x: P.FLARE.x, y: 0, z: P.FLARE.z,
                                    w: 3.2, h: P.FLARE_H + 4.2, d: 3.2 } },
         ];

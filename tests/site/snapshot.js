@@ -163,7 +163,26 @@
    move geometrically (site, pad-ion, lf-ion: strip/manifold ink relocates detail->inner,
    plus the new wall quads and guarded marks appearing/vanishing by facing). hosting and
    asic move in the LAYERS list alone this pass — their own stroke occlusion is the second
-   half, running now, and lands as its own re-baseline. */
+   half, running now, and lands as its own re-baseline.
+
+   Re-baselined for the depth-sort half of the same defect, again owner-reported from the
+   live site ("the floor glitches through the rendering"): the four energy scenes packed
+   the whole partner site into ONE 'ground' slot — pad, tanks, wellhead, separator on the
+   pads; pad, cell, wells, header, blower on the landfills — behind a single anchor whose
+   depth swings with yaw. Measured before fixing: that slot painted AFTER a container at
+   123 of 180 sampled yaws on pad-ion and 109 on lf-ion. Translucent, the inversion was a
+   0.04 veil; solid, it was the floor and the tank battery stamped over the yard.
+
+   The split: terrain (pad, berm, yard, pipes) keeps the slot, anchored on the turntable
+   axis at y -100 so its depth is a constant below anything drawable (y -40 off-axis still
+   lost 54 yaws — measured, hence both the depth and the axis). Equipment gets honest
+   slots: well/sep/tanks on the pads, cell(+wells+header, a REAL 8.5 m occluder that must
+   keep sorting)/plant on the landfills. SLOTS: pad-now 2->5, pad-ion 10->13, lf-now 2->4,
+   lf-ion 10->12. Ground leaves objects() entirely (scene-site precedent): boxing the pad
+   fed its bleed-by-design sweep into the callout-rail fit and failed it at x 209..1071.
+   The 'now'/'ion' twins split identically so the crossfade cannot reorder a tank
+   mid-slide. Slot ORDER at many yaws is most of this diff; the geometry inside each
+   builder is unchanged, only its slot assignment moved. */
 /* The snapshot now also records frame.flowHeads — the arrowheads the engine
    derives from the flow path so the dashes have a direction. A new key rather
    than a change to any existing one: every scene will report "flowHeads

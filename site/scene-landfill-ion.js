@@ -217,16 +217,28 @@
        One slot per object, so the depth sort can put the containers in front of
        or behind the mound as the site turns. */
 
+    /* Split three ways with the solid pass — and differently from the wellpad,
+       because the landfill has a piece of TERRAIN that is a real occluder. The flat
+       pad and yard are pinned first like every ground now (they can never stand in
+       front of anything). The CELL is an 8.5 m mound: at half the revolution it is
+       legitimately between the viewer and the containers and must keep sorting like
+       the object it is — pin it and the yard would paint through the hill. Wells
+       and header ride on the cell's own surface, so they travel with it. The plant
+       (blower, knockout, kiosk) is equipment and sorts on its own centre. */
     function buildGround(H, yaw) {
         var L = H.newLayers();
         G.buildPad(H, yaw, L);
-        G.buildCell(H, yaw, L);
-        G.buildWells(H, yaw, L);
-        G.buildHeader(H, yaw, L);
-        G.buildPlant(H, yaw, L);
         G.buildYard(H, yaw, L);
         return L;
     }
+    function buildCellSlot(H, yaw) {
+        var L = H.newLayers();
+        G.buildCell(H, yaw, L);
+        G.buildWells(H, yaw, L);
+        G.buildHeader(H, yaw, L);
+        return L;
+    }
+    function buildPlantSlot(H, yaw) { var L = H.newLayers(); G.buildPlant(H, yaw, L); return L; }
 
     function buildFlare(H, yaw) {
         var L = H.newLayers();
@@ -236,7 +248,11 @@
     }
 
     var RENDERABLES = [
-        { id: 'ground', at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildGround },
+        /* Ground on the turntable axis (x = -SHIFT_X) at y -100: constant depth,
+           always first — scene-pad-ion.js's note carries the measured failure. */
+        { id: 'ground', at: [-6.0, -100, 0], build: buildGround },
+        { id: 'cell',   at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildCellSlot },
+        { id: 'plant',  at: [G.BLOWER.x, 1.0, G.BLOWER.z], build: buildPlantSlot },
         { id: 'tiein',  at: [(G.KO.x + GAS.x) / 2, 1.15, LANE_Z], build: buildTieIn },
         { id: 'cond',   at: [GAS.x, GAS.h / 2, GAS.z],
           build: function (H, yaw) { return KIT.gas(H, yaw, GAS); } },
@@ -258,9 +274,16 @@
     }));
 
     function objects() {
-        return [
-            { id: 'ground', box: { x: G.CELL.x, y: 0, z: G.CELL.z,
+        return [            /* No 'ground' box: the pad is a backdrop that bleeds off the crop by
+               design (dg-crop's BACKDROP set), and boxing it would feed its full
+               sweep into allPoints() and the callout-rail fit — measured on the
+               landfills, that pushed the sweep to x 209..1071 and failed the rails.
+               scene-site.js set the precedent: terrain sorts first by its pinned
+               anchor and constrains nothing. */
+            { id: 'cell',   box: { x: G.CELL.x, y: 0, z: G.CELL.z,
                                    w: G.CELL.w, h: G.CELL.h, d: G.CELL.d } },
+            { id: 'plant',  box: { x: G.BLOWER.x, y: 0, z: G.BLOWER.z,
+                                   w: G.BLOWER.w + 1.0, h: G.BLOWER.y + G.BLOWER.h + 0.5, d: G.BLOWER.d + 1.0 } },
             { id: 'tiein',  box: { x: (G.KO.x + GAS.x) / 2, y: 0, z: LANE_Z,
                                    w: Math.abs(G.KO.x - GAS.x) + 2, h: 2, d: 6 } },
             { id: 'cond',   box: { x: GAS.x, y: 0, z: GAS.z,

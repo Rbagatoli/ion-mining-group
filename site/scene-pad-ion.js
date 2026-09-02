@@ -192,16 +192,25 @@
        One slot per object, as the home page does, so the depth sort can put the
        containers in front of or behind the plant as the pad turns. */
 
+    /* TERRAIN ONLY since the solid pass. This slot used to carry the whole partner
+       kit — pad, berm, well, separator, tanks, pipes — behind one anchor at
+       [-4, 1.6, -5], and that anchor out-depthed a container at 123 of 180 sampled
+       yaws. Under translucent paint the inversion was a 0.04 veil nobody saw; under
+       solid paint it was the floor and the tank battery stamped OVER the yard — the
+       owner's screenshot, verbatim ("the floor glitches through the rendering").
+       Terrain keeps a depth anchor pinned far below anything drawable, the same
+       device scene-site's ground uses; the EQUIPMENT moved to slots of its own so
+       it sorts against the containers like any other object. */
     function buildGround(H, yaw) {
         var L = H.newLayers();
         P.buildPad(H, yaw, L);
         P.buildBerm(H, yaw, L);
-        P.buildWell(H, yaw, L);
-        P.buildSeparator(H, yaw, L);
-        P.buildTanks(H, yaw, L);
         P.buildPipes(H, yaw, L);
         return L;
     }
+    function buildWellSlot(H, yaw) { var L = H.newLayers(); P.buildWell(H, yaw, L); return L; }
+    function buildSepSlot(H, yaw)  { var L = H.newLayers(); P.buildSeparator(H, yaw, L); return L; }
+    function buildTankSlot(H, yaw) { var L = H.newLayers(); P.buildTanks(H, yaw, L); return L; }
 
     function buildFlare(H, yaw) {
         var L = H.newLayers();
@@ -211,7 +220,17 @@
     }
 
     var RENDERABLES = [
-        { id: 'ground', at: [-4.0, 1.6, -5.0], build: buildGround },
+        /* Pinned FIRST two ways, because one was not enough: x = -SHIFT_X (0 here)
+           and z = 0 put the anchor on the turntable axis, so its rotZ is 0 at every
+           yaw and its depth is a CONSTANT -y*sin(pitch); y -100 puts that constant
+           (-34.2 at this pitch) far below the deepest real anchor, which reaches
+           about -15 when the flare swings behind. A first draft used y -40 at the
+           slot's old x and still lost to a far anchor at 54 of 180 yaws — measured,
+           which is why the number is 100 and the axis trick is not optional. */
+        { id: 'ground', at: [0, -100, 0], build: buildGround },
+        { id: 'well',   at: [P.WELL.x, P.WELL_H * 0.5, P.WELL.z], build: buildWellSlot },
+        { id: 'sep',    at: [P.SEP.x, P.SEP.y + P.SEP.h * 0.5, P.SEP.z], build: buildSepSlot },
+        { id: 'tanks',  at: [(P.TANK_X[0] + P.TANK_X[2]) / 2, P.TANK_H * 0.5, P.TANK_Z], build: buildTankSlot },
         { id: 'tiein',  at: [(P.SEP.x + GAS.x) / 2, 1.5, (P.SEP.z + GAS.z) / 2], build: buildTieIn },
         { id: 'cond',   at: [GAS.x, GAS.h / 2, GAS.z],
           build: function (H, yaw) { return KIT.gas(H, yaw, GAS); } },
@@ -230,7 +249,20 @@
 
     function objects() {
         return [
-            { id: 'ground', box: { x: -4.0, y: 0, z: -5.0, w: 26, h: P.TANK_H, d: 10 } },
+            /* The old single box stood TANK_H tall over the whole 26x10 because the
+               tanks lived in this slot; they have their own boxes now, and terrain
+               is knee-high. Union of the new set ~= the old box, so the fit sweep
+               and the field occluder see what they always saw. */            /* No 'ground' box: the pad is a backdrop that bleeds off the crop by
+               design (dg-crop's BACKDROP set), and boxing it would feed its full
+               sweep into allPoints() and the callout-rail fit — measured on the
+               landfills, that pushed the sweep to x 209..1071 and failed the rails.
+               scene-site.js set the precedent: terrain sorts first by its pinned
+               anchor and constrains nothing. */
+            { id: 'well',   box: { x: P.WELL.x, y: 0, z: P.WELL.z, w: 1.8, h: P.WELL_H + 0.3, d: 1.8 } },
+            { id: 'sep',    box: { x: P.SEP.x, y: 0, z: P.SEP.z, w: P.SEP.w + 0.6, h: P.SEP.y + P.SEP.h + 0.5, d: P.SEP.d + 0.6 } },
+            { id: 'tanks',  box: { x: (P.TANK_X[0] + P.TANK_X[2]) / 2, y: 0, z: P.TANK_Z,
+                                   w: (P.TANK_X[2] - P.TANK_X[0]) + P.TANK_R * 2 + 0.4,
+                                   h: P.TANK_H + 0.3, d: P.TANK_R * 2 + 0.4 } },
             { id: 'tiein',  box: { x: (P.SEP.x + GAS.x) / 2, y: 0, z: (P.SEP.z + GAS.z) / 2,
                                    w: 4, h: 2, d: 8 } },
             { id: 'cond',   box: { x: GAS.x, y: 0, z: GAS.z,

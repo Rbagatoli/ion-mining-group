@@ -116,16 +116,23 @@
        Two, so the depth sort can put the flare in front of or behind the mound
        as the site turns. */
 
+    /* Twin of scene-landfill-ion.js's three-way split — its buildGround note has
+       the reasoning; the two states share a camera and must sort identically or
+       the crossfade would reorder the plant mid-slide. */
     function buildGround(H, yaw) {
         var L = H.newLayers();
         G.buildPad(H, yaw, L);
-        G.buildCell(H, yaw, L);
-        G.buildWells(H, yaw, L);
-        G.buildHeader(H, yaw, L);
-        G.buildPlant(H, yaw, L);
         G.buildYard(H, yaw, L);
         return L;
     }
+    function buildCellSlot(H, yaw) {
+        var L = H.newLayers();
+        G.buildCell(H, yaw, L);
+        G.buildWells(H, yaw, L);
+        G.buildHeader(H, yaw, L);
+        return L;
+    }
+    function buildPlantSlot(H, yaw) { var L = H.newLayers(); G.buildPlant(H, yaw, L); return L; }
 
     function buildFlare(H, yaw) {
         var L = H.newLayers();
@@ -135,14 +142,24 @@
     }
 
     var RENDERABLES = [
-        { id: 'ground', at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildGround },
+        { id: 'ground', at: [-6.0, -100, 0], build: buildGround },
+        { id: 'cell',   at: [G.CELL.x, G.CELL.h * 0.5, G.CELL.z], build: buildCellSlot },
+        { id: 'plant',  at: [G.BLOWER.x, 1.0, G.BLOWER.z], build: buildPlantSlot },
         { id: 'flare',  at: [G.FLARE.x, G.FLARE_H / 2, G.FLARE.z], build: buildFlare },
     ];
 
     function objects() {
         return [
-            { id: 'ground', box: { x: G.CELL.x, y: 0, z: G.CELL.z,
+            /* No 'ground' box: the pad is a backdrop that bleeds off the crop by
+               design (dg-crop's BACKDROP set), and boxing it would feed its full
+               sweep into allPoints() and the callout-rail fit — measured on the
+               landfills, that pushed the sweep to x 209..1071 and failed the rails.
+               scene-site.js set the precedent: terrain sorts first by its pinned
+               anchor and constrains nothing. */
+            { id: 'cell',   box: { x: G.CELL.x, y: 0, z: G.CELL.z,
                                    w: G.CELL.w, h: G.CELL.h, d: G.CELL.d } },
+            { id: 'plant',  box: { x: G.BLOWER.x, y: 0, z: G.BLOWER.z,
+                                   w: G.BLOWER.w + 1.0, h: G.BLOWER.y + G.BLOWER.h + 0.5, d: G.BLOWER.d + 1.0 } },
             { id: 'flare',  box: { x: G.FLARE.x, y: 0, z: G.FLARE.z,
                                    w: G.FLARE_R * 3, h: G.FLARE_H + 2.6, d: G.FLARE_R * 3 } },
         ];
