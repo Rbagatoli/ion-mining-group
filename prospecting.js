@@ -419,6 +419,59 @@
         }
         function today() { return new Date().toISOString().slice(0, 10); }
 
+        /* ---- Gates ----
+           setGate, setStatus, waive, unwaive and cancel had NO caller in any UI: every promoted
+           project was frozen at "target & screen" forever. Same shape as every handler block
+           below — read the control, call the model, show what it refused, redraw. */
+        var hostG = document.getElementById('pdetail');
+        var gateSets = hostG ? hostG.querySelectorAll('.pd-gate-set') : [];
+        for (var g1 = 0; g1 < gateSets.length; g1++) {
+            gateSets[g1].addEventListener('change', function () {
+                var p = liveProject(); if (!p) return;
+                var note = null;
+                if (this.value === 'complete') {
+                    note = window.prompt('Anything worth recording about how it completed? (optional)');
+                    if (note === null) note = null;
+                }
+                applied(ProjectGates.setStatus(p.id, p.gate, this.getAttribute('data-key'),
+                                               this.value, note || undefined));
+            });
+        }
+        var gateWaives = hostG ? hostG.querySelectorAll('.pd-gate-waive') : [];
+        for (var g2 = 0; g2 < gateWaives.length; g2++) {
+            gateWaives[g2].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                /* Reason and approver both demanded here because the model refuses without
+                   them — asking up front beats a refusal after the click. */
+                var reason = window.prompt('Waive this requirement. Why?');
+                if (!reason) return;
+                var by = window.prompt('Approved by whom? (a name, and it goes on the timeline)');
+                if (!by) return;
+                applied(ProjectGates.waive(p.id, p.gate, this.getAttribute('data-key'),
+                                           { reason: reason, approved_by: by }));
+            });
+        }
+        var gateUnwaives = hostG ? hostG.querySelectorAll('.pd-gate-unwaive') : [];
+        for (var g3 = 0; g3 < gateUnwaives.length; g3++) {
+            gateUnwaives[g3].addEventListener('click', function () {
+                var p = liveProject(); if (!p) return;
+                applied(ProjectGates.unwaive(p.id, p.gate, this.getAttribute('data-key')));
+            });
+        }
+        var gateAdv = document.getElementById('pdGateAdvance');
+        if (gateAdv) gateAdv.addEventListener('click', function () {
+            var p = liveProject(); if (!p) return;
+            applied(ProjectData.setGate(p.id, this.getAttribute('data-to')));
+        });
+        var gateCancel = document.getElementById('pdGateCancel');
+        if (gateCancel) gateCancel.addEventListener('click', function () {
+            var p = liveProject(); if (!p) return;
+            var reason = window.prompt('Cancel project ' + p.id + '. Why? (required — a project ' +
+                                       'cancelled for no recorded reason is the same as no data)');
+            if (!reason) return;
+            applied(ProjectData.cancel(p.id, reason));
+        });
+
         var procForm = document.getElementById('pdProcForm');
         if (procForm) procForm.addEventListener('submit', function (e) {
             e.preventDefault();

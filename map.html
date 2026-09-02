@@ -1482,7 +1482,7 @@ commercial terms are your assumptions.</p>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="./firebase-config.js?v=338"></script>
-<script src="./sync.js?v=380"></script>
+<script src="./sync.js?v=409"></script>
 <script src="./auth-ui.js?v=338"></script>
 <script src="./backup.js?v=375"></script>
 <script src="./profile-panel.js?v=375"></script>
@@ -1537,6 +1537,9 @@ commercial terms are your assumptions.</p>
      the old six and only correct itself on the next render. -->
 <script src="./crm-config.js?v=383"></script>
 <script src="./crm-log.js?v=382"></script>
+<!-- The map records contact outcomes; without the interactions module those calls never
+     reached the contact clock and Today said "never contacted" about spoken-to owners. -->
+<script src="./crm-interactions.js?v=408"></script>
 <!-- The contact book. Loaded here for two reasons that turned out to be one bug:
      recording a contact on a prospect now puts that person IN the book rather than
      only on the site, and manualFor() can finally reach contactCtx() -- which
@@ -1553,7 +1556,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=408"></script>
+<script src="./map-sourcing.js?v=409"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

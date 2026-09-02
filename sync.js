@@ -312,6 +312,64 @@ var SyncEngine = (function() {
         return v;
     }
 
+    /* THE UNION, for a held store. A hold protects the pull -- but the held device's NEXT SAVE
+       pushes its whole store, and for an array-shaped container Firestore's merge replaces the
+       array wholesale: every cloud-only record the hold just protected is destroyed by the
+       other half of the same sync engine. (Maps deep-merge and were never exposed; `sites` --
+       the prospect pipeline itself -- is an array.)
+
+       So a held store is UNIONED instead of parked: local becomes local ∪ remote, keyed by id,
+       and the next push carries the superset. Deletions survive union by construction -- this
+       model deletes by tombstone (deleted_at), never by key removal, precisely so that a merge
+       cannot resurrect a record. Collisions keep the local copy unless the remote one carries a
+       strictly newer `updated` stamp: the device you are holding is the one with unsynced work
+       on it, and losing an edit you just made to a stale cloud copy is the exact failure this
+       file exists to prevent.
+
+       Pure, like pullVerdict, and exported for the same reason: testable with no firebase, no
+       user, no network. Returns the merged CONTAINER CONTENTS or null when union is not
+       possible (an unreadable side) -- and null must stay a hold, never become a write. */
+    function unionStores(localParsed, remoteData, container) {
+        if (!container || !localParsed || !remoteData) return null;
+        var lBox = localParsed[container], rBox = remoteData[container];
+        if (!lBox || !rBox || typeof lBox !== 'object' || typeof rBox !== 'object') return null;
+
+        function newer(a, b) {
+            var au = a && a.updated, bu = b && b.updated;
+            if (typeof au === 'string' && typeof bu === 'string') return bu > au;
+            return false;                      // no comparable stamps: local wins
+        }
+
+        if (Array.isArray(lBox) && Array.isArray(rBox)) {
+            var byId = {}, order = [], i, rec;
+            for (i = 0; i < lBox.length; i++) {
+                rec = lBox[i];
+                if (!rec || rec.id === undefined || rec.id === null) return null;
+                byId[String(rec.id)] = rec;
+                order.push(String(rec.id));
+            }
+            for (i = 0; i < rBox.length; i++) {
+                rec = rBox[i];
+                if (!rec || rec.id === undefined || rec.id === null) return null;
+                var id = String(rec.id);
+                if (!(id in byId)) { byId[id] = rec; order.push(id); }
+                else if (newer(byId[id], rec)) byId[id] = rec;
+            }
+            return order.map(function (id2) { return byId[id2]; });
+        }
+        if (!Array.isArray(lBox) && !Array.isArray(rBox)) {
+            var out = {}, k;
+            for (k in lBox) if (Object.prototype.hasOwnProperty.call(lBox, k)) out[k] = lBox[k];
+            for (k in rBox) {
+                if (!Object.prototype.hasOwnProperty.call(rBox, k)) continue;
+                if (!(k in out)) out[k] = rBox[k];
+                else if (newer(out[k], rBox[k])) out[k] = rBox[k];
+            }
+            return out;
+        }
+        return null;                           // one side changed shape: not a union anyone meant
+    }
+
     function pullAll(callback) {
         if (!ProtonAuth.isSignedIn()) return;
         var db = getDb();
@@ -334,7 +392,28 @@ var SyncEngine = (function() {
                        pullVerdict returns write:true unguarded for it, which is correct. */
                     var v = pullVerdict(key, localStorage.getItem(lsKey), remoteData);
                     v.lsKey = lsKey;
-                    if (!v.write) { held.push(v); return; }
+                    if (!v.write) {
+                        /* Divergence with both sides readable: union instead of holding, so the
+                           next push from this device carries the superset instead of clobbering
+                           the records the hold protected. Union failing (unreadable remote, a
+                           container that changed shape) leaves the hold exactly as it was --
+                           a failed merge must degrade to "touch nothing", never to "write". */
+                        if (v.missing && v.missing.length) {
+                            var localParsed2 = null;
+                            try { localParsed2 = JSON.parse(localStorage.getItem(lsKey)); } catch (e2) {}
+                            var merged = unionStores(localParsed2, remoteData,
+                                                     RECORD_CONTAINER[key]);
+                            if (merged !== null) {
+                                localParsed2[RECORD_CONTAINER[key]] = merged;
+                                localStorage.setItem(lsKey, JSON.stringify(localParsed2));
+                                v.unioned = true;
+                                v.write = true;              // report as resolved, not held
+                                pulled++;
+                                return;
+                            }
+                        }
+                        held.push(v); return;
+                    }
                     if (!v.guarded) unguarded.push(key);
 
                     if (key === 'currency') {
@@ -391,6 +470,7 @@ var SyncEngine = (function() {
         // Exported so the pull guard can be tested as a pure function: no firebase, no signed-in
         // user, no network. The rest of pullAll is transport around this decision.
         pullVerdict: pullVerdict,
+        unionStores: unionStores,
         idsIn: idsIn,
         isSyncing: function() { return _syncing; }
     };

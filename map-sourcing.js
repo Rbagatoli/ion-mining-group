@@ -4404,6 +4404,22 @@ var MapSourcing = (function() {
                 rec.phone = sd.contactPhone || null;
                 rec.email = sd.contactEmail || null;
             }
+            /* THE MAILABLE ADDRESS COUNTS. contactTier awards tier 2 on `op.phone || op.address`
+               — "the regulator publishes a phone or address for the licensee" — and the GHGRP
+               registry publishes a mailable street address for 1,730 US landfills. Without this
+               merge every one of them scored tier 3, "Operator named, no contact", below an
+               Alberta flare with the same information: the ranking systematically understated
+               contactability for exactly the target class. The typeof guard is the same
+               deliberate degradation manualFor documents — a page without the contacts module
+               scores the way it did yesterday. */
+            if (!rec.phone && !rec.address && typeof GhgrpContacts !== 'undefined') {
+                var ghRec = GhgrpContacts.forCandidate(c);
+                var ghLine = ghRec ? GhgrpContacts.addressLine(ghRec) : null;
+                if (ghLine) {
+                    rec.address = ghLine;
+                    rec.addressSource = 'EPA GHGRP facility registry';
+                }
+            }
             return rec;
         }
         return null;
@@ -5670,14 +5686,11 @@ var MapSourcing = (function() {
                 contact_email: document.getElementById('crm_contact_email').value.trim() || null,
                 contact_phone: document.getElementById('crm_contact_phone').value.trim() || null,
                 contact_notes: document.getElementById('crm_contact_notes').value.trim() || null,
-                stage: document.getElementById('crm_stage').value,
-                // Operator identity is copied from the regulator index, never typed — keeping it
-                // apart from the contact fields is what stops a guess acquiring the authority of
-                // a filing.
-                operator: op ? op.operator : null,
-                operator_licence: op ? (op.licence || null) : null,
-                operator_source: op ? op.source : null,
-                operator_distance_m: op ? op.distance_m : null,
+                /* NO stage KEY HERE. It used to be in this object and go through
+                   SiteData.update, which blindly merges -- no ledger entry, no dead-reason
+                   gate, and a stale dropdown could silently REGRESS a stage the board had
+                   advanced. Stage moves route through SiteData.setStage after the save,
+                   below, like every other mover in the app. */
                 // A real figure always beats the stage assumption in SiteCapex.
                 estimated_acquisition_cost: (function() {
                     var el = document.getElementById('crm_acq');
@@ -5721,6 +5734,18 @@ var MapSourcing = (function() {
                     });
                     return kept;
                 })()};
+            /* Operator identity is copied from the regulator index, never typed — keeping it
+               apart from the contact fields is what stops a guess acquiring the authority of
+               a filing. INCLUDED ONLY WHEN THE LOOKUP RETURNED SOMETHING: these keys used to
+               be written unconditionally as null whenever `op` was absent at save time, so a
+               record that had a counterparty on it lost it because a later save ran before a
+               lookup finished. An absent lookup must leave stored identity untouched. */
+            if (op) {
+                changes.operator = op.operator;
+                changes.operator_licence = op.licence || null;
+                changes.operator_source = op.source;
+                changes.operator_distance_m = op.distance_m;
+            }
             var existing = findSavedSite(c.id);
             var written;
             if (existing) {
@@ -5733,6 +5758,66 @@ var MapSourcing = (function() {
                 site.discovery.flareId = c.id;
                 written = SiteData.add(site);
             }
+
+            /* THE STAGE MOVES THROUGH THE FRONT DOOR. setStage writes the ledger entry,
+               enforces the dead-reason gate, and registers the sync push — everything the old
+               blind merge skipped. Same prompts as the board's drop handler, because a deal
+               dying on the map is the same event as a deal dying on the board and the reason
+               is worth exactly as much. */
+            (function() {
+                var sel = document.getElementById('crm_stage');
+                var savedRec = findSavedSite(c.id);
+                if (!sel || !savedRec || sel.value === savedRec.stage) return;
+                var opts = {};
+                if (sel.value === 'dead' && typeof CrmConfig !== 'undefined') {
+                    var reasons = CrmConfig.deadReasons();
+                    var menu = reasons.map(function(r, i) { return (i + 1) + ') ' + r.label; }).join('\n');
+                    var pick = window.prompt('Why did this die?\n\n' + menu + '\n\nEnter a number:');
+                    if (pick === null) { sel.value = savedRec.stage; return; }   // cancelled: nothing moves
+                    var idx = parseInt(pick, 10) - 1;
+                    if (!(idx >= 0 && idx < reasons.length)) {
+                        window.alert('That is not one of the reasons, so the stage was not changed.');
+                        sel.value = savedRec.stage;
+                        return;
+                    }
+                    opts.deadReason = reasons[idx].key;
+                }
+                var moved = SiteData.setStage(savedRec.id, sel.value, opts);
+                if (moved && moved.ok === false) { window.alert(moved.err); sel.value = savedRec.stage; }
+                else if (!moved) { window.alert('That stage is not on the pipeline.'); sel.value = savedRec.stage; }
+            })();
+
+            /* THE CALL REACHES THE CONTACT CLOCK. Recording "owner confirmed availability" here
+               used to touch only distress_signals, so the Today view went on saying "never
+               contacted" about a prospect whose owner was spoken to on a known date -- the loop
+               from found-a-site to called-the-person to next-action-due broke at the map.
+               Logged only when THIS save added or changed the outcome, not on every save of a
+               record that already carried one. */
+            (function() {
+                if (typeof CrmInteractions === 'undefined') return;
+                var sel = document.getElementById('crm_outcome');
+                if (!sel || !sel.value) return;
+                var prevEntry = contactOutcomeEntry(existing);
+                var dEl = document.getElementById('crm_outcome_date');
+                var when = (dEl && dEl.value) ? dEl.value : null;
+                if (prevEntry && prevEntry.type === sel.value &&
+                    (prevEntry.date || null) === when) return;    // unchanged: not a new call
+                var savedRec2 = findSavedSite(c.id);
+                if (!savedRec2) return;
+                var OUTCOME_WORDS = {
+                    owner_confirmed_available: 'Owner confirmed the site is available',
+                    owner_confirmed_taken: 'Owner confirmed the site is taken',
+                    owner_unresponsive: 'Owner unresponsive'
+                };
+                CrmInteractions.log(savedRec2.id, {
+                    type: 'call',
+                    occurred_at: when || undefined,
+                    summary: (OUTCOME_WORDS[sel.value] || sel.value) + ' — recorded on the map.',
+                    outcome: sel.value === 'owner_confirmed_available' ? 'positive'
+                           : sel.value === 'owner_confirmed_taken' ? 'negative' : 'no_answer'
+                });
+            })();
+
             /* INTO THE CONTACT BOOK, not just onto this site. The flat fields are
                where a contact is typed, and leaving it there rebuilds the exact
                problem the contact store exists to solve: a county authority holds

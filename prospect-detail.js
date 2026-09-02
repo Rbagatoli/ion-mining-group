@@ -1229,6 +1229,93 @@ var ProspectDetail = (function () {
                sizingBlock(p);
     }
 
+    /* ---- The gate checklist (the machinery that had no caller) ----
+     *
+     * ProjectGates carried setStatus, waive, unwaive and canAdvance; ProjectData carried
+     * setGate and cancel; project-budget consumed the READ side. Not one line of UI anywhere
+     * called a writer, so every promoted project sat at "target & screen" forever, permits
+     * could never be recorded as obtained, and a dead project could not even be cancelled.
+     * The procurement panel taught this workspace the lesson already: a model whose writers
+     * have no controls is a read-only report wearing a workflow's clothes. */
+    function gatesSection(rec) {
+        if (typeof ProjectData === 'undefined' || !ProjectData.liveFor) return '';
+        var p = ProjectData.liveFor(rec.id);
+        if (!p) return '';
+        if (typeof ProjectGates === 'undefined' || !ProjectGates.itemsFor) return '';
+
+        var items = ProjectGates.itemsFor(p, p.gate);
+        var html = '<section class="pd-sec"><h3>Gate: ' +
+                   esc(PROMOTED_GATE_LABELS[p.gate] || p.gate) + '</h3>';
+
+        if (items === null) {
+            /* Config missing is said, not padded over — a checklist rendered from guesses
+               would read as requirements nobody set. */
+            html += '<p class="pd-note">Gate requirements are not configured, so nothing can ' +
+                    'be checked off. crm-config.js defines them.</p></section>';
+            return html;
+        }
+
+        var rd = ProjectGates.readiness ? ProjectGates.readiness(p, p.gate) : null;
+        if (rd && typeof rd.pct === 'number') {
+            html += '<p class="pd-note">Readiness ' + Math.round(rd.pct) + '%' +
+                    (rd.denominator === 0 ? ' — nothing required at this gate' : '') + '</p>';
+        }
+
+        html += '<ul class="pd-gate-list">';
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            html += '<li class="pd-gate-item' + (it.satisfied ? ' is-done' : '') + '">' +
+                '<span class="pd-gate-label"' + (it.why ? ' title="' + esc(it.why) + '"' : '') + '>' +
+                    esc(it.label) +
+                    (it.blocking ? ' <span class="pd-gate-block" title="Blocking: the gate ' +
+                        'cannot close without this or a waiver.">blocking</span>' : '') +
+                '</span>';
+            if (it.waived) {
+                html += '<span class="pd-gate-waived">waived — ' + esc(it.waived_reason || '') +
+                        ' (' + esc(it.waived_by || '?') + ')</span>' +
+                        '<button type="button" class="pd-gate-unwaive" data-key="' + esc(it.key) +
+                        '">Reinstate</button>';
+            } else {
+                html += '<select class="pd-gate-set" data-key="' + esc(it.key) + '">' +
+                    ['not_started', 'in_progress', 'complete', 'na'].map(function (s) {
+                        return '<option value="' + s + '"' + (it.status === s ? ' selected' : '') +
+                               '>' + s.replace(/_/g, ' ') + '</option>';
+                    }).join('') + '</select>' +
+                    (it.awaiting_document
+                        ? '<span class="pd-gate-await">complete, but no ' +
+                          esc(it.evidence_kind || 'document') + ' on file</span>' : '') +
+                    (it.blocking && !it.satisfied
+                        ? '<button type="button" class="pd-gate-waive" data-key="' + esc(it.key) +
+                          '">Waive…</button>' : '');
+            }
+            html += '</li>';
+        }
+        html += '</ul>';
+
+        /* The move itself. Forward is earned (canAdvance decides and names the blockers);
+           cancellation is a decision with a reason. Both existed in the model for the whole
+           life of this page and neither had a button. */
+        var order = ProjectData.GATES || [];
+        var idx = order.indexOf(p.gate);
+        var next = idx >= 0 && idx + 1 < order.length ? order[idx + 1] : null;
+        if (next && next !== 'cancelled') {
+            var verdict = ProjectGates.canAdvance ? ProjectGates.canAdvance(p, next) : { ok: false };
+            if (verdict.ok) {
+                html += '<button type="button" class="pd-gate-adv" id="pdGateAdvance" data-to="' +
+                        esc(next) + '">Advance to ' +
+                        esc(PROMOTED_GATE_LABELS[next] || next) + '</button>';
+            } else {
+                var bl = (verdict.blockers || []).map(function (b) { return b.label; });
+                html += '<p class="pd-note">Cannot advance to ' +
+                        esc(PROMOTED_GATE_LABELS[next] || next) + ' yet' +
+                        (bl.length ? ' — waiting on: ' + esc(bl.join('; ')) : '') + '.</p>';
+            }
+        }
+        html += '<button type="button" class="pd-gate-cancel" id="pdGateCancel">Cancel project…</button>';
+        html += '</section>';
+        return html;
+    }
+
     /* Its own section rather than a tail on Build, because it is answered on a different
        cadence: the build sizing is settled once and revisited rarely, while what should have
        been ordered changes every morning. */
@@ -1319,6 +1406,7 @@ var ProspectDetail = (function () {
             advanceControl(rec) +
         '</div>' +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
+        gatesSection(rec) +
         budgetSection(rec) +
         procurementSection(rec) +
         contractorsSection(rec) +
