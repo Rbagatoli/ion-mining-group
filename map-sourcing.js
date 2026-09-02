@@ -3273,6 +3273,12 @@ var MapSourcing = (function() {
      * passes for a figure that cannot change between them. The cache is cleared whenever the
      * result set is rebuilt, for the same reason evaluateAt's is. */
     var _capCache = {};
+    /* Which detail tab is open. One remembered choice for the whole panel, not one per
+       section: the reading pattern is the same question across many prospects. */
+    var DETAIL_TAB_KEY = 'protonMiningDetailTab';
+    var _detailTab = null;
+    try { _detailTab = localStorage.getItem(DETAIL_TAB_KEY) || null; } catch (e) {}
+
     var _capMarket = null;          // null = let the model default from what is on the ground
     function clearCapitalCache() { _capCache = {}; }
     function setCapMarket(m) {
@@ -5668,34 +5674,71 @@ var MapSourcing = (function() {
         var out = '<div class="src-callsheet">' + buckets.pay + callLine + '</div>';
         buckets.pay = '';
 
-        function grp(id, key, label, open) {
-            if (!buckets[key]) return '';
-            return '<div class="dgroup">' +
-                '<button type="button" class="prov-toggle" id="dg_' + id + '_btn" ' +
-                    'aria-expanded="false" aria-controls="dg_' + id + '">' +
-                    '<span class="prov-caret" aria-hidden="true">&#9656;</span>' +
-                    '<span class="section-label">' + esc(label) + '</span>' +
-                '</button>' +
-                '<div class="dgroup-body" id="dg_' + id + '" hidden>' +
-                    '<div class="src-detailgrid">' + buckets[key] + '</div>' +
-                '</div></div>';
-        }
+        /* TABS, NOT AN ACCORDION. Five stacked disclosures meant five clicks to see a prospect
+           and a wall of closed doors on first open -- and each door remembered its own state,
+           so the panel greeted every prospect differently. One tab strip across the top, the
+           chosen section's content below it, every section one click away and the layout
+           identical for every prospect. The chosen tab is remembered ACROSS prospects and
+           reloads: comparing ten sites on the same question -- capacity, capacity, capacity --
+           is the actual reading pattern here. */
+        var TAB_DEFS = [
+            { id: 'terms',    key: 'contact',  label: 'Terms & contact' },
+            { id: 'scores',   key: 'scores',   label: 'Opportunity & acquirability' },
+            { id: 'capacity', key: 'capacity', label: 'Capacity & capital' },
+            { id: 'econ',     key: 'econ',     label: 'Availability & economics' },
+            { id: 'evidence', key: 'evidence', label: 'Evidence & provenance' }
+        ];
+        var tabs = TAB_DEFS.filter(function(t) { return !!buckets[t.key]; });
+        if (tabs.length) {
+            var active = _detailTab;
+            if (!tabs.some(function(t) { return t.id === active; })) active = tabs[0].id;
 
-        out += grp('terms',    'contact',  'Terms & contact');
-        out += grp('scores',   'scores',   'Opportunity & acquirability');
-        out += grp('capacity', 'capacity', 'Capacity & capital');
-        out += grp('econ',     'econ',     'Availability & economics');
-        out += grp('evidence', 'evidence', 'Evidence & provenance');
+            out += '<div class="dtabs" role="tablist">' + tabs.map(function(t) {
+                var on = t.id === active;
+                return '<button type="button" class="dtab' + (on ? ' is-on' : '') +
+                    '" id="dtab_' + t.id + '_btn" role="tab" aria-selected="' + on +
+                    '" aria-controls="dtab_' + t.id + '" data-tab="' + t.id + '">' +
+                    esc(t.label) + '</button>';
+            }).join('') + '</div>';
+
+            out += tabs.map(function(t) {
+                return '<div class="dtab-panel" role="tabpanel" id="dtab_' + t.id + '"' +
+                    (t.id === active ? '' : ' hidden') + '>' +
+                    '<div class="src-detailgrid">' + buckets[t.key] + '</div></div>';
+            }).join('');
+        }
 
         body.innerHTML = out;
 
-        // Each group remembers its own state, so the ones actually used stay open.
-        ['terms', 'scores', 'capacity', 'econ', 'evidence'].forEach(function(g) {
-            disclosure('dg_' + g + '_btn', 'dg_' + g, 'protonMiningDetailGroup_' + g, false,
-                // The survey-year chart lives in the economics group. Chart.js measures its
-                // container, so drawing it while that group is collapsed produces a 0x0 canvas.
-                g === 'econ' ? function(isOpen) { if (isOpen) renderTrend(c); } : null);
-        });
+        (function() {
+            var strip = body.querySelector('.dtabs');
+            if (!strip) return;
+            strip.addEventListener('click', function(e) {
+                var btn = e.target.closest('.dtab');
+                if (!btn) return;
+                var id = btn.getAttribute('data-tab');
+                _detailTab = id;
+                try { localStorage.setItem(DETAIL_TAB_KEY, id); } catch (e2) {}
+                var btns = strip.querySelectorAll('.dtab');
+                for (var i = 0; i < btns.length; i++) {
+                    var on = btns[i] === btn;
+                    btns[i].classList.toggle('is-on', on);
+                    btns[i].setAttribute('aria-selected', on ? 'true' : 'false');
+                }
+                var panels = body.querySelectorAll('.dtab-panel');
+                for (var p = 0; p < panels.length; p++) {
+                    panels[p].hidden = panels[p].id !== 'dtab_' + id;
+                }
+                /* Chart.js measures its container; the survey chart lives in economics and a
+                   canvas drawn while hidden is 0x0. Same reason the old accordion redrew on
+                   open. */
+                if (id === 'econ') renderTrend(c);
+            });
+            /* And on first paint, when economics is the remembered tab. */
+            if (body.querySelector('#dtab_econ') && !body.querySelector('#dtab_econ').hidden) {
+                renderTrend(c);
+            }
+        })();
 
         wireDetail(c, op);
     }

@@ -273,9 +273,21 @@
            to drift out of date. Sections keep themselves whole (break-inside), and the wide
            surfaces (the capital summary, the component table) span all columns rather than
            folding a nine-row table into a 360px slot. */
-        #dBody { column-width:360px; column-gap:26px; }
-        #dBody > * { break-inside:avoid; }
-        #dBody > .src-detail-wide { column-span:all; }
+        /* No multicolumn needed after all: .src-detailgrid (further down) is already a
+           repeat(auto-fit,minmax(210px,1fr)) GRID with its own full-width rule for the wide
+           surfaces. It was resolving to a single starved column only because the old side
+           track gave it 378px; inside a full-width tab panel it makes three to five columns
+           on its own. */
+
+        /* ---- the detail tabs ---- */
+        .dtabs { display:flex; gap:2px; flex-wrap:wrap; border-bottom:1px solid var(--line);
+                 margin:14px 0 16px; }
+        .dtab { background:none; border:none; border-bottom:2px solid transparent;
+                padding:9px 14px; font:inherit; font-size:12.5px; color:var(--plat-400);
+                cursor:pointer; }
+        .dtab:hover { color:var(--plat-200); }
+        .dtab.is-on { color:var(--btc-300); border-bottom-color:var(--btc-300); }
+        .dtab:focus-visible { outline:1px solid var(--btc-300); outline-offset:2px; }
         /* The count line carries the ordering now, so it is a heading rather than
            a footnote under the map. */
         .src-count { font-size:12px; color:var(--plat-300); }
@@ -1590,7 +1602,7 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=374"></script>
-<script src="./map-sourcing.js?v=413"></script>
+<script src="./map-sourcing.js?v=414"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
