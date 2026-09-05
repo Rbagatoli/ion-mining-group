@@ -17,9 +17,9 @@
     var powered = true, inspecting = false, xray = false;
     var market = { btcPrice: 'example', difficulty: 'example' };
     var revisions = { btcPrice: 0, difficulty: 0 }, requestSequence = 0;
-    var chart = $('chart'), original = document.querySelector('#inside .dg-wrap--site');
-    var originalList = document.querySelector('#inside .dg-list--site');
-    var tabs = [$('tab-ours'), $('tab-build')];
+    var chart = $('chart'), original = $('site-preview');
+    var tabs = [$('tab-site'), $('tab-build')];
+    if (!original || tabs.some(function (tab) { return !tab; })) return;
 
     fields.model.textContent = '';
     MinerDB.getAll().sort(function (a, b) { return b.hashrate - a.hashrate; }).forEach(function (m) {
@@ -202,7 +202,7 @@
         if (active) announceTimer = setTimeout(function () { text('announcement', number(r.count, 0) + ' machines. Estimated ' + btc(r.btc30) + ' BTC over the next 30 days.'); }, 700);
     }
     function selectTab(build, focus) {
-        active = build; panel.hidden = !build; original.hidden = build; if (originalList) originalList.hidden = build;
+        active = build; panel.hidden = !build; original.hidden = build;
         tabs.forEach(function (tab, i) { var selected = i === (build ? 1 : 0); tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1; });
         if (focus) tabs[build ? 1 : 0].focus();
         if (scene) scene.setActive(build && result && result.valid);

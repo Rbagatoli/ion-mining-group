@@ -128,8 +128,8 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         home.scenes[0].callbacks.onReady();
         assert.ok(!group.querySelector('.plant-preview').classList.contains('plant-preview--loading'));
     });
-    check('the Our mine window upgrades in place and retains its tab panel identity', () => {
-        assert.equal(group.getAttribute('id'),'mb-our-mine'); assert.equal(group.getAttribute('role'),'tabpanel');
+    check('the Our mine window upgrades in place independently of the energy-page builder', () => {
+        assert.equal(group.closest('#inside').getAttribute('id'),'inside'); assert.equal(home.document.querySelector('#mb-builder'),null);
         assert.ok(group.classList.contains('plant-ready')); assert.equal(home.scenes[0].config.view,'site');
         assert.equal(ref(group,'mode').textContent,'Exterior view'); assert.equal(ref(group,'callouts').children.length,8);
         assert.equal(home.scenes[0].powered,true);
@@ -165,8 +165,6 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.match(css,/\.plant-canvas\s*\{[^}]*z-index:\s*1;/);
         const globalCSS = fs.readFileSync(__dirname+'/../../site/styles.css','utf8');
         assert.match(globalCSS,/\.anim-field\s*\{[^}]*pointer-events:\s*none;[^}]*z-index:\s*0;/);
-        const builderField = home.document.querySelector('#mb-stage').querySelector('.anim-field--plant');
-        assert.equal(builderField.getAttribute('aria-hidden'),'true','Build your mine also has a decorative background');
         assert.match(fs.readFileSync(__dirname+'/../../site/mine-builder.css','utf8'),/\.mb-canvas-host\s*\{[^}]*z-index:\s*1;/);
     });
     check('the view has no interaction gates or automatic rotation toggle', () => {
@@ -218,6 +216,13 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         scale.value = 0; scale.fire('input'); assert.equal(hosting.scenes[0].config.view,'hosting'); assert.equal(hosting.scenes[0].xray,false);
     });
     const energy = fixture('energy'); energy.observers[0].fn([{isIntersecting:true}]); await settle();
+    check('the energy builder shares the section with both comparisons and keeps its pixel background', () => {
+        const panel = energy.document.querySelector('#mb-builder'), comparison = energy.document.querySelector('#mb-site-preview');
+        assert.equal(panel.parentElement,comparison.parentElement); assert.equal(panel.hidden,true);
+        energy.observers.forEach(observer => assert.equal(observer.el.closest('#mb-site-preview'),comparison));
+        const field = panel.querySelector('#mb-stage').querySelector('.anim-field--plant');
+        assert.equal(field.getAttribute('aria-hidden'),'true');
+    });
     check('the hidden fuel does not load a renderer and before-state cannot X-ray absent miners', () => {
         assert.equal(energy.scenes.length,1); assert.equal(energy.scenes[0].config.view,'landfill'); assert.equal(energy.scenes[0].progress,0);
         assert.equal(energy.scenes[0].xray,false); assert.equal(energy.scenes[0].powered,true);

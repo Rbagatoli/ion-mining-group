@@ -1,10 +1,10 @@
 /* Execute the shipped UI against parsed HTML. No GPU or external services are needed.
    This catches broken controls, stale outputs, failed-feed behavior and market-input races. */
 const fs = require('fs'), vm = require('vm'), assert = require('assert/strict');
-const html = fs.readFileSync(__dirname+'/../../site/index.html','utf8');
+const html = fs.readFileSync(__dirname+'/../../site/energy.html','utf8');
 let document;
 class Element {
-    constructor(tag,attrs={}) { this.tagName=tag.toUpperCase(); this.attrs=attrs; this.children=[]; this.parentNode=null; this.listeners={}; this._text=''; this._value=undefined; this.style={};
+    constructor(tag,attrs={}) { this.tagName=tag.toUpperCase(); this.attrs=attrs; this.children=[]; this.parentNode=null; this.listeners={}; this._text=''; this._value=undefined; this.style={setProperty(k,v){this[k]=v;}};
         this.classList={
             contains:c=>(this.attrs.class||'').split(/\s+/).includes(c),
             add:(...names)=>{ this.attrs.class=[...new Set((this.attrs.class||'').split(/\s+/).concat(names))].join(' '); },
@@ -62,12 +62,14 @@ function parse(source){
 }
 document=parse(html);document.getElementById=id=>document.querySelector('#'+id);document.createElement=tag=>new Element(tag);
 const requests=[],timers=new Map();let timerId=0;
-const sandbox={document,console,URLSearchParams,AbortController,
+const sandbox={document,console,URLSearchParams,AbortController,addEventListener(){},location:{search:''},
     CalcEngine:require('../../site/calc-engine.js'),MinerDB:require('../../site/miner-db.js'),PriceList:require('../../site/price-list.js'),MineBuilderModel:require('../../site/mine-builder-model.js'),
     setTimeout:(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;},clearTimeout:id=>timers.delete(id),
     fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))
 };sandbox.window=sandbox;
-vm.createContext(sandbox);new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8')).runInContext(sandbox);
+vm.createContext(sandbox);
+new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(sandbox);
+new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8')).runInContext(sandbox);
 const el=id=>document.getElementById('mb-'+id);
 function fire(target,type,extra={}){
     const event={target,...extra,preventDefault(){this.defaultPrevented=true;}};
@@ -80,12 +82,18 @@ let passed=0;
 function check(name,fn){fn();passed++;console.log('  ok    '+name);}
 
 (async()=>{
-    check('homepage opens on the original mine without requesting market data',()=>{
-        assert.equal(el('builder').hidden,true);assert.equal(el('our-mine').hidden,false);assert.equal(el('tab-build').hidden,false);assert.equal(requests.length,0);
+    const comparisons=el('site-preview'), fuelPanes=comparisons.querySelectorAll('.dg-fuel-pane'), scales=comparisons.querySelectorAll('.dg-scale-input');
+    const fuelButtons=document.getElementById('dgFuel').querySelectorAll('[data-fuel]');
+    check('the energy page opens on Your site without requesting market data',()=>{
+        assert.equal(el('builder').hidden,true);assert.equal(comparisons.hidden,false);assert.equal(el('tab-build').hidden,false);assert.equal(requests.length,0);
+        assert.equal(el('tab-site').textContent,'Your site');assert.equal(comparisons.closest('#the-pad'),el('builder').closest('#the-pad'));
+        assert.equal(fuelPanes.length,2);assert.equal(fuelPanes[0].hidden,false);assert.equal(fuelPanes[1].hidden,true);
     });
+    scales[0].value=73;fire(scales[0],'input');scales[1].value=28;fire(scales[1],'input');fire(fuelButtons[1],'click');
     click('tab-build');await settle();
     check('Build your mine selects an independent panel and fetches inputs only on demand',()=>{
-        assert.equal(el('builder').hidden,false);assert.equal(el('our-mine').hidden,true);assert.equal(el('tab-build').getAttribute('aria-selected'),'true');
+        assert.equal(el('builder').hidden,false);assert.equal(comparisons.hidden,true);assert.equal(el('tab-build').getAttribute('aria-selected'),'true');
+        assert.equal(scales[0].closest('[hidden]'),fuelPanes[0]);assert.equal(scales[1].closest('[hidden]'),comparisons);
         assert.equal(requests.length,2);assert.equal(el('out-count').textContent,'160');assert.ok(Number(el('out-btc30').textContent)>0);
     });
     check('missing WebGL/module support leaves the calculator usable with an honest fallback',()=>{
@@ -133,13 +141,20 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     check('valid inputs recover and a loss is displayed as a negative margin',()=>{
         assert.equal(el('error').hidden,true);assert.equal(el('out-marginDay').classList.contains('is-negative'),true);assert.match(el('out-marginDay').textContent,/^−\$/);
     });
-    click('tab-ours');click('tab-build');await settle();
+    click('tab-site');
+    check('returning to Your site restores its chosen fuel and both comparison sliders',()=>{
+        assert.equal(comparisons.hidden,false);assert.equal(el('builder').hidden,true);
+        assert.equal(fuelButtons[1].getAttribute('aria-pressed'),'true');assert.equal(fuelPanes[0].hidden,true);assert.equal(fuelPanes[1].hidden,false);
+        assert.equal(scales[0].value,'73');assert.equal(scales[1].value,'28');assert.equal(el('elecCost').value,'1');
+        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.730');assert.equal(fuelPanes[1].querySelector('.dg-views').style['--d'],'0.280');
+    });
+    click('tab-build');await settle();
     check('switching views preserves visitor input and does not refetch or remount',()=>{
         assert.equal(el('elecCost').value,'1');assert.equal(requests.length,2);
     });
     fire(el('tab-build'),'keydown',{key:'ArrowLeft'});
     check('keyboard navigation switches panels and moves focus',()=>{
-        assert.equal(el('builder').hidden,true);assert.equal(document.activeElement,el('tab-ours'));
+        assert.equal(el('builder').hidden,true);assert.equal(document.activeElement,el('tab-site'));
     });
     click('tab-build');click('refresh-market');
     requests[2].resolve({ok:false,text:async()=>''});requests[3].reject(new Error('offline'));await settle();
@@ -165,7 +180,9 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
                 setXray(v){callbacks.onXray(v);},inspect(v){callbacks.onInspect(v);},
                 reset(){callbacks.onInspect(false);},zoom(v){this.zoomFactor=v;}};return scene;
         }})};live.window=live;
-    vm.createContext(live);new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8').replace("import(panel.getAttribute('data-module-src'))",'loadSceneModule()')).runInContext(live);
+    vm.createContext(live);
+    new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(live);
+    new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8').replace("import(panel.getAttribute('data-module-src'))",'loadSceneModule()')).runInContext(live);
     const renderScene=()=>{for(const[id,t]of[...scheduled])if(t.ms===100){scheduled.delete(id);t.fn();}};
     click('tab-build');await settle();renderScene();
     check('the builder starts energized with X-ray off and no interaction or rotation toggles',()=>{

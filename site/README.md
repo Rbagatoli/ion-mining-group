@@ -42,8 +42,11 @@ site/
 
 ## Build your mine
 
-The home page's **Our mine / Build your mine** tabs share the existing drawing
-window. The generated SVG remains available as a fallback. The builder accepts available MW,
+The Energy Partners page's **Your site / Build your mine** tabs share the existing
+drawing window. Your site contains the landfill and flared-gas comparisons; its
+fuel selection and slider settings survive a visit to the builder. The home page
+keeps the Our mine presentation. The generated SVG remains available as a fallback.
+The builder accepts available MW,
 Mcf/day (with gas quality and engine heat rate), or machine count; visitors can
 select a catalog miner or enter custom specifications and operating assumptions.
 

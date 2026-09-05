@@ -340,10 +340,10 @@ CHAIN_PAGES.forEach(page => {
     const bar = src.slice(src.indexOf('<div class="dg-toggle'),
                           src.indexOf('</div>', src.indexOf('<div class="dg-toggle')));
     const here = [...bar.matchAll(/class="dg-toggle-on" aria-current="true">([^<]*)/g)].map(m => m[1].trim());
-    // The home stop now offers Our mine / Build your mine in the same window.
+    // The energy stop offers Your site / Build your mine in the same window.
     // Its selected tab names the current view; the two cross-page links remain.
-    if (page.file === 'index.html') {
-        here.push(...[...bar.matchAll(/role="tab" id="mb-tab-ours" aria-selected="true"[^>]*>([^<]*)/g)].map(m => m[1].trim()));
+    if (page.file === 'energy.html') {
+        here.push(...[...bar.matchAll(/role="tab" id="mb-tab-site" aria-selected="true"[^>]*>([^<]*)/g)].map(m => m[1].trim()));
     }
     const away = [...bar.matchAll(/class="dg-toggle-to[^"]*" href="([^"]*)"/g)].map(m => m[1]);
     ok(here.length === 1 && here[0] === page.at,

@@ -35,7 +35,6 @@ const PAGES = {
     heading: 'What we actually build.',
     lede: 'Gas that would otherwise be flared, engines to burn it, a transformer, and containers of machines. Cut the wall away and this is the whole of it.',
     deps: ['site-kit.js'],
-    builder: true,
     chain: 'site',
     views: [
       { key: 'site', name: 'site', module: '../scene-site.js',
@@ -92,6 +91,7 @@ const PAGES = {
        next build. */
     lede: 'One site, drawn twice from the same angle. Pull the slider and the gas stops going up the stack and starts going into engines. Your collection system, your existing equipment and your flare stay exactly where they are — because in practice that is what changes and what does not.',
     chain: 'pad',
+    builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
        and reads root.PadGeometry at load. */
     deps: ['pad-geometry.js', 'landfill-geometry.js', 'site-kit.js'],
@@ -147,6 +147,7 @@ const PAGES = {
     ],
   },
 };
+const BUILDER_SCRIPTS = ['calc-engine.js', 'miner-db.js', 'price-list.js', 'mine-builder-model.js', 'mine-builder.js'];
 
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const ARROW = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
@@ -181,8 +182,8 @@ function chainOf(key, builder) {
   if (at < 0) return '';
   const seg = CHAIN.map((s, i) => {
     if (i === at) {
-      if (builder) return `<span class="mb-tabs" role="tablist" aria-label="Mine view">
-        <button type="button" role="tab" id="mb-tab-ours" aria-selected="true" aria-controls="mb-our-mine">Our mine</button>
+      if (builder) return `<span class="mb-tabs" role="tablist" aria-label="Your site views">
+        <button type="button" role="tab" id="mb-tab-site" aria-selected="true" aria-controls="mb-site-preview">${esc(s.label)}</button>
         <button type="button" role="tab" id="mb-tab-build" aria-selected="false" aria-controls="mb-builder" tabindex="-1" hidden>Build your mine</button>
       </span>`;
       return `<span class="dg-toggle-on" aria-current="true">${esc(s.label)}</span>`;
@@ -328,6 +329,10 @@ function splice(cfg, section, scripts) {
   const OUT = path.join(__dirname, cfg.target);
   const open = `<!-- ===== ${cfg.marker} ===== -->`;
   let html = fs.readFileSync(OUT, 'utf8');
+  const hadBuilder = html.includes('id="mb-builder"');
+  if (!cfg.builder && hadBuilder) {
+    html = html.replace(/\n?<link rel="stylesheet" href="\.\/mine-builder\.css(?:\?v=[0-9a-f]+)?">/g, '');
+  }
   if (cfg.builder && !/href="\.\/mine-builder\.css(?:\?v=[0-9a-f]+)?"/.test(html)) {
     html = html.replace('</head>', '<link rel="stylesheet" href="./mine-builder.css">\n</head>');
   }
@@ -404,6 +409,10 @@ function splice(cfg, section, scripts) {
     return new RegExp('<script src="\\./' + file.replace(/\./g, '\\.') +
                       '(?:\\?v=[0-9a-f]+)?"(?: data-module-src="[^"]+")?></script>', 'g');
   };
+  // Remove the builder's old dependency block when it moves to another page.
+  if (!cfg.builder && hadBuilder) BUILDER_SCRIPTS.forEach(s => {
+    html = html.replace(new RegExp('\\n?' + stamped(s).source, 'g'), '');
+  });
 
   if (!stamped('diagram-engine.js').test(html)) {
     html = html.replace(stamped('site.js'),
@@ -539,7 +548,7 @@ function build(key) {
       const note = v.note ? `\n        <p class="dg-note">${v.note}</p>` : '';
       const link = g.link ? ` data-link="${g.link}"` : '';
       return `
-      <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}"${cfg.builder ? ' id="mb-our-mine" role="tabpanel" aria-labelledby="mb-tab-ours"' : ''} data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
+      <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}" data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
         <canvas class="anim-field anim-field--dg" data-w="${v.D.VB.w}" data-h="${v.D.VB.h}" aria-hidden="true"></canvas>
         ${svg}${bubblesOf(v.D)}${controlsOf(v.prefix)}
         ${HINT}${note}
@@ -591,6 +600,10 @@ function build(key) {
     <div class="dg-fuel-pane" data-fuel="${g.key}"${i === 0 ? '' : ' hidden'}>${groupBlock(g)}
     </div>`).join('')
     : groupBlock(groups[0]);
+  const comparison = fuelOf(cfg, groups) + panes;
+  const content = cfg.builder ? `
+    <div class="mb-site-preview" id="mb-site-preview" role="tabpanel" aria-labelledby="mb-tab-site">${comparison}
+    </div>${builder}` : comparison;
 
   const section = `<!-- ===== ${cfg.marker} ===== -->
 <section class="band" id="${cfg.sectionId}">
@@ -599,7 +612,7 @@ function build(key) {
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
       <p class="lede">${esc(cfg.lede)}</p>
-    </div>${toggle}${fuelOf(cfg, groups)}${panes}${builder}
+    </div>${toggle}${content}
   </div>
 </section>
 <!-- ===== /${cfg.marker} ===== -->
@@ -609,7 +622,7 @@ function build(key) {
   /* deps come first: a scene that reads shared geometry needs that module to
      have executed before it does. */
   splice(cfg, section, (cfg.deps || []).concat(all.map(v => v.script),
-    ['plant-viewer.js'], cfg.builder ? ['calc-engine.js', 'miner-db.js', 'price-list.js', 'mine-builder-model.js', 'mine-builder.js'] : []));
+    ['plant-viewer.js'], cfg.builder ? BUILDER_SCRIPTS : []));
   console.log(`${key}: ${all.length} views [${groups.map(g =>
     (g.key ? `${g.key}: ` : '') + g.views.map(v =>
       `${v.key}(${v.name}) ${v.D.SLOTS}x${v.D.LAYERS.length} ${v.D.CALLOUTS.length}co` +

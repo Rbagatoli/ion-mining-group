@@ -575,12 +575,17 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
 /* cart.js must be able to run before the tables it optionally uses, since most
    pages never load them at all. */
 (function () {
-    var t = fs.readFileSync(S + 'index.html', 'utf8');
+    var t = fs.readFileSync(S + 'energy.html', 'utf8');
     var plain = t.replace(/\?v=[0-9a-f]+/g, '');
-    ok(plain.indexOf('<script src="./cart.js"') < plain.indexOf('<script src="./miner-db.js"'),
-       'the home cart still boots before the builder loads its optional spec table');
-    ok(fs.readFileSync(S + 'contact.html', 'utf8').indexOf('miner-db.js') < 0,
-       'pages without a builder still load the cart without a spec table');
+    var cart = plain.indexOf('<script src="./cart.js"');
+    var specs = plain.indexOf('<script src="./miner-db.js"');
+    ok(cart >= 0 && specs > cart,
+       'the energy page cart boots before the builder loads its optional spec table');
+    ['index.html', 'contact.html'].forEach(function (file) {
+        var page = fs.readFileSync(S + file, 'utf8');
+        ok(/<script src="\.\/cart\.js(?:\?v=[0-9a-f]+)?"><\/script>/.test(page) && page.indexOf('miner-db.js') < 0,
+           file + ' loads the cart without a spec table');
+    });
 })();
 
 (function () {
