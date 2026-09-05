@@ -49,6 +49,10 @@ The fuel picker and **Your site today / With Proton on it** toggle remain visibl
 **Your site today** restores the original site; each fuel retains its own
 configuration for the current visit. Market inputs are shared between the two.
 The home page keeps the Our mine presentation. The generated SVG remains available as a fallback.
+The builder's rendering comes first and uses the same full-width frame and
+`.plant-stage` sizing as the original site on desktop and mobile. Callout cards
+hide in build mode. All configuration fields, assumptions and results sit below
+the rendering; the form becomes one column on smaller screens.
 The builder accepts available MW,
 Mcf/day (with gas quality and engine heat rate), or machine count; visitors can
 select a catalog miner or enter custom specifications and operating assumptions.
