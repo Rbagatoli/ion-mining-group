@@ -961,7 +961,7 @@ export function buildPresentation(view, definition) {
     });
     if (before) containers.forEach(unit => { unit.skinMaterials = unit.skinMaterials.map(m => materialMap.get(m) || m); });
     const yard = finishScene(root,mats,containers,{view,targets,fans,pulses,flame:flames,
-        mining:before ? mining : null,layout:main.scene.view,
+        mining:before ? mining : null,layout:main.scene.view,inspectIndex:anchorIndex,
         calloutSets:{before:before?.CALLOUTS,after:main.CALLOUTS},
         targetRegionSets:{before:before ? calloutRegions(before) : null,after:calloutRegions(main)},
         miningMaterials:[...materialMap.values()],operatingMaterials:[materialMap.get(mats.led),materialMap.get(mats.flow)].filter(Boolean)});
@@ -1183,18 +1183,24 @@ export function mountMineScene(host, callbacks = {}) {
         if (!reduced || autoRotate || transitioning) wake();
     }
     function inspect(open, index) {
-        if (yard?.view) { setXray(open); return; }
-        if (!yard || !yard.containers.length || (yard.mining && progress < .01)) return;
+        if (!yard || !yard.containers.length || (open && yard.mining && progress < 1)) return;
         focus = null; highlightPart(null);
-        if (index === undefined) index = Math.max(0,yard.containers.length-2);
+        if (index === undefined) index = yard.inspectIndex ?? Math.max(0,yard.containers.length-2);
         selected = open ? Math.min(index,yard.containers.length-1) : -1;
         manual = true; resumeAt = elapsed+3;
         if (selected >= 0) {
             yard.root.updateMatrixWorld(true);
-            const origin = yard.containers[selected].root.getWorldPosition(new THREE.Vector3());
-            desiredTarget.copy(yard.inspectTarget || origin.clone().add(new THREE.Vector3(0,2.0,0)));
-            const bounds = yard.inspectBounds || new THREE.Box3(origin.clone().add(new THREE.Vector3(-6.4,0,-1.4)),origin.clone().add(new THREE.Vector3(6.4,6.0,1.4)));
-            desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,new THREE.Vector3(.5,.65,1.4)));
+            const unit = yard.containers[selected];
+            desiredTarget.copy(yard.inspectTarget || new THREE.Vector3(0,2,0).applyMatrix4(unit.root.matrixWorld));
+            const bounds = yard.inspectBounds || new THREE.Box3(new THREE.Vector3(-6.4,0,-1.4),new THREE.Vector3(6.4,6,1.4)).applyMatrix4(unit.root.matrixWorld);
+            const direction = new THREE.Vector3(.5,.65,1.4).transformDirection(unit.root.matrixWorld);
+            // Authored scenes have a different lens and caption offset from the
+            // builder. Fit the opened equipment with that lens and center it.
+            desiredViewOffset = 0;
+            desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,direction,0,camera.fov,yard.view && camera.aspect >= 2 ? .52 : .92));
+            const distance = desiredPosition.distanceTo(desiredTarget);
+            controls.minDistance = Math.max(.25,distance*.12);
+            controls.maxDistance = Math.max(controls.maxDistance,distance*2.5);
             transitioning = true;
         } else fit(false);
         callbacks.onInspect?.(selected >= 0); wake();
@@ -1276,7 +1282,10 @@ export function mountMineScene(host, callbacks = {}) {
         if (!yard || !callbacks.onProject) return;
         const points = annotations.map(co => {
             let point;
-            if (yard.targetBounds?.[co.id]) point = yard.targetBounds[co.id].getCenter(new THREE.Vector3());
+            const target = yard.targets?.[co.id];
+            if (target && yard.containers.some(unit => target === unit.roof || target === unit.wall)) {
+                point = new THREE.Box3().setFromObject(target).getCenter(new THREE.Vector3());
+            } else if (yard.targetBounds?.[co.id]) point = yard.targetBounds[co.id].getCenter(new THREE.Vector3());
             else if (co.at) point = new THREE.Vector3(...co.at);
             if (!point) return {id:co.id,visible:false};
             point.project(camera);
@@ -1304,7 +1313,7 @@ export function mountMineScene(host, callbacks = {}) {
         const next = THREE.MathUtils.clamp(Number(value) || 0,0,1), changed = next !== progress;
         progress = next;
         if (yard?.mining) {
-            if (selected >= 0 && progress < .01) { selected = -1; fit(false); callbacks.onInspect?.(false); }
+            if (selected >= 0 && progress < 1) inspect(false);
             setSceneProgress(yard,progress);
         }
         if (changed) { if (focus) reset(); else highlightPart(null); }

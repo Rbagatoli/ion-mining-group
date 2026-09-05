@@ -27,6 +27,7 @@ class Element {
     remove() { this.parentElement.children = this.parentElement.children.filter(c => c !== this); this.parentElement = null; }
     addEventListener(type, fn, options) { (this.listeners[type] ||= []).push({fn,capture:!!(options === true || options?.capture)}); }
     removeEventListener(type, fn) { this.listeners[type] = (this.listeners[type] || []).filter(l => l.fn !== fn); }
+    dispatchEvent(event) { return !this.fire(event.type,event).defaultPrevented; }
     fire(type, extra = {}) {
         const event = {type,target:this,deltaMode:0,ctrlKey:false,metaKey:false,...extra,
             preventDefault() { this.defaultPrevented = true; },stopPropagation() { this.stopped = true; },
@@ -77,7 +78,7 @@ function fixture(page, fail = false, options = {}) {
     document.getElementById = id => document.querySelector('#'+id);
     class Observer { constructor(fn,config = {}) { this.fn = fn; this.config = config; observers.push(this); } observe(el) { this.el = el; } disconnect() {} }
     const fieldMap = new WeakMap();
-    const sandbox = {document,console,IntersectionObserver:Observer,addEventListener() {},
+    const sandbox = {document,console,Event,IntersectionObserver:Observer,addEventListener() {},
         ProtonField:{mount(canvas) {
             if (fieldMap.has(canvas)) return fieldMap.get(canvas);
             const field = {canvas,setActive(v) { this.active = v; },dispose() { this.disposed = true; }};
@@ -90,12 +91,12 @@ function fixture(page, fail = false, options = {}) {
                 try { const scene = options.mount(host,callbacks,document); scenes.push(scene); return scene; }
                 catch (error) { console.error('Scene mount failed:',error); throw error; }
             }
-            const scene = {host,callbacks,calls:[],setConfig(v) { this.config = v; },
-                setProgress(v) { this.progress = v; },energize(v) { this.powered = v; },setActive(v) { this.active = v; },
+            const scene = {host,callbacks,calls:[],setConfig(v) { this.config = v; callbacks.onInspect(false); },
+                setProgress(v) { this.progress = v; if (v < 1 && this.inspecting) this.inspect(false); },energize(v) { this.powered = v; },setActive(v) { this.active = v; },
                 setAnnotations(v) { this.annotations = v; callbacks.onProject(v.map(co => ({id:co.id,x:.5,y:.5,visible:true}))); },
                 setXray(v) { this.xray = v; callbacks.onXray(v); },zoom(v) { this.calls.push(['zoom',v]); },
-                reset() { callbacks.onPart(null); },
-                highlightPart(v) { callbacks.onPart(v); },focusPart(v) { this.calls.push(['part',v]); callbacks.onPart(v); },dispose() { this.disposed = true; }};
+                inspect(v) { this.inspecting = v; callbacks.onInspect(v); },reset() { this.inspect(false); callbacks.onPart(null); },
+                highlightPart(v) { callbacks.onPart(v); },focusPart(v) { this.inspect(false); this.calls.push(['part',v]); callbacks.onPart(v); },dispose() { this.disposed = true; }};
             scenes.push(scene); return scene;
         }};
     }};
@@ -135,13 +136,23 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(home.scenes[0].config.definition.main,require('../../site/scene-site.js'));
         assert.equal(home.scenes[0].callbacks.interactionSurface,ref(group,'surface'));
     });
-    check('existing scenes have X-ray, zoom and Reset without an Inside control', () => {
-        assert.equal(ref(group,'inspect'),null);
+    check('existing scenes retain X-ray, zoom and Reset alongside the new interior control', () => {
+        assert.equal(ref(group,'inspect').textContent,'Inside a container');
         ref(group,'xray').fire('click'); assert.equal(ref(group,'xray').getAttribute('aria-pressed'),'true');
         ref(group,'in').fire('click'); ref(group,'out').fire('click');
         assert.equal(JSON.stringify(home.scenes[0].calls),JSON.stringify([['zoom',.8],['zoom',1.25]]));
         ref(group,'reset').fire('click');
         assert.equal(ref(group,'mode').textContent,'X-ray view');
+    });
+    check('Our mine opens a container and exposes Return to site without changing its X-ray choice', () => {
+        ref(group,'inspect').fire('click');
+        assert.equal(home.scenes[0].inspecting,true); assert.equal(home.scenes[0].xray,true);
+        assert.equal(ref(group,'inspect').getAttribute('aria-pressed'),'true'); assert.equal(ref(group,'inspect').textContent,'Return to site');
+        assert.equal(ref(group,'mode').textContent,'Container interior');
+        ref(group,'inspect').fire('click'); assert.equal(home.scenes[0].inspecting,false);
+        assert.equal(ref(group,'inspect').textContent,'Inside a container'); assert.equal(ref(group,'mode').textContent,'X-ray view');
+        ref(group,'inspect').fire('click'); ref(group,'reset').fire('click');
+        assert.equal(ref(group,'inspect').getAttribute('aria-pressed'),'false');
     });
     check('the restored pixel canvas belongs to the 3D stage and stays below its interactive canvas', () => {
         const canvas = ref(group,'field');
@@ -197,8 +208,12 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     check('the existing hosting slider switches from a container to its hydro machine', () => {
         const g = hosting.observers[0].el, scale = hosting.document.querySelector('.dg-scale-input');
         assert.equal(hosting.scenes[0].config.view,'hosting'); assert.equal(hosting.scenes[0].xray,false);
+        ref(g,'inspect').fire('click'); assert.equal(ref(g,'inspect').textContent,'Return to container');
         scale.value = 100; scale.fire('input'); assert.equal(hosting.scenes[0].xray,true,'only the ASIC starts with X-ray');
-        assert.equal(hosting.scenes[0].config.view,'asic'); assert.equal(ref(g,'inspect'),null);
+        assert.equal(hosting.scenes[0].config.view,'asic'); assert.equal(ref(g,'inspect').textContent,'Inside the miner');
+        assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
+        ref(g,'inspect').fire('click'); assert.equal(ref(g,'inspect').textContent,'Return to miner');
+        assert.equal(ref(g,'mode').textContent,'Miner interior'); assert.equal(hosting.scenes[0].xray,true);
         assert.equal(ref(g,'callouts').children.length,6); assert.match(ref(g,'cooling').textContent,/no miner fans/);
         scale.value = 0; scale.fire('input'); assert.equal(hosting.scenes[0].config.view,'hosting'); assert.equal(hosting.scenes[0].xray,false);
     });
@@ -219,6 +234,19 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     check('the wellpad has independent controls and shares one module download with the landfill', () => {
         assert.equal(energy.scenes.length,2); assert.equal(energy.scenes[1].config.view,'pad'); assert.equal(energy.scenes[1].progress,0);
         assert.equal(energy.scenes[0].progress,1); assert.equal(energy.imports.length,1);
+    });
+    check('both Your site interior buttons reveal their own deployment and stay in sync with the slider', () => {
+        energy.observers.forEach((observer,i) => {
+            const g = observer.el, scale = g.closest('.dg-fuel-pane').querySelector('.dg-scale-input');
+            scale.value = 0; scale.fire('input');
+            ref(g,'inspect').fire('click');
+            assert.equal(scale.value,'100'); assert.equal(energy.scenes[i].progress,1); assert.equal(energy.scenes[i].inspecting,true);
+            assert.equal(g.style['--d'],'1.000','the original comparison and its fallback stay in sync');
+            assert.equal(ref(g,'inspect').textContent,'Return to site'); assert.equal(ref(g,'xray').disabled,false);
+            ref(g,'inspect').fire('click'); assert.equal(ref(g,'inspect').textContent,'Inside a container');
+            ref(g,'inspect').fire('click'); scale.value = 50; scale.fire('input');
+            assert.equal(energy.scenes[i].inspecting,false); assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
+        });
     });
     const unavailable = fixture('index',true); unavailable.observers[0].fn([{isIntersecting:true}]); await settle();
     check('a device without WebGL keeps the original diagram and all descriptions', () => {
@@ -273,6 +301,18 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         first.canvas.fire('pointermove',{...pointer,clientX:650});
         first.canvas.fire('pointerup',{...pointer,clientX:650,buttons:0}); first.draw();
         assert.ok(first.camera.position.distanceTo(position)>1,'the real OrbitControls handler rotates immediately');
+    });
+    check('the shipped interior button opens real geometry and Reset closes it', () => {
+        const g = direct.observers[0].el;
+        ref(g,'inspect').fire('click'); first.draw();
+        let opened;
+        first.world.traverse(o => { if (o.name === 'removable-roof' && o.position.y > 2) opened = o; });
+        assert.ok(opened,'the button lifts a real container roof');
+        assert.equal(opened.parent.getObjectByName('service-wall').visible,false);
+        assert.equal(ref(g,'mode').textContent,'Container interior');
+        ref(g,'reset').fire('click'); first.draw();
+        assert.equal(opened.position.y,0); assert.equal(opened.parent.getObjectByName('service-wall').visible,true);
+        assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
     });
     let releaseModule;
     const moduleGate = new Promise(resolve => { releaseModule = resolve; });

@@ -17,7 +17,7 @@
         var scope = group.closest('.dg-fuel-pane') || group.parentElement, scale = scope.querySelector('.dg-scale-input');
         var diagrams = wraps.map(function (wrap) { return window[names[wrap.getAttribute('data-scene')]]; });
         var notes = wraps.map(function (wrap) { return wrap.querySelector('.dg-note')?.textContent || ''; });
-        var scene = null, field = null, preview = null, loading = false, failed = false, xray = false, current = '', calloutKey = '';
+        var scene = null, field = null, preview = null, loading = false, failed = false, xray = false, inspecting = false, current = '', calloutKey = '';
         var xrayStates = {asic:true};
         var refs = {}, tethers = {}, cards = {};
         function state() {
@@ -30,7 +30,10 @@
             var s = state(), available = !fuel || s.progress > .99;
             refs.xray.disabled = !available; refs.xray.setAttribute('aria-pressed',String(xray));
             refs.xray.textContent = xray && available ? 'X-ray on' : 'X-ray off';
-            refs.mode.textContent = xray && available ? 'X-ray view' : 'Exterior view';
+            refs.inspect.setAttribute('aria-pressed',String(inspecting));
+            refs.inspect.textContent = inspecting ? (s.view === 'asic' ? 'Return to miner' : s.view === 'hosting' ? 'Return to container' : 'Return to site') :
+                s.view === 'asic' ? 'Inside the miner' : 'Inside a container';
+            refs.mode.textContent = inspecting ? (s.view === 'asic' ? 'Miner interior' : 'Container interior') : xray && available ? 'X-ray view' : 'Exterior view';
         }
         function highlight(id) {
             Object.keys(cards).forEach(function (key) {
@@ -120,6 +123,7 @@
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
                     '<div class="plant-toolbar" aria-label="3D view controls">'+
                     '<p class="plant-hint">Drag to rotate · pinch or scroll to zoom · select a label to explore</p>'+
+                    '<button type="button" data-plant="inspect" aria-pressed="false">Inside a container</button>'+
                     '<button type="button" data-plant="xray" aria-pressed="false">X-ray off</button>'+
                     '<button type="button" data-plant="out" aria-label="Zoom out">−</button>'+
                     '<button type="button" data-plant="in" aria-label="Zoom in">+</button>'+
@@ -129,12 +133,21 @@
                 if (window.ProtonField) { field = window.ProtonField.mount(refs.field); if (field) field.setActive(false); }
                 scene = module.mountMineScene(refs.host,{
                     interactionSurface:refs.surface,onProject:project,onPart:highlight,onReady:ready,
+                    onInspect:function (value) { inspecting = value; syncControls(); },
                     onXray:function (value) { xray = value; if (current) xrayStates[current] = value; syncControls(); },
                     onError:fallback,
                     onRestore:function () {
                         failed = false; preview.classList.add('plant-preview--loading'); preview.hidden = false;
                         update(); scene.setActive(true);
                     }
+                });
+                refs.inspect.addEventListener('click',function () {
+                    // An existing gas site has no mining container to enter until
+                    // the comparison reveals its proposed Proton deployment.
+                    if (!inspecting && fuel && state().progress < 1) {
+                        scale.value = '100'; scale.dispatchEvent(new Event('input',{bubbles:true}));
+                    }
+                    scene.inspect(!inspecting);
                 });
                 refs.xray.addEventListener('click',function () { scene.setXray(!xray); });
                 refs.in.addEventListener('click',function () { scene.zoom(.8); }); refs.out.addEventListener('click',function () { scene.zoom(1.25); });

@@ -106,11 +106,16 @@ region, including all equipment belonging to a grouped label. Clicking a label
 eases both the camera and its framing toward that section, then begins a gentle oscillation of about ten degrees
 each way. The selection persists after pointer exit. Clicking it again, Reset,
 or Escape returns to the complete site.
-These views use X-ray to reveal infrastructure without moving the shell or
-entering a container. Only the individual ASIC starts with X-ray enabled; all
+Every view offers an interior button that opens the service wall and lifts the
+roof while the camera eases toward the equipment. The individual ASIC labels this
+"Inside the miner" and opens its casing. Inside a container on either energy
+comparison first moves the slider to the proposed mining deployment. Returning,
+Reset, or selecting a callout closes the equipment; moving the comparison slider
+also returns to the site. Touch rotation, pinch zoom and X-ray remain available
+inside. X-ray changes only shell transparency and retains its separate state.
+Only the individual ASIC starts with X-ray enabled; all
 other views start with it off. Each view retains subsequent visitor choices.
-The larger metallic orange X-ray controls display their on / off state. Only
-Build your mine retains the opening-container control. Hosting's slider
+The larger metallic orange X-ray controls display their on / off state. Hosting's slider
 switches between the container and a detailed fanless S21+ Hyd. machine. Each
 energy fuel keeps its own comparison slider and camera; existing equipment stays
 fixed while the Proton deployment is revealed, and the flare remains in place.

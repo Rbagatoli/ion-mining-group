@@ -263,12 +263,63 @@ class Surface {
         assert.ok(renderer.world.getObjectByName('air-intake-filters')); assert.equal(renderer.world.getObjectByName('hydro-manifolds'),undefined);
         api.setConfig(M.estimate({cooling:'hydro'})); flush(); assert.ok(renderer.world.getObjectByName('hydro-manifolds'));
     });
-    check('existing views use X-ray without lifting roofs or entering containers', () => {
+    check('X-ray remains independent from the interior opening controls', () => {
         api.setConfig({view:'site',definition:definition('site')}); flush();
-        const before = renderer.camera.position.clone(); api.inspect(true); flush();
+        const before = renderer.camera.position.clone(); api.setXray(true); flush();
         assert.equal(renderer.world.getObjectByName('removable-roof').position.y,0);
         assert.equal(renderer.world.getObjectByName('service-wall').visible,true);
         assert.ok(renderer.camera.position.distanceTo(before)<1e-9); assert.deepEqual(events.at(-1),['xray',true]);
+    });
+    check('every presentation opens and frames its real interior on desktop and mobile', () => {
+        for (const [width,height] of [[1280,470],[390,290]]) {
+            host.clientWidth = width; host.clientHeight = height; resizeScene(); flush();
+            for (const view of ['site','hosting','asic','landfill','pad']) {
+                api.setConfig({view,definition:definition(view)}); api.setProgress(1); api.setXray(false); api.reset(); flush();
+                api.setAnnotations(definition(view).main.CALLOUTS); flush();
+                const exterior = renderer.camera.position.clone(), projection = renderer.camera.projectionMatrix.clone();
+                const xrayChanges = events.filter(e => e[0] === 'xray').length;
+                api.inspect(true); flush(); assert.deepEqual(events.at(-1),['inspect',true]);
+                const roofs = []; renderer.world.traverse(o => { if (o.name === 'removable-roof') roofs.push(o); });
+                const opened = roofs.filter(o => o.position.y > .9);
+                assert.equal(opened.length,1,view+' opens exactly one unit');
+                const unit = opened[0].parent;
+                assert.equal(unit.getObjectByName('service-wall').visible,false,view+' reveals the service side');
+                assert.ok(renderer.camera.position.distanceTo(exterior)>.1,view+' moves to the equipment');
+                assert.ok(!renderer.camera.view?.enabled,view+' centers its interior');
+                const rack = unit.getObjectByName(view === 'asic' ? 'three-hashboards' : 'miner-racks');
+                const bounds = new T.Box3().setFromObject(rack), limit = width/height >= 2 ? .6 : .96;
+                for (const x of [bounds.min.x,bounds.max.x]) for (const y of [bounds.min.y,bounds.max.y]) for (const z of [bounds.min.z,bounds.max.z]) {
+                    const p = new T.Vector3(x,y,z).project(renderer.camera);
+                    assert.ok(Math.abs(p.x)<limit && Math.abs(p.y)<.95 && Math.abs(p.z)<1,view+' racks remain inside the clear part of the frame');
+                }
+                assert.equal(events.filter(e => e[0] === 'xray').length,xrayChanges,'entering does not change transparency');
+                const coolingLabel = projected.find(p => p.id === 'cool');
+                if (coolingLabel) {
+                    const roofPoint = new T.Box3().setFromObject(opened[0]).getCenter(new T.Vector3()).project(renderer.camera);
+                    assert.ok(Math.abs(coolingLabel.x-(roofPoint.x+1)/2)<1e-8 && Math.abs(coolingLabel.y-(1-roofPoint.y)/2)<1e-8,'the cooling leader follows the lifted roof');
+                }
+                touchGestures(view+' interior at '+width+'px');
+                api.inspect(false); flush();
+                assert.equal(opened[0].position.y,0); assert.equal(unit.getObjectByName('service-wall').visible,true);
+                assert.ok(renderer.camera.position.distanceTo(exterior)<1e-7,view+' returns to the authored overview');
+                assert.ok(renderer.camera.projectionMatrix.equals(projection),view+' restores its original framing');
+            }
+        }
+        host.clientWidth = 1280; host.clientHeight = 470; resizeScene();
+        api.setConfig({view:'site',definition:definition('site')}); flush();
+    });
+    check('callout navigation, Reset and comparisons keep the interior state consistent', () => {
+        api.inspect(true); flush(); assert.deepEqual(events.at(-1),['inspect',true]);
+        api.focusPart('gen'); flush(); assert.deepEqual(events.at(-1),['inspect',false]);
+        api.inspect(true); flush(); api.reset(); flush(); assert.deepEqual(events.at(-1),['inspect',false]);
+        for (const view of ['landfill','pad']) {
+            api.setConfig({view,definition:definition(view)}); api.setProgress(1); api.inspect(true); flush();
+            api.setProgress(.75); flush(); assert.deepEqual(events.at(-1),['inspect',false]);
+            const camera = renderer.camera.position.clone(), count = events.length;
+            api.inspect(true); flush(); assert.equal(events.length,count,'a partially deployed site cannot enter a faded container');
+            assert.ok(renderer.camera.position.equals(camera));
+        }
+        api.setConfig({view:'site',definition:definition('site')}); api.setProgress(1); flush();
     });
     check('callout leaders track their equipment when zooming and rotating', () => {
         api.setAnnotations(definition('site').main.CALLOUTS); flush();
@@ -317,6 +368,22 @@ class Surface {
         advance(2000); assert.ok(renderer.camera.position.distanceTo(after)<1e-8);
         advance(2000); assert.ok(renderer.camera.position.distanceTo(after)>1);
         assert.ok(Math.abs(renderer.camera.position.distanceTo(controls.target)-radius)<1e-8,'zoom is preserved');
+    });
+    check('entering and returning animate the camera, framing and shell together', () => {
+        const before = renderer.camera.position.clone(), projection = renderer.camera.projectionMatrix.clone();
+        api.inspect(true);
+        assert.ok(renderer.camera.position.equals(before) && renderer.camera.projectionMatrix.equals(projection),'entry starts without a jump');
+        step();
+        const roofs = []; renderer.world.traverse(o => { if (o.name === 'removable-roof') roofs.push(o); });
+        const opened = roofs.find(o => o.position.y>0);
+        assert.ok(opened && opened.position.y<2.5,'the roof begins lifting smoothly');
+        assert.ok(renderer.camera.position.distanceTo(before)>0);
+        advance(2500); assert.ok(opened.position.y>2.49); assert.equal(opened.parent.getObjectByName('service-wall').visible,false);
+        const interior = renderer.camera.position.clone(), insideProjection = renderer.camera.projectionMatrix.clone();
+        api.inspect(false);
+        assert.ok(renderer.camera.position.equals(interior) && renderer.camera.projectionMatrix.equals(insideProjection),'return starts without a jump');
+        advance(2500); assert.ok(opened.position.y<.01); assert.equal(opened.parent.getObjectByName('service-wall').visible,true);
+        assert.ok(renderer.camera.projectionMatrix.equals(projection),'the original framing returns');
     });
     check('textbox focus eases into its section and oscillates within a partial arc', () => {
         const before = renderer.camera.position.clone(), initialRadius = before.distanceTo(controls.target);
