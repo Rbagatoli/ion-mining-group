@@ -4,12 +4,11 @@
      source line   flare, landfill, curtailed power — energy with no customer
      rise          that energy travelling upward, cooling orange → platinum
 
-   ONE FIELD, EVERYWHERE. Every backdrop on the marketing site is this, at the
-   same density and the same brightness: the home hero, each page header, and
-   the canvas behind each engineering drawing. portal/gas-field.js is the same
-   animation again for the producer sign-in, sized to a viewport instead of to
-   an element. A producer arriving from protonminingco.com sees one substance
-   moving one way on every screen, because it is one piece of code.
+   One field across the marketing site, including dynamically mounted 3D views.
+   Three depths of crisp pixels follow broad rising currents. Warm foreground
+   embers have short stepped trails and a soft glow; distant platinum pixels
+   move more slowly. The top fades away instead of cutting particles off.
+   This keeps the established orange/platinum palette of the producer portal.
 
    WHAT USED TO BE HERE. A third part: a lattice across the top, where hashrate
    crystallised out of the arriving gas, with links knitting between charged
@@ -34,6 +33,17 @@
 (function () {
     'use strict';
 
+    var mounted = new WeakMap(), inks = [];
+    function smooth(value) { value = Math.max(0,Math.min(1,value)); return value*value*(3-2*value); }
+    for (var ink = 0; ink < 96; ink++) {
+        var heat = ink/95, near = heat < .2, from = near ? [247,147,26] : [255,196,107];
+        var to = near ? [255,196,107] : [229,228,226], mix = smooth(near ? heat/.2 : (heat-.2)/.36);
+        inks.push(from.map(function (v,i) { return Math.round(v+(to[i]-v)*mix); }).join(','));
+    }
+    // Progressive 3D views are added after this script's initial document scan.
+    // One controller per canvas makes repeated enhancement safe.
+    window.ProtonField = {mount:mount};
+
     /* One independent field per host. Every piece of state below lives inside
        mount(), so two fields on a page cannot share a particle array or an
        animation frame. */
@@ -41,7 +51,8 @@
         document.querySelectorAll('canvas.anim-field'), mount);
 
     function mount(canvas) {
-    if (!canvas || !canvas.getContext) return;
+    if (!canvas || !canvas.getContext) return null;
+    if (mounted.has(canvas)) return mounted.get(canvas);
 
     /* A page field is fixed to the viewport rather than sized to a host, which
        changes exactly two things: where the source line sits (see build()) and
@@ -63,19 +74,21 @@
     var host = isPage ? canvas : canvas.parentNode;
 
     var ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
 
     var PLAT = '229,228,226';
     var HOT  = '247,147,26';
     var WARM = '255,196,107';
 
     var MAX_DT    = 0.05;   // clamp, so a backgrounded tab cannot teleport the field
+    var FRAME_DT  = 1/30;   // leave rendering time for the interactive 3D models
     var SHIMMER_H = 62;     // heat haze height above the source line
 
     var w = 0, h = 0, sourceY = 0, dpr = 1;
     var particles = [], emitters = [];
     var maxParticles = 140;
-    var raf = null, last = 0, t = 0;
-    var visible = true;
+    var raf = null, last = 0, t = 0, pending = 0;
+    var visible = true, active = true, disposed = false, observer = null;
 
     /* ---- The drawing in front, when there is one ----------------------
 
@@ -107,7 +120,8 @@
     var vbW = 0, vbH = 0, occD = null, occPath = null;
     var canOcclude = !!(occEl && occSvg && typeof Path2D !== 'undefined');
 
-    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var media = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    var reduced = !!(media && media.matches);
 
     function rand(a, b) { return a + Math.random() * (b - a); }
 
@@ -216,22 +230,33 @@
 
         particles = [];
         for (var p = 0; p < maxParticles; p++) particles.push(spawn({}, true));
+        particles.sort(function (a,b) { return a.depth-b.depth; });
     }
 
     function spawn(P, scatter) {
         var em = emitters[(Math.random() * emitters.length) | 0];
-        P.x = em ? em.x + rand(-5, 5) : w / 2;
+        if (P.depth === undefined) {
+            var band = Math.random();
+            P.depth = band < .55 ? rand(.22,.42) : band < .88 ? rand(.5,.74) : rand(.86,1);
+        }
+        P.origin = em ? em.x + rand(-w/emitters.length*.44,w/emitters.length*.44) : w / 2;
         /* Scattered over the WHOLE box on first build, so the field is already
            full rather than filling from the bottom over the first ten seconds.
            This used to start at the lattice line, because nothing above it
            survived to be seen. */
         P.y = scatter ? rand(0, sourceY) : sourceY - rand(0, 6);
-        P.vy = -rand(18, 46);
-        P.drift = rand(0.006, 0.02);
-        P.phase = rand(0, Math.PI * 2);
-        P.amp = rand(3, 11);
-        P.size = Math.random() > 0.72 ? 2 : 1;
+        P.vy = -(12+P.depth*32)*rand(.85,1.15);
+        P.phase = (em ? em.phase : 0)+rand(-.3,.3);
+        P.amp = 9+P.depth*19;
+        P.size = P.depth > .85 ? 3 : P.depth > .48 ? 2 : 1;
+        P.x = flowX(P,P.y,t);
         return P;
+    }
+
+    function flowX(P, y, time) {
+        var climb = Math.max(0,(sourceY-y)/Math.max(1,sourceY));
+        return P.origin + Math.sin(y*.011+time*.32+P.phase)*P.amp*(.25+climb*.75)
+            + Math.sin(y*.024-time*.19+P.phase)*P.amp*.22;
     }
 
     /* ---- Simulation ---------------------------------------------------- */
@@ -242,7 +267,7 @@
         for (var i = 0; i < particles.length; i++) {
             var P = particles[i];
             P.y += P.vy * dt;
-            P.x += Math.sin(P.y * P.drift + P.phase) * P.amp * dt;
+            P.x = flowX(P,P.y,t);
 
             /* Off the top or out the side — recycle. A particle could also be
                absorbed by the lattice once; there is nothing to absorb it now,
@@ -273,12 +298,26 @@
                way up. Same formula as the portal's, deliberately. */
             var climb = (sourceY - Q.y) / Math.max(1, sourceY);
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
-            var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);
-            var a = 0.14 + (1 - climb) * 0.5;
+            var cooling = Math.min(1,climb+(1-Q.depth)*.16);
+            var col = inks[Math.min(95,Math.floor(cooling*95))];
+            var a = (.16+(1-climb)*.58)*(.25+Q.depth*.75)
+                * smooth((1-climb)/.18)*smooth(climb*60)
+                * (.88+.12*Math.sin(t*.75+Q.phase));
+            var x = Math.round(Q.x), y = Math.round(Q.y);
+            if (Q.depth > .85) {
+                // Square halos preserve the pixel language without expensive blur.
+                fill(col,a*.025,x-4,y-4,Q.size+8,Q.size+8);
+                fill(col,a*.055,x-2,y-2,Q.size+4,Q.size+4);
+            }
+            if (Q.depth > .5) for (var tail = 3; tail > 0; tail--) {
+                var ty = Q.y+tail*(2+Q.depth*3);
+                fill(col,a*(.26-tail*.055),Math.round(flowX(Q,ty,t-tail*.09)),Math.round(ty),1,1);
+            }
             /* Whole pixels. A 1px rect at a fractional coordinate is split
                across two device pixels at partial alpha in each, which is a
                grey smudge and not a pixel. */
             fill(col, a, Math.round(Q.x), Math.round(Q.y), Q.size, Q.size);
+            if (Q.size > 1) fill(cooling < .35 ? WARM : PLAT,a*.45,x,y,1,1);
         }
 
         // --- Heat haze above the source ---
@@ -333,28 +372,30 @@
     /* ---- Loop ---------------------------------------------------------- */
 
     function frame(now) {
-        if (document.hidden || !visible) { raf = null; return; }
+        if (document.hidden || !visible || !active || disposed || reduced) { raf = null; return; }
         raf = requestAnimationFrame(frame);
-        var dt = last ? Math.min((now - last) / 1000, MAX_DT) : 0.016;
+        var dt = last ? Math.min((now - last) / 1000, MAX_DT) : 0;
         last = now;
-        step(dt);
+        pending += dt;
+        if (pending + .00001 < FRAME_DT) return;
+        step(pending); pending = 0;
         draw();
     }
 
     function start() {
-        if (raf || reduced || document.hidden || !visible) return;
-        last = 0;
+        if (raf || reduced || document.hidden || !visible || !active || disposed) return;
+        last = 0; pending = 0;
         raf = requestAnimationFrame(frame);
     }
 
     function stop() {
         if (raf) { cancelAnimationFrame(raf); raf = null; }
+        last = 0; pending = 0;
     }
 
     /* ---- Reduced motion: one composed still, never a blank box ---------- */
 
     function still() {
-        for (var i = 0; i < 90; i++) step(1 / 30);
         draw();
     }
 
@@ -375,10 +416,11 @@
     }
 
     var resizeTimer = null;
-    window.addEventListener('resize', function () {
+    function resized() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(rebuildIfResized, 200);
-    });
+    }
+    window.addEventListener('resize', resized);
 
     /* The gate. Two of the four drawings on energy.html are inside a hidden
        fuel pane at any moment, and without this their fields would animate
@@ -390,17 +432,42 @@
        build() first ran measured 0x0 and fell back to its authored size. The
        moment the switch reveals it, it has a real box. */
     if (window.IntersectionObserver) {
-        new IntersectionObserver(function (entries) {
-            visible = entries[0].isIntersecting;
-            if (visible) { rebuildIfResized(); start(); } else stop();
-        }, { threshold: 0 }).observe(host);
+        observer = new IntersectionObserver(function (entries) {
+            if (!entries.length) return;
+            visible = entries[entries.length-1].isIntersecting;
+            if (visible) { rebuildIfResized(); if (reduced && active) still(); start(); } else stop();
+        }, { threshold: 0 });
+        observer.observe(host);
     }
 
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) stop(); else start();
-    });
+    function visibility() { if (document.hidden) stop(); else start(); }
+    function motion(event) {
+        reduced = event.matches; stop();
+        if (active && !disposed) { if (reduced) still(); else start(); }
+    }
+    document.addEventListener('visibilitychange', visibility);
+    if (media && media.addEventListener) media.addEventListener('change',motion);
+
+    var controller = {
+        setActive: function (value) {
+            if (disposed) return;
+            active = !!value;
+            if (active) { rebuildIfResized(); still(); start(); } else stop();
+        },
+        dispose: function () {
+            if (disposed) return;
+            disposed = true; stop(); clearTimeout(resizeTimer);
+            if (observer) observer.disconnect();
+            window.removeEventListener('resize',resized);
+            document.removeEventListener('visibilitychange',visibility);
+            if (media && media.removeEventListener) media.removeEventListener('change',motion);
+            mounted.delete(canvas);
+        }
+    };
+    mounted.set(canvas,controller);
 
     build();
-    if (reduced) still(); else start();
+    still(); start();
+    return controller;
     }
 })();

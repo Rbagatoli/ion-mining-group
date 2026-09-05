@@ -69,14 +69,20 @@ function parse(html) {
     return root;
 }
 function fixture(page, fail = false, options = {}) {
-    const html = fs.readFileSync(__dirname+'/../../site/'+page+'.html','utf8'), document = parse(html), observers = [], scenes = [], imports = [];
+    const html = fs.readFileSync(__dirname+'/../../site/'+page+'.html','utf8'), document = parse(html), observers = [], scenes = [], fields = [], imports = [];
     const moduleURL = html.match(/<script src="\.\/plant-viewer\.js[^>]*data-module-src="([^"]+)"/)?.[1];
     assert.ok(moduleURL,page+' references the shared stamped scene');
     document.currentScript = new Element('script',{'data-module-src':moduleURL}); document.createElement = tag => new Element(tag);
     document.createElementNS = (ns,tag) => new Element(tag);
     document.getElementById = id => document.querySelector('#'+id);
     class Observer { constructor(fn,config = {}) { this.fn = fn; this.config = config; observers.push(this); } observe(el) { this.el = el; } disconnect() {} }
-    const sandbox = {document,console,IntersectionObserver:Observer,addEventListener() {},loadSceneModule:async url => {
+    const fieldMap = new WeakMap();
+    const sandbox = {document,console,IntersectionObserver:Observer,addEventListener() {},
+        ProtonField:{mount(canvas) {
+            if (fieldMap.has(canvas)) return fieldMap.get(canvas);
+            const field = {canvas,setActive(v) { this.active = v; },dispose() { this.disposed = true; }};
+            fields.push(field); fieldMap.set(canvas,field); return field;
+        }},loadSceneModule:async url => {
         imports.push(url); if (options.moduleGate) await options.moduleGate;
         return {mountMineScene:(host,callbacks) => {
             if (fail) throw new Error('WebGL unavailable');
@@ -99,7 +105,7 @@ function fixture(page, fail = false, options = {}) {
     new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(sandbox);
     const source = fs.readFileSync(__dirname+'/../../site/plant-viewer.js','utf8').replace('import(moduleURL)','loadSceneModule(moduleURL)');
     new vm.Script(source).runInContext(sandbox);
-    return {document,observers:observers.filter(o => o.config.rootMargin === '240px'),scenes,imports};
+    return {document,observers:observers.filter(o => o.config.rootMargin === '240px'),scenes,fields,imports};
 }
 const settle = () => new Promise(r => setImmediate(r));
 let passed = 0;
@@ -117,6 +123,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.ok(group.querySelector('.plant-preview').classList.contains('plant-preview--loading'));
         assert.equal(home.scenes[0].host.clientWidth,1280); assert.equal(home.scenes[0].host.clientHeight,470);
         assert.equal(home.scenes[0].active,true);
+        assert.equal(home.fields[0].active,false);
         home.scenes[0].callbacks.onReady();
         assert.ok(!group.querySelector('.plant-preview').classList.contains('plant-preview--loading'));
     });
@@ -135,6 +142,21 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(JSON.stringify(home.scenes[0].calls),JSON.stringify([['zoom',.8],['zoom',1.25]]));
         ref(group,'reset').fire('click');
         assert.equal(ref(group,'mode').textContent,'X-ray view');
+    });
+    check('the restored pixel canvas belongs to the 3D stage and stays below its interactive canvas', () => {
+        const canvas = ref(group,'field');
+        assert.equal(home.fields[0].canvas,canvas); assert.equal(home.fields[0].active,true);
+        assert.equal(canvas.parentElement,ref(group,'stage')); assert.equal(canvas.getAttribute('aria-hidden'),'true');
+        assert.ok(canvas.classList.contains('anim-field--plant'));
+        assert.ok(!canvas.classList.contains('anim-field--dg'),'the new canvas must not inherit the old mobile SVG crop');
+        assert.equal(home.fields.find(f => f.canvas.classList.contains('anim-field--dg')).active,false,'the hidden SVG field must stop');
+        const css = fs.readFileSync(__dirname+'/../../site/plant-viewer.css','utf8');
+        assert.match(css,/\.plant-canvas\s*\{[^}]*z-index:\s*1;/);
+        const globalCSS = fs.readFileSync(__dirname+'/../../site/styles.css','utf8');
+        assert.match(globalCSS,/\.anim-field\s*\{[^}]*pointer-events:\s*none;[^}]*z-index:\s*0;/);
+        const builderField = home.document.querySelector('#mb-stage').querySelector('.anim-field--plant');
+        assert.equal(builderField.getAttribute('aria-hidden'),'true','Build your mine also has a decorative background');
+        assert.match(fs.readFileSync(__dirname+'/../../site/mine-builder.css','utf8'),/\.mb-canvas-host\s*\{[^}]*z-index:\s*1;/);
     });
     check('auto-rotation can be paused and restored through its visible control', () => {
         ref(group,'rotate').fire('click'); assert.equal(home.scenes[0].rotating,false); assert.equal(ref(group,'rotate').textContent,'Auto-rotate off');
@@ -166,9 +188,13 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     });
     check('context loss restores the complete SVG and recovery reuses the same controls', () => {
         home.scenes[0].callbacks.onError(); assert.ok(!group.classList.contains('plant-ready')); assert.equal(home.scenes[0].active,false);
+        assert.equal(home.fields[0].active,false);
+        assert.equal(home.fields.find(f => f.canvas.classList.contains('anim-field--dg')).active,true,'fallback restores the original rising pixels');
         assert.equal(group.querySelector('.plant-preview').hidden,true); assert.ok(group.querySelector('.site-diagram'));
         home.scenes[0].callbacks.onRestore(); assert.ok(!group.classList.contains('plant-ready')); assert.equal(home.scenes[0].active,true);
         home.scenes[0].callbacks.onReady(); assert.ok(group.classList.contains('plant-ready'));
+        assert.equal(home.fields[0].active,true);
+        assert.equal(home.fields.filter(f => f.canvas.classList.contains('anim-field--plant')).length,1);
         assert.equal(group.querySelectorAll('.plant-preview').length,1);
     });
     const hosting = fixture('hosting'); hosting.observers[0].fn([{isIntersecting:true}]); await settle();
@@ -202,6 +228,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     check('a device without WebGL keeps the original diagram and all descriptions', () => {
         const g = unavailable.observers[0].el; assert.ok(!g.classList.contains('plant-ready'));
         assert.ok(g.querySelector('.site-diagram')); assert.equal(g.querySelectorAll('.dg-callout').length,8);
+        assert.equal(unavailable.fields[0].disposed,true);
     });
     // Use the actual scene/controller below. Only GPU drawing, layout dimensions
     // and the observer/frame clock are supplied by this harness.
@@ -213,7 +240,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     function realMount(host,callbacks,document) {
         const record = {host,frames:new Map(),time:0,sequence:0,renders:0}; mounted.push(record);
         class Renderer {
-            constructor() { this.domElement = document.createElement('canvas'); this.shadowMap = {}; record.canvas = this.domElement; }
+            constructor(options) { this.domElement = document.createElement('canvas'); this.shadowMap = {}; record.canvas = this.domElement; record.options = options; }
             setPixelRatio() {} setSize(w,h) { record.size = [w,h]; } dispose() {}
             render(world,camera) { world.updateMatrixWorld(); camera.updateMatrixWorld(); Object.assign(record,{world,camera,renders:record.renders+1}); }
         }
@@ -240,6 +267,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.ok(!g.classList.contains('plant-ready')); assert.deepEqual(first.size,[1280,470]);
         first.intersect([{isIntersecting:false},{isIntersecting:true}]); first.draw();
         assert.ok(g.classList.contains('plant-ready')); assert.equal(first.renders,1);
+        assert.equal(first.options.alpha,true); assert.equal(first.world.background,null,'3D leaves room for the animated backdrop');
         const distance = first.camera.position.distanceTo(first.controls.target);
         assert.equal(first.canvas.fire('wheel',{deltaY:-120}).defaultPrevented,true); first.draw();
         assert.ok(first.camera.position.distanceTo(first.controls.target)<distance);

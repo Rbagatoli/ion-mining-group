@@ -100,8 +100,8 @@ const MUTATIONS = [
       to:   '}, { threshold: 0 });', by: suite },
 
     { file: S + 'hero-anim.js', why: 'the canvas behind each drawing left running while hidden',
-      from: '}, { threshold: 0 }).observe(host);',
-      to:   '}, { threshold: 0 });', by: suite },
+      from: 'observer.observe(host);',
+      to:   '/* background observer intentionally omitted */', by: suite },
 
     // ---- the no-JS fallback ----
     { file: S + 'tools/build-diagram.js', why: 'the no-JS override loses its !important, so the global [hidden] beats it',

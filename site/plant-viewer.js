@@ -17,7 +17,7 @@
         var scope = group.closest('.dg-fuel-pane') || group.parentElement, scale = scope.querySelector('.dg-scale-input');
         var diagrams = wraps.map(function (wrap) { return window[names[wrap.getAttribute('data-scene')]]; });
         var notes = wraps.map(function (wrap) { return wrap.querySelector('.dg-note')?.textContent || ''; });
-        var scene = null, preview = null, loading = false, failed = false, xray = false, rotating = true, current = '', calloutKey = '';
+        var scene = null, field = null, preview = null, loading = false, failed = false, xray = false, rotating = true, current = '', calloutKey = '';
         var xrayStates = {asic:true};
         var refs = {}, tethers = {}, cards = {};
         function state() {
@@ -85,12 +85,24 @@
             refs.cooling.textContent = fuel && s.progress < .5 ? 'Your existing infrastructure' : s.view === 'asic' ? 'Hydro ASIC · no miner fans' : 'Hydro · closed water loop';
             syncControls();
         }
+        function sourceFields(active) {
+            if (!window.ProtonField) return;
+            wraps.forEach(function (wrap) {
+                var canvas = wrap.querySelector('.anim-field--dg');
+                var original = canvas && window.ProtonField.mount(canvas);
+                if (original) original.setActive(active);
+            });
+        }
         function fallback() {
             failed = true; group.classList.remove('plant-ready'); if (preview) preview.hidden = true; if (scene) scene.setActive(false);
+            if (field) field.setActive(false);
+            sourceFields(true);
         }
         function ready() {
             preview.classList.remove('plant-preview--loading');
             group.classList.add('plant-ready');
+            sourceFields(false);
+            if (field) field.setActive(true);
         }
         async function load() {
             if (loading || scene || failed) return; loading = true;
@@ -101,7 +113,9 @@
                 // layout box and paints its first frame. display:none cannot be measured.
                 preview = document.createElement('div'); preview.className = 'plant-preview plant-preview--loading';
                 preview.innerHTML = '<div class="plant-drawing" data-plant="surface">'+
-                    '<div class="plant-stage" data-plant="stage"><div class="plant-canvas" data-plant="host"></div>'+
+                    '<div class="plant-stage" data-plant="stage">'+
+                    '<canvas class="anim-field anim-field--plant" data-plant="field" data-w="1280" data-h="470" aria-hidden="true"></canvas>'+
+                    '<div class="plant-canvas" data-plant="host"></div>'+
                     '<svg class="plant-leaders" data-plant="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>'+
                     '<div class="plant-caption"><span data-plant="cooling"></span><span data-plant="mode"></span></div></div>'+
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
@@ -115,6 +129,7 @@
                     '<button type="button" class="plant-touch" data-plant="touch" aria-pressed="false">Enable touch rotation &amp; pinch zoom</button>'+
                     '<p class="plant-note" data-plant="note" hidden></p>';
                 preview.querySelectorAll('[data-plant]').forEach(function (el) { refs[el.getAttribute('data-plant')] = el; }); group.appendChild(preview);
+                if (window.ProtonField) { field = window.ProtonField.mount(refs.field); if (field) field.setActive(false); }
                 scene = module.mountMineScene(refs.host,{
                     interactionSurface:refs.surface,onProject:project,onPart:highlight,onReady:ready,
                     onXray:function (value) { xray = value; if (current) xrayStates[current] = value; syncControls(); },
@@ -134,7 +149,11 @@
                 });
                 if (scale) { scale.addEventListener('input',update); scale.addEventListener('change',update); }
                 update(); scene.setActive(true);
-            } catch (error) { if (scene) scene.dispose(); scene = null; fallback(); }
+            } catch (error) {
+                if (scene) scene.dispose(); scene = null;
+                if (field) field.dispose(); field = null;
+                fallback();
+            }
             loading = false;
         }
         if ('IntersectionObserver' in window) {

@@ -44,7 +44,7 @@
 .mb-preview { min-width: 0; }
 .mb-stage { height: clamp(350px,32vw,480px); min-width: 0; position: relative; overflow: hidden; background: radial-gradient(ellipse at 55% 42%,#1b1b1c 0%,#0c0c0d 48%,#050505 86%); isolation: isolate; }
 .mb-cooling-note { padding: 12px 18px 0; margin: 0; color: var(--plat-300); font-size: 12px; line-height: 1.6; }
-.mb-canvas-host { position: absolute; inset: 0; z-index: 0; pointer-events: auto; }
+.mb-canvas-host { position: absolute; inset: 0; z-index: 1; pointer-events: auto; }
 .mb-canvas-host canvas { display: block; width: 100%; height: 100%; cursor: grab; pointer-events: auto; }
 .mb-canvas-host canvas:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
 .mb-stage-top, .mb-stage-bottom { position: absolute; z-index: 2; left: 24px; right: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; pointer-events: none; }

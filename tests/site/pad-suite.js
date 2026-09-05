@@ -630,7 +630,7 @@ ok(/isIntersecting[\s\S]{0,200}?else\s*\{[\s\S]{0,60}?setLive\(false\)/.test(eng
    per canvas — four of them on this page. It needs the same gate. */
 const hero = fs.readFileSync(D + 'hero-anim.js', 'utf8');
 const heroCode = hero.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-ok(/new IntersectionObserver\([\s\S]{0,200}?threshold:\s*0\s*\}\)\.observe\(host\)/.test(heroCode),
+ok(/observer = new IntersectionObserver\([\s\S]{0,400}?threshold:\s*0\s*\}\);\s*observer\.observe\(host\)/.test(heroCode),
    'and the field canvas behind each drawing is gated the same way');
 
 /* Four canvases on the page, one per drawing — so two of them are inside a
