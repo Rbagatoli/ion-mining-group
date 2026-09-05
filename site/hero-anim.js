@@ -5,10 +5,9 @@
      rise          that energy travelling upward, cooling orange → platinum
 
    One field across the marketing site, including dynamically mounted 3D views.
-   Three depths of crisp pixels follow broad rising currents. Warm foreground
-   embers have short stepped trails and a soft glow; distant platinum pixels
-   move more slowly. The top fades away instead of cutting particles off.
-   This keeps the established orange/platinum palette of the producer portal.
+   The original small orange-to-platinum pixels keep their established density,
+   brightness and gentle drift. Dynamic mounting keeps the same field visible
+   behind the interactive renderings as well as across the page.
 
    WHAT USED TO BE HERE. A third part: a lattice across the top, where hashrate
    crystallised out of the arriving gas, with links knitting between charged
@@ -33,13 +32,7 @@
 (function () {
     'use strict';
 
-    var mounted = new WeakMap(), inks = [];
-    function smooth(value) { value = Math.max(0,Math.min(1,value)); return value*value*(3-2*value); }
-    for (var ink = 0; ink < 96; ink++) {
-        var heat = ink/95, near = heat < .2, from = near ? [247,147,26] : [255,196,107];
-        var to = near ? [255,196,107] : [229,228,226], mix = smooth(near ? heat/.2 : (heat-.2)/.36);
-        inks.push(from.map(function (v,i) { return Math.round(v+(to[i]-v)*mix); }).join(','));
-    }
+    var mounted = new WeakMap();
     // Progressive 3D views are added after this script's initial document scan.
     // One controller per canvas makes repeated enhancement safe.
     window.ProtonField = {mount:mount};
@@ -81,13 +74,12 @@
     var WARM = '255,196,107';
 
     var MAX_DT    = 0.05;   // clamp, so a backgrounded tab cannot teleport the field
-    var FRAME_DT  = 1/30;   // leave rendering time for the interactive 3D models
     var SHIMMER_H = 62;     // heat haze height above the source line
 
     var w = 0, h = 0, sourceY = 0, dpr = 1;
     var particles = [], emitters = [];
     var maxParticles = 140;
-    var raf = null, last = 0, t = 0, pending = 0;
+    var raf = null, last = 0, t = 0;
     var visible = true, active = true, disposed = false, observer = null;
 
     /* ---- The drawing in front, when there is one ----------------------
@@ -230,33 +222,22 @@
 
         particles = [];
         for (var p = 0; p < maxParticles; p++) particles.push(spawn({}, true));
-        particles.sort(function (a,b) { return a.depth-b.depth; });
     }
 
     function spawn(P, scatter) {
         var em = emitters[(Math.random() * emitters.length) | 0];
-        if (P.depth === undefined) {
-            var band = Math.random();
-            P.depth = band < .55 ? rand(.22,.42) : band < .88 ? rand(.5,.74) : rand(.86,1);
-        }
-        P.origin = em ? em.x + rand(-w/emitters.length*.44,w/emitters.length*.44) : w / 2;
+        P.x = em ? em.x + rand(-5, 5) : w / 2;
         /* Scattered over the WHOLE box on first build, so the field is already
            full rather than filling from the bottom over the first ten seconds.
            This used to start at the lattice line, because nothing above it
            survived to be seen. */
         P.y = scatter ? rand(0, sourceY) : sourceY - rand(0, 6);
-        P.vy = -(12+P.depth*32)*rand(.85,1.15);
-        P.phase = (em ? em.phase : 0)+rand(-.3,.3);
-        P.amp = 9+P.depth*19;
-        P.size = P.depth > .85 ? 3 : P.depth > .48 ? 2 : 1;
-        P.x = flowX(P,P.y,t);
+        P.vy = -rand(18, 46);
+        P.drift = rand(0.006, 0.02);
+        P.phase = rand(0, Math.PI * 2);
+        P.amp = rand(3, 11);
+        P.size = Math.random() > 0.72 ? 2 : 1;
         return P;
-    }
-
-    function flowX(P, y, time) {
-        var climb = Math.max(0,(sourceY-y)/Math.max(1,sourceY));
-        return P.origin + Math.sin(y*.011+time*.32+P.phase)*P.amp*(.25+climb*.75)
-            + Math.sin(y*.024-time*.19+P.phase)*P.amp*.22;
     }
 
     /* ---- Simulation ---------------------------------------------------- */
@@ -267,7 +248,7 @@
         for (var i = 0; i < particles.length; i++) {
             var P = particles[i];
             P.y += P.vy * dt;
-            P.x = flowX(P,P.y,t);
+            P.x += Math.sin(P.y * P.drift + P.phase) * P.amp * dt;
 
             /* Off the top or out the side — recycle. A particle could also be
                absorbed by the lattice once; there is nothing to absorb it now,
@@ -298,26 +279,12 @@
                way up. Same formula as the portal's, deliberately. */
             var climb = (sourceY - Q.y) / Math.max(1, sourceY);
             if (climb < 0) climb = 0; else if (climb > 1) climb = 1;
-            var cooling = Math.min(1,climb+(1-Q.depth)*.16);
-            var col = inks[Math.min(95,Math.floor(cooling*95))];
-            var a = (.16+(1-climb)*.58)*(.25+Q.depth*.75)
-                * smooth((1-climb)/.18)*smooth(climb*60)
-                * (.88+.12*Math.sin(t*.75+Q.phase));
-            var x = Math.round(Q.x), y = Math.round(Q.y);
-            if (Q.depth > .85) {
-                // Square halos preserve the pixel language without expensive blur.
-                fill(col,a*.025,x-4,y-4,Q.size+8,Q.size+8);
-                fill(col,a*.055,x-2,y-2,Q.size+4,Q.size+4);
-            }
-            if (Q.depth > .5) for (var tail = 3; tail > 0; tail--) {
-                var ty = Q.y+tail*(2+Q.depth*3);
-                fill(col,a*(.26-tail*.055),Math.round(flowX(Q,ty,t-tail*.09)),Math.round(ty),1,1);
-            }
+            var col = climb < 0.34 ? HOT : (climb < 0.68 ? WARM : PLAT);
+            var a = 0.14 + (1 - climb) * 0.5;
             /* Whole pixels. A 1px rect at a fractional coordinate is split
                across two device pixels at partial alpha in each, which is a
                grey smudge and not a pixel. */
             fill(col, a, Math.round(Q.x), Math.round(Q.y), Q.size, Q.size);
-            if (Q.size > 1) fill(cooling < .35 ? WARM : PLAT,a*.45,x,y,1,1);
         }
 
         // --- Heat haze above the source ---
@@ -374,23 +341,21 @@
     function frame(now) {
         if (document.hidden || !visible || !active || disposed || reduced) { raf = null; return; }
         raf = requestAnimationFrame(frame);
-        var dt = last ? Math.min((now - last) / 1000, MAX_DT) : 0;
+        var dt = last ? Math.min((now - last) / 1000, MAX_DT) : 0.016;
         last = now;
-        pending += dt;
-        if (pending + .00001 < FRAME_DT) return;
-        step(pending); pending = 0;
+        step(dt);
         draw();
     }
 
     function start() {
         if (raf || reduced || document.hidden || !visible || !active || disposed) return;
-        last = 0; pending = 0;
+        last = 0;
         raf = requestAnimationFrame(frame);
     }
 
     function stop() {
         if (raf) { cancelAnimationFrame(raf); raf = null; }
-        last = 0; pending = 0;
+        last = 0;
     }
 
     /* ---- Reduced motion: one composed still, never a blank box ---------- */

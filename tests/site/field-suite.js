@@ -67,31 +67,28 @@ function tests() {
     const check = (name,fn) => { fn(); passed++; console.log('  ok    '+name); };
     const field = harness(), c = field.initial, api = field.window.ProtonField.mount(c);
     check('a populated field paints immediately and mounting it twice creates one loop', () => {
-        assert.equal(c.ctx.draws,1); assert.ok(c.ctx.rects.length>400);
+        assert.equal(c.ctx.draws,1); assert.ok(c.ctx.rects.length>200);
         assert.equal(field.frames.size,1); assert.equal(field.observers.length,1);
         assert.equal(field.observers[0].host,c.parentNode,'the visibility gate observes the actual panel');
         assert.equal(field.window.ProtonField.mount(c),api);
         assert.equal(field.frames.size,1); assert.equal(field.observers.length,1);
     });
-    check('the three pixel depths rise at different speeds while retaining sharp square heads', () => {
-        const heads = () => c.ctx.rects.filter(r => r.w === r.h && [1,2,3].includes(r.w));
+    check('the original small pixels retain their colors, sizes and rising motion', () => {
+        const heads = () => c.ctx.rects.filter(r => r.w === r.h);
         const before = heads(); field.advance(400); const after = heads();
-        const speed = size => {
-            const old = before.filter(r => r.w === size), next = after.filter(r => r.w === size);
-            assert.ok(old.length>5 && next.length>5);
-            return old.reduce((sum,r,i) => sum+(next[i] && Math.abs(r.y-next[i].y)<30 ? r.y-next[i].y : 0),0)/old.length;
-        };
-        assert.ok(speed(3)>speed(2),'foreground embers rise faster than the middle depth');
-        const larger = after.filter(r => r.w>=2); assert.ok(larger.every(r => Number.isInteger(r.x) && Number.isInteger(r.y)));
+        assert.deepEqual([...new Set(after.map(r => r.w))].sort(),[1,2]);
+        assert.ok(after.every(r => Number.isInteger(r.x) && Number.isInteger(r.y)));
+        const middle = before.filter(r => r.y>30 && r.y<440);
+        assert.ok(middle.filter(r => after.some(next => next.w===r.w && Math.abs(next.x-r.x)<=6 && r.y-next.y>5 && r.y-next.y<21)).length>middle.length*.8);
         const colors = new Set(after.map(r => r.fill.split(',').slice(0,3).join(',')));
-        assert.ok(colors.size>10,'the orange-to-platinum transition is continuous');
+        assert.deepEqual([...colors].sort(),['rgba(229,228,226','rgba(247,147,26','rgba(255,196,107']);
     });
-    check('decoration is capped at 30 frames per second and never resizes its CSS box', () => {
+    check('the original animation follows display frames without resizing its CSS box', () => {
         const before = c.ctx.draws, width = c.width, height = c.height;
         field.advance(1000);
-        assert.ok(c.ctx.draws-before>=28 && c.ctx.draws-before<=31);
+        assert.ok(c.ctx.draws-before>=59 && c.ctx.draws-before<=61);
         assert.equal(c.width,width); assert.equal(c.height,height);
-        assert.ok(c.ctx.rects.length<1500,'a desktop preview has a bounded draw budget');
+        assert.ok(c.ctx.rects.length<500,'a desktop preview has a bounded draw budget');
     });
     check('hidden tabs, offscreen panels and inactive controllers stop completely', () => {
         field.observers[0].fn([{isIntersecting:false}]); assert.equal(field.frames.size,0);
@@ -106,11 +103,11 @@ function tests() {
         field.media.fire('change',{matches:true}); assert.equal(field.frames.size,0);
         const still = JSON.stringify(c.ctx.rects); field.advance(5000); assert.equal(JSON.stringify(c.ctx.rects),still);
         field.media.fire('change',{matches:false}); assert.equal(field.frames.size,1);
-        const quiet = harness({reduced:true}); assert.equal(quiet.frames.size,0); assert.ok(quiet.initial.ctx.rects.length>400);
+        const quiet = harness({reduced:true}); assert.equal(quiet.frames.size,0); assert.ok(quiet.initial.ctx.rects.length>200);
     });
     check('dynamically created backgrounds work independently and release all listeners on disposal', () => {
         const dynamic = field.canvas(700,350), other = field.window.ProtonField.mount(dynamic);
-        assert.ok(dynamic.ctx.rects.length>200); assert.equal(field.frames.size,2);
+        assert.ok(dynamic.ctx.rects.length>90); assert.equal(field.frames.size,2);
         other.dispose(); assert.equal(field.frames.size,1); assert.ok(field.observers[1].disconnected);
         api.dispose(); assert.equal(field.frames.size,0); assert.ok(field.observers[0].disconnected);
         for (const target of [field.window,field.document,field.media]) for (const listeners of target.listeners.values()) assert.equal(listeners.size,0);
@@ -132,7 +129,7 @@ function tests() {
         assert.equal(old.initial.ctx.lastMask.after,old.initial.ctx.rects.length);
     });
     check('large screens stay bounded and a missing 2D context never blocks the page', () => {
-        const large = harness({width:3840,height:2160}); assert.ok(large.initial.ctx.rects.length<6000);
+        const large = harness({width:3840,height:2160}); assert.ok(large.initial.ctx.rects.length<1000);
         const unavailable = harness({noContext:true}); assert.equal(unavailable.frames.size,0);
         assert.equal(unavailable.window.ProtonField.mount(unavailable.initial),null);
     });
