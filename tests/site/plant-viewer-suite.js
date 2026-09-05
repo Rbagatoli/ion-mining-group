@@ -93,8 +93,8 @@ function fixture(page, fail = false, options = {}) {
             const scene = {host,callbacks,calls:[],setConfig(v) { this.config = v; },
                 setProgress(v) { this.progress = v; },energize(v) { this.powered = v; },setActive(v) { this.active = v; },
                 setAnnotations(v) { this.annotations = v; callbacks.onProject(v.map(co => ({id:co.id,x:.5,y:.5,visible:true}))); },
-                setXray(v) { this.xray = v; callbacks.onXray(v); },setAutoRotate(v) { this.rotating = v; callbacks.onRotate(v); },zoom(v) { this.calls.push(['zoom',v]); },
-                reset() { callbacks.onPart(null); },setTouchControl(v) { this.touch = v; },
+                setXray(v) { this.xray = v; callbacks.onXray(v); },zoom(v) { this.calls.push(['zoom',v]); },
+                reset() { callbacks.onPart(null); },
                 highlightPart(v) { callbacks.onPart(v); },focusPart(v) { this.calls.push(['part',v]); callbacks.onPart(v); },dispose() { this.disposed = true; }};
             scenes.push(scene); return scene;
         }};
@@ -131,7 +131,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(group.getAttribute('id'),'mb-our-mine'); assert.equal(group.getAttribute('role'),'tabpanel');
         assert.ok(group.classList.contains('plant-ready')); assert.equal(home.scenes[0].config.view,'site');
         assert.equal(ref(group,'mode').textContent,'Exterior view'); assert.equal(ref(group,'callouts').children.length,8);
-        assert.equal(home.scenes[0].powered,true); assert.equal(ref(group,'rotate').getAttribute('aria-pressed'),'true');
+        assert.equal(home.scenes[0].powered,true);
         assert.equal(home.scenes[0].config.definition.main,require('../../site/scene-site.js'));
         assert.equal(home.scenes[0].callbacks.interactionSurface,ref(group,'surface'));
     });
@@ -158,9 +158,9 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(builderField.getAttribute('aria-hidden'),'true','Build your mine also has a decorative background');
         assert.match(fs.readFileSync(__dirname+'/../../site/mine-builder.css','utf8'),/\.mb-canvas-host\s*\{[^}]*z-index:\s*1;/);
     });
-    check('auto-rotation can be paused and restored through its visible control', () => {
-        ref(group,'rotate').fire('click'); assert.equal(home.scenes[0].rotating,false); assert.equal(ref(group,'rotate').textContent,'Auto-rotate off');
-        ref(group,'rotate').fire('click'); assert.equal(home.scenes[0].rotating,true); assert.equal(ref(group,'rotate').getAttribute('aria-pressed'),'true');
+    check('the view has no interaction gates or automatic rotation toggle', () => {
+        assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
+        assert.match(group.querySelector('.plant-hint').textContent,/Drag to rotate · pinch or scroll to zoom/);
     });
     check('pointing textboxes restore the original wording and two-column positions', () => {
         const original = require('../../site/scene-site.js');
@@ -181,10 +181,6 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         home.scenes[0].callbacks.onProject([{id:'gas',x:.42,y:.67,visible:true}]);
         assert.equal(line.getAttribute('x2'),'420.00'); assert.equal(line.getAttribute('y2'),'670.00'); assert.equal(dot.getAttribute('cx'),'420.00');
         home.scenes[0].callbacks.onProject([{id:'gas',x:NaN,y:0,visible:true}]); assert.equal(line.getAttribute('visibility'),'hidden');
-    });
-    check('touch mode is explicitly enabled and can return to page scrolling', () => {
-        ref(group,'touch').fire('click'); assert.equal(home.scenes[0].touch,true);
-        ref(group,'touch').fire('click'); assert.equal(home.scenes[0].touch,false);
     });
     check('context loss restores the complete SVG and recovery reuses the same controls', () => {
         home.scenes[0].callbacks.onError(); assert.ok(!group.classList.contains('plant-ready')); assert.equal(home.scenes[0].active,false);

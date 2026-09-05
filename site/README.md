@@ -86,11 +86,11 @@ builder's Power down choice survives input edits; empty or invalid builds stop
 operating, and Reset configuration restores the energized default.
 Animation stops offscreen, on hidden tabs, and when the original drawing is
 selected. Views rotate automatically, pause during drag / zoom, and resume after
-three seconds without resetting the chosen angle or zoom. Auto-rotate controls
-can pause or restart this motion. Reduced motion disables idle and operating
-animations by default; an explicit Auto-rotate choice can enable camera motion.
-Touch scrolling works until rotation is explicitly
-enabled, including pinch zoom. The full rendering panel handles scroll-wheel
+three seconds without resetting the chosen angle or zoom. There is no automatic
+rotation toggle. Reduced motion disables idle and operating animations.
+Touch rotation and pinch zoom work immediately on every 3D canvas, including
+Build your mine and its container interiors. The drawing captures these gestures;
+callout cards and the surrounding page still scroll normally. The full rendering panel handles scroll-wheel
 zoom, including events over captions and callout cards. It consumes those events
 at the zoom limits too; scrolling outside the panel still moves the page.
 Ctrl/Cmd-wheel retains browser zoom. A WebGL failure keeps

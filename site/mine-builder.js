@@ -14,7 +14,7 @@
     function btc(value) { return number(value, value >= 100 ? 4 : 6); }
     var active = false, firstOpen = true, scene = null, scenePromise = null;
     var result = null, sceneTimer = null, announceTimer = null, sceneFailed = false;
-    var powered = true, inspecting = false, xray = false, rotating = true;
+    var powered = true, inspecting = false, xray = false;
     var market = { btcPrice: 'example', difficulty: 'example' };
     var revisions = { btcPrice: 0, difficulty: 0 }, requestSequence = 0;
     var chart = $('chart'), original = document.querySelector('#inside .dg-wrap--site');
@@ -90,13 +90,12 @@
         var valid = result && result.valid, populated = valid && result.count > 0;
         var available = scene && !sceneFailed;
         ['energize', 'inspect', 'xray'].forEach(function (id) { $(id).disabled = !available || !populated; });
-        ['zoom-in', 'zoom-out', 'reset-view', 'touch-toggle', 'rotate'].forEach(function (id) { $(id).disabled = !available || !valid; });
+        ['zoom-in', 'zoom-out', 'reset-view'].forEach(function (id) { $(id).disabled = !available || !valid; });
         $('energize').setAttribute('aria-pressed', String(powered && populated));
         $('energize').innerHTML = '<span aria-hidden="true">◉</span> ' + (powered ? 'Power down' : 'Energize mine');
         $('inspect').setAttribute('aria-pressed', String(inspecting));
         $('xray').setAttribute('aria-pressed', String(xray));
         text('xray', xray ? 'X-ray on' : 'X-ray off');
-        $('rotate').setAttribute('aria-pressed', String(rotating)); text('rotate', rotating ? 'Auto-rotate on' : 'Auto-rotate off');
         text('inspect', inspecting ? 'Return to site' : 'Inside a container');
         text('view-label', inspecting ? 'Container view' : xray ? 'X-ray view' : 'Site view');
         text('cooling-note', !valid ? '' : result.settings.cooling === 'hydro' ?
@@ -116,7 +115,6 @@
                 interactionSurface: $('stage'),
                 onInspect: function (value) { inspecting = value; viewControls(); },
                 onXray: function (value) { xray = value; viewControls(); },
-                onRotate: function (value) { rotating = value; viewControls(); },
                 onError: function () {
                     sceneFailed = true; inspecting = false;
                     text('scene-message', '3D is unavailable on this device. Your configured mining estimates remain available below.');
@@ -241,15 +239,9 @@
     $('energize').addEventListener('click', function () { if (!scene) return; powered = !powered; scene.energize(powered); viewControls(); });
     $('inspect').addEventListener('click', function () { if (scene) scene.inspect(!inspecting); });
     $('xray').addEventListener('click', function () { if (scene) scene.setXray(!xray); });
-    $('rotate').addEventListener('click', function () { if (scene) scene.setAutoRotate(!rotating); });
     $('reset-view').addEventListener('click', function () { if (scene) scene.reset(); });
     $('zoom-in').addEventListener('click', function () { if (scene) scene.zoom(0.8); });
     $('zoom-out').addEventListener('click', function () { if (scene) scene.zoom(1.25); });
-    $('touch-toggle').addEventListener('click', function () {
-        var enabled = this.getAttribute('aria-pressed') !== 'true';
-        this.setAttribute('aria-pressed', String(enabled)); text('touch-toggle', enabled ? 'Disable rotation · allow scrolling' : 'Enable rotation');
-        if (scene) scene.setTouchControl(enabled);
-    });
     $('calculator').addEventListener('click', function (event) { if (this.getAttribute('aria-disabled') === 'true') event.preventDefault(); });
     tabs[1].hidden = false;
     syncMode(); render(); noteMarket();

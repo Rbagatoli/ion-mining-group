@@ -162,20 +162,19 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         setTimeout:(fn,ms)=>{scheduled.set(++serial,{fn,ms});return serial;},clearTimeout:id=>scheduled.delete(id),
         loadSceneModule:async()=>({mountMineScene:(host,callbacks)=>{
             scene={host,callbacks,setConfig(v){this.config=v;callbacks.onInspect(false);},setActive(v){this.active=v;},energize(v){this.powered=!!v;},
-                setXray(v){callbacks.onXray(v);},setAutoRotate(v){this.rotating=v;callbacks.onRotate(v);},inspect(v){callbacks.onInspect(v);},
-                reset(){callbacks.onInspect(false);},zoom(v){this.zoomFactor=v;},setTouchControl(){}};return scene;
+                setXray(v){callbacks.onXray(v);},inspect(v){callbacks.onInspect(v);},
+                reset(){callbacks.onInspect(false);},zoom(v){this.zoomFactor=v;}};return scene;
         }})};live.window=live;
     vm.createContext(live);new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8').replace("import(panel.getAttribute('data-module-src'))",'loadSceneModule()')).runInContext(live);
     const renderScene=()=>{for(const[id,t]of[...scheduled])if(t.ms===100){scheduled.delete(id);t.fn();}};
     click('tab-build');await settle();renderScene();
-    check('the builder starts energized with X-ray off and rotation enabled',()=>{
+    check('the builder starts energized with X-ray off and no interaction or rotation toggles',()=>{
         assert.equal(scene.powered,true);assert.equal(el('energize').getAttribute('aria-pressed'),'true');assert.match(el('power-status').textContent,/energized/);
-        assert.equal(el('xray').getAttribute('aria-pressed'),'false');assert.equal(el('rotate').getAttribute('aria-pressed'),'true');
+        assert.equal(el('xray').getAttribute('aria-pressed'),'false');assert.equal(el('rotate'),null);assert.equal(el('touch-toggle'),null);
+        assert.match(document.querySelector('.mb-gesture').textContent,/Drag to rotate · pinch or scroll to zoom/);
         assert.equal(scene.callbacks.interactionSurface,el('stage'));
     });
-    check('builder rotation and X-ray controls dispatch and expose their current state',()=>{
-        click('rotate');assert.equal(scene.rotating,false);assert.equal(el('rotate').getAttribute('aria-pressed'),'false');
-        click('rotate');assert.equal(scene.rotating,true);
+    check('builder X-ray controls dispatch and expose their current state',()=>{
         click('xray');assert.equal(el('xray').getAttribute('aria-pressed'),'true');assert.equal(el('xray').textContent,'X-ray on');
         click('xray');assert.equal(el('xray').getAttribute('aria-pressed'),'false');
     });

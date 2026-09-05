@@ -153,19 +153,19 @@ class Surface {
         assert.equal(wheelZoomFactor({deltaY:NaN}),1);
     });
 
-    let renderer, controls, observer, rafID = 0;
+    let renderer, controls, observer, resizeScene, rafID = 0;
     const frames = new Map(), document = new Surface(), media = new Surface();
     document.hidden = false; media.matches = true;
     const window = {devicePixelRatio:2,matchMedia:() => media};
     class Renderer {
         constructor() { renderer = this; this.domElement = new Surface(); this.shadowMap = {}; }
-        setPixelRatio() {} setSize() {} dispose() { this.disposed = true; }
+        setPixelRatio() {} setSize(w,h) { this.domElement.clientWidth = w; this.domElement.clientHeight = h; } dispose() { this.disposed = true; }
         render(world, camera) { world.updateMatrixWorld(); camera.updateMatrixWorld(); this.world = world; this.camera = camera; }
     }
     class Controls extends OrbitControls { constructor(...args) { super(...args); controls = this; } }
     class Environment extends T.Scene { dispose() {} }
     class PMREM { fromScene() { return {texture:null,dispose() {}}; } dispose() {} }
-    class Resize { observe() {} disconnect() {} }
+    class Resize { constructor(fn) { resizeScene = fn; } observe() {} disconnect() {} }
     class Intersection { constructor(fn) { this.fn = fn; observer = this; } observe() {} disconnect() {} }
     const source = fs.readFileSync(__dirname+'/../../site/mine-builder-scene.js','utf8').replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
     const mount = new Function('THREE','OrbitControls','RoomEnvironment','window','document','ResizeObserver','IntersectionObserver','requestAnimationFrame','cancelAnimationFrame',
@@ -180,6 +180,55 @@ class Surface {
     const events = []; let projected = [];
     const api = mount(host,{interactionSurface:panel,onProject:v => { projected = v; },onInspect:v => events.push(['inspect',v]),onXray:v => events.push(['xray',v]),onError:() => events.push(['error'])});
     api.setConfig(M.estimate({powerMW:1})); api.setActive(true); flush();
+    function touch(type,id,x,y) {
+        return host.canvas.fire(type,{pointerType:'touch',pointerId:id,button:0,buttons:type === 'pointerup' ? 0 : 1,
+            clientX:x,clientY:y,pageX:x,pageY:y+2400,cancelable:true});
+    }
+    function touchGestures(label) {
+        assert.equal(host.canvas.style.touchAction,'none',label+' owns the gesture before it starts');
+        const before = renderer.camera.position.clone(), radius = before.distanceTo(controls.target), eventCount = events.length;
+        assert.ok(!touch('pointerdown',1,150,150).stopped,label+' accepts the first finger without enabling anything');
+        touch('pointermove',1,210,150); flush();
+        const horizontal = renderer.camera.position.clone();
+        assert.ok(horizontal.distanceTo(before)>.01,label+' rotates horizontally');
+        const moveY = controls.getPolarAngle() > (controls.minPolarAngle+controls.maxPolarAngle)/2 ? 180 : 120;
+        touch('pointermove',1,210,moveY); flush();
+        assert.ok(renderer.camera.position.distanceTo(horizontal)>.01,label+' rotates vertically');
+        touch('pointerup',1,210,moveY); flush();
+        assert.ok(Math.abs(renderer.camera.position.distanceTo(controls.target)-radius)<1e-7,label+' drag preserves zoom');
+        touch('pointerdown',1,130,140); touch('pointerdown',2,230,140);
+        touch('pointermove',2,285,140); flush();
+        const close = renderer.camera.position.distanceTo(controls.target);
+        assert.ok(close<radius*.9,label+' spread zooms in');
+        touch('pointermove',2,205,140); flush();
+        const far = renderer.camera.position.distanceTo(controls.target);
+        assert.ok(far>close*1.1,label+' pinch zooms out');
+        touch('pointerup',1,130,140); touch('pointerup',2,205,140); flush();
+        assert.ok(Math.abs(renderer.camera.position.distanceTo(controls.target)-far)<1e-7,label+' release preserves the chosen zoom');
+        assert.equal(events.length,eventCount,label+' gestures do not trigger tap-to-open or X-ray');
+        assert.equal(host.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true);
+        assert.ok(!callout.fire('touchmove',{cancelable:true}).defaultPrevented,'cards still allow page scrolling');
+    }
+    check('Build your mine accepts the first touch and pinch in every cooling mode, including inside a container', () => {
+        host.clientWidth = 390; host.clientHeight = 290; resizeScene(); flush();
+        for (const cooling of ['hydro','air','immersion']) {
+            api.setConfig(M.estimate({powerMW:1,cooling})); flush();
+            touchGestures(cooling+' builder');
+            api.inspect(true); flush(); touchGestures(cooling+' interior');
+            api.reset(); flush(); touchGestures(cooling+' after reset');
+        }
+    });
+    check('Our mine, Your site, the hosting container and ASIC accept touch gestures immediately on phones', () => {
+        for (const view of ['site','landfill','pad','hosting','asic']) {
+            api.setConfig({view,definition:definition(view)}); flush(); touchGestures(view);
+            api.setActive(false); api.setActive(true); flush(); touchGestures(view+' after returning');
+        }
+        touch('pointerdown',1,130,140); touch('pointerdown',2,230,140);
+        touch('pointercancel',1,130,140); touch('pointercancel',2,230,140); flush();
+        touchGestures('after interrupted gesture');
+        host.clientWidth = 1280; host.clientHeight = 470; resizeScene();
+        api.setConfig(M.estimate({powerMW:1})); flush();
+    });
     check('wheel on canvas, labels and panel background zooms exactly once with real OrbitControls', () => {
         for (const surface of [host.canvas,callout,panel]) for (const deltaY of [-120,120]) {
             const before = renderer.camera.position.distanceTo(controls.target);
@@ -289,13 +338,14 @@ class Surface {
         api.focusPart('gen'); advance(2500); assert.equal(renderer.world.getObjectByName('section-highlight'),undefined,'second click returns to site');
         assert.ok(controls.target.distanceTo(new T.Vector3(10.15,0,0))<.02);
     });
-    check('drag and rotation controls preserve the camera and resume smoothly', () => {
+    check('drag pauses automatic rotation and reduced motion stops it without a toggle', () => {
         controls.dispatchEvent({type:'start'}); const held = renderer.camera.position.clone(); advance(4000);
         assert.ok(renderer.camera.position.distanceTo(held)<1e-8,'drag stays in control');
         controls.dispatchEvent({type:'end'}); advance(3500); assert.ok(renderer.camera.position.distanceTo(held)>.5);
-        api.setAutoRotate(false); const paused = renderer.camera.position.clone(); advance(1000); assert.ok(renderer.camera.position.distanceTo(paused)<1e-8);
-        api.setAutoRotate(true); advance(1000); assert.ok(renderer.camera.position.distanceTo(paused)>1);
-        api.setAutoRotate(false); media.fire('change',{matches:true}); flush();
+        media.fire('change',{matches:true}); flush();
+        const paused = renderer.camera.position.clone(); advance(1000); assert.ok(renderer.camera.position.distanceTo(paused)<1e-8);
+        media.fire('change',{matches:false}); advance(1000); assert.ok(renderer.camera.position.distanceTo(paused)>1);
+        media.fire('change',{matches:true}); flush();
     });
     check('ASIC focus and Reset ease the framing together with the camera', () => {
         api.setConfig({view:'asic',definition:definition('asic')}); flush();
@@ -310,10 +360,7 @@ class Surface {
         advance(2500); assert.ok(renderer.camera.projectionMatrix.equals(initial),'original framing is restored exactly');
         media.fire('change',{matches:true}); flush();
     });
-    check('touch is opt-in; inactive and offscreen viewers stop rendering', () => {
-        assert.equal(host.canvas.style.touchAction,'pan-y');
-        assert.equal(host.canvas.fire('pointerdown',{pointerType:'touch',pointerId:1}).stopped,true);
-        api.setTouchControl(true); assert.equal(host.canvas.style.touchAction,'none');
+    check('inactive and offscreen viewers stop rendering', () => {
         api.setActive(false); assert.equal(frames.size,0); assert.ok(!callout.fire('wheel',{deltaY:120}).defaultPrevented);
         api.setActive(true); observer.fn([{isIntersecting:false}]); assert.equal(frames.size,0);
         observer.fn([{isIntersecting:true}]); flush();
@@ -342,7 +389,8 @@ class Surface {
     check('WebGL context loss reports fallback, cancels animation and permits recovery', () => {
         const event = host.canvas.fire('webglcontextlost'); assert.equal(event.defaultPrevented,true);
         assert.deepEqual(events.at(-1),['error']); assert.equal(frames.size,0);
-        host.canvas.fire('webglcontextrestored'); flush(); api.dispose(); assert.equal(renderer.disposed,true); assert.equal(frames.size,0);
+        host.canvas.fire('webglcontextrestored'); flush(); touchGestures('after context recovery');
+        api.dispose(); assert.equal(renderer.disposed,true); assert.equal(frames.size,0);
     });
     console.log('\n  '+passed+' shared 3D scene checks passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

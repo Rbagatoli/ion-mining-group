@@ -1069,7 +1069,7 @@ export function mountMineScene(host, callbacks = {}) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .94;
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
-    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Drag to orbit, scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
+    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Drag to rotate, pinch or scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
     const envTarget = pmrem.fromScene(env,.04); world.environment = envTarget.texture; world.environmentIntensity = 1.1;
@@ -1083,13 +1083,15 @@ export function mountMineScene(host, callbacks = {}) {
     const controls = new OrbitControls(camera,canvas);
     controls.enableDamping = false; controls.enablePan = false; controls.enableZoom = true;
     controls.minPolarAngle = .30; controls.maxPolarAngle = Math.PI*.46;
-    canvas.style.touchAction = 'pan-y';
+    // Gestures on the drawing control the model from the very first touch.
+    // Callout cards and the rest of the page retain normal scrolling.
+    canvas.style.touchAction = 'none';
     const interactionSurface = callbacks.interactionSurface || host;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false, ready = false;
-    let powered = true, powerLevel = 1, selected = -1, touchControl = false, manual = false, xray = false, progress = 1;
+    let powered = true, powerLevel = 1, selected = -1, manual = false, xray = false, progress = 1;
     let highlight = null, focus = null, hoveredPart = null;
-    let autoRotate = !reduced, rotateOverride = null, dragging = false, resumeAt = 0;
+    let autoRotate = !reduced, dragging = false, resumeAt = 0;
     let annotations = [], viewportWidth = 0, viewportHeight = 0;
     let viewOffset = 0, desiredViewOffset = 0;
     let raf = 0, last = 0, elapsed = 0, buildTime = 0, key = '', transitioning = false;
@@ -1328,7 +1330,6 @@ export function mountMineScene(host, callbacks = {}) {
         zoom(wheelZoomFactor(event,interactionSurface.clientHeight || host.clientHeight));
     }
     function down(event) {
-        if (event.pointerType === 'touch' && !touchControl) { event.stopImmediatePropagation(); return; }
         contacts.add(event.pointerId);
         if (pointer) pointer.multi = true;
         else pointer = {x:event.clientX,y:event.clientY,id:event.pointerId,multi:contacts.size>1};
@@ -1371,11 +1372,17 @@ export function mountMineScene(host, callbacks = {}) {
         camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical)); controls.update(); pauseOrbit(); wake();
     }
     function visibility() { if (document.hidden) stop(); else wake(); }
-    function motion(event) { reduced = event.matches; if (rotateOverride === null) { autoRotate = !reduced; callbacks.onRotate?.(autoRotate); } wake(); }
+    function motion(event) { reduced = event.matches; autoRotate = !reduced; wake(); }
+    function touchmove(event) {
+        // Keep the gesture with the canvas on mobile browsers that also emit
+        // native touch events alongside OrbitControls' pointer events.
+        if (active && yard && event.cancelable) event.preventDefault();
+    }
     function contextLost(event) { event.preventDefault(); lost = true; stop(); callbacks.onError?.(); }
     function contextRestored() { lost = false; ready = false; callbacks.onRestore?.(); wake(); }
     interactionSurface.addEventListener('wheel',wheel,{passive:false,capture:true});
     canvas.addEventListener('pointerdown',down,true); canvas.addEventListener('pointerup',up);
+    canvas.addEventListener('touchmove',touchmove,{passive:false});
     canvas.addEventListener('pointercancel',event => { contacts.delete(event.pointerId); pointer = null; });
     canvas.addEventListener('keydown',keydown); canvas.addEventListener('webglcontextlost',contextLost);
     canvas.addEventListener('webglcontextrestored',contextRestored); document.addEventListener('visibilitychange',visibility);
@@ -1389,18 +1396,16 @@ export function mountMineScene(host, callbacks = {}) {
         if (visible) { resize(); wake(); } else stop();
     },{threshold:0}); observer.observe(host);
     resize();
-    callbacks.onRotate?.(autoRotate);
     return {
         setConfig, inspect, zoom, reset, setXray, setProgress, focusPart, highlightPart,
-        setAutoRotate(value) { autoRotate = !!value; rotateOverride = autoRotate; callbacks.onRotate?.(autoRotate); wake(); },
         setAnnotations(value) { annotations = value || []; updateCallouts(); wake(); },
         energize(value) { powered = !!value; wake(); },
-        setTouchControl(value) { touchControl = !!value; canvas.style.touchAction = touchControl ? 'none' : 'pan-y'; },
         setActive(value) { active = !!value; if (active) { resize(); wake(); } else stop(); },
         dispose() {
             disposed = true; stop(); resizeObserver.disconnect(); observer.disconnect(); controls.dispose();
             media.removeEventListener('change',motion); document.removeEventListener('visibilitychange',visibility);
             interactionSurface.removeEventListener('wheel',wheel,true);
+            canvas.removeEventListener('touchmove',touchmove);
             clearHighlight(); disposeYard(yard); envTarget.dispose(); renderer.dispose(); canvas.remove();
         }
     };

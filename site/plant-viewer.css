@@ -1,6 +1,7 @@
 /* Original composition: a black field, platinum models and two callout columns. */
 .dg-views { position: relative; }
-.dg-wrap.plant-ready { padding: 0; aspect-ratio: auto; overflow: hidden; background: #050505; border-bottom: 1px solid var(--line); }
+/* The enhanced view owns its layout, including the mobile callout grid. */
+.dg-wrap.plant-ready { display: block; padding: 0; aspect-ratio: auto; overflow: hidden; background: #050505; border-bottom: 1px solid var(--line); }
 .dg-wrap.plant-ready::before { display: none; }
 .dg-wrap.plant-ready > :not(.plant-preview), .dg-views.plant-ready > .dg-wrap { display: none !important; }
 .dg-views.plant-ready { display: block; border: 1px solid var(--line); background: #050505; }
@@ -12,7 +13,7 @@
 .plant-stage { position: relative; aspect-ratio: 1280 / 470; overflow: hidden; isolation: isolate;
     background: radial-gradient(ellipse at 50% 36%,rgba(229,228,226,.045),transparent 65%),#050505; }
 .plant-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: auto; }
-.plant-canvas canvas { display: block; width: 100%; height: 100%; pointer-events: auto; cursor: grab; touch-action: pan-y; outline-offset: -3px; }
+.plant-canvas canvas { display: block; width: 100%; height: 100%; pointer-events: auto; cursor: grab; touch-action: none; outline-offset: -3px; }
 .plant-canvas canvas:active { cursor: grabbing; }
 .plant-canvas canvas:focus-visible { outline: 2px solid var(--btc-300); }
 .plant-leaders { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
@@ -34,10 +35,10 @@
     gap: 10px; pointer-events: none; color: var(--plat-500); font: 9px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .plant-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; padding: 0 14px 14px; }
 .plant-hint { margin: 0 auto 0 0; color: var(--plat-500); font: 10px/1.6 var(--mono); }
-.plant-toolbar button, .plant-touch { border: 1px solid var(--line-mid); border-radius: 0; background: rgba(0,0,0,.6);
+.plant-toolbar button { border: 1px solid var(--line-mid); border-radius: 0; background: rgba(0,0,0,.6);
     min-height: 36px; padding: 7px 11px; color: var(--plat-300); font: 10px/1.5 var(--mono); cursor: pointer; }
-.plant-toolbar button[aria-pressed="true"], .plant-touch[aria-pressed="true"] { color: var(--btc-300); border-color: var(--line-btc); }
-.plant-toolbar button:hover:not(:disabled), .plant-touch:hover { border-color: var(--btc-300); color: var(--btc-300); }
+.plant-toolbar button[aria-pressed="true"] { color: var(--btc-300); border-color: var(--line-btc); }
+.plant-toolbar button:hover:not(:disabled) { border-color: var(--btc-300); color: var(--btc-300); }
 .plant-toolbar button:disabled { opacity: .32; cursor: default; }
 .plant-toolbar [data-plant="xray"] {
     min-height: 48px; min-width: 148px; padding: 12px 23px; color: #241304; font-size: 12px; font-weight: 700; letter-spacing: .06em;
@@ -48,9 +49,7 @@
 .plant-toolbar [data-plant="xray"][aria-pressed="true"] { color: #201000; border-color: #ffdc9e; box-shadow: inset 0 1px 0 #ffe2b3,0 0 0 2px rgba(247,147,26,.24),0 3px 20px rgba(247,147,26,.25); }
 .plant-toolbar [data-plant="xray"]:hover:not(:disabled) { color: #201000; border-color: #ffe0ad; filter: brightness(1.1); }
 .plant-preview button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
-.plant-touch { display: none; margin: 0 14px 14px; }
 .plant-note { margin: 0; padding: 0 16px 16px; color: var(--plat-400); font: 10px/1.7 var(--mono); }
-@media (any-pointer: coarse) { .plant-touch { display: inline-block; } }
 @media (max-width: 900px) {
     .plant-preview { display: flex; flex-direction: column; }
     .plant-drawing { display: contents; }
@@ -60,7 +59,6 @@
     .plant-toolbar { order: 1; justify-content: flex-start; padding-top: 6px; }
     .plant-toolbar button { min-height: 44px; }
     .plant-hint { flex-basis: 100%; margin-bottom: 6px; }
-    .plant-touch { order: 2; align-self: flex-start; }
     .plant-callouts { position: static; order: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 16px; }
     .plant-callout { position: static; transform: none; width: auto; text-align: left; min-height: 84px; }
     .plant-c-title { font-size: 10px; }
