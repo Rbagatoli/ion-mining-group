@@ -258,7 +258,8 @@
     var layers = scene.layers || LAYERS;
     var optimized = !!scene.optimize;
     var motion = scene.idleMotion;
-    var compact = false, camera = null, cachedFrame = null, offset = null, revision = 0;
+    var compact = false, camera = null, cachedFrame = null, revision = 0;
+    var FOCUS_ARC = 10 * Math.PI / 180, FOCUS_PERIOD = 28000;
 
     function setCompact(value) { compact = !!value; }
     function detailLevel() { return compact && zoom <= 1.35 ? 'compact' : 'full'; }
@@ -278,18 +279,19 @@
 
     // Mutable view state. Kept at module level rather than threaded through
     // forty call sites; this is single threaded and one frame builds at a time.
-    var pitch = BASE_PITCH, zoom = 1, target = null, screen = null;
+    var pitch = BASE_PITCH, zoom = 1, target = null, screen = null, lens = 1;
 
     function setView(v) {
         if (v.pitch !== undefined) pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, v.pitch));
         if (v.zoom  !== undefined) zoom  = Math.max(ZOOM_MIN,  Math.min(ZOOM_MAX,  v.zoom));
         if (v.target !== undefined) target = v.target ? v.target.slice() : null;
         if (v.screen !== undefined) screen = v.screen ? v.screen.slice() : null;
-        offset = null; revision++;
+        if (v.lens !== undefined) lens = Math.max(1, Math.min(2, v.lens));
+        revision++;
     }
-    function getView() { return { pitch: pitch, zoom: zoom,
+    function getView() { return { pitch: pitch, zoom: zoom, lens: lens,
         target: target ? target.slice() : null, screen: screen ? screen.slice() : null }; }
-    function resetView() { setView({ pitch: BASE_PITCH, zoom: 1, target: null, screen: null }); }
+    function resetView() { setView({ pitch: BASE_PITCH, zoom: 1, target: null, screen: null, lens: 1 }); }
 
 
     var V = scene.view;
@@ -309,7 +311,17 @@
         return -(p[0] + SHIFT_X) * Math.sin(a) + p[2] * Math.cos(a);
     }
 
-    function rawProject(p, yaw) {
+    function rawProject(p, yaw, pivot, viewLens) {
+        /* Translate in MODEL space before rotating or applying perspective.
+           Moving an already projected part to the screen centre left its depth
+           orbiting the site origin, making outer equipment swell and shrink. */
+        var px = pivot ? p[0] - pivot[0] : p[0] + SHIFT_X;
+        var py = pivot ? p[1] - pivot[1] : p[1];
+        var pz = pivot ? p[2] - pivot[2] : p[2];
+        /* Back the focus camera away with a longer lens at the same subject
+           scale. Far parts of the site then stay in front of the camera even
+           during a full manual orbit around equipment on the outer edge. */
+        var fov = FOV * (viewLens === undefined ? lens : viewLens);
         if (optimized) {
             if (!camera || camera.yaw !== yaw || camera.pitch !== pitch || camera.zoom !== zoom) {
                 var angle = yaw + BASE_YAW;
@@ -317,38 +329,33 @@
                     cy: Math.cos(angle), sy: Math.sin(angle),
                     cp: Math.cos(pitch), sp: Math.sin(pitch), scale: BASE_SCALE * zoom };
             }
-            var C = camera, px0 = p[0] + SHIFT_X;
-            var xx = px0 * C.cy + p[2] * C.sy;
-            var zz = -px0 * C.sy + p[2] * C.cy;
-            var yy = p[1] * C.cp - zz * C.sp;
-            var depth = p[1] * C.sp + zz * C.cp;
-            var perspective = FOV / (FOV - depth * C.scale);
+            var C = camera;
+            var xx = px * C.cy + pz * C.sy;
+            var zz = -px * C.sy + pz * C.cy;
+            var yy = py * C.cp - zz * C.sp;
+            var depth = py * C.sp + zz * C.cp;
+            var perspective = fov / (fov - depth * C.scale);
             return [ORIGIN.x + xx * C.scale * perspective,
                     ORIGIN.y - yy * C.scale * perspective];
         }
         var a = yaw + BASE_YAW;
         var cy = Math.cos(a), sy = Math.sin(a);
-        var px = p[0] + SHIFT_X;
-        var x = px * cy + p[2] * sy;
-        var z = -px * sy + p[2] * cy;
+        var x = px * cy + pz * sy;
+        var z = -px * sy + pz * cy;
         var cp = Math.cos(pitch), sp = Math.sin(pitch);
-        var y2 = p[1] * cp - z * sp;
-        var z2 = p[1] * sp + z * cp;
+        var y2 = py * cp - z * sp;
+        var z2 = py * sp + z * cp;
         var s = BASE_SCALE * zoom;
         // +Z toward the viewer: larger z2 shrinks the denominator, so the point
         // scales up. The scene is authored to that convention throughout.
-        var k = FOV / (FOV - z2 * s);
+        var k = fov / (fov - z2 * s);
         return [ORIGIN.x + x * s * k, ORIGIN.y - y2 * s * k];
     }
 
     function project(p, yaw) {
-        var q = rawProject(p, yaw);
-        if (!target) return q;  // Preserve the original overview paths exactly.
-        if (!offset || offset.yaw !== yaw) {
-            var at = rawProject(target, yaw), centre = screen || [ORIGIN.x, ORIGIN.y];
-            offset = { yaw: yaw, x: centre[0] - at[0], y: centre[1] - at[1] };
-        }
-        return [q[0] + offset.x, q[1] + offset.y];
+        var q = rawProject(p, yaw, target);
+        if (!target || !screen) return q;  // Preserve the original overview paths exactly.
+        return [q[0] + screen[0] - ORIGIN.x, q[1] + screen[1] - ORIGIN.y];
     }
 
     function focusBoxes(id) { return (scene.focusBoxes || regionBoxes)(id); }
@@ -368,17 +375,21 @@
         var box = windowBox || { left: 270, right: VB.w - 270, top: 32, bottom: VB.h - 42 };
         var halfW = (box.right - box.left) * 0.47, halfH = (box.bottom - box.top) * 0.47;
         var savedZoom = zoom, low = ZOOM_MIN, high = ZOOM_MAX;
+        var angles = [-1, -0.5, 0, 0.5, 1].map(function (n) { return yaw + n * FOCUS_ARC; });
         for (var step = 0; step < 14; step++) {
             zoom = (low + high) / 2;
-            var centre = rawProject(aim, yaw);
-            var fits = pts.every(function (p) {
-                var q = rawProject(p, yaw);
-                return Math.abs(q[0] - centre[0]) <= halfW && Math.abs(q[1] - centre[1]) <= halfH;
+            /* Reserve room for the entire gentle sweep, including on phones.
+               This fit runs on selection/resize, never on animation frames. */
+            var fits = angles.every(function (angle) {
+                return pts.every(function (p) {
+                    var q = rawProject(p, angle, aim, 2);
+                    return Math.abs(q[0] - ORIGIN.x) <= halfW && Math.abs(q[1] - ORIGIN.y) <= halfH;
+                });
             });
             if (fits) low = zoom; else high = zoom;
         }
         zoom = savedZoom; camera = null;
-        return { pitch: pitch, zoom: low, target: aim,
+        return { pitch: pitch, zoom: low, lens: 2, target: aim,
             screen: [(box.left + box.right) / 2, (box.top + box.bottom) / 2] };
     }
 
@@ -389,6 +400,7 @@
         var a = from.target || [-SHIFT_X, 0, 0], b = to.target || [-SHIFT_X, 0, 0];
         var c = from.screen || [ORIGIN.x, ORIGIN.y], d = to.screen || [ORIGIN.x, ORIGIN.y];
         return { pitch: mix(from.pitch, to.pitch), zoom: mix(from.zoom, to.zoom),
+            lens: mix(from.lens || 1, to.lens || 1),
             target: a.map(function (v, i) { return mix(v, b[i]); }),
             screen: c.map(function (v, i) { return mix(v, d[i]); }) };
     }
@@ -741,7 +753,8 @@
             var raf = null, t0 = null, last = 0, visible = true;
             var yaw = 0, hover = null, idle = true;
             var drag = null, resumeTimer = null;
-            var selected = null, transition = null, focusRaf = null, resizeRaf = null, overview = null;
+            var selected = null, transition = null, focusRaf = null, resizeRaf = null;
+            var focusAuto = false, focusAnchor = 0, focusElapsed = 0, focusLast = null;
 
             /* How long after the last interaction the turn picks itself up
                again. Long enough not to fight someone still reading it. */
@@ -763,8 +776,38 @@
             }
             function settleTransition() {
                 if (!transition) return;
-                var end = transition.to;
-                cancelTransition(); setView(end);
+                var end = transition;
+                cancelTransition(); setView(end.to); yaw = end.endYaw;
+                if (end.kind === 'focus') resumeInspection();
+                else {
+                    idle = true; t0 = null;
+                    idleAnchor = yaw; idleElapsed = 0; idleLast = null;
+                    push(); start();
+                }
+            }
+            function animateView(destination, destinationYaw, kind) {
+                cancelTransition(); stop(); idle = false; focusAuto = false;
+                var turn = destinationYaw - yaw;
+                transition = { from: getView(), to: destination, fromYaw: yaw,
+                    toYaw: yaw + Math.atan2(Math.sin(turn), Math.cos(turn)),
+                    endYaw: destinationYaw, kind: kind, start: null };
+                if (reduced || document.hidden || !visible) { settleTransition(); paint(); return; }
+                function advance(now) {
+                    focusRaf = null;
+                    if (!transition) return;
+                    if (document.hidden || !visible) { settleTransition(); return; }
+                    if (transition.start === null) transition.start = now;
+                    var amount = Math.min(1, (now - transition.start) / 600);
+                    if (amount === 1) settleTransition();
+                    else {
+                        setView(interpolateView(transition.from, transition.to, amount));
+                        var eased = amount * amount * (3 - 2 * amount);
+                        yaw = transition.fromYaw + (transition.toYaw - transition.fromYaw) * eased;
+                        focusRaf = requestAnimationFrame(advance);
+                    }
+                    paintNow();
+                }
+                focusRaf = requestAnimationFrame(advance);
             }
             function selectRegion(id) {
                 selected = id;
@@ -792,31 +835,21 @@
                     /* Bring the picture back before the camera moves: cards at
                        the bottom of a phone's list can be a screen below it. */
                     window.scrollTo({ top: Math.max(0, window.scrollY + r.top - top), behavior: 'instant' });
+                    /* The scroll is synchronous; IntersectionObserver reports
+                       the new visibility later. Keep the revealed zoom animated. */
+                    visible = true;
                 }
             }
             function focusRegion(id) {
+                if (selected === id) { doReset(); return; }
                 var destination = focusView(id, yaw, focusWindow());
                 if (!destination) return;
-                if (!selected) overview = { view: getView(), yaw: yaw };
                 goManual();
                 selectRegion(id);
                 if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
                 revealDrawing();
+                animateView(destination, yaw, 'focus');
                 push();  // Pause linked views; close-up framing belongs to this instance.
-                if (reduced) { setView(destination); paint(); return; }
-                transition = { from: getView(), to: destination, start: null };
-                function advance(now) {
-                    focusRaf = null;
-                    if (!transition) return;
-                    if (document.hidden) { settleTransition(); return; }
-                    if (transition.start === null) transition.start = now;
-                    var amount = Math.min(1, (now - transition.start) / 600);
-                    setView(amount === 1 ? transition.to : interpolateView(transition.from, transition.to, amount));
-                    paintNow();
-                    if (amount < 1) focusRaf = requestAnimationFrame(advance);
-                    else transition = null;
-                }
-                focusRaf = requestAnimationFrame(advance);
             }
 
             function put(el, key, value) {
@@ -893,11 +926,30 @@
                 }
             }
 
-            /* --- Idle sweep. Stops for good on first interaction; the reset
-                   control brings it back. --- */
+            /* Inspection rotates around its own target, with a slow bounded arc.
+               Manual input pauses it; resuming eases in from the dragged angle. */
+            function resumeInspection() {
+                if (!selected || transition) return;
+                if (drag || pending || pinch) { scheduleResume(); return; }
+                focusAuto = true; focusAnchor = yaw; focusElapsed = 0; focusLast = null;
+                start();
+            }
             function tick(now) {
-                if (document.hidden || !visible || !idle) { raf = null; return; }
+                if (document.hidden || !visible || (selected ? !focusAuto : !idle)) { raf = null; return; }
                 raf = requestAnimationFrame(tick);
+                if (selected) {
+                    if (focusLast !== null) focusElapsed += Math.min(now - focusLast, 100);
+                    focusLast = now;
+                    var focusInterval = 1000 / (mobile ? 20 : 24);
+                    var focusDelta = last ? now - last : focusInterval;
+                    if (focusDelta < focusInterval) return;
+                    last = now - focusDelta % focusInterval;
+                    var ramp = Math.min(1, focusElapsed / 1200);
+                    ramp = ramp * ramp * (3 - 2 * ramp);
+                    yaw = focusAnchor + Math.sin(focusElapsed / FOCUS_PERIOD * Math.PI * 2) * FOCUS_ARC * ramp;
+                    paintNow();  // A close-up never drives its comparison peer.
+                    return;
+                }
                 if (motion) {
                     if (idleLast !== null) idleElapsed += Math.min(now - idleLast, 100);
                     idleLast = now;
@@ -926,18 +978,22 @@
                 push();
             }
             function start() {
-                if (raf || reduced || selected || !idle || document.hidden || !visible) return;
-                if (motion && (mobile || hover)) return;
-                if (!isDriver()) return;   // followers are painted by the driver
+                if (raf || reduced || transition || document.hidden || !visible) return;
+                if (selected) { if (!focusAuto) return; }
+                else {
+                    if (!idle || (motion && (mobile || hover))) return;
+                    if (!isDriver()) return;   // followers are painted by the driver
+                }
                 last = 0; raf = requestAnimationFrame(tick);
             }
             function stop() {
                 if (raf) { cancelAnimationFrame(raf); raf = null; }
-                idleLast = null;
+                idleLast = null; focusLast = null;
             }
 
             function goIdle() {
-                if (idle || selected || (link && link.focusOwner)) return;
+                if (selected) { resumeInspection(); return; }
+                if (idle || transition || (link && link.focusOwner)) return;
                 if (motion && (drag || pending || pinch)) { scheduleResume(); return; }
                 idle = true;
                 t0 = null;      // re-anchored on the next tick, from the live yaw
@@ -947,16 +1003,15 @@
             }
             function scheduleResume() {
                 if (resumeTimer) clearTimeout(resumeTimer);
-                if (selected) { resumeTimer = null; return; }
-                if (motion && (mobile || reduced || hover)) { resumeTimer = null; return; }
+                if (reduced || (!selected && motion && (mobile || hover))) { resumeTimer = null; return; }
                 resumeTimer = setTimeout(function () {
                     resumeTimer = null;
                     goIdle();
-                }, RESUME_MS);
+                }, selected ? 2500 : RESUME_MS);
             }
             function goManual() {
                 cancelTransition();
-                if (idle) { idle = false; stop(); }
+                idle = false; focusAuto = false; stop();
                 // Every interaction pushes the restart back out again.
                 scheduleResume();
             }
@@ -971,7 +1026,7 @@
             function push() {
                 if (!link || applying) return;
                 var v = getView();
-                link.focusOwner = selected ? adopt : null;
+                link.focusOwner = selected || transition ? adopt : null;
                 link.yaw = yaw; link.pitch = v.pitch; link.zoom = v.zoom;
                 link.idle = idle; link.t0 = t0;
                 for (var i = 0; i < link.subs.length; i++) {
@@ -980,15 +1035,14 @@
             }
             function adopt() {
                 applying = true;
-                cancelTransition();
+                cancelTransition(); stop(); focusAuto = false;
                 if (link.focusOwner && resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
-                if (selected) {
-                    if (overview) { setView(overview.view); yaw = overview.yaw; }
-                    overview = null; selectRegion(null);
+                if (selected || getView().target) {
+                    resetView(); yaw = 0; selectRegion(null);
                 }
                 if (!link.focusOwner) {
                     yaw = link.yaw;
-                    if (link.pitch !== null) setView({ pitch: link.pitch, zoom: link.zoom, target: null, screen: null });
+                    if (link.pitch !== null) setView({ pitch: link.pitch, zoom: link.zoom, target: null, screen: null, lens: 1 });
                 }
                 t0 = link.t0;
                 if (link.idle !== idle) {
@@ -1114,6 +1168,7 @@
                    acknowledges the touch before the finger has moved. */
                 if (!inDrawing(e.target)) return;
                 setLive(true);
+                if (selected) goManual();  // Pause inspection from the first touch.
                 pending = { x: e.clientX, y: e.clientY, id: e.pointerId };
             });
 
@@ -1171,7 +1226,7 @@
                     pending = null;
                 }
                 endDrag(e);
-                if (motion) scheduleResume();
+                if (motion || selected) scheduleResume();
             }
             /* THE GUARANTEE, and it does not depend on touch-action at all.
              *
@@ -1272,9 +1327,8 @@
                 b.addEventListener('focus', function () { setHover(c.id); });
                 b.addEventListener('blur', function () { setHover(null); });
 
-                /* Activation selects a stable close-up; repeated taps reframe
-                   the same target instead of accumulating zoom or toggling off
-                   after the synthetic hover events generated by a touch. */
+                /* A second activation returns to the overview. Only click owns
+                   selection, so touch-generated hover never toggles it twice. */
                 b.addEventListener('click', function () { focusRegion(c.id); });
                 /* Also support cached markup from before callouts were buttons. */
                 if (b.tagName !== 'BUTTON') {
@@ -1285,8 +1339,8 @@
                     });
                 }
             });
-            /* An empty area dismisses transient hover. An inspected part stays
-               selected until another callout or Reset is activated. */
+            /* Empty space within the drawing only dismisses transient hover;
+               dragging must not accidentally dismiss the selected equipment. */
             svg.addEventListener('click', function (e) {
                 if (drag) return;
                 var id = e.target && e.target.getAttribute &&
@@ -1312,11 +1366,12 @@
 
             /* --- Controls --- */
             function doReset() {
-                cancelTransition(); overview = null; selectRegion(null);
+                cancelTransition(); stop(); focusAuto = false; idle = false;
+                selectRegion(null);
                 if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
-                if (motion) { idleAnchor = 0; idleElapsed = 0; idleLast = null; }
-                resetView(); yaw = 0; t0 = null; idle = true; setHover(null);
-                paint(); push(); start();
+                endDrag(); pending = null; pinch = null;
+                animateView({ pitch: BASE_PITCH, zoom: 1, target: null, screen: null, lens: 1 }, 0, 'overview');
+                push();
             }
             var ctl = {
                 'dg-zoom-in':  function () { goManual(); setView({ zoom: getView().zoom * 1.15 }); paint(); push(); },
@@ -1330,14 +1385,19 @@
             wrap.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape' && !inDrawing(e.target)) { e.preventDefault(); doReset(); }
             });
+            /* Capture clicks even when navigation or another widget stops them.
+               The drawing, its controls and its callouts form one interaction. */
+            document.addEventListener('click', function (e) {
+                if (selected && wrap.contains && !wrap.contains(e.target)) doReset();
+            }, true);
 
             if (window.addEventListener) window.addEventListener('resize', function () {
                 if (!selected || resizeRaf !== null) return;
                 resizeRaf = requestAnimationFrame(function () {
                     resizeRaf = null;
                     if (!selected) return;
-                    cancelTransition();
-                    setView(focusView(selected, yaw, focusWindow())); paint();
+                    cancelTransition(); stop();
+                    setView(focusView(selected, yaw, focusWindow())); paint(); resumeInspection();
                 });
             });
 
@@ -1356,7 +1416,7 @@
                     // Coming back from a hidden tab must not fast-forward the
                     // turn by however long the tab was away.
                     if (idle) t0 = null;
-                    if (motion && !idle) scheduleResume();
+                    if ((motion || selected) && !idle && !focusAuto) scheduleResume();
                     if (selected) paint();
                     start();
                 }
@@ -1372,7 +1432,8 @@
                 if (selected) { cancelTransition(); setView(focusView(selected, yaw, focusWindow())); }
                 if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
                 paint();
-                if (idle) start();
+                if (selected) resumeInspection();
+                else if (idle) start();
             };
             [mobileQuery, reducedQuery].forEach(function (query) {
                 if (!query) return;
