@@ -2819,10 +2819,12 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 /* The crossfade is by position, not by view name. It used to be keyed to
    --cont and --asic, which meant a third pair of views anywhere on the site
    would render both halves at full opacity on top of each other. The callouts
-   and controls of each view live inside its own wrapper, so the two wrappers
-   really are the first and last children here. */
+   and controls of each view live inside its own wrapper; those source views
+   remain the first two children when the enhanced canvas is appended. */
 .dg-views > .dg-wrap:first-child { opacity: calc(1 - var(--d, 0)); }
-.dg-views > .dg-wrap:last-child  { opacity: var(--d, 0); }
+/* The enhanced canvas is appended after the two source views. Keep the after
+   view fading correctly while it loads, and if WebGL needs the SVG fallback. */
+.dg-views > .dg-wrap:nth-child(2) { opacity: var(--d, 0); }
 
 /* The slight push-in as the hosting slider travels is deliberately NOT
    generalised. It belongs to a slider that changes subject — a container, then

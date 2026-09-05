@@ -697,7 +697,7 @@ ok(iGeo >= 0 && iGeo < order.indexOf('scene-pad-now.js') &&
 
 /* The crossfade is by position now, so a third pair works without new CSS. */
 ok(css.indexOf('.dg-views > .dg-wrap:first-child') >= 0 &&
-   css.indexOf('.dg-views > .dg-wrap:last-child') >= 0,
+   css.indexOf('.dg-views > .dg-wrap:nth-child(2)') >= 0,
    'the crossfade is keyed by position, not by view name');
 ok(css.indexOf('.dg-wrap--now .site-diagram') < 0 &&
    css.indexOf('.dg-wrap--ion .site-diagram') < 0,

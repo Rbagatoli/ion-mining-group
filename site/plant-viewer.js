@@ -88,12 +88,18 @@
         function fallback() {
             failed = true; group.classList.remove('plant-ready'); if (preview) preview.hidden = true; if (scene) scene.setActive(false);
         }
+        function ready() {
+            preview.classList.remove('plant-preview--loading');
+            group.classList.add('plant-ready');
+        }
         async function load() {
             if (loading || scene || failed) return; loading = true;
             try {
                 if (diagrams.some(function (d) { return !d; })) throw new Error('Missing original diagram');
                 if (!modulePromise) modulePromise = import(moduleURL); var module = await modulePromise;
-                preview = document.createElement('div'); preview.className = 'plant-preview'; preview.hidden = true;
+                // Keep the working SVG in front while the new canvas gets a real
+                // layout box and paints its first frame. display:none cannot be measured.
+                preview = document.createElement('div'); preview.className = 'plant-preview plant-preview--loading';
                 preview.innerHTML = '<div class="plant-drawing" data-plant="surface">'+
                     '<div class="plant-stage" data-plant="stage"><div class="plant-canvas" data-plant="host"></div>'+
                     '<svg class="plant-leaders" data-plant="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>'+
@@ -110,10 +116,13 @@
                     '<p class="plant-note" data-plant="note" hidden></p>';
                 preview.querySelectorAll('[data-plant]').forEach(function (el) { refs[el.getAttribute('data-plant')] = el; }); group.appendChild(preview);
                 scene = module.mountMineScene(refs.host,{
-                    interactionSurface:refs.surface,onProject:project,onPart:highlight,
+                    interactionSurface:refs.surface,onProject:project,onPart:highlight,onReady:ready,
                     onXray:function (value) { xray = value; if (current) xrayStates[current] = value; syncControls(); },
                     onRotate:function (value) { rotating = value; syncControls(); },onError:fallback,
-                    onRestore:function () { failed = false; group.classList.add('plant-ready'); preview.hidden = false; update(); scene.setActive(true); }
+                    onRestore:function () {
+                        failed = false; preview.classList.add('plant-preview--loading'); preview.hidden = false;
+                        update(); scene.setActive(true);
+                    }
                 });
                 refs.xray.addEventListener('click',function () { scene.setXray(!xray); });
                 refs.rotate.addEventListener('click',function () { scene.setAutoRotate(!rotating); });
@@ -123,8 +132,8 @@
                     var enabled = refs.touch.getAttribute('aria-pressed') !== 'true'; refs.touch.setAttribute('aria-pressed',String(enabled));
                     refs.touch.textContent = enabled ? 'Allow page scrolling' : 'Enable touch rotation & pinch zoom'; scene.setTouchControl(enabled);
                 });
-                if (scale) scale.addEventListener('input',update);
-                update(); group.classList.add('plant-ready'); preview.hidden = false; scene.setActive(true);
+                if (scale) { scale.addEventListener('input',update); scale.addEventListener('change',update); }
+                update(); scene.setActive(true);
             } catch (error) { if (scene) scene.dispose(); scene = null; fallback(); }
             loading = false;
         }

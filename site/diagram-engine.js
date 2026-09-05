@@ -1447,7 +1447,11 @@
         };
 
         api.mountWhenReady = function (opts) {
-            if (document.readyState === 'loading') {
+            // These scripts follow their generated diagrams. Wire that visible
+            // fallback immediately, even while later scripts are still downloading.
+            // Head-loaded consumers still wait until their markup exists.
+            var rootSelector = opts && opts.scene ? '.dg-wrap[data-scene="' + opts.scene + '"]' : (opts && opts.root || '.dg-wrap');
+            if (document.readyState === 'loading' && !document.querySelector(rootSelector)) {
                 // Wrapped, not passed directly: the listener would hand mount
                 // an Event where its options belong.
                 document.addEventListener('DOMContentLoaded', function () { api.mount(opts); });

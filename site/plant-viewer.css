@@ -1,10 +1,12 @@
 /* Original composition: a black field, platinum models and two callout columns. */
+.dg-views { position: relative; }
 .dg-wrap.plant-ready { padding: 0; aspect-ratio: auto; overflow: hidden; background: #050505; border-bottom: 1px solid var(--line); }
 .dg-wrap.plant-ready::before { display: none; }
 .dg-wrap.plant-ready > :not(.plant-preview), .dg-views.plant-ready > .dg-wrap { display: none !important; }
 .dg-views.plant-ready { display: block; border: 1px solid var(--line); background: #050505; }
 .plant-ready ~ .dg-list { display: none !important; }
 .plant-preview { width: 100%; min-width: 0; position: relative; color: var(--plat-200); text-align: left; }
+.plant-preview--loading { position: absolute; inset: 0; opacity: 0; visibility: hidden; pointer-events: none; }
 .plant-preview [hidden] { display: none !important; }
 .plant-drawing { position: relative; }
 .plant-stage { position: relative; aspect-ratio: 1280 / 470; overflow: hidden; isolation: isolate;

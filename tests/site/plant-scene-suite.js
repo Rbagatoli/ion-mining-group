@@ -318,6 +318,27 @@ class Surface {
         api.setActive(true); observer.fn([{isIntersecting:false}]); assert.equal(frames.size,0);
         observer.fn([{isIntersecting:true}]); flush();
     });
+    check('first-load visibility batches use the newest state so zoom and comparison render immediately', () => {
+        observer.fn([{isIntersecting:false},{isIntersecting:true}]);
+        api.zoom(.8);
+        assert.ok(frames.size,'a hidden-to-visible batch must schedule the zoom frame');
+        flush();
+        for (const view of ['landfill','pad']) {
+            api.setConfig({view,definition:definition(view)});
+            api.setProgress(0); flush();
+            const deployment = renderer.world.getObjectByName('proton-deployment');
+            assert.equal(deployment.visible,false);
+            api.setProgress(1);
+            assert.ok(frames.size,'the first slider input must render without navigation');
+            flush(); assert.equal(deployment.visible,true);
+            let opaque = 0;
+            deployment.traverse(o => { if (o.isMesh && o.material.opacity === 1) opaque++; });
+            assert.ok(opaque>50,'the complete mine is visible at the far end of either slider');
+        }
+        observer.fn([{isIntersecting:true},{isIntersecting:false}]);
+        assert.equal(frames.size,0,'a later hidden state still stops background animation');
+        observer.fn([{isIntersecting:true}]); flush();
+    });
     check('WebGL context loss reports fallback, cancels animation and permits recovery', () => {
         const event = host.canvas.fire('webglcontextlost'); assert.equal(event.defaultPrevented,true);
         assert.deepEqual(events.at(-1),['error']); assert.equal(frames.size,0);

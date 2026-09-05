@@ -138,7 +138,8 @@ function harness(configs, options = {}) {
         renderable.build = function (H, yaw) { yaws.push(yaw); return build(H, yaw); };
         get(prefix + 'siteDiagram').parent = wrap;
         get(prefix + 'dg-reset').parent = wrap;
-        d.mount({ scene: config[2] });
+        assert.ok(wrap.events.has('pointerdown') && wrap.events.has('wheel'),
+            'The visible drawing must accept drag and zoom while later scripts are still loading');
         return { d, wrap, svg: get(prefix + 'siteDiagram'), button: id => get(prefix + 'b-' + id),
             reset: get(prefix + 'dg-reset'), prefix, yaws };
     });

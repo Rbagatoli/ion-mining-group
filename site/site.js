@@ -124,6 +124,7 @@
         };
 
         scale.addEventListener('input', applyScale);
+        scale.addEventListener('change', applyScale);
         applyScale();
 
         /* The hint stops nagging once it has been taken. Pointerdown as well as

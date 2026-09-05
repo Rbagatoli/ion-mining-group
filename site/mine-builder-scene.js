@@ -1086,7 +1086,7 @@ export function mountMineScene(host, callbacks = {}) {
     canvas.style.touchAction = 'pan-y';
     const interactionSurface = callbacks.interactionSurface || host;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false;
+    let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false, ready = false;
     let powered = true, powerLevel = 1, selected = -1, touchControl = false, manual = false, xray = false, progress = 1;
     let highlight = null, focus = null, hoveredPart = null;
     let autoRotate = !reduced, rotateOverride = null, dragging = false, resumeAt = 0;
@@ -1132,7 +1132,7 @@ export function mountMineScene(host, callbacks = {}) {
     function wake() { if (!raf && active && visible && !disposed && !lost && !document.hidden) raf = requestAnimationFrame(tick); }
     function tick(ms) {
         raf = 0;
-        if (!active || !visible || disposed || lost || document.hidden) return;
+        if (!active || !visible || disposed || lost || document.hidden || !viewportWidth || !viewportHeight) return;
         const dt = last ? Math.min((ms-last)/1000,.05) : 0; last = ms; elapsed += dt; buildTime += dt;
         if (yard) {
             powerLevel = reduced ? (powered ? 1 : 0) : THREE.MathUtils.damp(powerLevel,powered ? 1 : 0,3.8,dt);
@@ -1176,6 +1176,7 @@ export function mountMineScene(host, callbacks = {}) {
             }
         }
         controls.update(); renderer.render(world,camera); updateCallouts();
+        if (!ready && yard) { ready = true; callbacks.onReady?.(); }
         // Idle motion and operating motion pause completely for reduced-motion visitors.
         if (!reduced || autoRotate || transitioning) wake();
     }
@@ -1372,14 +1373,21 @@ export function mountMineScene(host, callbacks = {}) {
     function visibility() { if (document.hidden) stop(); else wake(); }
     function motion(event) { reduced = event.matches; if (rotateOverride === null) { autoRotate = !reduced; callbacks.onRotate?.(autoRotate); } wake(); }
     function contextLost(event) { event.preventDefault(); lost = true; stop(); callbacks.onError?.(); }
-    function contextRestored() { lost = false; callbacks.onRestore?.(); wake(); }
+    function contextRestored() { lost = false; ready = false; callbacks.onRestore?.(); wake(); }
     interactionSurface.addEventListener('wheel',wheel,{passive:false,capture:true});
     canvas.addEventListener('pointerdown',down,true); canvas.addEventListener('pointerup',up);
     canvas.addEventListener('pointercancel',event => { contacts.delete(event.pointerId); pointer = null; });
     canvas.addEventListener('keydown',keydown); canvas.addEventListener('webglcontextlost',contextLost);
     canvas.addEventListener('webglcontextrestored',contextRestored); document.addEventListener('visibilitychange',visibility);
     media.addEventListener('change',motion);
-    const observer = new IntersectionObserver(entries => { visible = entries[0].isIntersecting; if (visible) wake(); else stop(); },{threshold:0}); observer.observe(host);
+    const observer = new IntersectionObserver(entries => {
+        // Hidden-to-visible changes can arrive together during initial layout or
+        // a tab switch. The first record can already be stale when delivered.
+        const latest = entries[entries.length-1];
+        if (!latest) return;
+        visible = latest.isIntersecting;
+        if (visible) { resize(); wake(); } else stop();
+    },{threshold:0}); observer.observe(host);
     resize();
     callbacks.onRotate?.(autoRotate);
     return {
