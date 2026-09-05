@@ -2424,6 +2424,11 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
 /* Callout bubbles are HTML so the text wraps for real. */
 .dg-callout {
+    appearance: none;
+    border-radius: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
     position: absolute;
     z-index: 3;
     width: 17.2%;

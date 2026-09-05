@@ -280,10 +280,10 @@ function bubblesOf(D) {
   return D.CALLOUTS.map(co => {
     const [, y] = D.calloutOrigin(co);
     return `
-      <div class="dg-callout dg-callout--${co.side}" data-region="${co.id}" tabindex="0" style="top:${(y / D.VB.h * 100).toFixed(2)}%">
+      <button type="button" class="dg-callout dg-callout--${co.side}" data-region="${co.id}" aria-pressed="false" style="top:${(y / D.VB.h * 100).toFixed(2)}%">
         <span class="dg-c-title">${esc(co.title)}</span>
         <span class="dg-c-desc">${esc(co.desc)}</span>
-      </div>`;
+      </button>`;
   }).join('');
 }
 

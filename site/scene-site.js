@@ -370,6 +370,15 @@
         callouts: CALLOUTS,
         flow: buildFlow,
         regionBoxes: regionBoxes,
+        /* The leaders identify this container. Close-ups inspect its equipment
+           rather than trying to fit every repeated unit across the four shells. */
+        focusBoxes: function (id) {
+            var boxes = regionBoxes(id);
+            if (['cool', 'shell', 'asics', 'pdu'].indexOf(id) < 0) return boxes;
+            return boxes.filter(function (b) {
+                return Math.abs(b.x - C.x) <= C.w / 2 + 0.2 && Math.abs(b.z - C.z) <= C.d / 2 + 0.2;
+            });
+        },
         objects: objects,
         extraBoxes: function () { return RACKS; },
         data: { MODEL: MODEL, RACKS: RACKS, CONTAINERS: CONTAINERS,

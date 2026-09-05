@@ -22,8 +22,8 @@
    - OBJECTS ARE DEPTH SORTED into fixed DOM slots, so the document is never
      reordered. Hover identity therefore lives on region hit paths, not slots:
      slot 0 holds a different object from one frame to the next.
-   - NOTHING IS MEASURED. No getBoundingClientRect, no ResizeObserver. Anchors
-     are projected model coordinates; drag uses pointer deltas; zoom is to centre.
+   - Anchors are projected model coordinates; drag uses pointer deltas. Only a
+     callout activation or resize measures the visible crop to frame a close-up.
 
    A scene supplies:
      { view:        { VB, BASE_PITCH, FOV, BASE_SCALE, ORIGIN, SHIFT_X, PERIOD, BASE_YAW },
@@ -170,7 +170,7 @@
     var LINKS = {};
     function sharedLink(name) {
         if (!LINKS[name]) {
-            LINKS[name] = { yaw: 0, pitch: null, zoom: null, idle: true, t0: null,
+            LINKS[name] = { yaw: 0, pitch: null, zoom: null, idle: true, t0: null, focusOwner: null,
                             subs: [], owner: null };
         }
         return LINKS[name];
@@ -258,7 +258,7 @@
     var layers = scene.layers || LAYERS;
     var optimized = !!scene.optimize;
     var motion = scene.idleMotion;
-    var compact = false, camera = null, cachedFrame = null;
+    var compact = false, camera = null, cachedFrame = null, offset = null, revision = 0;
 
     function setCompact(value) { compact = !!value; }
     function detailLevel() { return compact && zoom <= 1.35 ? 'compact' : 'full'; }
@@ -278,14 +278,18 @@
 
     // Mutable view state. Kept at module level rather than threaded through
     // forty call sites; this is single threaded and one frame builds at a time.
-    var pitch = BASE_PITCH, zoom = 1;
+    var pitch = BASE_PITCH, zoom = 1, target = null, screen = null;
 
     function setView(v) {
         if (v.pitch !== undefined) pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, v.pitch));
         if (v.zoom  !== undefined) zoom  = Math.max(ZOOM_MIN,  Math.min(ZOOM_MAX,  v.zoom));
+        if (v.target !== undefined) target = v.target ? v.target.slice() : null;
+        if (v.screen !== undefined) screen = v.screen ? v.screen.slice() : null;
+        offset = null; revision++;
     }
-    function getView() { return { pitch: pitch, zoom: zoom }; }
-    function resetView() { pitch = BASE_PITCH; zoom = 1; }
+    function getView() { return { pitch: pitch, zoom: zoom,
+        target: target ? target.slice() : null, screen: screen ? screen.slice() : null }; }
+    function resetView() { setView({ pitch: BASE_PITCH, zoom: 1, target: null, screen: null }); }
 
 
     var V = scene.view;
@@ -305,7 +309,7 @@
         return -(p[0] + SHIFT_X) * Math.sin(a) + p[2] * Math.cos(a);
     }
 
-    function project(p, yaw) {
+    function rawProject(p, yaw) {
         if (optimized) {
             if (!camera || camera.yaw !== yaw || camera.pitch !== pitch || camera.zoom !== zoom) {
                 var angle = yaw + BASE_YAW;
@@ -335,6 +339,58 @@
         // scales up. The scene is authored to that convention throughout.
         var k = FOV / (FOV - z2 * s);
         return [ORIGIN.x + x * s * k, ORIGIN.y - y2 * s * k];
+    }
+
+    function project(p, yaw) {
+        var q = rawProject(p, yaw);
+        if (!target) return q;  // Preserve the original overview paths exactly.
+        if (!offset || offset.yaw !== yaw) {
+            var at = rawProject(target, yaw), centre = screen || [ORIGIN.x, ORIGIN.y];
+            offset = { yaw: yaw, x: centre[0] - at[0], y: centre[1] - at[1] };
+        }
+        return [q[0] + offset.x, q[1] + offset.y];
+    }
+
+    function focusBoxes(id) { return (scene.focusBoxes || regionBoxes)(id); }
+
+    /* Fit the selected equipment, not the whole drawing. This is calculated on
+       activation, never in the animation loop. Keeping a world-space target
+       means subsequent drag and zoom still centre on the inspected equipment. */
+    function focusView(id, yaw, windowBox) {
+        var pts = [];
+        focusBoxes(id).forEach(function (box) { pts = pts.concat(boxCorners(box)); });
+        if (!pts.length) return null;
+        var lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+        pts.forEach(function (p) {
+            for (var i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], p[i]); hi[i] = Math.max(hi[i], p[i]); }
+        });
+        var aim = lo.map(function (n, i) { return (n + hi[i]) / 2; });
+        var box = windowBox || { left: 270, right: VB.w - 270, top: 32, bottom: VB.h - 42 };
+        var halfW = (box.right - box.left) * 0.47, halfH = (box.bottom - box.top) * 0.47;
+        var savedZoom = zoom, low = ZOOM_MIN, high = ZOOM_MAX;
+        for (var step = 0; step < 14; step++) {
+            zoom = (low + high) / 2;
+            var centre = rawProject(aim, yaw);
+            var fits = pts.every(function (p) {
+                var q = rawProject(p, yaw);
+                return Math.abs(q[0] - centre[0]) <= halfW && Math.abs(q[1] - centre[1]) <= halfH;
+            });
+            if (fits) low = zoom; else high = zoom;
+        }
+        zoom = savedZoom; camera = null;
+        return { pitch: pitch, zoom: low, target: aim,
+            screen: [(box.left + box.right) / 2, (box.top + box.bottom) / 2] };
+    }
+
+    function interpolateView(from, to, fraction) {
+        var t = Math.max(0, Math.min(1, fraction));
+        t = t * t * (3 - 2 * t);
+        var mix = function (a, b) { return a + (b - a) * t; };
+        var a = from.target || [-SHIFT_X, 0, 0], b = to.target || [-SHIFT_X, 0, 0];
+        var c = from.screen || [ORIGIN.x, ORIGIN.y], d = to.screen || [ORIGIN.x, ORIGIN.y];
+        return { pitch: mix(from.pitch, to.pitch), zoom: mix(from.zoom, to.zoom),
+            target: a.map(function (v, i) { return mix(v, b[i]); }),
+            screen: c.map(function (v, i) { return mix(v, d[i]); }) };
     }
 
     function depthOf(p, yaw) {
@@ -495,10 +551,10 @@
     }
 
     /* Bright overlay for the hovered region. */
-    function regionHighlight(id, yaw) {
+    function regionHighlight(id, yaw, focused) {
         if (!id) return '';
         var d = '';
-        regionBoxes(id).forEach(function (b) {
+        (focused ? focusBoxes(id) : regionBoxes(id)).forEach(function (b) {
             var f = boxFaces(b);
             for (var k in f) if (frontFacing(f[k], yaw)) d += poly(f[k], yaw);
         });
@@ -514,12 +570,12 @@
     }
     function calloutAnchor(co, yaw) { return project(co.at, yaw); }
 
-    function frame(yaw, hover) {
+    function frame(yaw, hover, selected) {
         var detail = detailLevel();
         if (optimized && cachedFrame && cachedFrame.yaw === yaw &&
-            cachedFrame.pitch === pitch && cachedFrame.zoom === zoom && cachedFrame.detail === detail) {
+            cachedFrame.revision === revision && cachedFrame.pitch === pitch && cachedFrame.zoom === zoom && cachedFrame.detail === detail) {
             /* Hover changes only the overlay. Keep the geometry and hit regions. */
-            return Object.assign({}, cachedFrame.value, { highlight: regionHighlight(hover, yaw) });
+            return Object.assign({}, cachedFrame.value, { highlight: regionHighlight(hover, yaw, hover === selected) });
         }
         var order = RENDERABLES.map(function (r) {
             return { r: r, depth: depthOf(r.at, yaw) };
@@ -544,7 +600,7 @@
                 return L;
             }),
             hits: hits,
-            highlight: regionHighlight(hover, yaw),
+            highlight: regionHighlight(hover, yaw, hover === selected),
             flow: flowD,
             flowHeads: flowHeads(flowD),
             leaders: CALLOUTS.map(function (co) {
@@ -552,7 +608,7 @@
                 return { id: co.id, x1: n1(o2[0]), y1: n1(o2[1]), x2: n1(a[0]), y2: n1(a[1]) };
             }),
         };
-        if (optimized) cachedFrame = { yaw: yaw, pitch: pitch, zoom: zoom, detail: detail, value: result };
+        if (optimized) cachedFrame = { yaw: yaw, pitch: pitch, zoom: zoom, revision: revision, detail: detail, value: result };
         return result;
     }
 
@@ -599,6 +655,7 @@
         boxFaces: boxFaces, frontFacing: frontFacing, regionBoxes: regionBoxes,
         regionHit: regionHit, calloutAnchor: calloutAnchor, calloutOrigin: calloutOrigin,
         setView: setView, getView: getView, resetView: resetView,
+        focusView: focusView, focusBoxes: focusBoxes, interpolateView: interpolateView,
         setCompact: setCompact, idleYawAt: idleYawAt,
         H: H, scene: scene,
     };
@@ -684,6 +741,7 @@
             var raf = null, t0 = null, last = 0, visible = true;
             var yaw = 0, hover = null, idle = true;
             var drag = null, resumeTimer = null;
+            var selected = null, transition = null, focusRaf = null, resizeRaf = null, overview = null;
 
             /* How long after the last interaction the turn picks itself up
                again. Long enough not to fight someone still reading it. */
@@ -692,12 +750,74 @@
             var applying = false;
             var reduced = window.matchMedia &&
                           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            var mobileQuery = motion && window.matchMedia ? window.matchMedia('(max-width: 900px), (pointer: coarse)') : null;
-            var reducedQuery = motion && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+            var mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 900px), (pointer: coarse)') : null;
+            var reducedQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
             var mobile = !!(mobileQuery && mobileQuery.matches);
             var idleAnchor = 0, idleElapsed = 0, idleLast = null, paintRaf = null;
             var paintedAttributes = optimized ? new WeakMap() : null;
             if (motion) setCompact(mobile);
+
+            function cancelTransition() {
+                if (focusRaf !== null) cancelAnimationFrame(focusRaf);
+                focusRaf = null; transition = null;
+            }
+            function settleTransition() {
+                if (!transition) return;
+                var end = transition.to;
+                cancelTransition(); setView(end);
+            }
+            function selectRegion(id) {
+                selected = id;
+                CALLOUTS.forEach(function (c) {
+                    if (bubbles[c.id]) put(bubbles[c.id], 'aria-pressed', c.id === selected);
+                });
+                setHover(id);
+            }
+            function focusWindow() {
+                var box = { left: 270, right: VB.w - 270, top: mobile ? 92 : 32, bottom: VB.h - 42 };
+                if (svg.getBoundingClientRect && wrap.getBoundingClientRect) {
+                    var s = svg.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+                    if (s.width > 0 && w.width > 0) {
+                        box.left = Math.max(box.left, (w.left - s.left) / s.width * VB.w + 20);
+                        box.right = Math.min(box.right, (w.right - s.left) / s.width * VB.w - 20);
+                    }
+                }
+                return box;
+            }
+            function revealDrawing() {
+                if (!mobile || !svg.getBoundingClientRect || !window.scrollTo) return;
+                var r = svg.getBoundingClientRect(), nav = document.querySelector('.nav');
+                var top = nav && nav.getBoundingClientRect ? nav.getBoundingClientRect().bottom + 16 : 88;
+                if (r.top < top || r.bottom > window.innerHeight - 16) {
+                    /* Bring the picture back before the camera moves: cards at
+                       the bottom of a phone's list can be a screen below it. */
+                    window.scrollTo({ top: Math.max(0, window.scrollY + r.top - top), behavior: 'instant' });
+                }
+            }
+            function focusRegion(id) {
+                var destination = focusView(id, yaw, focusWindow());
+                if (!destination) return;
+                if (!selected) overview = { view: getView(), yaw: yaw };
+                goManual();
+                selectRegion(id);
+                if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+                revealDrawing();
+                push();  // Pause linked views; close-up framing belongs to this instance.
+                if (reduced) { setView(destination); paint(); return; }
+                transition = { from: getView(), to: destination, start: null };
+                function advance(now) {
+                    focusRaf = null;
+                    if (!transition) return;
+                    if (document.hidden) { settleTransition(); return; }
+                    if (transition.start === null) transition.start = now;
+                    var amount = Math.min(1, (now - transition.start) / 600);
+                    setView(amount === 1 ? transition.to : interpolateView(transition.from, transition.to, amount));
+                    paintNow();
+                    if (amount < 1) focusRaf = requestAnimationFrame(advance);
+                    else transition = null;
+                }
+                focusRaf = requestAnimationFrame(advance);
+            }
 
             function put(el, key, value) {
                 if (!optimized) { el.setAttribute(key, value); return; }
@@ -720,7 +840,7 @@
                 paintRaf = requestAnimationFrame(function () { paintRaf = null; paintNow(); });
             }
             function paintNow() {
-                var f = frame(yaw, hover);
+                var f = frame(yaw, hover, selected);
                 var occ = '';
                 for (var i = 0; i < f.slots.length; i++) {
                     var L = f.slots[i], g = slots[i];
@@ -758,6 +878,7 @@
             }
 
             function setHover(id) {
+                id = selected || id;
                 if (hover === id) return;
                 hover = id;
                 CALLOUTS.forEach(function (c) {
@@ -805,7 +926,7 @@
                 push();
             }
             function start() {
-                if (raf || reduced || !idle || document.hidden || !visible) return;
+                if (raf || reduced || selected || !idle || document.hidden || !visible) return;
                 if (motion && (mobile || hover)) return;
                 if (!isDriver()) return;   // followers are painted by the driver
                 last = 0; raf = requestAnimationFrame(tick);
@@ -816,7 +937,7 @@
             }
 
             function goIdle() {
-                if (idle) return;
+                if (idle || selected || (link && link.focusOwner)) return;
                 if (motion && (drag || pending || pinch)) { scheduleResume(); return; }
                 idle = true;
                 t0 = null;      // re-anchored on the next tick, from the live yaw
@@ -826,6 +947,7 @@
             }
             function scheduleResume() {
                 if (resumeTimer) clearTimeout(resumeTimer);
+                if (selected) { resumeTimer = null; return; }
                 if (motion && (mobile || reduced || hover)) { resumeTimer = null; return; }
                 resumeTimer = setTimeout(function () {
                     resumeTimer = null;
@@ -833,6 +955,7 @@
                 }, RESUME_MS);
             }
             function goManual() {
+                cancelTransition();
                 if (idle) { idle = false; stop(); }
                 // Every interaction pushes the restart back out again.
                 scheduleResume();
@@ -848,6 +971,7 @@
             function push() {
                 if (!link || applying) return;
                 var v = getView();
+                link.focusOwner = selected ? adopt : null;
                 link.yaw = yaw; link.pitch = v.pitch; link.zoom = v.zoom;
                 link.idle = idle; link.t0 = t0;
                 for (var i = 0; i < link.subs.length; i++) {
@@ -856,8 +980,16 @@
             }
             function adopt() {
                 applying = true;
-                yaw = link.yaw;
-                if (link.pitch !== null) setView({ pitch: link.pitch, zoom: link.zoom });
+                cancelTransition();
+                if (link.focusOwner && resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+                if (selected) {
+                    if (overview) { setView(overview.view); yaw = overview.yaw; }
+                    overview = null; selectRegion(null);
+                }
+                if (!link.focusOwner) {
+                    yaw = link.yaw;
+                    if (link.pitch !== null) setView({ pitch: link.pitch, zoom: link.zoom, target: null, screen: null });
+                }
                 t0 = link.t0;
                 if (link.idle !== idle) {
                     idle = link.idle;
@@ -937,7 +1069,7 @@
             }
             /* The controls are taps, and a finger on one is not a gesture on the model. */
             function onControl(t) {
-                return !!(t && t.closest && t.closest('.dg-scale, button, a, input'));
+                return !!(t && t.closest && t.closest('.dg-scale, button, a, input') && !t.closest('.dg-callout'));
             }
             function inDrawing(t) { return !!(t && svg.contains(t)); }
 
@@ -1140,26 +1272,21 @@
                 b.addEventListener('focus', function () { setHover(c.id); });
                 b.addEventListener('blur', function () { setHover(null); });
 
-                /* TAPPING A BUBBLE HAS TO LIGHT ITS PART, and until this existed it did not.
-                   Every route into setHover was a hover affordance — pointerenter, pointerover
-                   on the hit shapes, focus — and a phone has no hover. On mobile the bubbles
-                   are the labels now, sitting under the drawing where they are wide enough to
-                   read, and a label you can tap that does nothing is worse than the plain list
-                   it replaced. The same mouse-only assumption that put "hover a part to
-                   identify it" in the hint.
-
-                   A PLAIN SET, NOT A TOGGLE, and that distinction cost an hour. After a tap
-                   Chrome synthesizes a full mouse sequence — pointerenter, mousedown, mouseup,
-                   click — with pointerType 'mouse', so the enter lights the part a moment
-                   before the click arrives. A toggle then sees hover === c.id and puts it
-                   straight back out, and every tap looked like it did nothing.
-
-                   Setting it is idempotent, so it survives whatever order the events arrive
-                   in. Tapping the drawing is what clears it. */
-                b.addEventListener('click', function () { setHover(c.id); });
+                /* Activation selects a stable close-up; repeated taps reframe
+                   the same target instead of accumulating zoom or toggling off
+                   after the synthetic hover events generated by a touch. */
+                b.addEventListener('click', function () { focusRegion(c.id); });
+                /* Also support cached markup from before callouts were buttons. */
+                if (b.tagName !== 'BUTTON') {
+                    b.setAttribute('role', 'button');
+                    b.addEventListener('keydown', function (e) {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault(); focusRegion(c.id);
+                    });
+                }
             });
-            /* Tapping the drawing itself clears the selection, so a reader is never stuck with
-               one part lit and no obvious way out. */
+            /* An empty area dismisses transient hover. An inspected part stays
+               selected until another callout or Reset is activated. */
             svg.addEventListener('click', function (e) {
                 if (drag) return;
                 var id = e.target && e.target.getAttribute &&
@@ -1185,6 +1312,7 @@
 
             /* --- Controls --- */
             function doReset() {
+                cancelTransition(); overview = null; selectRegion(null);
                 if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
                 if (motion) { idleAnchor = 0; idleElapsed = 0; idleLast = null; }
                 resetView(); yaw = 0; t0 = null; idle = true; setHover(null);
@@ -1199,48 +1327,59 @@
                 var el = byId(id);
                 if (el) el.addEventListener('click', ctl[id]);
             });
+            wrap.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !inDrawing(e.target)) { e.preventDefault(); doReset(); }
+            });
+
+            if (window.addEventListener) window.addEventListener('resize', function () {
+                if (!selected || resizeRaf !== null) return;
+                resizeRaf = requestAnimationFrame(function () {
+                    resizeRaf = null;
+                    if (!selected) return;
+                    cancelTransition();
+                    setView(focusView(selected, yaw, focusWindow())); paint();
+                });
+            });
 
             if (window.IntersectionObserver) {
                 new IntersectionObserver(function (e) {
                     visible = e[0].isIntersecting;
-                    if (visible) start(); else { stop(); setLive(false); }
+                    if (visible) { if (selected) paint(); start(); }
+                    else { stop(); settleTransition(); setLive(false); }
                 }, { threshold: 0 }).observe(svg);
             }
             document.addEventListener('visibilitychange', function () {
                 if (document.hidden) {
-                    stop();
+                    stop(); settleTransition();
                     if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
                 } else {
                     // Coming back from a hidden tab must not fast-forward the
                     // turn by however long the tab was away.
                     if (idle) t0 = null;
                     if (motion && !idle) scheduleResume();
+                    if (selected) paint();
                     start();
                 }
             });
 
-            // Interaction stays available under reduced motion — it is
-            // user-initiated. Only the unsolicited idle sweep is suppressed.
-            if (motion) {
-                var refreshPreferences = function () {
-                    reduced = !!(reducedQuery && reducedQuery.matches);
-                    mobile = !!(mobileQuery && mobileQuery.matches);
-                    setCompact(mobile);
-                    stop();
-                    if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
-                    paint();
-                    if (idle) start();
-                };
-                [mobileQuery, reducedQuery].forEach(function (query) {
-                    if (!query) return;
-                    if (query.addEventListener) query.addEventListener('change', refreshPreferences);
-                    else if (query.addListener) query.addListener(refreshPreferences);
-                });
+            // Reduced motion keeps inspection available with immediate framing.
+            var refreshPreferences = function () {
+                reduced = !!(reducedQuery && reducedQuery.matches);
+                mobile = !!(mobileQuery && mobileQuery.matches);
+                if (motion) setCompact(mobile);
+                stop();
+                if (reduced) settleTransition();
+                if (selected) { cancelTransition(); setView(focusView(selected, yaw, focusWindow())); }
+                if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
                 paint();
-                start();
-                return;
-            }
-            if (reduced) { idle = false; paint(); return; }
+                if (idle) start();
+            };
+            [mobileQuery, reducedQuery].forEach(function (query) {
+                if (!query) return;
+                if (query.addEventListener) query.addEventListener('change', refreshPreferences);
+                else if (query.addListener) query.addListener(refreshPreferences);
+            });
+            paint();
             start();
         };
 

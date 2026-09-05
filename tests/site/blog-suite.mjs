@@ -845,7 +845,7 @@ console.log('=== the drawings are visible on a phone ===');
        bubbles ARE the labels on mobile, a tap has to reach it. Verified working on index and
        hosting; energy's two stacked wraps do not respond and are an open item. */
     const engSrc = fs.readFileSync(path.join(SITE, 'diagram-engine.js'), 'utf8');
-    ok(/b\.addEventListener\('click', function \(\) \{ setHover\(c\.id\); \}\);/.test(engSrc),
+    ok(/b\.addEventListener\('click', function \(\) \{ focusRegion\(c\.id\); \}\);/.test(engSrc),
        '  and a tap reaches it, rather than only a hover');
     ok(!/setHover\(hover === c\.id \? null : c\.id\)/.test(engSrc),
        '  set, not toggled — the synthesized pointerenter would undo a toggle');

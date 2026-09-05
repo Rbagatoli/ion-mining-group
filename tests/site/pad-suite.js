@@ -616,7 +616,7 @@ ok(bleed.indexOf('width: var(--dg-w)') > 0,
    visit and break no test. */
 const engine = fs.readFileSync(D + 'diagram-engine.js', 'utf8');
 const engineCode = engine.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-ok(/new IntersectionObserver\([\s\S]{0,220}?threshold:\s*0\s*\}\)\.observe\(svg\)/.test(engineCode),
+ok(/new IntersectionObserver\([\s\S]{0,320}?threshold:\s*0\s*\}\)\.observe\(svg\)/.test(engineCode),
    'diagram-engine gates each drawing on an IntersectionObserver at threshold 0');
 /* The else branch may be braced now — scrolling a figure out of view also
    releases it if it was locked — so the shape this accepts is "else, then a

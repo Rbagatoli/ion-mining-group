@@ -451,9 +451,9 @@ ok(/function scheduleResume\(\)[\s\S]*?clearTimeout\(resumeTimer\)/.test(eng),
    'and every fresh interaction pushes that restart back out again');
 ok(/if \(t0 === null\) \{[\s\S]*?w = yaw % \(Math\.PI \* 2\)/.test(eng),
    'it resumes from the angle you left it at, not from zero');
-ok(/function doReset\(\) \{\s*if \(resumeTimer\) \{ clearTimeout\(resumeTimer\); resumeTimer = null; \}/.test(eng),
+ok(/function doReset\(\) \{[\s\S]{0,180}?if \(resumeTimer\) \{ clearTimeout\(resumeTimer\); resumeTimer = null; \}/.test(eng),
    'Reset cancels a pending resume rather than letting it fire afterwards');
-ok(/if \(document\.hidden\) \{\s*stop\(\);\s*if \(resumeTimer\)/.test(eng),
+ok(/if \(document\.hidden\) \{\s*stop\(\);\s*(?:settleTransition\(\);\s*)?if \(resumeTimer\)/.test(eng),
    'a hidden tab does not leave a resume armed against a stopped clock');
 
 /* ---------- 7. geometry holds all the way round ---------- */
