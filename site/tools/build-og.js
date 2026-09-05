@@ -81,6 +81,8 @@ function render(sceneFile) {
         const scene = require(path.join(__dirname, sceneFile));
         const frame = scene.frame(0, null);
         const vb = scene.VB;
+        const paint = scene.scene.paint;
+        const weights = paint || WEIGHT;
 
         /* Fit what is actually DRAWN, not the viewBox. The scenes reserve a lot
            of vertical room for callout leaders, and fitting the box left the
@@ -97,8 +99,8 @@ function render(sceneFile) {
         let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
         frame.slots.forEach(slot => {
             scene.LAYERS.forEach(layer => {
-                if (layer === 'ground') return;
-                if (!WEIGHT[layer] || !slot[layer]) return;
+                if (layer === 'ground' || (paint && layer === 'shadow')) return;
+                if (!weights[layer] || !slot[layer]) return;
                 parsePath(slot[layer]).forEach(sp => {
                     for (let k = 0; k + 1 < sp.pts.length; k += 2) {
                         if (sp.pts[k] < bx0) bx0 = sp.pts[k];
@@ -121,22 +123,25 @@ function render(sceneFile) {
 
         /* Painted in the engine's own layer order, back to front, exactly as the
            browser stacks them. */
-        scene.LAYERS.forEach(layer => {
-            const w = WEIGHT[layer];
-            if (!w) return;
-            frame.slots.forEach(slot => {
+        function draw(slot, layer) {
+                const w = weights[layer];
+                if (!w) return;
                 const d = slot[layer];
                 if (!d) return;
                 const col = w.btc ? BTC : (w.dark ? BLACK : PLAT);
+                /* The small software rasterizer uses the gradient midpoint.
+                   Its palette and surface ordering still match the browser. */
+                const fill = w.fillTo ? w.fillRGB.map((v, i) => (v + w.fillTo[i]) / 2) : w.fillRGB;
                 c.drawPath(map(d), {
-                    fill: w.fillRGB ? w.fillRGB : (w.fill !== undefined ? col : null),
-                    fillAlpha: w.fillRGB ? 1 : w.fill,
+                    fill: fill || (w.fill !== undefined ? col : null),
+                    fillAlpha: w.fillRGB ? (w.alpha === undefined ? 1 : w.alpha) : w.fill,
                     stroke: w.stroke !== undefined ? PLAT : null,
                     strokeAlpha: w.stroke,
-                    width: Math.max(0.8, scale * 0.9),
+                    width: paint ? scale * (w.width || 0.6) : Math.max(0.8, scale * 0.9),
                 });
-            });
-        });
+        }
+        if (paint) frame.slots.forEach(slot => scene.LAYERS.forEach(layer => draw(slot, layer)));
+        else scene.LAYERS.forEach(layer => frame.slots.forEach(slot => draw(slot, layer)));
     }
 
     /* A hairline frame and the mark, so a card that is mostly black still reads

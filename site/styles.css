@@ -2363,6 +2363,12 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     opacity: 0.9;
 }
 
+/* The homepage's equipment carries the emphasis; the supply route remains
+   legible without competing with the cutaway. No changes to the figure's box. */
+.dg-wrap--site .dg-flow { stroke-width: 1.35; opacity: 0.68; animation-duration: 5.2s; }
+.dg-wrap--site .dg-flow-heads { opacity: 0.68; }
+.dg-wrap--site.is-focused .dg-flow { animation-play-state: paused; }
+
 /* The flare flame, on the energy page. This is the one filled, coloured object
    in the entire drawing family, and it is a deliberate exception to "orange is
    a stroke, never a surface": a flare flame IS a surface, it is the subject of
@@ -2834,6 +2840,7 @@ a.fac:hover .fac-go { color: var(--btc-200); }
    was. A phone turned sideways is still a phone, and pointer:coarse is the question that was
    actually meant. */
 @media (max-width: 900px), (pointer: coarse) {
+    .dg-wrap--site .dg-flow { animation: none; }
     /* ---- the drawings on a phone ----
      *
      * These used to be display:none below 900px, with the ordered list underneath standing in

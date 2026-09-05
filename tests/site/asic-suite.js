@@ -707,8 +707,11 @@ ok(code.indexOf('ringY(bx, BUS_Y') >= 0 && code.indexOf('ringY(s[0], y1') >= 0,
 ok(A.scene.view.BASE_YAW > 0.4,
    'the machine is shown three-quarters on, so its port plate reads at rest',
    (A.scene.view.BASE_YAW * 180 / Math.PI).toFixed(0) + ' degrees');
-ok(!require(REPO_ROOT + 'site/scene-site.js').scene.view.BASE_YAW,
-   'and the other scenes are untouched by it');
+/* Home now authors its own opening angle too. The container and energy
+   comparisons must still retain their original camera orientation. */
+ok(['scene-hosting', 'scene-pad-now', 'scene-pad-ion', 'scene-landfill-now', 'scene-landfill-ion']
+       .every(name => !require(REPO_ROOT + 'site/' + name + '.js').scene.view.BASE_YAW),
+   'the container and energy scenes retain their original opening orientation');
 
 /* THE PORTS HAVE TO SURVIVE THE PHONE, which is where this drawing is smallest
    and where the S21 Pro's fan guards — eleven concentric rings — turned into a

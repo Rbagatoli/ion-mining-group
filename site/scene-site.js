@@ -121,6 +121,9 @@
 
     var RACKS = [];
     CONTAINERS.forEach(function (K) { RACKS = RACKS.concat(racksFor(K)); });
+    var CONTAINER_DETAIL = CONTAINERS.map(function (K) {
+        return { racks: RACKS.filter(function (rack) { return rack.cont === K; }) };
+    });
 
     /* ---------- Callouts. id doubles as the hover region id. ---------- */
 
@@ -166,7 +169,9 @@
 
     function buildXfmr(H, yaw) { return KIT.xfmr(H, yaw, XFMR); }
 
-    function buildContainer(H, K, yaw) { return KIT.container(H, K, yaw); }
+    function buildContainer(H, K, yaw) {
+        return KIT.container(H, K, yaw, CONTAINER_DETAIL[CONTAINERS.indexOf(K)]);
+    }
 
     function regionBoxes(id) {
         var out = [];
@@ -237,6 +242,13 @@
         H.addBox(G, PAD, yaw);
         H.addBox(G, ROAD, yaw);
         L.ground += G.top + G.side + G.end + G.detail + G.back;
+
+        /* Tight, unblurred contact shadows seat the equipment on the pad. */
+        [GAS, GEN, XFMR].concat(CONTAINERS).forEach(function (K) {
+            var x = K.x + 0.12, z = K.z + 0.16, w = K.w / 2 + 0.18, d = K.d / 2 + 0.18;
+            L.shadow += H.poly([[x-w,0.007,z-d],[x-w,0.007,z+d],
+                                [x+w,0.007,z+d],[x+w,0.007,z-d]], yaw);
+        });
 
         var x0 = PAD.x - PAD.w / 2, x1 = PAD.x + PAD.w / 2;
         var z0 = PAD.z - PAD.d / 2, z1 = PAD.z + PAD.d / 2;
@@ -319,42 +331,38 @@
     }
 
     var SCENE = {
+        optimize: true,
+        idleMotion: { amplitude: 5 * Math.PI / 180, period: 32000 },
+        layers: ['ground', 'shadow', 'inside', 'back', 'asics', 'asictop',
+                 'inner', 'end', 'side', 'top', 'rim', 'detail', 'flame'],
+        /* One palette for the inline SVG and the generated share card. The
+           short gradients suggest painted metal under a broad overhead light. */
+        paint: {
+            ground:  { fillRGB: [18,18,17], stroke: 0.075, width: 0.45 },
+            shadow:  { fillRGB: [0,0,0], alpha: 0.52 },
+            inside:  { fillRGB: [23,24,23], fillTo: [9,10,9] },
+            back:    { stroke: 0.18, width: 0.5 },
+            asics:   { fillRGB: [59,59,58], fillTo: [30,30,29], stroke: 0.18, width: 0.45 },
+            asictop: { fillRGB: [102,102,100], fillTo: [76,76,74] },
+            inner:   { stroke: 0.36, width: 0.55 },
+            end:     { fillRGB: [81,81,79], fillTo: [46,46,45] },
+            side:    { fillRGB: [119,119,117], fillTo: [75,75,73] },
+            top:     { fillRGB: [165,165,162], fillTo: [124,124,121] },
+            rim:     { fillRGB: [189,189,186] },
+            detail:  { stroke: 0.50, width: 0.6 },
+        },
         view: {
             VB: { w: 1280, h: 470 },
-            BASE_PITCH: 26 * Math.PI / 180,
+            BASE_PITCH: 30 * Math.PI / 180,
+            BASE_YAW: -26 * Math.PI / 180,
             FOV: 1500,
-            /* WHAT THE SECOND COLUMN COST: 28 down to 18.3, a 35% shrink of
-               everything on the page.
-
-               The band the drawing gets is fixed. The callout bubbles sit at
-               0..19.53% and 80.47..100% of the viewBox, so the plant has to
-               live inside x 250..1030 — 780 units, of which the swept extent
-               uses 730 and the mobile crop in styles.css is cut to match. Two
-               40 ft boxes end to end is 25.9 m against the 23 m the whole site
-               used to span, and the fitter pays for that out of BASE_SCALE
-               because it has nowhere else to take it from.
-
-               Every viewer pays. A container goes from 336 to 220 viewBox
-               units wide: 364 -> 238 real px on a 1440 desktop, and 153 -> 100
-               px inside the mobile crop. The 0.8-unit detail hairlines do NOT
-               shrink with it — they are viewBox units with no vector-effect —
-               so the linework is half again as heavy relative to the boxes it
-               describes, which is where the machine detail goes to mush first.
-
-               ORIGIN.y stays at 253: the sweep still bottoms out at y 450, the
-               same ground line the two-container version had.
-
-               SHIFT_X IS THE SCENE'S PIVOT, not a nudge. It is applied before
-               the rotation, so the yard's own centre of mass has to sit on it
-               or the drawing sweeps a circle wider than it needs and the
-               fitter charges BASE_SCALE for the difference. The mass moved
-               6.9 m right when the second column arrived, so this moved with
-               it. Left at the two-container value of -3.28 the same yard only
-               fits at BASE_SCALE 13.66 — a quarter smaller again, for nothing
-               but an off-centre pivot. Declared up top now, because the pad
-               and the ground slot's anchor both have to sit on it. */
+            /* Keep all four 40 ft shells and the gas train inside the existing
+               callout gutters, including a full manual revolution. The opening
+               angle separates the two rows; the higher pitch exposes their racks.
+               The 30-degree pitch needs an 11-unit lift to keep the far side
+               within the same mobile crop at every yaw. */
             BASE_SCALE: 18.3,
-            ORIGIN: { x: 640, y: 253 },
+            ORIGIN: { x: 640, y: 242 },
             SHIFT_X: SHIFT_X,
             PERIOD: 44000,
         },

@@ -400,7 +400,11 @@
 
     /* A container of machines. Already written around the box it is given, so
        it needs no placement shim. */
-    function container(H, K, yaw) {
+    function container(H, K, yaw, options) {
+        /* The home scene supplies persistent racks for its detail tiers.
+           Calls without options retain the shared comparison geometry. */
+        var refined = !!options;
+        var compact = refined && H.detailLevel() === 'compact';
         var addBox = H.addBox, line = H.line, ring = H.ring, ringX = H.ringX,
             ringY = H.ringY,
             poly = H.poly, polyInside = H.polyInside, boxFaces = H.boxFaces,
@@ -431,13 +435,13 @@
 
         // --- Everything from here to the machines paints BEHIND them ---
         // Far-wall corrugation.
-        var ribs = 34;
+        var ribs = refined ? (compact ? 12 : 24) : 34;
         for (var r = 1; r < ribs; r++) {
             var rx = x0 + K.w * r / ribs;
             L.back += line([rx, 0.09, z0 + 0.012], [rx, y1 - 0.09, z0 + 0.012], yaw);
         }
         // Floor grating.
-        for (var g = 1; g < 26; g++) {
+        if (!refined) for (var g = 1; g < 26; g++) {
             var gx2 = x0 + K.w * g / 26;
             L.back += line([gx2, 0.012, z0 + 0.1], [gx2, 0.012, z1 - 0.1], yaw);
         }
@@ -455,10 +459,12 @@
 
         // --- Machines ---
         // This container's own machines only — RACKS is every rack on site.
-        var mine = racksFor(K);
+        var mine = refined ? options.racks : racksFor(K);
+        if (refined && !options.faces) options.faces = mine.map(boxFaces);
         for (var i = 0; i < mine.length; i++) {
-            var u = mine[i], f = boxFaces(u);
+            var u = mine[i], f = refined ? options.faces[i] : boxFaces(u);
             for (var k in f) if (frontFacing(f[k], yaw)) L.asics += poly(f[k], yaw);
+            if (refined && frontFacing(f.top, yaw)) L.asictop += poly(f.top, yaw);
             /* SEALED FACES. What stood here was a twin fan ring at 0.36 of the machine's
                half-width, commented "as on a real S21" — and it was, which is the problem.
                The S21+ Hyd has no fans and no apertures at all. Those two rings measured
@@ -483,9 +489,11 @@
             /* 'inner', not 'detail': these live on the machine faces, and from behind
                the solid far wall has to hide them or the wall wears the fleet's
                control strips on its outside. */
-            L.inner += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
-                            [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
-            L.inner += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
+            if (!refined || (!compact && frontFacing(f.front, yaw))) {
+                L.inner += line([u.x + u.w * 0.02, u.y + u.h - 0.07, fz],
+                                [u.x + u.w * 0.30, u.y + u.h - 0.07, fz], yaw);
+                L.inner += ring(u.x + u.w * 0.40, u.y + u.h - 0.07, fz, 0.028, yaw, 5);
+            }
         }
 
         /* THE LOOP, WHICH THIS CONTAINER DID NOT HAVE AT ALL.
@@ -642,13 +650,20 @@
 
         // Corner castings.
         [[x0,z0],[x1,z0],[x0,z1],[x1,z1]].forEach(function (pt) {
-            addBox(L, { x: pt[0], y: 0,           z: pt[1], w: 0.36, h: 0.32, d: 0.36 }, yaw);
-            addBox(L, { x: pt[0], y: K.h - 0.32,  z: pt[1], w: 0.36, h: 0.32, d: 0.36 }, yaw);
+            var width = refined ? 0.18 : 0.36, height = refined ? 0.18 : 0.32;
+            addBox(L, { x: pt[0], y: 0,           z: pt[1], w: width, h: height, d: width }, yaw);
+            addBox(L, { x: pt[0], y: K.h - height, z: pt[1], w: width, h: height, d: width }, yaw);
         });
 
         // Base rail along the open side. Its edge lines are marks on the +z face,
         // so they carry that face's facing: from behind they striped the wall.
-        addBox(L, { x: K.x, y: 0, z: z1 - 0.09, w: K.w, h: 0.28, d: 0.18 }, yaw);
+        addBox(L, { x: K.x, y: 0, z: z1 - 0.09, w: K.w, h: refined ? 0.16 : 0.28, d: 0.18 }, yaw);
+        if (refined && roofFacing) {
+            /* A narrow solid lip gives the cut roof a thickness. It stays on
+               the surviving roof half, leaving the machines exposed. */
+            L.rim += poly([[x0,y1 + 0.008,K.z - 0.055],[x0,y1 + 0.008,K.z],
+                           [x1,y1 + 0.008,K.z],[x1,y1 + 0.008,K.z - 0.055]], yaw);
+        }
         if (frontFacing([[x0,0,z1],[x1,0,z1],[x1,y1,z1],[x0,y1,z1]], yaw)) {
             L.detail += line([x0, y1, z1], [x1, y1, z1], yaw);
             L.detail += line([x0, 0, z1], [x0, y1, z1], yaw);
@@ -666,8 +681,10 @@
             for (var b2 = 0; b2 < 4; b2++) {
                 var bz = z0 + K.d * (b2 + 0.5) / 4;
                 L.detail += line([dx, 0.16, bz], [dx, y1 - 0.16, bz], yaw);
-                L.detail += ring(dx, 0.5, bz, 0.07, yaw, 6);
-                L.detail += ring(dx, y1 - 0.5, bz, 0.07, yaw, 6);
+                if (!compact) {
+                    L.detail += ring(dx, 0.5, bz, 0.07, yaw, 6);
+                    L.detail += ring(dx, y1 - 0.5, bz, 0.07, yaw, 6);
+                }
             }
         }
         for (var hg = 0; hg < 3; hg++) {
@@ -755,7 +772,7 @@
            They carry that face's facing: marks on a surface bleed when the surface turns
            away, same rule as the roof ribs. */
         var coilFaceOn = frontFacing(faceBack, yaw);
-        var COILS = 8;
+        var COILS = compact ? 4 : 8;
         if (coilFaceOn) for (var cq = 0; cq < COILS; cq++) {
             var px = cx0 + (cx1 - cx0) * (cq + 0.5) / COILS;
             L.detail += line([px, cyb, zc0], [px, cyt, zr0], yaw);
@@ -766,8 +783,10 @@
         var fz2 = (zr0 + zr1) / 2;                // centred in what is left of the ridge
         for (var cf = 0; cf < 2; cf++) {
             var fx = cx0 + (cx1 - cx0) * (cf ? 0.76 : 0.24);
-            L.detail += ringY(fx, cyt + 0.01, fz2, 0.26, yaw, 12);
-            L.detail += ringY(fx, cyt + 0.01, fz2, 0.10, yaw, 8);
+            if (!refined || frontFacing(faceRidge, yaw)) {
+                L.detail += ringY(fx, cyt + 0.01, fz2, 0.26, yaw, compact ? 8 : 12);
+                if (!compact) L.detail += ringY(fx, cyt + 0.01, fz2, 0.10, yaw, 8);
+            }
 
             /* HEAT LEAVING, which this drawing never said before. The loop climbs to the
                roof, the fans lie in the ridge, and the story stopped there — nothing about
@@ -790,7 +809,7 @@
                degradation. The staggered pair heights are so four containers of them
                read as shimmer rather than as a picket line. */
             var mkT = cyt + COOLER.rise;
-            [[-0.28, 0.04, 0.06], [0.28, 0.08, -0.06]].forEach(function (mk) {
+            (refined ? [] : [[-0.28, 0.04, 0.06], [0.28, 0.08, -0.06]]).forEach(function (mk) {
                 var mx = fx + mk[0], my = cyt + mk[1];
                 L.detail += line([mx, my, fz2], [mx, my + 0.11, fz2], yaw);
                 L.detail += line([mx + mk[2], my + 0.15, fz2],

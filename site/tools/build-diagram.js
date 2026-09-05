@@ -202,6 +202,23 @@ function chainOf(key) {
 
 function svgOf(D, alt, p) {
   const f = D.frame(0, null);
+  const paint = D.scene.paint;
+  const rgb = c => `rgb(${c.join(',')})`;
+  const gradientId = k => `${p}dg-surface-${k}`;
+  const gradients = paint ? Object.keys(paint).filter(k => paint[k].fillTo).map(k =>
+    `<linearGradient id="${gradientId(k)}" x1="0" y1="0" x2="0.35" y2="1"><stop stop-color="${rgb(paint[k].fillRGB)}"/><stop offset="1" stop-color="${rgb(paint[k].fillTo)}"/></linearGradient>`
+  ).join('') : '';
+  const styleOf = k => {
+    if (!paint || !paint[k]) return '';
+    const w = paint[k];
+    const fill = w.fillTo ? `url(#${gradientId(k)})` : w.fillRGB ? rgb(w.fillRGB) : 'none';
+    const stroke = w.stroke === undefined ? 'none' : `rgba(229,228,226,${w.stroke})`;
+    return `fill:${fill};fill-opacity:${w.alpha === undefined ? 1 : w.alpha};stroke:${stroke};stroke-width:${w.width || 0.6};stroke-linejoin:round`;
+  };
+  /* Emit each surface style once, scoped to this SVG, rather than repeating
+     the same declarations on every object's paths. */
+  const defs = paint ? `<defs>${gradients}<style>` + Object.keys(paint).map(k =>
+    `#${p}siteDiagram .dg-${k}{${styleOf(k)}}`).join('') + '</style></defs>' : '';
 
   const slots = f.slots.map((L, i) => '\n        <g class="dg-slot">' +
     D.LAYERS.map(k => `<path class="dg-${k}" id="${p}dg-s${i}-${k}" d="${L[k]}"/>`).join('') +
@@ -249,7 +266,7 @@ function svgOf(D, alt, p) {
      the drawing the way the leaders and callouts always have. Order is baked
      here and only here: the engine re-points d attributes and never reorders. */
   return `<svg class="site-diagram" id="${p}siteDiagram" viewBox="0 0 ${D.VB.w} ${D.VB.h}" preserveAspectRatio="xMidYMid meet" tabindex="0" role="img" aria-label="${esc(alt)}">
-        <path class="dg-occluder" id="${p}dg-occluder" d=""/>${slots}
+        ${defs}<path class="dg-occluder" id="${p}dg-occluder" d=""/>${slots}
         <path class="dg-flow" id="${p}dg-flow" d="${f.flow}"/>
         <path class="dg-flow-heads" id="${p}dg-flow-heads" d="${f.flowHeads}"/>
         <path class="dg-highlight" id="${p}dg-highlight" d=""/>${leaders}${nodes}${hits}

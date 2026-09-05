@@ -253,6 +253,15 @@
     }
 
     function createDiagram(scene) {
+    /* Presentation and scheduling are opt-in: the comparison scenes retain their
+       existing paths, paint order and synchronized motion. */
+    var layers = scene.layers || LAYERS;
+    var optimized = !!scene.optimize;
+    var motion = scene.idleMotion;
+    var compact = false, camera = null, cachedFrame = null;
+
+    function setCompact(value) { compact = !!value; }
+    function detailLevel() { return compact && zoom <= 1.35 ? 'compact' : 'full'; }
 
     /* ---------- View ---------- */
 
@@ -297,6 +306,22 @@
     }
 
     function project(p, yaw) {
+        if (optimized) {
+            if (!camera || camera.yaw !== yaw || camera.pitch !== pitch || camera.zoom !== zoom) {
+                var angle = yaw + BASE_YAW;
+                camera = { yaw: yaw, pitch: pitch, zoom: zoom,
+                    cy: Math.cos(angle), sy: Math.sin(angle),
+                    cp: Math.cos(pitch), sp: Math.sin(pitch), scale: BASE_SCALE * zoom };
+            }
+            var C = camera, px0 = p[0] + SHIFT_X;
+            var xx = px0 * C.cy + p[2] * C.sy;
+            var zz = -px0 * C.sy + p[2] * C.cy;
+            var yy = p[1] * C.cp - zz * C.sp;
+            var depth = p[1] * C.sp + zz * C.cp;
+            var perspective = FOV / (FOV - depth * C.scale);
+            return [ORIGIN.x + xx * C.scale * perspective,
+                    ORIGIN.y - yy * C.scale * perspective];
+        }
         var a = yaw + BASE_YAW;
         var cy = Math.cos(a), sy = Math.sin(a);
         var px = p[0] + SHIFT_X;
@@ -321,6 +346,15 @@
     /* Screen-space signed area of a projected polygon. */
     function signedArea(pts3, yaw) {
         var a = 0, n = pts3.length;
+        if (optimized) {
+            var first = project(pts3[0], yaw), previous = first;
+            for (var j = 1; j < n; j++) {
+                var next = project(pts3[j], yaw);
+                a += previous[0] * next[1] - next[0] * previous[1];
+                previous = next;
+            }
+            return a + previous[0] * first[1] - first[0] * previous[1];
+        }
         for (var i = 0; i < n; i++) {
             var p = project(pts3[i], yaw), q = project(pts3[(i + 1) % n], yaw);
             a += p[0] * q[1] - q[0] * p[1];
@@ -351,6 +385,7 @@
     }
 
     function frontFacing(pts3, yaw) {
+        if (optimized) return signedArea(pts3, yaw) < 0;
         var a = 0, n = pts3.length;
         for (var i = 0; i < n; i++) {
             var p = project(pts3[i], yaw), q = project(pts3[(i + 1) % n], yaw);
@@ -373,8 +408,10 @@
         };
     }
     function newLayers() {
-        return { ground: '', inside: '', back: '', asics: '', inner: '', end: '',
-                 side: '', top: '', detail: '', flame: '' };
+        var out = { ground: '', inside: '', back: '', asics: '', inner: '', end: '',
+                    side: '', top: '', detail: '', flame: '' };
+        if (scene.layers) for (var i = 0; i < layers.length; i++) out[layers[i]] = '';
+        return out;
     }
 
     function addBox(L, b, yaw, skip) {
@@ -436,6 +473,7 @@
         poly: poly, polyInside: polyInside, frontFacing: frontFacing,
         boxFaces: boxFaces, newLayers: newLayers, addBox: addBox,
         line: line, ring: ring, ringX: ringX, ringY: ringY,
+        detailLevel: detailLevel,
     };
 
     var REGION_IDS = CALLOUTS.map(function (c) { return c.id; });
@@ -477,6 +515,12 @@
     function calloutAnchor(co, yaw) { return project(co.at, yaw); }
 
     function frame(yaw, hover) {
+        var detail = detailLevel();
+        if (optimized && cachedFrame && cachedFrame.yaw === yaw &&
+            cachedFrame.pitch === pitch && cachedFrame.zoom === zoom && cachedFrame.detail === detail) {
+            /* Hover changes only the overlay. Keep the geometry and hit regions. */
+            return Object.assign({}, cachedFrame.value, { highlight: regionHighlight(hover, yaw) });
+        }
         var order = RENDERABLES.map(function (r) {
             return { r: r, depth: depthOf(r.at, yaw) };
         }).sort(function (a, b) { return a.depth - b.depth; });
@@ -492,7 +536,7 @@
            page and the runtime agree byte for byte. */
         var flowD = scene.flow(H, yaw);
 
-        return {
+        var result = {
             yaw: yaw,
             slots: order.map(function (o) {
                 var L = o.r.build(H, yaw);
@@ -508,6 +552,8 @@
                 return { id: co.id, x1: n1(o2[0]), y1: n1(o2[1]), x2: n1(a[0]), y2: n1(a[1]) };
             }),
         };
+        if (optimized) cachedFrame = { yaw: yaw, pitch: pitch, zoom: zoom, detail: detail, value: result };
+        return result;
     }
 
     /* One full revolution per PERIOD. It used to be a sine sweep bounded by
@@ -517,6 +563,10 @@
        to a narrow sweep. */
     function yawAt(ms) {
         return (ms % PERIOD) / PERIOD * Math.PI * 2;
+    }
+
+    function idleYawAt(ms) {
+        return motion ? Math.sin(ms / motion.period * Math.PI * 2) * motion.amplitude : yawAt(ms);
     }
 
     function boxCorners(b) {
@@ -540,7 +590,7 @@
 
     var api = {
         VB: VB, CALLOUTS: CALLOUTS, SLOTS: SLOTS,
-        LAYERS: LAYERS, REGION_IDS: REGION_IDS,
+        LAYERS: layers, REGION_IDS: REGION_IDS,
         PERIOD: PERIOD, BASE_SCALE: BASE_SCALE,
         ZOOM_MIN: ZOOM_MIN, ZOOM_MAX: ZOOM_MAX, PITCH_MIN: PITCH_MIN, PITCH_MAX: PITCH_MAX,
         RENDER_ANCHORS: RENDERABLES.map(function (r) { return { id: r.id, at: r.at }; }),
@@ -549,6 +599,7 @@
         boxFaces: boxFaces, frontFacing: frontFacing, regionBoxes: regionBoxes,
         regionHit: regionHit, calloutAnchor: calloutAnchor, calloutOrigin: calloutOrigin,
         setView: setView, getView: getView, resetView: resetView,
+        setCompact: setCompact, idleYawAt: idleYawAt,
         H: H, scene: scene,
     };
     if (scene.data) for (var dk in scene.data) api[dk] = scene.data[dk];
@@ -585,13 +636,16 @@
             var slots = [];
             for (var s = 0; s < SLOTS; s++) {
                 var g = {}, ok = true;
-                for (var li = 0; li < LAYERS.length; li++) {
-                    g[LAYERS[li]] = byId('dg-s' + s + '-' + LAYERS[li]);
+                for (var li = 0; li < layers.length; li++) {
+                    g[layers[li]] = byId('dg-s' + s + '-' + layers[li]);
                     /* 'inner' is OPTIONAL at mount, the arrowheads precedent: for one
                        deploy every cached page was baked before the layer existed, and
                        failing the whole mount over it would show a dead figure instead
                        of one whose interior lines merely lack occlusion until refresh. */
-                    if (!g[LAYERS[li]] && LAYERS[li] !== 'inner') ok = false;
+                    /* A cached static frame may also predate a scene's surface
+                       layers. Its existing geometry and controls can still run. */
+                    if (!g[layers[li]] && layers[li] !== 'inner' &&
+                        LAYERS.indexOf(layers[li]) !== -1) ok = false;
                 }
                 if (!ok) return;
                 slots.push(g);
@@ -638,14 +692,40 @@
             var applying = false;
             var reduced = window.matchMedia &&
                           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var mobileQuery = motion && window.matchMedia ? window.matchMedia('(max-width: 900px), (pointer: coarse)') : null;
+            var reducedQuery = motion && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+            var mobile = !!(mobileQuery && mobileQuery.matches);
+            var idleAnchor = 0, idleElapsed = 0, idleLast = null, paintRaf = null;
+            var paintedAttributes = optimized ? new WeakMap() : null;
+            if (motion) setCompact(mobile);
+
+            function put(el, key, value) {
+                if (!optimized) { el.setAttribute(key, value); return; }
+                var attributes = paintedAttributes.get(el);
+                if (!attributes) { attributes = {}; paintedAttributes.set(el, attributes); }
+                /* These attributes belong to this instance. Read the baked value
+                   once, then compare in JS without copying SVG path data out of
+                   the DOM on every frame. */
+                if (!(key in attributes)) attributes[key] = el.getAttribute(key);
+                var next = String(value);
+                if (attributes[key] !== next) {
+                    attributes[key] = next;
+                    el.setAttribute(key, next);
+                }
+            }
 
             function paint() {
+                if (!optimized) { paintNow(); return; }
+                if (paintRaf !== null) return;
+                paintRaf = requestAnimationFrame(function () { paintRaf = null; paintNow(); });
+            }
+            function paintNow() {
                 var f = frame(yaw, hover);
                 var occ = '';
                 for (var i = 0; i < f.slots.length; i++) {
                     var L = f.slots[i], g = slots[i];
-                    for (var li = 0; li < LAYERS.length; li++) {
-                        if (g[LAYERS[li]]) g[LAYERS[li]].setAttribute('d', L[LAYERS[li]]);
+                    for (var li = 0; li < layers.length; li++) {
+                        if (g[layers[li]]) put(g[layers[li]], 'd', L[layers[li]]);
                     }
                     /* One union path for the WHOLE drawing, not one per slot.
                        A slot is a depth rank, not an object — frame() re-sorts
@@ -660,19 +740,19 @@
                         for (var oi = 0; oi < OCCLUDING.length; oi++) occ += L[OCCLUDING[oi]];
                     }
                 }
-                if (occEl) occEl.setAttribute('d', occ);
+                if (occEl) put(occEl, 'd', occ);
                 for (var h = 0; h < f.hits.length; h++) {
-                    hitEls[h].setAttribute('d', f.hits[h].d);
-                    hitEls[h].setAttribute('data-region', f.hits[h].id);
+                    put(hitEls[h], 'd', f.hits[h].d);
+                    put(hitEls[h], 'data-region', f.hits[h].id);
                 }
-                hlEl.setAttribute('d', f.highlight);
-                flowEl.setAttribute('d', f.flow);
-                if (headsEl) headsEl.setAttribute('d', f.flowHeads);
+                put(hlEl, 'd', f.highlight);
+                put(flowEl, 'd', f.flow);
+                if (headsEl) put(headsEl, 'd', f.flowHeads);
                 for (var j = 0; j < f.leaders.length; j++) {
                     var Ld = f.leaders[j], el = leaders[Ld.id];
                     if (!el) continue;
-                    el.setAttribute('x1', Ld.x1); el.setAttribute('y1', Ld.y1);
-                    el.setAttribute('x2', Ld.x2); el.setAttribute('y2', Ld.y2);
+                    put(el, 'x1', Ld.x1); put(el, 'y1', Ld.y1);
+                    put(el, 'x2', Ld.x2); put(el, 'y2', Ld.y2);
                     el.classList.toggle('is-hot', Ld.id === hover);
                 }
             }
@@ -685,6 +765,11 @@
                 });
                 wrap.classList.toggle('is-focused', !!hover);
                 paint();
+                if (motion) {
+                    if (hover) stop();
+                    else if (idle) start();
+                    else scheduleResume();
+                }
             }
 
             /* --- Idle sweep. Stops for good on first interaction; the reset
@@ -692,6 +777,18 @@
             function tick(now) {
                 if (document.hidden || !visible || !idle) { raf = null; return; }
                 raf = requestAnimationFrame(tick);
+                if (motion) {
+                    if (idleLast !== null) idleElapsed += Math.min(now - idleLast, 100);
+                    idleLast = now;
+                    /* The small idle arc needs fewer paints than a drag. Input
+                       remains coalesced at the display's own refresh rate. */
+                    var interval = 1000 / 24, elapsed = last ? now - last : interval;
+                    if (elapsed < interval) return;
+                    last = now - elapsed % interval;
+                    yaw = idleAnchor + idleYawAt(idleElapsed);
+                    paintNow();
+                    return;
+                }
                 if (now - last < 40) return;
                 last = now;
                 /* Anchor the clock to whatever angle we are ALREADY at, so
@@ -709,20 +806,27 @@
             }
             function start() {
                 if (raf || reduced || !idle || document.hidden || !visible) return;
+                if (motion && (mobile || hover)) return;
                 if (!isDriver()) return;   // followers are painted by the driver
                 last = 0; raf = requestAnimationFrame(tick);
             }
-            function stop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
+            function stop() {
+                if (raf) { cancelAnimationFrame(raf); raf = null; }
+                idleLast = null;
+            }
 
             function goIdle() {
                 if (idle) return;
+                if (motion && (drag || pending || pinch)) { scheduleResume(); return; }
                 idle = true;
                 t0 = null;      // re-anchored on the next tick, from the live yaw
+                if (motion) { idleAnchor = yaw; idleElapsed = 0; idleLast = null; }
                 push();
                 start();
             }
             function scheduleResume() {
                 if (resumeTimer) clearTimeout(resumeTimer);
+                if (motion && (mobile || reduced || hover)) { resumeTimer = null; return; }
                 resumeTimer = setTimeout(function () {
                     resumeTimer = null;
                     goIdle();
@@ -838,6 +942,7 @@
             function inDrawing(t) { return !!(t && svg.contains(t)); }
 
             function beginDrag(x, y, id) {
+                if (motion) setHover(null);
                 goManual();
                 drag = { x: x, y: y, yaw: yaw, pitch: getView().pitch };
                 if (id !== undefined && svg.setPointerCapture) {
@@ -934,6 +1039,7 @@
                     pending = null;
                 }
                 endDrag(e);
+                if (motion) scheduleResume();
             }
             /* THE GUARANTEE, and it does not depend on touch-action at all.
              *
@@ -1080,6 +1186,7 @@
             /* --- Controls --- */
             function doReset() {
                 if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+                if (motion) { idleAnchor = 0; idleElapsed = 0; idleLast = null; }
                 resetView(); yaw = 0; t0 = null; idle = true; setHover(null);
                 paint(); push(); start();
             }
@@ -1107,12 +1214,32 @@
                     // Coming back from a hidden tab must not fast-forward the
                     // turn by however long the tab was away.
                     if (idle) t0 = null;
+                    if (motion && !idle) scheduleResume();
                     start();
                 }
             });
 
             // Interaction stays available under reduced motion — it is
             // user-initiated. Only the unsolicited idle sweep is suppressed.
+            if (motion) {
+                var refreshPreferences = function () {
+                    reduced = !!(reducedQuery && reducedQuery.matches);
+                    mobile = !!(mobileQuery && mobileQuery.matches);
+                    setCompact(mobile);
+                    stop();
+                    if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+                    paint();
+                    if (idle) start();
+                };
+                [mobileQuery, reducedQuery].forEach(function (query) {
+                    if (!query) return;
+                    if (query.addEventListener) query.addEventListener('change', refreshPreferences);
+                    else if (query.addListener) query.addListener(refreshPreferences);
+                });
+                paint();
+                start();
+                return;
+            }
             if (reduced) { idle = false; paint(); return; }
             start();
         };

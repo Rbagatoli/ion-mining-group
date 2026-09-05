@@ -120,7 +120,8 @@ for (const yaw of sweep(12)) for (const L of D.frame(yaw, null).leaders) {
 if (drift) fail(`${drift} leader endpoints drifted off their anchor`);
 else console.log(`leaders: ${D.CALLOUTS.length} welded to anchors at 13 angles  OK`);
 
-// --- 8. The idle motion is one continuous revolution ---
+// --- 8. The full-turn helper remains available for manual/comparison views.
+// Home's bounded idle motion is exercised separately in home-scene-suite.js. ---
 {
   let prev = D.yawAt(0), wraps = 0, backwards = 0, mx = 0;
   for (let t = 50; t <= D.PERIOD; t += 50) {
@@ -134,7 +135,7 @@ else console.log(`leaders: ${D.CALLOUTS.length} welded to anchors at 13 angles  
   if (wraps !== 1) fail(`yawAt wraps ${wraps} times per PERIOD, want exactly 1`);
   if (Math.abs(mx - Math.PI * 2) > 0.01) fail(`yawAt peaks at ${mx}, want a full turn`);
   if (Math.abs(D.yawAt(0)) > 1e-9) fail('a revolution must start at yaw 0');
-  console.log(`rotation: one continuous 360 turn every ${(D.PERIOD/1000).toFixed(0)}s  OK`);
+  console.log(`rotation helper: a continuous 360 turn remains available  OK`);
 }
 
 
