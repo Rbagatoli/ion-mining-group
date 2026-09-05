@@ -1,0 +1,111 @@
+    <div class="mb-panel" id="mb-builder" role="tabpanel" aria-labelledby="mb-tab-build" data-module-src="./mine-builder-scene.js" hidden>
+      <div class="mb-topline"><span class="mb-kicker">Your energy. Your configuration.</span><span class="mb-tag">Interactive estimate</span></div>
+      <div class="mb-workspace">
+        <form class="mb-form" id="mb-form" novalidate>
+          <div class="mb-form-heading"><span class="mb-step">01</span><h3>Set your starting point</h3></div>
+          <label class="mb-field" for="mb-sizing">Size my mine from
+            <select id="mb-sizing" name="sizing"><option value="power">Available power</option><option value="gas">Available gas</option><option value="machines">Number of machines</option></select>
+          </label>
+          <div data-mb-when="power">
+            <label class="mb-field" for="mb-powerMW">Available power <span class="mb-input-unit"><input id="mb-powerMW" name="powerMW" type="number" min="0" max="1000" step="any" value="1" inputmode="decimal" required><span>MW</span></span></label>
+            <input class="mb-range" id="mb-power-slider" type="range" min="0" max="20" step="0.1" value="1" aria-label="Available power in megawatts">
+            <div class="mb-range-labels"><span>0 MW</span><span>20 MW · type above for more</span></div>
+          </div>
+          <div data-mb-when="gas" hidden>
+            <label class="mb-field" for="mb-gasMcf">Gas flow <span class="mb-input-unit"><input id="mb-gasMcf" name="gasMcf" type="number" min="0" max="1000000" step="any" value="240" required><span>Mcf/day</span></span></label>
+            <div class="mb-pair">
+              <label class="mb-field" for="mb-gasBtu">Heating value <span class="mb-input-unit"><input id="mb-gasBtu" name="gasBtu" type="number" min="100" max="3000" step="any" value="1000" required><span>BTU/cf</span></span></label>
+              <label class="mb-field" for="mb-heatRate">Heat rate <span class="mb-input-unit"><input id="mb-heatRate" name="heatRate" type="number" min="3000" max="30000" step="any" value="10000" required><span>BTU/kWh</span></span></label>
+            </div>
+          </div>
+          <div data-mb-when="machines" hidden>
+            <label class="mb-field" for="mb-machineCount">Machine count <input id="mb-machineCount" name="machineCount" type="number" min="0" max="1000000" step="1" value="160" required></label>
+          </div>
+          <label class="mb-field" for="mb-source" id="mb-source-field">Power source
+            <select id="mb-source" name="source"><option value="gas">On-site gas generation</option><option value="grid">Grid / behind the meter</option></select>
+          </label>
+          <div class="mb-form-heading"><span class="mb-step">02</span><h3>Choose your machines</h3></div>
+          <label class="mb-field" for="mb-model">Miner model <select id="mb-model" name="model"><option value="Antminer S21+ Hyd.">Antminer S21+ Hyd.</option></select></label>
+          <div class="mb-pair">
+            <label class="mb-field" for="mb-hashrate">Hashrate / machine <span class="mb-input-unit"><input id="mb-hashrate" name="hashrate" type="number" min="0.1" max="100000" step="any" value="395" required><span>TH/s</span></span></label>
+            <label class="mb-field" for="mb-power">Power / machine <span class="mb-input-unit"><input id="mb-power" name="power" type="number" min="0.01" max="1000" step="any" value="5.925" required><span>kW</span></span></label>
+          </div>
+          <div class="mb-pair">
+            <label class="mb-field" for="mb-elecCost">Electricity rate <span class="mb-input-unit"><input id="mb-elecCost" name="elecCost" type="number" min="0" max="10" step="any" value="0.07" required><span>$/kWh</span></span></label>
+            <label class="mb-field" for="mb-overhead">Site overhead <span class="mb-input-unit"><input id="mb-overhead" name="overhead" type="number" min="0" max="100" step="any" value="5" required><span>% of IT</span></span></label>
+          </div>
+          <p class="mb-help">Include fuel or purchased power in your rate. Overhead reserves power for cooling and site equipment.</p>
+          <details class="mb-assumptions" id="mb-assumptions">
+            <summary>Market, operating &amp; build assumptions</summary>
+            <div class="mb-pair">
+              <label class="mb-field" for="mb-btcPrice">BTC price <span class="mb-input-unit"><input id="mb-btcPrice" name="btcPrice" type="number" min="1" max="100000000" step="any" value="96000" required><span>USD</span></span></label>
+              <label class="mb-field" for="mb-difficulty">Network difficulty <span class="mb-input-unit"><input id="mb-difficulty" name="difficulty" type="number" min="0.01" max="10000000" step="any" value="125.86" required><span>trillion</span></span></label>
+              <label class="mb-field" for="mb-uptime">Uptime <span class="mb-input-unit"><input id="mb-uptime" name="uptime" type="number" min="0" max="100" step="any" value="95" required><span>%</span></span></label>
+              <label class="mb-field" for="mb-poolFee">Pool fee <span class="mb-input-unit"><input id="mb-poolFee" name="poolFee" type="number" min="0" max="100" step="any" value="2" required><span>%</span></span></label>
+              <label class="mb-field" for="mb-diffChange">Difficulty / month <span class="mb-input-unit"><input id="mb-diffChange" name="diffChange" type="number" min="-20" max="100" step="any" value="2" required><span>%</span></span></label>
+              <label class="mb-field" for="mb-priceChange">BTC price / month <span class="mb-input-unit"><input id="mb-priceChange" name="priceChange" type="number" min="-20" max="100" step="any" value="0" required><span>%</span></span></label>
+            </div>
+            <label class="mb-field" for="mb-cooling">Cooling <select id="mb-cooling" name="cooling"><option value="hydro">Hydro · closed water loop</option><option value="air">Air · intake and exhaust</option><option value="immersion">Immersion · liquid tanks</option></select></label>
+            <div class="mb-pair">
+              <label class="mb-field" for="mb-capex">Price / machine <span class="mb-input-unit"><input id="mb-capex" name="capex" type="number" min="0" max="10000000" step="any" value="2649" required><span>USD</span></span></label>
+              <label class="mb-field" for="mb-infrastructureCost">Infrastructure budget <span class="mb-input-unit"><input id="mb-infrastructureCost" name="infrastructureCost" type="number" min="0" max="10000000000" step="any" value="0" required><span>USD</span></span></label>
+              <label class="mb-field" for="mb-slots">Slots / container <input id="mb-slots" name="slots" type="number" min="1" max="1000" step="1" value="240" required></label>
+              <label class="mb-field" for="mb-containerMW">IT capacity / container <span class="mb-input-unit"><input id="mb-containerMW" name="containerMW" type="number" min="0.01" max="100" step="any" value="1.5" required><span>MW</span></span></label>
+            </div>
+            <p class="mb-help" id="mb-price-note">Hardware prices are indicative. Enter your quoted costs.</p>
+          </details>
+          <p class="mb-error" id="mb-error" role="status" hidden></p>
+          <button type="button" class="mb-text-button" id="mb-reset-inputs">Reset configuration</button>
+          <a class="mb-jump" href="#mb-stage">See my mine &amp; estimates ↓</a>
+        </form>
+        <div class="mb-preview">
+          <div class="mb-stage" id="mb-stage" aria-label="Interactive 3D mine preview">
+            <div class="mb-stage-top"><span class="mb-stage-title">Your mine / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
+            <div class="mb-canvas-host" id="mb-canvas-host"></div>
+            <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/home.png" loading="lazy" decoding="async" alt="A reference layout with generation, power distribution and mining containers."><p id="mb-scene-message">Preparing your 3D site…</p></div>
+            <div class="mb-stage-bottom"><span id="mb-scene-caption">Illustrative layout · representative rack detail</span><span class="mb-north" aria-hidden="true">3D</span></div>
+          </div>
+          <div class="mb-view-controls" aria-label="3D view controls">
+            <button type="button" id="mb-energize" class="mb-energize" aria-pressed="true" disabled><span aria-hidden="true">◉</span> Power down</button>
+            <button type="button" id="mb-inspect" aria-pressed="false" disabled>Inside a container</button>
+            <button type="button" id="mb-xray" aria-pressed="false" disabled>X-ray off</button>
+            <button type="button" id="mb-rotate" aria-pressed="true" disabled>Auto-rotate on</button>
+            <button type="button" id="mb-zoom-out" aria-label="Zoom out of mine" disabled>−</button>
+            <button type="button" id="mb-zoom-in" aria-label="Zoom into mine" disabled>+</button>
+            <button type="button" id="mb-reset-view" disabled>Reset view</button>
+          </div>
+          <p class="mb-cooling-note" id="mb-cooling-note"></p>
+          <p class="mb-gesture">Drag to orbit · scroll to zoom · click a container to open it. Arrow keys rotate, +/− zoom, X toggles X-ray. Energize previews operation; estimates use your chosen uptime. On touch, enable rotation and pinch zoom first.</p>
+          <button type="button" class="mb-touch-toggle" id="mb-touch-toggle" aria-pressed="false" disabled>Enable rotation</button>
+          <div class="mb-site-stats" aria-label="Your configured fleet">
+            <div><span id="mb-out-count">—</span><small>Machines</small></div>
+            <div><span id="mb-out-hashrate">—</span><small>PH/s nameplate</small></div>
+            <div><span id="mb-out-load">—</span><small>MW incl. overhead</small></div>
+            <div><span id="mb-out-containers">—</span><small>Containers</small></div>
+          </div>
+          <p class="mb-sizing-note" id="mb-sizing-note"></p>
+          <div class="mb-production" id="mb-results">
+            <div class="mb-btc-lead"><span class="mb-kicker">Estimated production / next 30 days</span><div><strong id="mb-out-btc30">—</strong><span>BTC</span></div><p>After pool fees and uptime, before selling BTC to pay costs.</p></div>
+            <div class="mb-btc-secondary"><div><span id="mb-out-btcDay">—</span><small>BTC / first day</small></div><div><span id="mb-out-btcYear">—</span><small>BTC / next 365 days</small></div></div>
+            <div class="mb-chart-heading"><span>Cumulative BTC · 1 year</span><span id="mb-growth-note"></span></div>
+            <svg class="mb-chart" id="mb-chart" viewBox="0 0 600 90" role="img" aria-label="Estimated cumulative bitcoin mined over one year"><path class="mb-chart-grid" d="M0 20H600M0 50H600M0 80H600"/><path id="mb-chart-area" class="mb-chart-area" d=""/><path id="mb-chart-line" class="mb-chart-line" d=""/></svg>
+            <div class="mb-chart-axis"><span>Today</span><span>6 months</span><span>1 year</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mb-economics" aria-label="Mining economics in US dollars">
+        <div><span>Revenue / first day</span><strong id="mb-out-revenueDay">—</strong></div>
+        <div><span>Electricity / first day</span><strong id="mb-out-energyDay">—</strong></div>
+        <div><span>Margin after electricity / day</span><strong id="mb-out-marginDay">—</strong></div>
+        <div><span>Electricity cost / BTC</span><strong id="mb-out-energyPerBTC">—</strong></div>
+        <div><span>Break-even electricity rate</span><strong id="mb-out-breakEvenRate">—</strong></div>
+        <div><span>Hardware budget</span><strong id="mb-out-hardwareCost">—</strong></div>
+      </div>
+      <div class="mb-foot">
+        <div class="mb-market"><p id="mb-market-note" role="status">Example BTC price and difficulty. Refresh to request current market inputs.</p><button type="button" class="mb-text-button" id="mb-refresh-market">Refresh price &amp; difficulty</button></div>
+        <p class="mb-assumption-note" id="mb-assumption-note"></p>
+        <div class="mb-next"><p>Explore the full projection, costs and BTC strategy.<small>Site overhead carries into the calculator’s per-machine power figure.</small></p><a class="btn btn--primary" id="mb-calculator" href="./calculator.html">Open full calculator <span aria-hidden="true">↗</span></a></div>
+        <p class="mb-disclaimer">Estimates, not guaranteed payouts. Production models the block subsidy, pool fees, uptime, difficulty changes and estimated halving dates; transaction fees are excluded. Margin deducts electricity only, including site overhead, and excludes maintenance, labour, taxes, financing and capital costs. Site layout, container capacity and generation sizing are illustrative, not an engineering design or a quote.</p>
+        <span class="mb-sr-only" id="mb-announcement" role="status" aria-live="polite" aria-atomic="true"></span>
+      </div>
+    </div>

@@ -40,6 +40,103 @@ site/
   favicon.svg     Proton mark, matching manifest.json
 ```
 
+## Build your mine
+
+The home page's **Our mine / Build your mine** tabs share the existing drawing
+window. The generated SVG remains available as a fallback. The builder accepts available MW,
+Mcf/day (with gas quality and engine heat rate), or machine count; visitors can
+select a catalog miner or enter custom specifications and operating assumptions.
+
+`mine-builder-model.js` reserves cooling/site overhead before flooring machine
+count and calls `CalcEngine` for a 365-day projection. Production is net of pool
+fees and uptime, includes difficulty changes and projected halvings, and excludes
+transaction fees. The 30-day number sums 30 daily periods. Dollar margin deducts
+electricity only. Zero capacity bypasses the engine's one-machine floor. The full
+calculator link pins the same inputs and includes overhead in per-machine power.
+Prices come from the dated `PriceList` and can be overwritten with a quote.
+
+`mine-builder.js` handles the tabs, form, validation, results, chart and market
+requests. Coinbase and Blockchain.info are requested only when the builder is
+first opened or refreshed. Failures retain explicitly labeled example/user values;
+late replies cannot replace an input the visitor has edited. These requests send
+no configuration data. The privacy page describes both requests.
+
+`mine-builder-scene.js` is dynamically imported when a 3D window is approached or
+the builder is first opened. It
+uses locally bundled Three.js 0.185.1 (MIT license in `vendor/three-0.185.1/`). The
+geometry supports hydro, air and immersion cooling, grid or on-site generation,
+energizing, scroll-wheel / button zoom, X-ray, and an opening container. Platinum
+metal panels and metallic BTC-orange accents use neutral studio lighting. Hydro
+containers have sealed miners, supply/return plumbing, a CDU and a roof dry
+cooler; its fans reject heat from the water loop. Air containers instead have
+intake filters, miner fans and an end-wall exhaust array. Immersion uses tanks.
+The utility train shares detailed generator packages, filter vessels, valves,
+gauges, switchgear and finned transformers across the builder and presentation
+views. The landfill keeps its authored terrace profile and well positions, with
+a smoother cap, flanged wellheads, supported collection piping, twin blowers and
+an enclosed flare. The gas-pad version includes a horizontal separator and welded
+storage tanks with a service walkway. Repeated hardware is instanced; hover bounds
+cover the modeled equipment while pointing labels retain their individual anchors.
+Equipment anatomy references: [Jenbacher containerized solutions](https://www.jenbacher.com/images/medias/files/4755/innio_fs_containerized_solutions_a4_en_screen_ijb-122005-en.pdf)
+and [EPA landfill gas systems](https://www.epa.gov/lmop/basic-information-about-landfill-gas).
+Large fleets are represented by
+at most 12 explicitly labeled groups. Geometry and representative rack detail are
+illustrative, not a construction design. Every rendering starts energized. The
+builder's Power down choice survives input edits; empty or invalid builds stop
+operating, and Reset configuration restores the energized default.
+Animation stops offscreen, on hidden tabs, and when the original drawing is
+selected. Views rotate automatically, pause during drag / zoom, and resume after
+three seconds without resetting the chosen angle or zoom. Auto-rotate controls
+can pause or restart this motion. Reduced motion disables idle and operating
+animations by default; an explicit Auto-rotate choice can enable camera motion.
+Touch scrolling works until rotation is explicitly
+enabled, including pinch zoom. The full rendering panel handles scroll-wheel
+zoom, including events over captions and callout cards. It consumes those events
+at the zoom limits too; scrolling outside the panel still moves the page.
+Ctrl/Cmd-wheel retains browser zoom. A WebGL failure keeps
+the estimates usable alongside a reference image.
+
+`plant-viewer.js` and `plant-viewer.css` progressively upgrade **Your site**, **Our
+mine**, and **One container** with that same renderer and container geometry.
+The original scene definitions supply the equipment positions, ground contours,
+camera framing and two columns of pointing textboxes. Source equipment becomes
+lit geometry, and detailed containers occupy the original slots. Labels track
+their equipment during rotation and zoom. Hover fills and outlines the complete
+region, including all equipment belonging to a grouped label. Clicking a label
+eases both the camera and its framing toward that section, then begins a gentle oscillation of about ten degrees
+each way. The selection persists after pointer exit. Clicking it again, Reset,
+or Escape returns to the complete site.
+These views use X-ray to reveal infrastructure without moving the shell or
+entering a container. Only the individual ASIC starts with X-ray enabled; all
+other views start with it off. Each view retains subsequent visitor choices.
+The larger metallic orange X-ray controls display their on / off state. Only
+Build your mine retains the opening-container control. Hosting's slider
+switches between the container and a detailed fanless S21+ Hyd. machine. Each
+energy fuel keeps its own comparison slider and camera; existing equipment stays
+fixed while the Proton deployment is revealed, and the flare remains in place.
+Hidden fuel panes load only when approached. The old SVG pauses while hidden and
+returns if WebGL cannot initialize or its context is lost.
+
+The generator reads the panel markup from `tools/mine-builder.html`:
+
+```sh
+node site/tools/build-diagram.js
+node tools/build-asset-stamp.js
+node tests/site/mine-builder-suite.js
+node tests/site/mine-builder-ui-suite.js
+node tests/site/plant-scene-suite.js
+node tests/site/plant-viewer-suite.js
+```
+
+The `data-module-src` URL participates in asset stamping, so the lazy scene is
+cache-busted along with the rest of the site. Vendor imports are versioned by
+directory. All four feature suites are also in `tests/site/run.js`; they verify
+economics, calculator handoff, cooling geometry, original camera projection and
+equipment locations, wheel handling through the real OrbitControls (including
+overlay events), automatic rotation / resumption, animated section focus and
+bounded oscillation, energized defaults, interior controls, progressive enhancement / fallback, form
+behavior and market races.
+
 ## Preview locally
 
 ```sh
@@ -819,6 +916,10 @@ Other rules the pages follow:
   visible focus state on every field, and no text below 10.5px (mono labels only).
 
 ## "Inside a site" diagram
+
+The implementation notes below describe the generated SVG fallback and its
+history. The default interactive windows now use the shared WebGL presentation
+described under **Build your mine** above; keep both paths when changing content.
 
 A containerised deployment rendered in 3D on the home page: gas conditioning, a two-bay genset
 skid, a transformer, and two 40 ft containers side by side, each with its near wall and half its

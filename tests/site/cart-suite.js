@@ -576,8 +576,11 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
    pages never load them at all. */
 (function () {
     var t = fs.readFileSync(S + 'index.html', 'utf8');
-    ok(t.indexOf('miner-db.js') < 0,
-       'the home page carries no spec table, which is why the store is dependency-free');
+    var plain = t.replace(/\?v=[0-9a-f]+/g, '');
+    ok(plain.indexOf('<script src="./cart.js"') < plain.indexOf('<script src="./miner-db.js"'),
+       'the home cart still boots before the builder loads its optional spec table');
+    ok(fs.readFileSync(S + 'contact.html', 'utf8').indexOf('miner-db.js') < 0,
+       'pages without a builder still load the cart without a spec table');
 })();
 
 (function () {

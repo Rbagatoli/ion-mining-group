@@ -340,6 +340,11 @@ CHAIN_PAGES.forEach(page => {
     const bar = src.slice(src.indexOf('<div class="dg-toggle'),
                           src.indexOf('</div>', src.indexOf('<div class="dg-toggle')));
     const here = [...bar.matchAll(/class="dg-toggle-on" aria-current="true">([^<]*)/g)].map(m => m[1].trim());
+    // The home stop now offers Our mine / Build your mine in the same window.
+    // Its selected tab names the current view; the two cross-page links remain.
+    if (page.file === 'index.html') {
+        here.push(...[...bar.matchAll(/role="tab" id="mb-tab-ours" aria-selected="true"[^>]*>([^<]*)/g)].map(m => m[1].trim()));
+    }
     const away = [...bar.matchAll(/class="dg-toggle-to[^"]*" href="([^"]*)"/g)].map(m => m[1]);
     ok(here.length === 1 && here[0] === page.at,
        '  ' + page.file + ': one segment names where you are',
@@ -399,7 +404,9 @@ ok(bar0.indexOf('<a class="dg-toggle-to" href="./hosting.html#inside-container">
     const bar = sec.slice(b0, sec.indexOf('</div>', b0) + 6);
     const strip = t => t.replace(/<!--[\s\S]*?-->/g, ' ').replace(/<[^>]*>/g, ' ');
     const copy = strip(sec);
-    const prose = strip(sec.split(bar).join(' '));
+    // Only the original drawing's prose owns this naming rule. The builder's
+    // "site overhead" and "site view" are operational terms in a separate panel.
+    const prose = strip(sec.split('<div class="mb-panel"')[0].split(bar).join(' '));
     ok(b0 >= 0 && bar.length > 0 && prose.length < copy.length,
        'the home section carries a chain bar, and it can be told apart from the prose',
        strip(bar).replace(/\s+/g, ' ').trim());

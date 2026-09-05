@@ -1141,6 +1141,7 @@
                on a callout bubble is still a pinch. Rotation still requires the drawing
                itself — dragging a label to turn the model would be a surprise. */
             wrap.addEventListener('pointerdown', function (e) {
+                if (wrap.classList.contains('plant-ready')) return;
                 if (onControl(e.target)) return;
                 pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
@@ -1271,6 +1272,7 @@
                    same way once it will not zoom any further and the page moves
                    on. There is no state to get stuck in. --- */
             wrap.addEventListener('wheel', function (e) {
+                if (wrap.classList.contains('plant-ready')) return;
                 /* A PINCH IS NOT A SCROLL, and the browser reports it as one. Every engine
                    sends pinch gestures — trackpad and touchscreen alike — as wheel events
                    with ctrlKey set, and a single pinch produces dozens of them in a burst.

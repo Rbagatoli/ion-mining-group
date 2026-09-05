@@ -35,6 +35,7 @@ const PAGES = {
     heading: 'What we actually build.',
     lede: 'Gas that would otherwise be flared, engines to burn it, a transformer, and containers of machines. Cut the wall away and this is the whole of it.',
     deps: ['site-kit.js'],
+    builder: true,
     chain: 'site',
     views: [
       { key: 'site', name: 'site', module: '../scene-site.js',
@@ -175,11 +176,15 @@ const CHAIN = [
   { key: 'cont', label: 'One container', href: './hosting.html#inside-container' },
 ];
 
-function chainOf(key) {
+function chainOf(key, builder) {
   const at = CHAIN.findIndex(s => s.key === key);
   if (at < 0) return '';
   const seg = CHAIN.map((s, i) => {
     if (i === at) {
+      if (builder) return `<span class="mb-tabs" role="tablist" aria-label="Mine view">
+        <button type="button" role="tab" id="mb-tab-ours" aria-selected="true" aria-controls="mb-our-mine">Our mine</button>
+        <button type="button" role="tab" id="mb-tab-build" aria-selected="false" aria-controls="mb-builder" tabindex="-1" hidden>Build your mine</button>
+      </span>`;
       return `<span class="dg-toggle-on" aria-current="true">${esc(s.label)}</span>`;
     }
     /* The arrow travels the way the reader does: back-pointing and leading for
@@ -192,7 +197,7 @@ function chainOf(key) {
            `\n      </a>`;
   });
   return `
-    <div class="dg-toggle reveal">
+    <div class="dg-toggle${builder ? ' mb-chain' : ''} reveal">
       ${seg.join('\n      ')}
     </div>`;
 }
@@ -323,6 +328,12 @@ function splice(cfg, section, scripts) {
   const OUT = path.join(__dirname, cfg.target);
   const open = `<!-- ===== ${cfg.marker} ===== -->`;
   let html = fs.readFileSync(OUT, 'utf8');
+  if (cfg.builder && !/href="\.\/mine-builder\.css(?:\?v=[0-9a-f]+)?"/.test(html)) {
+    html = html.replace('</head>', '<link rel="stylesheet" href="./mine-builder.css">\n</head>');
+  }
+  if (!/href="\.\/plant-viewer\.css(?:\?v=[0-9a-f]+)?"/.test(html)) {
+    html = html.replace('</head>', '<link rel="stylesheet" href="./plant-viewer.css">\n</head>');
+  }
   if (!html.includes(cfg.insertBefore)) {
     console.error(`anchor not found in ${cfg.target}`);
     process.exit(1);
@@ -391,7 +402,7 @@ function splice(cfg, section, scripts) {
      and it makes this block idempotent from either direction. */
   var stamped = function (file) {
     return new RegExp('<script src="\\./' + file.replace(/\./g, '\\.') +
-                      '(?:\\?v=[0-9a-f]+)?"></script>', 'g');
+                      '(?:\\?v=[0-9a-f]+)?"(?: data-module-src="[^"]+")?></script>', 'g');
   };
 
   if (!stamped('diagram-engine.js').test(html)) {
@@ -416,7 +427,7 @@ function splice(cfg, section, scripts) {
   /* Re-emitted WITHOUT a stamp. build-asset-stamp.js runs after this and puts the current
      hash back on every tag; writing a stale one here would be a hash that never matched. */
   html = html.replace(stamped('diagram-engine.js'), function (m) {
-    return m + '\n' + scripts.map(s => `<script src="./${s}"></script>`).join('\n');
+    return m + '\n' + scripts.map(s => `<script src="./${s}"${s === 'plant-viewer.js' ? ' data-module-src="./mine-builder-scene.js"' : ''}></script>`).join('\n');
   });
   fs.writeFileSync(OUT, html);
 }
@@ -528,7 +539,7 @@ function build(key) {
       const note = v.note ? `\n        <p class="dg-note">${v.note}</p>` : '';
       const link = g.link ? ` data-link="${g.link}"` : '';
       return `
-      <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}" data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
+      <div class="dg-wrap dg-wrap--${v.key}${pair ? '' : ' reveal'}"${cfg.builder ? ' id="mb-our-mine" role="tabpanel" aria-labelledby="mb-tab-ours"' : ''} data-view="${v.key}" data-scene="${v.name}" data-prefix="${v.prefix}"${link}>
         <canvas class="anim-field anim-field--dg" data-w="${v.D.VB.w}" data-h="${v.D.VB.h}" aria-hidden="true"></canvas>
         ${svg}${bubblesOf(v.D)}${controlsOf(v.prefix)}
         ${HINT}${note}
@@ -569,7 +580,8 @@ function build(key) {
      next drawing is a deliberate navigation rather than a drag that surprises
      you by leaving the page. It sits above the fuel switch because it changes
      which site you are looking at, not which fuel feeds it. */
-  const toggle = chainOf(cfg.chain);
+  const toggle = chainOf(cfg.chain, cfg.builder);
+  const builder = cfg.builder ? fs.readFileSync(path.join(__dirname, 'mine-builder.html'), 'utf8') : '';
 
   /* One group splices bare. Several are each wrapped in a pane the fuel switch
      shows and hides — and the pane, not the drawing, carries `hidden`, so the
@@ -587,7 +599,7 @@ function build(key) {
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
       <p class="lede">${esc(cfg.lede)}</p>
-    </div>${toggle}${fuelOf(cfg, groups)}${panes}
+    </div>${toggle}${fuelOf(cfg, groups)}${panes}${builder}
   </div>
 </section>
 <!-- ===== /${cfg.marker} ===== -->
@@ -596,7 +608,8 @@ function build(key) {
 
   /* deps come first: a scene that reads shared geometry needs that module to
      have executed before it does. */
-  splice(cfg, section, (cfg.deps || []).concat(all.map(v => v.script)));
+  splice(cfg, section, (cfg.deps || []).concat(all.map(v => v.script),
+    ['plant-viewer.js'], cfg.builder ? ['calc-engine.js', 'miner-db.js', 'price-list.js', 'mine-builder-model.js', 'mine-builder.js'] : []));
   console.log(`${key}: ${all.length} views [${groups.map(g =>
     (g.key ? `${g.key}: ` : '') + g.views.map(v =>
       `${v.key}(${v.name}) ${v.D.SLOTS}x${v.D.LAYERS.length} ${v.D.CALLOUTS.length}co` +
