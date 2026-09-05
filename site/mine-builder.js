@@ -14,7 +14,7 @@
     function btc(value) { return number(value, value >= 100 ? 4 : 6); }
     var active = false, firstOpen = true, scene = null, scenePromise = null;
     var result = null, sceneTimer = null, announceTimer = null, sceneFailed = false;
-    var powered = true, inspecting = false, xray = false;
+    var powered = true, inspecting = false, xray = false, pendingInspect = false;
     var market = { btcPrice: 'example', difficulty: 'example' };
     var revisions = { btcPrice: 0, difficulty: 0 }, requestSequence = 0;
     var chart = $('chart'), original = $('site-preview');
@@ -62,6 +62,11 @@
     function sceneConfig() {
         var site = sites[selectedSite];
         return Object.assign({}, result, { siteType: site.view, siteDefinition: { main: site.main, before: site.before } });
+    }
+    function inspectWhenReady() {
+        if (!pendingInspect || !active || !scene || !result || !result.valid || !result.count) return;
+        pendingInspect = false; clearTimeout(sceneTimer);
+        scene.setConfig(sceneConfig()); scene.inspect(true);
     }
     function siteContext() {
         var site = sites[selectedSite];
@@ -150,6 +155,7 @@
             if (result && result.valid) scene.setConfig(sceneConfig());
             scene.energize(powered && result && result.valid && result.count > 0);
             scene.setActive(active && result && result.valid);
+            inspectWhenReady();
             viewControls();
         } catch (error) {
             sceneFailed = true;
@@ -213,7 +219,7 @@
             ' Electricity is charged during uptime; standby power is not modeled.');
         text('scene-caption', sceneFailed ? 'Reference layout · configured totals below' :
             (r.containers > 12 ? '12 visual groups represent ' + number(r.containers, 0) + ' containers' :
-                r.containers > 4 ? 'Illustrative layout · added working area shown' : 'Your existing site + configured mining equipment'));
+                r.containers > 4 ? 'Illustrative layout · balanced container rows' : 'Your existing site + configured mining equipment'));
         drawChart(r);
         var url = M.calculatorURL(r);
         if (url) { $('calculator').href = url; $('calculator').removeAttribute('aria-disabled'); }
@@ -228,6 +234,7 @@
     }
     function selectBuild(build) {
         active = build; panel.hidden = !build;
+        if (!build) pendingInspect = false;
         // Keep the site picker and comparison controls on screen. Only the
         // reference drawings give way to the configurable version of this site.
         panes.forEach(function (pane) {
@@ -251,8 +258,11 @@
             button.disabled = false;
             button.addEventListener('click', function () {
                 var build = button.getAttribute('data-mb-end') === 'hi';
-                setScale(pane, build ? 100 : 0); selectBuild(build);
+                selectBuild(build);
             });
+        });
+        pane.addEventListener('proton:inspect-container', function () {
+            if (pane.getAttribute('data-fuel') === selectedSite) { pendingInspect = true; inspectWhenReady(); }
         });
         scale.addEventListener('input', function () {
             if (active && pane.getAttribute('data-fuel') === selectedSite && Number(scale.value) < 100) selectBuild(false);
@@ -265,7 +275,7 @@
         pick.addEventListener('click', function () {
             var next = pick.getAttribute('data-fuel');
             if (next === selectedSite || !sites[next]) return;
-            savedSites[selectedSite] = settings(); selectedSite = next;
+            savedSites[selectedSite] = settings(); selectedSite = next; pendingInspect = false;
             var saved = savedSites[next] || initialSettings;
             Object.keys(saved).forEach(function (key) {
                 if (key !== 'btcPrice' && key !== 'difficulty') fields[key].value = saved[key];

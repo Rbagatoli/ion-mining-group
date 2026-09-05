@@ -68,11 +68,11 @@ class Surface {
     check('configured site cooling, generation and expansion follow the selected build', () => {
         for (const view of ['landfill','pad']) for (const cooling of ['hydro','air','immersion']) {
             const config=configured(view,{powerMW:30,cooling}),yard=shared.buildConfiguredSite(config);
-            assert.equal(yard.containers.length,12);assert.ok(yard.root.getObjectByName('mining-extension-pad'));
+            assert.equal(yard.containers.length,12);assert.ok(yard.root.getObjectByName('site-ground'));
             for(const unit of yard.containers)assert.equal(unit.cooling,cooling);
             const expected=cooling==='hydro'?'hydro-manifolds':cooling==='air'?'air-intake-filters':'immersion-tanks';
             assert.ok(yard.containers[0].root.getObjectByName(expected));
-            assert.ok(yard.root.getObjectByName('generation-extension-pad'));assert.equal(yard.gasDiverted,true);
+            assert.equal(yard.root.getObjectByName('generation-extension-pad'),undefined);assert.equal(yard.gasDiverted,true);
             let draws=0,triangles=0;
             yard.root.traverse(o=>{
                 for(const n of o.matrixWorld.elements)assert.ok(Number.isFinite(n));
@@ -83,6 +83,55 @@ class Surface {
         const grid=shared.buildConfiguredSite(configured('landfill',{source:'grid'}));
         assert.equal(grid.root.getObjectByName('generator-package'),undefined);assert.equal(grid.targets.cond,undefined);
         assert.ok(grid.targets.xfmr);assert.ok(grid.targets.blower);assert.equal(grid.gasDiverted,false);
+    });
+    check('one continuous ground rectangle expands under balanced rows for every visible container count', () => {
+        for(const view of ['landfill','pad']) {
+            let first;
+            for(let count=1;count<=12;count++) {
+                const yard=shared.buildConfiguredSite(configured(view,{sizing:'machines',machineCount:count*240}));
+                const slabs=[];yard.root.traverse(o=>{if(o.isInstancedMesh && o.material===yard.mats.ground)slabs.push(o);});
+                assert.equal(slabs.length,1);assert.equal(slabs[0].count,1,'the floor is one rectangular slab');
+                assert.equal(yard.root.getObjectByName('mining-extension-pad'),undefined);
+                const floor=new T.Box3().setFromObject(slabs[0]),rows=new Map();
+                if(count===1)first=floor;
+                for(const unit of yard.containers) {
+                    const bounds=new T.Box3().setFromObject(unit.root);
+                    assert.ok(bounds.min.x>floor.min.x && bounds.max.x<floor.max.x && bounds.min.z>floor.min.z && bounds.max.z<floor.max.z,'every container stands inside the same floor');
+                    const z=unit.root.position.z;
+                    if(!rows.has(z))rows.set(z,[]);rows.get(z).push(unit.root.position.x);
+                }
+                const sizes=[...rows.values()].map(row=>row.length);
+                assert.ok(Math.max(...sizes)-Math.min(...sizes)<=1,'rows differ by at most one container');
+                const centers=[...rows.values()].map(row=>(Math.min(...row)+Math.max(...row))/2);
+                assert.ok(Math.max(...centers)-Math.min(...centers)<1e-9,'each row shares one centerline');
+                for(const row of rows.values())for(let i=1;i<row.length;i++)assert.ok(Math.abs(row[i]-row[i-1]-14.4)<1e-9);
+                if(count===12){
+                    assert.equal(rows.size,4);assert.ok(sizes.every(n=>n===3));
+                    assert.ok(floor.max.x-floor.min.x>first.max.x-first.min.x,'the full site widens');
+                    assert.ok(floor.max.z-floor.min.z>first.max.z-first.min.z,'the full site deepens');
+                }
+            }
+        }
+    });
+    check('configured pipework has no fixed four-container stubs and each power feed ends at an actual container', () => {
+        for(const view of ['landfill','pad'])for(const count of [1,2,5,12]) {
+            const yard=shared.buildConfiguredSite(configured(view,{sizing:'machines',machineCount:count*240}));
+            assert.equal(yard.root.getObjectByName('tiein'),undefined,'the fixed reference distribution spine must not be reused');
+            assert.ok(yard.root.getObjectByName('configured-gas-tiein'));
+            const feeds=[];yard.root.traverse(o=>{if(o.name==='container-power-feed')feeds.push(o);});
+            assert.equal(feeds.length,count,'there are no feeds to absent containers');
+            feeds.forEach((feed,i)=>{
+                const mesh=feed.children.find(o=>o.geometry?.parameters?.path);
+                assert.ok(mesh,'each feed is real geometry');
+                const end=mesh.geometry.parameters.path.getPoint(1);
+                const unit=yard.containers[i];
+                const expected=new T.Vector3(-5.7,.44,1.34).applyMatrix4(unit.root.matrixWorld);
+                assert.ok(end.distanceTo(expected)<1e-9,'the feed terminates at the unit service entry');
+            });
+            const gas=new T.Box3().setFromObject(yard.targets.tiein);
+            const front=Math.min(...yard.containers.map(c=>new T.Box3().setFromObject(c.root).min.z));
+            assert.ok(gas.max.z<front,'gas treatment piping does not extend into empty mining rows');
+        }
     });
     check('configured sites and their expansion fit desktop and phone frames throughout automatic rotation', () => {
         for(const view of ['landfill','pad'])for(const powerMW of [0,1,30]) {

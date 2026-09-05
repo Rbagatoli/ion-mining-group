@@ -45,8 +45,8 @@ site/
 On the Energy Partners page, choose **Landfill gas** or **Flared gas**, then select
 **With Proton on it / Build your mine**. The builder configures that selected site,
 using the same infrastructure models and equipment locations as its comparison.
-The fuel picker and comparison slider remain visible. **Your site today** or
-dragging the slider back restores the comparison; each fuel retains its own
+The fuel picker and **Your site today / With Proton on it** toggle remain visible.
+**Your site today** restores the original site; each fuel retains its own
 configuration for the current visit. Market inputs are shared between the two.
 The home page keeps the Our mine presentation. The generated SVG remains available as a fallback.
 The builder accepts available MW,
@@ -55,12 +55,20 @@ select a catalog miner or enter custom specifications and operating assumptions.
 
 `buildConfiguredSite` preserves the entire existing landfill or gas-pad plant,
 then sizes the added containers and their cooling from the estimated fleet.
-The first four containers use the authored working-area positions; larger builds
-add graded working area forward of the pad, clear of the cap and existing plant.
-Additional generator groups sit to the right of the pad. Large fleets use at most
+Containers occupy balanced, centered rows that clear the fixed equipment, cap,
+pipework and access road. One rectangular ground surface expands in width and
+depth to cover the entire site. Each power feed terminates at a displayed
+container; the fixed four-container distribution spine is not reused. Additional
+generator groups stay together on the utility row. Large fleets use at most
 12 representative container groups and three generator groups. The camera fits
 the combined site and expansion throughout its orbit. The standalone yard remains
 available as the scene module's generic configuration path.
+
+The energy toggle uses native buttons with `aria-pressed`; its hidden binary
+scene value keeps the 3D and SVG adapters synchronized without a visible range
+control. The hosting container / ASIC comparison retains its slider. Selecting
+Inside from an existing gas site opens the configured container, including when
+the builder's scene is still loading.
 
 `mine-builder-model.js` reserves cooling/site overhead before flooring machine
 count and calls `CalcEngine` for a 365-day projection. Production is net of pool

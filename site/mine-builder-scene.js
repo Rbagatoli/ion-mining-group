@@ -512,22 +512,24 @@ function blowerPackage(parent, mats, x, y, z, w = 4.4, d = 2) {
     gauge(b,mats,w*.12,1.6,d*.42,.14);
     b.add(mats.orange,[0,.23,d*.48,w*.36,.06,.04]); b.finish(); return root;
 }
-function landfillGround(diagram, mats) {
+function landfillGround(diagram, mats, omitSurface = false) {
     const root = new THREE.Group(), G = diagram.MODEL; root.name = 'ground';
-    const b = metalwork(root);
-    for (const slab of [G.GROUND,G.PAD,G.ROAD]) {
-        b.add(mats.ground,[slab.x,slab.y+slab.h/2,slab.z,slab.w,slab.h,slab.d]);
-        if (slab === G.PAD) for (const side of [-1,1]) b.add(mats.edge,[slab.x,0,slab.z+side*slab.d/2,slab.w,.06,.08]);
+    if (!omitSurface) {
+        const b = metalwork(root);
+        for (const slab of [G.GROUND,G.PAD,G.ROAD]) {
+            b.add(mats.ground,[slab.x,slab.y+slab.h/2,slab.z,slab.w,slab.h,slab.d]);
+            if (slab === G.PAD) for (const side of [-1,1]) b.add(mats.edge,[slab.x,0,slab.z+side*slab.d/2,slab.w,.06,.08]);
+        }
+        b.finish();
+        const grid = [];
+        for (const [slab,nx,nz] of [[G.GROUND,11,9],[G.PAD,8,5]]) {
+            const y = slab.y+slab.h+.004;
+            for (let i = 0; i <= nx; i++) { const x = slab.x-slab.w/2+slab.w*i/nx; grid.push(x,y,slab.z-slab.d/2,x,y,slab.z+slab.d/2); }
+            for (let i = 0; i <= nz; i++) { const z = slab.z-slab.d/2+slab.d*i/nz; grid.push(slab.x-slab.w/2,y,z,slab.x+slab.w/2,y,z); }
+        }
+        const gg = new THREE.BufferGeometry(); gg.setAttribute('position',new THREE.Float32BufferAttribute(grid,3));
+        root.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x90908d,transparent:true,opacity:.17})));
     }
-    b.finish();
-    const grid = [];
-    for (const [slab,nx,nz] of [[G.GROUND,11,9],[G.PAD,8,5]]) {
-        const y = slab.y+slab.h+.004;
-        for (let i = 0; i <= nx; i++) { const x = slab.x-slab.w/2+slab.w*i/nx; grid.push(x,y,slab.z-slab.d/2,x,y,slab.z+slab.d/2); }
-        for (let i = 0; i <= nz; i++) { const z = slab.z-slab.d/2+slab.d*i/nz; grid.push(slab.x-slab.w/2,y,z,slab.x+slab.w/2,y,z); }
-    }
-    const gg = new THREE.BufferGeometry(); gg.setAttribute('position',new THREE.Float32BufferAttribute(grid,3));
-    root.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x90908d,transparent:true,opacity:.17})));
     pressureVessel(root,mats,G.LEACH.x,0,G.LEACH.z,G.LEACH.w*.45,G.LEACH.h,'leachate-vessel');
     blowerPackage(root,mats,G.LEACH_PUMP.x,0,G.LEACH_PUMP.z,G.LEACH_PUMP.w,1.35).scale.y = .65;
     switchCabinet(root,mats,G.KIOSK.x,0,G.KIOSK.z,G.KIOSK.w,G.KIOSK.h-.1,G.KIOSK.d);
@@ -800,7 +802,7 @@ function buildHydroMachine() {
 
 // Convert the original authored plant geometry into lit meshes. Positions, paths,
 // landfill contours and ground footprints remain owned by the original scenes.
-function legacyPart(diagram, renderable, mats) {
+function legacyPart(diagram, renderable, mats, omitGround = false) {
     const root = new THREE.Group(), records = [], projected = [];
     root.name = renderable.id;
     const marker = record => { records.push(record); return '~'+(records.length-1)+'~'; };
@@ -822,6 +824,7 @@ function legacyPart(diagram, renderable, mats) {
     const layers = renderable.build(H,0), flame = part(root,'combustion');
     const flowCurves = [];
     for (const [layer,value] of Object.entries(layers)) {
+        if (omitGround && layer === 'ground') continue;
         if (!value) continue;
         const paths = [];
         for (const m of String(value).matchAll(/~(\d+)~/g)) paths.push(records[Number(m[1])]);
@@ -890,6 +893,43 @@ function containerPositions(diagram) {
         .map(r => ({x:r.at[0],y:0,z:r.at[2],w:12.19,h:2.59,d:2.44}));
 }
 
+function configuredGround(parent, mats, footprint) {
+    const root = part(parent,'site-ground'), {min,max} = footprint;
+    const w = max.x-min.x, d = max.z-min.z, x = (min.x+max.x)/2, z = (min.z+max.z)/2;
+    instances(root,mats.ground,[[x,-.16,z,w,.32,d]]);
+    instances(root,mats.edge,[[x,.015,min.z,w,.03,.06],[x,.015,max.z,w,.03,.06],
+        [min.x,.015,z,.06,.03,d],[max.x,.015,z,.06,.03,d]]);
+    const grid = [];
+    for (let gx = Math.ceil(min.x/4)*4; gx < max.x; gx += 4) grid.push(gx,.005,min.z,gx,.005,max.z);
+    for (let gz = Math.ceil(min.z/4)*4; gz < max.z; gz += 4) grid.push(min.x,.005,gz,max.x,.005,gz);
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position',new THREE.Float32BufferAttribute(grid,3));
+    root.add(new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:0x90908d,transparent:true,opacity:.17})));
+    return root;
+}
+
+function configuredPositions(main, shown, obstacles) {
+    if (!shown) return [];
+    const authored = containerPositions(main), xs = [...new Set(authored.map(p => p.x))].sort((a,b) => a-b);
+    const zs = [...new Set(authored.map(p => p.z))].sort((a,b) => a-b);
+    const columns = shown === 1 ? 1 : shown <= 4 ? 2 : 3, rows = Math.ceil(shown/columns);
+    const pitchX = 14.4, pitchZ = Math.max(6.8,zs.length > 1 ? zs[1]-zs[0] : 6.8);
+    const center = columns <= 2 ? (xs[0]+xs[xs.length-1])/2 : xs[0]+(columns-1)*pitchX/2;
+    const positions = [];
+    for (let row = 0; row < rows; row++) {
+        // Balanced row counts keep an incomplete final row centered in the yard.
+        const count = Math.floor(shown/rows)+(row < shown%rows ? 1 : 0);
+        for (let col = 0; col < count; col++) positions.push({...authored[0],x:center+(col-(count-1)/2)*pitchX,z:zs[0]+row*pitchZ});
+    }
+    let shift = 0;
+    for (const position of positions) for (const box of obstacles) {
+        // Preserve the whole grid's spacing while clearing fixed infrastructure.
+        if (position.x+6.5 < box.min.x-1 || position.x-6.5 > box.max.x+1) continue;
+        shift = Math.max(shift,box.max.z+1.5+1.5-zs[0]);
+    }
+    positions.forEach(position => { position.z += shift; });
+    return positions;
+}
+
 /** Configure the added mine around the selected site's unchanged infrastructure. */
 export function buildConfiguredSite(config) {
     const view = config.siteType, {main,before} = config.siteDefinition || {};
@@ -898,19 +938,17 @@ export function buildConfiguredSite(config) {
     const existing = part(root,'existing-site'), mining = part(root,'configured-mine');
     const targets = {}, containers = [], fans = [], pulses = [], flames = part(root,'combustion-state');
     for (const r of before.scene.renderables) {
-        const model = presentationEquipment(before,r,mats,view);
+        const model = r.id === 'ground' ? view === 'landfill' ? landfillGround(before,mats,true) : legacyPart(before,r,mats,true)
+            : presentationEquipment(before,r,mats,view);
         existing.add(model.root); targets[r.id] = model.root;
         Object.assign(targets,model.targets); fans.push(...(model.fans || []));
         if (model.flame?.children.length) flames.attach(model.flame);
     }
-    const positions = containerPositions(main), shown = Math.min(config.containers,12);
-    const xs = [...new Set(positions.map(p => p.x))].sort((a,b) => a-b);
-    const zs = [...new Set(positions.map(p => p.z))].sort((a,b) => a-b);
-    const spacing = zs.length > 1 ? zs[1]-zs[0] : 6.8;
+    const shown = Math.min(config.containers,12), G = main.MODEL;
     const gas = config.settings.source === 'gas' && shown > 0;
     const authored = id => main.scene.renderables.find(r => r.id === id);
     if (shown) {
-        for (const id of gas ? ['tiein','cond','gen','xfmr'] : ['xfmr']) {
+        for (const id of gas ? ['cond','gen','xfmr'] : ['xfmr']) {
             const r = authored(id);
             if (!r) continue;
             const model = presentationEquipment(main,r,mats,view);
@@ -919,15 +957,17 @@ export function buildConfiguredSite(config) {
         }
         if (gas) {
             const supply = authored('cond').at, gen = authored('gen').at, xfmr = authored('xfmr').at;
-            lineTube(mining,[[supply[0],.34,supply[2]],[gen[0],.34,gen[2]]],mats.copper,.08);
+            // The authored tie-in includes a fixed four-container power spine.
+            // Rebuild just the gas connection; power feeds follow actual units below.
+            const tiein = part(mining,'configured-gas-tiein'); targets.tiein = tiein;
+            const inlet = view === 'landfill' ? [G.KO.x-G.KO.w/2,1.15,G.KO.z] : [G.SEP.x+1,1.5,G.SEP.z+.9];
+            const lane = (inlet[2]+supply[2])/2;
+            pipeRun(tiein,[inlet,[inlet[0],inlet[1],lane],[supply[0]-.85,inlet[1],lane],[supply[0]-.85,1.15,supply[2]]],mats.copper,.08);
+            pipeRun(tiein,[[supply[0]+.85,1.15,supply[2]],[gen[0]-2.7,1.15,gen[2]]],mats.copper,.08);
             lineTube(mining,[[gen[0],.12,gen[2]+.9],[xfmr[0],.12,xfmr[2]+.9]],mats.flow,.045);
-            // Extra generator groups occupy new working area to the right,
-            // clear of the collection field, flare, tank berm and access road.
-            const x = main.MODEL.PAD.x+main.MODEL.PAD.w/2+4;
+            // Keep the generation train together along the utility row.
             for (let i = 1; i < Math.min(3,config.generators); i++) {
-                const z = zs[0]+(i-1)*4.6;
-                const foundation = part(mining,'generation-extension-pad');
-                instances(foundation,mats.ground,[[x,-.12,z,6.8,.22,3.8]]);
+                const x = xfmr[0]+5.5+(i-1)*6.8, z = gen[2];
                 const model = generatorPackage(targets.gen,mats,x,0,z);
                 fans.push(...model.fans);
                 lineTube(mining,[[supply[0],.22,supply[2]+1.5],[x,.22,supply[2]+1.5],[x,.22,z]],mats.copper,.07);
@@ -938,31 +978,39 @@ export function buildConfiguredSite(config) {
             lineTube(mining,[[xfmr[0]-2,.12,xfmr[2]],[xfmr[0],.12,xfmr[2]]],mats.flow,.045);
         }
     }
+    root.updateMatrixWorld(true);
+    const obstacles = Object.entries(targets).filter(([id]) => id !== 'ground').map(([,object]) => new THREE.Box3().setFromObject(object));
+    targets.ground.children.forEach(object => { const box = new THREE.Box3().setFromObject(object); if (!box.isEmpty()) obstacles.push(box); });
+    obstacles.push(new THREE.Box3(new THREE.Vector3(G.ROAD.x-G.ROAD.w/2,0,G.ROAD.z-G.ROAD.d/2),new THREE.Vector3(G.ROAD.x+G.ROAD.w/2,1,G.ROAD.z+G.ROAD.d/2)));
+    const positions = configuredPositions(main,shown,obstacles);
     for (let i = 0; i < shown; i++) {
-        const row = Math.floor(i/xs.length);
-        const position = positions[i] || {...positions[0],x:xs[i%xs.length],z:zs[0]+row*spacing};
-        if (i >= positions.length && i%xs.length === 0) {
-            const pad = part(mining,'mining-extension-pad');
-            const width = xs[xs.length-1]-xs[0]+positions[0].w+2;
-            instances(pad,mats.ground,[[(xs[0]+xs[xs.length-1])/2,-.12,position.z,width,.22,spacing]]);
-        }
+        const position = positions[i];
         const fill = config.containers > 12 ? 1 : Math.min(1,(config.count-i*config.perContainer)/config.perContainer);
         const unit = containerUnit(mats,config.settings.cooling,fill);
         unit.root.position.set(position.x,position.y,position.z); unit.root.scale.x = position.w/12.2;
         unit.root.userData.represented = Math.floor(config.containers/shown)+(i < config.containers%shown ? 1 : 0);
         mining.add(unit.root); containers.push(unit); fans.push(...unit.fans); targets['cont'+i] = unit.root;
         const at = authored('xfmr').at;
-        const curve = lineTube(mining,[[at[0],.12,at[2]+.9],[at[0],.12,position.z+2],[position.x,.12,position.z+2],[position.x,.42,position.z+1.4]],mats.flow,.045);
+        const feed = part(mining,'container-power-feed'); feed.userData.containerIndex = i;
+        const entryX = position.x-5.7*unit.root.scale.x;
+        const curve = lineTube(feed,[[at[0],.12,at[2]+.9],[entryX,.12,at[2]+.9],[entryX,.12,position.z+2],[entryX,.44,position.z+1.34]],mats.flow,.045);
         for (let j = 0; j < 3; j++) {
             const mesh = new THREE.Mesh(SPHERE,mats.pulse); mesh.visible = false; mining.add(mesh);
             pulses.push({mesh,curve,offset:j/3+i*.13});
         }
     }
+    root.updateMatrixWorld(true);
+    const footprint = new THREE.Box3().setFromObject(root).expandByVector(new THREE.Vector3(2,0,2));
+    for (const slab of [G.GROUND,G.PAD,G.ROAD].filter(Boolean)) {
+        footprint.expandByPoint(new THREE.Vector3(slab.x-slab.w/2,0,slab.z-slab.d/2));
+        footprint.expandByPoint(new THREE.Vector3(slab.x+slab.w/2,0,slab.z+slab.d/2));
+    }
+    const ground = configuredGround(targets.ground,mats,footprint);
     const anchor = containers[Math.max(0,containers.length-2)];
     if (anchor) Object.assign(targets,{shell:anchor.root,cont:anchor.root,asics:anchor.rack,pdu:anchor.pdu,net:anchor.network,cool:anchor.roof});
     if (targets.cond) targets.gas = targets.cond;
     Object.assign(targets,{space:root,mine:mining,keep:targets.flare,stack:targets.flare});
-    const yard = finishScene(root,mats,containers,{configuredSite:view,existing,targets,fans,pulses,flame:flames,gasDiverted:gas});
+    const yard = finishScene(root,mats,containers,{configuredSite:view,existing,ground,targets,fans,pulses,flame:flames,gasDiverted:gas});
     yard.targetBounds = {};
     for (const [id,object] of Object.entries(targets)) if (object) yard.targetBounds[id] = new THREE.Box3().setFromObject(object);
     return yard;

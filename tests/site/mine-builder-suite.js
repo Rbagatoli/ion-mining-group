@@ -108,6 +108,10 @@ check('each energy site launches the accessible builder through With Proton',() 
     const html=fs.readFileSync(path.join(root,'site/energy.html'),'utf8');
     for (const id of ['mb-heading','mb-builder','mb-site-preview','mb-stage']) assert.ok(html.includes('id="'+id+'"'));
     assert.equal((html.match(/data-mb-end="hi" aria-controls="mb-builder"/g)||[]).length,2);
+    assert.equal((html.match(/class="mb-site-switch reveal" role="group"/g)||[]).length,2);
+    const comparison=html.slice(html.indexOf('id="mb-site-preview"'),html.indexOf('id="mb-builder"'));
+    assert.ok(!comparison.includes('type="range"'));assert.ok(!comparison.includes('dg-scale-track'));assert.ok(!comparison.includes('Drag to compare'));
+    assert.equal((comparison.match(/type="hidden" value="0"/g)||[]).length,2,'only a binary scene value remains');
     assert.ok(!html.includes('id="mb-tab-build"'));
     assert.match(html,/data-module-src="\.\/mine-builder-scene\.js(?:\?v=[a-f0-9]+)?"/);
     assert.match(html,/role="region" aria-labelledby="mb-heading"[^>]*hidden/);

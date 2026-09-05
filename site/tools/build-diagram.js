@@ -89,7 +89,7 @@ const PAGES = {
        existing equipment" and lets whichever drawing is on screen be the
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
-    lede: 'Choose your kind of site, then pull the slider to see what changes. Select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
+    lede: 'Choose your kind of site, then select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
@@ -472,6 +472,7 @@ function fuelOf(cfg, groups) {
     <noscript>
       <style>
         .dg-fuel { display: none; }
+        .mb-site-switch { display: none; }
         .dg-fuel-pane[hidden] { display: block !important; }
       </style>
     </noscript>
@@ -559,9 +560,16 @@ function build(key) {
        the two ends are, and a screen reader gets no use from being told to
        drag. */
     const endpoint = (end, label) => cfg.builder
-      ? `<button type="button" class="dg-scale-end mb-site-action" data-end="${end}" data-mb-end="${end}" aria-controls="${end === 'hi' ? 'mb-builder' : 'dgViews' + sfx}"${end === 'hi' ? ' aria-expanded="false"' : ''} disabled>${esc(label)}${end === 'hi' ? '<small>Build your mine ↗</small>' : ''}</button>`
+      ? `<button type="button" class="dg-scale-end mb-site-action" data-end="${end}" data-mb-end="${end}" aria-controls="${end === 'hi' ? 'mb-builder' : 'dgViews' + sfx}" aria-pressed="${end === 'lo'}"${end === 'hi' ? ' aria-expanded="false"' : ''}>${esc(label)}${end === 'hi' ? '<small>Build your mine ↗</small>' : ''}</button>`
       : `<span class="dg-scale-end" data-end="${end}">${esc(label)}</span>`;
-    const slider = pair ? `
+    // Energy uses two discrete choices. The hidden value only carries their
+    // binary state to the shared 3D/SVG adapters; there is no range control.
+    const slider = pair && cfg.builder ? `
+    <div class="mb-site-switch reveal" role="group" aria-label="${esc(g.scale.label)}">
+      ${endpoint('lo', g.scale.lo)}
+      <input class="dg-scale-input" id="dgScale${sfx}" type="hidden" value="0">
+      ${endpoint('hi', g.scale.hi)}
+    </div>` : pair ? `
     <div class="dg-scale reveal">
       ${endpoint('lo', g.scale.lo)}
       <span class="dg-scale-track">

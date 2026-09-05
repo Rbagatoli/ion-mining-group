@@ -98,13 +98,21 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         assert.equal(comparisons.closest('#the-pad'),el('builder').closest('#the-pad'));
         assert.equal(fuelPanes.length,2);assert.equal(fuelPanes[0].hidden,false);assert.equal(fuelPanes[1].hidden,true);
     });
-    scales[0].value=73;fire(scales[0],'input');scales[1].value=28;fire(scales[1],'input');
+    check('each site has an accessible two-choice toggle with no comparison slider',()=>{
+        for(const pane of fuelPanes){
+            const state=pane.querySelector('.dg-scale-input');assert.equal(state.getAttribute('type'),'hidden');
+            assert.equal(pane.querySelector('.dg-scale-track'),null);
+            assert.equal(pane.querySelector('[data-mb-end="lo"]').getAttribute('aria-pressed'),'true');
+            assert.equal(pane.querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'false');
+        }
+    });
     siteAction('landfill','hi');await settle();
     check('With Proton opens a landfill build while retaining the site selector and comparison controls',()=>{
         assert.equal(el('builder').hidden,false);assert.equal(comparisons.hidden,false);assert.equal(fuelPanes[0].querySelector('[data-mb-end="hi"]').getAttribute('aria-expanded'),'true');
         assert.equal(scales[0].closest('[hidden]'),null);assert.equal(scales[1].closest('[hidden]'),fuelPanes[1]);
         assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,true);assert.ok(comparisons.querySelectorAll('.dg-list').every(list=>list.hidden));
-        assert.equal(scales[0].value,'100');assert.match(el('heading').textContent,/Landfill gas/);assert.match(el('context-note').textContent,/extraction wells/);
+        assert.equal(scales[0].value,'100');assert.equal(fuelPanes[0].querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');
+        assert.equal(fuelPanes[0].querySelector('[data-mb-end="lo"]').getAttribute('aria-pressed'),'false');assert.match(el('heading').textContent,/Landfill gas/);assert.match(el('context-note').textContent,/extraction wells/);
         assert.equal(requests.length,2);assert.equal(el('out-count').textContent,'160');assert.ok(Number(el('out-btc30').textContent)>0);
     });
     check('missing WebGL/module support leaves the calculator usable with an honest fallback',()=>{
@@ -156,9 +164,9 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     check('Your site today returns to the selected landfill without losing its configuration',()=>{
         assert.equal(comparisons.hidden,false);assert.equal(el('builder').hidden,true);
         assert.equal(fuelButtons[0].getAttribute('aria-pressed'),'true');assert.equal(fuelPanes[0].hidden,false);assert.equal(fuelPanes[1].hidden,true);
-        assert.equal(scales[0].value,'0');assert.equal(scales[1].value,'28');assert.equal(el('elecCost').value,'1');
+        assert.equal(scales[0].value,'0');assert.equal(scales[1].value,'0');assert.equal(el('elecCost').value,'1');
         assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
-        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.000');assert.equal(fuelPanes[1].querySelector('.dg-views').style['--d'],'0.280');
+        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.000');assert.equal(fuelPanes[1].querySelector('.dg-views').style['--d'],'0.000');
     });
     siteAction('landfill','hi');await settle();
     check('switching views preserves visitor input and does not refetch or remount',()=>{
@@ -176,11 +184,12 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         fire(fuelButtons[1],'click');assert.equal(el('elecCost').value,'0.06');assert.equal(el('powerMW').value,'3');
         fire(fuelButtons[0],'click');assert.equal(el('elecCost').value,'1');assert.equal(requests.length,2);
     });
-    scales[0].value=40;fire(scales[0],'input');
-    check('dragging back returns to the comparison, and its full range remains usable',()=>{
+    siteAction('landfill','lo');
+    check('the Today toggle restores the original site and its accessible selected state',()=>{
         assert.equal(el('builder').hidden,true);assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
-        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.400');
-        scales[0].value=100;fire(scales[0],'input');assert.equal(el('builder').hidden,true,'the comparison can reach 100%, including its Inside button, without launching a different view');
+        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.000');
+        assert.equal(fuelPanes[0].querySelector('[data-mb-end="lo"]').getAttribute('aria-pressed'),'true');
+        assert.equal(fuelPanes[0].querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'false');
     });
     siteAction('landfill','hi');click('refresh-market');
     requests[2].resolve({ok:false,text:async()=>''});requests[3].reject(new Error('offline'));await settle();
@@ -210,7 +219,13 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(live);
     new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8').replace("import(panel.getAttribute('data-module-src'))",'loadSceneModule()')).runInContext(live);
     const renderScene=()=>{for(const[id,t]of[...scheduled])if(t.ms===100){scheduled.delete(id);t.fn();}};
-    siteAction('landfill','hi');await settle();renderScene();
+    siteAction('landfill','hi');
+    fire(document.querySelector('.dg-fuel-pane'),'proton:inspect-container');
+    await settle();renderScene();
+    check('an Inside request during first loading opens the configured container once the scene is ready',()=>{
+        assert.equal(el('inspect').getAttribute('aria-pressed'),'true');assert.equal(el('inspect').textContent,'Return to site');
+        click('reset-view');assert.equal(el('inspect').getAttribute('aria-pressed'),'false');
+    });
     check('the renderer receives the exact landfill infrastructure definitions with the visitor configuration',()=>{
         assert.equal(scene.config.siteType,'landfill');assert.equal(scene.config.siteDefinition.before,sandbox.LandfillNowDiagram);
         assert.equal(scene.config.siteDefinition.main,sandbox.LandfillIonDiagram);assert.equal(scene.config.count,160);

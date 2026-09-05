@@ -120,12 +120,22 @@
             for (var e = 0; e < ends.length; e++) {
                 var lo = ends[e].getAttribute('data-end') === 'lo';
                 ends[e].classList.toggle('is-on', lo === atLo);
+                if (ends[e].tagName.toLowerCase() === 'button') ends[e].setAttribute('aria-pressed', String(lo === atLo));
             }
         };
 
         scale.addEventListener('input', applyScale);
         scale.addEventListener('change', applyScale);
         applyScale();
+
+        // The gas-site comparison has two buttons and a hidden binary value.
+        // This also keeps the SVG fallback usable if the optional builder fails.
+        scope.querySelectorAll('[data-mb-end]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                scale.value = button.getAttribute('data-mb-end') === 'hi' ? '100' : '0';
+                scale.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
 
         /* The hint stops nagging once it has been taken. Pointerdown as well as
            input, so grabbing the thumb and letting go without moving it still

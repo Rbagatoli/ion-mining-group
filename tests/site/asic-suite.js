@@ -422,12 +422,12 @@ ok(css.indexOf('.dg-toggle-to.dg-toggle-to--back:hover svg { transform: translat
 ok(css.indexOf('dg-toggle--back ') < 0 && css.indexOf('.dg-toggle--back') < 0,
    'nothing is left of the old two-segment back variant');
 
-/* Both controls coexist where there are both: the chain crosses pages, the
-   slider does not. */
+/* The chain crosses pages; each page also has its own local view control. */
 ['hosting.html', 'energy.html'].forEach(f => {
     const src = fs.readFileSync(D + f, 'utf8');
-    ok(src.indexOf('dg-scale-input') >= 0 && src.indexOf('dg-toggle') >= 0,
-       '  ' + f + ' carries both a chain and a slider');
+    const control = f === 'energy.html' ? 'mb-site-switch' : 'dg-scale-track';
+    ok(src.indexOf(control) >= 0 && src.indexOf('dg-toggle') >= 0,
+       '  ' + f + ' carries both a chain and its local view control');
 });
 
 

@@ -514,8 +514,10 @@ ok(sec.length > 1000, 'the section is on the page');
    This asserted two while the wellpad was the only site the page knew how to
    draw. */
 ok((sec.match(/class="dg-wrap /g) || []).length === 4, 'four views, in two pairs');
-ok((sec.match(/class="dg-scale-input"|dg-scale-input/g) || []).length === 2,
-   'each pair behind its own slider');
+ok((sec.match(/class="mb-site-switch reveal"/g) || []).length === 2,
+   'each site has a Today / With Proton toggle');
+ok((sec.match(/class="dg-scale-input"[^>]*type="hidden"/g) || []).length === 2 && sec.indexOf('dg-scale-track') < 0,
+   'the comparison state is hidden and has no range track');
 ok(sec.indexOf('data-link="pad"') > 0, 'the pad pair sharing one view, so rotating one rotates the other');
 ok(sec.indexOf('data-link="landfill"') > 0, 'and the landfill pair sharing a different one');
 

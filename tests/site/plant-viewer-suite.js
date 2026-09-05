@@ -228,9 +228,12 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(energy.scenes[0].xray,false); assert.equal(energy.scenes[0].powered,true);
         assert.equal(ref(energy.observers[0].el,'xray').disabled,true);
     });
-    check('before / after updates the model, original callouts and X-ray availability together', () => {
-        const g = energy.observers[0].el, scale = g.closest('.dg-fuel-pane').querySelector('.dg-scale-input');
-        scale.value = 100; scale.fire('input'); assert.equal(energy.scenes[0].progress,1); assert.equal(ref(g,'xray').disabled,false);
+    check('the site toggle updates the model, original callouts and X-ray availability together', () => {
+        const g = energy.observers[0].el, pane = g.closest('.dg-fuel-pane');
+        pane.querySelector('[data-mb-end="hi"]').fire('click');
+        assert.equal(energy.scenes[0].progress,1); assert.equal(ref(g,'xray').disabled,false);
+        assert.equal(pane.querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');
+        assert.equal(pane.querySelector('[data-mb-end="lo"]').getAttribute('aria-pressed'),'false');
         assert.equal(energy.scenes[0].annotations,require('../../site/scene-landfill-ion.js').CALLOUTS);
         assert.equal(energy.scenes[0].config.definition.before,require('../../site/scene-landfill-now.js'));
         assert.match(ref(g,'callouts').children[0].textContent,/tie-in/);
@@ -240,18 +243,28 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(energy.scenes.length,2); assert.equal(energy.scenes[1].config.view,'pad'); assert.equal(energy.scenes[1].progress,0);
         assert.equal(energy.scenes[0].progress,1); assert.equal(energy.imports.length,1);
     });
-    check('both Your site interior buttons reveal their own deployment and stay in sync with the slider', () => {
+    check('both Your site interior buttons reveal their deployment and keep the fallback toggle in sync', () => {
         energy.observers.forEach((observer,i) => {
-            const g = observer.el, scale = g.closest('.dg-fuel-pane').querySelector('.dg-scale-input');
-            scale.value = 0; scale.fire('input');
+            const g = observer.el, pane = g.closest('.dg-fuel-pane'), scale = pane.querySelector('.dg-scale-input');
+            pane.querySelector('[data-mb-end="lo"]').fire('click');
             ref(g,'inspect').fire('click');
             assert.equal(scale.value,'100'); assert.equal(energy.scenes[i].progress,1); assert.equal(energy.scenes[i].inspecting,true);
+            assert.equal(pane.querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');
             assert.equal(g.style['--d'],'1.000','the original comparison and its fallback stay in sync');
             assert.equal(ref(g,'inspect').textContent,'Return to site'); assert.equal(ref(g,'xray').disabled,false);
             ref(g,'inspect').fire('click'); assert.equal(ref(g,'inspect').textContent,'Inside a container');
-            ref(g,'inspect').fire('click'); scale.value = 50; scale.fire('input');
+            ref(g,'inspect').fire('click'); pane.querySelector('[data-mb-end="lo"]').fire('click');
             assert.equal(energy.scenes[i].inspecting,false); assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
         });
+    });
+    check('Inside a container hands off to the configured mine when its panel opens', () => {
+        const g = energy.observers[0].el, pane = g.closest('.dg-fuel-pane'), panel = energy.document.querySelector('#mb-builder');
+        let requested = false;
+        pane.querySelector('[data-mb-end="hi"]').addEventListener('click',() => { panel.hidden = false; });
+        pane.addEventListener('proton:inspect-container',() => { requested = true; });
+        ref(g,'inspect').fire('click');
+        assert.equal(panel.hidden,false); assert.equal(requested,true);
+        assert.equal(energy.scenes[0].inspecting,false,'the configured scene receives the request instead of opening the reference container');
     });
     const unavailable = fixture('index',true); unavailable.observers[0].fn([{isIntersecting:true}]); await settle();
     check('a device without WebGL keeps the original diagram and all descriptions', () => {
@@ -324,32 +337,34 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     const cold = fixture('energy',false,{mount:realMount,moduleGate});
     cold.observers[0].fn([{isIntersecting:true}]);
     const landfillGroup = cold.observers[0].el, padGroup = cold.observers[1].el;
-    const landfillScale = landfillGroup.closest('.dg-fuel-pane').querySelector('.dg-scale-input');
-    const padScale = padGroup.closest('.dg-fuel-pane').querySelector('.dg-scale-input');
-    landfillScale.value = 75; landfillScale.fire('input');
+    const landfillPane = landfillGroup.closest('.dg-fuel-pane'), padPane = padGroup.closest('.dg-fuel-pane');
+    const landfillScale = landfillPane.querySelector('.dg-scale-input');
+    landfillPane.querySelector('[data-mb-end="hi"]').fire('click');
+    landfillPane.querySelector('[data-mb-end="lo"]').fire('click');
+    landfillPane.querySelector('[data-mb-end="hi"]').fire('click');
     cold.document.querySelector('#dgFuel').querySelector('[data-fuel="flare"]').fire('click');
-    cold.observers[1].fn([{isIntersecting:true}]); padScale.value = 100; padScale.fire('input');
+    cold.observers[1].fn([{isIntersecting:true}]); padPane.querySelector('[data-mb-end="hi"]').fire('click');
     releaseModule(); await settle();
     const landfillRecord = mounted.at(-2), padRecord = mounted.at(-1);
-    check('moving either Your site slider during a slow first download retains the latest choice', () => {
+    check('either site toggle retains its latest choice during a slow first download', () => {
         assert.equal(cold.imports.length,1); assert.equal(cold.scenes.length,2);
         landfillRecord.draw(); assert.equal(landfillRecord.renders,0,'hidden fuel waits for a measurable layout');
         padRecord.draw(); assert.ok(padGroup.classList.contains('plant-ready'));
         assert.equal(padGroup.getAttribute('data-view'),'ion');
         assert.ok(padRecord.world.getObjectByName('proton-deployment').visible);
         assert.equal(ref(padGroup,'xray').disabled,false);
-        padScale.value = 0; padScale.fire('input'); padRecord.draw();
+        padPane.querySelector('[data-mb-end="lo"]').fire('click'); padRecord.draw();
         assert.equal(padRecord.world.getObjectByName('proton-deployment').visible,false);
-        padScale.value = 100; padScale.fire('input'); padRecord.draw();
+        padPane.querySelector('[data-mb-end="hi"]').fire('click'); padRecord.draw();
         assert.equal(padRecord.world.getObjectByName('proton-deployment').visible,true);
         cold.document.querySelector('#dgFuel').querySelector('[data-fuel="landfill"]').fire('click');
         landfillRecord.intersect([{isIntersecting:false},{isIntersecting:true}]); landfillRecord.draw();
-        assert.ok(landfillGroup.classList.contains('plant-ready')); assert.equal(landfillScale.value,'75');
+        assert.ok(landfillGroup.classList.contains('plant-ready')); assert.equal(landfillScale.value,'100');
         assert.ok(landfillRecord.world.getObjectByName('proton-deployment').visible);
         const material = landfillRecord.world.getObjectByName('proton-deployment').getObjectByProperty('isMesh',true).material;
-        assert.ok(material.opacity>0 && material.opacity<=.75);
-        landfillScale.value = 100; landfillScale.fire('change'); landfillRecord.draw();
-        assert.equal(ref(landfillGroup,'xray').disabled,false,'committed changes also synchronize the scene');
+        assert.equal(material.opacity,1);
+        assert.equal(ref(landfillGroup,'xray').disabled,false);
+        assert.equal(landfillPane.querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');
     });
     mounted.forEach(record => record.api.dispose());
     console.log('\n  '+passed+' presentation UI checks passed');

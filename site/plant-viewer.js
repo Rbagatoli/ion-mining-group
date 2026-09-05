@@ -145,6 +145,15 @@
                     // An existing gas site has no mining container to enter until
                     // the comparison reveals its proposed Proton deployment.
                     if (!inspecting && fuel && state().progress < 1) {
+                        var build = scope.querySelector('[data-mb-end="hi"]');
+                        if (build) {
+                            build.dispatchEvent(new Event('click', { bubbles: true }));
+                            var builder = document.getElementById('mb-builder');
+                            if (builder && !builder.hidden) {
+                                scope.dispatchEvent(new Event('proton:inspect-container', { bubbles: true }));
+                                return;
+                            }
+                        }
                         scale.value = '100'; scale.dispatchEvent(new Event('input',{bubbles:true}));
                     }
                     scene.inspect(!inspecting);
