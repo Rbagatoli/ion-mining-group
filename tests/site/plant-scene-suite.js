@@ -40,6 +40,66 @@ class Surface {
     const shared = await import('../../site/mine-builder-scene.js');
     const {buildYard,yardCameraPose,setSceneXray,setSceneProgress,wheelZoomFactor} = shared;
     const buildPresentation = view => shared.buildPresentation(view,definition(view));
+    const configured = (view,settings) => ({...M.estimate(settings),siteType:view,siteDefinition:definition(view)});
+    check('configured landfill and gas-pad mines preserve all existing equipment as the fleet changes', () => {
+        for (const view of ['landfill','pad']) {
+            const reference = buildPresentation(view);
+            const ids = view === 'landfill' ? ['cell','wells','header','plant','flare'] : ['well','sep','tanks','flare'];
+            for (const machineCount of [0,160,960,2880,30000]) {
+                const config = configured(view,{sizing:'machines',machineCount});
+                const yard = shared.buildConfiguredSite(config);
+                assert.equal(yard.containers.length,Math.min(config.containers,12));
+                assert.equal(yard.containers.reduce((n,c)=>n+c.root.userData.represented,0),config.containers);
+                assert.equal(yard.existing.children.length,definition(view).before.scene.renderables.length);
+                for (const id of ids) {
+                    const before = new T.Box3().setFromObject(reference.targets[id]);
+                    const actual = new T.Box3().setFromObject(yard.targets[id]);
+                    assert.ok(actual.min.distanceTo(before.min)<1e-9 && actual.max.distanceTo(before.max)<1e-9,view+' '+id+' remains exactly in place');
+                }
+                for (const unit of yard.containers) for (const id of ids.filter(id=>!['header','wells'].includes(id))) {
+                    assert.ok(!new T.Box3().setFromObject(unit.root).intersectsBox(new T.Box3().setFromObject(yard.targets[id])),view+' miners must not overlap '+id);
+                }
+                const opacity=[];yard.existing.traverse(o=>{if(o.material)opacity.push([o.material,o.material.opacity]);});
+                setSceneXray(yard,true);opacity.forEach(([m,a])=>assert.equal(m.opacity,a,'X-ray keeps existing infrastructure solid'));
+                if(!machineCount)assert.equal(yard.root.getObjectByName('generator-package'),undefined,'an empty mine adds no generation');
+            }
+        }
+    });
+    check('configured site cooling, generation and expansion follow the selected build', () => {
+        for (const view of ['landfill','pad']) for (const cooling of ['hydro','air','immersion']) {
+            const config=configured(view,{powerMW:30,cooling}),yard=shared.buildConfiguredSite(config);
+            assert.equal(yard.containers.length,12);assert.ok(yard.root.getObjectByName('mining-extension-pad'));
+            for(const unit of yard.containers)assert.equal(unit.cooling,cooling);
+            const expected=cooling==='hydro'?'hydro-manifolds':cooling==='air'?'air-intake-filters':'immersion-tanks';
+            assert.ok(yard.containers[0].root.getObjectByName(expected));
+            assert.ok(yard.root.getObjectByName('generation-extension-pad'));assert.equal(yard.gasDiverted,true);
+            let draws=0,triangles=0;
+            yard.root.traverse(o=>{
+                for(const n of o.matrixWorld.elements)assert.ok(Number.isFinite(n));
+                if(o.isMesh){draws++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);}
+            });
+            assert.ok(draws<1800 && triangles<850000,'the largest build retains a bounded rendering cost');
+        }
+        const grid=shared.buildConfiguredSite(configured('landfill',{source:'grid'}));
+        assert.equal(grid.root.getObjectByName('generator-package'),undefined);assert.equal(grid.targets.cond,undefined);
+        assert.ok(grid.targets.xfmr);assert.ok(grid.targets.blower);assert.equal(grid.gasDiverted,false);
+    });
+    check('configured sites and their expansion fit desktop and phone frames throughout automatic rotation', () => {
+        for(const view of ['landfill','pad'])for(const powerMW of [0,1,30]) {
+            const yard=shared.buildConfiguredSite(configured(view,{powerMW}));
+            for(const aspect of [320/290,390/290,900/420]){
+                const pose=yardCameraPose(yard,aspect),camera=new T.PerspectiveCamera(pose.fov||38,aspect,.1,2000);
+                for(let yaw=0;yaw<Math.PI*2;yaw+=Math.PI/16){
+                    camera.position.copy(pose.position).sub(pose.target).applyAxisAngle(new T.Vector3(0,1,0),yaw).add(pose.target);
+                    camera.lookAt(pose.target);camera.updateMatrixWorld();
+                    for(const x of [yard.bounds.min.x,yard.bounds.max.x])for(const y of [yard.bounds.min.y,yard.bounds.max.y])for(const z of [yard.bounds.min.z,yard.bounds.max.z]){
+                        const p=new T.Vector3(x,y,z).project(camera);
+                        assert.ok(Math.abs(p.x)<.95 && Math.abs(p.y)<.78,view+' remains inside its frame');
+                    }
+                }
+            }
+        }
+    });
     check('hydro, air and immersion use physically distinct equipment', () => {
         const hydro = buildYard(M.estimate({cooling:'hydro'})).containers[0].root;
         const air = buildYard(M.estimate({cooling:'air'})).containers[0].root;
@@ -217,6 +277,19 @@ class Surface {
             api.inspect(true); flush(); touchGestures(cooling+' interior');
             api.reset(); flush(); touchGestures(cooling+' after reset');
         }
+    });
+    check('site-based builds support immediate touch, pinch, wheel and interior controls on both fuel types', () => {
+        for(const view of ['landfill','pad'])for(const cooling of ['hydro','air','immersion']) {
+            api.setConfig(configured(view,{cooling}));flush();touchGestures(view+' '+cooling);
+            const distance=renderer.camera.position.distanceTo(controls.target);
+            host.canvas.fire('wheel',{deltaY:-120});flush();assert.ok(renderer.camera.position.distanceTo(controls.target)<distance);
+            host.canvas.fire('keydown',{key:'Enter'});flush();assert.deepEqual(events.at(-1),['inspect',true]);
+            touchGestures(view+' '+cooling+' interior');
+            api.reset();flush();assert.deepEqual(events.at(-1),['inspect',false]);
+            assert.ok(renderer.world.getObjectByName(view==='landfill'?'wellfield':'flanged-wellhead'));
+        }
+        api.setConfig(configured('landfill',{}));flush();assert.ok(renderer.world.getObjectByName('wellfield'));
+        api.setConfig(configured('pad',{}));flush();assert.equal(renderer.world.getObjectByName('wellfield'),undefined,'identical fleet totals must still rebuild a changed site');
     });
     check('Our mine, Your site, the hosting container and ASIC accept touch gestures immediately on phones', () => {
         for (const view of ['site','landfill','pad','hosting','asic']) {

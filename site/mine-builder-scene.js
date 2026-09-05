@@ -885,6 +885,89 @@ function calloutRegions(diagram) {
     return result;
 }
 
+function containerPositions(diagram) {
+    return diagram.CONTAINERS || diagram.scene.renderables.filter(r => /^cont\d*$/.test(r.id))
+        .map(r => ({x:r.at[0],y:0,z:r.at[2],w:12.19,h:2.59,d:2.44}));
+}
+
+/** Configure the added mine around the selected site's unchanged infrastructure. */
+export function buildConfiguredSite(config) {
+    const view = config.siteType, {main,before} = config.siteDefinition || {};
+    if (!['landfill','pad'].includes(view) || !main?.scene || !before?.scene) throw new Error('The selected gas site is required');
+    const mats = palette(), root = new THREE.Group();
+    const existing = part(root,'existing-site'), mining = part(root,'configured-mine');
+    const targets = {}, containers = [], fans = [], pulses = [], flames = part(root,'combustion-state');
+    for (const r of before.scene.renderables) {
+        const model = presentationEquipment(before,r,mats,view);
+        existing.add(model.root); targets[r.id] = model.root;
+        Object.assign(targets,model.targets); fans.push(...(model.fans || []));
+        if (model.flame?.children.length) flames.attach(model.flame);
+    }
+    const positions = containerPositions(main), shown = Math.min(config.containers,12);
+    const xs = [...new Set(positions.map(p => p.x))].sort((a,b) => a-b);
+    const zs = [...new Set(positions.map(p => p.z))].sort((a,b) => a-b);
+    const spacing = zs.length > 1 ? zs[1]-zs[0] : 6.8;
+    const gas = config.settings.source === 'gas' && shown > 0;
+    const authored = id => main.scene.renderables.find(r => r.id === id);
+    if (shown) {
+        for (const id of gas ? ['tiein','cond','gen','xfmr'] : ['xfmr']) {
+            const r = authored(id);
+            if (!r) continue;
+            const model = presentationEquipment(main,r,mats,view);
+            mining.add(model.root); targets[id] = model.root;
+            fans.push(...(model.fans || []));
+        }
+        if (gas) {
+            const supply = authored('cond').at, gen = authored('gen').at, xfmr = authored('xfmr').at;
+            lineTube(mining,[[supply[0],.34,supply[2]],[gen[0],.34,gen[2]]],mats.copper,.08);
+            lineTube(mining,[[gen[0],.12,gen[2]+.9],[xfmr[0],.12,xfmr[2]+.9]],mats.flow,.045);
+            // Extra generator groups occupy new working area to the right,
+            // clear of the collection field, flare, tank berm and access road.
+            const x = main.MODEL.PAD.x+main.MODEL.PAD.w/2+4;
+            for (let i = 1; i < Math.min(3,config.generators); i++) {
+                const z = zs[0]+(i-1)*4.6;
+                const foundation = part(mining,'generation-extension-pad');
+                instances(foundation,mats.ground,[[x,-.12,z,6.8,.22,3.8]]);
+                const model = generatorPackage(targets.gen,mats,x,0,z);
+                fans.push(...model.fans);
+                lineTube(mining,[[supply[0],.22,supply[2]+1.5],[x,.22,supply[2]+1.5],[x,.22,z]],mats.copper,.07);
+            }
+        } else {
+            const xfmr = authored('xfmr').at;
+            switchCabinet(mining,mats,xfmr[0]-2,0,xfmr[2]);
+            lineTube(mining,[[xfmr[0]-2,.12,xfmr[2]],[xfmr[0],.12,xfmr[2]]],mats.flow,.045);
+        }
+    }
+    for (let i = 0; i < shown; i++) {
+        const row = Math.floor(i/xs.length);
+        const position = positions[i] || {...positions[0],x:xs[i%xs.length],z:zs[0]+row*spacing};
+        if (i >= positions.length && i%xs.length === 0) {
+            const pad = part(mining,'mining-extension-pad');
+            const width = xs[xs.length-1]-xs[0]+positions[0].w+2;
+            instances(pad,mats.ground,[[(xs[0]+xs[xs.length-1])/2,-.12,position.z,width,.22,spacing]]);
+        }
+        const fill = config.containers > 12 ? 1 : Math.min(1,(config.count-i*config.perContainer)/config.perContainer);
+        const unit = containerUnit(mats,config.settings.cooling,fill);
+        unit.root.position.set(position.x,position.y,position.z); unit.root.scale.x = position.w/12.2;
+        unit.root.userData.represented = Math.floor(config.containers/shown)+(i < config.containers%shown ? 1 : 0);
+        mining.add(unit.root); containers.push(unit); fans.push(...unit.fans); targets['cont'+i] = unit.root;
+        const at = authored('xfmr').at;
+        const curve = lineTube(mining,[[at[0],.12,at[2]+.9],[at[0],.12,position.z+2],[position.x,.12,position.z+2],[position.x,.42,position.z+1.4]],mats.flow,.045);
+        for (let j = 0; j < 3; j++) {
+            const mesh = new THREE.Mesh(SPHERE,mats.pulse); mesh.visible = false; mining.add(mesh);
+            pulses.push({mesh,curve,offset:j/3+i*.13});
+        }
+    }
+    const anchor = containers[Math.max(0,containers.length-2)];
+    if (anchor) Object.assign(targets,{shell:anchor.root,cont:anchor.root,asics:anchor.rack,pdu:anchor.pdu,net:anchor.network,cool:anchor.roof});
+    if (targets.cond) targets.gas = targets.cond;
+    Object.assign(targets,{space:root,mine:mining,keep:targets.flare,stack:targets.flare});
+    const yard = finishScene(root,mats,containers,{configuredSite:view,existing,targets,fans,pulses,flame:flames,gasDiverted:gas});
+    yard.targetBounds = {};
+    for (const [id,object] of Object.entries(targets)) if (object) yard.targetBounds[id] = new THREE.Box3().setFromObject(object);
+    return yard;
+}
+
 /** Detailed models follow the existing scene's authored equipment positions. */
 export function buildPresentation(view, definition) {
     const main = definition?.main, before = definition?.before;
@@ -916,8 +999,7 @@ export function buildPresentation(view, definition) {
             Object.assign(targets,model.targets); fans.push(...(model.fans || []));
         }
     }
-    const positions = main.CONTAINERS || main.scene.renderables.filter(r => /^cont\d*$/.test(r.id))
-        .map(r => ({x:r.at[0],y:0,z:r.at[2],w:12.19,h:2.59,d:2.44}));
+    const positions = containerPositions(main);
     positions.forEach((position,index) => {
         const unit = containerUnit(mats,'hydro',1);
         unit.root.position.set(position.x,position.y,position.z); unit.root.scale.x = position.w/12.2;
@@ -1025,7 +1107,8 @@ function disposeYard(yard) {
 function cameraPose(bounds, target, aspect, direction, sweep = 0, fov = 38, frameWidth = .92, frameHeight = .75) {
     const tanV = Math.tan(THREE.MathUtils.degToRad(fov)/2), tanH = tanV*aspect;
     let distance = 1;
-    for (const angle of [-sweep,0,sweep]) {
+    const angles = sweep === Math.PI ? Array.from({length:16},(_,i) => i*Math.PI/8) : [-sweep,0,sweep];
+    for (const angle of angles) {
         const toward = direction.clone().applyAxisAngle(UP,angle).normalize();
         const right = new THREE.Vector3().crossVectors(UP,toward).normalize();
         const up = new THREE.Vector3().crossVectors(toward,right).normalize();
@@ -1051,8 +1134,8 @@ export function yardCameraPose(yard, aspect) {
             verticalOffset:mobile ? 0 : .5-v.ORIGIN.y/v.VB.h};
     }
     const target = yard.bounds.getCenter(new THREE.Vector3());
-    target.y = yard.view === 'asic' ? .9 : .7;
-    return { target, position: cameraPose(yard.bounds,target,aspect,new THREE.Vector3(.8,.86,1.3),.075) };
+    target.y = yard.configuredSite ? yard.bounds.getSize(new THREE.Vector3()).y*.25 : yard.view === 'asic' ? .9 : .7;
+    return { target, position: cameraPose(yard.bounds,target,aspect,new THREE.Vector3(.8,.86,1.3),yard.configuredSite ? Math.PI : .075) };
 }
 
 export function wheelZoomFactor(event, pageHeight = 800) {
@@ -1141,6 +1224,11 @@ export function mountMineScene(host, callbacks = {}) {
             yard.mats.led.emissiveIntensity = .05+powerLevel*3;
             yard.mats.flow.emissiveIntensity = .03+powerLevel*1.5;
             for (const mat of yard.operatingMaterials || []) mat.emissiveIntensity = .05+powerLevel*1.7;
+            if (yard.configuredSite) yard.flame.traverse(object => {
+                const burning = yard.gasDiverted ? 1-powerLevel : 1;
+                if (object.material?.emissive) object.material.emissiveIntensity = .15+burning*1.5;
+                if (object.material?.isLineBasicMaterial) object.material.opacity = .12+burning*.6;
+            });
             yard.containers.forEach((unit,i) => {
                 const assembly = reduced || yard.view ? 1 : THREE.MathUtils.smoothstep(buildTime-i*.055,0,.65);
                 unit.root.scale.y = Math.max(.001,assembly);
@@ -1207,13 +1295,13 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function setConfig(config) {
         if (!config || (!config.valid && !config.view)) return;
-        const nextKey = config.view || [config.containers,config.count,config.perContainer,config.generators,config.settings.source,config.settings.cooling].join(':');
+        const nextKey = config.view || [config.siteType || 'yard',config.containers,config.count,config.perContainer,config.generators,config.settings.source,config.settings.cooling].join(':');
         if (nextKey === key) return;
         key = nextKey;
         clearHighlight();
         focus = null; hoveredPart = null; manual = false; dragging = false; resumeAt = 0;
         if (yard) { world.remove(yard.root); disposeYard(yard); }
-        yard = config.view ? buildPresentation(config.view,config.definition) : buildYard(config);
+        yard = config.view ? buildPresentation(config.view,config.definition) : config.siteType ? buildConfiguredSite(config) : buildYard(config);
         setSceneXray(yard,xray); world.add(yard.root); buildTime = reduced ? 10 : 0;
         selected = -1; callbacks.onInspect?.(false);
         const extent = Math.max(yard.width,yard.depth)*.75;

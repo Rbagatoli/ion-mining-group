@@ -42,13 +42,25 @@ site/
 
 ## Build your mine
 
-The Energy Partners page's **Your site / Build your mine** tabs share the existing
-drawing window. Your site contains the landfill and flared-gas comparisons; its
-fuel selection and slider settings survive a visit to the builder. The home page
-keeps the Our mine presentation. The generated SVG remains available as a fallback.
+On the Energy Partners page, choose **Landfill gas** or **Flared gas**, then select
+**With Proton on it / Build your mine**. The builder configures that selected site,
+using the same infrastructure models and equipment locations as its comparison.
+The fuel picker and comparison slider remain visible. **Your site today** or
+dragging the slider back restores the comparison; each fuel retains its own
+configuration for the current visit. Market inputs are shared between the two.
+The home page keeps the Our mine presentation. The generated SVG remains available as a fallback.
 The builder accepts available MW,
 Mcf/day (with gas quality and engine heat rate), or machine count; visitors can
 select a catalog miner or enter custom specifications and operating assumptions.
+
+`buildConfiguredSite` preserves the entire existing landfill or gas-pad plant,
+then sizes the added containers and their cooling from the estimated fleet.
+The first four containers use the authored working-area positions; larger builds
+add graded working area forward of the pad, clear of the cap and existing plant.
+Additional generator groups sit to the right of the pad. Large fleets use at most
+12 representative container groups and three generator groups. The camera fits
+the combined site and expansion throughout its orbit. The standalone yard remains
+available as the scene module's generic configuration path.
 
 `mine-builder-model.js` reserves cooling/site overhead before flooring machine
 count and calls `CalcEngine` for a 365-day projection. Production is net of pool

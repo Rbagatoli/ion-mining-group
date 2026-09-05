@@ -26,6 +26,7 @@ class Element {
     setAttribute(k,v){this.attrs[k]=String(v);} removeAttribute(k){delete this.attrs[k];}
     appendChild(c){c.parentNode=this;this.children.push(c);return c;}
     addEventListener(t,fn){(this.listeners[t] ||= []).push(fn);}
+    dispatchEvent(event){fire(this,event.type,event);return !event.defaultPrevented;}
     focus(){document.activeElement=this;}
     matches(selector){
         if(selector[0]==='#')return this.id===selector.slice(1);
@@ -36,6 +37,7 @@ class Element {
     }
     closest(selector){let e=this;while(e){if(e.matches(selector))return e;e=e.parentNode;}return null;}
     querySelectorAll(selector){
+        if(selector.includes(','))return [...new Set(selector.split(',').flatMap(s=>this.querySelectorAll(s.trim())))];
         const parts=selector.split(/\s+/), out=[];
         const visit=e=>{for(const c of e.children){if(c.matches(parts[parts.length-1])){
             let valid=true,p=c.parentNode;
@@ -62,7 +64,9 @@ function parse(source){
 }
 document=parse(html);document.getElementById=id=>document.querySelector('#'+id);document.createElement=tag=>new Element(tag);
 const requests=[],timers=new Map();let timerId=0;
-const sandbox={document,console,URLSearchParams,AbortController,addEventListener(){},location:{search:''},
+const sandbox={document,console,URLSearchParams,AbortController,Event:class {constructor(type,options){this.type=type;Object.assign(this,options);}},addEventListener(){},location:{search:''},
+    LandfillIonDiagram:require('../../site/scene-landfill-ion.js'),LandfillNowDiagram:require('../../site/scene-landfill-now.js'),
+    PadIonDiagram:require('../../site/scene-pad-ion.js'),PadNowDiagram:require('../../site/scene-pad-now.js'),
     CalcEngine:require('../../site/calc-engine.js'),MinerDB:require('../../site/miner-db.js'),PriceList:require('../../site/price-list.js'),MineBuilderModel:require('../../site/mine-builder-model.js'),
     setTimeout:(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;},clearTimeout:id=>timers.delete(id),
     fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))
@@ -77,6 +81,11 @@ function fire(target,type,extra={}){
 }
 function input(name,value){el(name).value=value;fire(el(name),'input');}
 function click(name){assert.ok(!el(name).disabled,name+' is enabled');fire(el(name),'click');}
+function siteAction(fuel,end){
+    const pane=document.querySelectorAll('.dg-fuel-pane').find(p=>p.getAttribute('data-fuel')===fuel);
+    const button=pane.querySelector('[data-mb-end="'+end+'"]');
+    assert.equal(button.tagName,'BUTTON');assert.equal(button.disabled,false);fire(button,'click');
+}
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 let passed=0;
 function check(name,fn){fn();passed++;console.log('  ok    '+name);}
@@ -85,15 +94,17 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     const comparisons=el('site-preview'), fuelPanes=comparisons.querySelectorAll('.dg-fuel-pane'), scales=comparisons.querySelectorAll('.dg-scale-input');
     const fuelButtons=document.getElementById('dgFuel').querySelectorAll('[data-fuel]');
     check('the energy page opens on Your site without requesting market data',()=>{
-        assert.equal(el('builder').hidden,true);assert.equal(comparisons.hidden,false);assert.equal(el('tab-build').hidden,false);assert.equal(requests.length,0);
-        assert.equal(el('tab-site').textContent,'Your site');assert.equal(comparisons.closest('#the-pad'),el('builder').closest('#the-pad'));
+        assert.equal(el('builder').hidden,true);assert.equal(comparisons.hidden,false);assert.equal(el('tab-build'),null);assert.equal(requests.length,0);
+        assert.equal(comparisons.closest('#the-pad'),el('builder').closest('#the-pad'));
         assert.equal(fuelPanes.length,2);assert.equal(fuelPanes[0].hidden,false);assert.equal(fuelPanes[1].hidden,true);
     });
-    scales[0].value=73;fire(scales[0],'input');scales[1].value=28;fire(scales[1],'input');fire(fuelButtons[1],'click');
-    click('tab-build');await settle();
-    check('Build your mine selects an independent panel and fetches inputs only on demand',()=>{
-        assert.equal(el('builder').hidden,false);assert.equal(comparisons.hidden,true);assert.equal(el('tab-build').getAttribute('aria-selected'),'true');
-        assert.equal(scales[0].closest('[hidden]'),fuelPanes[0]);assert.equal(scales[1].closest('[hidden]'),comparisons);
+    scales[0].value=73;fire(scales[0],'input');scales[1].value=28;fire(scales[1],'input');
+    siteAction('landfill','hi');await settle();
+    check('With Proton opens a landfill build while retaining the site selector and comparison controls',()=>{
+        assert.equal(el('builder').hidden,false);assert.equal(comparisons.hidden,false);assert.equal(fuelPanes[0].querySelector('[data-mb-end="hi"]').getAttribute('aria-expanded'),'true');
+        assert.equal(scales[0].closest('[hidden]'),null);assert.equal(scales[1].closest('[hidden]'),fuelPanes[1]);
+        assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,true);assert.ok(comparisons.querySelectorAll('.dg-list').every(list=>list.hidden));
+        assert.equal(scales[0].value,'100');assert.match(el('heading').textContent,/Landfill gas/);assert.match(el('context-note').textContent,/extraction wells/);
         assert.equal(requests.length,2);assert.equal(el('out-count').textContent,'160');assert.ok(Number(el('out-btc30').textContent)>0);
     });
     check('missing WebGL/module support leaves the calculator usable with an honest fallback',()=>{
@@ -141,22 +152,37 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     check('valid inputs recover and a loss is displayed as a negative margin',()=>{
         assert.equal(el('error').hidden,true);assert.equal(el('out-marginDay').classList.contains('is-negative'),true);assert.match(el('out-marginDay').textContent,/^−\$/);
     });
-    click('tab-site');
-    check('returning to Your site restores its chosen fuel and both comparison sliders',()=>{
+    siteAction('landfill','lo');
+    check('Your site today returns to the selected landfill without losing its configuration',()=>{
         assert.equal(comparisons.hidden,false);assert.equal(el('builder').hidden,true);
-        assert.equal(fuelButtons[1].getAttribute('aria-pressed'),'true');assert.equal(fuelPanes[0].hidden,true);assert.equal(fuelPanes[1].hidden,false);
-        assert.equal(scales[0].value,'73');assert.equal(scales[1].value,'28');assert.equal(el('elecCost').value,'1');
-        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.730');assert.equal(fuelPanes[1].querySelector('.dg-views').style['--d'],'0.280');
+        assert.equal(fuelButtons[0].getAttribute('aria-pressed'),'true');assert.equal(fuelPanes[0].hidden,false);assert.equal(fuelPanes[1].hidden,true);
+        assert.equal(scales[0].value,'0');assert.equal(scales[1].value,'28');assert.equal(el('elecCost').value,'1');
+        assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
+        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.000');assert.equal(fuelPanes[1].querySelector('.dg-views').style['--d'],'0.280');
     });
-    click('tab-build');await settle();
+    siteAction('landfill','hi');await settle();
     check('switching views preserves visitor input and does not refetch or remount',()=>{
         assert.equal(el('elecCost').value,'1');assert.equal(requests.length,2);
     });
-    fire(el('tab-build'),'keydown',{key:'ArrowLeft'});
-    check('keyboard navigation switches panels and moves focus',()=>{
-        assert.equal(el('builder').hidden,true);assert.equal(document.activeElement,el('tab-site'));
+    fire(fuelButtons[1],'click');
+    check('changing fuel while building selects that site and its own starting configuration',()=>{
+        assert.equal(el('builder').hidden,false);assert.match(el('heading').textContent,/Flared gas/);assert.match(el('context-note').textContent,/wellhead, separator, tanks/);
+        assert.equal(fuelPanes[1].hidden,false);assert.equal(scales[1].value,'100');assert.equal(el('elecCost').value,'0.07');assert.equal(el('sizing').value,'power');
+        assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');
     });
-    click('tab-build');click('refresh-market');
+    input('powerMW','3');input('elecCost','0.06');fire(fuelButtons[0],'click');
+    check('landfill and flared-gas inputs survive repeated site switches independently',()=>{
+        assert.equal(el('elecCost').value,'1');assert.equal(el('sizing').value,'gas');assert.equal(el('model').value,'__custom__');
+        fire(fuelButtons[1],'click');assert.equal(el('elecCost').value,'0.06');assert.equal(el('powerMW').value,'3');
+        fire(fuelButtons[0],'click');assert.equal(el('elecCost').value,'1');assert.equal(requests.length,2);
+    });
+    scales[0].value=40;fire(scales[0],'input');
+    check('dragging back returns to the comparison, and its full range remains usable',()=>{
+        assert.equal(el('builder').hidden,true);assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
+        assert.equal(fuelPanes[0].querySelector('.dg-views').style['--d'],'0.400');
+        scales[0].value=100;fire(scales[0],'input');assert.equal(el('builder').hidden,true,'the comparison can reach 100%, including its Inside button, without launching a different view');
+    });
+    siteAction('landfill','hi');click('refresh-market');
     requests[2].resolve({ok:false,text:async()=>''});requests[3].reject(new Error('offline'));await settle();
     check('failed feed refresh keeps entered values and states the failure',()=>{
         assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');assert.match(el('market-note').textContent,/refresh unavailable/);assert.equal(el('refresh-market').disabled,false);
@@ -184,7 +210,11 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(live);
     new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8').replace("import(panel.getAttribute('data-module-src'))",'loadSceneModule()')).runInContext(live);
     const renderScene=()=>{for(const[id,t]of[...scheduled])if(t.ms===100){scheduled.delete(id);t.fn();}};
-    click('tab-build');await settle();renderScene();
+    siteAction('landfill','hi');await settle();renderScene();
+    check('the renderer receives the exact landfill infrastructure definitions with the visitor configuration',()=>{
+        assert.equal(scene.config.siteType,'landfill');assert.equal(scene.config.siteDefinition.before,sandbox.LandfillNowDiagram);
+        assert.equal(scene.config.siteDefinition.main,sandbox.LandfillIonDiagram);assert.equal(scene.config.count,160);
+    });
     check('the builder starts energized with X-ray off and no interaction or rotation toggles',()=>{
         assert.equal(scene.powered,true);assert.equal(el('energize').getAttribute('aria-pressed'),'true');assert.match(el('power-status').textContent,/energized/);
         assert.equal(el('xray').getAttribute('aria-pressed'),'false');assert.equal(el('rotate'),null);assert.equal(el('touch-toggle'),null);
@@ -205,6 +235,15 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         click('energize');assert.equal(scene.powered,false);input('powerMW','3');renderScene();assert.equal(scene.powered,false);
         click('reset-inputs');renderScene();assert.equal(scene.powered,true);assert.equal(el('energize').getAttribute('aria-pressed'),'true');
         click('inspect');assert.equal(el('inspect').getAttribute('aria-pressed'),'true');assert.equal(el('inspect').textContent,'Return to site');
+    });
+    check('switching to a flared-gas build updates the live scene and closes the old container interior',()=>{
+        const buttons=document.getElementById('dgFuel').querySelectorAll('[data-fuel]');
+        fire(buttons[1],'click');renderScene();
+        assert.equal(scene.config.siteType,'pad');assert.equal(scene.config.siteDefinition.before,sandbox.PadNowDiagram);
+        assert.equal(scene.config.siteDefinition.main,sandbox.PadIonDiagram);assert.equal(el('inspect').getAttribute('aria-pressed'),'false');
+        input('model','Antminer S21 XP');renderScene();assert.equal(scene.config.settings.cooling,'air');
+        siteAction('flare','lo');assert.equal(scene.active,false);
+        siteAction('flare','hi');renderScene();assert.equal(scene.active,true);assert.equal(scene.config.settings.cooling,'air');
     });
     console.log('\n  '+passed+' mine builder UI checks passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

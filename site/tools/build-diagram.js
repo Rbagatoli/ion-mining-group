@@ -89,7 +89,7 @@ const PAGES = {
        existing equipment" and lets whichever drawing is on screen be the
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
-    lede: 'One site, drawn twice from the same angle. Pull the slider and the gas stops going up the stack and starts going into engines. Your collection system, your existing equipment and your flare stay exactly where they are — because in practice that is what changes and what does not.',
+    lede: 'Choose your kind of site, then pull the slider to see what changes. Select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
@@ -177,15 +177,11 @@ const CHAIN = [
   { key: 'cont', label: 'One container', href: './hosting.html#inside-container' },
 ];
 
-function chainOf(key, builder) {
+function chainOf(key) {
   const at = CHAIN.findIndex(s => s.key === key);
   if (at < 0) return '';
   const seg = CHAIN.map((s, i) => {
     if (i === at) {
-      if (builder) return `<span class="mb-tabs" role="tablist" aria-label="Your site views">
-        <button type="button" role="tab" id="mb-tab-site" aria-selected="true" aria-controls="mb-site-preview">${esc(s.label)}</button>
-        <button type="button" role="tab" id="mb-tab-build" aria-selected="false" aria-controls="mb-builder" tabindex="-1" hidden>Build your mine</button>
-      </span>`;
       return `<span class="dg-toggle-on" aria-current="true">${esc(s.label)}</span>`;
     }
     /* The arrow travels the way the reader does: back-pointing and leading for
@@ -198,7 +194,7 @@ function chainOf(key, builder) {
            `\n      </a>`;
   });
   return `
-    <div class="dg-toggle${builder ? ' mb-chain' : ''} reveal">
+    <div class="dg-toggle reveal">
       ${seg.join('\n      ')}
     </div>`;
 }
@@ -562,15 +558,18 @@ function build(key) {
     /* The hint is aria-hidden: the input already carries a label saying what
        the two ends are, and a screen reader gets no use from being told to
        drag. */
+    const endpoint = (end, label) => cfg.builder
+      ? `<button type="button" class="dg-scale-end mb-site-action" data-end="${end}" data-mb-end="${end}" aria-controls="${end === 'hi' ? 'mb-builder' : 'dgViews' + sfx}"${end === 'hi' ? ' aria-expanded="false"' : ''} disabled>${esc(label)}${end === 'hi' ? '<small>Build your mine ↗</small>' : ''}</button>`
+      : `<span class="dg-scale-end" data-end="${end}">${esc(label)}</span>`;
     const slider = pair ? `
     <div class="dg-scale reveal">
-      <span class="dg-scale-end" data-end="lo">${esc(g.scale.lo)}</span>
+      ${endpoint('lo', g.scale.lo)}
       <span class="dg-scale-track">
         <input class="dg-scale-input" id="dgScale${sfx}" type="range" min="0" max="100" step="1" value="0"
                aria-label="${esc(g.scale.label)}">
         <span class="dg-scale-hint" aria-hidden="true">${ARROW_BACK}Drag to compare${ARROW}</span>
       </span>
-      <span class="dg-scale-end" data-end="hi">${esc(g.scale.hi)}</span>
+      ${endpoint('hi', g.scale.hi)}
     </div>` : '';
 
     const body = pair ? `
@@ -589,7 +588,7 @@ function build(key) {
      next drawing is a deliberate navigation rather than a drag that surprises
      you by leaving the page. It sits above the fuel switch because it changes
      which site you are looking at, not which fuel feeds it. */
-  const toggle = chainOf(cfg.chain, cfg.builder);
+  const toggle = chainOf(cfg.chain);
   const builder = cfg.builder ? fs.readFileSync(path.join(__dirname, 'mine-builder.html'), 'utf8') : '';
 
   /* One group splices bare. Several are each wrapped in a pane the fuel switch
@@ -602,7 +601,7 @@ function build(key) {
     : groupBlock(groups[0]);
   const comparison = fuelOf(cfg, groups) + panes;
   const content = cfg.builder ? `
-    <div class="mb-site-preview" id="mb-site-preview" role="tabpanel" aria-labelledby="mb-tab-site">${comparison}
+    <div class="mb-site-preview" id="mb-site-preview">${comparison}
     </div>${builder}` : comparison;
 
   const section = `<!-- ===== ${cfg.marker} ===== -->

@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=c9cdf2ef">
+<link rel="stylesheet" href="./styles.css?v=f5ebb002">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=c9cdf2ef">
-<link rel="stylesheet" href="./mine-builder.css?v=c9cdf2ef">
+<link rel="stylesheet" href="./plant-viewer.css?v=f5ebb002">
+<link rel="stylesheet" href="./mine-builder.css?v=f5ebb002">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -149,13 +149,10 @@
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">Your site, before and after</div>
       <h2 class="h-section">The flare goes out. Nothing else moves.</h2>
-      <p class="lede">One site, drawn twice from the same angle. Pull the slider and the gas stops going up the stack and starts going into engines. Your collection system, your existing equipment and your flare stay exactly where they are — because in practice that is what changes and what does not.</p>
+      <p class="lede">Choose your kind of site, then pull the slider to see what changes. Select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.</p>
     </div>
-    <div class="dg-toggle mb-chain reveal">
-      <span class="mb-tabs" role="tablist" aria-label="Your site views">
-        <button type="button" role="tab" id="mb-tab-site" aria-selected="true" aria-controls="mb-site-preview">Your site</button>
-        <button type="button" role="tab" id="mb-tab-build" aria-selected="false" aria-controls="mb-builder" tabindex="-1" hidden>Build your mine</button>
-      </span>
+    <div class="dg-toggle reveal">
+      <span class="dg-toggle-on" aria-current="true">Your site</span>
       <a class="dg-toggle-to" href="./index.html#inside">Our mine
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
@@ -163,7 +160,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
     </div>
-    <div class="mb-site-preview" id="mb-site-preview" role="tabpanel" aria-labelledby="mb-tab-site">
+    <div class="mb-site-preview" id="mb-site-preview">
     <noscript>
       <style>
         .dg-fuel { display: none; }
@@ -176,13 +173,13 @@
     </div>
     <div class="dg-fuel-pane" data-fuel="landfill">
     <div class="dg-scale reveal">
-      <span class="dg-scale-end" data-end="lo">Your site today</span>
+      <button type="button" class="dg-scale-end mb-site-action" data-end="lo" data-mb-end="lo" aria-controls="dgViews-landfill" disabled>Your site today</button>
       <span class="dg-scale-track">
         <input class="dg-scale-input" id="dgScale-landfill" type="range" min="0" max="100" step="1" value="0"
                aria-label="Your landfill as it is today, or the same site with Proton on it">
         <span class="dg-scale-hint" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Drag to compare<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
       </span>
-      <span class="dg-scale-end" data-end="hi">With Proton on it</span>
+      <button type="button" class="dg-scale-end mb-site-action" data-end="hi" data-mb-end="hi" aria-controls="mb-builder" aria-expanded="false" disabled>With Proton on it<small>Build your mine ↗</small></button>
     </div>
     <!-- Both views share one grid cell, so the taller sets the height and the
          section never changes size as the slider moves. -->
@@ -341,13 +338,13 @@
     </div>
     <div class="dg-fuel-pane" data-fuel="flare" hidden>
     <div class="dg-scale reveal">
-      <span class="dg-scale-end" data-end="lo">Your pad today</span>
+      <button type="button" class="dg-scale-end mb-site-action" data-end="lo" data-mb-end="lo" aria-controls="dgViews-flare" disabled>Your pad today</button>
       <span class="dg-scale-track">
         <input class="dg-scale-input" id="dgScale-flare" type="range" min="0" max="100" step="1" value="0"
                aria-label="Your pad as it is today, or the same pad with Proton on it">
         <span class="dg-scale-hint" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Drag to compare<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
       </span>
-      <span class="dg-scale-end" data-end="hi">With Proton on it</span>
+      <button type="button" class="dg-scale-end mb-site-action" data-end="hi" data-mb-end="hi" aria-controls="mb-builder" aria-expanded="false" disabled>With Proton on it<small>Build your mine ↗</small></button>
     </div>
     <!-- Both views share one grid cell, so the taller sets the height and the
          section never changes size as the slider moves. -->
@@ -506,8 +503,9 @@
       <li><span class="dg-list-title">Your flare stays</span><span class="dg-list-desc">Still permitted, still there for upsets and for when you take the gas back</span></li>
     </ol>
     </div>
-    </div>    <div class="mb-panel" id="mb-builder" role="tabpanel" aria-labelledby="mb-tab-build" data-module-src="./mine-builder-scene.js?v=c9cdf2ef" hidden>
-      <div class="mb-topline"><span class="mb-kicker">Your energy. Your configuration.</span><span class="mb-tag">Interactive estimate</span></div>
+    </div>    <div class="mb-panel" id="mb-builder" role="region" aria-labelledby="mb-heading" data-module-src="./mine-builder-scene.js?v=f5ebb002" hidden>
+      <div class="mb-topline"><h3 class="mb-kicker" id="mb-heading">Build your mine · Landfill gas</h3><span class="mb-tag">Interactive estimate</span></div>
+      <p class="mb-context-note" id="mb-context-note">Your existing landfill infrastructure stays in place. Configure the mining equipment on the working area alongside it.</p>
       <div class="mb-workspace">
         <form class="mb-form" id="mb-form" novalidate>
           <div class="mb-form-heading"><span class="mb-step">01</span><h3>Set your starting point</h3></div>
@@ -569,9 +567,9 @@
         <div class="mb-preview">
           <div class="mb-stage" id="mb-stage" aria-label="Interactive 3D mine preview">
             <canvas class="anim-field anim-field--plant" data-w="1280" data-h="470" aria-hidden="true"></canvas>
-            <div class="mb-stage-top"><span class="mb-stage-title">Your mine / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
+            <div class="mb-stage-top"><span class="mb-stage-title"><span id="mb-site-label">Your landfill</span> / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
             <div class="mb-canvas-host" id="mb-canvas-host"></div>
-            <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/home.png" loading="lazy" decoding="async" alt="A reference layout with generation, power distribution and mining containers."><p id="mb-scene-message">Preparing your 3D site…</p></div>
+            <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/energy.png" loading="lazy" decoding="async" alt="Reference illustration of a gas site with a proposed mining installation; configured totals are below."><p id="mb-scene-message">Preparing your 3D site…</p></div>
             <div class="mb-stage-bottom"><span id="mb-scene-caption">Illustrative layout · representative rack detail</span><span class="mb-north" aria-hidden="true">3D</span></div>
           </div>
           <div class="mb-view-controls" aria-label="3D view controls">
@@ -988,23 +986,23 @@
   </div>
 </footer>
 
-<script src="./site.js?v=c9cdf2ef"></script>
-<script src="./cart.js?v=c9cdf2ef"></script>
-<script src="./diagram-engine.js?v=c9cdf2ef"></script>
-<script src="./hero-anim.js?v=c9cdf2ef"></script>
-<script src="./pad-geometry.js?v=c9cdf2ef"></script>
-<script src="./landfill-geometry.js?v=c9cdf2ef"></script>
-<script src="./site-kit.js?v=c9cdf2ef"></script>
-<script src="./scene-landfill-now.js?v=c9cdf2ef"></script>
-<script src="./scene-landfill-ion.js?v=c9cdf2ef"></script>
-<script src="./scene-pad-now.js?v=c9cdf2ef"></script>
-<script src="./scene-pad-ion.js?v=c9cdf2ef"></script>
-<script src="./plant-viewer.js?v=c9cdf2ef" data-module-src="./mine-builder-scene.js?v=c9cdf2ef"></script>
-<script src="./calc-engine.js?v=c9cdf2ef"></script>
-<script src="./miner-db.js?v=c9cdf2ef"></script>
-<script src="./price-list.js?v=c9cdf2ef"></script>
-<script src="./mine-builder-model.js?v=c9cdf2ef"></script>
-<script src="./mine-builder.js?v=c9cdf2ef"></script>
+<script src="./site.js?v=f5ebb002"></script>
+<script src="./cart.js?v=f5ebb002"></script>
+<script src="./diagram-engine.js?v=f5ebb002"></script>
+<script src="./hero-anim.js?v=f5ebb002"></script>
+<script src="./pad-geometry.js?v=f5ebb002"></script>
+<script src="./landfill-geometry.js?v=f5ebb002"></script>
+<script src="./site-kit.js?v=f5ebb002"></script>
+<script src="./scene-landfill-now.js?v=f5ebb002"></script>
+<script src="./scene-landfill-ion.js?v=f5ebb002"></script>
+<script src="./scene-pad-now.js?v=f5ebb002"></script>
+<script src="./scene-pad-ion.js?v=f5ebb002"></script>
+<script src="./plant-viewer.js?v=f5ebb002" data-module-src="./mine-builder-scene.js?v=f5ebb002"></script>
+<script src="./calc-engine.js?v=f5ebb002"></script>
+<script src="./miner-db.js?v=f5ebb002"></script>
+<script src="./price-list.js?v=f5ebb002"></script>
+<script src="./mine-builder-model.js?v=f5ebb002"></script>
+<script src="./mine-builder.js?v=f5ebb002"></script>
 
 
 

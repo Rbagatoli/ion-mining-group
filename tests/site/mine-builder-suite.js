@@ -104,11 +104,13 @@ check('machine cooling is correctly identified for all supported families',() =>
     assert.equal(M.coolingFor('Antminer S21+ Hyd.'),'hydro'); assert.equal(M.coolingFor('Antminer S21 XP'),'air');
     assert.equal(M.coolingFor('Whatsminer M66S'),'immersion'); assert.equal(M.coolingFor('Avalon A1566I'),'immersion');
 });
-check('the energy page owns both builder tabs, accessible panels and the lazy renderer reference',() => {
+check('each energy site launches the accessible builder through With Proton',() => {
     const html=fs.readFileSync(path.join(root,'site/energy.html'),'utf8');
-    for (const id of ['mb-tab-site','mb-tab-build','mb-builder','mb-site-preview','mb-stage']) assert.ok(html.includes('id="'+id+'"'));
+    for (const id of ['mb-heading','mb-builder','mb-site-preview','mb-stage']) assert.ok(html.includes('id="'+id+'"'));
+    assert.equal((html.match(/data-mb-end="hi" aria-controls="mb-builder"/g)||[]).length,2);
+    assert.ok(!html.includes('id="mb-tab-build"'));
     assert.match(html,/data-module-src="\.\/mine-builder-scene\.js(?:\?v=[a-f0-9]+)?"/);
-    assert.match(html,/aria-labelledby="mb-tab-build"[^>]*hidden/);
+    assert.match(html,/role="region" aria-labelledby="mb-heading"[^>]*hidden/);
     assert.ok(html.includes('mine-builder.css'));
     assert.ok(html.indexOf('src="./calc-engine.js')<html.indexOf('src="./mine-builder-model.js'));
     assert.ok(html.indexOf('src="./mine-builder-model.js')<html.indexOf('src="./mine-builder.js'));

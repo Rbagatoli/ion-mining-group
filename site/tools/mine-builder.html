@@ -1,5 +1,6 @@
-    <div class="mb-panel" id="mb-builder" role="tabpanel" aria-labelledby="mb-tab-build" data-module-src="./mine-builder-scene.js" hidden>
-      <div class="mb-topline"><span class="mb-kicker">Your energy. Your configuration.</span><span class="mb-tag">Interactive estimate</span></div>
+    <div class="mb-panel" id="mb-builder" role="region" aria-labelledby="mb-heading" data-module-src="./mine-builder-scene.js" hidden>
+      <div class="mb-topline"><h3 class="mb-kicker" id="mb-heading">Build your mine · Landfill gas</h3><span class="mb-tag">Interactive estimate</span></div>
+      <p class="mb-context-note" id="mb-context-note">Your existing landfill infrastructure stays in place. Configure the mining equipment on the working area alongside it.</p>
       <div class="mb-workspace">
         <form class="mb-form" id="mb-form" novalidate>
           <div class="mb-form-heading"><span class="mb-step">01</span><h3>Set your starting point</h3></div>
@@ -61,9 +62,9 @@
         <div class="mb-preview">
           <div class="mb-stage" id="mb-stage" aria-label="Interactive 3D mine preview">
             <canvas class="anim-field anim-field--plant" data-w="1280" data-h="470" aria-hidden="true"></canvas>
-            <div class="mb-stage-top"><span class="mb-stage-title">Your mine / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
+            <div class="mb-stage-top"><span class="mb-stage-title"><span id="mb-site-label">Your landfill</span> / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
             <div class="mb-canvas-host" id="mb-canvas-host"></div>
-            <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/home.png" loading="lazy" decoding="async" alt="A reference layout with generation, power distribution and mining containers."><p id="mb-scene-message">Preparing your 3D site…</p></div>
+            <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/energy.png" loading="lazy" decoding="async" alt="Reference illustration of a gas site with a proposed mining installation; configured totals are below."><p id="mb-scene-message">Preparing your 3D site…</p></div>
             <div class="mb-stage-bottom"><span id="mb-scene-caption">Illustrative layout · representative rack detail</span><span class="mb-north" aria-hidden="true">3D</span></div>
           </div>
           <div class="mb-view-controls" aria-label="3D view controls">
