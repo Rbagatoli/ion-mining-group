@@ -12,20 +12,20 @@ function near(a,b,relative=1e-10) { assert.ok(Math.abs(a-b) <= Math.max(1,Math.a
 const base = M.estimate({},day);
 
 check('power budget reserves auxiliary load before flooring the fleet',() => {
-    assert.equal(base.count,160); near(base.siteKW,995.4); near(base.unusedKW,4.6);
+    assert.equal(base.settings.powerMW,10); assert.equal(base.count,1607); near(base.siteKW,9997.54875); near(base.unusedKW,2.45125);
     assert.ok(base.siteKW <= base.availableKW);
 });
 check('BTC/day matches the independent proof-of-work formula',() => {
-    const expected = 160*395*1e12*86400*3.125/(125.86e12*2**32)*.95*.98;
+    const expected = 1607*395*1e12*86400*3.125/(125.86e12*2**32)*.95*.98;
     near(base.btcDay,expected);
 });
 check('cooling overhead is billed, alongside miners, during uptime',() => {
-    near(base.energyDay,160*5.925*1.05*24*.07*.95);
+    near(base.energyDay,1607*5.925*1.05*24*.07*.95);
     near(base.marginDay,base.btcDay*96000-base.energyDay);
 });
 check('gas-to-electricity conversion preserves Mcf and hours',() => {
     const r=M.estimate({sizing:'gas',gasMcf:240,gasBtu:1000,heatRate:10000},day);
-    near(r.availableKW,1000); assert.equal(r.count,base.count); near(r.btc30,base.btc30);
+    near(r.availableKW,1000); assert.equal(r.count,160); near(r.btc30,M.estimate({powerMW:1},day).btc30);
 });
 check('machine-count mode sizes required supply instead of silently clamping',() => {
     const r=M.estimate({sizing:'machines',machineCount:100},day);
@@ -65,7 +65,7 @@ check('daily projection crosses the estimated halving on the correct day',() => 
 check('container count obeys BOTH rack slots and IT power capacity',() => {
     const r=M.estimate({sizing:'machines',machineCount:300,containerMW:.6,slots:240},day);
     assert.equal(r.perContainer,101); assert.equal(r.containers,3);
-    assert.equal(M.estimate({slots:40},day).containers,4);
+    assert.equal(M.estimate({slots:40},day).containers,41);
 });
 check('a container too small for a single machine reports a validation error',() => {
     const r=M.estimate({power:20,containerMW:.01},day); assert.equal(r.valid,false); assert.equal(r.errors[0].field,'containerMW');
@@ -84,7 +84,7 @@ check('hidden sizing inputs do not invalidate the active sizing method',() => {
 });
 check('capital budgets use the entered prices and include entered infrastructure',() => {
     const r=M.estimate({capex:3000,infrastructureCost:200000},day);
-    assert.equal(r.hardwareCost,480000); assert.equal(r.totalCost,680000);
+    assert.equal(r.hardwareCost,4821000); assert.equal(r.totalCost,5021000);
 });
 check('the break-even rate actually zeroes daily margin',() => {
     const r=M.estimate({elecCost:base.breakEvenRate},day); near(r.marginDay,0,1e-8);
@@ -106,7 +106,8 @@ check('machine cooling is correctly identified for all supported families',() =>
 });
 check('each energy site launches the accessible builder through With Proton',() => {
     const html=fs.readFileSync(path.join(root,'site/energy.html'),'utf8');
-    for (const id of ['mb-heading','mb-builder','mb-site-preview','mb-stage']) assert.ok(html.includes('id="'+id+'"'));
+    for (const id of ['mb-heading','mb-builder','mb-site-preview','mb-form']) assert.ok(html.includes('id="'+id+'"'));
+    assert.ok(!html.includes('id="mb-canvas-host"'),'both modes use the original site canvas');
     assert.equal((html.match(/data-mb-end="hi" aria-controls="mb-builder"/g)||[]).length,2);
     assert.equal((html.match(/class="mb-site-switch reveal" role="group"/g)||[]).length,2);
     const comparison=html.slice(html.indexOf('id="mb-site-preview"'),html.indexOf('id="mb-builder"'));

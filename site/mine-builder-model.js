@@ -8,8 +8,8 @@
     'use strict';
 
     var DEFAULTS = {
-        sizing: 'power', source: 'gas', powerMW: 1, gasMcf: 240,
-        gasBtu: 1000, heatRate: 10000, machineCount: 160,
+        sizing: 'power', source: 'gas', powerMW: 10, gasMcf: 2400,
+        gasBtu: 1000, heatRate: 10000, machineCount: 1607,
         model: 'Antminer S21+ Hyd.', cooling: 'hydro',
         hashrate: 395, power: 5.925, capex: 2649,
         overhead: 5, elecCost: 0.07, uptime: 95, poolFee: 2,

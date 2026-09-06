@@ -476,6 +476,30 @@ class Surface {
         assert.equal(fill.count,4,'all four containers highlighted as one section');
         api.highlightPart(null); flush();
     });
+    check('configured equipment fades in place on both sites without moving the camera or fading existing equipment', () => {
+        for (const [width,height] of [[1280,470],[390,290]]) for (const view of ['landfill','pad']) {
+            host.clientWidth=width;host.clientHeight=height;resizeScene();
+            api.setConfig(configured(view,{powerMW:10}));api.setXray(false);api.setProgress(0);flush();
+            const mine=renderer.world.getObjectByName('configured-mine'),source=renderer.world.getObjectByName('existing-site');
+            const material=mine.getObjectByProperty('isMesh',true).material,unchanged=[];
+            source.traverse(o=>{if(o.material)unchanged.push([o,o.material.opacity,o.matrixWorld.clone()]);});
+            api.zoom(.9);flush();const camera=renderer.camera.position.clone(),target=controls.target.clone();
+            media.fire('change',{matches:false});api.setProgress(1,{animate:true});
+            assert.equal(mine.visible,false,'the reveal begins from the current state');
+            advance(160);assert.equal(mine.visible,true);assert.ok(material.opacity>0&&material.opacity<material.userData.baseOpacity);
+            unchanged.forEach(([o,opacity,matrix])=>{assert.equal(o.material.opacity,opacity);assert.ok(o.matrixWorld.equals(matrix));});
+            advance(1500);assert.equal(material.opacity,material.userData.baseOpacity);
+            assert.ok(renderer.camera.position.distanceTo(camera)<1e-9);assert.ok(controls.target.distanceTo(target)<1e-9);
+            api.setProgress(0,{animate:true});advance(160);const fading=material.opacity;
+            api.setProgress(1,{animate:true});advance(160);assert.ok(material.opacity>fading,'quick reversals continue from the visible state');
+            api.setProgress(0,{animate:true});advance(1500);assert.equal(mine.visible,false);
+            assert.equal(renderer.world.getObjectByName('configured-mine'),mine);assert.equal(renderer.world.getObjectByName('existing-site'),source);
+            assert.ok(renderer.camera.position.distanceTo(camera)<1e-9);
+            media.fire('change',{matches:true});api.setProgress(1,{animate:true});flush();
+            assert.equal(material.opacity,material.userData.baseOpacity,'reduced motion switches immediately');
+        }
+        host.clientWidth=1280;host.clientHeight=470;resizeScene();flush();
+    });
     check('all scenes start energized, and normal motion automatically rotates the view', () => {
         api.setConfig({view:'site',definition:definition('site')}); flush();
         media.fire('change',{matches:false});

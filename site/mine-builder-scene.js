@@ -907,6 +907,21 @@ function configuredGround(parent, mats, footprint) {
     return root;
 }
 
+function isolateDeploymentMaterials(mining, containers) {
+    const materials = new Map();
+    mining.traverse(object => {
+        if (!object.material) return;
+        const old = object.material;
+        if (!materials.has(old)) {
+            const copy = old.clone(); copy.userData.baseOpacity = old.opacity;
+            materials.set(old,copy);
+        }
+        object.material = materials.get(old);
+    });
+    containers.forEach(unit => { unit.skinMaterials = unit.skinMaterials.map(m => materials.get(m) || m); });
+    return materials;
+}
+
 function configuredPositions(main, shown, obstacles) {
     if (!shown) return [];
     const authored = containerPositions(main), xs = [...new Set(authored.map(p => p.x))].sort((a,b) => a-b);
@@ -1009,10 +1024,20 @@ export function buildConfiguredSite(config) {
     const anchor = containers[Math.max(0,containers.length-2)];
     if (anchor) Object.assign(targets,{shell:anchor.root,cont:anchor.root,asics:anchor.rack,pdu:anchor.pdu,net:anchor.network,cool:anchor.roof});
     if (targets.cond) targets.gas = targets.cond;
-    Object.assign(targets,{space:root,mine:mining,keep:targets.flare,stack:targets.flare});
-    const yard = finishScene(root,mats,containers,{configuredSite:view,existing,ground,targets,fans,pulses,flame:flames,gasDiverted:gas});
+    Object.assign(targets,{space:root,mine:mining,keep:targets.flare,stack:targets.flare,flame:flames});
+    const materialMap = isolateDeploymentMaterials(mining,containers);
+    const yard = finishScene(root,mats,containers,{configuredSite:view,existing,ground,targets,fans,pulses,flame:flames,gasDiverted:gas,
+        mining,comparisonView:main.scene.view,miningMaterials:[...materialMap.values()],
+        operatingMaterials:[materialMap.get(mats.led),materialMap.get(mats.flow)].filter(Boolean)});
     yard.targetBounds = {};
     for (const [id,object] of Object.entries(targets)) if (object) yard.targetBounds[id] = new THREE.Box3().setFromObject(object);
+    const fleet = containers.map(unit => new THREE.Box3().setFromObject(unit.root));
+    yard.targetRegions = {load:fleet,cont:fleet};
+    if (fleet.length) {
+        const bounds = new THREE.Box3(); fleet.forEach(box => bounds.union(box));
+        yard.targetBounds.load = bounds; yard.targetBounds.cont = bounds.clone();
+    }
+    if (targets.wells?.name === 'wellfield') yard.targetRegions.wells = targets.wells.children.map(object => new THREE.Box3().setFromObject(object));
     return yard;
 }
 
@@ -1079,17 +1104,7 @@ export function buildPresentation(view, definition) {
     });
     // Comparison fades only the added plant. Shared source equipment never moves
     // or fades, and X-ray only changes the container envelope.
-    const materialMap = new Map();
-    if (before) mining.traverse(object => {
-        if (!object.material) return;
-        const old = object.material;
-        if (!materialMap.has(old)) {
-            const copy = old.clone(); copy.userData.baseOpacity = old.opacity;
-            materialMap.set(old,copy);
-        }
-        object.material = materialMap.get(old);
-    });
-    if (before) containers.forEach(unit => { unit.skinMaterials = unit.skinMaterials.map(m => materialMap.get(m) || m); });
+    const materialMap = before ? isolateDeploymentMaterials(mining,containers) : new Map();
     const yard = finishScene(root,mats,containers,{view,targets,fans,pulses,flame:flames,
         mining:before ? mining : null,layout:main.scene.view,inspectIndex:anchorIndex,
         calloutSets:{before:before?.CALLOUTS,after:main.CALLOUTS},
@@ -1183,7 +1198,8 @@ export function yardCameraPose(yard, aspect) {
     }
     const target = yard.bounds.getCenter(new THREE.Vector3());
     target.y = yard.configuredSite ? yard.bounds.getSize(new THREE.Vector3()).y*.25 : yard.view === 'asic' ? .9 : .7;
-    return { target, position: cameraPose(yard.bounds,target,aspect,new THREE.Vector3(.8,.86,1.3),yard.configuredSite ? Math.PI : .075) };
+    const v = yard.comparisonView, direction = v ? new THREE.Vector3(-Math.sin(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH),Math.sin(v.BASE_PITCH),Math.cos(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH)) : new THREE.Vector3(.8,.86,1.3);
+    return { target, position: cameraPose(yard.bounds,target,aspect,direction,yard.configuredSite ? Math.PI : .075,38,yard.configuredSite && aspect >= 2 ? .52 : .92) };
 }
 
 export function wheelZoomFactor(event, pageHeight = 800) {
@@ -1221,6 +1237,7 @@ export function mountMineScene(host, callbacks = {}) {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false, ready = false;
     let powered = true, powerLevel = 1, selected = -1, manual = false, xray = false, progress = 1;
+    let displayedProgress = 1, revealing = false;
     let highlight = null, focus = null, hoveredPart = null;
     let autoRotate = !reduced, dragging = false, resumeAt = 0;
     let annotations = [], viewportWidth = 0, viewportHeight = 0;
@@ -1268,17 +1285,22 @@ export function mountMineScene(host, callbacks = {}) {
         if (!active || !visible || disposed || lost || document.hidden || !viewportWidth || !viewportHeight) return;
         const dt = last ? Math.min((ms-last)/1000,.05) : 0; last = ms; elapsed += dt; buildTime += dt;
         if (yard) {
+            if (revealing) {
+                displayedProgress = reduced ? progress : THREE.MathUtils.damp(displayedProgress,progress,7,dt);
+                if (Math.abs(displayedProgress-progress) < .001) { displayedProgress = progress; revealing = false; }
+                setSceneProgress(yard,displayedProgress);
+            }
             powerLevel = reduced ? (powered ? 1 : 0) : THREE.MathUtils.damp(powerLevel,powered ? 1 : 0,3.8,dt);
             yard.mats.led.emissiveIntensity = .05+powerLevel*3;
             yard.mats.flow.emissiveIntensity = .03+powerLevel*1.5;
             for (const mat of yard.operatingMaterials || []) mat.emissiveIntensity = .05+powerLevel*1.7;
             if (yard.configuredSite) yard.flame.traverse(object => {
-                const burning = yard.gasDiverted ? 1-powerLevel : 1;
+                const burning = yard.gasDiverted ? 1-powerLevel*displayedProgress : 1;
                 if (object.material?.emissive) object.material.emissiveIntensity = .15+burning*1.5;
                 if (object.material?.isLineBasicMaterial) object.material.opacity = .12+burning*.6;
             });
             yard.containers.forEach((unit,i) => {
-                const assembly = reduced || yard.view ? 1 : THREE.MathUtils.smoothstep(buildTime-i*.055,0,.65);
+                const assembly = reduced || yard.view || yard.configuredSite ? 1 : THREE.MathUtils.smoothstep(buildTime-i*.055,0,.65);
                 unit.root.scale.y = Math.max(.001,assembly);
                 const target = selected === i ? 1 : 0;
                 unit.open = reduced ? target : THREE.MathUtils.damp(unit.open,target,5,dt);
@@ -1309,14 +1331,14 @@ export function mountMineScene(host, callbacks = {}) {
                 camera.position.copy(controls.target).add(focus.offset.clone().applyAxisAngle(UP,Math.sin(focus.phase)*.18));
             } else {
                 const offset = camera.position.clone().sub(controls.target);
-                offset.applyAxisAngle(UP,-dt*1000/(yard?.layout?.PERIOD || 60000)*Math.PI*2);
+                offset.applyAxisAngle(UP,-dt*1000/(yard?.layout?.PERIOD || yard?.comparisonView?.PERIOD || 60000)*Math.PI*2);
                 camera.position.copy(controls.target).add(offset);
             }
         }
         controls.update(); renderer.render(world,camera); updateCallouts();
         if (!ready && yard) { ready = true; callbacks.onReady?.(); }
         // Idle motion and operating motion pause completely for reduced-motion visitors.
-        if (!reduced || autoRotate || transitioning) wake();
+        if (!reduced || autoRotate || transitioning || revealing) wake();
     }
     function inspect(open, index) {
         if (!yard || !yard.containers.length || (open && yard.mining && progress < 1)) return;
@@ -1341,10 +1363,12 @@ export function mountMineScene(host, callbacks = {}) {
         } else fit(false);
         callbacks.onInspect?.(selected >= 0); wake();
     }
-    function setConfig(config) {
+    function setConfig(config, options = {}) {
         if (!config || (!config.valid && !config.view)) return;
         const nextKey = config.view || [config.siteType || 'yard',config.containers,config.count,config.perContainer,config.generators,config.settings.source,config.settings.cooling].join(':');
         if (nextKey === key) return;
+        const keep = options.preserveView && yard && config.siteType === yard.configuredSite;
+        const saved = keep ? {position:camera.position.clone(),target:controls.target.clone(),fov:camera.fov,offset:viewOffset} : null;
         key = nextKey;
         clearHighlight();
         focus = null; hoveredPart = null; manual = false; dragging = false; resumeAt = 0;
@@ -1354,7 +1378,15 @@ export function mountMineScene(host, callbacks = {}) {
         selected = -1; callbacks.onInspect?.(false);
         const extent = Math.max(yard.width,yard.depth)*.75;
         Object.assign(sun.shadow.camera,{left:-extent,right:extent,top:extent,bottom:-extent}); sun.shadow.camera.updateProjectionMatrix();
-        setProgress(progress); fit(true); resize(); wake();
+        setSceneProgress(yard,displayedProgress); fit(true); resize();
+        if (saved) {
+            camera.position.copy(saved.position); controls.target.copy(saved.target); camera.fov = saved.fov;
+            viewOffset = desiredViewOffset = saved.offset; applyViewOffset();
+            const distance = camera.position.distanceTo(controls.target);
+            controls.minDistance = Math.min(controls.minDistance,distance); controls.maxDistance = Math.max(controls.maxDistance,distance);
+            controls.update(); pauseOrbit();
+        }
+        wake();
     }
     function zoom(factor) {
         if (!yard || !Number.isFinite(factor) || factor <= 0 || factor === 1) return false;
@@ -1445,14 +1477,21 @@ export function mountMineScene(host, callbacks = {}) {
         highlightPart(null); callbacks.onInspect?.(false); wake();
     }
     function setXray(value) { xray = !!value; if (yard) setSceneXray(yard,xray); callbacks.onXray?.(xray); wake(); }
-    function setProgress(value) {
+    function setProgress(value, options = {}) {
         const next = THREE.MathUtils.clamp(Number(value) || 0,0,1), changed = next !== progress;
         progress = next;
         if (yard?.mining) {
-            if (selected >= 0 && progress < 1) inspect(false);
-            setSceneProgress(yard,progress);
+            if (selected >= 0 && progress < 1) {
+                if (yard.configuredSite) { selected = -1; callbacks.onInspect?.(false); }
+                else inspect(false);
+            }
+            revealing = !!options.animate && !reduced && Math.abs(displayedProgress-progress) > .001;
+            if (!revealing) { displayedProgress = progress; setSceneProgress(yard,progress); }
+        } else { displayedProgress = progress; revealing = false; }
+        if (changed) {
+            if (yard?.configuredSite) { focus = null; highlightPart(null); pauseOrbit(); }
+            else if (focus) reset(); else highlightPart(null);
         }
-        if (changed) { if (focus) reset(); else highlightPart(null); }
         wake();
     }
     function reset() { focus = null; highlightPart(null); manual = false; selected = -1; fit(false); callbacks.onInspect?.(false); wake(); }

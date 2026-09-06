@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=5097a575">
+<link rel="stylesheet" href="./styles.css?v=e90d3f26">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=5097a575">
-<link rel="stylesheet" href="./mine-builder.css?v=5097a575">
+<link rel="stylesheet" href="./plant-viewer.css?v=e90d3f26">
+<link rel="stylesheet" href="./mine-builder.css?v=e90d3f26">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -496,26 +496,7 @@
       <li><span class="dg-list-title">Your flare stays</span><span class="dg-list-desc">Still permitted, still there for upsets and for when you take the gas back</span></li>
     </ol>
     </div>
-    </div>    <div class="mb-panel" id="mb-builder" role="region" aria-labelledby="mb-heading" data-module-src="./mine-builder-scene.js?v=5097a575" hidden>
-      <div class="mb-preview">
-        <div class="mb-stage plant-stage" id="mb-stage" aria-label="Interactive 3D mine preview">
-          <canvas class="anim-field anim-field--plant" data-w="1280" data-h="470" aria-hidden="true"></canvas>
-          <div class="mb-stage-top"><span class="mb-stage-title"><span id="mb-site-label">Your landfill</span> / <span id="mb-view-label">Site view</span></span><span class="mb-status" id="mb-power-status">Standby</span></div>
-          <div class="mb-canvas-host" id="mb-canvas-host"></div>
-          <div class="mb-scene-fallback" id="mb-scene-fallback"><img src="./og/energy.png" loading="lazy" decoding="async" alt="Reference illustration of a gas site with a proposed mining installation; configured totals are below."><p id="mb-scene-message">Preparing your 3D site…</p></div>
-          <div class="mb-stage-bottom"><span id="mb-scene-caption">Illustrative layout · representative rack detail</span><span class="mb-north" aria-hidden="true">3D</span></div>
-        </div>
-        <div class="mb-view-controls" aria-label="3D view controls">
-          <button type="button" id="mb-energize" class="mb-energize" aria-pressed="true" disabled><span aria-hidden="true">◉</span> Power down</button>
-          <button type="button" id="mb-inspect" aria-pressed="false" disabled>Inside a container</button>
-          <button type="button" id="mb-xray" aria-pressed="false" disabled>X-ray off</button>
-          <button type="button" id="mb-zoom-out" aria-label="Zoom out of mine" disabled>−</button>
-          <button type="button" id="mb-zoom-in" aria-label="Zoom into mine" disabled>+</button>
-          <button type="button" id="mb-reset-view" disabled>Reset view</button>
-        </div>
-        <p class="mb-cooling-note" id="mb-cooling-note"></p>
-        <p class="mb-gesture">Drag to rotate · pinch or scroll to zoom · tap a container to open it. Arrow keys rotate, +/− zoom, X toggles X-ray. Energize previews operation; estimates use your chosen uptime.</p>
-      </div>
+    </div>    <div class="mb-panel" id="mb-builder" role="region" aria-labelledby="mb-heading" hidden>
       <div class="mb-details">
         <div class="mb-topline"><h3 class="mb-kicker" id="mb-heading">Build your mine · Landfill gas</h3><span class="mb-tag">Interactive estimate</span></div>
         <p class="mb-context-note" id="mb-context-note">Your existing landfill infrastructure stays in place. Configure the mining equipment on the working area alongside it.</p>
@@ -526,19 +507,19 @@
               <select id="mb-sizing" name="sizing"><option value="power">Available power</option><option value="gas">Available gas</option><option value="machines">Number of machines</option></select>
             </label>
             <div data-mb-when="power">
-              <label class="mb-field" for="mb-powerMW">Available power <span class="mb-input-unit"><input id="mb-powerMW" name="powerMW" type="number" min="0" max="1000" step="any" value="1" inputmode="decimal" required><span>MW</span></span></label>
-              <input class="mb-range" id="mb-power-slider" type="range" min="0" max="20" step="0.1" value="1" aria-label="Available power in megawatts">
+              <label class="mb-field" for="mb-powerMW">Available power <span class="mb-input-unit"><input id="mb-powerMW" name="powerMW" type="number" min="0" max="1000" step="any" value="10" inputmode="decimal" required><span>MW</span></span></label>
+              <input class="mb-range" id="mb-power-slider" type="range" min="0" max="20" step="0.1" value="10" aria-label="Available power in megawatts">
               <div class="mb-range-labels"><span>0 MW</span><span>20 MW · type above for more</span></div>
             </div>
             <div data-mb-when="gas" hidden>
-              <label class="mb-field" for="mb-gasMcf">Gas flow <span class="mb-input-unit"><input id="mb-gasMcf" name="gasMcf" type="number" min="0" max="1000000" step="any" value="240" required><span>Mcf/day</span></span></label>
+              <label class="mb-field" for="mb-gasMcf">Gas flow <span class="mb-input-unit"><input id="mb-gasMcf" name="gasMcf" type="number" min="0" max="1000000" step="any" value="2400" required><span>Mcf/day</span></span></label>
               <div class="mb-pair">
                 <label class="mb-field" for="mb-gasBtu">Heating value <span class="mb-input-unit"><input id="mb-gasBtu" name="gasBtu" type="number" min="100" max="3000" step="any" value="1000" required><span>BTU/cf</span></span></label>
                 <label class="mb-field" for="mb-heatRate">Heat rate <span class="mb-input-unit"><input id="mb-heatRate" name="heatRate" type="number" min="3000" max="30000" step="any" value="10000" required><span>BTU/kWh</span></span></label>
               </div>
             </div>
             <div data-mb-when="machines" hidden>
-              <label class="mb-field" for="mb-machineCount">Machine count <input id="mb-machineCount" name="machineCount" type="number" min="0" max="1000000" step="1" value="160" required></label>
+              <label class="mb-field" for="mb-machineCount">Machine count <input id="mb-machineCount" name="machineCount" type="number" min="0" max="1000000" step="1" value="1607" required></label>
             </div>
             <label class="mb-field" for="mb-source" id="mb-source-field">Power source
               <select id="mb-source" name="source"><option value="gas">On-site gas generation</option><option value="grid">Grid / behind the meter</option></select>
@@ -579,7 +560,7 @@
           <p class="mb-error" id="mb-error" role="status" hidden></p>
           <div class="mb-form-footer">
             <button type="button" class="mb-text-button" id="mb-reset-inputs">Reset configuration</button>
-            <a class="mb-jump" href="#mb-stage">Back to my mine ↑</a>
+            <a class="mb-jump" href="#dgViews-landfill">Back to my mine ↑</a>
           </div>
         </form>
         <div class="mb-results">
@@ -987,23 +968,23 @@
   </div>
 </footer>
 
-<script src="./site.js?v=5097a575"></script>
-<script src="./cart.js?v=5097a575"></script>
-<script src="./diagram-engine.js?v=5097a575"></script>
-<script src="./hero-anim.js?v=5097a575"></script>
-<script src="./pad-geometry.js?v=5097a575"></script>
-<script src="./landfill-geometry.js?v=5097a575"></script>
-<script src="./site-kit.js?v=5097a575"></script>
-<script src="./scene-landfill-now.js?v=5097a575"></script>
-<script src="./scene-landfill-ion.js?v=5097a575"></script>
-<script src="./scene-pad-now.js?v=5097a575"></script>
-<script src="./scene-pad-ion.js?v=5097a575"></script>
-<script src="./plant-viewer.js?v=5097a575" data-module-src="./mine-builder-scene.js?v=5097a575"></script>
-<script src="./calc-engine.js?v=5097a575"></script>
-<script src="./miner-db.js?v=5097a575"></script>
-<script src="./price-list.js?v=5097a575"></script>
-<script src="./mine-builder-model.js?v=5097a575"></script>
-<script src="./mine-builder.js?v=5097a575"></script>
+<script src="./site.js?v=e90d3f26"></script>
+<script src="./cart.js?v=e90d3f26"></script>
+<script src="./diagram-engine.js?v=e90d3f26"></script>
+<script src="./hero-anim.js?v=e90d3f26"></script>
+<script src="./pad-geometry.js?v=e90d3f26"></script>
+<script src="./landfill-geometry.js?v=e90d3f26"></script>
+<script src="./site-kit.js?v=e90d3f26"></script>
+<script src="./scene-landfill-now.js?v=e90d3f26"></script>
+<script src="./scene-landfill-ion.js?v=e90d3f26"></script>
+<script src="./scene-pad-now.js?v=e90d3f26"></script>
+<script src="./scene-pad-ion.js?v=e90d3f26"></script>
+<script src="./plant-viewer.js?v=e90d3f26" data-module-src="./mine-builder-scene.js?v=e90d3f26"></script>
+<script src="./calc-engine.js?v=e90d3f26"></script>
+<script src="./miner-db.js?v=e90d3f26"></script>
+<script src="./price-list.js?v=e90d3f26"></script>
+<script src="./mine-builder-model.js?v=e90d3f26"></script>
+<script src="./mine-builder.js?v=e90d3f26"></script>
 
 
 

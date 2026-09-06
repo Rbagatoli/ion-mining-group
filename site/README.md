@@ -49,10 +49,16 @@ The fuel picker and **Your site today / With Proton on it** toggle remain visibl
 **Your site today** restores the original site; each fuel retains its own
 configuration for the current visit. Market inputs are shared between the two.
 The home page keeps the Our mine presentation. The generated SVG remains available as a fallback.
-The builder's rendering comes first and uses the same full-width frame and
-`.plant-stage` sizing as the original site on desktop and mobile. Callout cards
-hide in build mode. All configuration fields, assumptions and results sit below
-the rendering; the form becomes one column on smaller screens.
+Each fuel has one full-width canvas and camera for both modes. The initial
+configuration is 10 MW; the original site and the configured mine share the same
+ground and framing. Toggling fades only the added equipment, preserving the
+visitor's angle, zoom and target. Reduced motion switches immediately. Editing
+the fleet also preserves the camera; Reset explicitly fits the current layout.
+Both modes retain their callout cards. Build callouts use current fleet totals
+and modeled equipment bounds; hovering the load highlights all displayed
+containers and clicking focuses the configured section. All configuration
+fields, assumptions and results remain below the rendering, with one form
+column on smaller screens.
 The builder accepts available MW,
 Mcf/day (with gas quality and engine heat rate), or machine count; visitors can
 select a catalog miner or enter custom specifications and operating assumptions.
@@ -71,8 +77,8 @@ available as the scene module's generic configuration path.
 The energy toggle uses native buttons with `aria-pressed`; its hidden binary
 scene value keeps the 3D and SVG adapters synchronized without a visible range
 control. The hosting container / ASIC comparison retains its slider. Selecting
-Inside from an existing gas site opens the configured container, including when
-the builder's scene is still loading.
+Inside from an existing gas site reveals and opens the configured container in
+that same canvas. Power, X-ray, zoom and Reset share the rendering toolbar.
 
 `mine-builder-model.js` reserves cooling/site overhead before flooring machine
 count and calls `CalcEngine` for a 365-day projection. Production is net of pool
@@ -82,14 +88,15 @@ electricity only. Zero capacity bypasses the engine's one-machine floor. The ful
 calculator link pins the same inputs and includes overhead in per-machine power.
 Prices come from the dated `PriceList` and can be overwritten with a quote.
 
-`mine-builder.js` handles the tabs, form, validation, results, chart and market
-requests. Coinbase and Blockchain.info are requested only when the builder is
+`mine-builder.js` handles the toggle, form, validation, results, chart and market
+requests. It passes estimates to the per-fuel `ProtonSiteViews` adapters owned by
+`plant-viewer.js`, including default configurations before the lazy scene loads.
+The builder does not mount a second renderer. Coinbase and Blockchain.info are requested only when the builder is
 first opened or refreshed. Failures retain explicitly labeled example/user values;
 late replies cannot replace an input the visitor has edited. These requests send
 no configuration data. The privacy page describes both requests.
 
-`mine-builder-scene.js` is dynamically imported when a 3D window is approached or
-the builder is first opened. It
+`mine-builder-scene.js` is dynamically imported when a 3D window is approached. It
 uses locally bundled Three.js 0.185.1 (MIT license in `vendor/three-0.185.1/`). The
 geometry supports hydro, air and immersion cooling, grid or on-site generation,
 energizing, scroll-wheel / button zoom, X-ray, and an opening container. Platinum
@@ -111,8 +118,8 @@ at most 12 explicitly labeled groups. Geometry and representative rack detail ar
 illustrative, not a construction design. Every rendering starts energized. The
 builder's Power down choice survives input edits; empty or invalid builds stop
 operating, and Reset configuration restores the energized default.
-Animation stops offscreen, on hidden tabs, and when the original drawing is
-selected. Views rotate automatically, pause during drag / zoom, and resume after
+Animation stops offscreen and on hidden tabs. The original site remains
+interactive when Today is selected. Views rotate automatically, pause during drag / zoom, and resume after
 three seconds without resetting the chosen angle or zoom. There is no automatic
 rotation toggle. Reduced motion disables idle and operating animations.
 Touch rotation and pinch zoom work immediately on every 3D canvas, including

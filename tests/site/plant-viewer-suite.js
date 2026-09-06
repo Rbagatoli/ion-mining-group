@@ -11,7 +11,8 @@ class Element {
             toggle:(c,on) => { if (on) this.classList.add(c); else this.classList.remove(c); }};
     }
     get className() { return this.attrs.class || ''; } set className(v) { this.attrs.class = v; }
-    get value() { return this.attrs.value || ''; } set value(v) { this.attrs.value = String(v); }
+    get name() { return this.attrs.name || ''; }
+    get value() { return this.attrs.value ?? (this.tagName === 'select' ? this.children.find(c => c.tagName === 'option')?.value : '') ?? ''; } set value(v) { this.attrs.value = String(v); }
     get hidden() { return 'hidden' in this.attrs; } set hidden(v) { if (v) this.attrs.hidden = ''; else delete this.attrs.hidden; }
     get clientWidth() { return this.closest('[hidden]') ? 0 : 1280; }
     get clientHeight() { return this.closest('[hidden]') ? 0 : 470; }
@@ -19,6 +20,7 @@ class Element {
     set textContent(v) { this._text = String(v); this.children = []; }
     set innerHTML(v) { const fragment = parse(v); this.children = []; for (const c of fragment.children) this.appendChild(c); }
     getAttribute(k) { return this.attrs[k] ?? null; } setAttribute(k,v) { this.attrs[k] = String(v); }
+    removeAttribute(k) { delete this.attrs[k]; }
     appendChild(c) { c.parentElement = this; this.children.push(c); return c; }
     getRootNode() { let root = this; while (root.parentElement) root = root.parentElement; return root; }
     get ownerDocument() { return this.getRootNode(); }
@@ -44,8 +46,11 @@ class Element {
         return event;
     }
     matches(selector) {
-        const attr = selector.match(/\[([^=\]]+)(?:="([^"]*)")?\]/);
-        if (attr && (this.getAttribute(attr[1]) === null || (attr[2] !== undefined && this.getAttribute(attr[1]) !== attr[2]))) return false;
+        const attr = selector.match(/\[([^=\]^]+)(\^?=)?(?:"([^"]*)")?\]/);
+        if (attr) {
+            const value = this.getAttribute(attr[1]);
+            if (value === null || (attr[2] === '=' && value !== attr[3]) || (attr[2] === '^=' && !value.startsWith(attr[3]))) return false;
+        }
         const plain = selector.replace(/\[[^\]]+\]/g,'');
         if (!plain) return true;
         if (plain[0] === '.') return this.classList.contains(plain.slice(1));
@@ -106,7 +111,15 @@ function fixture(page, fail = false, options = {}) {
     new vm.Script(fs.readFileSync(__dirname+'/../../site/site.js','utf8')).runInContext(sandbox);
     const source = fs.readFileSync(__dirname+'/../../site/plant-viewer.js','utf8').replace('import(moduleURL)','loadSceneModule(moduleURL)');
     new vm.Script(source).runInContext(sandbox);
-    return {document,observers:observers.filter(o => o.config.rootMargin === '240px'),scenes,fields,imports};
+    const timers = new Map(); let sequence = 0;
+    if (options.builder) {
+        Object.assign(sandbox,{AbortController,URLSearchParams,
+            MinerDB:require('../../site/miner-db.js'),PriceList:require('../../site/price-list.js'),MineBuilderModel:require('../../site/mine-builder-model.js'),
+            setTimeout:(fn,ms) => { timers.set(++sequence,{fn,ms}); return sequence; },clearTimeout:id => timers.delete(id),fetch:() => new Promise(() => {})});
+        new vm.Script(fs.readFileSync(__dirname+'/../../site/mine-builder.js','utf8')).runInContext(sandbox);
+    }
+    return {document,observers:observers.filter(o => o.config.rootMargin === '240px'),scenes,fields,imports,
+        flushInputs() { for (const [id,t] of [...timers]) if (t.ms === 100) { timers.delete(id); t.fn(); } }};
 }
 const settle = () => new Promise(r => setImmediate(r));
 let passed = 0;
@@ -165,7 +178,6 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.match(css,/\.plant-canvas\s*\{[^}]*z-index:\s*1;/);
         const globalCSS = fs.readFileSync(__dirname+'/../../site/styles.css','utf8');
         assert.match(globalCSS,/\.anim-field\s*\{[^}]*pointer-events:\s*none;[^}]*z-index:\s*0;/);
-        assert.match(fs.readFileSync(__dirname+'/../../site/mine-builder.css','utf8'),/\.mb-canvas-host\s*\{[^}]*z-index:\s*1;/);
     });
     check('the view has no interaction gates or automatic rotation toggle', () => {
         assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
@@ -220,7 +232,8 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         const panel = energy.document.querySelector('#mb-builder'), comparison = energy.document.querySelector('#mb-site-preview');
         assert.equal(panel.parentElement,comparison.parentElement); assert.equal(panel.hidden,true);
         energy.observers.forEach(observer => assert.equal(observer.el.closest('#mb-site-preview'),comparison));
-        const field = panel.querySelector('#mb-stage').querySelector('.anim-field--plant');
+        assert.equal(panel.querySelector('canvas'),null,'the builder uses the original site canvas');
+        const field = energy.observers[0].el.querySelector('.plant-stage').querySelector('.anim-field--plant');
         assert.equal(field.getAttribute('aria-hidden'),'true');
     });
     check('the hidden fuel does not load a renderer and before-state cannot X-ray absent miners', () => {
@@ -256,15 +269,6 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
             ref(g,'inspect').fire('click'); pane.querySelector('[data-mb-end="lo"]').fire('click');
             assert.equal(energy.scenes[i].inspecting,false); assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
         });
-    });
-    check('Inside a container hands off to the configured mine when its panel opens', () => {
-        const g = energy.observers[0].el, pane = g.closest('.dg-fuel-pane'), panel = energy.document.querySelector('#mb-builder');
-        let requested = false;
-        pane.querySelector('[data-mb-end="hi"]').addEventListener('click',() => { panel.hidden = false; });
-        pane.addEventListener('proton:inspect-container',() => { requested = true; });
-        ref(g,'inspect').fire('click');
-        assert.equal(panel.hidden,false); assert.equal(requested,true);
-        assert.equal(energy.scenes[0].inspecting,false,'the configured scene receives the request instead of opening the reference container');
     });
     const unavailable = fixture('index',true); unavailable.observers[0].fn([{isIntersecting:true}]); await settle();
     check('a device without WebGL keeps the original diagram and all descriptions', () => {
@@ -332,9 +336,69 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(opened.position.y,0); assert.equal(opened.parent.getObjectByName('service-wall').visible,true);
         assert.equal(ref(g,'inspect').getAttribute('aria-pressed'),'false');
     });
+    const unified = fixture('energy',false,{mount:realMount,builder:true});
+    unified.observers[0].fn([{isIntersecting:true}]); await settle();
+    const shared = mounted.at(-1), sharedGroup = unified.observers[0].el;
+    shared.intersect([{isIntersecting:true}]); shared.draw();
+    const buildPanel = unified.document.querySelector('#mb-builder');
+    const mode = end => sharedGroup.closest('.dg-fuel-pane').querySelector('[data-mb-end="'+end+'"]').fire('click');
+    const change = (id,value) => { const input=unified.document.querySelector('#mb-'+id);input.value=value;input.fire('input');unified.flushInputs();shared.draw(); };
+    check('Today and the 10 MW build share one canvas, camera, ground and existing infrastructure', () => {
+        const originalCanvas=shared.canvas, source=shared.world.getObjectByName('wellfield'), ground=shared.world.getObjectByName('site-ground');
+        const deployment=shared.world.getObjectByName('configured-mine');
+        assert.equal(deployment.visible,false);assert.equal(unified.document.querySelector('#mb-powerMW').value,'10');
+        const pointer={pointerId:1,pointerType:'mouse',button:0,buttons:1,clientX:550,clientY:230};
+        shared.canvas.fire('pointerdown',pointer);shared.canvas.fire('pointermove',{...pointer,clientX:620,clientY:210});
+        shared.canvas.fire('pointerup',{...pointer,clientX:620,clientY:210,buttons:0});
+        shared.canvas.fire('wheel',{deltaY:-120});shared.draw();
+        const position=shared.camera.position.clone(),target=shared.controls.target.clone(),projection=shared.camera.projectionMatrix.clone();
+        for(const end of ['hi','lo','hi','lo','hi']) {
+            mode(end);unified.flushInputs();shared.draw();
+            assert.equal(shared.canvas,originalCanvas);assert.equal(unified.scenes.length,1);
+            assert.equal(shared.world.getObjectByName('wellfield'),source);assert.equal(shared.world.getObjectByName('site-ground'),ground);
+            assert.equal(shared.world.getObjectByName('configured-mine'),deployment);assert.equal(deployment.visible,end==='hi');
+            assert.ok(shared.camera.position.distanceTo(position)<1e-9);assert.ok(shared.controls.target.distanceTo(target)<1e-9);
+            assert.ok(shared.camera.projectionMatrix.equals(projection));assert.equal(sharedGroup.hidden,false);assert.equal(buildPanel.hidden,end!=='hi');
+        }
+        assert.equal(sharedGroup.querySelectorAll('.plant-canvas').length,1);assert.equal(buildPanel.querySelector('canvas'),null);
+    });
+    check('configured callouts highlight the full fleet, focus its new location and track edited capacity', () => {
+        let load=ref(sharedGroup,'callouts').children.find(card=>card.textContent.includes('The load'));
+        assert.match(load.textContent,/1,607 machines across 7 containers/);
+        load.fire('pointerenter');shared.draw();
+        assert.equal(shared.world.getObjectByName('section-highlight').getObjectByProperty('isInstancedMesh',true).count,7);
+        const position=shared.camera.position.clone();load.fire('click');shared.draw();
+        assert.ok(shared.camera.position.distanceTo(position)>1);
+        const focused=shared.camera.position.clone(),target=shared.controls.target.clone();
+        change('powerMW','20');
+        assert.ok(shared.camera.position.distanceTo(focused)<1e-9);assert.ok(shared.controls.target.distanceTo(target)<1e-9);
+        load=ref(sharedGroup,'callouts').children.find(card=>card.textContent.includes('The load'));
+        assert.match(load.textContent,/3,214 machines across 14 containers/);
+        load.fire('pointerenter');shared.draw();
+        assert.equal(shared.world.getObjectByName('section-highlight').getObjectByProperty('isInstancedMesh',true).count,12);
+        assert.ok(ref(sharedGroup,'leaders').children.some(line=>line.getAttribute('visibility')==='visible'));
+    });
+    check('the shared controls retain X-ray, cooling changes, power preferences and Inside from Today', () => {
+        ref(sharedGroup,'power').fire('click');assert.equal(ref(sharedGroup,'power').getAttribute('aria-pressed'),'false');
+        change('powerMW','3');assert.equal(ref(sharedGroup,'power').getAttribute('aria-pressed'),'false');
+        change('model','Antminer S21 XP');assert.ok(shared.world.getObjectByName('air-intake-filters'));assert.match(ref(sharedGroup,'cooling').textContent,/Air/);
+        ref(sharedGroup,'xray').fire('click');assert.equal(ref(sharedGroup,'xray').getAttribute('aria-pressed'),'true');
+        unified.document.querySelector('#mb-reset-inputs').fire('click');unified.flushInputs();shared.draw();
+        assert.equal(ref(sharedGroup,'power').getAttribute('aria-pressed'),'true');assert.equal(unified.document.querySelector('#mb-powerMW').value,'10');
+        mode('lo');shared.draw();ref(sharedGroup,'inspect').fire('click');shared.draw();
+        assert.equal(buildPanel.hidden,false);assert.equal(ref(sharedGroup,'inspect').getAttribute('aria-pressed'),'true');
+        let opened;shared.world.traverse(o=>{if(o.name==='removable-roof'&&o.position.y>2)opened=o;});assert.ok(opened);
+        ref(sharedGroup,'reset').fire('click');shared.draw();assert.equal(opened.position.y,0);
+        change('powerMW','0');assert.equal(ref(sharedGroup,'inspect').disabled,true);assert.equal(ref(sharedGroup,'power').disabled,true);
+        change('difficulty','');assert.equal(shared.world.getObjectByName('configured-mine').visible,false);
+        change('difficulty','200');change('powerMW','2');assert.equal(ref(sharedGroup,'inspect').disabled,false);
+        change('source','grid');
+        assert.ok(!ref(sharedGroup,'callouts').textContent.includes('Generation'));
+        assert.ok(!ref(sharedGroup,'callouts').textContent.includes('Treatment'));
+    });
     let releaseModule;
     const moduleGate = new Promise(resolve => { releaseModule = resolve; });
-    const cold = fixture('energy',false,{mount:realMount,moduleGate});
+    const cold = fixture('energy',false,{mount:realMount,moduleGate,builder:true});
     cold.observers[0].fn([{isIntersecting:true}]);
     const landfillGroup = cold.observers[0].el, padGroup = cold.observers[1].el;
     const landfillPane = landfillGroup.closest('.dg-fuel-pane'), padPane = padGroup.closest('.dg-fuel-pane');
@@ -351,17 +415,17 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         landfillRecord.draw(); assert.equal(landfillRecord.renders,0,'hidden fuel waits for a measurable layout');
         padRecord.draw(); assert.ok(padGroup.classList.contains('plant-ready'));
         assert.equal(padGroup.getAttribute('data-view'),'ion');
-        assert.ok(padRecord.world.getObjectByName('proton-deployment').visible);
+        assert.ok(padRecord.world.getObjectByName('configured-mine').visible);
         assert.equal(ref(padGroup,'xray').disabled,false);
         padPane.querySelector('[data-mb-end="lo"]').fire('click'); padRecord.draw();
-        assert.equal(padRecord.world.getObjectByName('proton-deployment').visible,false);
+        assert.equal(padRecord.world.getObjectByName('configured-mine').visible,false);
         padPane.querySelector('[data-mb-end="hi"]').fire('click'); padRecord.draw();
-        assert.equal(padRecord.world.getObjectByName('proton-deployment').visible,true);
+        assert.equal(padRecord.world.getObjectByName('configured-mine').visible,true);
         cold.document.querySelector('#dgFuel').querySelector('[data-fuel="landfill"]').fire('click');
         landfillRecord.intersect([{isIntersecting:false},{isIntersecting:true}]); landfillRecord.draw();
         assert.ok(landfillGroup.classList.contains('plant-ready')); assert.equal(landfillScale.value,'100');
-        assert.ok(landfillRecord.world.getObjectByName('proton-deployment').visible);
-        const material = landfillRecord.world.getObjectByName('proton-deployment').getObjectByProperty('isMesh',true).material;
+        assert.ok(landfillRecord.world.getObjectByName('configured-mine').visible);
+        const material = landfillRecord.world.getObjectByName('configured-mine').getObjectByProperty('isMesh',true).material;
         assert.equal(material.opacity,1);
         assert.equal(ref(landfillGroup,'xray').disabled,false);
         assert.equal(landfillPane.querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');

@@ -12,9 +12,8 @@
     function number(value, digits) { return value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
     function money(value) { return (value < 0 ? '−' : '') + '$' + number(Math.abs(value), Math.abs(value) >= 1000 ? 0 : 2); }
     function btc(value) { return number(value, value >= 100 ? 4 : 6); }
-    var active = false, firstOpen = true, scene = null, scenePromise = null;
-    var result = null, sceneTimer = null, announceTimer = null, sceneFailed = false;
-    var powered = true, inspecting = false, xray = false, pendingInspect = false;
+    var active = false, firstOpen = true;
+    var result = null, sceneTimer = null, announceTimer = null;
     var market = { btcPrice: 'example', difficulty: 'example' };
     var revisions = { btcPrice: 0, difficulty: 0 }, requestSequence = 0;
     var chart = $('chart'), original = $('site-preview');
@@ -24,11 +23,9 @@
     var panes = original.querySelectorAll('.dg-fuel-pane');
     var selectedSite = 'landfill', savedSites = {};
     var sites = {
-        landfill: { view: 'landfill', title: 'Landfill gas', label: 'Your landfill',
-            main: window.LandfillIonDiagram, before: window.LandfillNowDiagram,
+        landfill: { title: 'Landfill gas',
             note: 'Your capped cell, extraction wells, collection pipes, blower and enclosed flare stay in place. Your mining equipment sits on the working area alongside them.' },
-        flare: { view: 'pad', title: 'Flared gas', label: 'Your gas site',
-            main: window.PadIonDiagram, before: window.PadNowDiagram,
+        flare: { title: 'Flared gas',
             note: 'Your wellhead, separator, tanks and flare stay in place. Your mining equipment sits on the open working area of the pad.' }
     };
     picks.forEach(function (pick) { if (pick.getAttribute('aria-pressed') === 'true') selectedSite = pick.getAttribute('data-fuel'); });
@@ -59,21 +56,16 @@
         Object.keys(fields).forEach(function (key) { out[key] = fields[key].value; });
         return out;
     }
-    function sceneConfig() {
-        var site = sites[selectedSite];
-        return Object.assign({}, result, { siteType: site.view, siteDefinition: { main: site.main, before: site.before } });
-    }
-    function inspectWhenReady() {
-        if (!pendingInspect || !active || !scene || !result || !result.valid || !result.count) return;
-        pendingInspect = false; clearTimeout(sceneTimer);
-        scene.setConfig(sceneConfig()); scene.inspect(true);
+    function publishConfig(reset) {
+        clearTimeout(sceneTimer);
+        var view = window.ProtonSiteViews && window.ProtonSiteViews[selectedSite];
+        if (view) view.configure(result, {reset:reset === true});
     }
     function siteContext() {
         var site = sites[selectedSite];
         text('heading', 'Build your mine · ' + site.title);
-        text('site-label', site.label);
         text('context-note', site.note);
-        $('stage').setAttribute('aria-label', 'Interactive 3D preview of ' + site.title.toLowerCase() + ' with your configured mine');
+        panel.querySelector('.mb-jump').href = '#dgViews-' + selectedSite;
     }
     function syncMode() {
         panel.querySelectorAll('[data-mb-when]').forEach(function (el) {
@@ -115,55 +107,6 @@
         if (seq === requestSequence) $('refresh-market').disabled = false;
     }
 
-    function viewControls() {
-        var valid = result && result.valid, populated = valid && result.count > 0;
-        var available = scene && !sceneFailed;
-        ['energize', 'inspect', 'xray'].forEach(function (id) { $(id).disabled = !available || !populated; });
-        ['zoom-in', 'zoom-out', 'reset-view'].forEach(function (id) { $(id).disabled = !available || !valid; });
-        $('energize').setAttribute('aria-pressed', String(powered && populated));
-        $('energize').innerHTML = '<span aria-hidden="true">◉</span> ' + (powered ? 'Power down' : 'Energize mine');
-        $('inspect').setAttribute('aria-pressed', String(inspecting));
-        $('xray').setAttribute('aria-pressed', String(xray));
-        text('xray', xray ? 'X-ray on' : 'X-ray off');
-        text('inspect', inspecting ? 'Return to site' : 'Inside a container');
-        text('view-label', inspecting ? 'Container view' : xray ? 'X-ray view' : 'Site view');
-        text('cooling-note', !valid ? '' : result.settings.cooling === 'hydro' ?
-            'Hydro cooling · sealed, fanless miners on a closed water loop. Roof fans cool the water through a dry cooler. Step inside to see the manifolds and coolant distribution unit.' :
-            result.settings.cooling === 'immersion' ? 'Immersion cooling · miners sit in liquid tanks, with an external heat rejection loop.' :
-            'Air cooling · filtered air enters at one end, passes through the miners, and leaves through the exhaust fans.');
-        text('power-status', !valid ? 'Check inputs' : !populated ? 'No machines' : (powered ? 'Preview · energized' : 'Preview · standby'));
-        $('power-status').classList.toggle('is-on', powered && populated);
-    }
-
-    async function loadScene() {
-        if (scene || scenePromise || sceneFailed) return;
-        scenePromise = import(panel.getAttribute('data-module-src'));
-        try {
-            var module = await scenePromise;
-            scene = module.mountMineScene($('canvas-host'), {
-                interactionSurface: $('stage'),
-                onInspect: function (value) { inspecting = value; viewControls(); },
-                onXray: function (value) { xray = value; viewControls(); },
-                onError: function () {
-                    sceneFailed = true; inspecting = false;
-                    text('scene-message', '3D is unavailable on this device. Your configured mining estimates remain available below.');
-                    text('scene-caption', 'Reference layout · configured totals below'); $('scene-fallback').hidden = false; viewControls();
-                },
-                onRestore: function () { sceneFailed = false; $('scene-fallback').hidden = true; render(); }
-            });
-            $('scene-fallback').hidden = true;
-            if (result && result.valid) scene.setConfig(sceneConfig());
-            scene.energize(powered && result && result.valid && result.count > 0);
-            scene.setActive(active && result && result.valid);
-            inspectWhenReady();
-            viewControls();
-        } catch (error) {
-            sceneFailed = true;
-            text('scene-message', '3D is unavailable on this device. Your configured mining estimates remain available below.');
-            text('scene-caption', 'Reference layout · configured totals below');
-            $('scene-fallback').hidden = false;
-        }
-    }
     function drawChart(r) {
         var values = r.curve.length > 1 ? r.curve : [0, 0];
         var max = Math.max.apply(null, values) || 1;
@@ -197,8 +140,7 @@
             text('sizing-note', 'Complete the inputs to size your mine.');
             text('assumption-note', 'Estimates update once the highlighted inputs are valid.');
             $('calculator').removeAttribute('href'); $('calculator').setAttribute('aria-disabled', 'true');
-            if (scene) { scene.energize(false); scene.setActive(false); }
-            viewControls(); return;
+            publishConfig(); return;
         }
         var r = result;
         text('out-count', number(r.count, 0)); text('out-hashrate', number(r.hashrateTH / 1000, 2));
@@ -217,34 +159,23 @@
             '365-day margin after electricity: ' + money(r.marginYear) + '. ' +
             (r.settings.infrastructureCost > 0 ? 'Hardware + your infrastructure budget: ' + money(r.totalCost) + '.' : 'Infrastructure budget is not included; enter it in build assumptions.') +
             ' Electricity is charged during uptime; standby power is not modeled.');
-        text('scene-caption', sceneFailed ? 'Reference layout · configured totals below' :
-            (r.containers > 12 ? '12 visual groups represent ' + number(r.containers, 0) + ' containers' :
-                r.containers > 4 ? 'Illustrative layout · balanced container rows' : 'Your existing site + configured mining equipment'));
         drawChart(r);
         var url = M.calculatorURL(r);
         if (url) { $('calculator').href = url; $('calculator').removeAttribute('aria-disabled'); }
         else { $('calculator').removeAttribute('href'); $('calculator').setAttribute('aria-disabled', 'true'); }
-        if (!r.count) inspecting = false;
-        if (scene) {
-            scene.setActive(active);
-            sceneTimer = setTimeout(function () { scene.setConfig(sceneConfig()); scene.energize(powered && result.count > 0); }, 100);
-        }
-        viewControls();
+        sceneTimer = setTimeout(publishConfig, 100);
         if (active) announceTimer = setTimeout(function () { text('announcement', number(r.count, 0) + ' machines. Estimated ' + btc(r.btc30) + ' BTC over the next 30 days.'); }, 700);
     }
     function selectBuild(build) {
         active = build; panel.hidden = !build;
-        if (!build) pendingInspect = false;
-        // Keep the site picker and comparison controls on screen. Only the
-        // reference drawings give way to the configurable version of this site.
+        // The existing canvas and callouts stay mounted in both modes.
+        // Only the form and estimates below it open or close.
         panes.forEach(function (pane) {
-            pane.querySelectorAll('.dg-views, .dg-list').forEach(function (el) { el.hidden = build; });
             pane.querySelector('[data-mb-end="hi"]').setAttribute('aria-expanded', String(build && pane.getAttribute('data-fuel') === selectedSite));
         });
         siteContext();
-        if (scene) scene.setActive(build && result && result.valid);
         if (build) {
-            render(); loadScene();
+            render(); publishConfig();
             if (firstOpen) { firstOpen = false; fetchMarket(); }
         }
     }
@@ -261,9 +192,6 @@
                 selectBuild(build);
             });
         });
-        pane.addEventListener('proton:inspect-container', function () {
-            if (pane.getAttribute('data-fuel') === selectedSite) { pendingInspect = true; inspectWhenReady(); }
-        });
         scale.addEventListener('input', function () {
             if (active && pane.getAttribute('data-fuel') === selectedSite && Number(scale.value) < 100) selectBuild(false);
         });
@@ -275,7 +203,7 @@
         pick.addEventListener('click', function () {
             var next = pick.getAttribute('data-fuel');
             if (next === selectedSite || !sites[next]) return;
-            savedSites[selectedSite] = settings(); selectedSite = next; pendingInspect = false;
+            savedSites[selectedSite] = settings(); publishConfig(); selectedSite = next;
             var saved = savedSites[next] || initialSettings;
             Object.keys(saved).forEach(function (key) {
                 if (key !== 'btcPrice' && key !== 'difficulty') fields[key].value = saved[key];
@@ -285,7 +213,7 @@
             if (active) {
                 panes.forEach(function (pane) { if (pane.getAttribute('data-fuel') === next) setScale(pane, 100); });
                 selectBuild(true);
-            } else render();
+            } else { render(); publishConfig(); }
         });
     });
     form.addEventListener('submit', function (event) { event.preventDefault(); });
@@ -302,16 +230,15 @@
     $('reset-inputs').addEventListener('click', function () {
         // Keep fetched/edited market prices. Resetting a build must not silently restore sample market data.
         Object.keys(M.defaults).forEach(function (key) { if (fields[key] && key !== 'btcPrice' && key !== 'difficulty') fields[key].value = M.defaults[key]; });
-        $('power-slider').value = M.defaults.powerMW; applyModel(); powered = true; inspecting = false;
-        if (scene) { scene.reset(); scene.energize(true); }
-        render();
+        $('power-slider').value = M.defaults.powerMW; applyModel();
+        render(); publishConfig(true);
     });
-    $('energize').addEventListener('click', function () { if (!scene) return; powered = !powered; scene.energize(powered); viewControls(); });
-    $('inspect').addEventListener('click', function () { if (scene) scene.inspect(!inspecting); });
-    $('xray').addEventListener('click', function () { if (scene) scene.setXray(!xray); });
-    $('reset-view').addEventListener('click', function () { if (scene) scene.reset(); });
-    $('zoom-in').addEventListener('click', function () { if (scene) scene.zoom(0.8); });
-    $('zoom-out').addEventListener('click', function () { if (scene) scene.zoom(1.25); });
     $('calculator').addEventListener('click', function (event) { if (this.getAttribute('aria-disabled') === 'true') event.preventDefault(); });
+    // Cache each site's initial fleet before the lazy renderer paints Today.
+    // The same geometry, ground, lens and camera then serve both toggle choices.
+    Object.keys(sites).forEach(function (key) {
+        var view = window.ProtonSiteViews && window.ProtonSiteViews[key];
+        if (view) view.configure(M.estimate(initialSettings));
+    });
     siteContext(); syncMode(); render(); noteMarket();
 })();

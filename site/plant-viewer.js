@@ -10,6 +10,7 @@
     var groups = Array.from(document.querySelectorAll('.dg-views'));
     document.querySelectorAll('.dg-wrap[data-scene="site"]').forEach(function (wrap) { groups.push(wrap); });
     var svgNS = 'http://www.w3.org/2000/svg';
+    var siteViews = window.ProtonSiteViews = {};
     groups.forEach(function (group) {
         var wraps = group.matches('.dg-wrap') ? [group] : Array.from(group.querySelectorAll('.dg-wrap'));
         var name = wraps[0].getAttribute('data-scene');
@@ -20,20 +21,27 @@
         var scene = null, field = null, preview = null, loading = false, failed = false, xray = false, inspecting = false, current = '', calloutKey = '';
         var xrayStates = {asic:true};
         var refs = {}, tethers = {}, cards = {};
+        var estimate = null, revision = 0, appliedRevision = -1, powered = true, resetPending = false;
         function state() {
             var value = scale ? Number(scale.value)/100 : 0;
+            if (estimate && !estimate.valid) value = 0;
             return {view:fuel || (name === 'site' ? 'site' : value < .5 ? 'hosting' : 'asic'),
                 progress:fuel ? value : 1,detail:wraps.length > 1 && value >= .5 ? 1 : 0};
         }
         function syncControls() {
             if (!scene) return;
-            var s = state(), available = !fuel || s.progress > .99;
+            var s = state(), available = (!fuel || s.progress > .99) && (!estimate || estimate.valid && estimate.count > 0);
             refs.xray.disabled = !available; refs.xray.setAttribute('aria-pressed',String(xray));
             refs.xray.textContent = xray && available ? 'X-ray on' : 'X-ray off';
             refs.inspect.setAttribute('aria-pressed',String(inspecting));
             refs.inspect.textContent = inspecting ? (s.view === 'asic' ? 'Return to miner' : s.view === 'hosting' ? 'Return to container' : 'Return to site') :
                 s.view === 'asic' ? 'Inside the miner' : 'Inside a container';
             refs.mode.textContent = inspecting ? (s.view === 'asic' ? 'Miner interior' : 'Container interior') : xray && available ? 'X-ray view' : 'Exterior view';
+            refs.inspect.disabled = !!estimate && (!estimate.valid || !estimate.count);
+            refs.power.hidden = !estimate || s.progress < .99;
+            refs.power.disabled = !available;
+            refs.power.textContent = powered ? 'Power down' : 'Energize mine';
+            refs.power.setAttribute('aria-pressed',String(powered && available));
         }
         function highlight(id) {
             Object.keys(cards).forEach(function (key) {
@@ -73,20 +81,59 @@
             });
             scene.setAnnotations(diagram.CALLOUTS);
         }
+        function configuredLabels(diagram) {
+            var gas = estimate.settings.source === 'gas', populated = estimate.count > 0;
+            var labels = diagram.CALLOUTS.filter(function (co) {
+                if (['tiein','cond','gen'].indexOf(co.id) >= 0) return populated && gas;
+                if (['load','cont','xfmr'].indexOf(co.id) >= 0) return populated;
+                return true;
+            }).map(function (co) {
+                var label = Object.assign({},co);
+                if (co.id === 'load' || co.id === 'cont') label.desc = estimate.count.toLocaleString('en-US') + ' machines across ' + estimate.containers.toLocaleString('en-US') + ' containers · ' + estimate.settings.cooling + ' cooling';
+                if (co.id === 'gen') label.desc = 'On-site generation for ' + (estimate.availableKW/1000).toLocaleString('en-US',{maximumFractionDigits:2}) + ' MW of available supply';
+                if (co.id === 'xfmr') label.desc = 'Distributing ' + (estimate.siteKW/1000).toFixed(2) + ' MW including cooling and site overhead';
+                return label;
+            });
+            if (labels.length !== diagram.CALLOUTS.length) labels.forEach(function (co,i) {
+                var left = Math.ceil(labels.length/2); co.side = i < left ? 'l' : 'r'; co.y = 70+(i < left ? i : i-left)*120;
+            });
+            return {VB:diagram.VB,CALLOUTS:labels};
+        }
         function update() {
             if (!scene) return;
             var s = state(), diagram = diagrams[s.detail];
+            if (estimate && estimate.valid && appliedRevision !== revision) {
+                scene.setConfig(Object.assign({},estimate,{siteType:fuel,siteDefinition:{main:diagrams[1],before:diagrams[0]}}),{preserveView:!!current});
+                appliedRevision = revision;
+            } else if (current !== s.view) {
+                scene.setConfig({view:s.view,definition:{main:fuel ? diagrams[1] : diagram,before:fuel ? diagrams[0] : null}});
+            }
             if (current !== s.view) {
-                current = s.view; scene.setConfig({view:s.view,definition:{main:fuel ? diagrams[1] : diagram,before:fuel ? diagrams[0] : null}});
+                current = s.view;
                 scene.setXray(!!xrayStates[s.view]);
             }
-            scene.setProgress(s.progress); scene.energize(true);
-            if (calloutKey !== s.view+':'+s.detail) {
-                calloutKey = s.view+':'+s.detail; callouts(diagram); refs.note.textContent = notes[s.detail]; refs.note.hidden = !notes[s.detail];
+            scene.setProgress(s.progress,{animate:!!estimate && group.classList.contains('plant-ready')});
+            scene.energize(!estimate || s.progress < 1 || powered && estimate.valid && estimate.count > 0);
+            if (calloutKey !== s.view+':'+s.detail+':'+revision) {
+                calloutKey = s.view+':'+s.detail+':'+revision;
+                callouts(estimate && estimate.valid && s.detail ? configuredLabels(diagram) : diagram);
+                refs.note.textContent = estimate && s.detail ? 'Your existing infrastructure stays in place. The added equipment reflects your inputs below.' +
+                    (estimate.containers > 12 ? ' Twelve visual groups represent '+estimate.containers.toLocaleString('en-US')+' containers.' : '') : notes[s.detail];
+                refs.note.hidden = !refs.note.textContent;
             }
-            refs.cooling.textContent = fuel && s.progress < .5 ? 'Your existing infrastructure' : s.view === 'asic' ? 'Hydro ASIC · no miner fans' : 'Hydro · closed water loop';
+            refs.cooling.textContent = fuel && s.progress < .5 ? 'Your existing infrastructure' : estimate ?
+                estimate.settings.cooling === 'hydro' ? 'Hydro · closed water loop' : estimate.settings.cooling === 'air' ? 'Air · intake and exhaust' : 'Immersion · liquid tanks' :
+                s.view === 'asic' ? 'Hydro ASIC · no miner fans' : 'Hydro · closed water loop';
+            if (resetPending) { resetPending = false; scene.reset(); }
             syncControls();
         }
+        if (fuel && document.getElementById('mb-builder')) siteViews[scope.getAttribute('data-fuel')] = {
+            configure:function (value,options) {
+                estimate = value; revision++;
+                if (options && options.reset) { powered = true; resetPending = true; }
+                update();
+            }
+        };
         function sourceFields(active) {
             if (!window.ProtonField) return;
             wraps.forEach(function (wrap) {
@@ -123,6 +170,7 @@
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
                     '<div class="plant-toolbar" aria-label="3D view controls">'+
                     '<p class="plant-hint">Drag to rotate · pinch or scroll to zoom · select a label to explore</p>'+
+                    '<button type="button" data-plant="power" aria-pressed="true" hidden>Power down</button>'+
                     '<button type="button" data-plant="inspect" aria-pressed="false">Inside a container</button>'+
                     '<button type="button" data-plant="xray" aria-pressed="false">X-ray off</button>'+
                     '<button type="button" data-plant="out" aria-label="Zoom out">−</button>'+
@@ -142,22 +190,17 @@
                     }
                 });
                 refs.inspect.addEventListener('click',function () {
-                    // An existing gas site has no mining container to enter until
-                    // the comparison reveals its proposed Proton deployment.
+                    // Reveal the configured mine in this same canvas before entering it.
                     if (!inspecting && fuel && state().progress < 1) {
                         var build = scope.querySelector('[data-mb-end="hi"]');
                         if (build) {
                             build.dispatchEvent(new Event('click', { bubbles: true }));
-                            var builder = document.getElementById('mb-builder');
-                            if (builder && !builder.hidden) {
-                                scope.dispatchEvent(new Event('proton:inspect-container', { bubbles: true }));
-                                return;
-                            }
                         }
                         scale.value = '100'; scale.dispatchEvent(new Event('input',{bubbles:true}));
                     }
                     scene.inspect(!inspecting);
                 });
+                refs.power.addEventListener('click',function () { powered = !powered; update(); });
                 refs.xray.addEventListener('click',function () { scene.setXray(!xray); });
                 refs.in.addEventListener('click',function () { scene.zoom(.8); }); refs.out.addEventListener('click',function () { scene.zoom(1.25); });
                 refs.reset.addEventListener('click',function () { scene.reset(); highlight(null); });
