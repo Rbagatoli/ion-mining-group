@@ -1,0 +1,36 @@
+    <div class="ht-explorer reveal" id="hosting-terrain" role="region" aria-label="Explore hosting regions in 3D">
+      <div class="ht-topline"><span class="eyebrow">Explore the landscape</span><span class="ht-kicker">Energy. Infrastructure. Bitcoin.</span></div>
+      <div class="ht-regions" data-ht="regions" role="group" aria-label="Choose a hosting region">
+{{REGIONS}}
+      </div>
+      <div class="ht-drawing" data-ht="drawing">
+        <div class="ht-stage" data-ht="stage">
+          <canvas class="anim-field ht-field" data-ht="field" aria-hidden="true"></canvas>
+          <div class="ht-canvas" data-ht="canvas"></div>
+          <div class="ht-fallback" data-ht="fallback">
+            <svg viewBox="0 0 960 440" aria-hidden="true"><g fill="none" stroke="currentColor"><path d="M100 287 480 80 860 287 480 427Z"/><path d="M150 283 480 113 810 283 480 395Z"/><path d="M198 276 480 149 762 276 480 361Z"/><path d="M246 269 480 184 714 269 480 328Z"/><path d="M290 264 480 216 670 264 480 297Z"/><path d="m350 250 128-66 132 65-130 68z"/><path d="m350 250 1 23 129 67 130-68v-23M480 317v23"/></g></svg>
+            <p data-ht="message">Explore the regions below. The 3D landscape loads as you approach.</p>
+          </div>
+          <div class="ht-caption"><span data-ht="landscape">Illustrative regional terrain</span><span class="ht-energized">Energized model</span></div>
+          <svg class="ht-leaders" data-ht="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="ht-callouts" data-ht="callouts" aria-label="Explore the mining infrastructure">
+          <button type="button" class="ht-callout ht-callout--left" data-part="gas" data-side="l" data-y="35" aria-pressed="false" disabled><span>01 / Gas supply</span><small>Collection, conditioning and a controlled feed.</small></button>
+          <button type="button" class="ht-callout ht-callout--left" data-part="gen" data-side="l" data-y="66" aria-pressed="false" disabled><span>02 / Generation</span><small>Gas engines turn the captured fuel into power.</small></button>
+          <button type="button" class="ht-callout ht-callout--right" data-part="load" data-side="r" data-y="35" aria-pressed="false" disabled><span>03 / Mining fleet</span><small>Platinum containers, hydro miners and service aisles.</small></button>
+          <button type="button" class="ht-callout ht-callout--right" data-part="xfmr" data-side="r" data-y="66" aria-pressed="false" disabled><span>04 / Power distribution</span><small>Transformers and switchgear feed the mining load.</small></button>
+        </div>
+      </div>
+      <div class="ht-toolbar" data-ht="toolbar">
+        <p>Drag to rotate · pinch or scroll to zoom</p>
+        <button type="button" data-ht="inspect" aria-pressed="false" disabled>Inside a container</button>
+        <button type="button" class="ht-xray" data-ht="xray" aria-pressed="false" disabled>X-ray off</button>
+        <button type="button" data-ht="out" aria-label="Zoom out" disabled>−</button>
+        <button type="button" data-ht="in" aria-label="Zoom in" disabled>+</button>
+        <button type="button" data-ht="reset" disabled>Reset view</button>
+      </div>
+      <div class="ht-summary" data-ht="summary" aria-live="polite" aria-atomic="true">
+{{DETAILS}}
+      </div>
+      <p class="ht-note">Illustrative regional terrain and mining layout, not a survey of an actual facility. {{INDICATIVE}}</p>
+    </div>

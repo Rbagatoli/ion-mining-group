@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=ca6969a7">
+<link rel="stylesheet" href="./styles.css?v=62a0f25c">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/hosting.png">
@@ -22,7 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/hosting.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=ca6969a7">
+<link rel="stylesheet" href="./plant-viewer.css?v=62a0f25c">
+<link rel="stylesheet" href="./hosting-terrain.css?v=62a0f25c">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -140,6 +141,51 @@
       <h2 class="h-section">Pick a site.</h2>
       <p class="lede">Every site sits on energy that had nowhere else to go &mdash; gas being burned off, or generation built ahead of the wires to carry it. You choose the region; we handle the pad, the power and the hands on site.</p>
     </div>
+
+    <!-- hosting-terrain:begin -->
+    <div class="ht-explorer reveal" id="hosting-terrain" role="region" aria-label="Explore hosting regions in 3D">
+      <div class="ht-topline"><span class="eyebrow">Explore the landscape</span><span class="ht-kicker">Energy. Infrastructure. Bitcoin.</span></div>
+      <div class="ht-regions" data-ht="regions" role="group" aria-label="Choose a hosting region">
+        <button type="button" data-region="permian" aria-pressed="true" disabled><span>01</span><strong>Permian Basin</strong><small>Texas, USA</small></button>
+        <button type="button" data-region="bakken" aria-pressed="false" disabled><span>02</span><strong>Bakken</strong><small>North Dakota, USA</small></button>
+        <button type="button" data-region="alberta" aria-pressed="false" disabled><span>03</span><strong>Western Basin</strong><small>Alberta, Canada</small></button>
+        <button type="button" data-region="cold-lake" aria-pressed="false" disabled><span>04</span><strong>Cold Lake</strong><small>Alberta, Canada</small></button>
+        <button type="button" data-region="niger-delta" aria-pressed="false" disabled><span>05</span><strong>Niger Delta</strong><small>Nigeria</small></button>
+      </div>
+      <div class="ht-drawing" data-ht="drawing">
+        <div class="ht-stage" data-ht="stage">
+          <canvas class="anim-field ht-field" data-ht="field" aria-hidden="true"></canvas>
+          <div class="ht-canvas" data-ht="canvas"></div>
+          <div class="ht-fallback" data-ht="fallback">
+            <svg viewBox="0 0 960 440" aria-hidden="true"><g fill="none" stroke="currentColor"><path d="M100 287 480 80 860 287 480 427Z"/><path d="M150 283 480 113 810 283 480 395Z"/><path d="M198 276 480 149 762 276 480 361Z"/><path d="M246 269 480 184 714 269 480 328Z"/><path d="M290 264 480 216 670 264 480 297Z"/><path d="m350 250 128-66 132 65-130 68z"/><path d="m350 250 1 23 129 67 130-68v-23M480 317v23"/></g></svg>
+            <p data-ht="message">Explore the regions below. The 3D landscape loads as you approach.</p>
+          </div>
+          <div class="ht-caption"><span data-ht="landscape">Illustrative regional terrain</span><span class="ht-energized">Energized model</span></div>
+          <svg class="ht-leaders" data-ht="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="ht-callouts" data-ht="callouts" aria-label="Explore the mining infrastructure">
+          <button type="button" class="ht-callout ht-callout--left" data-part="gas" data-side="l" data-y="35" aria-pressed="false" disabled><span>01 / Gas supply</span><small>Collection, conditioning and a controlled feed.</small></button>
+          <button type="button" class="ht-callout ht-callout--left" data-part="gen" data-side="l" data-y="66" aria-pressed="false" disabled><span>02 / Generation</span><small>Gas engines turn the captured fuel into power.</small></button>
+          <button type="button" class="ht-callout ht-callout--right" data-part="load" data-side="r" data-y="35" aria-pressed="false" disabled><span>03 / Mining fleet</span><small>Platinum containers, hydro miners and service aisles.</small></button>
+          <button type="button" class="ht-callout ht-callout--right" data-part="xfmr" data-side="r" data-y="66" aria-pressed="false" disabled><span>04 / Power distribution</span><small>Transformers and switchgear feed the mining load.</small></button>
+        </div>
+      </div>
+      <div class="ht-toolbar" data-ht="toolbar">
+        <p>Drag to rotate · pinch or scroll to zoom</p>
+        <button type="button" data-ht="inspect" aria-pressed="false" disabled>Inside a container</button>
+        <button type="button" class="ht-xray" data-ht="xray" aria-pressed="false" disabled>X-ray off</button>
+        <button type="button" data-ht="out" aria-label="Zoom out" disabled>−</button>
+        <button type="button" data-ht="in" aria-label="Zoom in" disabled>+</button>
+        <button type="button" data-ht="reset" disabled>Reset view</button>
+      </div>
+      <div class="ht-summary" data-ht="summary" aria-live="polite" aria-atomic="true">
+        <div class="ht-place"><span data-ht="region">Texas, USA</span><h3 data-ht="name">Permian Basin</h3><p data-ht="fuel">Flared associated gas</p></div>
+        <dl class="ht-metrics"><div><dt>Site capacity</dt><dd data-ht="capacity">18 MW</dd></div><div><dt>Hosting rate</dt><dd data-ht="rate">7.1¢/kWh</dd></div><div><dt>Availability</dt><dd class="ht-status" data-ht="status">Fully occupied</dd></div></dl>
+        <a class="btn btn--primary" data-ht="cta" href="./hardware.html?site=permian">Join this waitlist</a>
+      </div>
+      <p class="ht-note">Illustrative regional terrain and mining layout, not a survey of an actual facility. Capacity, power price and availability are indicative and are confirmed on your hosting agreement.</p>
+    </div>
+    <!-- hosting-terrain:end -->
 
     <div class="fac-grid reveal">
       <!-- facilities:begin -->
@@ -745,14 +791,16 @@
   </div>
 </footer>
 
-<script src="./site.js?v=ca6969a7"></script>
-<script src="./cart.js?v=ca6969a7"></script>
-<script src="./diagram-engine.js?v=ca6969a7"></script>
-<script src="./hero-anim.js?v=ca6969a7"></script>
-<script src="./site-kit.js?v=ca6969a7"></script>
-<script src="./scene-hosting.js?v=ca6969a7"></script>
-<script src="./scene-asic.js?v=ca6969a7"></script>
-<script src="./plant-viewer.js?v=ca6969a7" data-module-src="./mine-builder-scene.js?v=ca6969a7"></script>
+<script src="./site.js?v=62a0f25c"></script>
+<script src="./cart.js?v=62a0f25c"></script>
+<script src="./diagram-engine.js?v=62a0f25c"></script>
+<script src="./hero-anim.js?v=62a0f25c"></script>
+<script src="./site-kit.js?v=62a0f25c"></script>
+<script src="./scene-hosting.js?v=62a0f25c"></script>
+<script src="./scene-asic.js?v=62a0f25c"></script>
+<script src="./plant-viewer.js?v=62a0f25c" data-module-src="./mine-builder-scene.js?v=62a0f25c"></script>
+<script src="./facilities.js?v=62a0f25c"></script>
+<script src="./hosting-terrain.js?v=62a0f25c" data-module-src="./hosting-terrain-scene.js?v=62a0f25c" data-core-src="./mine-builder-scene.js?v=62a0f25c"></script>
 
 
 

@@ -1199,7 +1199,7 @@ export function yardCameraPose(yard, aspect) {
     const target = yard.bounds.getCenter(new THREE.Vector3());
     target.y = yard.configuredSite ? yard.bounds.getSize(new THREE.Vector3()).y*.25 : yard.view === 'asic' ? .9 : .7;
     const v = yard.comparisonView, direction = v ? new THREE.Vector3(-Math.sin(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH),Math.sin(v.BASE_PITCH),Math.cos(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH)) : new THREE.Vector3(.8,.86,1.3);
-    return { target, position: cameraPose(yard.bounds,target,aspect,direction,yard.configuredSite ? Math.PI : .075,38,yard.configuredSite && aspect >= 2 ? .52 : .92) };
+    return { target, position: cameraPose(yard.bounds,target,aspect,direction,yard.configuredSite || yard.fullOrbit ? Math.PI : .075,38,yard.configuredSite && aspect >= 2 ? .52 : .92,yard.frameHeight || .75) };
 }
 
 export function wheelZoomFactor(event, pageHeight = 800) {
@@ -1365,15 +1365,15 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function setConfig(config, options = {}) {
         if (!config || (!config.valid && !config.view)) return;
-        const nextKey = config.view || [config.siteType || 'yard',config.containers,config.count,config.perContainer,config.generators,config.settings.source,config.settings.cooling].join(':');
+        const nextKey = config.sceneKey || config.view || [config.siteType || 'yard',config.containers,config.count,config.perContainer,config.generators,config.settings.source,config.settings.cooling].join(':');
         if (nextKey === key) return;
-        const keep = options.preserveView && yard && config.siteType === yard.configuredSite;
+        const keep = options.preserveView && yard && (!!callbacks.buildScene || config.siteType === yard.configuredSite);
         const saved = keep ? {position:camera.position.clone(),target:controls.target.clone(),fov:camera.fov,offset:viewOffset} : null;
         key = nextKey;
         clearHighlight();
         focus = null; hoveredPart = null; manual = false; dragging = false; resumeAt = 0;
         if (yard) { world.remove(yard.root); disposeYard(yard); }
-        yard = config.view ? buildPresentation(config.view,config.definition) : config.siteType ? buildConfiguredSite(config) : buildYard(config);
+        yard = callbacks.buildScene ? callbacks.buildScene(config) : config.view ? buildPresentation(config.view,config.definition) : config.siteType ? buildConfiguredSite(config) : buildYard(config);
         setSceneXray(yard,xray); world.add(yard.root); buildTime = reduced ? 10 : 0;
         selected = -1; callbacks.onInspect?.(false);
         const extent = Math.max(yard.width,yard.depth)*.75;

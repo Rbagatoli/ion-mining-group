@@ -40,6 +40,31 @@ site/
   favicon.svg     Proton mark, matching manifest.json
 ```
 
+## Hosting region terrain
+
+The hosting page adds a full-width interactive landscape above the existing
+facility cards. Five regional dioramas use procedural topography, contour lines,
+cutaway terrain, access roads and regional vegetation or waterways. The terrain
+and six-container hydro yard are explicitly illustrative, not surveyed facility
+coordinates or confirmed physical layouts. Capacities, rates, availability and
+catalogue links come only from `facilities.js`; browsing a region never changes
+the facility saved for an order.
+
+`tools/build-facilities.js` generates both the existing cards and the explorer
+from `tools/hosting-terrain.html`. `hosting-terrain.js` updates the commercial
+details immediately and lazily loads the geometry and shared renderer when the
+viewer approaches the screen. One renderer and camera handle all five regions.
+Switching keeps the current view, including an open container or selected
+section. Hovering callouts highlights the complete section; clicking focuses it.
+Touch rotation, pinch zoom, panel-wide wheel zoom, keyboard controls, automatic
+rotation, X-ray and container interiors use the existing mine renderer.
+
+`hosting-terrain-scene.js` supplies a scene factory to `mountMineScene`; it does
+not maintain a second controls implementation. The original rising pixel field
+remains behind the terrain. Offscreen rendering pauses, reduced motion is
+respected, and WebGL failure leaves all region details and catalogue links usable.
+Both scene module URLs are included in the generated asset stamp.
+
 ## Build your mine
 
 On the Energy Partners page, choose **Landfill gas** or **Flared gas**, then select

@@ -26,6 +26,8 @@ const BEGIN = '<!-- facilities:begin -->';
 const END = '<!-- facilities:end -->';
 const BAR_BEGIN = '<!-- prepaybar:begin -->';
 const BAR_END = '<!-- prepaybar:end -->';
+const TERRAIN_BEGIN = '<!-- hosting-terrain:begin -->';
+const TERRAIN_END = '<!-- hosting-terrain:end -->';
 
 function esc(v) {
     return String(v === undefined || v === null ? '' : v)
@@ -111,6 +113,17 @@ function prepayBar() {
     ].join('\n');
 }
 
+function terrainExplorer() {
+    const sites = Facilities.all(), first = sites[0];
+    const regions = sites.map((s,i) => '        <button type="button" data-region="' + esc(s.id) + '" aria-pressed="' + (i === 0) + '" disabled><span>' +
+        String(i+1).padStart(2,'0') + '</span><strong>' + esc(s.id === 'alberta' ? 'Western Basin' : s.name) + '</strong><small>' + esc(s.region) + '</small></button>').join('\n');
+    const details = '        <div class="ht-place"><span data-ht="region">' + esc(first.region) + '</span><h3 data-ht="name">' + esc(first.name) + '</h3><p data-ht="fuel">' + esc(first.fuel) + '</p></div>\n' +
+        '        <dl class="ht-metrics"><div><dt>Site capacity</dt><dd data-ht="capacity">' + esc(Facilities.capacityLabel(first)) + '</dd></div><div><dt>Hosting rate</dt><dd data-ht="rate">' + esc(Facilities.powerLabel(first)) + '</dd></div><div><dt>Availability</dt><dd class="ht-status" data-ht="status">' + esc(first.status) + '</dd></div></dl>\n' +
+        '        <a class="btn btn--primary" data-ht="cta" href="./hardware.html?site=' + esc(first.id) + '">' + (Facilities.acceptsMachines(first) ? 'Start mining here' : 'Join this waitlist') + '</a>';
+    return fs.readFileSync(path.join(__dirname,'hosting-terrain.html'),'utf8').replace(/\r\n/g,'\n').trimEnd()
+        .replace('{{REGIONS}}',regions).replace('{{DETAILS}}',details).replace('{{INDICATIVE}}',esc(Facilities.INDICATIVE_NOTE));
+}
+
 function build() {
     let html = fs.readFileSync(PAGE, 'utf8');
     const a = html.indexOf(BEGIN);
@@ -135,6 +148,10 @@ function build() {
     }
     next = next.slice(0, ba) + BAR_BEGIN + '\n' + prepayBar() + '\n      ' + BAR_END +
            next.slice(bb + BAR_END.length);
+
+    const ta = next.indexOf(TERRAIN_BEGIN), tb = next.indexOf(TERRAIN_END);
+    if (ta < 0 || tb < ta) throw new Error('hosting.html: terrain markers missing or out of order');
+    next = next.slice(0,ta) + TERRAIN_BEGIN + '\n' + terrainExplorer() + '\n    ' + TERRAIN_END + next.slice(tb+TERRAIN_END.length);
 
     const changed = next !== html;
     if (changed) fs.writeFileSync(PAGE, next);

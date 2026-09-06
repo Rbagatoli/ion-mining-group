@@ -283,7 +283,8 @@ function subpathAreas(d) {
      want a real DOM, and are not what this is testing. */
   const pageScripts = [...html.matchAll(/<script src="\.\/([^"?]+\.js)(?:\?v=[0-9a-f]+)?"><\/script>/g)]
     .map(m => m[1]);
-  const NOT_DIAGRAM = new Set(['site.js', 'cart.js', 'hero-anim.js', 'scene-asic.js']);
+  // facilities.js supplies the independent region picker, not the container diagram.
+  const NOT_DIAGRAM = new Set(['site.js', 'cart.js', 'hero-anim.js', 'facilities.js', 'scene-asic.js']);
   const chain = pageScripts.filter(s => !NOT_DIAGRAM.has(s));
 
   if (chain[0] !== 'diagram-engine.js')
