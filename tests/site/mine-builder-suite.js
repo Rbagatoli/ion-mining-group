@@ -20,7 +20,7 @@ check('BTC/day matches the independent proof-of-work formula',() => {
     near(base.btcDay,expected);
 });
 check('cooling overhead is billed, alongside miners, during uptime',() => {
-    near(base.energyDay,1607*5.925*1.05*24*.07*.95);
+    near(base.energyDay,1607*5.925*1.05*24*.03*.95);
     near(base.marginDay,base.btcDay*96000-base.energyDay);
 });
 check('gas-to-electricity conversion preserves Mcf and hours',() => {
@@ -91,6 +91,7 @@ check('the break-even rate actually zeroes daily margin',() => {
 });
 check('the full-calculator handoff reproduces production and energy expense',() => {
     const url=M.calculatorURL(base), params=new URL(url,'https://example.test/').searchParams;
+    assert.equal(params.get('elecCost'),'0.03'); assert.equal(params.get('priceChange'),'2');
     const state=Object.fromEntries(params);
     ['autoReplace','additionCapex','reinvest','replacementEnabled','taxAdjustment','coverElec'].forEach(k=>state[k]=state[k]==='1');
     state.startDate=day;

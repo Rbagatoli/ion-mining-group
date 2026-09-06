@@ -50,8 +50,9 @@ The fuel picker and **Your site today / With Proton on it** toggle remain visibl
 configuration for the current visit. Market inputs are shared between the two.
 The home page keeps the Our mine presentation. The generated SVG remains available as a fallback.
 Each fuel has one full-width canvas and camera for both modes. The initial
-configuration is 10 MW; the original site and the configured mine share the same
-ground and framing. Toggling fades only the added equipment, preserving the
+configuration is 10 MW, with editable assumptions of $0.03/kWh electricity and
+2% monthly BTC price growth. The original site and the configured mine share the
+same ground and framing. Toggling fades only the added equipment, preserving the
 visitor's angle, zoom and target. Reduced motion switches immediately. Editing
 the fleet also preserves the camera; Reset explicitly fits the current layout.
 Both modes retain their callout cards. Build callouts use current fleet totals

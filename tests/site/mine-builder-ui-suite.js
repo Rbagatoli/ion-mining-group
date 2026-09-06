@@ -114,6 +114,7 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         assert.equal(scales[0].value,'100');assert.equal(fuelPanes[0].querySelector('[data-mb-end="hi"]').getAttribute('aria-pressed'),'true');
         assert.equal(fuelPanes[0].querySelector('[data-mb-end="lo"]').getAttribute('aria-pressed'),'false');assert.match(el('heading').textContent,/Landfill gas/);assert.match(el('context-note').textContent,/extraction wells/);
         assert.equal(requests.length,2);assert.equal(el('out-count').textContent,'1,607');assert.equal(el('powerMW').value,'10');assert.equal(el('power-slider').value,'10');assert.ok(Number(el('out-btc30').textContent)>0);
+        assert.equal(el('elecCost').value,'0.03');assert.equal(el('priceChange').value,'2');
     });
     check('the calculator remains usable alongside the original diagram without renderer support',()=>{
         assert.equal(el('canvas-host'),null);assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
@@ -176,7 +177,7 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     fire(fuelButtons[1],'click');
     check('changing fuel while building selects that site and its own starting configuration',()=>{
         assert.equal(el('builder').hidden,false);assert.match(el('heading').textContent,/Flared gas/);assert.match(el('context-note').textContent,/wellhead, separator, tanks/);
-        assert.equal(fuelPanes[1].hidden,false);assert.equal(scales[1].value,'100');assert.equal(el('elecCost').value,'0.07');assert.equal(el('sizing').value,'power');
+        assert.equal(fuelPanes[1].hidden,false);assert.equal(scales[1].value,'100');assert.equal(el('elecCost').value,'0.03');assert.equal(el('sizing').value,'power');assert.equal(el('priceChange').value,'2');
         assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');
     });
     input('powerMW','3');input('elecCost','0.06');fire(fuelButtons[0],'click');
@@ -197,9 +198,9 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     check('failed feed refresh keeps entered values and states the failure',()=>{
         assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');assert.match(el('market-note').textContent,/refresh unavailable/);assert.equal(el('refresh-market').disabled,false);
     });
-    click('reset-inputs');
+    input('priceChange','5');click('reset-inputs');
     check('reset restores the build while preserving market inputs',()=>{
-        assert.equal(el('sizing').value,'power');assert.equal(el('powerMW').value,'10');assert.equal(el('out-count').textContent,'1,607');assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');assert.equal(el('elecCost').value,'0.07');
+        assert.equal(el('sizing').value,'power');assert.equal(el('powerMW').value,'10');assert.equal(el('out-count').textContent,'1,607');assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');assert.equal(el('elecCost').value,'0.03');assert.equal(el('priceChange').value,'2');
     });
     input('power-slider','5');
     check('power slider drives the paired numeric input and fleet size',()=>{

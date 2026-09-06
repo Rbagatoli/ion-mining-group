@@ -12,8 +12,8 @@
         gasBtu: 1000, heatRate: 10000, machineCount: 1607,
         model: 'Antminer S21+ Hyd.', cooling: 'hydro',
         hashrate: 395, power: 5.925, capex: 2649,
-        overhead: 5, elecCost: 0.07, uptime: 95, poolFee: 2,
-        btcPrice: 96000, difficulty: 125.86, diffChange: 2, priceChange: 0,
+        overhead: 5, elecCost: 0.03, uptime: 95, poolFee: 2,
+        btcPrice: 96000, difficulty: 125.86, diffChange: 2, priceChange: 2,
         infrastructureCost: 0, slots: 240, containerMW: 1.5
     };
     var LIMITS = {
