@@ -4,8 +4,8 @@ import { MOUSE, Vector3 } from './vendor/three-0.185.1/three.module.min.js';
 export function enableScenePan(controls, canvas) {
     controls.enablePan = true;
     controls.screenSpacePanning = true;
-    controls.mouseButtons.LEFT = MOUSE.ROTATE;
-    controls.mouseButtons.RIGHT = MOUSE.PAN;
+    controls.mouseButtons.LEFT = MOUSE.PAN;
+    controls.mouseButtons.RIGHT = MOUSE.ROTATE;
     const document = canvas.ownerDocument, camera = controls.object;
     const right = new Vector3(), up = new Vector3(), delta = new Vector3();
     let pointer = null, shifted = false;
@@ -24,7 +24,7 @@ export function enableScenePan(controls, canvas) {
         if (event.pointerType !== 'mouse') { shifted = false; return; }
         if (!controls.enabled) return;
         pointer = {id:event.pointerId,x:event.clientX,y:event.clientY,shift:false};
-        shifted = event.button === 2 || !!(event.buttons & 2);
+        shifted = false; // A stationary left click can still select equipment.
         if ((event.buttons & 3) === 3) {
             beginShift(event);
             canvas.setPointerCapture(event.pointerId);
@@ -32,6 +32,7 @@ export function enableScenePan(controls, canvas) {
     }
     function move(event) {
         if (!pointer || pointer.id !== event.pointerId) return;
+        if ((event.buttons & 1) && Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y)>7) shifted = true;
         if (!pointer.shift && (event.buttons & 3) === 3) beginShift(event);
         if (!pointer.shift) return;
         event.preventDefault();

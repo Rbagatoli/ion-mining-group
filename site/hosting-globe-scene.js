@@ -27,7 +27,7 @@ export function mountGlobe(host,land,runtime,callbacks={}){
     const model=buildGlobe(land);let selected='permian',down=null,stage,multi=false;
     const pointers=new Set();
     stage=runtime.createStage(host,{spin:true,surface:callbacks.surface,
-        label:'Interactive hosting globe. Left-drag rotates. Right-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
+        label:'Interactive hosting globe. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
         onReady:callbacks.onReady,onError:callbacks.onError,onRestore:callbacks.onRestore,
         onResize:()=>{if(stage)fit(true);},onReset:()=>fit(false),
         tick(dt,time,reduced){

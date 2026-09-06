@@ -2,7 +2,7 @@
 import * as T from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
-import { enableScenePan } from './scene-controls.js';
+import { enableScenePan } from './scene-controls.js?v=2';
 
 export const ease = t => t*t*t*(t*(t*6-15)+10);
 export function createStage(host, options = {}) {

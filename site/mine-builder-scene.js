@@ -3,7 +3,7 @@
 import * as THREE from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
-import { enableScenePan } from './scene-controls.js';
+import { enableScenePan } from './scene-controls.js?v=2';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYLINDER = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -1217,7 +1217,7 @@ export function mountMineScene(host, callbacks = {}) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .94;
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
-    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Left-drag rotates. Right-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
+    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
     const envTarget = pmrem.fromScene(env,.04); world.environment = envTarget.texture; world.environmentIntensity = 1.1;

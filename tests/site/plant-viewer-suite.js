@@ -181,7 +181,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     });
     check('the view has no interaction gates or automatic rotation toggle', () => {
         assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
-        assert.match(group.querySelector('.scene-gesture-mouse').textContent,/Left-drag rotate · Right-drag shift · Scroll zoom/);
+        assert.match(group.querySelector('.scene-gesture-mouse').textContent,/Left-drag shift · Right-drag rotate · Scroll zoom/);
         assert.match(group.querySelector('.scene-gesture-touch').textContent,/Drag rotate · Pinch zoom · Two fingers shift/);
     });
     check('pointing textboxes restore the original wording and two-column positions', () => {
@@ -320,7 +320,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(first.canvas.fire('wheel',{deltaY:-120}).defaultPrevented,true); first.draw();
         assert.ok(first.camera.position.distanceTo(first.controls.target)<distance);
         const position = first.camera.position.clone();
-        const pointer = {pointerId:1,pointerType:'mouse',button:0,buttons:1,clientX:550,clientY:230};
+        const pointer = {pointerId:1,pointerType:'mouse',button:2,buttons:2,clientX:550,clientY:230};
         first.canvas.fire('pointerdown',pointer);
         first.canvas.fire('pointermove',{...pointer,clientX:650});
         first.canvas.fire('pointerup',{...pointer,clientX:650,buttons:0}); first.draw();
@@ -349,7 +349,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         const originalCanvas=shared.canvas, source=shared.world.getObjectByName('wellfield'), ground=shared.world.getObjectByName('site-ground');
         const deployment=shared.world.getObjectByName('configured-mine');
         assert.equal(deployment.visible,false);assert.equal(unified.document.querySelector('#mb-powerMW').value,'10');
-        const pointer={pointerId:1,pointerType:'mouse',button:0,buttons:1,clientX:550,clientY:230};
+        const pointer={pointerId:1,pointerType:'mouse',button:2,buttons:2,clientX:550,clientY:230};
         shared.canvas.fire('pointerdown',pointer);shared.canvas.fire('pointermove',{...pointer,clientX:620,clientY:210});
         shared.canvas.fire('pointerup',{...pointer,clientX:620,clientY:210,buttons:0});
         shared.canvas.fire('wheel',{deltaY:-120});shared.draw();

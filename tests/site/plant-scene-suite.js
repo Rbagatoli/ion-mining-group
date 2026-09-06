@@ -293,20 +293,20 @@ class Surface {
     function mouse(type,button,buttons,x,y) {
         return host.canvas.fire(type,{pointerType:'mouse',pointerId:9,button,buttons,clientX:x,clientY:y,cancelable:true});
     }
-    check('right-drag shifts every model and its rotation center; left-drag then orbits that new center', () => {
+    check('left-drag shifts every model and its rotation center; right-drag then orbits that new center', () => {
         for (const view of ['site','landfill','pad','hosting','asic','builder']) {
             api.setConfig(view==='builder' ? configured('landfill',{powerMW:10}) : {view,definition:definition(view)}); flush();
             const original = controls.target.clone(), camera = renderer.camera.position.clone(), offset = camera.clone().sub(original);
             const count = events.length;
-            mouse('pointerdown',2,2,450,220);
-            mouse('pointermove',-1,2,515,245); flush();
-            mouse('pointerup',2,0,515,245); flush();
+            mouse('pointerdown',0,1,450,220);
+            mouse('pointermove',-1,1,515,245); flush();
+            mouse('pointerup',0,0,515,245); flush();
             const target = controls.target.clone(), shift = target.clone().sub(original);
             assert.ok(shift.length()>.1,view+' shifts its pivot');
             assert.ok(renderer.camera.position.clone().sub(camera).distanceTo(shift)<1e-8,view+' translates the camera by the same amount');
             assert.ok(renderer.camera.position.clone().sub(target).distanceTo(offset)<1e-8,view+' keeps its angle and zoom while shifting');
             assert.equal(host.canvas.fire('contextmenu').defaultPrevented,true);
-            mouse('pointerdown',0,1,515,245); mouse('pointermove',-1,1,555,245); mouse('pointerup',0,0,555,245); flush();
+            mouse('pointerdown',2,2,515,245); mouse('pointermove',-1,2,555,245); mouse('pointerup',2,0,555,245); flush();
             assert.ok(controls.target.distanceTo(target)<1e-8,view+' rotates around the shifted pivot');
             assert.ok(renderer.camera.position.clone().sub(target).distanceTo(offset)>.1);
             assert.ok(Math.abs(renderer.camera.position.distanceTo(target)-offset.length())<1e-8);
@@ -314,30 +314,44 @@ class Surface {
             api.reset(); flush(); assert.ok(controls.target.distanceTo(original)<1e-8,view+' Reset recenters');
         }
     });
+    check('left clicks still select equipment; a left drag returning to its starting point does not select it', () => {
+        api.setConfig({view:'hosting',definition:definition('hosting')}); api.setXray(false); flush();
+        const roof = renderer.world.getObjectByName('removable-roof');
+        const point = new T.Box3().setFromObject(roof).getCenter(new T.Vector3()).project(renderer.camera);
+        const x = (point.x+1)*host.canvas.clientWidth/2, y = (1-point.y)*host.canvas.clientHeight/2;
+        mouse('pointerdown',0,1,x,y); mouse('pointerup',0,0,x,y); flush();
+        assert.deepEqual(events.at(-1),['xray',true]);
+        const count = events.length;
+        mouse('pointerdown',0,1,x,y); mouse('pointermove',-1,1,x+24,y);
+        mouse('pointermove',-1,1,x,y); mouse('pointerup',0,0,x,y); flush();
+        assert.equal(events.length,count,'returning to the same pixel still counts as a drag');
+        mouse('pointerdown',0,1,x,y); mouse('pointerup',0,0,x,y); flush();
+        assert.deepEqual(events.at(-1),['xray',false],'a subsequent click is available again');
+    });
     check('pressing both mouse buttons switches a live rotation to shift without a jump or an accidental tap', () => {
         api.setConfig({view:'site',definition:definition('site')}); flush();
         const count = events.length;
-        mouse('pointerdown',0,1,450,220); mouse('pointermove',-1,1,460,220); flush();
+        mouse('pointerdown',2,2,450,220); mouse('pointermove',-1,2,460,220); flush();
         const start = renderer.camera.position.clone(), target = controls.target.clone(), offset = start.clone().sub(target);
-        mouse('pointermove',2,3,460,220); flush();
+        mouse('pointermove',0,3,460,220); flush();
         assert.ok(renderer.camera.position.distanceTo(start)<1e-8,'the second press does not jump');
         mouse('pointermove',-1,3,520,250); flush();
         assert.ok(controls.target.distanceTo(target)>.1);
         assert.ok(renderer.camera.position.clone().sub(controls.target).distanceTo(offset)<1e-8,'both buttons pan without rotating');
-        mouse('pointermove',2,1,520,250); mouse('pointerup',0,0,520,250); flush();
+        mouse('pointermove',0,2,520,250); mouse('pointerup',2,0,520,250); flush();
         assert.equal(controls.enabled,true,'normal controls resume on release');
         assert.equal(events.length,count);
         const shifted = controls.target.clone();
-        mouse('pointerdown',0,1,520,250); mouse('pointermove',-1,1,540,250); mouse('pointerup',0,0,540,250); flush();
+        mouse('pointerdown',2,2,520,250); mouse('pointermove',-1,2,540,250); mouse('pointerup',2,0,540,250); flush();
         assert.ok(controls.target.distanceTo(shifted)<1e-8);
         assert.ok(renderer.camera.position.clone().sub(shifted).distanceTo(offset)>.1,'the next gesture rotates normally');
-        mouse('pointerdown',0,1,520,250); mouse('pointermove',2,3,520,250);
-        mouse('pointercancel',0,0,520,250); flush(); assert.equal(controls.enabled,true,'cancellation restores controls');
+        mouse('pointerdown',2,2,520,250); mouse('pointermove',0,3,520,250);
+        mouse('pointercancel',2,0,520,250); flush(); assert.equal(controls.enabled,true,'cancellation restores controls');
     });
     check('a shifted rotation center survives Today / Build toggles and fleet changes on both sites', () => {
         for (const view of ['landfill','pad']) {
             api.setConfig(configured(view,{powerMW:10})); api.setProgress(0); flush();
-            mouse('pointerdown',2,2,450,220); mouse('pointermove',-1,2,505,245); mouse('pointerup',2,0,505,245); flush();
+            mouse('pointerdown',0,1,450,220); mouse('pointermove',-1,1,505,245); mouse('pointerup',0,0,505,245); flush();
             const camera = renderer.camera.position.clone(), target = controls.target.clone();
             api.setProgress(1); flush();
             api.setConfig(configured(view,{powerMW:20}),{preserveView:true}); flush();

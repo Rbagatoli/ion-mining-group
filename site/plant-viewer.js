@@ -167,7 +167,7 @@
                     '<div class="plant-canvas" data-plant="host"></div>'+
                     '<svg class="plant-leaders" data-plant="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>'+
                     '<div class="plant-caption"><span data-plant="cooling"></span><span data-plant="mode"></span></div>'+
-                    '<p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag rotate · Right-drag shift · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom · Two fingers shift</span></p></div>'+
+                    '<p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag shift · Right-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom · Two fingers shift</span></p></div>'+
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
                     '<div class="plant-toolbar" aria-label="3D view controls">'+
                     '<p class="plant-hint">Select a label to explore</p>'+
