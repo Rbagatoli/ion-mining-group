@@ -30,7 +30,8 @@
         function globeFailure(){globeFailed=true;globe.classList.remove('hx-ready');g.fallback.hidden=false;g.message.textContent='The globe is unavailable. Choose a region above to compare its details below.';globeControls(false);Object.keys(markers).forEach(function(id){markers[id].hidden=true;lines[id].setAttribute('visibility','hidden');});}
         sites.forEach(function(site,i){
             var button=document.createElement('button'),line=document.createElementNS('http://www.w3.org/2000/svg','line');
-            button.type='button';button.textContent=String(i+1).padStart(2,'0');button.setAttribute('aria-label','Explore '+site.name);button.setAttribute('title',site.name);button.setAttribute('data-marker',site.id);button.hidden=true;
+            var face=document.createElement('span');face.className='hx-marker-face';face.textContent=String(i+1).padStart(2,'0');button.appendChild(face);
+            button.type='button';button.setAttribute('aria-label','Explore '+site.name);button.setAttribute('title',site.name);button.setAttribute('data-marker',site.id);button.hidden=true;
             button.addEventListener('click',function(){selectRegion(site.id);});g.markers.appendChild(button);markers[site.id]=button;
             line.setAttribute('visibility','hidden');g.leaders.appendChild(line);lines[site.id]=line;
         });
@@ -55,7 +56,7 @@
             try{
                 var m=await Promise.all([get('globe'),get('world'),get('stage')]);if(gone)return;
                 var pending=selected.id;
-                globeScene=m[0].mountGlobe(g.canvas,m[1].LAND,m[2],{surface:g.surface,
+                globeScene=m[0].mountGlobe(g.canvas,m[1].LAND,m[2],{surface:g.surface,lakes:m[1].LAKES,
                     onReady:function(){globeFailed=false;globe.classList.add('hx-ready');g.fallback.hidden=true;globeControls(true);},onError:globeFailure,
                     onRestore:function(){globeScene.select(selected.id,true);},onSelect:function(id){selected=F.byId(id);regionDetails();},onProject:positionMarkers
                 });globeScene.select(pending,true);disposables.push(globeScene);

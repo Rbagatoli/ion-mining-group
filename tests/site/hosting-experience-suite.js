@@ -28,7 +28,7 @@ function fixture({fail=false,delay=false,search=''}={}){
         click:selector=>document.querySelector(selector).fire('click'),approach(){observers.forEach(o=>o.fn([{isIntersecting:true}]));},release(){pending.forEach(fn=>fn());}};
 }
 (async()=>{
-    const globe=await import('../../site/hosting-globe-scene.js'),world=await import('../../site/hosting-world-data.js');
+    const globe=await import('../../site/hosting-globe-scene.js'),world=await import('../../site/hosting-earth-data.js');
     const T=await import('../../site/vendor/three-0.185.1/three.module.min.js');
     check('operator maps share the website surface and cache all rendering dependencies',()=>{
         const shared=require('../../tools/build-globe-assets.js');assert.equal(shared.build(true),0);
@@ -49,11 +49,12 @@ function fixture({fail=false,delay=false,search=''}={}){
         }
         assert.ok(world.LAND.length>100);let count=0;
         for(const polygon of world.LAND)for(const ring of polygon)for(const p of ring){assert.ok(Math.abs(p[0])<=180&&Math.abs(p[1])<=90);count++;}
-        assert.ok(count>4000&&count<15000);
+        assert.ok(count>50000&&count<80000);assert.ok(world.LAKES.length>300);
+        for(const polygon of world.LAKES)for(const ring of polygon)for(const p of ring)assert.ok(Math.abs(p[0])<=180&&Math.abs(p[1])<=90);
     });
     check('generated globe preserves commercial disclosures, destinations and stamped modules',()=>{
         assert.ok(!html.includes('hosting-tour'));assert.ok(!html.includes('data-tour'));assert.ok(!fs.existsSync(__dirname+'/../../site/hosting-tour-scene.js'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
-        for(const asset of ['hosting-experience.js','hosting-stage.js','hosting-globe-scene.js','hosting-world-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));
+        for(const asset of ['hosting-experience.js','hosting-stage.js','hosting-globe-scene.js','hosting-earth-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));
         assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.all().length);
         assert.ok(!html.includes('hosting-terrain.js'));assert.ok(!html.includes('ht-stage'));
     });

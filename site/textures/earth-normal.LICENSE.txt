@@ -1,0 +1,12 @@
+Earth Normal Map by Solar System Scope / INOVE
+https://edu.solarsystemscope.com/textures/
+
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Original asset:
+https://edu.solarsystemscope.com/textures/download/2k_earth_normal_map.tif
+
+Converted losslessly from TIFF to PNG for browser support. Dimensions and
+normal-map pixel values are unchanged. The website uses the normal map for
+lighting relief on its stylized platinum globe.
