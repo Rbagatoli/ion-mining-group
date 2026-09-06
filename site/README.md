@@ -40,38 +40,26 @@ site/
   favicon.svg     Proton mark, matching manifest.json
 ```
 
-## Container showcase and hosting globe
+## Hosting globe
 
-The hosting page showcases one hydro container through five views: exterior,
-its power cabinet, rooftop cooling, network switch, and the complete interior.
-Every view uses the same container object from `buildHostedContainer`; camera
-framing adapts to the viewport and the opened roof. Internal system views open
-the side panel; Inside also lifts the roof and frames all the racks together.
-The platinum globe below continues to explore the existing hosting regions.
-X-ray starts off, and the container starts energized. The Our Mine, Your Site,
-builder and other equipment renderings retain their layouts and behavior.
-
+The hosting page uses a platinum globe to explore the existing hosting regions.
 `tools/build-facilities.js` builds `tools/hosting-experience.html` alongside the
-unchanged facility cards. `hosting-experience.js` keeps text and region selection
-available before 3D loads, and if it fails. The tour and globe load independently
-on approach. `hosting-stage.js` shares pointer, touch, keyboard and wheel controls,
-visibility pausing, reduced-motion support and WebGL recovery. Camera travel uses
-wall-clock timing and cancels immediately on manual input. The tour gently
-oscillates at each stop; the globe rotates slowly. There are no gesture gates.
+facility cards. `hosting-experience.js` keeps region selection available before
+3D loads, and if it fails. The globe loads on approach. `hosting-stage.js` handles
+pointer, touch, keyboard and wheel controls, visibility pausing, reduced-motion
+support and WebGL recovery. Camera travel uses wall-clock timing and cancels
+immediately on manual input. The globe rotates slowly; there are no gesture gates.
 
-`hosting-tour-scene.js` isolates the container on a compact pad and frames each
-system. Returning to Exterior closes the shell and shows the whole unit. `hosting-globe-scene.js` uses spherical camera travel
-and an actual coastline texture from `hosting-world-data.js` (Natural Earth
-5.1.2, 1:110m public-domain land polygons, rounded to .001 degrees). Marker
-positions represent regions, not precise facilities. Capacity, rates, status,
-disclosures and catalogue links come from `facilities.js`; exploration never
-changes the site saved on an order. Original rising pixels remain behind both
-views. All dynamic module URLs participate in the generated asset stamp.
+`hosting-globe-scene.js` uses spherical camera travel and a coastline texture
+from `hosting-world-data.js` (Natural Earth 5.1.2, 1:110m public-domain land polygons,
+rounded to .001 degrees). Marker positions represent regions, not precise facilities.
+Capacity, rates, status, disclosures and catalogue links come from `facilities.js`;
+exploration never changes the site saved on an order. Original rising pixels remain
+behind the globe. Dynamic module URLs participate in the generated asset stamp.
 
-The hosting experience suite covers single-container scope, camera framing, geometry budgets, narrow-screen globe
-framing, load-time selections, disclosures, fallback, context recovery and
-disposal. Real-browser checks also cover first-load gestures, touch rotation,
-pinch zoom, all destinations and WebGL loss/restoration.
+The hosting experience suite covers narrow-screen globe framing, load-time
+selections, disclosures, fallback, context recovery and disposal. Real-browser
+checks also cover gestures, destinations and WebGL loss/restoration.
 
 ## Build your mine
 
