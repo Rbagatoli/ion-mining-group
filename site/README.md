@@ -40,30 +40,36 @@ site/
   favicon.svg     Proton mark, matching manifest.json
 ```
 
-## Hosting region terrain
+## Hosting walkthrough and globe
 
-The hosting page adds a full-width interactive landscape above the existing
-facility cards. Five regional dioramas use procedural topography, contour lines,
-cutaway terrain, access roads and regional vegetation or waterways. The terrain
-and six-container hydro yard are explicitly illustrative, not surveyed facility
-coordinates or confirmed physical layouts. Capacities, rates, availability and
-catalogue links come only from `facilities.js`; browsing a region never changes
-the facility saved for an order.
+The hosting page offers a five-stop tour through one representative hydro mine,
+followed by a platinum globe for exploring the existing hosting regions. Tour
+stops cover arrival, generation and distribution, rooftop cooling, the service
+alley and a view inside a container. Detailed equipment comes from `buildYard`;
+all existing Our Mine, Your Site, builder and individual equipment scenes retain
+their own layouts and behavior. X-ray starts off and the mine starts energized.
 
-`tools/build-facilities.js` generates both the existing cards and the explorer
-from `tools/hosting-terrain.html`. `hosting-terrain.js` updates the commercial
-details immediately and lazily loads the geometry and shared renderer when the
-viewer approaches the screen. One renderer and camera handle all five regions.
-Switching keeps the current view, including an open container or selected
-section. Hovering callouts highlights the complete section; clicking focuses it.
-Touch rotation, pinch zoom, panel-wide wheel zoom, keyboard controls, automatic
-rotation, X-ray and container interiors use the existing mine renderer.
+`tools/build-facilities.js` builds `tools/hosting-experience.html` alongside the
+unchanged facility cards. `hosting-experience.js` keeps text and region selection
+available before 3D loads, and if it fails. The tour and globe load independently
+on approach. `hosting-stage.js` shares pointer, touch, keyboard and wheel controls,
+visibility pausing, reduced-motion support and WebGL recovery. Camera travel uses
+wall-clock timing and cancels immediately on manual input. The tour gently
+oscillates at each stop; the globe rotates slowly. There are no gesture gates.
 
-`hosting-terrain-scene.js` supplies a scene factory to `mountMineScene`; it does
-not maintain a second controls implementation. The original rising pixel field
-remains behind the terrain. Offscreen rendering pauses, reduced motion is
-respected, and WebGL failure leaves all region details and catalogue links usable.
-Both scene module URLs are included in the generated asset stamp.
+`hosting-tour-scene.js` frames the equipment at human scale and opens the service
+wall for the interior stop. `hosting-globe-scene.js` uses spherical camera travel
+and an actual coastline texture from `hosting-world-data.js` (Natural Earth
+5.1.2, 1:110m public-domain land polygons, rounded to .001 degrees). Marker
+positions represent regions, not precise facilities. Capacity, rates, status,
+disclosures and catalogue links come from `facilities.js`; exploration never
+changes the site saved on an order. Original rising pixels remain behind both
+views. All dynamic module URLs participate in the generated asset stamp.
+
+The hosting experience suite covers geometry budgets, narrow-screen globe
+framing, load-time selections, disclosures, fallback, context recovery and
+disposal. Real-browser checks also cover first-load gestures, touch rotation,
+pinch zoom, all destinations and WebGL loss/restoration.
 
 ## Build your mine
 

@@ -1153,7 +1153,7 @@ export function setSceneProgress(yard, progress) {
     });
 }
 
-function disposeYard(yard) {
+export function disposeYard(yard) {
     if (!yard) return;
     const geometries = new Set(), materials = new Set();
     yard.root.traverse(o => {
