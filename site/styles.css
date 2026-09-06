@@ -385,6 +385,21 @@ h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.028em; line-height: 1.12; 
 
 p + p { margin-top: 16px; }
 .mono { font-family: var(--mono); }
+
+/* Quiet, non-interactive guidance inside each 3D rendering. */
+.scene-gesture-hint {
+    position: absolute; right: 12px; bottom: 8px; z-index: 4;
+    max-width: calc(100% - 24px); margin: 0; padding: 3px 6px;
+    color: var(--plat-300); background: rgba(5,5,5,.72);
+    font: 10px/1.5 var(--mono); text-align: right;
+    pointer-events: none; user-select: none;
+}
+.scene-gesture-touch { display: none; }
+.hx-panel:not(.hx-ready) .scene-gesture-hint { display: none; }
+@media (hover: none) and (pointer: coarse) {
+    .scene-gesture-mouse { display: none; }
+    .scene-gesture-touch { display: inline; }
+}
 .accent { color: var(--btc-300); text-decoration: none; }
 .accent:hover { color: var(--btc-200); }
 

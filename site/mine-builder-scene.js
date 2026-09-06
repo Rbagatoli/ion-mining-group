@@ -3,6 +3,7 @@
 import * as THREE from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
+import { enableScenePan } from './scene-controls.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYLINDER = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -1216,7 +1217,7 @@ export function mountMineScene(host, callbacks = {}) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .94;
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
-    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Drag to rotate, pinch or scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
+    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Left-drag rotates. Right-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
     const envTarget = pmrem.fromScene(env,.04); world.environment = envTarget.texture; world.environmentIntensity = 1.1;
@@ -1228,7 +1229,8 @@ export function mountMineScene(host, callbacks = {}) {
     world.add(sun); world.add(sun.target);
     const rim = new THREE.DirectionalLight(0xf0efeb,2.0); rim.position.set(12,14,-18); world.add(rim);
     const controls = new OrbitControls(camera,canvas);
-    controls.enableDamping = false; controls.enablePan = false; controls.enableZoom = true;
+    controls.enableDamping = false; controls.enableZoom = true;
+    const navigation = enableScenePan(controls,canvas);
     controls.minPolarAngle = .30; controls.maxPolarAngle = Math.PI*.46;
     // Gestures on the drawing control the model from the very first touch.
     // Callout cards and the rest of the page retain normal scrolling.
@@ -1522,7 +1524,7 @@ export function mountMineScene(host, callbacks = {}) {
         contacts.delete(event.pointerId);
         if (!pointer || event.pointerId !== pointer.id) return;
         const moved = Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y), multi = pointer.multi; pointer = null;
-        if (moved > 7 || multi || !yard || event.button > 0) return;
+        if (moved > 7 || multi || !yard || event.button > 0 || navigation.wasShiftGesture()) return;
         const rect = canvas.getBoundingClientRect(), point = new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
         const ray = new THREE.Raycaster(); ray.setFromCamera(point,camera);
         const hit = ray.intersectObjects(yard.containers.map(unit => unit.root),true).find(candidate => {
@@ -1586,7 +1588,7 @@ export function mountMineScene(host, callbacks = {}) {
         energize(value) { powered = !!value; wake(); },
         setActive(value) { active = !!value; if (active) { resize(); wake(); } else stop(); },
         dispose() {
-            disposed = true; stop(); resizeObserver.disconnect(); observer.disconnect(); controls.dispose();
+            disposed = true; stop(); resizeObserver.disconnect(); observer.disconnect(); navigation.dispose(); controls.dispose();
             media.removeEventListener('change',motion); document.removeEventListener('visibilitychange',visibility);
             interactionSurface.removeEventListener('wheel',wheel,true);
             canvas.removeEventListener('touchmove',touchmove);

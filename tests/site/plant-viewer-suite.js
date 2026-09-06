@@ -181,7 +181,8 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     });
     check('the view has no interaction gates or automatic rotation toggle', () => {
         assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
-        assert.match(group.querySelector('.plant-hint').textContent,/Drag to rotate · pinch or scroll to zoom/);
+        assert.match(group.querySelector('.scene-gesture-mouse').textContent,/Left-drag rotate · Right-drag shift · Scroll zoom/);
+        assert.match(group.querySelector('.scene-gesture-touch').textContent,/Drag rotate · Pinch zoom · Two fingers shift/);
     });
     check('pointing textboxes restore the original wording and two-column positions', () => {
         const original = require('../../site/scene-site.js');
@@ -280,8 +281,9 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     // and the observer/frame clock are supplied by this harness.
     const T = await import('../../site/vendor/three-0.185.1/three.module.min.js');
     const {OrbitControls} = await import('../../site/vendor/three-0.185.1/OrbitControls.js');
+    const {enableScenePan} = await import('../../site/scene-controls.js');
     const sceneSource = fs.readFileSync(__dirname+'/../../site/mine-builder-scene.js','utf8').replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
-    const mountFactory = new Function('THREE','OrbitControls','RoomEnvironment','window','document','ResizeObserver','IntersectionObserver','requestAnimationFrame','cancelAnimationFrame',sceneSource+'\nreturn mountMineScene;');
+    const mountFactory = new Function('THREE','OrbitControls','RoomEnvironment','enableScenePan','window','document','ResizeObserver','IntersectionObserver','requestAnimationFrame','cancelAnimationFrame',sceneSource+'\nreturn mountMineScene;');
     const mounted = [];
     function realMount(host,callbacks,document) {
         const record = {host,frames:new Map(),time:0,sequence:0,renders:0}; mounted.push(record);
@@ -296,7 +298,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         class Resize { observe() {} disconnect() {} }
         class Intersection { constructor(fn) { record.intersect = fn; } observe() {} disconnect() {} }
         const media = new Element('media'); media.matches = true;
-        record.api = mountFactory({...T,WebGLRenderer:Renderer,PMREMGenerator:PMREM},Controls,Environment,
+        record.api = mountFactory({...T,WebGLRenderer:Renderer,PMREMGenerator:PMREM},Controls,Environment,enableScenePan,
             {devicePixelRatio:1,matchMedia:() => media},document,Resize,Intersection,
             fn => { record.frames.set(++record.sequence,fn); return record.sequence; },id => record.frames.delete(id))(host,callbacks);
         record.draw = () => {

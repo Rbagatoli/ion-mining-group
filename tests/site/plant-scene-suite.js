@@ -37,6 +37,7 @@ class Surface {
 (async () => {
     const T = await import('../../site/vendor/three-0.185.1/three.module.min.js');
     const {OrbitControls} = await import('../../site/vendor/three-0.185.1/OrbitControls.js');
+    const {enableScenePan} = await import('../../site/scene-controls.js');
     const shared = await import('../../site/mine-builder-scene.js');
     const {buildYard,yardCameraPose,setSceneXray,setSceneProgress,wheelZoomFactor} = shared;
     const buildPresentation = view => shared.buildPresentation(view,definition(view));
@@ -277,8 +278,8 @@ class Surface {
     class Resize { constructor(fn) { resizeScene = fn; } observe() {} disconnect() {} }
     class Intersection { constructor(fn) { this.fn = fn; observer = this; } observe() {} disconnect() {} }
     const source = fs.readFileSync(__dirname+'/../../site/mine-builder-scene.js','utf8').replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'');
-    const mount = new Function('THREE','OrbitControls','RoomEnvironment','window','document','ResizeObserver','IntersectionObserver','requestAnimationFrame','cancelAnimationFrame',
-        source+'\nreturn mountMineScene;')({...T,WebGLRenderer:Renderer,PMREMGenerator:PMREM},Controls,Environment,window,document,Resize,Intersection,
+    const mount = new Function('THREE','OrbitControls','RoomEnvironment','enableScenePan','window','document','ResizeObserver','IntersectionObserver','requestAnimationFrame','cancelAnimationFrame',
+        source+'\nreturn mountMineScene;')({...T,WebGLRenderer:Renderer,PMREMGenerator:PMREM},Controls,Environment,enableScenePan,window,document,Resize,Intersection,
             fn => { frames.set(++rafID,fn); return rafID; },id => frames.delete(id));
     let time = 0;
     function step(ms = 16) { time += ms; const batch = [...frames]; frames.clear(); batch.forEach(([,fn]) => fn(time)); }
@@ -289,6 +290,63 @@ class Surface {
     const events = []; let projected = [];
     const api = mount(host,{interactionSurface:panel,onProject:v => { projected = v; },onInspect:v => events.push(['inspect',v]),onXray:v => events.push(['xray',v]),onError:() => events.push(['error'])});
     api.setConfig(M.estimate({powerMW:1})); api.setActive(true); flush();
+    function mouse(type,button,buttons,x,y) {
+        return host.canvas.fire(type,{pointerType:'mouse',pointerId:9,button,buttons,clientX:x,clientY:y,cancelable:true});
+    }
+    check('right-drag shifts every model and its rotation center; left-drag then orbits that new center', () => {
+        for (const view of ['site','landfill','pad','hosting','asic','builder']) {
+            api.setConfig(view==='builder' ? configured('landfill',{powerMW:10}) : {view,definition:definition(view)}); flush();
+            const original = controls.target.clone(), camera = renderer.camera.position.clone(), offset = camera.clone().sub(original);
+            const count = events.length;
+            mouse('pointerdown',2,2,450,220);
+            mouse('pointermove',-1,2,515,245); flush();
+            mouse('pointerup',2,0,515,245); flush();
+            const target = controls.target.clone(), shift = target.clone().sub(original);
+            assert.ok(shift.length()>.1,view+' shifts its pivot');
+            assert.ok(renderer.camera.position.clone().sub(camera).distanceTo(shift)<1e-8,view+' translates the camera by the same amount');
+            assert.ok(renderer.camera.position.clone().sub(target).distanceTo(offset)<1e-8,view+' keeps its angle and zoom while shifting');
+            assert.equal(host.canvas.fire('contextmenu').defaultPrevented,true);
+            mouse('pointerdown',0,1,515,245); mouse('pointermove',-1,1,555,245); mouse('pointerup',0,0,555,245); flush();
+            assert.ok(controls.target.distanceTo(target)<1e-8,view+' rotates around the shifted pivot');
+            assert.ok(renderer.camera.position.clone().sub(target).distanceTo(offset)>.1);
+            assert.ok(Math.abs(renderer.camera.position.distanceTo(target)-offset.length())<1e-8);
+            assert.equal(events.length,count,view+' does not open equipment while dragging');
+            api.reset(); flush(); assert.ok(controls.target.distanceTo(original)<1e-8,view+' Reset recenters');
+        }
+    });
+    check('pressing both mouse buttons switches a live rotation to shift without a jump or an accidental tap', () => {
+        api.setConfig({view:'site',definition:definition('site')}); flush();
+        const count = events.length;
+        mouse('pointerdown',0,1,450,220); mouse('pointermove',-1,1,460,220); flush();
+        const start = renderer.camera.position.clone(), target = controls.target.clone(), offset = start.clone().sub(target);
+        mouse('pointermove',2,3,460,220); flush();
+        assert.ok(renderer.camera.position.distanceTo(start)<1e-8,'the second press does not jump');
+        mouse('pointermove',-1,3,520,250); flush();
+        assert.ok(controls.target.distanceTo(target)>.1);
+        assert.ok(renderer.camera.position.clone().sub(controls.target).distanceTo(offset)<1e-8,'both buttons pan without rotating');
+        mouse('pointermove',2,1,520,250); mouse('pointerup',0,0,520,250); flush();
+        assert.equal(controls.enabled,true,'normal controls resume on release');
+        assert.equal(events.length,count);
+        const shifted = controls.target.clone();
+        mouse('pointerdown',0,1,520,250); mouse('pointermove',-1,1,540,250); mouse('pointerup',0,0,540,250); flush();
+        assert.ok(controls.target.distanceTo(shifted)<1e-8);
+        assert.ok(renderer.camera.position.clone().sub(shifted).distanceTo(offset)>.1,'the next gesture rotates normally');
+        mouse('pointerdown',0,1,520,250); mouse('pointermove',2,3,520,250);
+        mouse('pointercancel',0,0,520,250); flush(); assert.equal(controls.enabled,true,'cancellation restores controls');
+    });
+    check('a shifted rotation center survives Today / Build toggles and fleet changes on both sites', () => {
+        for (const view of ['landfill','pad']) {
+            api.setConfig(configured(view,{powerMW:10})); api.setProgress(0); flush();
+            mouse('pointerdown',2,2,450,220); mouse('pointermove',-1,2,505,245); mouse('pointerup',2,0,505,245); flush();
+            const camera = renderer.camera.position.clone(), target = controls.target.clone();
+            api.setProgress(1); flush();
+            api.setConfig(configured(view,{powerMW:20}),{preserveView:true}); flush();
+            api.setProgress(0); flush();
+            assert.ok(renderer.camera.position.distanceTo(camera)<1e-8);
+            assert.ok(controls.target.distanceTo(target)<1e-8,view+' keeps the user-selected pivot');
+        }
+        api.setProgress(1); flush();
+    });
     function touch(type,id,x,y) {
         return host.canvas.fire(type,{pointerType:'touch',pointerId:id,button:0,buttons:type === 'pointerup' ? 0 : 1,
             clientX:x,clientY:y,pageX:x,pageY:y+2400,cancelable:true});

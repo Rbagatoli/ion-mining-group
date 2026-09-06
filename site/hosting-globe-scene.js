@@ -27,7 +27,7 @@ export function mountGlobe(host,land,runtime,callbacks={}){
     const model=buildGlobe(land);let selected='permian',down=null,stage,multi=false;
     const pointers=new Set();
     stage=runtime.createStage(host,{spin:true,surface:callbacks.surface,
-        label:'Interactive hosting globe. Drag to rotate, pinch or scroll to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
+        label:'Interactive hosting globe. Left-drag rotates. Right-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
         onReady:callbacks.onReady,onError:callbacks.onError,onRestore:callbacks.onRestore,
         onResize:()=>{if(stage)fit(true);},onReset:()=>fit(false),
         tick(dt,time,reduced){
@@ -54,7 +54,7 @@ export function mountGlobe(host,land,runtime,callbacks={}){
     function pointerUp(e){
         pointers.delete(e.pointerId);if(multi){if(!pointers.size)multi=false;down=null;return;}
         if(!down||down.id!==e.pointerId)return;
-        const start=down;down=null;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)>7)return;
+        const start=down;down=null;if(e.button>0||stage.wasShiftGesture()||Math.hypot(e.clientX-start.x,e.clientY-start.y)>7)return;
         const bounds=stage.canvas.getBoundingClientRect(),point=new T.Vector2((e.clientX-bounds.left)/bounds.width*2-1,-(e.clientY-bounds.top)/bounds.height*2+1);
         const ray=new T.Raycaster();ray.setFromCamera(point,stage.camera);
         const hit=ray.intersectObjects(model.pins.filter(p=>p.group.visible).map(p=>p.hit),false)[0];if(hit)select(hit.object.userData.region);

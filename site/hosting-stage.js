@@ -2,6 +2,7 @@
 import * as T from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
+import { enableScenePan } from './scene-controls.js';
 
 export const ease = t => t*t*t*(t*(t*6-15)+10);
 export function createStage(host, options = {}) {
@@ -22,7 +23,8 @@ export function createStage(host, options = {}) {
     world.add(sun,sun.target);
     const rim = new T.DirectionalLight(0xdde4ec,2.6); rim.position.set(-24,16,-12); world.add(rim);
     const controls = new OrbitControls(camera,canvas);
-    controls.enablePan = false; controls.enableDamping = false;
+    controls.enableDamping = false;
+    const navigation = enableScenePan(controls,canvas);
     controls.minDistance = .8; controls.maxDistance = 85;
     controls.minPolarAngle = .13; controls.maxPolarAngle = Math.PI*.495;
     canvas.style.touchAction = 'none';
@@ -112,7 +114,7 @@ export function createStage(host, options = {}) {
     document.addEventListener('visibilitychange',visibility); motion.addEventListener('change',changeMotion);
     canvas.addEventListener('webglcontextlost',contextLost); canvas.addEventListener('webglcontextrestored',contextRestored);
     resize();
-    return {world,camera,controls,canvas,renderer,move,zoom,wake,
+    return {world,camera,controls,canvas,renderer,move,zoom,wake,wasShiftGesture:navigation.wasShiftGesture,
         get travelling() { return !!travel; },
         setActive(value) { active=!!value; if(active){resize();wake();}else stop(); },
         dispose() {
@@ -120,7 +122,7 @@ export function createStage(host, options = {}) {
             document.removeEventListener('visibilitychange',visibility);motion.removeEventListener('change',changeMotion);
             surface.removeEventListener('wheel',wheel,true);canvas.removeEventListener('keydown',keyboard);
             canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);
-            controls.dispose();environment.dispose();sun.shadow.dispose();renderer.dispose();canvas.remove();
+            navigation.dispose();controls.dispose();environment.dispose();sun.shadow.dispose();renderer.dispose();canvas.remove();
         }
     };
 }
