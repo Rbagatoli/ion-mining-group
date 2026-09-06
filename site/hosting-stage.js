@@ -72,7 +72,7 @@ export function createStage(host, options = {}) {
         }
         controls.update(); options.tick?.(dt,time,reduced);
         renderer.render(world,camera);
-        if (!ready) { ready=true; options.onReady?.(); }
+        if (!ready) { ready=true; options.onReady?.(); wake(); }
         if (!reduced || travel) wake();
     }
     function startDrag() { dragging=true; manual(); }
