@@ -30,6 +30,13 @@ function fixture({fail=false,delay=false,search=''}={}){
 (async()=>{
     const globe=await import('../../site/hosting-globe-scene.js'),world=await import('../../site/hosting-world-data.js');
     const T=await import('../../site/vendor/three-0.185.1/three.module.min.js');
+    check('operator maps share the website surface and cache all rendering dependencies',()=>{
+        const shared=require('../../tools/build-globe-assets.js');assert.equal(shared.build(true),0);
+        const sw=fs.readFileSync(__dirname+'/../../sw.js','utf8');
+        for(const asset of shared.FILES.filter(name=>name.endsWith('.js')))
+            assert.ok(sw.includes("'./globe-assets/"+asset+"'"),asset);
+        assert.ok(sw.includes("'./map-globe-style.js'"));
+    });
     check('every listed region has a finite, approximate globe marker',()=>{
         assert.deepEqual(Object.keys(globe.REGIONS),F.all().map(s=>s.id));
         for(const point of Object.values(globe.REGIONS))assert.ok(Math.abs(globe.globePoint(point.lat,point.lon).length()-3.2)<1e-10);

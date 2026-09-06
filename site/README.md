@@ -61,6 +61,13 @@ The hosting experience suite covers narrow-screen globe framing, load-time
 selections, disclosures, fallback, context recovery and disposal. Real-browser
 checks also cover gestures, destinations and WebGL loss/restoration.
 
+The Fleet Map and prospecting map use the same Earth surface through
+`globe-surface.js`. `node tools/build-globe-assets.js` copies that model, land data
+and its versioned dependencies into the operator app. `map-globe-style.js` applies
+the surface and lighting to its existing globe renderer, preserving fleet country
+selection, prospect columns, filters and camera controls. The shared-asset check
+runs with the hosting suite and the deployment generator checks.
+
 ## Build your mine
 
 On the Energy Partners page, choose **Landfill gas** or **Flared gas**, then select

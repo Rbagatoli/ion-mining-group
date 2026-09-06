@@ -56,7 +56,7 @@ function walk(dir, out) {
            unresolved because the definition scanner only ever reads tokens.css.
            The portal is not left unguarded — the assertion below checks the thing
            that would actually hurt, which is that palette escaping into the app. */
-        if (['.git', 'node_modules', '.cache', 'site', '_site', 'portal', 'data', 'worker', 'worker-strike',
+        if (['.git', 'node_modules', '.cache', 'site', 'globe-assets', '_site', 'portal', 'data', 'worker', 'worker-strike',
              'tests', 'tools'].indexOf(e.name) >= 0) return;
         var p = path.join(dir, e.name);
         if (e.isDirectory()) return walk(p, out);

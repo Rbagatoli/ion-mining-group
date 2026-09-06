@@ -1,6 +1,6 @@
 // Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
 // than leaving the superseded copies of the two panels beside the new ones.
-const CACHE_NAME = 'proton-mining-v417';
+const CACHE_NAME = 'proton-mining-v424';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -112,6 +112,12 @@ const ASSETS = [
   './network-history.js',
   './banking.js',
   './map.js',
+  './map-globe-style.js',
+  './globe-assets/globe-surface.js',
+  './globe-assets/hosting-world-data.js',
+  './globe-assets/vendor/three-0.185.1/three.module.min.js',
+  './globe-assets/vendor/three-0.185.1/three.core.min.js',
+  './globe-assets/vendor/three-0.185.1/RoomEnvironment.js',
   './miner-db.js',
   './firebase-config.js',
   './sync.js',

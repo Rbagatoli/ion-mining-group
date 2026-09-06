@@ -663,7 +663,14 @@ var MapBridge = (function() {
 var _globeRef = null, _showGlobePopupRef = null;
 (function() {
     var globeInstance = null;
-    var globeInitialized = false;
+    var globeInitialized = false, globeStyle = null, pageGone = false;
+    var styleURL = new URL('./map-globe-style.js', document.currentScript.src);
+    styleURL.search = new URL(document.currentScript.src).search;
+    window.addEventListener('pagehide', function(event) {
+        if (event.persisted) return;
+        pageGone = true;
+        if (globeStyle) globeStyle.dispose();
+    });
     var currentView = 'globe';
 
     var btnMap = document.getElementById('btnMapView');
@@ -783,10 +790,9 @@ var _globeRef = null, _showGlobePopupRef = null;
             .backgroundColor('rgba(0,0,0,0)')
             .showGlobe(true)
             .showAtmosphere(true)
-            .atmosphereColor(ProtonTheme.globe.atmos)
-            .atmosphereAltitude(0.15)
-            /* THE BLACK PLOTS ON THE LAND. This one stays: it was a geometry bug, not a
-             * colour choice, and it is the only part of the platinum experiment worth keeping.
+            .atmosphereColor(ProtonTheme.plat300)
+            .atmosphereAltitude(0.035)
+            /* Keep country overlays above the spherical surface, including at close zoom.
              *
              * three-globe builds each country cap by triangulating the polygon and projecting
              * the vertices onto a shell above the sphere. The triangle FACES are flat chords, so
@@ -817,9 +823,12 @@ var _globeRef = null, _showGlobePopupRef = null;
                on the frame it is asked for. */
             .pointsTransitionDuration(0);
 
-        fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
-            .then(function(r) { return r.json(); })
-            .then(function(world) {
+        Promise.all([
+            fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(function(r) { return r.json(); }),
+            import(styleURL.href).catch(function(error) { console.warn('Globe surface unavailable:', error); return null; })
+        ]).then(function(loaded) {
+                if (pageGone) return;
+                var world = loaded[0], surfaceStyle = loaded[1];
                 var countriesGeo = topojson.feature(world, world.objects.countries);
 
                 globeInstance
@@ -828,17 +837,17 @@ var _globeRef = null, _showGlobePopupRef = null;
                     // left the GLOBE still painting every country with fleet hashrate, which is
                     // what the fleet layer looked like bleeding through Prospects mode.
                     .polygonCapColor(function(feat) {
-                        if (MapBridge.mode() === 'prospects') return ProtonTheme.globe.fillMin;
+                        if (MapBridge.mode() === 'prospects') return ProtonTheme.alpha(ProtonTheme.black, 0);
                         var a2 = NUM_TO_A2[String(feat.id)];
                         var data = a2 ? countryData[a2] : null;
                         if (data && maxCountryHash > 0) {
                             var ratio = data.totalHashrate / maxCountryHash;
-                            var alpha = 0.2 + ratio * 0.8;
-                            return 'rgba(247, 147, 26, ' + alpha.toFixed(2) + ')';
+                            var alpha = 0.08 + ratio * 0.26;
+                            return ProtonTheme.alpha(ProtonTheme.btc, alpha);
                         }
-                        return ProtonTheme.globe.fillMin;
+                        return ProtonTheme.alpha(ProtonTheme.black, 0);
                     })
-                    .polygonSideColor(function() { return ProtonTheme.globe.fillMin; })
+                    .polygonSideColor(function() { return ProtonTheme.alpha(ProtonTheme.black, 0); })
                     .polygonStrokeColor(function(feat) {
                         if (MapBridge.mode() === 'prospects') return ProtonTheme.globe.strokeDim;
                         var a2 = NUM_TO_A2[String(feat.id)];
@@ -955,6 +964,10 @@ var _globeRef = null, _showGlobePopupRef = null;
                     });
 
                 globeInstance(globeContainer);
+                if (surfaceStyle) {
+                    try { globeStyle = surfaceStyle.applyGlobeStyle(globeInstance, globeContainer); }
+                    catch (error) { console.warn('Globe surface unavailable:', error); }
+                }
 
                 // Auto-rotate
                 /* Only fleet mode idles. In Prospects the globe is a work surface --

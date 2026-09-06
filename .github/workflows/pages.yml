@@ -80,6 +80,7 @@ jobs:
           node site/tools/build-blog.js
           node site/tools/build-seo.js
           node site/tools/build-og.js
+          node tools/build-globe-assets.js
           node tools/build-order-catalogue.js
           node tools/build-asset-stamp.js
           if ! git diff --quiet; then
