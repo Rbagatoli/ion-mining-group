@@ -3,7 +3,7 @@ import * as T from './vendor/three-0.185.1/three.module.min.js';
 
 export const REGIONS=Object.freeze({
     permian:{lat:31.9,lon:-103.0},bakken:{lat:48.1,lon:-103.5},alberta:{lat:54.8,lon:-116.0},
-    'cold-lake':{lat:54.5,lon:-110.2},'niger-delta':{lat:5.1,lon:6.4}
+    'cold-lake':{lat:54.5,lon:-110.2},dubai:{lat:25.2,lon:55.3}
 });
 export function globePoint(lat,lon,radius=3.2){
     const a=lat*Math.PI/180,b=lon*Math.PI/180;

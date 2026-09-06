@@ -10,8 +10,7 @@
  *
  * The regions and their energy are real. The Permian and the Bakken flare associated gas because
  * the pipelines were never built to take it; Alberta vents solution gas at oil batteries, and does
- * it in a climate that halves the cost of cooling a container; the Niger Delta is one of the
- * largest flaring regions on earth. Those are facts about geography.
+ * it in a cold climate. Dubai is the UAE hosting region; its power source is to be confirmed.
  *
  * FOUR OF THE FIVE ARE IN NORTH AMERICA, which is a commercial choice rather than an accident:
  * two jurisdictions, one border, one language of contract, and machines that can be moved between
@@ -90,16 +89,16 @@ var Facilities = (function () {
             indicative: true
         },
         {
-            id: 'niger-delta',
-            region: 'Nigeria',
-            name: 'Niger Delta',
-            fuel: 'Flared associated gas',
-            blurb: 'One of the largest flaring regions in the world, with no local offtake.',
+            id: 'dubai',
+            region: 'United Arab Emirates',
+            name: 'Dubai',
+            fuel: 'Power source to be confirmed',
+            blurb: 'Hosting in Dubai, with site specifications confirmed on your hosting agreement.',
             capacityMw: 8,
             powerCents: 6.5,
             status: 'Fully occupied',
             statusKind: 'full',
-            leadTime: 'Waitlist open; second container bank in planning',
+            leadTime: 'Waitlist open; placement timing confirmed individually',
             indicative: true
         }
     ];

@@ -50,10 +50,10 @@ function fixture({fail=false,delay=false,search=''}={}){
         assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.all().length);
         assert.ok(!html.includes('hosting-terrain.js'));assert.ok(!html.includes('ht-stage'));
     });
-    const early=fixture({delay:true,search:'?site=cold-lake'});early.approach();early.click('[data-region="niger-delta"]');early.release();await settle();await settle();
+    const early=fixture({delay:true,search:'?site=cold-lake'});early.approach();early.click('[data-region="dubai"]');early.release();await settle();await settle();
     check('choices made while modules load survive scene initialization',()=>{
-        assert.equal(early.scenes.find(s=>s.kind==='globe').current,'niger-delta');
-        assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=niger-delta');
+        assert.equal(early.scenes.find(s=>s.kind==='globe').current,'dubai');
+        assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=dubai');
     });
     const gs=early.scenes.find(s=>s.kind==='globe');gs.cb.onReady();
     check('context loss disables only 3D controls and restores the latest region',()=>{

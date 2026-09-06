@@ -45,7 +45,7 @@ function card(s) {
     const cap = Facilities.capacityLabel(s);
     const pwr = Facilities.powerLabel(s);
     /* A site that cannot take machines today still gets a card, because "we are building one in
-       Nigeria" is information a customer wants — but it must not wear the same call to action as
+       Dubai" is information a customer wants — but it must not wear the same call to action as
        one that can. Saying "Start mining" over a site that is not accepting machines is the kind
        of small lie that becomes a refund. */
     const open = Facilities.acceptsMachines(s);

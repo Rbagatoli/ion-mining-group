@@ -54,7 +54,7 @@ export const CATALOGUE = {
 
    A site absent from this list is refused rather than accepted-and-ignored, so a mistyped
    or stale link cannot produce a paid order with no destination on it. */
-export const SITE_IDS = ["permian","bakken","alberta","cold-lake","niger-delta"];
+export const SITE_IDS = ["permian","bakken","alberta","cold-lake","dubai"];
 
 /* Sites that can actually receive machines today. A customer may hold a link to a site that
    has since filled up or has not been energised yet, and taking money against it would be
