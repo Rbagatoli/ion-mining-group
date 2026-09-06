@@ -33,22 +33,34 @@ function fixture({fail=false,delay=false,search=''}={}){
 (async()=>{
     const core=await import('../../site/mine-builder-scene.js'),tour=await import('../../site/hosting-tour-scene.js'),globe=await import('../../site/hosting-globe-scene.js'),world=await import('../../site/hosting-world-data.js');
     const T=await import('../../site/vendor/three-0.185.1/three.module.min.js');
-    check('tour uses six detailed hydro containers with power, cooling and an interior aisle',()=>{
+    check('the showcase contains exactly one hydro container and only its own systems',()=>{
         const model=tour.buildTour(core,false),{yard,unit}=model;
-        assert.equal(yard.containers.length,6);assert.equal(unit,yard.containers[4]);
-        assert.ok(unit.root.getObjectByName('interior-light-strips'));assert.ok(yard.root.getObjectByName('continuous-site-ground'));
-        for(const u of yard.containers){assert.equal(u.cooling,'hydro');assert.ok(u.root.getObjectByName('hydro-manifolds'));assert.ok(u.root.getObjectByName('closed-loop-dry-cooler'));}
+        assert.equal(yard.containers.length,1);assert.equal(unit,yard.containers[0]);
+        assert.ok(unit.root.getObjectByName('interior-light-strips'));assert.equal(yard.root.name,'single-container-showcase');
+        for(const id of ['generation','gas-conditioning','transformer','continuous-site-ground'])assert.equal(yard.root.getObjectByName(id),undefined);
+        assert.equal(unit.cooling,'hydro');assert.ok(unit.root.getObjectByName('hydro-manifolds'));assert.ok(unit.root.getObjectByName('closed-loop-dry-cooler'));
         let draws=0,triangles=0;
         yard.root.traverse(o=>{if(o.isMesh){draws++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);}});
-        assert.ok(draws<650);assert.ok(triangles<325000);
-        assert.ok(model.anchors.power.x < -15);assert.ok(model.anchors.miners.distanceTo(new T.Vector3(3,1.4,3.4))<3);
+        assert.ok(draws<120);assert.ok(triangles<65000);
+        for(const groups of Object.values(model.groups))for(const group of groups){let node=group;while(node&&node!==unit.root)node=node.parent;assert.equal(node,unit.root);}
+        assert.ok(model.anchors.power.x < -5);assert.ok(model.anchors.network.x>3);
         core.setSceneXray(yard,true);assert.equal(unit.skinMaterials[0].opacity,.15);core.setSceneXray(yard,false);assert.equal(unit.skinMaterials[0].opacity,1);
         core.disposeYard(yard);
     });
-    check('tour ends at human height inside the selected container, with distinct destinations',()=>{
-        assert.equal(new Set(tour.STOPS.map(s=>s.id)).size,5);
-        for(const s of tour.STOPS){assert.ok(s.position.every(Number.isFinite));assert.ok(s.target.every(Number.isFinite));assert.ok(s.position[1]>1);}
-        const p=tour.STOPS.at(-1).position;assert.ok(p[0]>-2.8&&p[0]<9.2&&p[2]>2.2&&p[2]<4.62&&p[1]<2.5);
+    check('all container views fit their equipment on desktop and mobile, including the lifted roof',()=>{
+        const model=tour.buildTour(core,false);assert.equal(new Set(tour.STOPS.map(s=>s.id)).size,5);
+        for(const aspect of [1142/610,348/460])for(let i=0;i<5;i++){
+            const pose=tour.containerPose(model,i,aspect),camera=new T.PerspectiveCamera(38,aspect,.06,600);
+            assert.ok(pose.position.toArray().every(Number.isFinite));
+            for(const angle of [-.09,0,.09]){
+                camera.position.copy(pose.position).sub(pose.target).applyAxisAngle(new T.Vector3(0,1,0),angle).add(pose.target);camera.lookAt(pose.target);camera.updateMatrixWorld();
+                for(const x of [pose.bounds.min.x,pose.bounds.max.x])for(const y of [pose.bounds.min.y,pose.bounds.max.y])for(const z of [pose.bounds.min.z,pose.bounds.max.z]){
+                    const p=new T.Vector3(x,y,z).project(camera);assert.ok(Math.abs(p.x)<.88&&Math.abs(p.y)<.74&&p.z<1);
+                }
+            }
+        }
+        assert.ok(tour.containerPose(model,4,1.8).bounds.max.y>model.bounds.shell.max.y+2);
+        core.disposeYard(model.yard);
     });
     check('every listed region has a finite, approximate globe marker',()=>{
         assert.deepEqual(Object.keys(globe.REGIONS),F.all().map(s=>s.id));
@@ -65,7 +77,7 @@ function fixture({fail=false,delay=false,search=''}={}){
         assert.ok(count>4000&&count<15000);
     });
     check('generated experiences preserve commercial disclosures, destinations and stamped modules',()=>{
-        assert.ok(html.includes('A representative facility walkthrough'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
+        assert.ok(html.includes('Representative hydro container'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
         for(const asset of ['hosting-experience.js','hosting-tour-scene.js','hosting-stage.js','hosting-globe-scene.js','hosting-world-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));
         assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.all().length);
         assert.ok(!html.includes('hosting-terrain.js'));assert.ok(!html.includes('ht-stage'));
@@ -83,11 +95,11 @@ function fixture({fail=false,delay=false,search=''}={}){
     check('context loss preserves the chosen tour stop and X-ray control state',()=>{
         early.click('[data-tour="xray"]');assert.equal(early.ref('tour','xray').getAttribute('aria-pressed'),'true');
         ts.cb.onError();early.click('[data-stop="2"]');assert.equal(early.ref('tour','reset').disabled,true);ts.cb.onRestore();ts.cb.onReady();assert.equal(ts.current,2);
-        early.click('[data-tour="inside"]');assert.equal(ts.current,4);early.click('[data-tour="inside"]');assert.equal(ts.current,3);
+        early.click('[data-tour="inside"]');assert.equal(ts.current,4);early.click('[data-tour="inside"]');assert.equal(ts.current,0);
     });
     const offline=fixture({fail:true});offline.approach();await settle();await settle();
     check('import failure leaves tour explanations and all regional pricing usable',()=>{
-        offline.click('[data-stop="1"]');assert.equal(offline.ref('tour','title').textContent,'It starts with power.');assert.equal(offline.ref('tour','xray').disabled,true);
+        offline.click('[data-stop="1"]');assert.equal(offline.ref('tour','title').textContent,'Power, right at the rack.');assert.equal(offline.ref('tour','xray').disabled,true);
         for(const site of F.all()){offline.click('[data-region="'+site.id+'"]');assert.equal(offline.ref('globe','capacity').textContent,F.capacityLabel(site));assert.equal(offline.ref('globe','rate').textContent,F.powerLabel(site));assert.equal(offline.ref('globe','cta').getAttribute('href'),'./hardware.html?site='+site.id);}
     });
     check('back-forward cache preserves scenes while final navigation disposes both scenes and fields',()=>{

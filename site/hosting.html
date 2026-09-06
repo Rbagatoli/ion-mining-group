@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=1a42c14e">
+<link rel="stylesheet" href="./styles.css?v=dd9fc891">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/hosting.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/hosting.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=1a42c14e">
-<link rel="stylesheet" href="./hosting-experience.css?v=1a42c14e">
+<link rel="stylesheet" href="./plant-viewer.css?v=dd9fc891">
+<link rel="stylesheet" href="./hosting-experience.css?v=dd9fc891">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -145,24 +145,25 @@
     <!-- hosting-experience:begin -->
     <div class="hx-experience" id="hosting-experience">
       <span id="hosting-terrain" aria-hidden="true"></span>
-      <section class="hx-panel" id="hosting-tour" aria-label="Walk through a mining facility">
-        <div class="hx-heading"><div><span class="eyebrow">A closer look</span><h3>Walk through the mine.</h3></div><span class="hx-model-note">Illustrative hydro facility</span></div>
-        <div class="hx-stops" data-tour="stops" role="group" aria-label="Choose a tour stop">
-          <button type="button" data-stop="0" aria-pressed="true"><span>01</span>Arrival</button>
+      <section class="hx-panel" id="hosting-tour" aria-label="Explore a single mining container">
+        <div class="hx-heading"><div><span class="eyebrow">A closer look</span><h3>Explore one container.</h3></div><span class="hx-model-note">Hydro-cooled mining container</span></div>
+        <div class="hx-stops" data-tour="stops" role="group" aria-label="Explore the container">
+          <button type="button" data-stop="0" aria-pressed="true"><span>01</span>Exterior</button>
           <button type="button" data-stop="1" aria-pressed="false"><span>02</span>Power</button>
           <button type="button" data-stop="2" aria-pressed="false"><span>03</span>Cooling</button>
-          <button type="button" data-stop="3" aria-pressed="false"><span>04</span>The aisle</button>
-          <button type="button" data-stop="4" aria-pressed="false"><span>05</span>Your miners</button>
+          <button type="button" data-stop="3" aria-pressed="false"><span>04</span>Network</button>
+          <button type="button" data-stop="4" aria-pressed="false"><span>05</span>Inside</button>
         </div>
         <div class="hx-stage hx-tour-stage" data-tour="surface">
           <canvas class="anim-field hx-field" data-tour="field" aria-hidden="true"></canvas>
           <div class="hx-canvas" data-tour="canvas"></div>
-          <div class="hx-fallback" data-tour="fallback"><span class="hx-fallback-mark" aria-hidden="true">P</span><p data-tour="message">The walkthrough loads as you approach. Choose a stop to explore how a mine works.</p></div>
-          <div class="hx-caption"><span data-tour="eyebrow">01 / Welcome to the mine</span><span class="hx-powered">Energized model</span></div>
+          <div class="hx-fallback" data-tour="fallback"><span class="hx-fallback-mark" aria-hidden="true">P</span><p data-tour="message">The container loads as you approach. Explore its exterior, cooling, power and mining racks.</p></div>
+          <div class="hx-caption"><span data-tour="eyebrow">01 / The complete container</span><span class="hx-powered">Energized model</span></div>
           <div class="hx-hotspots" data-tour="hotspots" aria-label="Equipment callouts">
             <button type="button" data-hotspot="power" data-visit="1" hidden><i></i>Power</button>
             <button type="button" data-hotspot="cooling" data-visit="2" hidden><i></i>Cooling</button>
-            <button type="button" data-hotspot="miners" data-visit="4" hidden><i></i>Your miners</button>
+            <button type="button" data-hotspot="network" data-visit="3" hidden><i></i>Network</button>
+            <button type="button" data-hotspot="miners" data-visit="4" hidden><i></i>Miner racks</button>
           </div>
           <div class="hx-stage-foot"><span>Drag to look around · pinch or scroll to zoom</span><span data-tour="progress">01 — 05</span></div>
         </div>
@@ -170,12 +171,12 @@
           <button type="button" data-tour="inside" aria-pressed="false">Inside a container</button>
           <button type="button" class="hx-xray" data-tour="xray" aria-pressed="false" disabled>X-ray off</button>
           <span class="hx-tool-spacer"></span>
-          <button type="button" data-tour="out" aria-label="Zoom out of the tour" disabled>−</button>
-          <button type="button" data-tour="in" aria-label="Zoom into the tour" disabled>+</button>
+          <button type="button" data-tour="out" aria-label="Zoom out from the container" disabled>−</button>
+          <button type="button" data-tour="in" aria-label="Zoom into the container" disabled>+</button>
           <button type="button" data-tour="reset" disabled>Reset view</button>
         </div>
-        <div class="hx-story"><div aria-live="polite" aria-atomic="true"><h4 data-tour="title">Step onto the site.</h4><p data-tour="text">Explore the infrastructure behind a hosted miner, from the power supply to the rack where it runs.</p></div><button type="button" class="hx-next" data-tour="next">Next: Power <span aria-hidden="true">↗</span></button></div>
-        <p class="hx-note">A representative facility walkthrough. Equipment and layout vary by site.</p>
+        <div class="hx-story"><div aria-live="polite" aria-atomic="true"><h4 data-tour="title">One container, fully equipped.</h4><p data-tour="text">Explore the shell, rooftop cooling, power distribution and mining racks inside a single hydro-cooled container.</p></div><button type="button" class="hx-next" data-tour="next">Next: Power <span aria-hidden="true">↗</span></button></div>
+        <p class="hx-note">Representative hydro container. Equipment and layout vary by configuration.</p>
       </section>
       <section class="hx-panel hx-globe-panel" id="hosting-globe" aria-label="Explore hosting regions on the globe">
         <div class="hx-heading"><div><span class="eyebrow">Find your region</span><h3>Explore the hosting regions.</h3></div><span class="hx-model-note">Select a region to explore</span></div>
@@ -812,16 +813,16 @@
   </div>
 </footer>
 
-<script src="./site.js?v=1a42c14e"></script>
-<script src="./cart.js?v=1a42c14e"></script>
-<script src="./diagram-engine.js?v=1a42c14e"></script>
-<script src="./hero-anim.js?v=1a42c14e"></script>
-<script src="./site-kit.js?v=1a42c14e"></script>
-<script src="./scene-hosting.js?v=1a42c14e"></script>
-<script src="./scene-asic.js?v=1a42c14e"></script>
-<script src="./plant-viewer.js?v=1a42c14e" data-module-src="./mine-builder-scene.js?v=1a42c14e"></script>
-<script src="./facilities.js?v=1a42c14e"></script>
-<script src="./hosting-experience.js?v=1a42c14e" data-globe-src="./hosting-globe-scene.js?v=1a42c14e" data-world-src="./hosting-world-data.js?v=1a42c14e" data-tour-src="./hosting-tour-scene.js?v=1a42c14e" data-stage-src="./hosting-stage.js?v=1a42c14e" data-core-src="./mine-builder-scene.js?v=1a42c14e"></script>
+<script src="./site.js?v=dd9fc891"></script>
+<script src="./cart.js?v=dd9fc891"></script>
+<script src="./diagram-engine.js?v=dd9fc891"></script>
+<script src="./hero-anim.js?v=dd9fc891"></script>
+<script src="./site-kit.js?v=dd9fc891"></script>
+<script src="./scene-hosting.js?v=dd9fc891"></script>
+<script src="./scene-asic.js?v=dd9fc891"></script>
+<script src="./plant-viewer.js?v=dd9fc891" data-module-src="./mine-builder-scene.js?v=dd9fc891"></script>
+<script src="./facilities.js?v=dd9fc891"></script>
+<script src="./hosting-experience.js?v=dd9fc891" data-globe-src="./hosting-globe-scene.js?v=dd9fc891" data-world-src="./hosting-world-data.js?v=dd9fc891" data-tour-src="./hosting-tour-scene.js?v=dd9fc891" data-stage-src="./hosting-stage.js?v=dd9fc891" data-core-src="./mine-builder-scene.js?v=dd9fc891"></script>
 
 
 

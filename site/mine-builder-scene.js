@@ -736,7 +736,7 @@ function finishScene(root, mats, containers = [], extra = {}) {
         width:size.x,depth:size.z,bounds,...extra};
 }
 
-function buildHostedContainer() {
+export function buildHostedContainer() {
     const mats = palette(), root = new THREE.Group(), unit = containerUnit(mats,'hydro',1);
     instances(root,mats.ground,[[0,-.24,0,14.3,.44,5.2]]);
     instances(root,mats.edge,[[0,-.01,2.6,14.3,.05,.05],[0,-.01,-2.6,14.3,.05,.05]]);

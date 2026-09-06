@@ -1,27 +1,17 @@
-/* A continuous, representative hosting facility. No claimed site survey or live telemetry. */
+/* One hydro container throughout: exterior, its systems and an opened interior. */
 import * as T from './vendor/three-0.185.1/three.module.min.js';
 
 export const STOPS = Object.freeze([
-    {id:'arrival',title:'Step onto the site.',label:'Arrival',eyebrow:'01 / Welcome to the mine',
-        text:'Explore the infrastructure behind a hosted miner, from the power supply to the rack where it runs.',
-        position:[28,5.2,18],target:[5,1.5,2],part:'fleet'},
-    {id:'power',title:'It starts with power.',label:'Power',eyebrow:'02 / Generation & distribution',
-        text:'Gas engines drive the generators. Switchgear and transformers distribute that power to the mining containers.',
-        position:[-28,4,8],target:[-22,1.7,-1],part:'power'},
-    {id:'cooling',title:'Keep the heat moving.',label:'Cooling',eyebrow:'03 / The hydro cooling loop',
-        text:'Coolant carries heat away from the miners. Pumps circulate it through the loop, and rooftop dry coolers release the heat to the air.',
-        position:[11,8,10],target:[3.2,3.25,3.4],part:'cooling'},
-    {id:'aisle',title:'Between the containers.',label:'The aisle',eyebrow:'04 / Access to every container',
-        text:'Walk the service aisle between the container rows. Access to power, cooling connections and the equipment stays close at hand.',
-        position:[23,2.35,0],target:[-5,1.5,0],part:'fleet'},
-    {id:'miners',title:'Meet the mining fleet.',label:'Your miners',eyebrow:'05 / Inside a container',
-        text:'Follow the rack of hydro miners, their coolant connections and network equipment. Pool payouts go directly to the wallet you choose.',
-        position:[7.3,1.8,4.45],target:[-.6,1.38,3.73],part:'miners'}
+    {id:'exterior',part:'shell',direction:[.8,.55,1.3],open:false},
+    {id:'power',part:'power',direction:[.35,.25,1.2],open:true},
+    {id:'cooling',part:'cooling',direction:[.65,1.25,1.3],open:false},
+    {id:'network',part:'network',direction:[-.55,.2,1.2],open:true},
+    {id:'miners',part:'miners',direction:[.40,.42,1.4],open:true}
 ]);
 
 function batch(root,geometry,material,items,name) {
     const mesh=new T.InstancedMesh(geometry,material,items.length),p=new T.Object3D();mesh.name=name;
-    items.forEach((a,i)=>{p.position.set(...a.slice(0,3));p.scale.set(...a.slice(3,6));p.rotation.set(0,a[6]||0,0);p.updateMatrix();mesh.setMatrixAt(i,p.matrix);});
+    items.forEach((a,i)=>{p.position.set(...a.slice(0,3));p.scale.set(...a.slice(3,6));p.updateMatrix();mesh.setMatrixAt(i,p.matrix);});
     mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
 function sign(root,text,x,y,z,width,height,rotation=0) {
@@ -33,83 +23,95 @@ function sign(root,text,x,y,z,width,height,rotation=0) {
     mesh.position.set(x,y,z);mesh.rotation.y=rotation;root.add(mesh);return texture;
 }
 export function buildTour(core,withSigns=true) {
-    const yard=core.buildYard({containers:6,count:1440,perContainer:240,generators:3,settings:{cooling:'hydro',source:'gas'}});
-    const detail=new T.Group();detail.name='tour-site-details';yard.root.add(detail);
-    const box=new T.BoxGeometry(1,1,1),pale=new T.MeshStandardMaterial({color:0xb3b3af,metalness:.93,roughness:.27});
-    const light=new T.MeshStandardMaterial({color:0xffd8a0,emissive:0xf7931a,emissiveIntensity:2.1});
-    const floor=new T.Mesh(new T.PlaneGeometry(300,300),new T.MeshStandardMaterial({color:0x111214,roughness:.43,metalness:.44}));
-    floor.rotation.x=-Math.PI/2;floor.position.y=-.03;floor.receiveShadow=true;floor.name='continuous-site-ground';detail.add(floor);
-    const bollards=[],bands=[],markings=[],poles=[],lamps=[];
-    for(const x of [-19,-4.5,10,25])for(const z of [-5.5,5.5]) {
-        bollards.push([x,.45,z,.13,.9,.13]);bands.push([x,.65,z,.14,.1,.14]);
-    }
-    for(let x=-22;x<30;x+=3) markings.push([x,.005,0,1.25,.012,.055]);
-    for(const z of [-7,8])for(const x of [-19,10,25]) {
-        poles.push([x,2.7,z,.08,5.4,.08],[x,5.4,z-.5,.08,.08,1.08]);lamps.push([x,5.32,z-1,.48,.045,.3]);
-    }
-    batch(detail,box,pale,bollards.concat(poles),'site-metalwork');batch(detail,box,yard.mats.orange,bands.concat(markings),'aisle-markers');batch(detail,box,light,lamps,'site-lights');
-    const unit=yard.containers[4],textures=[];
-    const strips=[];for(const x of [-1.6,1.6])strips.push([x,2.61,.91,2.6,.025,.035]);
-    batch(unit.root,box,light,strips,'interior-light-strips');
-    // The side access opens for the last stop; the roof stays in place above the visitor.
-    const spots=new T.Group();spots.name='interior-lighting';unit.root.add(spots);
-    for(const x of [-3,2]) {const lamp=new T.PointLight(0xffe7cd,9,7,1.4);lamp.position.set(x,2.4,.92);spots.add(lamp);}
-    if(withSigns) {
-        yard.containers.forEach((u,i)=>{textures.push(sign(u.wall,'PROTON  /  '+String(i+1).padStart(2,'0'),0,1.87,1.355,3,.375));
-            textures.push(sign(u.root,String(i+1).padStart(2,'0')+' / HYDRO',0,1.85,-1.31,2.9,.36,Math.PI));});
+    const yard=core.buildHostedContainer(),unit=yard.containers[0],textures=[];
+    yard.root.name='single-container-showcase';
+    const box=new T.BoxGeometry(1,1,1),light=new T.MeshStandardMaterial({color:0xffd8a0,emissive:0xf7931a,emissiveIntensity:1.3});
+    batch(unit.root,box,light,[-3.7,0,3.7].map(x=>[x,2.61,.91,2.6,.025,.035]),'interior-light-strips');
+    // Small fasteners and feet make the isolated shell read as equipment at close range.
+    const hardware=[];
+    for(const x of [-5.98,5.98])for(const z of [-1.26,1.26])for(const y of [.35,2.5])hardware.push([x,y,z,.07,.055,.04]);
+    for(const x of [-5,0,5])for(const z of [-.9,.9])hardware.push([x,.035,z,.55,.08,.42]);
+    batch(unit.root,box,yard.mats.silver,hardware,'container-fasteners');
+    for(const x of [-3,2]){const lamp=new T.PointLight(0xffe7cd,5,7,1.4);lamp.position.set(x,2.35,.9);unit.root.add(lamp);}
+    if(withSigns){
+        textures.push(sign(unit.wall,'PROTON  /  HYDRO',0,1.9,1.355,3.5,.44));
+        textures.push(sign(unit.root,'PROTON  /  HYDRO',0,1.9,-1.31,3.5,.44,Math.PI));
         textures.push(sign(unit.root,'HYDRO  /  MINING RACK',-.6,2.45,.5,3.6,.24));
     }
     yard.root.updateMatrixWorld(true);
-    const groups={fleet:yard.containers.map(u=>u.root),power:[yard.targets.gen,yard.targets.gas,yard.targets.xfmr],
-        cooling:yard.containers.map(u=>u.roof),miners:[unit.rack,unit.pdu,unit.network,unit.root.getObjectByName('hydro-manifolds')]};
-    const anchors={};for(const id of ['power','cooling','miners']){const bounds=new T.Box3();groups[id].forEach(g=>bounds.union(new T.Box3().setFromObject(g)));anchors[id]=bounds.getCenter(new T.Vector3());}
-    return {yard,unit,groups,textures,anchors};
+    const groups={shell:[unit.root],power:[unit.pdu],cooling:[unit.roof,unit.root.getObjectByName('external-liquid-loop')],
+        network:[unit.network],miners:[unit.rack,unit.root.getObjectByName('hydro-manifolds'),unit.root.getObjectByName('coolant-distribution-unit')]};
+    const bounds={},anchors={};
+    for(const [id,parts]of Object.entries(groups)){bounds[id]=new T.Box3();parts.forEach(p=>bounds[id].union(new T.Box3().setFromObject(p)));anchors[id]=bounds[id].getCenter(new T.Vector3());}
+    anchors.cooling.set(0,3.5,0);
+    for(const id of ['power','network','miners'])anchors[id].y=bounds[id].max.y+.08;
+    return {yard,unit,groups,textures,bounds,anchors};
+}
+
+// Fit the chosen equipment to portrait and landscape windows, with space for
+// the quiet oscillation. Every destination belongs to the same container.
+export function containerPose(model,index,aspect){
+    const stop=STOPS[index],bounds=model.bounds[stop.part].clone();
+    if(index===4){bounds.copy(model.bounds.shell);bounds.max.y+=2.2;}
+    if(index===1)bounds.expandByScalar(.38);
+    if(index===3)bounds.expandByScalar(.65);
+    const target=bounds.getCenter(new T.Vector3()),direction=new T.Vector3(...stop.direction).normalize();
+    const tanV=Math.tan(38*Math.PI/360),tanH=tanV*Math.max(.2,aspect),axis=new T.Vector3(0,1,0);
+    let distance=1;
+    for(const angle of [-.10,0,.10]){
+        const toward=direction.clone().applyAxisAngle(axis,angle),right=new T.Vector3().crossVectors(axis,toward).normalize(),up=new T.Vector3().crossVectors(toward,right);
+        for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){
+            const p=new T.Vector3(x,y,z).sub(target),depth=p.dot(toward);
+            distance=Math.max(distance,depth+Math.abs(p.dot(right))/(tanH*.86),depth+Math.abs(p.dot(up))/(tanV*.72));
+        }
+    }
+    return {position:target.clone().addScaledVector(direction,distance*1.02),target,bounds};
 }
 
 export function mountTour(host,core,runtime,callbacks={}) {
     const model=buildTour(core),{yard,unit}=model;
-    let current=0,xray=false,open=0,frame=null,highlightedMaterials=[];
-    const stage=runtime.createStage(host,{shadows:true,surface:callbacks.surface,
-        label:'3D mine walkthrough. Drag to look around. Pinch or scroll to zoom. Arrow keys rotate, plus and minus zoom. Escape resets this stop. X toggles X-ray.',
+    let current=0,xray=false,open=0,roof=0,frame=null,highlightedMaterials=[],stage;
+    stage=runtime.createStage(host,{shadows:true,surface:callbacks.surface,
+        label:'Explore one hydro mining container. Drag to rotate. Pinch or scroll to zoom. Arrow keys rotate, plus and minus zoom. Escape resets this view. X toggles X-ray.',
         onReady:callbacks.onReady,onError:callbacks.onError,onRestore:callbacks.onRestore,
-        onReset:()=>visit(current),onXray:()=>setXray(!xray),
-        tick(dt,time,reduced) {
-            yard.mats.led.emissiveIntensity=2.4;yard.mats.flow.emissiveIntensity=1.2;
+        onResize:()=>{if(stage)visit(current,true);},onReset:()=>visit(current),onXray:()=>setXray(!xray),
+        tick(dt,time,reduced){
+            yard.mats.led.emissiveIntensity=2.1;
             if(!reduced)yard.fans.forEach(f=>{f.rotation.y+=dt*7;});
-            const target=current===4?1:0;open=reduced?target:T.MathUtils.damp(open,target,7,dt);
-            unit.wall.visible=open<.95;unit.wall.position.z=open*2.8;unit.wall.position.y=open*.8;
-            yard.pulses.forEach(p=>{p.mesh.visible=!reduced;p.mesh.position.copy(p.curve.getPoint((time*.12+p.offset)%1));});
+            const opening=STOPS[current].open?1:0,lift=current===4?2.2:0;
+            open=reduced?opening:T.MathUtils.damp(open,opening,7,dt);roof=reduced?lift:T.MathUtils.damp(roof,lift,7,dt);
+            unit.wall.visible=open<.95;unit.wall.position.z=open*2.5;unit.wall.position.y=open*.6;unit.roof.position.y=roof;
             callbacks.onProject?.(project());
         }
     });
-    stage.world.fog=new T.FogExp2(0x030405,.013);stage.world.add(yard.root);
-    function visit(index,instant=false) {
+    stage.camera.fov=38;stage.camera.updateProjectionMatrix();stage.world.add(yard.root);
+    function visit(index,instant=false){
         if(!Number.isInteger(index)||!STOPS[index])return;
-        current=index;const stop=STOPS[index];highlight(null);
-        stage.controls.minDistance=index===4?.8:2;stage.controls.maxDistance=index===4?16:75;
-        stage.move(stop.position,stop.target,{instant,lift:index===4?9:12,duration:index===4?2.6:2.2});
+        current=index;highlight(null);
+        const pose=containerPose(model,index,stage.camera.aspect),distance=pose.position.distanceTo(pose.target);
+        stage.controls.minDistance=Math.max(.5,distance*.12);stage.controls.maxDistance=Math.max(25,distance*2);
+        stage.move(pose.position.toArray(),pose.target.toArray(),{instant,lift:2.5,duration:1.7});
         callbacks.onStop?.(index);stage.wake();
     }
-    function setXray(value) {highlight(null);xray=!!value;core.setSceneXray(yard,xray);callbacks.onXray?.(xray);stage.wake();}
-    function highlight(id) {
-        for(const [mesh,original,clone] of highlightedMaterials){mesh.material=original;clone.dispose();}
-        highlightedMaterials=[];
+    function setXray(value){highlight(null);xray=!!value;core.setSceneXray(yard,xray);callbacks.onXray?.(xray);stage.wake();}
+    function highlight(id){
+        for(const [mesh,original,clone]of highlightedMaterials){mesh.material=original;clone.dispose();}highlightedMaterials=[];
         if(frame){stage.world.remove(frame);frame.geometry.dispose();frame.material.dispose();frame=null;}
-        if(id && model.groups[id]) {
+        if(id&&model.groups[id]){
             const bounds=new T.Box3();
             model.groups[id].forEach(group=>{bounds.union(new T.Box3().setFromObject(group));group.traverse(o=>{
                 if(!o.material?.emissive)return;
-                const original=o.material,clone=original.clone();o.material=clone;highlightedMaterials.push([o,original,clone]);
-                clone.emissive.set(0xf7931a);clone.emissiveIntensity=.16;
+                const original=o.material,clone=original.clone();o.material=clone;highlightedMaterials.push([o,original,clone]);clone.emissive.set(0xf7931a);clone.emissiveIntensity=.16;
             });});
-            frame=new T.Box3Helper(bounds.expandByScalar(.11),0xf7931a);frame.material.transparent=true;frame.material.opacity=.72;stage.world.add(frame);
+            frame=new T.Box3Helper(bounds.expandByScalar(.08),0xf7931a);frame.material.transparent=true;frame.material.opacity=.7;frame.material.depthTest=false;stage.world.add(frame);
         }
         stage.wake();
     }
-    function project() {
-        return ['power','cooling','miners'].map(id=>{
-            const p=model.anchors[id].clone().project(stage.camera);
-            return {id,x:(p.x+1)/2,y:(1-p.y)/2,visible:p.z>-1&&p.z<1&&Math.abs(p.x)<.9&&Math.abs(p.y)<.8};
+    function project(){
+        return ['power','cooling','network','miners'].map(id=>{
+            const p=model.anchors[id].clone();if(id==='cooling')p.y+=roof;p.project(stage.camera);
+            const relevant=current===0||current===4||STOPS[current].part===id;
+            return{id,x:(p.x+1)/2,y:(1-p.y)/2,visible:relevant&&p.z>-1&&p.z<1&&Math.abs(p.x)<.88&&Math.abs(p.y)<.75};
         });
     }
     visit(0,true);
