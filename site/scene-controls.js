@@ -1,11 +1,14 @@
-/* Shared mouse panning for the website's OrbitControls scenes. */
+/* Shared rotation sensitivity and panning for the website's OrbitControls scenes. */
 import { MOUSE, Vector3 } from './vendor/three-0.185.1/three.module.min.js';
+
+const MOUSE_ROTATION_SPEED = .4, TOUCH_ROTATION_SPEED = .2;
 
 export function enableScenePan(controls, canvas) {
     controls.enablePan = true;
     controls.screenSpacePanning = true;
     controls.mouseButtons.LEFT = MOUSE.PAN;
     controls.mouseButtons.RIGHT = MOUSE.ROTATE;
+    controls.rotateSpeed = MOUSE_ROTATION_SPEED;
     const document = canvas.ownerDocument, camera = controls.object;
     const right = new Vector3(), up = new Vector3(), delta = new Vector3();
     let pointer = null, shifted = false;
@@ -21,6 +24,9 @@ export function enableScenePan(controls, canvas) {
         controls.dispatchEvent({type:'start'});
     }
     function down(event) {
+        // Set before OrbitControls handles the first contact; hybrid devices
+        // use the sensitivity for the actual input, rather than screen size.
+        controls.rotateSpeed = event.pointerType === 'touch' ? TOUCH_ROTATION_SPEED : MOUSE_ROTATION_SPEED;
         if (event.pointerType !== 'mouse') { shifted = false; return; }
         if (!controls.enabled) return;
         pointer = {id:event.pointerId,x:event.clientX,y:event.clientY,shift:false};

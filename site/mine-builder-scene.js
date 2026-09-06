@@ -3,7 +3,7 @@
 import * as THREE from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
-import { enableScenePan } from './scene-controls.js?v=2';
+import { enableScenePan } from './scene-controls.js?v=3';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYLINDER = new THREE.CylinderGeometry(1, 1, 1, 16);

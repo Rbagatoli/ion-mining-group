@@ -365,6 +365,28 @@ class Surface {
         return host.canvas.fire(type,{pointerType:'touch',pointerId:id,button:0,buttons:type === 'pointerup' ? 0 : 1,
             clientX:x,clientY:y,pageX:x,pageY:y+2400,cancelable:true});
     }
+    check('first-contact rotation is controlled on desktop and gentler on touch, including hybrid input changes', () => {
+        api.setConfig({view:'site',definition:definition('site')}); flush();
+        for (const [input,width,height,pixels,min,max] of [
+            ['mouse',1280,470,100,28,33],
+            ['touch',390,290,80,18,22],
+            ['mouse',390,290,80,37,42]
+        ]) {
+            host.clientWidth=width; host.clientHeight=height; resizeScene(); api.reset(); flush();
+            const before=controls.getAzimuthalAngle(), target=controls.target.clone(), radius=renderer.camera.position.distanceTo(target);
+            if (input==='touch') {
+                touch('pointerdown',1,150,150); touch('pointermove',1,150+pixels,150); touch('pointerup',1,150+pixels,150);
+            } else {
+                mouse('pointerdown',2,2,150,150); mouse('pointermove',-1,2,150+pixels,150); mouse('pointerup',2,0,150+pixels,150);
+            }
+            flush();
+            const delta=controls.getAzimuthalAngle()-before, degrees=Math.abs(Math.atan2(Math.sin(delta),Math.cos(delta)))*180/Math.PI;
+            assert.ok(degrees>min && degrees<max,input+' at '+width+'px turns by a controlled '+degrees.toFixed(1)+' degrees');
+            assert.ok(controls.target.distanceTo(target)<1e-8,'rotation keeps the chosen center');
+            assert.ok(Math.abs(renderer.camera.position.distanceTo(target)-radius)<1e-8,'rotation preserves zoom');
+        }
+        host.clientWidth=1280; host.clientHeight=470; resizeScene(); api.reset(); flush();
+    });
     function touchGestures(label) {
         assert.equal(host.canvas.style.touchAction,'none',label+' owns the gesture before it starts');
         const before = renderer.camera.position.clone(), radius = before.distanceTo(controls.target), eventCount = events.length;
