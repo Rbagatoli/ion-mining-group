@@ -36,10 +36,10 @@
 .hx-globe-stage { background:radial-gradient(ellipse at 50% 45%,rgba(94,108,121,.13),transparent 66%),#030405; }
 .hx-globe-leaders,.hx-globe-markers { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
 .hx-globe-leaders line { stroke:var(--btc-300); stroke-width:1; opacity:.72; vector-effect:non-scaling-stroke; }
-.hx-globe-markers button { position:absolute; transform:translate(-50%,-50%); width:44px; height:44px; padding:6px; display:grid; place-items:center; border:0; border-radius:50%; color:var(--plat-100); background:transparent; font:600 11px/1 var(--mono); pointer-events:auto; cursor:pointer; }
-.hx-marker-face { display:grid; place-items:center; width:32px; height:32px; border:1px solid #f6b55e; border-radius:50%; background:linear-gradient(145deg,#737571 0%,#262c31 24%,#111820 57%,#363e45 100%); box-shadow:inset 0 1px 0 #f4f1e855,inset 0 -2px 3px #0009,0 2px 4px #000b; text-shadow:0 1px 1px #000; }
-.hx-globe-markers button:hover .hx-marker-face,.hx-globe-markers button:focus-visible .hx-marker-face { border-color:#ffe0ab; box-shadow:inset 0 1px 0 #fff8,0 0 0 2px #f7931a45; }
-.hx-globe-markers button[aria-pressed="true"] .hx-marker-face { background:var(--metal-btc-btn); color:#100b05; border-color:#ffd292; text-shadow:0 1px 0 #fff4; box-shadow:inset 0 1px 0 #fff9,inset 0 -2px 2px #5a23008c,0 2px 5px #000b; }
+.hx-globe-markers button { position:absolute; transform:translate(-50%,-50%); width:44px; height:44px; padding:6px; display:grid; place-items:center; border:0; border-radius:0; color:var(--plat-100); background:transparent; font:600 11px/1 var(--mono); pointer-events:auto; cursor:pointer; }
+.hx-marker-face { display:grid; place-items:center; width:30px; height:24px; border:1px solid #a0a4a6; border-left:2px solid #f7931a; border-radius:0; background:#151a1f; box-shadow:0 1px 3px #0008; letter-spacing:.04em; }
+.hx-globe-markers button:hover .hx-marker-face,.hx-globe-markers button:focus-visible .hx-marker-face { border-color:#f7931a; color:#f7c280; outline:1px solid #f7931a; outline-offset:2px; }
+.hx-globe-markers button[aria-pressed="true"] .hx-marker-face { background:#f7931a; color:#100b05; border-color:#ffb858; box-shadow:0 1px 3px #0008; }
 .hx-globe-place { position:absolute; z-index:2; bottom:70px; right:30px; max-width:240px; text-align:right; pointer-events:none; text-shadow:0 1px 8px #000; }
 .hx-globe-place span { display:block; font:12px/1.6 var(--mono); color:var(--btc-200); }
 .hx-globe-place strong { display:block; font:500 25px/1.2 var(--sans); margin-top:6px; color:var(--plat-200); letter-spacing:-.03em; }

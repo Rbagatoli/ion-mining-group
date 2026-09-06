@@ -3,11 +3,12 @@ import { MOUSE, Vector3 } from './vendor/three-0.185.1/three.module.min.js';
 
 const MOUSE_ROTATION_SPEED = .4, TOUCH_ROTATION_SPEED = .2;
 
-export function enableScenePan(controls, canvas) {
-    controls.enablePan = true;
+export function enableScenePan(controls, canvas, {pan = true} = {}) {
+    controls.enablePan = pan;
     controls.screenSpacePanning = true;
-    controls.mouseButtons.LEFT = MOUSE.PAN;
-    controls.mouseButtons.RIGHT = MOUSE.ROTATE;
+    controls.mouseButtons.LEFT = pan ? MOUSE.PAN : MOUSE.ROTATE;
+    controls.mouseButtons.RIGHT = pan ? MOUSE.ROTATE : null;
+    if (!pan) controls.mouseButtons.MIDDLE = null;
     controls.rotateSpeed = MOUSE_ROTATION_SPEED;
     const document = canvas.ownerDocument, camera = controls.object;
     const right = new Vector3(), up = new Vector3(), delta = new Vector3();
@@ -31,7 +32,7 @@ export function enableScenePan(controls, canvas) {
         if (!controls.enabled) return;
         pointer = {id:event.pointerId,x:event.clientX,y:event.clientY,shift:false};
         shifted = false; // A stationary left click can still select equipment.
-        if ((event.buttons & 3) === 3) {
+        if (pan && (event.buttons & 3) === 3) {
             beginShift(event);
             canvas.setPointerCapture(event.pointerId);
         }
@@ -39,7 +40,7 @@ export function enableScenePan(controls, canvas) {
     function move(event) {
         if (!pointer || pointer.id !== event.pointerId) return;
         if ((event.buttons & 1) && Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y)>7) shifted = true;
-        if (!pointer.shift && (event.buttons & 3) === 3) beginShift(event);
+        if (pan && !pointer.shift && (event.buttons & 3) === 3) beginShift(event);
         if (!pointer.shift) return;
         event.preventDefault();
         const dx = event.clientX-pointer.x, dy = event.clientY-pointer.y;

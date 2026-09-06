@@ -38,6 +38,35 @@ class Surface {
     const T = await import('../../site/vendor/three-0.185.1/three.module.min.js');
     const {OrbitControls} = await import('../../site/vendor/three-0.185.1/OrbitControls.js');
     const {enableScenePan} = await import('../../site/scene-controls.js');
+    check('globe navigation rotates with left contact and keeps a fixed center through mouse and touch gestures', () => {
+        const doc=new Surface(),canvas=new Surface(),camera=new T.PerspectiveCamera(48,1,.06,100);
+        doc.appendChild(canvas);camera.position.set(0,0,10);
+        const orbit=new OrbitControls(camera,canvas),navigation=enableScenePan(orbit,canvas,{pan:false});
+        const fire=(type,button,buttons,x,y,id=9,input='mouse')=>canvas.fire(type,{pointerId:id,pointerType:input,button,buttons,clientX:x,clientY:y,pageX:x,pageY:y});
+        const start=camera.position.clone();
+        fire('pointerdown',0,1,450,220);fire('pointermove',-1,1,510,230);fire('pointerup',0,0,510,230);
+        assert.ok(camera.position.distanceTo(start)>.1);assert.ok(Math.abs(camera.position.length()-10)<1e-8);
+        assert.equal(orbit.rotateSpeed,.4);assert.equal(navigation.wasShiftGesture(),true);
+        const rotated=camera.position.clone();
+        fire('pointerdown',2,2,450,220);fire('pointermove',-1,2,510,230);fire('pointerup',2,0,510,230);
+        assert.ok(camera.position.distanceTo(rotated)<1e-8,'right drag is inactive');
+        for(const button of [0,2]){
+            fire('pointerdown',button,button===0?1:2,450,220);fire('pointermove',-1,3,460,230);
+            fire('pointermove',-1,3,520,250);fire('pointerup',button,0,520,250);
+            assert.ok(orbit.target.length()<1e-8,'both mouse buttons cannot shift the center');assert.equal(orbit.enabled,true);
+        }
+        const beforeTouch=camera.position.clone();
+        fire('pointerdown',0,1,450,220,1,'touch');fire('pointermove',0,1,510,230,1,'touch');fire('pointerup',0,0,510,230,1,'touch');
+        assert.ok(camera.position.distanceTo(beforeTouch)>.1);assert.equal(orbit.rotateSpeed,.2);
+        const gesture=(a,b)=>{
+            fire('pointerdown',0,1,450,220,1,'touch');fire('pointerdown',0,1,500,220,2,'touch');
+            fire('pointermove',0,1,...a,1,'touch');fire('pointermove',0,1,...b,2,'touch');
+            fire('pointerup',0,0,...a,1,'touch');fire('pointerup',0,0,...b,2,'touch');
+        };
+        gesture([470,232],[520,232]);assert.ok(orbit.target.length()<1e-8,'two-finger translation cannot pan');
+        const beforePinch=camera.position.length();gesture([420,220],[530,220]);assert.ok(camera.position.length()<beforePinch,'pinch still zooms');
+        assert.ok(orbit.target.length()<1e-8);navigation.dispose();orbit.dispose();
+    });
     const shared = await import('../../site/mine-builder-scene.js');
     const {buildYard,yardCameraPose,setSceneXray,setSceneProgress,wheelZoomFactor} = shared;
     const buildPresentation = view => shared.buildPresentation(view,definition(view));

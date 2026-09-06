@@ -56,7 +56,7 @@
             try{
                 var m=await Promise.all([get('globe'),get('world'),get('stage')]);if(gone)return;
                 var pending=selected.id;
-                globeScene=m[0].mountGlobe(g.canvas,m[1].LAND,m[2],{surface:g.surface,lakes:m[1].LAKES,
+                globeScene=m[0].mountGlobe(g.canvas,m[1].LAND,m[2],{surface:g.surface,lakes:m[1].LAKES,borders:m[1].BORDERS,
                     onReady:function(){globeFailed=false;globe.classList.add('hx-ready');g.fallback.hidden=true;globeControls(true);},onError:globeFailure,
                     onRestore:function(){globeScene.select(selected.id,true);},onSelect:function(id){selected=F.byId(id);regionDetails();},onProject:positionMarkers
                 });globeScene.select(pending,true);disposables.push(globeScene);

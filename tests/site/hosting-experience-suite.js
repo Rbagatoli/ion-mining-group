@@ -52,6 +52,21 @@ function fixture({fail=false,delay=false,search=''}={}){
         assert.ok(count>50000&&count<80000);assert.ok(world.LAKES.length>300);
         for(const polygon of world.LAKES)for(const ring of polygon)for(const p of ring)assert.ok(Math.abs(p[0])<=180&&Math.abs(p[1])<=90);
     });
+    check('country boundaries stay above the globe, including long segments and the date line',()=>{
+        assert.ok(world.BORDERS.length>300);
+        for(const line of world.BORDERS)for(const p of line)assert.ok(Math.abs(p[0])<=180&&Math.abs(p[1])<=90);
+        for(const data of [world.BORDERS,[[[179,10],[-179,10]],[[10,80],[110,85]]]]){
+            const borders=globe.buildCountryBorders(data),positions=borders.geometry.attributes.position;
+            assert.equal(borders.material.color.getHex(),0x000000);assert.equal(borders.material.depthTest,true);
+            assert.ok(positions.count>0&&positions.count<100000);
+            for(let i=0;i<positions.count;i+=2){
+                const a=new T.Vector3().fromBufferAttribute(positions,i),b=new T.Vector3().fromBufferAttribute(positions,i+1);
+                assert.ok(Math.abs(a.length()-3.212)<1e-6&&Math.abs(b.length()-3.212)<1e-6);
+                assert.ok(a.lerp(b,.5).length()>3.21,'the entire segment clears the earth');
+            }
+            borders.geometry.dispose();borders.material.dispose();
+        }
+    });
     check('generated globe preserves commercial disclosures, destinations and stamped modules',()=>{
         assert.ok(!html.includes('hosting-tour'));assert.ok(!html.includes('data-tour'));assert.ok(!fs.existsSync(__dirname+'/../../site/hosting-tour-scene.js'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
         for(const asset of ['hosting-experience.js','hosting-stage.js','hosting-globe-scene.js','hosting-earth-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));

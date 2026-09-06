@@ -2,7 +2,7 @@
 import * as T from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
-import { enableScenePan } from './scene-controls.js?v=3';
+import { enableScenePan } from './scene-controls.js?v=4';
 
 export const ease = t => t*t*t*(t*(t*6-15)+10);
 export function createStage(host, options = {}) {
@@ -24,7 +24,7 @@ export function createStage(host, options = {}) {
     const rim = new T.DirectionalLight(0xdde4ec,2.6); rim.position.set(-24,16,-12); world.add(rim);
     const controls = new OrbitControls(camera,canvas);
     controls.enableDamping = false;
-    const navigation = enableScenePan(controls,canvas);
+    const navigation = enableScenePan(controls,canvas,{pan:options.pan ?? true});
     controls.minDistance = .8; controls.maxDistance = 85;
     controls.minPolarAngle = .13; controls.maxPolarAngle = Math.PI*.495;
     canvas.style.touchAction = 'none';
