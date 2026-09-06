@@ -355,6 +355,7 @@ var MapBridge = (function() {
         fleetPoints: function() { return _fleetPoints; },
 
         globe: function() { return typeof _globeRef === 'function' ? _globeRef() : null; },
+        refreshGlobeMarkers: function() { if (_globeStyleRef) _globeStyleRef.refreshMarkers(); },
         leaflet: function() { return leafletMap || null; },
 
         /* NEITHER RENDERER FOLLOWS ITS CONTAINER.
@@ -660,7 +661,7 @@ var MapBridge = (function() {
 })();
 
 // ===== GLOBE VIEW + TOGGLE =====
-var _globeRef = null, _showGlobePopupRef = null;
+var _globeRef = null, _showGlobePopupRef = null, _globeStyleRef = null;
 (function() {
     var globeInstance = null;
     var globeInitialized = false, globeStyle = null, pageGone = false;
@@ -670,6 +671,7 @@ var _globeRef = null, _showGlobePopupRef = null;
         if (event.persisted) return;
         pageGone = true;
         if (globeStyle) globeStyle.dispose();
+        _globeStyleRef = null;
     });
     var currentView = 'globe';
 
@@ -848,12 +850,7 @@ var _globeRef = null, _showGlobePopupRef = null;
                         return ProtonTheme.alpha(ProtonTheme.black, 0);
                     })
                     .polygonSideColor(function() { return ProtonTheme.alpha(ProtonTheme.black, 0); })
-                    .polygonStrokeColor(function(feat) {
-                        if (MapBridge.mode() === 'prospects') return ProtonTheme.globe.strokeDim;
-                        var a2 = NUM_TO_A2[String(feat.id)];
-                        return countryData[a2] ? ProtonTheme.globe.stroke
-                                               : ProtonTheme.globe.strokeDim;
-                    })
+                    .polygonStrokeColor(function() { return ProtonTheme.alpha(ProtonTheme.btc, 0.9); })
                     .polygonAltitude(function(feat) {
                         // Flat backdrop in Prospects mode: raised countries would occlude the
                         // flare columns rising out of them.
@@ -965,7 +962,7 @@ var _globeRef = null, _showGlobePopupRef = null;
 
                 globeInstance(globeContainer);
                 if (surfaceStyle) {
-                    try { globeStyle = surfaceStyle.applyGlobeStyle(globeInstance, globeContainer); }
+                    try { _globeStyleRef = globeStyle = surfaceStyle.applyGlobeStyle(globeInstance, globeContainer); }
                     catch (error) { console.warn('Globe surface unavailable:', error); }
                 }
 

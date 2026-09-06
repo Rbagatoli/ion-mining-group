@@ -3853,7 +3853,7 @@ var MapSourcing = (function() {
     var GLOBE_R      = 100;                          // three-globe's GLOBE_RADIUS
     var DEG_UNIT     = 2 * Math.PI * GLOBE_R / 360;  // world units per degree of arc
     var REF_ALTITUDE = 2.2;                          // the framing the px figures describe
-    var MARK_MIN_PX  = 2.0;                          // RADIUS at the 125 kW floor
+    var MARK_MIN_PX  = 2.3;                          // RADIUS at the 125 kW floor
     var MARK_MAX_PX  = 4.2;                          // RADIUS at 10 MW and above
     var MARK_CAP_PX  = 8;                            // ceiling after zoom growth
     var FOCUS_MULT   = 1.45;
@@ -3955,6 +3955,7 @@ var MapSourcing = (function() {
         try {
             g.pointRadius(radiusDeg)
              .pointAltitude(altitudeFor);
+            MapBridge.refreshGlobeMarkers();
         } catch (e) { /* globe not ready */ }
     }
 
@@ -4080,6 +4081,8 @@ var MapSourcing = (function() {
                 // on it without the surrounding field disappearing.
                 px: markPxFor(c) * (isFocus ? FOCUS_MULT : 1),
                 color: dim ? fade(colorFor(c), 0.18) : fade(colorFor(c), solidityFor(c)),
+                markerColor: colorFor(c),
+                markerOpacity: dim ? 0.30 : Math.max(0.9, solidityFor(c)),
                 label: placeLabel(c),
                 kw: c.powerPotentialKw,
                 dim: !!dim,
@@ -4115,9 +4118,7 @@ var MapSourcing = (function() {
             _zoomScale = zoomGrowth() * degPerPx();
             globe.pointsData(toGlobePoints(cands, focusId))
                 .pointLat('lat').pointLng('lng')
-                // Columns, not flat dots. Height carries power potential on a log scale so an
-                // 11 MW site visibly towers over a 150 kW one without a 70x bar. Flattening this
-                // to a constant made every prospect look identical from orbit.
+                // Capacity sets the disc size; the shared style adds an unlit face and dark rim.
                 .pointAltitude(altitudeFor)
                 .pointRadius(radiusDeg)
                 .pointColor('color')
@@ -4126,6 +4127,7 @@ var MapSourcing = (function() {
                     return '<div class="globe-tooltip">' + esc(d.label) + '<br>' + fmtKw(d.kw) +
                         (op ? '<br>' + esc(op.operator) : '') + '</div>';
                 });
+            MapBridge.refreshGlobeMarkers();
             // A ring marks the focused prospect. ringsData is a free layer, so it never
             // competes with pointsData for the same accessor.
             var focusCand = focusId ? ProspectStore.get(focusId) : null;
@@ -4140,7 +4142,7 @@ var MapSourcing = (function() {
                    census; the answer is not a better regex, it is not building
                    colours out of string fragments. */
                 .ringColor(function() {
-                    return function(t) { return ProtonTheme.alpha(ProtonTheme.pos, 1 - t); };
+                    return function(t) { return ProtonTheme.alpha(ProtonTheme.btc, 1 - t); };
                 })
                 .ringMaxRadius(3.5).ringPropagationSpeed(1.4).ringRepeatPeriod(700);
         }
@@ -4223,6 +4225,7 @@ var MapSourcing = (function() {
     function clearMapLayer() {
         var globe = MapBridge.globe();
         if (globe) globe.ringsData([]).pointsData(MapBridge.fleetPoints());
+        MapBridge.refreshGlobeMarkers();
         if (_leafletLayer) _leafletLayer.clearLayers();
     }
 
