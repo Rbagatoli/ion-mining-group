@@ -618,11 +618,10 @@ var SiteCapex = (function() {
                     '$' + R.collectionPerKw + '/kW if you had to drill it',
                     'a collection system is already in the ground', { avoided_usd: collFull });
             } else if (coll === 'mandated') {
-                add('collection', 'Gas collection', 'avoided', 0,
-                    '$' + R.collectionPerKw + '/kW if you had to drill it',
-                    'the operator is legally obliged to install collection by the statutory ' +
-                    'deadline, so this capital is theirs and not yours',
-                    { avoided_usd: collFull });
+                add('collection', 'Gas collection', 'incurred', collFull,
+                    '$' + R.collectionPerKw + '/kW pending a funded collection agreement',
+                    'collection is required but not verified built or funded. This estimate ' +
+                    'retains its cost until responsibility and completion are agreed');
             } else if (coll === 'absent' && built) {
                 /* A CONTRADICTION, REPORTED RATHER THAN RESOLVED. Three real rows are
                    `absent @ constructed`: a plant that is built cannot be burning gas nobody

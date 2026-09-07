@@ -79,8 +79,8 @@ var FacilitySource = (function() {
     function dutyFor(f) {
         var cf = f.cfCurrent;
         if (cf === null || cf === undefined) cf = f.cfBaseline;
-        if (cf !== null && cf !== undefined && cf > 0) {
-            return Math.max(1, Math.min(100, Math.round(cf * 100)));
+        if (cf !== null && cf !== undefined && Number.isFinite(Number(cf)) && cf >= 0) {
+            return Math.max(0, Math.min(100, Math.round(cf * 100)));
         }
         if (f.technology && Object.prototype.hasOwnProperty.call(TYPICAL_DUTY, f.technology)) {
             return TYPICAL_DUTY[f.technology];
@@ -97,7 +97,7 @@ var FacilitySource = (function() {
     function dutyBasisFor(f) {
         var cf = f.cfCurrent;
         if (cf === null || cf === undefined) cf = f.cfBaseline;
-        if (cf !== null && cf !== undefined && cf > 0) return 'measured';
+        if (cf !== null && cf !== undefined && Number.isFinite(Number(cf)) && cf >= 0) return 'measured';
         if (f.technology && Object.prototype.hasOwnProperty.call(TYPICAL_DUTY, f.technology)) {
             return 'typical';
         }
@@ -120,8 +120,7 @@ var FacilitySource = (function() {
     function offtakeFor(f) {
         var s = String(f.sector || '').toLowerCase();
         if (s.indexOf('electric utility') >= 0) return 'regulated_ratebase';
-        if (s.indexOf('ipp') >= 0 || s.indexOf('independent') >= 0) return 'none_merchant';
-        if (s.indexOf('commercial') >= 0 || s.indexOf('industrial') >= 0) return 'none_merchant';
+        // Ownership/sector does not establish whether output is already contracted.
         return null;    // unknown, and scored as unknown rather than guessed
     }
 
@@ -171,6 +170,9 @@ var FacilitySource = (function() {
             ? STAGE_BY_STATUS[f.status] : null;
 
         return {
+            sourceSnapshot: { dataset: 'EIA 860 / 923', artifactGenerated: _data && _data.generated || null,
+                sourceUrl: 'https://www.eia.gov/electricity/data/eia860/', reportingPeriod: f.lastDataMonth || (_data && _data.eia860Year) || null,
+                capacityBasis: 'Published plant capacity; available mining power requires owner verification.' },
             id: f.id,
             name: f.name,
             energyType: 'grid_facility',

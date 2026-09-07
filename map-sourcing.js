@@ -284,6 +284,11 @@ var MapSourcing = (function() {
     // passes on every header click. Invalidated with the opportunity cache, since both depend on
     // the same scenario assumptions and saved records.
     var _evalCache = {};
+    function gasHeatingValueFor(c) {
+        if (c.energyType !== 'landfill_gas') return 1000;
+        var assumptions = SiteCapacity.assumptionsFor(c);
+        return assumptions.methaneBtuPerCf * assumptions.methanePct / 100;
+    }
     function evaluateAt(c) {
         if (Object.prototype.hasOwnProperty.call(_evalCache, c.id)) return _evalCache[c.id];
         var r = evaluateAtUncached(c);
@@ -294,6 +299,13 @@ var MapSourcing = (function() {
         var saved = findSavedSite(c.id) || {};
         var rate = (saved.power_rate !== null && saved.power_rate !== undefined && saved.power_rate !== '')
             ? saved.power_rate : scnVal('powerRate');
+        // Recompute old fuel quotes too: never reuse the historical thermal shortcut.
+        if (saved.quoted_rate !== null && saved.quoted_rate !== undefined && saved.quoted_rate_units) {
+            rate = SiteEngine.powerRateFromQuote(saved.quoted_rate, saved.quoted_rate_units, {
+                heatRateBtuPerKwh: saved.heat_rate_btu_per_kwh || (c.energyType === 'landfill_gas' ? 11250 / 0.93 : 10000),
+                gasBtuPerCf: saved.gas_btu_per_cf || gasHeatingValueFor(c)
+            });
+        }
         // The acquisition price. A saved quote always wins; otherwise SiteCapex derives a
         // stage-appropriate default, which for a raw flare is $0 because buying flared gas is a
         // gas purchase agreement rather than an asset purchase. The old code applied a flat
@@ -309,6 +321,10 @@ var MapSourcing = (function() {
         // count, then again with one. Cheap: evaluate() is pure arithmetic.
         var usable = (saved.usable_kw !== null && saved.usable_kw !== undefined && saved.usable_kw !== '')
             ? saved.usable_kw : usableKwFor(c);
+        if (typeof ProspectDiligence !== 'undefined') {
+            var diligenceCapacity = ProspectDiligence.capacity(c, saved, usableCapacity(c));
+            usable = diligenceCapacity.targetKw;
+        }
         var probe = SiteEngine.evaluate(SiteSources.toSite(c, {
             purchase_price_usd: 0, power_rate: rate, usable_kw: usable
         }), scenarioMarket());
@@ -339,9 +355,10 @@ var MapSourcing = (function() {
             purchase_price_usd: price,
             power_rate: rate,
             power_rate_currency: saved.power_rate_currency || 'USD',
-            usable_kw: (saved.usable_kw !== null && saved.usable_kw !== undefined && saved.usable_kw !== '')
-                ? saved.usable_kw : usableKwFor(c),
-            take_or_pay_pct: top
+            usable_kw: usable,
+            take_or_pay_pct: top,
+            om_hourly_rate: saved.om_hourly_rate,
+            contract_term_years: saved.contract_term_years
         });
         // How many hours this asset actually runs, and whether that is solid enough to price.
         // A measured capacity factor derates both the power bill and the hashing; a duty read off
@@ -349,12 +366,23 @@ var MapSourcing = (function() {
         // figure inherits confidence the evidence does not support.
         var avail = (typeof SiteAvailability !== 'undefined')
             ? SiteAvailability.evaluate(c) : null;
-        var cfg = (avail && avail.priceable && avail.uptimePct !== 100)
-            ? { uptimePct: avail.uptimePct } : null;
+        var cfg = avail && avail.dutyPct !== null ? { uptimePct: avail.dutyPct } : null;
 
         var m = SiteEngine.evaluate(site, scenarioMarket(), cfg, capex);
         m.capex = capex;
         m.availability = avail;
+        if (!avail || avail.dutyPct === null || /^(BA|PS|FW)$/.test(String((c.sourceDetail || {}).primeMover || ''))) {
+            ['monthly_btc', 'monthly_revenue', 'monthly_net', 'monthly_power_usd', 'monthly_om_usd', 'monthly_cash_usd', 'cash_cost_per_btc', 'max_power_rate_cash_usd', 'breakeven_btc_price'].forEach(function (key) { m[key] = null; });
+        }
+        if (typeof ProspectDiligence !== 'undefined') {
+            var reviewedBudget = ProspectDiligence.budget(saved, null, usable);
+            m.diligence_budget = reviewedBudget;
+            m.all_in_capital_usd = reviewedBudget.complete ? reviewedBudget.base + reviewedBudget.paid : null;
+            m.total_capital = m.all_in_capital_usd; m.payback_months = null;
+            m.all_in_cost_per_usable_kw = m.all_in_capital_usd !== null && usable > 0 ? m.all_in_capital_usd / usable : null;
+            m.payback_months_all_in = null; m.months_to_revenue = null; m.months_to_payback_from_close = null;
+            m.max_power_rate_capital_usd = null;
+        }
         return m;
     }
 
@@ -494,7 +522,7 @@ var MapSourcing = (function() {
         document.getElementById('pfHash').textContent = hashPh ? hashPh.toFixed(0) : '--';
         document.getElementById('pfBtc').textContent = btc ? btc.toFixed(3) : '--';
         document.getElementById('pfCapital').textContent = capital ? fmtUSD(capital) : '--';
-        document.getElementById('pfCapitalSub').textContent = 'at ' + fmtUSD(scnVal('costPerKw')) + '/kW + miners';
+        document.getElementById('pfCapitalSub').textContent = 'sum of fully recorded site budgets; incomplete budgets excluded';
 
         var blended = btc > 0 ? cash / btc : null;
         document.getElementById('pfCashCost').textContent = blended === null ? '--' : fmtUSD(blended);
@@ -519,7 +547,7 @@ var MapSourcing = (function() {
         document.getElementById('pfNote').innerHTML =
             'Monthly net across the selection: <strong>' + (margin === null ? '--' : fmtUSD(margin)) + '</strong> at ' +
             fmtUSD(scnVal('btcPriceUsd')) + '/BTC. ' +
-            'Commercial terms are your assumptions from the scenario bar — none of these sites has been quoted.';
+            'Scenario terms apply unless saved quotes are recorded. Shared or overlapping source records require review before aggregation.';
     }
 
     function togglePortfolio(id, on) {
@@ -3155,8 +3183,8 @@ var MapSourcing = (function() {
         combined:        'best acquisition rank first',
         power_potential: 'largest first',
         jurisdiction:    'friendliest jurisdiction first',
-        capital_avoided: 'most capital already spent first',
-        capital_required: 'least still to spend first',
+        capital_avoided: 'documented capital savings first',
+        capital_required: 'lowest fully recorded remaining budget first',
         all_in_per_kw:   'cheapest all-in per kW first'
     };
     function sortDescription() {
@@ -3324,6 +3352,11 @@ var MapSourcing = (function() {
                site. */
             market: _capMarket
         });
+        if (typeof ProspectDiligence !== 'undefined') {
+            var pc = ProspectDiligence.capacity(c, saved, usableCapacity(c));
+            var budget = ProspectDiligence.budget(saved, null, pc.targetKw);
+            r.requiredUsd = budget.complete ? budget.base : null;
+        }
         _capCache[c.id] = r;
         return r;
     }
@@ -3356,8 +3389,9 @@ var MapSourcing = (function() {
 
     function capitalCell(c, which) {
         var r = capitalFor(c);
-        if (!r || r.avoidedUsd === null) return '<span class="src-gap">--</span>';
+        if (!r) return '<span class="src-gap">--</span>';
         var v = which === 'required' ? r.requiredUsd : r.avoidedUsd;
+        if (v === null || v === undefined) return '<span class="src-gap" title="Not priced with current component evidence">--</span>';
         var s = '$' + Math.round(v / 1000).toLocaleString() + 'K';
         if (which === 'required') return s;
         /* NEVER A BARE NUMBER. The whole thesis rests on this equipment being usable and the
@@ -4393,8 +4427,13 @@ var MapSourcing = (function() {
     // power price, so converting a fuel quote straight across understates the bill by the whole
     // genset lease — which is exactly why the generator-ownership select ships beside this rather
     // than later. The UI says "fuel only" on those two options for the same reason.
-    var GJ_PER_KWH = 0.0036;              // 1 kWh = 3.6 MJ = 0.0036 GJ
-    var KWH_PER_MCF = 1000000 / 10000;    // 1 Mcf = 1e6 BTU / 10,000 BTU per kWh = 100 kWh
+    function quoteAssumptions() {
+        function number(id) {
+            var input = document.getElementById(id);
+            return input && input.value !== '' ? Number(input.value) : null;
+        }
+        return { heatRateBtuPerKwh: number('crm_heat_rate'), gasBtuPerCf: number('crm_gas_btu') };
+    }
 
     function quotedRateInput() {
         var el = document.getElementById('crm_rate');
@@ -4411,9 +4450,7 @@ var MapSourcing = (function() {
         if (v === null) return null;
         var el = document.getElementById('crm_rate_units');
         var units = el ? el.value : 'usd_kwh';
-        if (units === 'usd_gj') return v * GJ_PER_KWH;
-        if (units === 'usd_mcf') return v / KWH_PER_MCF;
-        return v;
+        return SiteEngine.powerRateFromQuote(v, units, quoteAssumptions());
     }
 
     // ---- Contact outcome -----------------------------------------------------------------
@@ -4622,6 +4659,10 @@ var MapSourcing = (function() {
         var c = ProspectStore.get(_selectedId);
         var body = document.getElementById('dBody');
         if (!c || !body) return;
+        if (body._diligenceCandidate === c.id && body._diligenceHasDraft && body._diligenceHasDraft()) {
+            if (body._diligenceStatus) body._diligenceStatus.textContent = 'Updated data is available. Your diligence draft is preserved; save it or reload the saved record.';
+            return;
+        }
         var meta = SiteCatalog.meta();
 
         var j = Jurisdictions.get(c.iso3);
@@ -5253,6 +5294,7 @@ var MapSourcing = (function() {
         // ---- Who to contact -----------------------------------------------------
         mark('contact');
         html += '<div class="src-contact"><div class="section-label">Who to contact</div>';
+        if (typeof DealRelationshipsUi !== 'undefined') html += DealRelationshipsUi.placeholder(c, false);
         if (typeof LandfillContacts !== 'undefined') html += LandfillContacts.placeholder(c);
         // Non-flare sources: the owner is published directly by EIA-860 or LMOP, with a postal
         // address in the landfill case. Their record has no distance_m, because there is no
@@ -5518,7 +5560,7 @@ var MapSourcing = (function() {
             '<div class="src-field"><label for="crm_contact_notes">Notes</label>' +
             '<textarea id="crm_contact_notes" rows="2">' + esc(saved.contact_notes || '') + '</textarea></div>' +
             '<div class="src-field"><label for="crm_acq">Acquisition price (USD)</label>' +
-            '<input type="number" id="crm_acq" step="25000" placeholder="assumed from stage" value="' +
+            '<input type="number" id="crm_acq" step="25000" placeholder="not quoted" value="' +
             (saved.estimated_acquisition_cost === null || saved.estimated_acquisition_cost === undefined
                 ? '' : esc(saved.estimated_acquisition_cost)) + '"></div>' +
             // ---- Terms, as quoted -------------------------------------------------------
@@ -5536,11 +5578,22 @@ var MapSourcing = (function() {
             '<div class="src-field"><label for="crm_rate_units">Priced in</label>' +
             '<select id="crm_rate_units">' +
             [['usd_kwh', '$/kWh (all-in power)'], ['usd_gj', '$/GJ (fuel only)'],
-             ['usd_mcf', '$/Mcf (fuel only)']].map(function(u) {
+              ['usd_mcf', '$/Mcf (fuel only)'], ['usd_mmbtu', '$/MMBtu (fuel only)']].map(function(u) {
                 return '<option value="' + u[0] + '"' +
                        ((saved.quoted_rate_units || 'usd_kwh') === u[0] ? ' selected' : '') +
                        '>' + u[1] + '</option>';
             }).join('') + '</select></div>' +
+            '<div class="src-field"><label for="crm_heat_rate">Net heat rate (Btu per delivered kWh)</label>' +
+            '<input type="number" id="crm_heat_rate" min="1" step="100" value="' +
+            esc(saved.heat_rate_btu_per_kwh || (c.energyType === 'landfill_gas' ? Math.round(11250 / 0.93) : 10000)) + '"></div>' +
+            '<div class="src-field"><label for="crm_gas_btu">Gas heating value (Btu/scf)</label>' +
+            '<input type="number" id="crm_gas_btu" min="1" step="1" value="' +
+            esc(saved.gas_btu_per_cf || gasHeatingValueFor(c)) + '"></div>' +
+            '<div class="src-field"><label for="crm_om_hourly_rate">Fixed O&amp;M (USD/hour)</label>' +
+            '<input type="number" id="crm_om_hourly_rate" min="0" step="0.01" placeholder="not yet established" value="' +
+            (saved.om_hourly_rate == null ? '' : esc(saved.om_hourly_rate)) + '"></div>' +
+            '<p class="src-note">Fuel conversion uses the heating value and engine heat rate above. Defaults are screening assumptions. ' +
+            'Fuel cost excludes treatment, maintenance and auxiliary loads; enter agreed O&amp;M separately.</p>' +
             '<div class="src-field"><label for="crm_rate_ccy">Currency</label>' +
             '<select id="crm_rate_ccy">' +
             ['USD', 'CAD'].map(function(cc) {
@@ -5720,6 +5773,24 @@ var MapSourcing = (function() {
             callLine = '<div class="src-callop">' + gap('operator not identified') + '</div>';
         }
 
+        var diligenceContext = null;
+        if (typeof ProspectDiligenceUi !== 'undefined') {
+            var sourceMeta = c.source === 'lmop-landfill' && typeof LandfillSource !== 'undefined' ? LandfillSource.meta()
+                : c.source === 'eccc-landfill-ca' && typeof LandfillCaSource !== 'undefined' ? LandfillCaSource.meta()
+                : c.source === 'eia-facility' && typeof FacilitySource !== 'undefined' ? FacilitySource.meta() : null;
+            diligenceContext = { saved: findSavedSite(c.id), screened: usableCapacity(c), meta: sourceMeta, opportunity: opp, acquirability: acq, metrics: m, findSaved: findSavedSite,
+                onSave: function () {
+                    _evalCache = {}; _oppCache = {}; _acqCache = {}; clearCapitalCache();
+                    diligenceContext.saved = findSavedSite(c.id); diligenceContext.metrics = evaluateAt(c);
+                    if (body._diligenceHasDraft && body._diligenceHasDraft()) {
+                        if (body._diligenceStatus) body._diligenceStatus.textContent = 'Saved. Finish the other diligence draft or reload before refreshing these sections.';
+                    } else ProspectDiligenceUi.refresh(body, c, diligenceContext);
+                    renderTable();
+                } };
+            var audited = ProspectDiligenceUi.renderBuckets(c, diligenceContext);
+            ['scores', 'capacity', 'econ', 'evidence'].forEach(function (key) { buckets[key] = audited[key]; });
+            buckets.pay = '<div class="dg-note">Resource and economics are screening scenarios. Review Capacity &amp; capital for documented infrastructure and the remaining budget.</div>';
+        }
         var out = '<div class="src-callsheet">' + buckets.pay + callLine + '</div>';
         buckets.pay = '';
 
@@ -5783,6 +5854,7 @@ var MapSourcing = (function() {
                    open. */
                 if (id === 'econ') renderTrend(c);
                 if (id === 'terms' && typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
+                if (id === 'terms' && typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.mountResearch(body, c);
             });
             /* And on first paint, when economics is the remembered tab. */
             if (body.querySelector('#dtab_econ') && !body.querySelector('#dtab_econ').hidden) {
@@ -5790,8 +5862,11 @@ var MapSourcing = (function() {
             }
             if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden &&
                 typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
+            if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden &&
+                typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.mountResearch(body, c);
         })();
 
+        if (diligenceContext) ProspectDiligenceUi.bind(body, c, diligenceContext);
         wireDetail(c, op);
     }
 
@@ -5823,8 +5898,12 @@ var MapSourcing = (function() {
     // on the discovery id so re-selecting the same flare finds what you already wrote.
     function findSavedSite(flareId) {
         var all = SiteData.list();
+        var candidate = typeof ProspectStore !== 'undefined' && ProspectStore.get(flareId);
+        if (candidate && typeof SiteIdentity !== 'undefined') {
+            return SiteIdentity.savedForCandidate(all, candidate);
+        }
         for (var i = 0; i < all.length; i++) {
-            if (all[i].id === flareId || (all[i].discovery && all[i].discovery.flareId === flareId)) return all[i];
+            if (all[i].id === flareId || (all[i].discovery && (all[i].discovery.flareId === flareId || all[i].discovery.sourceRecordId === flareId))) return all[i];
         }
         return null;
     }
@@ -5882,26 +5961,13 @@ var MapSourcing = (function() {
             });
         }
 
-        var verify = document.getElementById('srcVerifyInfra');
-        if (verify) verify.addEventListener('click', function() {
-            var cand = _selectedId ? ProspectStore.get(_selectedId) : null;
-            if (!cand) return;
-            var rec = findSavedSite(cand.id);
-            if (!rec) {
-                try { rec = SiteData.fromCandidate(cand); }
-                catch (e) { status('Could not save this site: ' + e.message, 'var(--neg)'); return; }
-            }
-            SiteData.update(rec.id, { infra_condition_verified: true });
-            clearCapitalCache();
-            status('Marked verified — capital avoided is now valued in full, and this site is ' +
-                   'tracked under My sites.', 'var(--plat-200)');
-            renderDetail();
-            applyFilters();
-        });
-
         var save = document.getElementById('srcSave');
         if (!save) return;
         save.addEventListener('click', function() {
+            if (quotedRateInput() !== null && derivedPowerRate() === null) {
+                document.getElementById('srcSaveMsg').textContent = 'Enter a positive engine heat rate and gas heating value for this fuel quote.';
+                return;
+            }
             var changes = {
                 contact_name:  document.getElementById('crm_contact_name').value.trim() || null,
                 contact_role:  document.getElementById('crm_contact_role').value.trim() || null,
@@ -5921,6 +5987,14 @@ var MapSourcing = (function() {
                     return isFinite(v) && v >= 0 ? v : null;
                 })(),
                 quoted_rate: quotedRateInput(),
+                heat_rate_btu_per_kwh: quoteAssumptions().heatRateBtuPerKwh,
+                gas_btu_per_cf: quoteAssumptions().gasBtuPerCf,
+                power_rate_version: 2,
+                power_rate_basis: document.getElementById('crm_rate_units').value === 'usd_kwh' ? 'delivered_power' : 'fuel_only',
+                om_hourly_rate: (function() {
+                    var input = document.getElementById('crm_om_hourly_rate');
+                    return input && input.value !== '' && Number(input.value) >= 0 ? Number(input.value) : null;
+                })(),
                 quoted_rate_units: (function() {
                     var el = document.getElementById('crm_rate_units');
                     return (el && quotedRateInput() !== null) ? el.value : null;
@@ -5979,6 +6053,11 @@ var MapSourcing = (function() {
                 site.discovery = site.discovery || {};
                 site.discovery.flareId = c.id;
                 written = SiteData.add(site);
+            }
+            if (!written || !written._save || !written._save.ok) {
+                var failedMessage = document.getElementById('srcSaveMsg');
+                if (failedMessage) { failedMessage.textContent = written && written._save ? written._save.err : 'The prospect was not saved.'; failedMessage.style.color = 'var(--neg)'; }
+                return;
             }
 
             /* THE STAGE MOVES THROUGH THE FRONT DOOR. setStage writes the ledger entry,

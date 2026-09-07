@@ -70,7 +70,10 @@ jobs:
         run: node tests/site/run.js
 
       - name: Operator contact and globe release checks
-        run: node --test tests/landfill-contacts.test.js tests/prospect-globe.test.js tests/contact-routes.test.js tests/ghgrp-contacts.test.js tests/facility-contact.test.js tests/detail-tabs.test.js tests/service-worker-boundaries.test.js
+        run: node --test tests/landfill-contacts.test.js tests/prospect-globe.test.js tests/contact-routes.test.js tests/ghgrp-contacts.test.js tests/facility-contact.test.js tests/detail-tabs.test.js tests/service-worker-boundaries.test.js tests/deal-relationships.test.js tests/deal-relationships-ui.test.js tests/crm-contacts.test.js tests/crm-pipeline.test.js
+
+      - name: Prospect evidence and capital checks
+        run: node --test tests/prospect-diligence.test.js tests/prospect-energy-economics.test.js tests/site-capacity.test.js tests/site-infrastructure.test.js tests/site-opportunity.test.js tests/site-availability.test.js tests/site-engine.test.js tests/site-capex.test.js tests/landfill-shortlist.test.js tests/landfill-ca.test.js tests/capacity-audit.test.js tests/capex-rate.test.js
 
       # The generated output is committed, so it can go stale. Re-run every generator and fail
       # if anything changes: a page whose cache-busting stamp does not match its own CSS, or a

@@ -1,0 +1,281 @@
+{
+  "v": 1,
+  "edition": "2026-09-07",
+  "sites": {
+    "us-lf-10540": {
+      "site_id": "us-lf-10540",
+      "prospect_ids": [
+        "lmop_180906-0"
+      ],
+      "site_name": "North Dade Landfill",
+      "address": "21500 NW 47th Avenue, Miami-Dade County, Florida",
+      "checked_on": "2026-09-07",
+      "summary": "The County’s project record identifies difficulties with an RNG development at North Dade and continued interest in other uses. A smaller on-site power project is a hypothesis to evaluate; available gas and acceptable terms remain unconfirmed.",
+      "first_step": "Ask Saba Musleh which process now applies specifically to North Dade, whether alternative gas uses can be considered, and who can authorize a technical discussion.",
+      "nodes": [
+        {
+          "id": "research_nd_county",
+          "kind": "organization",
+          "name": "Miami-Dade County — Solid Waste Management",
+          "title": "Landfill owner and operator",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "land_owner",
+            "operator"
+          ],
+          "phone": "",
+          "email": "",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/service.page?Mduid_service=ser1464799833678390&lang=en",
+          "additional_source_url": "https://www.miamidade.gov/Apps/ISD/StratProc/ProcurementNAS/pdf_Files/FutureSolicitations/DRAFT_-_FUTURE_SOLICITATION-RNG.pdf",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "County facility information and draft scope identify County ownership and operation; exact North Dade address is 21500 NW 47th Avenue. Gas allocations and contracting delegation are separate questions.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "next_action": "Request the current gas-rights agreements, allocations and the North Dade approval route."
+        },
+        {
+          "id": "research_nd_saba",
+          "kind": "person",
+          "name": "Saba Musleh",
+          "title": "Negotiator, Strategic Procurement",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "procurement"
+          ],
+          "phone": "305-375-5375",
+          "email": "saba.musleh@miamidade.gov",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/govaction/legistarfiles/Matters/Y2026/261339.pdf",
+          "additional_source_url": "https://www.miamidade.gov/govaction/legistarfiles/Matters/Y2025/252456.pdf",
+          "checked_on": "2026-09-07",
+          "source_date": "2026-07-21",
+          "evidence_note": "Named negotiator in the gas-project memorandum. Business phone and email are published in County procurement material; no signing authority established.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "contact_id": "",
+          "next_action": "Confirm the current North Dade procurement status, permitted communication route and contact authorized to discuss alternative uses."
+        },
+        {
+          "id": "research_nd_ravi",
+          "kind": "person",
+          "name": "Ravi Kadambala",
+          "title": "Division Director, Technical Services & Environmental Affairs",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "technical"
+          ],
+          "phone": "305-514-6672",
+          "email": "ravi.kadambala@miamidade.gov",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "https://documents.miamidade.gov/mayor/memos/01-25-25-second-update-on-directive-no-241676.pdf",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Current County directory supplies the role and office number. County-published correspondence corroborates the email.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "contact_id": "",
+          "next_action": "Through the permitted route, request recent gas-flow and composition records, decline assumptions, treatment needs and the appropriate technical project lead."
+        },
+        {
+          "id": "research_nd_jeremiah",
+          "kind": "person",
+          "name": "Jeremiah Reed",
+          "title": "Chief 3, Landfills",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "operator"
+          ],
+          "phone": "786-878-6468",
+          "email": "",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Current County directory lists responsibility for landfill operations. Site-specific delegation is not established.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "contact_id": "",
+          "next_action": "Identify the current gas-system operator, operating constraints and the person who can arrange a technical visit."
+        },
+        {
+          "id": "research_nd_aneisha",
+          "kind": "person",
+          "name": "Aneisha Daniel",
+          "title": "Director, Solid Waste Management",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "commercial"
+          ],
+          "phone": "305-514-6623",
+          "email": "aneisha.daniel@miamidade.gov",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "https://www.miamidade.gov/humanresources/library/directors-list-by-alpha.pdf",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Current County directory confirms the department role and office number. The February 2026 director directory supplies the email; support for Proton is unknown.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "contact_id": "",
+          "next_action": "After the technical and procurement route is established, confirm department priorities and the commercial approval process."
+        },
+        {
+          "id": "research_nd_frank",
+          "kind": "person",
+          "name": "Frank Calderon",
+          "title": "Public Records Custodian, Solid Waste Management",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "records"
+          ],
+          "phone": "305-514-6034",
+          "email": "",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "County directory identifies the records custodian and published office phone. This is a records route, not an approval contact.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "contact_id": "",
+          "next_action": "Request the current North Dade gas agreements, engineering/O&M contract references and any subsequent decision record."
+        },
+        {
+          "id": "research_nd_board",
+          "kind": "organization",
+          "name": "Board of County Commissioners / authorized County delegate",
+          "title": "North Dade approval route to confirm",
+          "organization": "Miami-Dade County",
+          "roles": [
+            "approval"
+          ],
+          "phone": "",
+          "email": "",
+          "status": "unconfirmed",
+          "source_url": "https://www.miamidade.gov/govaction/commagenda.asp?auditor=false&changes=true&cmbmeetdate=5542&file=true",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "2026-07-21",
+          "evidence_note": "The adopted July action concerns South Dade. The exact approval and signing route for a new North Dade arrangement must be confirmed with procurement.",
+          "verified_by": "Public-source research",
+          "authority_status": "unconfirmed",
+          "authority_scope": "",
+          "authority_evidence": "",
+          "authority_checked_on": "",
+          "next_action": "Obtain the applicable approval steps and written delegation for North Dade; do not infer them from the South Dade action."
+        }
+      ],
+      "connections": [
+        {
+          "id": "research_nd_employment_ravi",
+          "from": "research_nd_ravi",
+          "to": "research_nd_county",
+          "label": "Listed in the Solid Waste Management department directory",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Published department affiliation; does not establish a reporting line, personal introduction or signing authority.",
+          "verified_by": "Public-source research"
+        },
+        {
+          "id": "research_nd_employment_jeremiah",
+          "from": "research_nd_jeremiah",
+          "to": "research_nd_county",
+          "label": "Listed in the Solid Waste Management department directory",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Published department affiliation; does not establish a reporting line, personal introduction or signing authority.",
+          "verified_by": "Public-source research"
+        },
+        {
+          "id": "research_nd_employment_aneisha",
+          "from": "research_nd_aneisha",
+          "to": "research_nd_county",
+          "label": "Listed in the Solid Waste Management department directory",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Published department affiliation; does not establish a reporting line, personal introduction or signing authority.",
+          "verified_by": "Public-source research"
+        },
+        {
+          "id": "research_nd_employment_frank",
+          "from": "research_nd_frank",
+          "to": "research_nd_county",
+          "label": "Listed in the Solid Waste Management department directory",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/global/solidwaste/contact.page",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "",
+          "evidence_note": "Published department affiliation; does not establish a reporting line, personal introduction or signing authority.",
+          "verified_by": "Public-source research"
+        },
+        {
+          "id": "research_nd_project_saba",
+          "from": "research_nd_saba",
+          "to": "research_nd_county",
+          "label": "Named procurement negotiator for the gas-conversion project",
+          "status": "published",
+          "source_url": "https://www.miamidade.gov/govaction/legistarfiles/Matters/Y2026/261339.pdf",
+          "additional_source_url": "",
+          "checked_on": "2026-09-07",
+          "source_date": "2026-07-21",
+          "evidence_note": "Gas-project memorandum, page 2, Track Record/Monitor. Ask for the current North Dade assignment.",
+          "verified_by": "Public-source research"
+        }
+      ],
+      "open_questions": [
+        "Who currently controls the gas, and what quantities are uncommitted?",
+        "What became of North Dade after EVN0019329 and the July 2026 amendment?",
+        "Who is the current gas-system O&M contractor and engineering contact?",
+        "What gas flow, methane fraction, contaminants and decline can be supported by current measurements?",
+        "Who can approve and sign a North Dade agreement, and through which procurement route?"
+      ],
+      "context": [
+        {
+          "note": "The July 21 record, item 8P9 / File 261339, shows an adopted direction to negotiate a South Dade contract. It does not prove a North Dade contract or an open North Dade solicitation.",
+          "url": "https://www.miamidade.gov/govaction/commagenda.asp?auditor=false&changes=true&cmbmeetdate=5542&file=true"
+        },
+        {
+          "note": "The supporting memorandum discusses North Dade RNG feasibility concerns and other possible uses. A modular mining proposal still requires engineering and commercial validation.",
+          "url": "https://www.miamidade.gov/govaction/legistarfiles/Matters/Y2026/261339.pdf"
+        },
+        {
+          "note": "The earlier future-solicitation scope is a draft. Its gas quantities, rents and proposed term are not current quotes or commitments.",
+          "url": "https://www.miamidade.gov/Apps/ISD/StratProc/ProcurementNAS/pdf_Files/FutureSolicitations/DRAFT_-_FUTURE_SOLICITATION-RNG.pdf"
+        }
+      ]
+    }
+  }
+}

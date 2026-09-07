@@ -60,24 +60,14 @@ var LandfillCaSource = (function() {
     // read, from the by-emission-source file, is whether a facility reports gas DESTRUCTION —
     // EC_FlaringEmissions or EC_CO2BiomassCombustion — which is impossible without collection.
     //
-    // A flaring site therefore maps to 'permitted', NOT 'constructed'. The distinction is the
-    // whole point: flaring proves wells, headers, a blower and an environmental approval exist.
-    // It proves nothing about a generator, and 'constructed' in this model means the power asset
-    // is standing. Claiming it would put a Canadian site with a flare level with a US shutdown
-    // project that has an engine on a pad, which is not true and would be found out on the first
-    // site visit.
-    //
-    // Everything else is 'raw_resource' — a fact about the source, not a shrug.
+    // Collection or flaring does not establish a transferable permit for an energy project.
     function stageFor(p) {
-        if (p.hasFlaring === true) return 'permitted';
+        // A flare is evidence of gas destruction, not a transferable energy-project permit.
         return 'raw_resource';
     }
 
-    // Gas being destroyed is gas burned for compliance rather than sold — the clearest statement
-    // an operator can make that the resource exists and earns nothing. Either way the gas is
-    // uncommitted, which is what this field records, so both cases are none_merchant. One honest
-    // constant rather than a branch that pretends to distinguish something.
-    function offtakeFor() { return 'none_merchant'; }
+    // Published destruction data does not establish ownership or availability of commercial rights.
+    function offtakeFor() { return null; }
 
     // Not inferred. A site with a flare holds SOME provincial approval, but whether it is current,
     // what it covers, and whether it would extend to a generator are exactly the questions, and a
@@ -102,9 +92,7 @@ var LandfillCaSource = (function() {
             detail: 'Compliance date ' + (p.lmrDeadline || 'not yet determined') +
                     '. ' + (p.lmrBasis || '') +
                     (p.hasExistingControls === false
-                        ? ' No gas recovery system was in operation when the Regulations came ' +
-                          'into force, so the operator must build one and has no collection ' +
-                          'capital already committed.'
+                        ? ' No gas destruction was reported for this reporting period. Current equipment, regulatory applicability and any funded construction agreement need confirmation.'
                         : '')
         }];
     }
@@ -117,12 +105,15 @@ var LandfillCaSource = (function() {
     function counterpartyFor(p) {
         var c = p.company || '';
         if (MAJOR.test(c) && !MUNICIPAL.test(c)) return 'landfill_major';
-        if (MUNICIPAL.test(c)) return 'municipal';
+        if (MUNICIPAL.test(c)) return 'landfill_public';
         return null;
     }
 
     function normalize(p) {
         return {
+            sourceSnapshot: { dataset: 'ECCC GHGRP', artifactGenerated: _data && _data.generated || null,
+                sourceUrl: _data && _data.sourceUrl || null, reportingPeriod: p.reportingYear || null,
+                capacityBasis: p.methaneGenerationBasis || 'Model derived from reported methane; verify recoverable energy with the owner.' },
             id: p.id,
             name: p.name,
             energyType: 'landfill_gas',

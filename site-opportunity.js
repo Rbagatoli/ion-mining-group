@@ -182,10 +182,11 @@ var SiteOpportunity = (function() {
     // downstream uses this, which is what stops intermittent and continuous sources from being
     // compared as though they were the same asset.
     function effectiveKw(cand) {
-        var kw = num(cand && cand.powerPotentialKw);
+        var kw = typeof SiteCapacity !== 'undefined' ? SiteCapacity.usableKwFor(cand) : num(cand && cand.powerPotentialKw);
+        if (/placeholder|nominal 100/i.test(String((cand && cand.sourceDetail || {}).capacityBasis || ''))) return null;
         if (kw === null) return null;
         var duty = num(cand && cand.dutyCyclePct);
-        if (duty === null) duty = 100;
+        if (duty === null) return null;
         return kw * (duty / 100);
     }
 
@@ -387,6 +388,7 @@ var SiteOpportunity = (function() {
         if (!SI) return { value: null, detail: 'infrastructure model not loaded' };
         var asOf = (ctx && ctx.asOf) || null;
         var r = SI.capitalAvoided(cand, { asOf: asOf, band: ctx && ctx.band });
+        if (r.avoidedUsd === null) return { value: null, detail: 'Reuse savings are unpriced. Confirm component condition, use rights and remaining costs in Capacity & capital.' };
         if (r.totalBuildUsd === null || r.totalBuildUsd <= 0) {
             return { value: null, detail: 'capacity not published, so the build cannot be priced' };
         }

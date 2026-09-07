@@ -145,9 +145,9 @@ console.log('\n=== physically capped vs dispatch limited ===');
     // The two theses read oppositely, and the note must say so.
     var capped = SA.evaluate(facility({ detail: { primeMover: 'PV' } }));
     var disp = SA.evaluate(facility({ detail: { primeMover: 'IC' } }));
-    ok('a capped site says load cannot raise it', capped.note.indexOf('cannot raise') >= 0);
-    ok('a dispatchable site says floor', disp.note.indexOf('floor') >= 0);
-    ok('and admits fuel supply is unmeasured', disp.note.indexOf('unmeasured') >= 0);
+    ok('a historic capacity factor is an energy ratio', capped.note.indexOf('net generation divided by nameplate energy') >= 0);
+    ok('historic production is not a guaranteed floor', disp.note.indexOf('floor') < 0);
+    ok('future delivery requires fuel and allocation', /fuel.*contractual allocation/.test(disp.note));
 })();
 
 // ---- 5. Basis and priceability ---------------------------------------------------------------

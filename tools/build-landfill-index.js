@@ -603,6 +603,14 @@ function round(v, dp) {
         projects: out
     });
 
+    // Preserve the component inventory and measurement years on future source refreshes too.
+    if (!lfRows) throw new Error('Refusing to replace landfill data without the infrastructure source workbook.');
+    var infrastructure = require('./lmop-infrastructure-fields.cjs').enrich(payload.projects, lfRows);
+    payload.projects = infrastructure.projects;
+    payload.sourceReleaseDate = releaseTag(url);
+    payload.infrastructureSource = { sourceUrl: lfUrl, sourceReleaseDate: releaseTag(lfUrl),
+        matchedProjects: infrastructure.matched, landfills: infrastructure.landfills,
+        note: 'Use the reported gas years; a file build date is not a measurement date.' };
     fs.mkdirSync(path.dirname(OUT), { recursive: true });
     fs.writeFileSync(OUT, JSON.stringify(payload));
     var raw = fs.statSync(OUT).size;

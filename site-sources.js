@@ -262,6 +262,8 @@ var SiteSources = (function() {
             // Source-specific payload. The ONLY place source-specific data is allowed to live,
             // and it is rendered in exactly one section of the detail view.
             sourceDetail: raw.sourceDetail || null,
+            sourceSnapshot: raw.sourceSnapshot || null,
+            stableSourceRecordId: raw.stableSourceRecordId || null,
             offshore: (raw.offshore === true || raw.offshore === false) ? raw.offshore : null,
             evidence: Array.isArray(raw.evidence) ? raw.evidence : [],
             raw: raw.raw === undefined ? null : raw.raw
@@ -299,6 +301,19 @@ var SiteSources = (function() {
                 else rejected.push({ source: a.id, candidate: out[j], errors: v.errors });
             }
         }
+        // An ambiguous source ID cannot key a map, save, or source-context lookup safely.
+        // Retain every rejected row for coverage reporting; never let the last row win.
+        var counts = Object.create(null);
+        accepted.forEach(function(c) { counts[c.id] = (counts[c.id] || 0) + 1; });
+        var collisions = Object.keys(counts).filter(function(id) { return counts[id] > 1; });
+        if (collisions.length) errors.push({ source: 'source identity', error: collisions.length +
+            ' ambiguous record IDs (' + collisions.reduce(function(n, id) { return n + counts[id]; }, 0) +
+            ' rows) excluded to prevent incorrect site matches. Correct the source IDs before retrying.' });
+        accepted = accepted.filter(function(c) {
+            if (counts[c.id] === 1) return true;
+            rejected.push({ source: c.source, candidate: c, errors: ['Ambiguous source record ID: ' + c.id + '. All rows with this ID are excluded pending source correction.'] });
+            return false;
+        });
         return { candidates: accepted, rejected: rejected, errors: errors };
     }
 
@@ -374,6 +389,12 @@ var SiteSources = (function() {
             contract_term_years: null,
 
             discovery: {
+                sourceId: cand.source || null,
+                sourceRecordId: cand.id || null,
+                stableSourceRecordId: cand.stableSourceRecordId || null,
+                identityKeys: typeof SiteIdentity !== 'undefined' ? SiteIdentity.sourceKeys(cand) : [],
+                sourceSnapshot: cand.sourceSnapshot ? JSON.parse(JSON.stringify(cand.sourceSnapshot)) : null,
+                capturedAt: new Date().toISOString(),
                 confidence: cand.confidence,
                 persistencePct: cand.persistencePct,
                 firstSeen: cand.firstSeen,

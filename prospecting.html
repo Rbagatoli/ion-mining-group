@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="./tokens.css?v=405">
     <link rel="stylesheet" href="./shared.css?v=405">
     <link rel="stylesheet" href="./landfill-contacts.css?v=429">
+    <link rel="stylesheet" href="./deal-relationships.css?v=430">
+<link rel="stylesheet" href="./prospect-diligence.css?v=431">
     <script src="./brand-migrate.js?v=340"></script>
     <script src="./theme.js?v=374"></script>
     <style>
@@ -852,7 +854,7 @@
 <script src="./backup.js?v=375"></script>
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=340"></script>
-<script src="./site-model.js?v=395"></script>
+<script src="./site-model.js?v=431"></script>
 <script src="./project-model.js?v=413"></script>
 <!-- The scorer, so a gate advance can say what it did to the score rather than only
      that it happened. site-opportunity needs SiteInfrastructure for capital_avoided,
@@ -863,10 +865,10 @@
      without it. The engine is here so the budget seed prices miners through the same code
      path as the map, instead of reproducing the formula with local literals. -->
 <script src="./miner-db.js?v=417"></script>
-<script src="./site-engine.js?v=417"></script>
-<script src="./site-capex.js?v=400"></script>
-<script src="./site-infrastructure.js?v=398"></script>
-<script src="./site-opportunity.js?v=408"></script>
+<script src="./site-engine.js?v=431"></script>
+<script src="./site-capex.js?v=431"></script>
+<script src="./site-infrastructure.js?v=431"></script>
+<script src="./site-opportunity.js?v=431"></script>
 <script src="./project-gates.js?v=384"></script>
 <!-- The budget ledger. After project-gates.js because it routes writes through ProjectData.mutate,
      and after site-capex.js because seedFromEstimate reads SiteCapex.stack(). -->
@@ -874,19 +876,23 @@
 <!-- Right-sizing. site-capacity.js first: project-sizing.js reads LFG_MW_PER_MMSCFD and the
      parasitic rates off it, and prospecting.js reads the same two to draw the live reference
      figure beside the capacity field. One definition of the conversion, on both sides. -->
-<script src="./site-capacity.js?v=386"></script>
+<script src="./site-capacity.js?v=431"></script>
 <!-- The candidate catalogue, LANDFILL SOURCES ONLY. Everything known about who owns a prospect
      -- the GHGRP legal parent, the mailing address, the ECCC named contact, the routes to a
      phone number -- lives on the sourced candidate and was dropped the moment a prospect was
      saved: this page never loaded the sources, so the CRM showed none of it. The two landfill
      artifacts are ~2.2MB against the flare survey's 2MB and the facility file's 11.6MB, and
      prospect-detail loads them LAZILY on the first detail open, not at page boot. -->
-<script src="./site-sources.js?v=412"></script>
-<script src="./source-landfill.js?v=412"></script>
-<script src="./source-landfill-ca.js?v=412"></script>
+<script src="./site-sources.js?v=431"></script>
+<script src="./source-landfill.js?v=431"></script>
+<script src="./source-landfill-ca.js?v=431"></script>
 <script src="./prospect-store.js?v=412"></script>
 <script src="./ghgrp-contacts.js?v=429"></script>
 <script src="./landfill-contacts.js?v=429"></script>
+<script src="./deal-relationships.js?v=430"></script>
+<script src="./deal-relationships-ui.js?v=430"></script>
+<script src="./prospect-diligence.js?v=431"></script>
+<script src="./prospect-diligence-ui.js?v=431"></script>
 <script src="./contact-routes.js?v=429"></script>
 <script src="./project-sizing.js?v=386"></script>
 <!-- The procurement schedule. After crm-followups.js, which owns the day comparator it calls,
@@ -916,10 +922,10 @@
 <script src="./prospect-nav.js?v=340"></script>
 <script src="./prospect-board.js?v=381"></script>
 <script src="./prospect-today.js?v=411"></script>
-<script src="./prospect-detail.js?v=429"></script>
+<script src="./prospect-detail.js?v=430"></script>
 <script src="./prospect-analytics.js?v=344"></script>
 <script src="./prospect-summary.js?v=345"></script>
-<script src="./prospecting.js?v=413"></script>
+<script src="./prospecting.js?v=430"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>

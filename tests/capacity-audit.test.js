@@ -40,10 +40,10 @@ var CA = require(path.join(ROOT, 'capacity-audit.js'));
 var SiteData = global.SiteData;
 
 /* Coastal Plains RDF, the worked example site-capacity.js already cites. Rated 5,000 kW; collects
-   1.927 mmscfd which is 4,008 kW of gas, so the gas binds; less 10% parasitic = 3,607 kW.
+   1.927 mmscfd which is 3,611 kW gross at 50% methane, 1,012 Btu/scf methane and 11,250 Btu/kWh; less 7% auxiliaries = 3,359 kW net.
    Every one of those three numbers is written out here rather than computed, so the fixture
    states the answer instead of asking the code under test for it. */
-var GROSS = 5000, USABLE = 3607;
+var GROSS = 5000, USABLE = 3359;
 function candidate(id, gross, mmscfd) {
     return { id: id, name: 'Coastal Plains RDF', energyType: 'landfill_gas',
              powerPotentialKw: gross === undefined ? GROSS : gross,
@@ -61,7 +61,7 @@ function save(id, usableKw, name) {
 
 console.log('\n=== the arithmetic the whole detector rests on ===');
 // Stated independently: if this drifts, every classification below is judged against the wrong bar.
-eq('the gas binds below the rating and parasitic takes 10%',
+eq('the gas binds below the rating and parasitic takes 7%',
    SiteCapacity.usableKwFor(candidate('c1')), USABLE);
 
 console.log('\n=== four records, four different verdicts ===');
@@ -103,10 +103,10 @@ console.log('\n=== what the flagged record actually claims ===');
 var s = scan.suspect[0];
 eq('the figure held', s.have, GROSS);
 eq('what the gas supports', s.derived, USABLE);
-eq('the overstatement', s.have - s.derived, 1393);
+eq('the overstatement', s.have - s.derived, 1641);
 eq('reported as a delta toward the truth', s.delta, USABLE - GROSS);
-eq('and as a percentage', s.delta_pct, -27.9);
-eq('the scan totals the overstatement across every flagged record', scan.overstated_kw, 1393);
+eq('and as a percentage', s.delta_pct, -32.8);
+eq('the scan totals the overstatement across every flagged record', scan.overstated_kw, 1641);
 ok('and the reason argues from exact equality, not from a guess',
    /does not land exactly on it/.test(s.reason), s.reason);
 
@@ -147,7 +147,7 @@ eq('and the record now holds it', SiteData.get('c1').usable_kw, USABLE);
 /* A capacity figure that prices a build must not move without a trace. */
 var logged = CrmLog.forProspect('c1', 'note');
 ok('the change is logged', logged.length >= 1);
-ok('with both figures in it', /5000 kW to 3607 kW/.test(logged[0].body), logged[0].body);
+ok('with both figures in it', /5000 kW to 3359 kW/.test(logged[0].body), logged[0].body);
 ok('and who applied it', /R Bagatoli/.test(logged[0].body), logged[0].body);
 
 console.log('\n=== and refuses everything else ===');

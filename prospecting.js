@@ -255,6 +255,12 @@
         if (typeof ProspectDetail === 'undefined') return;
         var id = idFromHash();
         if (!id) return;
+        var relationshipRoot = document.querySelector('#dealRelationships');
+        if (relationshipRoot && relationshipRoot.getAttribute('data-prospect-id') === id && relationshipRoot._hasDraft && relationshipRoot._hasDraft()) {
+            var relationshipStatus = relationshipRoot.querySelector('#relationshipStatus');
+            if (relationshipStatus) relationshipStatus.textContent = 'New saved data is available. Your relationship edits are preserved; finish saving or reload this map.';
+            return;
+        }
         ProspectDetail.render(id, 'pdetail');
         wireDetail(id);
     }

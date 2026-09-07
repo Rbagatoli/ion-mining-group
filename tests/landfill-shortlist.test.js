@@ -159,7 +159,7 @@ console.log('\n=== acquisition rank inverts it ===');
        'the $600K-1.2M line item already spent');
 
     // The mechanism, asserted directly rather than inferred from the ordering.
-    eq('a shutdown offtake is over by definition', firstWithStatus('Shutdown').offtakeState, 'expired');
+    eq('a project shutdown cannot establish expired gas rights', firstWithStatus('Shutdown').offtakeState, null);
     ok('so it carries acquirability evidence where a running plant carries none',
        acq(firstWithStatus('Shutdown')) > 0 && !(acq(firstWithStatus('Operational')) > 0));
 

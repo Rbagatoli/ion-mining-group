@@ -235,7 +235,7 @@ var SiteInfrastructure = (function() {
             civil: 'unknown',
             confidence: 'low',
             evidence: [],
-            conditionVerified: sd.infraConditionVerified === true
+            conditionVerified: false
         };
         if (!c) return out;
 
@@ -252,19 +252,8 @@ var SiteInfrastructure = (function() {
             out.evidence.push({ field: 'hasExistingControls', value: 'true',
                                 source: 'ECCC GHGRP, reported gas destruction' });
         } else if (sd.hasExistingControls === false) {
-            // No collection today -- but a statutory deadline means the OPERATOR builds it.
-            if (sd.lmrCohort && sd.lmrCohort !== 'below_threshold' && sd.lmrCohort !== 'unknown') {
-                out.collection = 'mandated';
-                out.mandateSource = 'Landfill Methane Regulations (SOR/2025-279)';
-                out.mandateDeadline = sd.lmrDeadline || null;
-                out.mandateConfidence = sd.lmrCohort === 'jan_2029' ? 'high' : 'medium';
-                out.evidence.push({ field: 'lmrCohort', value: String(sd.lmrCohort),
-                                    source: 'Canadian LMR cohort, s.5' });
-            } else {
-                out.collection = 'absent';
-                out.evidence.push({ field: 'hasExistingControls', value: 'false',
-                                    source: 'ECCC GHGRP, no gas destruction reported' });
-            }
+            out.collection = 'unknown';
+            out.evidence.push({ field: 'hasExistingControls', value: 'false', source: 'No gas destruction reported; equipment and funding are not established' });
         }
 
         // ---- generation, read from the field that states it ----
@@ -275,20 +264,13 @@ var SiteInfrastructure = (function() {
             out.evidence.push({ field: 'existingGenerationKw', value: String(Math.round(gen)) + ' kW',
                                 source: 'EPA LMOP rated or actual MW' });
         } else if (/candidate|low potential|future potential/i.test(String(sd.projectStatus || ''))) {
-            out.generation = 'absent';
+            out.generation = 'unknown';
             out.evidence.push({ field: 'projectStatus', value: String(sd.projectStatus),
                                 source: 'EPA LMOP project status' });
         }
 
-        /* Treatment, electrical and civil FOLLOW generation, and that is an inference drawn on an
-           inference. If gensets went in, a siloxane skid, switchgear and a pad went in with them
-           -- there is no way to run an engine without them. But nothing publishes it, so these
-           never reach high confidence and the detail view says so. */
-        if (out.generation === 'present' || out.generation === 'shutdown') {
-            out.gasTreatment = out.electrical = out.civil = out.generation;
-        } else if (out.generation === 'absent') {
-            out.gasTreatment = out.electrical = out.civil = 'absent';
-        }
+        // A generator record does not inventory treatment, switchgear, pads or their usable condition.
+        // Those components remain unknown until their own records or inspection are entered.
 
         // Confidence is about the INVENTORY, not the condition. Two published facts is as good as
         // this data gets; one is medium; none is a guess.
@@ -320,129 +302,22 @@ var SiteInfrastructure = (function() {
     //
     // opts: { kw, band: 'low'|'mid'|'high', asOf: 'YYYY-MM-DD', discountOverride: {component: n} }
     function capitalAvoided(c, opts) {
-        var o = opts || {};
-        var inv = inventory(c);
-        var kw = num(o.kw);
-        if (kw === null) kw = num(c && c.powerPotentialKw);
-        var R = rates();
-        var mult = BAND[o.band] === undefined ? BAND.mid : BAND[o.band];
-
-        var out = {
-            avoidedUsd: null, requiredUsd: null, totalBuildUsd: null,
-            confidence: inv.confidence, conditionVerified: inv.conditionVerified,
-            components: [], inventory: inv, band: o.band || 'mid',
-            mandateMonths: null, mandateFactor: null
-        };
-        if (kw === null || kw <= 0) return out;
-
-        var months = inv.mandateDeadline ? monthsToDeadline(inv.mandateDeadline, o.asOf || null) : null;
-        var mf = inv.collection === 'mandated' ? mandateFactor(months) : null;
-        out.mandateMonths = months;
-        out.mandateFactor = mf;
-
-        /* THE MARKET THIS BUILD IS PRICED IN. Site-level default from what is on the ground,
-           overridable per component. RNEW is kept alongside so the panel can show the delta as
-           a number rather than leaving the reader to compare two screenshots. */
-        var market = (o.market === 'new' || o.market === 'used') ? o.market : defaultMarket(inv);
-        var RUSED = rates('used'), RNEW = rates('new');
-        out.market = market;
-        function marketFor(id) {
-            if (o.marketOverride && (o.marketOverride[id] === 'new' || o.marketOverride[id] === 'used')) {
-                return o.marketOverride[id];
-            }
-            return market;
-        }
-        function rateFor(id, mkt) {
-            var src = (mkt === 'used') ? RUSED : RNEW;
-            return src[id];
-        }
-
-        var parts = [
-            { id: 'collection',   label: 'Gas collection',  state: inv.collection },
-            { id: 'generation',   label: 'Generation',      state: inv.generation },
-            { id: 'gasTreatment', label: 'Gas treatment',   state: inv.gasTreatment },
-            { id: 'electrical',   label: 'Electrical',      state: inv.electrical },
-            { id: 'civil',        label: 'Civil / pad',     state: inv.civil }
-        ];
-        parts.forEach(function (p) {
-            p.market = marketFor(p.id);
-            p.perKw = rateFor(p.id, p.market);
-            p.newPerKw = rateFor(p.id, 'new');
-            /* Whether a secondary market EXISTS, asked of the module that owns the card. The UI
-               needs it to say "no used market" rather than showing a saving of zero, which reads
-               as a rate somebody forgot to fill in. */
-            p.usedMarket = (typeof SiteCapex !== 'undefined' && SiteCapex.hasUsedMarket && RATE_KEY[p.id])
-                ? SiteCapex.hasUsedMarket(RATE_KEY[p.id]) : false;
-        });
-
-        var total = 0, avoided = 0, totalAtNew = 0, avoidedAtNew = 0;
-        parts.forEach(function(p) {
-            var full = p.perKw * kw * mult;
-            total += full;
-            totalAtNew += p.newPerKw * kw * mult;
-            var disc = Object.prototype.hasOwnProperty.call(CONDITION_DISCOUNT, p.state)
-                ? CONDITION_DISCOUNT[p.state] : 0;
-            var aged = false, agedYears = null;
-            if (p.state === 'shutdown') {
-                var sd = shutdownDiscount(c, o.asOf, p.id);
-                disc = sd.discount; aged = sd.aged; agedYears = sd.years;
-            }
-            // A verified site is worth what it is, not what a stranger would discount it to.
-            if (inv.conditionVerified && (p.state === 'present' || p.state === 'shutdown')) disc = 1;
-            if (o.discountOverride && o.discountOverride[p.id] !== undefined) {
-                disc = Number(o.discountOverride[p.id]);
-            }
-            var value = full * disc;
-            // The mandate decay applies ONLY to mandated capital -- it is about the timing of
-            // somebody else's decision, not about the condition of anything.
-            if (p.state === 'mandated' && mf !== null) value *= mf;
-            avoided += value;
-            /* The same arithmetic at new rates, accumulated alongside, so STILL TO SPEND can be
-               compared too. The discount is identical in both -- market and condition are
-               independent multipliers and must never interact. */
-            var valueAtNew = p.newPerKw * kw * mult * disc;
-            if (p.state === 'mandated' && mf !== null) valueAtNew *= mf;
-            avoidedAtNew += valueAtNew;
-            out.components.push({
-                id: p.id, label: p.label, state: p.state,
-                market: p.market, usedMarket: p.usedMarket,
-                newPerKw: Math.round(p.newPerKw * mult),
-                newFullUsd: Math.round(p.newPerKw * kw * mult),
-                perKw: Math.round(p.perKw * mult), fullUsd: Math.round(full),
-                discount: disc, avoidedUsd: Math.round(value),
-                /* aged:false on a shutdown row means the discount was DEFAULTED to the floor
-                   because no shutdown date is published, not computed from one. A reader has to
-                   be able to tell those apart; years is the input it was computed from. */
-                agedDiscount: aged, yearsSinceShutdown: agedYears === null ? null
-                                                        : Math.round(agedYears * 10) / 10
-            });
-        });
-
-        out.totalBuildUsd = Math.round(total);
-        out.avoidedUsd = Math.round(avoided);
-        out.requiredUsd = Math.round(total - avoided);
-        /* THE DELTA, AS A NUMBER. What this build would cost priced entirely new, and what the
-           market setting is saving off the figure that actually decides anything. Reported even
-           when it is zero, because "priced new" and "used, and it saved nothing" are different
-           statements and the second only happens where no secondary market exists. */
-        out.totalBuildAtNewUsd = Math.round(totalAtNew);
-        out.buildSavingUsd = Math.round(totalAtNew - total);
-        out.requiredAtNewUsd = Math.round(totalAtNew - avoidedAtNew);
-        /* THE SAVING SHRINKS AS YOU INHERIT MORE, and that is not a bug to hide. It is
-           (newRate - usedRate) x kw x (1 - discount): the more of the equipment is already on
-           site, the less of it you are buying, so the less buying it cheaply saves. The mirror
-           of the fact that inheriting equipment is worth less when the equipment is cheap. Both
-           are the same identity and the panel has to say so, or the two settings look like they
-           are fighting each other. */
-        out.requiredSavingUsd = Math.round((totalAtNew - avoidedAtNew) - (total - avoided));
-        return out;
+        var o = opts || {}, inv = inventory(c);
+        // Presence and shutdown age cannot price reuse savings or decide who funds the work.
+        // The component quote ledger in ProspectDiligence holds the remaining Proton budget.
+        return { avoidedUsd: null, requiredUsd: null, totalBuildUsd: null, totalBuildAtNewUsd: null,
+            requiredAtNewUsd: null, requiredSavingUsd: null, buildSavingUsd: null,
+            confidence: inv.confidence, conditionVerified: false, components: [], inventory: inv,
+            band: o.band || 'mid', market: o.market === 'used' ? 'used' : 'new',
+            mandateMonths: null, mandateFactor: null,
+            reason: 'No documented replacement scope, access agreement and comparable current quote; reuse savings are unpriced.' };
     }
 
     // 0..100 for the scorer. Share of the total build somebody else has paid for or must pay for,
     // which is directly comparable between a 500 kW site and a 5 MW one.
     function avoidedScore(c, opts) {
         var r = capitalAvoided(c, opts);
-        if (r.totalBuildUsd === null || r.totalBuildUsd <= 0) return null;
+        if (r.avoidedUsd === null || r.totalBuildUsd === null || r.totalBuildUsd <= 0) return null;
         return Math.max(0, Math.min(100, Math.round(100 * r.avoidedUsd / r.totalBuildUsd)));
     }
 

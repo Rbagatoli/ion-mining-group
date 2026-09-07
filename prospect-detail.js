@@ -1637,6 +1637,7 @@ var ProspectDetail = (function () {
             '</select></label>' +
             advanceControl(rec) +
         '</div>' +
+        (typeof DealRelationshipsUi !== 'undefined' ? DealRelationshipsUi.render(rec, candidateFor(rec)) : '') +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
         gatesSection(rec) +
         budgetSection(rec) +
@@ -1655,6 +1656,7 @@ var ProspectDetail = (function () {
 
         var sel = document.getElementById('pdStage');
         if (sel) sel.value = rec.stage;
+        if (typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.bind(rec, host, candidateFor(rec));
         if (typeof LandfillContacts !== 'undefined') LandfillContacts.mount(host, candidateFor(rec));
         return rec;
     }

@@ -71,7 +71,7 @@ var SiteData = (function() {
     var GENERATOR_OWNERSHIP = ['client', 'producer', 'operator'];
     // How a gas quote was expressed. usd_kwh is an ALL-IN power price; the other two are fuel
     // only, which is why generator ownership has to be recorded alongside them.
-    var RATE_UNITS = ['usd_kwh', 'usd_gj', 'usd_mcf'];
+    var RATE_UNITS = ['usd_kwh', 'usd_gj', 'usd_mcf', 'usd_mmbtu'];
 
     // Fields the satellite cannot know. Blank by default and NEVER inferred — the spec is
     // explicit about this, and a guessed H2S reading is a safety claim we have no basis for.
@@ -120,6 +120,10 @@ var SiteData = (function() {
             // template is silently discarded on save.
             quoted_rate: null,
             quoted_rate_units: null,
+            heat_rate_btu_per_kwh: null,
+            gas_btu_per_cf: null,
+            power_rate_basis: null,
+            power_rate_version: null,
 
             /* CONDITION VERIFIED ON SITE — the one fact no dataset can supply.
                LMOP records that a gas plant was INSTALLED. It never records whether the gensets
@@ -148,6 +152,7 @@ var SiteData = (function() {
             hardware_condition: null,
 
             discovery: null,
+            acquisition: {},
             /* THE LOOSE FIELD. normalize() copies only keys that exist on this
                template and silently drops everything else, which is right for a
                model with a fixed shape and wrong for a CRM whose fields are not
@@ -297,6 +302,7 @@ var SiteData = (function() {
         var data = getData();
         var site = normalize(partial);
         if (!site.id) site.id = newId();
+        if (data.sites.some(function(s) { return s.id === site.id; })) return { id: site.id, _save: { ok: false, err: "A prospect with this ID is already saved. Open it to update." } };
         site.created = new Date().toISOString();
         site.updated = site.created;
         data.sites.push(site);
@@ -465,6 +471,9 @@ var SiteData = (function() {
     // as missing rather than scoring the site as though it were free.
     function fromCandidate(cand, overrides) {
         if (typeof SiteSources === 'undefined') throw new Error('SiteSources is required to promote a candidate');
+        var existing = list().filter(function(s) { return s.id === cand.id || (s.discovery && s.discovery.sourceId === cand.source && s.discovery.sourceRecordId === cand.id); });
+        if (existing.length > 1) return { id: cand.id, _save: { ok: false, err: "Multiple saved records match this source. Resolve the duplicate before updating." } };
+        if (existing.length) return Object.assign({}, existing[0], { _existing: true, _save: { ok: true, err: null } });
         return add(SiteSources.toSite(cand, overrides));
     }
 

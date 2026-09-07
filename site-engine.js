@@ -198,6 +198,14 @@ var SiteEngine = (function() {
     // Omitting it leaves every derived field null and every existing field byte-identical.
     function evaluate(site, market, config, capex) {
         site = site || {};
+        // Revalue the original quote at the shared boundary, including saved legacy records.
+        // This prevents another screen from reusing an obsolete thermal-shortcut power_rate.
+        if (site.quoted_rate !== null && site.quoted_rate !== undefined && site.quoted_rate_units) {
+            site = Object.assign({}, site, { power_rate: powerRateFromQuote(site.quoted_rate, site.quoted_rate_units, {
+                heatRateBtuPerKwh: site.heat_rate_btu_per_kwh == null ? (site.energy_type === 'landfill_gas' ? 11250 / 0.93 : 10000) : site.heat_rate_btu_per_kwh,
+                gasBtuPerCf: site.gas_btu_per_cf == null ? (site.energy_type === 'landfill_gas' ? 506 : 1000) : site.gas_btu_per_cf
+            }) });
+        }
         market = market || {};
         var c = resolveConfig(config);
         var missing = [];
@@ -318,8 +326,10 @@ var SiteEngine = (function() {
         // the walk-away rate is genuinely identical at 100%, 50% and 20% duty. That is the same
         // property that makes cash_cost_per_btc duty-invariant, and it is asserted in the tests
         // because if the derate ever gets applied to one side only, this is where it shows.
-        var billedKwh = (usableKw === null) ? null : usableKw * c.hoursPerMonth * (c.uptimePct / 100);
-        var maxPowerRateCash = div(monthlyRevenue, billedKwh);
+        var billedKwh = (usableKw === null) ? null : usableKw * c.hoursPerMonth *
+            Math.max(c.uptimePct / 100, takeOrPayPct === null ? 0 : takeOrPayPct / 100);
+        var revenueAfterOm = monthlyRevenue === null ? null : monthlyRevenue - (monthlyOmUsd || 0);
+        var maxPowerRateCash = div(revenueAfterOm, billedKwh);
 
         // Capital recovered over the target window. Uses all-in capital where a capex stack was
         // supplied and the narrower total otherwise, so the answer is never more optimistic than
@@ -363,7 +373,7 @@ var SiteEngine = (function() {
         var recoverCapital = allInCapitalUsd !== null ? allInCapitalUsd : totalCapital;
         if (monthlyRevenue !== null && billedKwh !== null && billedKwh > 0 &&
             recoverCapital !== null && targetMonths > 0) {
-            maxPowerRateCapital = (monthlyRevenue - recoverCapital / targetMonths) / billedKwh;
+            maxPowerRateCapital = (revenueAfterOm - recoverCapital / targetMonths) / billedKwh;
         }
         var monthsToRevenue = (capex && capex.months_to_revenue) ? capex.months_to_revenue : null;
         // Payback measured from CLOSING rather than from first power. On these numbers the wait
@@ -447,8 +457,26 @@ var SiteEngine = (function() {
         };
     }
 
+    // Returns a rate in the quote's currency. Fuel and delivered electricity remain
+    // different bases; callers must carry O&M and other delivery costs separately.
+    function powerRateFromQuote(amount, unit, assumptions) {
+        var v = numOrNull(amount), a = assumptions || {};
+        if (v === null || v < 0) return null;
+        if (unit === 'usd_kwh') return v;
+        var heatRate = positiveOrNull(a.heatRateBtuPerKwh);
+        if (heatRate === null) return null;
+        if (unit === 'usd_gj') return v * heatRate * 1.05505585262e-6;
+        if (unit === 'usd_mmbtu') return v * heatRate / 1000000;
+        if (unit === 'usd_mcf') {
+            var btu = positiveOrNull(a.gasBtuPerCf);
+            return btu === null ? null : v * heatRate / (1000 * btu);
+        }
+        return null;
+    }
+
     return {
         evaluate: evaluate,
+        powerRateFromQuote: powerRateFromQuote,
         gasMcfDayToKw: gasMcfDayToKw,
         kwToGasMcfDay: kwToGasMcfDay,
         DEFAULT_CONFIG: DEFAULT_CONFIG,

@@ -89,7 +89,7 @@ var SiteAvailability = (function() {
         // Facilities: the plant's own reported capacity factor is the only real measurement.
         var cf = num(d.capacityFactorCurrent);
         if (cf === null) cf = num(d.capacityFactorBaseline);
-        if (cf !== null && cf > 0) return BASIS.MEASURED;
+        if (cf !== null && cf >= 0) return BASIS.MEASURED;
         return BASIS.UNKNOWN;
     }
 
@@ -159,16 +159,8 @@ var SiteAvailability = (function() {
         if (b === BASIS.DECLARED) {
             return 'Duty cycle ' + duty + '% declared for this source type';
         }
-        // Measured.
-        if (cap === 'physically_capped') {
-            return 'Ran ' + duty + '% of hours — a physical ceiling for this plant type. On-site ' +
-                   'load cannot raise it.';
-        }
-        if (cap === 'dispatch_limited') {
-            return 'Ran ' + duty + '% of hours. Dispatchable plant, so this is a floor rather ' +
-                   'than a ceiling — fuel supply and interconnect headroom unmeasured.';
-        }
-        return 'Ran ' + duty + '% of hours, measured from this plant\'s own generation history';
+        // Capacity factor is an energy ratio, not measured hours online or a guaranteed floor/ceiling.
+        return 'Historical capacity factor ' + duty + '%: net generation divided by nameplate energy over the reporting period. Future delivery depends on fuel, dispatch, outages and contractual allocation.';
     }
 
     return {

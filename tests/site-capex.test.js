@@ -566,17 +566,8 @@ SC.reset();
        those sites — 37 of them in the real catalogue, $17.0M of somebody else's capital. */
     var mand = comp(lf({ collectionSystem: 'No', jurisdiction: 'CA-ON' },
                        { latitude: 43.7, longitude: -79.4, country: 'CA' }), 'collection');
-    if (mand && mand.reason && /legally obliged/.test(mand.reason)) {
-        ok('a mandated site is not charged, because the operator must build it', mand.state === 'avoided');
-        eq('and the avoided capital is still reported', mand.avoided_usd, RATE * 2000);
-    } else {
-        /* The mandate depends on jurisdiction data this fixture may not reach. Rather than
-           assert nothing, prove the branch exists in the module — a silent skip here would be a
-           test that reports coverage it does not have. */
-        ok('the mandated branch exists in the source',
-           /legally obliged to install collection/.test(
-               require('fs').readFileSync(require('path').join(ROOT, 'site-capex.js'), 'utf8')));
-    }
+    ok('a mandate alone does not establish funded construction', mand && mand.state === 'incurred');
+    eq('retain collection capital until funding is agreed', mand.usd, RATE * 2000);
 
     // SHUTDOWN and UNKNOWN: both genuinely unpriceable, and neither is guessed at.
     var shut = comp(lf({ collectionSystem: 'Shutdown' }), 'collection');

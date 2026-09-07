@@ -4,12 +4,8 @@
 // LMOP tracks landfill gas projects from candidate site through planned, constructed, operating
 // and — most usefully — SHUTDOWN.
 //
-// A shutdown project is the most acquirable class of asset in this module. The waste is still
-// decomposing and still producing gas, the collection system is in the ground, the generator was
-// installed, the interconnection was made and the air permit was issued. Then the project stopped,
-// almost always because the power offtake stopped being economic — which is precisely the
-// situation where a buyer who wants continuous on-site power rather than an export contract is
-// solving the owner's problem rather than competing for a prize.
+// A shutdown is a lead to investigate. The record does not establish why it stopped,
+// which equipment remains, its condition, available gas rights or current permits.
 //
 // Reads data/landfills.json, built offline by tools/build-landfill-index.js.
 var LandfillSource = (function() {
@@ -25,6 +21,7 @@ var LandfillSource = (function() {
     // against solar or wind. Not 100: gas engines need scheduled maintenance, and collection
     // systems are periodically rebalanced as new cells open.
     var DUTY_CYCLE_PCT = 92;
+    var _recordCounts = Object.create(null);
 
     function load() {
         if (_data) return Promise.resolve(_data);
@@ -35,6 +32,8 @@ var LandfillSource = (function() {
         }).then(function(d) {
             if (!d || !Array.isArray(d.projects)) throw new Error('malformed landfill index');
             _data = d;
+            _recordCounts = Object.create(null);
+            d.projects.forEach(function(p) { _recordCounts[p.id] = (_recordCounts[p.id] || 0) + 1; });
             return d;
         }).catch(function(e) {
             _loading = null;
@@ -45,25 +44,20 @@ var LandfillSource = (function() {
 
     function fetchAll() { return load().then(function(d) { return d.projects; }); }
     function meta() { return _data; }
+    function sourcePeriod() { return (_data && _data.sourceReleaseDate) || '2024-09-04'; }
 
     function isShutdown(p) { return /shutdown/i.test(String(p.projectStatus || '')); }
 
-    // What the gas is committed to.
-    //
-    // A shutdown project's offtake is by definition over — whatever contract existed ended when
-    // the project stopped, which is what makes the gas available again. A candidate landfill's
-    // gas was never committed to anyone. An OPERATING project is the one case we genuinely cannot
-    // read: it is selling power to someone under terms EPA does not publish, so it returns null
-    // and scores as unknown rather than being guessed at.
-    function offtakeFor(p) {
-        if (isShutdown(p)) return 'expired';
-        var s = String(p.projectStatus || '').toLowerCase();
-        // 'no project' is the inventory sweep: a landfill EPA tracks with no energy project at
-        // all. Its gas was never committed to anyone — the same answer as a candidate's, for
-        // the same reason.
-        if (s === 'candidate' || s === 'future potential' || s === 'low potential' ||
-            s === 'no project') return 'none_merchant';
-        return null;
+    // Project status describes the energy project, not current gas-rights agreements.
+    function offtakeFor() { return null; }
+
+    function isElectricProject(p) {
+        return /engine|turbine|electric|cogeneration|combined cycle|rankine|fuel cell|linear generator/i.test(String(p.projectType || ''));
+    }
+    function reportedGenerationKw(p) {
+        if (!isElectricProject(p) || !/^(operational|shutdown)$/i.test(String(p.projectStatus || ''))) return null;
+        var mw = p.ratedMw !== null && p.ratedMw !== undefined ? Number(p.ratedMw) : Number(p.actualMw);
+        return Number.isFinite(mw) && mw > 0 ? Math.round(mw * 1000) : null;
     }
 
     // Permit state is deliberately NOT inferred here. A shutdown project almost certainly HELD an
@@ -85,21 +79,20 @@ var LandfillSource = (function() {
                 detail: 'Landfill gas project shut down' +
                         (p.projectShutdownDate ? ' on ' + p.projectShutdownDate : ' (date not published)') +
                         (p.projectType ? ' — was a ' + String(p.projectType).toLowerCase() : '') +
-                        '. Gas collection and interconnection remain in place.'
+                        '. Current equipment, condition, gas rights and interconnection must be checked separately.'
             });
         }
-        /* GAS BURNED FOR NOTHING. A no-project landfill flaring collected gas is the clearest
-           acquisition signal in the dataset: the collection system exists, the gas is measured
-           at the flare meter, and the owner is paying to destroy the product. Undated — the
-           inventory reports a rate, not an event — so decay scoring treats it as current. */
+        // Flaring without an energy project is a research lead. Date it to the reported
+        // measurement year; current flows, availability and contractual rights remain unknown.
         if (String(p.projectStatus || '').toLowerCase() === 'no project' &&
             p.lfgFlaredMmscfd > 0) {
             out.push({
                 type: 'lmop_flaring_no_project',
-                date: null,
+                date: p.lfgFlaredYear ? String(p.lfgFlaredYear) + '-12-31' : sourcePeriod(),
                 source: 'EPA LMOP landfill inventory',
-                detail: 'Collected landfill gas is being flared — ' + p.lfgFlaredMmscfd +
-                        ' mmscfd destroyed with no energy project on site.'
+                detail: 'Inventory reported ' + p.lfgFlaredMmscfd + ' mmscfd flared' +
+                        (p.lfgFlaredYear ? ' in ' + p.lfgFlaredYear : ' (measurement year not published)') +
+                        ' and no energy project. Confirm current operations and uncommitted gas.'
             });
         }
         return out;
@@ -107,7 +100,10 @@ var LandfillSource = (function() {
 
     function normalize(p) {
         return {
-            id: p.id,
+            sourceSnapshot: { dataset: 'EPA LMOP', artifactGenerated: _data && _data.generated || null,
+                sourceUrl: _data && _data.sourceUrl || 'https://www.epa.gov/system/files/documents/2024-09/lmopdata.xlsx', reportingPeriod: sourcePeriod(), capacityBasis: p.capacityBasis || null },
+            id: _recordCounts[p.id] > 1 && p.lfid ? p.id + '__lf_' + encodeURIComponent(p.lfid) : p.id,
+            stableSourceRecordId: p.lfid ? 'lmop:landfill:' + p.lfid + ':project:' + p.id : null,
             // The landfill is the place; the project is what was built on it. Both matter, so the
             // display name carries the landfill and the project detail carries the rest.
             name: p.name,
@@ -118,13 +114,9 @@ var LandfillSource = (function() {
             operator: p.owner || null,
             operatorSource: p.owner ? 'EPA LMOP landfill owner' : null,
             powerPotentialKw: p.powerPotentialKw,
-            // What is already standing. LMOP publishes a rated capacity for projects that were
-            // built and an actual for those that ran; either means a generator exists on site.
-            // 917 of 1,908 rows carry one, and 462 of those are SHUTDOWN projects -- built,
-            // permitted, interconnected, and now idle. That is the highest-value combination in
-            // this dataset and nothing was reading it.
-            existingGenerationKw: (p.ratedMw || p.actualMw)
-                ? Math.round((p.ratedMw || p.actualMw) * 1000) : null,
+            // An operational or shutdown electrical project reports historical generation.
+            // Planned MW and RNG/direct-use throughput do not establish installed generators.
+            existingGenerationKw: reportedGenerationKw(p),
             dutyCyclePct: DUTY_CYCLE_PCT,
             firstSeen: p.projectStartDate || (p.landfillOpenedYear ? String(p.landfillOpenedYear) : null),
             lastSeen: p.projectShutdownDate || null,
@@ -136,18 +128,34 @@ var LandfillSource = (function() {
             distressSignals: distressFor(p),
             // Landfill gas needs treatment before it can run an engine. This is not optional and
             // it is not cheap, so it is stated on every prospect rather than discovered later.
-            regulatoryNotes: 'Landfill gas carries siloxanes, which form silica deposits that ' +
-                             'destroy engine components, plus moisture and hydrogen sulphide. ' +
-                             'Gas treatment is mandatory, not optional, and its capital cost ' +
-                             'belongs in any evaluation of this site. Landfill gas is also ~50% ' +
-                             'methane at roughly half the energy per cubic foot of pipeline gas.',
+            regulatoryNotes: 'Obtain current gas analysis for methane, moisture, siloxanes and hydrogen sulphide. ' +
+                             'Specify treatment, pressure and emissions controls for the selected engine. ' +
+                             'A generic 50% methane assumption does not replace the reported composition or a current sample.',
             evidence: [{
                 dataset: 'EPA Landfill Methane Outreach Program',
-                year: _data ? Number(String(_data.generated).slice(0, 4)) : null,
-                field: p.capacityBasis,
-                value: Math.round(p.powerPotentialKw) + ' kW from ' + (p.capacityBasis || 'published data')
+                year: p.lfgCollectedYear || Number(String(sourcePeriod()).slice(0, 4)),
+                field: 'Reported project / gas evidence',
+                value: (p.projectStatus || 'status not recorded') + '; collected gas ' + (p.lfgCollectedMmscfd == null ? 'not reported' : p.lfgCollectedMmscfd + ' mmscfd') + '; rated capacity ' + (p.ratedMw == null ? 'not reported' : p.ratedMw + ' MW')
             }],
             sourceDetail: {
+                legacyRecordId: p.id,
+                reportingPeriod: sourcePeriod(),
+                infrastructureSourceUrl: _data && _data.infrastructureSource && _data.infrastructureSource.sourceUrl || 'https://www.epa.gov/system/files/documents/2024-09/landfilllmopdata.xlsx',
+                lfgCollectedYear: p.lfgCollectedYear == null ? null : p.lfgCollectedYear,
+                lfgFlaredYear: p.lfgFlaredYear == null ? null : p.lfgFlaredYear,
+                methanePct: p.methanePct == null ? null : p.methanePct,
+                wellCount: p.wellCount == null ? null : p.wellCount,
+                flareCount: p.flareCount == null ? null : p.flareCount,
+                gccsCapacityCfm: p.gccsCapacityCfm == null ? null : p.gccsCapacityCfm,
+                flaresInPlace: p.flaresInPlace || null,
+                inventoryCollectionSystem: p.inventoryCollectionSystem || null,
+                landfillOperator: p.landfillOperator || null,
+                currentAreaAcres: p.currentAreaAcres == null ? null : p.currentAreaAcres,
+                wasteInPlaceYear: p.wasteInPlaceYear == null ? null : p.wasteInPlaceYear,
+                lfgGeneratedMmscfd: p.lfgGeneratedMmscfd == null ? null : p.lfgGeneratedMmscfd,
+                dutyBasis: 'declared',
+                generationEvidence: reportedGenerationKw(p) === null ? 'not established' : (isShutdown(p) ? 'historical shutdown project' : 'reported operational project'),
+                sharedProjectRecord: _recordCounts[p.id] > 1,
                 // How much longer the waste keeps making gas. Decomposition peaks around closure
                 // and decays over roughly 20-30 years, so a site still ACCEPTING waste is
                 // replenishing its own fuel and gets the full horizon; a closed one gets what is

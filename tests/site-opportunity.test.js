@@ -66,7 +66,7 @@ var intermittent = SO.score(site({ powerPotentialKw: 2000, dutyCyclePct: 20 }));
 ok('a 2 MW intermittent site scores BELOW a 2 MW continuous one',
    intermittent.score < continuous.score, { intermittent: intermittent.score, continuous: continuous.score });
 eq('effective capacity applies the duty cycle', SO.effectiveKw(site({ powerPotentialKw: 2000, dutyCyclePct: 20 })), 400);
-eq('a missing duty cycle is treated as continuous', SO.effectiveKw(site({ powerPotentialKw: 2000, dutyCyclePct: null })), 2000);
+eq('a missing duty cycle cannot establish effective capacity', SO.effectiveKw(site({ powerPotentialKw: 2000, dutyCyclePct: null })), null);
 // 10 MW at 20% duty = 2 MW effective, which IS in the band.
 eq('10 MW at 20% duty lands in the band on effective capacity',
    comp(SO.score(site({ powerPotentialKw: 10000, dutyCyclePct: 20 })), 'capacity_fit'), 100);
