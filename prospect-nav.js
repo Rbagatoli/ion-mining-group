@@ -36,6 +36,7 @@ var ProspectNav = (function () {
         { key: 'today',     label: 'Today',     href: './prospecting.html' },
         { key: 'board',     label: 'Board',     href: './prospecting.html#board' },
         { key: 'sourcing',  label: 'Sourcing',  href: './prospecting.html#sourcing' },
+        { key: 'evidence',  label: 'Evidence',  href: './prospecting.html#evidence' },
         /* The sourcing map, which is a different map from the fleet one on the
            Map tab. Same file, opened in the mode this section means. */
         { key: 'map',       label: 'Map',       href: './map.html?mode=prospects' },
@@ -46,7 +47,7 @@ var ProspectNav = (function () {
     /* Views whose page does not exist yet render disabled rather than as a link
        to a 404. A dead nav item is worse than a greyed one: it teaches people the
        section is broken. */
-    var BUILT = { today: true, board: true, sourcing: true, map: true, contacts: true, analytics: true };
+    var BUILT = { today: true, board: true, sourcing: true, evidence: true, map: true, contacts: true, analytics: true };
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)

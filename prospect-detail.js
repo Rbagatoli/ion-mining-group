@@ -1637,6 +1637,7 @@ var ProspectDetail = (function () {
             '</select></label>' +
             advanceControl(rec) +
         '</div>' +
+        (typeof ProspectEvidenceUi !== 'undefined' ? ProspectEvidenceUi.summary(rec) : '') +
         (typeof ProspectSourcingUi !== 'undefined' ? ProspectSourcingUi.render(rec) : '') +
         (typeof OwnerConfirmationUi !== 'undefined' ? OwnerConfirmationUi.render(rec) : '') +
         (typeof DealRelationshipsUi !== 'undefined' ? DealRelationshipsUi.render(rec, candidateFor(rec)) : '') +

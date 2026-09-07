@@ -27,6 +27,7 @@
         /* #p/<id> opens one prospect. Routing on the hash rather than opening a
            modal means the back button works and a prospect can be linked to,
            which matters the moment you want to send yourself one. */
+        if (h === 'evidence' || h.indexOf('evidence?') === 0) return 'evidence';
         if (h === 'sourcing' || h.indexOf('sourcing?') === 0) return 'sourcing';
         if (h.indexOf('p/') === 0) return 'detail';
         /* #s/<id> is the one-page summary. Its own route rather than a mode on
@@ -44,6 +45,7 @@
 
     var host = document.getElementById('pboard');
     var note = document.getElementById('boardNote');
+    var evidenceSection = document.getElementById('evidenceSection');
     var sourcingSection = document.getElementById('sourcingSection');
     var todaySection = document.getElementById('todaySection');
     var boardSection = document.getElementById('boardSection');
@@ -184,13 +186,15 @@
         /* The section nav has no tab for a single prospect, so the board stays lit
            while one is open: it is where you came from and where Back goes. */
         ProspectNav.render(v === 'detail' ? 'board' : v);
+        if (evidenceSection) evidenceSection.hidden = (v !== 'evidence');
         if (sourcingSection) sourcingSection.hidden = (v !== 'sourcing');
         todaySection.hidden = (v !== 'today');
         boardSection.hidden = (v !== 'board');
         detailSection.hidden = (v !== 'detail');
         analyticsSection.hidden = (v !== 'analytics');
         summarySection.hidden = (v !== 'summary');
-        if (v === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
+        if (v === 'evidence' && typeof ProspectEvidenceUi !== 'undefined') ProspectEvidenceUi.page('pevidence');
+        else if (v === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
         else if (v === 'board') draw();
         else if (v === 'detail') drawDetail();
         else if (v === 'analytics') drawAnalytics();
@@ -911,6 +915,9 @@
     document.addEventListener('prospect-sourcing:changed', function () {
         if (viewFromHash() === 'today') drawToday();
         else if (viewFromHash() === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
+    });
+    document.addEventListener('prospect-evidence:changed', function () {
+        if (viewFromHash() === 'today') drawToday();
     });
     window.addEventListener('hashchange', show);
     show();

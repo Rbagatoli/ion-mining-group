@@ -47,6 +47,7 @@ var ProspectToday = (function () {
         var out = { overdue: [], dueToday: [], goingQuiet: [], neverContacted: [], ownerActions: [] };
         if (typeof OwnerConfirmation !== 'undefined' && typeof SiteData !== 'undefined' && SiteData.list) out.ownerActions = OwnerConfirmation.queue(SiteData.list(), nowMs);
         if (typeof ProspectSourcing !== 'undefined' && typeof SiteData !== 'undefined') out.sourcing = ProspectSourcing.queue(SiteData.list(), {}, nowMs);
+        if (typeof ProspectEvidence !== 'undefined' && typeof SiteData !== 'undefined') out.evidence = ProspectEvidence.queue(SiteData.list(), {}, nowMs);
         if (typeof CrmFollowups === 'undefined') return out;
 
         var od = CrmFollowups.overdue(nowMs);
@@ -128,6 +129,7 @@ var ProspectToday = (function () {
         var d = build(nowMs);
         var html = typeof OwnerConfirmationUi !== 'undefined' ? OwnerConfirmationUi.todayMarkup(d.ownerActions) : '';
         if (typeof ProspectSourcingUi !== 'undefined' && typeof SiteData !== 'undefined') html += ProspectSourcingUi.todayMarkup(SiteData.list(), nowMs);
+        if (typeof ProspectEvidenceUi !== 'undefined' && typeof SiteData !== 'undefined') html += ProspectEvidenceUi.todayMarkup(SiteData.list(), nowMs);
         /* EMPTY SECTIONS COLLAPSE. Four always-rendered boxes of near-identical weight made
            a normal morning read as a wall of grey, and the day's actual answer -- is anything
            due -- had to be read out of 11px italics inside each one. A section renders only
@@ -149,7 +151,7 @@ var ProspectToday = (function () {
                 o.prospect_id);
         }
         if (od) html += section('Overdue', d.overdue.length, '<ul class="pt-list">' + od + '</ul>', 'negative');
-        else if (!d.ownerActions.some(function (a) { return a.due_state === 'overdue'; }) && (!d.sourcing || !d.sourcing.counts.overdue)) clear.push('nothing overdue');
+        else if (!d.ownerActions.some(function (a) { return a.due_state === 'overdue'; }) && (!d.sourcing || !d.sourcing.counts.overdue) && (!d.evidence || !d.evidence.overdue && !d.evidence.errors.length)) clear.push('nothing overdue');
 
         var dt = '';
         for (var j = 0; j < d.dueToday.length; j++) {
@@ -166,7 +168,7 @@ var ProspectToday = (function () {
                 t.prospect_id);
         }
         if (dt) html += section('Due today', d.dueToday.length, '<ul class="pt-list">' + dt + '</ul>', 'active');
-        else if (!d.ownerActions.some(function (a) { return a.due_state === 'today'; }) && (!d.sourcing || !d.sourcing.rows.some(function (r) { return r.action_open && r.due_days === 0; }))) clear.push('nothing due today');
+        else if (!d.ownerActions.some(function (a) { return a.due_state === 'today'; }) && (!d.sourcing || !d.sourcing.rows.some(function (r) { return r.action_open && r.due_days === 0; })) && (!d.evidence || !d.evidence.today && !d.evidence.errors.length)) clear.push('nothing due today');
 
         var gq = '';
         for (var k = 0; k < d.goingQuiet.length; k++) {
@@ -201,7 +203,7 @@ var ProspectToday = (function () {
 
         if (clear.length) {
             html += '<p class="pt-clear">' +
-                (clear.length === 4 && !d.ownerActions.length && (!d.sourcing || !d.sourcing.rows.length && !d.sourcing.errors.length) ? 'All clear \u2014 ' : '') +
+                (clear.length === 4 && !d.ownerActions.length && (!d.sourcing || !d.sourcing.rows.length && !d.sourcing.errors.length) && (!d.evidence || !d.evidence.pending && !d.evidence.due && !d.evidence.errors.length) ? 'All clear \u2014 ' : '') +
                 esc(clear.join(' \u00b7 ')) + '.</p>';
         }
 

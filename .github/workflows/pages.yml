@@ -81,6 +81,9 @@ jobs:
       - name: Sourcing queue checks
         run: node --test tests/prospect-sourcing.test.js tests/prospect-sourcing-integration.test.js tests/backup-coverage.test.js
 
+      - name: Evidence inbox and source check tests
+        run: node --test tests/prospect-evidence.test.js tests/prospect-evidence-integration.test.js tests/prospect-source-checks.test.js
+
       # The generated output is committed, so it can go stale. Re-run every generator and fail
       # if anything changes: a page whose cache-busting stamp does not match its own CSS, or a
       # sitemap missing a post, is exactly the kind of thing nobody notices in review.
