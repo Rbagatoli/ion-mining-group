@@ -48,12 +48,14 @@ const SITE_SKIP = new Set(['tools', 'posts', 'README.md']);
 /* Excluded from the APP copy: the other three trees have their own destinations, and the root
    robots.txt describes the pre-launch world where the app IS the site. */
 const APP_SKIP = new Set(['site', 'portal', 'robots.txt', '_config.yml', 'CNAME']);
+const APP_ASSETS = JSON.parse(fs.readFileSync(path.join(__dirname, 'app-assets.json'), 'utf8'));
 
 let copied = 0;
 
 function copyTree(from, to, skip) {
     fs.mkdirSync(to, { recursive: true });
     for (const name of fs.readdirSync(from)) {
+        if (name.startsWith('.')) continue;
         if (NEVER.has(name)) continue;
         if (skip && skip.has(name)) continue;
         const src = path.join(from, name);
@@ -77,7 +79,16 @@ function build() {
     const cname = path.join(ROOT, 'CNAME');
     if (fs.existsSync(cname)) fs.copyFileSync(cname, path.join(OUT, 'CNAME'));
     copyTree(path.join(ROOT, 'portal'), path.join(OUT, 'portal'), null);
-    copyTree(ROOT, path.join(OUT, 'app'), APP_SKIP);
+    // Only declared runtime assets are publishable. A new local report or developer file
+    // must never become a public application URL merely because it exists in the checkout.
+    for (const rel of APP_ASSETS) {
+        if (typeof rel !== 'string' || rel.split(/[\\/]/).some(p => p === '..' || p.startsWith('.'))) throw new Error('Invalid app asset: ' + rel);
+        const src = path.resolve(ROOT, rel), real = fs.realpathSync(src);
+        if (!real.startsWith(fs.realpathSync(ROOT) + path.sep) || !fs.statSync(real).isFile()) throw new Error('App asset escapes workspace: ' + rel);
+        const dst = path.join(OUT, 'app', rel);
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.copyFileSync(real, dst); copied++;
+    }
 
     /* WHAT THE PORTAL LOADS FROM ITS PARENT DIRECTORY.
      *

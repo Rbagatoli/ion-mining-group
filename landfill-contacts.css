@@ -1,0 +1,31 @@
+.lfc { margin: 14px 0 20px; min-width: 0; color: var(--text); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.lfc-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.lfc-heading h3 { margin: 0; color: var(--plat-100); font-size: 15px; }
+.lfc-heading > span { font-size: 11px; color: var(--text-mid); }
+.lfc .lfc-note, .lfc .lfc-source { color: var(--text-mid); font-size: 12px; margin: 7px 0; }
+.lfc-card { padding: 14px; margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-solid); }
+.lfc-primary { border-color: var(--line-btc); border-left: 3px solid var(--btc-300); }
+.lfc .lfc-eyebrow { color: var(--btc-300); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 5px; }
+.lfc .lfc-card h4 { margin: 0 0 3px; color: var(--text); font-size: 15px; font-weight: 600; }
+.lfc .lfc-role, .lfc .lfc-org { margin: 2px 0; }
+.lfc .lfc-org { color: var(--text-mid); }
+.lfc .lfc-category { color: var(--plat-200); margin: 10px 0 4px; font-size: 12px; font-weight: 600; }
+.lfc-ways { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0; font-size: 14px; }
+.lfc a { color: var(--btc-300); text-decoration: underline; text-underline-offset: 3px; }
+.lfc a:hover { color: var(--text); }
+.lfc summary { cursor: pointer; padding: 9px 0; color: var(--btc-300); }
+.lfc .lfc-more > summary { border-top: 1px solid var(--line); font-weight: 600; }
+.lfc-evidence { margin-top: 8px; font-size: 12px; }
+.lfc-evidence dl { display: grid; grid-template-columns: minmax(80px, 110px) minmax(0, 1fr); gap: 6px 12px; margin: 8px 0; }
+.lfc-evidence dt { color: var(--text-mid); }
+.lfc-evidence dd { margin: 0; }
+.lfc-next { border-left: 2px solid var(--line-btc); padding-left: 10px; }
+.lfc-retry { font: inherit; padding: 8px 12px; border: 1px solid var(--line-btc); border-radius: var(--radius); color: var(--btc-300); background: var(--btc-wash); cursor: pointer; }
+.lfc a:focus-visible, .lfc summary:focus-visible, .lfc button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+@media (max-width: 600px) {
+    .lfc-card { padding: 12px; }
+    .lfc-ways { flex-direction: column; gap: 12px; }
+    .lfc-ways a { padding: 5px 0; }
+    .lfc-evidence dl { grid-template-columns: 1fr; gap: 3px; }
+    .lfc-evidence dd { margin-bottom: 7px; }
+}

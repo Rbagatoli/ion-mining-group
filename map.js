@@ -308,6 +308,7 @@ var MapBridge = (function() {
     var _fleetPoints = [];              // globe points owned by the fleet view
     var _restyle = null;                // set once the Leaflet geo layer exists
     var _onModeChange = [];
+    var _prospectGlobeActive = false;
 
     return {
         mode: function() { return _mode; },
@@ -355,7 +356,16 @@ var MapBridge = (function() {
         fleetPoints: function() { return _fleetPoints; },
 
         globe: function() { return typeof _globeRef === 'function' ? _globeRef() : null; },
-        refreshGlobeMarkers: function() { if (_globeStyleRef) _globeStyleRef.refreshMarkers(); },
+        setGlobeProspects: function(points) {
+            if (!_globeStyleRef) return false;
+            _globeStyleRef.setProspects(points);
+            _prospectGlobeActive = points !== null;
+            return true;
+        },
+        hasGlobeProspects: function() { return _prospectGlobeActive; },
+        pickGlobeProspect: function(x, y, tolerance) {
+            return _prospectGlobeActive && _globeStyleRef ? _globeStyleRef.pick(x, y, tolerance) : null;
+        },
         leaflet: function() { return leafletMap || null; },
 
         /* NEITHER RENDERER FOLLOWS ITS CONTAINER.
@@ -683,12 +693,14 @@ var _globeRef = null, _showGlobePopupRef = null, _globeStyleRef = null;
     function setView(view) {
         currentView = view;
         if (view === 'map') {
+            if (globeInstance) globeInstance.pauseAnimation();
             mapCard.style.display = '';
             globeCard.style.display = 'none';
             btnMap.classList.add('active');
             btnGlobe.classList.remove('active');
             document.getElementById('globePopup').style.display = 'none';
         } else {
+            if (globeInstance) globeInstance.resumeAnimation();
             mapCard.style.display = 'none';
             globeCard.style.display = '';
             btnMap.classList.remove('active');
@@ -850,7 +862,7 @@ var _globeRef = null, _showGlobePopupRef = null, _globeStyleRef = null;
                         return ProtonTheme.alpha(ProtonTheme.black, 0);
                     })
                     .polygonSideColor(function() { return ProtonTheme.alpha(ProtonTheme.black, 0); })
-                    .polygonStrokeColor(function() { return ProtonTheme.alpha(ProtonTheme.btc, 0.9); })
+                    .polygonStrokeColor(function() { return ProtonTheme.alpha(ProtonTheme.black, 0.75); })
                     .polygonAltitude(function(feat) {
                         // Flat backdrop in Prospects mode: raised countries would occlude the
                         // flare columns rising out of them.
@@ -962,8 +974,17 @@ var _globeRef = null, _showGlobePopupRef = null, _globeStyleRef = null;
 
                 globeInstance(globeContainer);
                 if (surfaceStyle) {
-                    try { _globeStyleRef = globeStyle = surfaceStyle.applyGlobeStyle(globeInstance, globeContainer); }
+                    try { _globeStyleRef = globeStyle = surfaceStyle.applyGlobeStyle(globeInstance, globeContainer, {
+                        onSelect: function(id) { if (typeof MapSourcing !== 'undefined') MapSourcing.selectFromMap(id); },
+                        onEmpty: function() { if (typeof MapSourcing !== 'undefined' && MapSourcing.isFocused()) MapSourcing.exitFocus(); }
+                    }); }
                     catch (error) { console.warn('Globe surface unavailable:', error); }
+                }
+
+                // Apply whichever source set finished loading first. Surface loading and
+                // catalogue loading are independent, so neither may assume it wins the race.
+                if (MapBridge.mode() === 'prospects' && typeof MapSourcing !== 'undefined' && MapSourcing.filtered().length) {
+                    MapSourcing.renderMapLayer();
                 }
 
                 // Auto-rotate
@@ -973,6 +994,62 @@ var _globeRef = null, _showGlobePopupRef = null, _globeStyleRef = null;
                 globeInstance.controls().autoRotate = (MapBridge.mode() !== 'prospects');
                 globeInstance.controls().autoRotateSpeed = 0.3;
                 globeInstance.controls().enableZoom = true;
+                var controls = globeInstance.controls();
+                controls.enablePan = false;
+                controls.mouseButtons = { LEFT: 0, MIDDLE: 1, RIGHT: null };
+                controls.touches = { ONE: 0, TWO: 3 };
+                controls.enableDamping = true; controls.dampingFactor = 0.10;
+                var rotationBase = matchMedia('(pointer: coarse)').matches ? 0.20 : 0.38;
+                function sensitivity() {
+                    var altitude = Math.max(.01, globeInstance.pointOfView().altitude);
+                    controls.rotateSpeed = rotationBase * Math.min(1, Math.max(.2, altitude / 1.8));
+                    controls.zoomSpeed = .6 * Math.min(1, Math.max(.4, Math.sqrt(altitude)));
+                }
+                // Globe.gl changes both speeds on every camera move. Apply our limits after
+                // its listener so touch sensitivity stays restrained throughout the gesture.
+                controls.addEventListener('change', sensitivity);sensitivity();
+                globeContainer.addEventListener('pointerdown', function(e) {
+                    rotationBase = e.pointerType === 'touch' ? 0.20 : 0.38;sensitivity();
+                    if (hint) hint.textContent = e.pointerType === 'touch' ? 'Drag to rotate · Pinch to zoom' : 'Left drag to rotate · Scroll to zoom';
+                }, true);
+                globeContainer.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+                var canvas = globeInstance.renderer().domElement;
+                canvas.tabIndex = 0;
+                canvas.setAttribute('aria-label', 'Interactive globe. Left drag rotates, scroll or pinch zooms. Arrow keys rotate, plus and minus zoom.');
+                canvas.addEventListener('keydown', function(e) {
+                    var p = globeInstance.pointOfView(), handled = true;
+                    if (e.key === 'ArrowLeft') p.lng -= 5;
+                    else if (e.key === 'ArrowRight') p.lng += 5;
+                    else if (e.key === 'ArrowUp') p.lat = Math.min(85, p.lat + 5);
+                    else if (e.key === 'ArrowDown') p.lat = Math.max(-85, p.lat - 5);
+                    else if (e.key === '+' || e.key === '=') p.altitude = Math.max(.06, p.altitude * .85);
+                    else if (e.key === '-') p.altitude = Math.min(6, p.altitude / .85);
+                    else handled = false;
+                    if (handled) { e.preventDefault(); controls.autoRotate = false; globeInstance.pointOfView(p, 160); }
+                });
+                var hint = document.createElement('small');hint.className = 'globe-controls-hint';
+                hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Drag to rotate · Pinch to zoom' : 'Left drag to rotate · Scroll to zoom';
+                globeContainer.appendChild(hint);
+
+                // A globe below the fold or behind the flat map should not consume frames.
+                var inViewport = true;
+                function playback() {
+                    if (pageGone) return;
+                    if (document.hidden || !inViewport || currentView !== 'globe') globeInstance.pauseAnimation();
+                    else globeInstance.resumeAnimation();
+                }
+                var observer = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function(entries) {
+                    inViewport = entries[0].isIntersecting;playback();
+                }, {rootMargin: '80px'}) : null;
+                if (observer) observer.observe(globeContainer);
+                document.addEventListener('visibilitychange', playback);
+                window.addEventListener('pageshow', playback);
+                window.addEventListener('pagehide', function(e) {
+                    if (e.persisted) { globeInstance.pauseAnimation();return; }
+                    if (observer) observer.disconnect();
+                    controls.removeEventListener('change', sensitivity);
+                    document.removeEventListener('visibilitychange', playback);window.removeEventListener('pageshow', playback);
+                });
 
                 // Pause rotation on interaction, resume after idle
                 var idleTimer;

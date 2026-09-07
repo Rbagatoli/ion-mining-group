@@ -1327,8 +1327,9 @@ var ProspectDetail = (function () {
 
         var sd = c.sourceDetail || {};
 
-        /* The ECCC named person first, where one is published — the only real contact in the
-           system, same standing as on the map. */
+        if (typeof LandfillContacts !== 'undefined') html += LandfillContacts.placeholder(c);
+
+        /* Preserve the original ECCC filing contact alongside the expanded research. */
         if (sd.contactName || sd.contactPhone || sd.contactEmail) {
             var tel = sd.contactPhone ? String(sd.contactPhone).replace(/[^0-9+]/g, '') : null;
             html += '<div class="pd-cp-person">' +
@@ -1654,6 +1655,7 @@ var ProspectDetail = (function () {
 
         var sel = document.getElementById('pdStage');
         if (sel) sel.value = rec.stage;
+        if (typeof LandfillContacts !== 'undefined') LandfillContacts.mount(host, candidateFor(rec));
         return rec;
     }
 

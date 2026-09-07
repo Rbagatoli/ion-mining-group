@@ -5,7 +5,7 @@
 const fs=require('fs'),path=require('path');
 const ROOT=path.join(__dirname,'..');
 const FILES=[
-    'globe-surface.js','hosting-world-data.js',
+    'globe-surface.js','hosting-world-data.js','hosting-earth-data.js','textures/earth-normal.png',
     'vendor/three-0.185.1/three.module.min.js',
     'vendor/three-0.185.1/three.core.min.js',
     'vendor/three-0.185.1/RoomEnvironment.js',
@@ -17,7 +17,8 @@ function build(check=false) {
         const source=fs.readFileSync(path.join(ROOT,'site',name));
         const target=path.join(ROOT,'globe-assets',name);
         const previous=fs.existsSync(target)?fs.readFileSync(target):null;
-        if(previous&&previous.toString().replace(/\r\n/g,'\n')===source.toString().replace(/\r\n/g,'\n'))continue;
+        const textAsset=/\.(?:js|txt)$/.test(name)||name.endsWith('LICENSE');
+        if(previous&&(textAsset?previous.toString().replace(/\r\n/g,'\n')===source.toString().replace(/\r\n/g,'\n'):previous.equals(source)))continue;
         if(check)throw new Error('Stale shared globe asset: '+name);
         fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,source);changed++;
     }

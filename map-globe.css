@@ -1,0 +1,8 @@
+#fleetGlobe.globe-platinum { background: radial-gradient(ellipse at 45% 38%, #1b2026 0%, #0c0f13 58%, #050607 100%); }
+#fleetGlobe .prospect-globe-tip { position:absolute; z-index:5; box-sizing:border-box; width:max-content; max-width:min(250px,calc(100% - 24px)); padding:12px 14px; border:1px solid var(--line-mid); border-left:2px solid var(--btc-300); border-radius:5px; background:var(--panel-solid); box-shadow:0 8px 26px #0006; color:var(--plat-200); pointer-events:none; line-height:1.45; text-align:left; }
+#fleetGlobe .prospect-globe-tip[hidden] { display:none; }
+.prospect-globe-tip strong { display:block; font-size:13px; font-weight:600; color:var(--plat-100); }
+.prospect-globe-tip span { display:block; font-size:11px; margin-top:5px; color:var(--text-mid); }
+.prospect-globe-tip span:first-of-type { color:var(--btc-300); }
+#fleetGlobe .globe-controls-hint { position:absolute; bottom:12px; left:14px; z-index:2; color:var(--plat-400); font-size:10px; letter-spacing:.02em; pointer-events:none; text-shadow:0 1px 3px #000; }
+#fleetGlobe canvas:focus-visible { outline:2px solid var(--btc-300); outline-offset:-3px; }

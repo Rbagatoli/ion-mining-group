@@ -69,6 +69,9 @@ jobs:
       - name: Site test suite
         run: node tests/site/run.js
 
+      - name: Operator contact and globe release checks
+        run: node --test tests/landfill-contacts.test.js tests/prospect-globe.test.js tests/contact-routes.test.js tests/ghgrp-contacts.test.js tests/facility-contact.test.js tests/detail-tabs.test.js tests/service-worker-boundaries.test.js
+
       # The generated output is committed, so it can go stale. Re-run every generator and fail
       # if anything changes: a page whose cache-busting stamp does not match its own CSS, or a
       # sitemap missing a post, is exactly the kind of thing nobody notices in review.

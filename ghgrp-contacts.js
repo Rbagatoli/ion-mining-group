@@ -13,7 +13,8 @@
 //
 // WHAT IT GIVES YOU, and what it does not. It gives the legal owning entity with its ownership
 // share, a complete facility address including the postcode, and an FRS id. It gives NO phone
-// number, NO email and NO named person, because EPA publishes none for a landfill. The address is
+// number, NO email and NO named person in THIS index. Other EPA and public sources are included
+// in landfill-contacts.js; this module only supplies ownership and addresses. The address is
 // the FACILITY, not the owner's head office — fine for a county authority, useless for a WM site,
 // and every caller must say which it is showing rather than implying a head office.
 var GhgrpContacts = (function() {

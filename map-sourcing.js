@@ -3943,6 +3943,7 @@ var MapSourcing = (function() {
     // Re-applies the size accessors only. Cheap next to rebuilding pointsData, and coalesced to
     // one update per animation frame because OrbitControls fires 'change' continuously on drag.
     function applyZoomScale() {
+        if (MapBridge.hasGlobeProspects()) return;
         var g = MapBridge.globe();
         if (!g) return;
         // The deadband now watches the COMPOSITE pixels-to-degrees factor, since
@@ -3955,7 +3956,6 @@ var MapSourcing = (function() {
         try {
             g.pointRadius(radiusDeg)
              .pointAltitude(altitudeFor);
-            MapBridge.refreshGlobeMarkers();
         } catch (e) { /* globe not ready */ }
     }
 
@@ -4011,6 +4011,7 @@ var MapSourcing = (function() {
         if (!ctrls || !ctrls.addEventListener) return;
         _zoomWatched = true;
         var schedule = function() {
+            if (MapBridge.hasGlobeProspects()) return;
             if (_zoomRaf) return;
             _zoomRaf = requestAnimationFrame(function() { _zoomRaf = null; applyZoomScale(); });
         };
@@ -4081,12 +4082,15 @@ var MapSourcing = (function() {
                 // on it without the surrounding field disappearing.
                 px: markPxFor(c) * (isFocus ? FOCUS_MULT : 1),
                 color: dim ? fade(colorFor(c), 0.18) : fade(colorFor(c), solidityFor(c)),
-                markerColor: colorFor(c),
+                markerColor: _colourBy === 'rank' ? '#ff850a' : colorFor(c),
                 markerOpacity: dim ? 0.30 : Math.max(0.9, solidityFor(c)),
                 label: placeLabel(c),
                 kw: c.powerPotentialKw,
                 dim: !!dim,
-                candidate: c
+                candidate: c,
+                selected: !!isFocus,
+                operator: (operatorRecord(c) || {}).operator || '',
+                sourceLabel: sourceLabel(c)
             };
         });
     }
@@ -4113,24 +4117,26 @@ var MapSourcing = (function() {
 
         var globe = MapBridge.globe();
         if (globe) {
-            watchZoom();
             frameOnData(globe, cands);
-            _zoomScale = zoomGrowth() * degPerPx();
-            globe.pointsData(toGlobePoints(cands, focusId))
-                .pointLat('lat').pointLng('lng')
-                // Capacity sets the disc size; the shared style adds an unlit face and dark rim.
-                .pointAltitude(altitudeFor)
-                .pointRadius(radiusDeg)
-                .pointColor('color')
-                .pointLabel(function(d) {
-                    var op = operatorRecord(d);
-                    return '<div class="globe-tooltip">' + esc(d.label) + '<br>' + fmtKw(d.kw) +
-                        (op ? '<br>' + esc(op.operator) : '') + '</div>';
-                });
-            MapBridge.refreshGlobeMarkers();
+            var points = toGlobePoints(cands, focusId);
+            if (!MapBridge.setGlobeProspects(points)) {
+                // The basic layer remains usable if the enhanced renderer cannot load.
+                watchZoom();
+                _zoomScale = zoomGrowth() * degPerPx();
+                globe.pointsData(points)
+                    .pointLat('lat').pointLng('lng')
+                    .pointAltitude(altitudeFor)
+                    .pointRadius(radiusDeg)
+                    .pointColor('color')
+                    .pointLabel(function(d) {
+                        var op = operatorRecord(d.candidate || d);
+                        return '<div class="globe-tooltip">' + esc(d.label) + '<br>' + fmtKw(d.kw) +
+                            (op ? '<br>' + esc(op.operator) : '') + '</div>';
+                    });
+            }
             // A ring marks the focused prospect. ringsData is a free layer, so it never
             // competes with pointsData for the same accessor.
-            var focusCand = focusId ? ProspectStore.get(focusId) : null;
+            var focusCand = focusId && !MapBridge.hasGlobeProspects() ? ProspectStore.get(focusId) : null;
             globe.ringsData(focusCand ? [{ lat: focusCand.lat, lng: focusCand.lng }] : [])
                 .ringLat('lat').ringLng('lng')
                 /* Built by concatenation, which is why the literal census never
@@ -4223,9 +4229,9 @@ var MapSourcing = (function() {
     }
 
     function clearMapLayer() {
+        MapBridge.setGlobeProspects(null);
         var globe = MapBridge.globe();
         if (globe) globe.ringsData([]).pointsData(MapBridge.fleetPoints());
-        MapBridge.refreshGlobeMarkers();
         if (_leafletLayer) _leafletLayer.clearLayers();
     }
 
@@ -5247,6 +5253,7 @@ var MapSourcing = (function() {
         // ---- Who to contact -----------------------------------------------------
         mark('contact');
         html += '<div class="src-contact"><div class="section-label">Who to contact</div>';
+        if (typeof LandfillContacts !== 'undefined') html += LandfillContacts.placeholder(c);
         // Non-flare sources: the owner is published directly by EIA-860 or LMOP, with a postal
         // address in the landfill case. Their record has no distance_m, because there is no
         // nearby well licence involved — the operator IS the site's owner.
@@ -5341,8 +5348,8 @@ var MapSourcing = (function() {
                     '. This is the <strong>site</strong> address, not a head office &mdash; ' +
                     'for a county or municipal authority a letter addressed to the named entity ' +
                     'here usually reaches someone, but for a site held by a national waste ' +
-                    'company you need their corporate address instead. EPA publishes no phone ' +
-                    'number, email or named individual for any landfill.</p>';
+                    'company you need their corporate address instead. Public phone and email ' +
+                    'listings from the contact research are shown separately above.</p>';
             }
 
             // Who actually owns it, as a separate role.
@@ -5476,11 +5483,7 @@ var MapSourcing = (function() {
                 'blank rather than naming whoever happens to be nearest.</p>';
         }
 
-        /* THE PUBLISHED PERSON, ABOVE EVERYTHING ELSE IN THE BLOCK. ECCC's registry names a
-           public contact — name, title, direct telephone, email — for 93 Canadian landfills.
-           It is the only place in the whole system a real person is published, it shipped in
-           the artifact unread for its entire life, and when present it belongs at the top:
-           every route below it is a way of FINDING what this block already has. */
+        /* Keep the original ECCC filing contact alongside the expanded public research. */
         var sdp = c.sourceDetail || {};
         if (sdp.contactName || sdp.contactPhone || sdp.contactEmail) {
             var telDigits = sdp.contactPhone ? String(sdp.contactPhone).replace(/[^0-9+]/g, '') : null;
@@ -5498,15 +5501,10 @@ var MapSourcing = (function() {
                     esc(sdp.contactEmail) + '</a></div>' : '') +
                 '</div>' +
                 '<p class="src-note">Published by the facility itself in its ECCC GHGRP filing — ' +
-                'the registry\'s public contact for exactly this kind of enquiry.</p>';
+                'a reporting contact whose current role and commercial authority need confirmation.</p>';
         }
 
-        /* ROUTES TO A NUMBER, immediately above the boxes you would paste it
-           into. For a US landfill there is nothing to display and nothing that
-           could be — EPA publishes the owner, the ownership share and the
-           facility address, and never a phone, an email or a person. So the
-           block turns what IS published into the shortest path to what is not,
-           and says out loud why the app has nothing of its own to show. */
+        /* Keep the original owner, registry and search routes for follow-up research. */
         html += contactRoutesBlock(c, co);
 
         var saved = findSavedSite(c.id) || {};
@@ -5694,8 +5692,10 @@ var MapSourcing = (function() {
             callLine = '<div class="src-callop"><span class="src-op-big">' + esc(op.operator) + '</span>' +
                 (bits.length ? '<span class="src-callmeta">' + bits.join(' · ') + '</span>' : '') +
                 (co && co.phone ? '' : '<span class="src-gap">' +
-                    (co && co.address ? 'no published phone — postal address only'
-                                      : 'no published phone') + '</span>') +
+                    (typeof LandfillContacts !== 'undefined' && LandfillContacts.siteIdFor(c)
+                        ? 'Public contact research in Terms & contact'
+                        : (co && co.address ? 'no published phone — postal address only'
+                                            : 'no published phone')) + '</span>') +
                 '</div>';
             // The one fact that decides whether this call is even with the right company. 1,294
             // US plants are owned by somebody other than the operator named above, and finding
@@ -5782,11 +5782,14 @@ var MapSourcing = (function() {
                    canvas drawn while hidden is 0x0. Same reason the old accordion redrew on
                    open. */
                 if (id === 'econ') renderTrend(c);
+                if (id === 'terms' && typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
             });
             /* And on first paint, when economics is the remembered tab. */
             if (body.querySelector('#dtab_econ') && !body.querySelector('#dtab_econ').hidden) {
                 renderTrend(c);
             }
+            if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden &&
+                typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
         })();
 
         wireDetail(c, op);

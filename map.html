@@ -24,6 +24,8 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="./tokens.css?v=405">
     <link rel="stylesheet" href="./shared.css?v=405">
+    <link rel="stylesheet" href="./landfill-contacts.css?v=429">
+    <link rel="stylesheet" href="./map-globe.css?v=429">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <script>
     /* WHICH MAP THIS IS, decided by the URL and nothing else.
@@ -1577,8 +1579,9 @@ commercial terms are your assumptions.</p>
 <script src="./source-landfill.js?v=407"></script>
 <script src="./lmr.js?v=368"></script>
 <script src="./source-landfill-ca.js?v=408"></script>
-<script src="./ghgrp-contacts.js?v=338"></script>
-<script src="./contact-routes.js?v=350"></script>
+<script src="./ghgrp-contacts.js?v=429"></script>
+<script src="./landfill-contacts.js?v=429"></script>
+<script src="./contact-routes.js?v=429"></script>
 <script src="./prospect-store.js?v=410"></script>
 <!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
      pushes the configured stage list into site-model.js, and the watchlist renders
@@ -1604,8 +1607,8 @@ commercial terms are your assumptions.</p>
   try { if (typeof CrmConfig !== 'undefined') CrmConfig.publish(); }
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
-<script src="./map.js?v=425"></script>
-<script src="./map-sourcing.js?v=425"></script>
+<script src="./map.js?v=429"></script>
+<script src="./map-sourcing.js?v=429"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

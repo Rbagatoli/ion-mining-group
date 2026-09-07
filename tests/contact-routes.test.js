@@ -125,9 +125,11 @@ pub.concat(priv).forEach(function (r) {
 
 // ---- The absence is explained as a fact about the source --------------------------
 var note = R.absenceNote({ sourceKind: 'lmop-landfill' });
-ok(/EPA/.test(note) && /never a phone/i.test(note),
-   'a landfill says EPA publishes none', note);
-ok(/Alberta/.test(note), 'and says why Alberta is different');
+ok(/EPA LMOP/.test(note) && /does not include/i.test(note),
+   'the absence applies to LMOP rather than all EPA sources', note);
+ok(/public contact research/i.test(note), 'points to the expanded contact research');
+ok(/reporting contacts/i.test(R.absenceNote({ sourceKind: 'eccc-landfill-ca' })),
+   'Canadian reporting contacts are not described as missing');
 ok(/EIA/.test(R.absenceNote({ sourceKind: 'eia-facility' })), 'a generator says EIA');
 ok(!!R.absenceNote({ sourceKind: 'flare-viirs' }), 'and anything else still gets a sentence');
 

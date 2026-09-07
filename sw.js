@@ -1,6 +1,6 @@
 // Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
 // than leaving the superseded copies of the two panels beside the new ones.
-const CACHE_NAME = 'proton-mining-v425';
+const CACHE_NAME = 'proton-mining-v429';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -22,6 +22,8 @@ const ASSETS = [
   './favicon.svg',
   './tokens.css',
   './shared.css',
+  './landfill-contacts.css',
+  './map-globe.css',
 
   // JavaScript
   './brand-migrate.js',
@@ -68,6 +70,7 @@ const ASSETS = [
   // address. data/ghgrp-contacts.json is deliberately NOT cached here, matching every other
   // artifact: the data/ files are far too large to precache and are fetched on demand.
   './ghgrp-contacts.js',
+  './landfill-contacts.js',
   './contact-routes.js',
   './prospect-store.js',
   './crm-config.js',
@@ -113,8 +116,11 @@ const ASSETS = [
   './banking.js',
   './map.js',
   './map-globe-style.js',
+  './prospect-globe-layer.js',
   './globe-assets/globe-surface.js',
   './globe-assets/hosting-world-data.js',
+  './globe-assets/hosting-earth-data.js',
+  './globe-assets/textures/earth-normal.png',
   './globe-assets/vendor/three-0.185.1/three.module.min.js',
   './globe-assets/vendor/three-0.185.1/three.core.min.js',
   './globe-assets/vendor/three-0.185.1/RoomEnvironment.js',
@@ -153,7 +159,7 @@ self.addEventListener('message', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('proton-mining-') && k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -167,6 +173,11 @@ self.addEventListener('fetch', event => {
 
   // Only handle same-origin requests — let API calls (CoinGecko, Mempool) pass through directly
   if (url.origin !== self.location.origin) return;
+  const scope = new URL(self.registration.scope).pathname;
+  if (!url.pathname.startsWith(scope) || !/\.(?:html|js|css|json|svg|png|jpg|jpeg|webp|woff2?)$/i.test(url.pathname)) return;
+  if (event.request.headers.has('Authorization')) return;
+  const relative = './' + url.pathname.slice(scope.length);
+  if (!ASSETS.includes(relative) && !/^\.\/data\/[^/]+\.json$/.test(relative)) return;
 
   // Redirect old calculator URL directly to dashboard
   if (url.pathname.endsWith('btc-mining-calculator.html')) {
@@ -178,11 +189,22 @@ self.addEventListener('fetch', event => {
   // Network-first for ALL assets — always serve latest, cache as offline fallback
   event.respondWith(
     fetch(event.request).then(response => {
-      const clone = response.clone();
-      caches.open(CACHE_NAME).then(cache => {
-        cache.put(event.request, clone);
-      });
+      if (response.ok && response.type !== 'opaque' && !/no-store|private/i.test(response.headers.get('Cache-Control') || '')) {
+        const clone = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)));
+      }
       return response;
-    }).catch(() => caches.match(event.request, { ignoreSearch: true }))
+    }).catch(() => caches.open(CACHE_NAME).then(async cache => {
+      const exact = await cache.match(event.request);
+      if (exact) return exact;
+      // Precache entries are canonical URLs. A stamped dependency may use that copy only
+      // from this release's cache and only for a declared asset with no other query inputs.
+      if (ASSETS.includes(relative) && Array.from(url.searchParams.keys()).every(k => k === 'v')) {
+        const canonical = new URL(url); canonical.search = '';
+        const bundled = await cache.match(canonical.href);
+        if (bundled) return bundled;
+      }
+      return Response.error();
+    }))
   );
 });

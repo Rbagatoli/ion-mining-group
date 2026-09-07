@@ -173,9 +173,13 @@ var ContactRoutes = (function () {
         if (has(opts.operatorPhone)) return null;
         var src = t(opts.sourceKind);
         if (src === 'lmop-landfill') {
-            return 'EPA publishes the owner, the ownership share and the facility address for a ' +
-                   'landfill — never a phone number, an email or a named person. Alberta sites ' +
-                   'carry one only because the AER runs a business associate registry.';
+            return 'The EPA LMOP inventory provides owner and site details, but does not include ' +
+                   'phone or email contacts. Use public contact research and owner or facility ' +
+                   'records to confirm who handles gas or energy agreements.';
+        }
+        if (src === 'eccc-landfill-ca') {
+            return 'Public reporting contacts and owner referrals can help route the enquiry. ' +
+                   'Confirm who currently handles gas or energy agreements for this facility.';
         }
         if (src === 'eia-facility') {
             return 'EIA publishes a mailing address and an entity type for a generating facility, ' +
