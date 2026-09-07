@@ -1537,7 +1537,7 @@ commercial terms are your assumptions.</p>
 <script src="./firebase-config.js?v=338"></script>
 <script src="./sync.js?v=413"></script>
 <script src="./auth-ui.js?v=338"></script>
-<script src="./backup.js?v=375"></script>
+<script src="./backup.js?v=433"></script>
 <script src="./profile-panel.js?v=375"></script>
 <script src="./shared.js?v=338"></script>
 <script src="./fleet-data.js?v=338"></script>
@@ -1597,7 +1597,8 @@ commercial terms are your assumptions.</p>
 <script src="./crm-log.js?v=382"></script>
 <!-- The map records contact outcomes; without the interactions module those calls never
      reached the contact clock and Today said "never contacted" about spoken-to owners. -->
-<script src="./crm-interactions.js?v=408"></script>
+<script src="./owner-confirmation.js?v=432"></script>
+<script src="./crm-interactions.js?v=432"></script>
 <!-- The contact book. Loaded here for two reasons that turned out to be one bug:
      recording a contact on a prospect now puts that person IN the book rather than
      only on the site, and manualFor() can finally reach contactCtx() -- which
@@ -1606,7 +1607,7 @@ commercial terms are your assumptions.</p>
      loaded on this page, so every lookup silently fell back to the bare record and
      a recorded contact never improved the contactability tier it was meant to. -->
 <script src="./crm-contacts.js?v=379"></script>
-<script src="./prospect-nav.js?v=347"></script>
+<script src="./prospect-nav.js?v=433"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in
      stages standing rather than take the page down with it. */

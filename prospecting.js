@@ -27,6 +27,7 @@
         /* #p/<id> opens one prospect. Routing on the hash rather than opening a
            modal means the back button works and a prospect can be linked to,
            which matters the moment you want to send yourself one. */
+        if (h === 'sourcing' || h.indexOf('sourcing?') === 0) return 'sourcing';
         if (h.indexOf('p/') === 0) return 'detail';
         /* #s/<id> is the one-page summary. Its own route rather than a mode on
            the detail page, because the whole point of it is to be a thing you can
@@ -43,6 +44,7 @@
 
     var host = document.getElementById('pboard');
     var note = document.getElementById('boardNote');
+    var sourcingSection = document.getElementById('sourcingSection');
     var todaySection = document.getElementById('todaySection');
     var boardSection = document.getElementById('boardSection');
     var detailSection = document.getElementById('detailSection');
@@ -182,12 +184,14 @@
         /* The section nav has no tab for a single prospect, so the board stays lit
            while one is open: it is where you came from and where Back goes. */
         ProspectNav.render(v === 'detail' ? 'board' : v);
+        if (sourcingSection) sourcingSection.hidden = (v !== 'sourcing');
         todaySection.hidden = (v !== 'today');
         boardSection.hidden = (v !== 'board');
         detailSection.hidden = (v !== 'detail');
         analyticsSection.hidden = (v !== 'analytics');
         summarySection.hidden = (v !== 'summary');
-        if (v === 'board') draw();
+        if (v === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
+        else if (v === 'board') draw();
         else if (v === 'detail') drawDetail();
         else if (v === 'analytics') drawAnalytics();
         else if (v === 'summary') drawSummary();
@@ -255,10 +259,22 @@
         if (typeof ProspectDetail === 'undefined') return;
         var id = idFromHash();
         if (!id) return;
-        var relationshipRoot = document.querySelector('#dealRelationships');
+        var relationshipRoot = document.getElementById('dealRelationships');
         if (relationshipRoot && relationshipRoot.getAttribute('data-prospect-id') === id && relationshipRoot._hasDraft && relationshipRoot._hasDraft()) {
             var relationshipStatus = relationshipRoot.querySelector('#relationshipStatus');
             if (relationshipStatus) relationshipStatus.textContent = 'New saved data is available. Your relationship edits are preserved; finish saving or reload this map.';
+            return;
+        }
+        var ownerRoot = document.getElementById('ownerConfirmation');
+        if (ownerRoot && ownerRoot.getAttribute('data-prospect-id') === id && ownerRoot._hasDraft && ownerRoot._hasDraft()) {
+            var ownerStatus = ownerRoot.querySelector('#ownerConfirmationStatus');
+            if (ownerStatus) ownerStatus.textContent = 'New saved data is available. Your owner worksheet draft is preserved; save it or reload the worksheet.';
+            return;
+        }
+        var sourcingRoot = document.getElementById('prospectSourcing');
+        if (sourcingRoot && sourcingRoot.getAttribute('data-prospect-id') === id && sourcingRoot._hasDraft && sourcingRoot._hasDraft()) {
+            var sourcingStatus = sourcingRoot.querySelector('#sourcingStatus');
+            if (sourcingStatus) sourcingStatus.textContent = 'New saved data is available. Your sourcing draft is preserved; save it or reload saved sourcing.';
             return;
         }
         ProspectDetail.render(id, 'pdetail');
@@ -888,6 +904,14 @@
         }
     }
 
+    document.addEventListener('prospect-owner:changed', function (e) {
+        if (viewFromHash() === 'today') drawToday();
+        else if (viewFromHash() === 'detail' && e.detail && e.detail.id === idFromHash() && typeof ProspectDetail.refreshActivity === 'function') ProspectDetail.refreshActivity(e.detail.id, document.getElementById('pdetail'));
+    });
+    document.addEventListener('prospect-sourcing:changed', function () {
+        if (viewFromHash() === 'today') drawToday();
+        else if (viewFromHash() === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
+    });
     window.addEventListener('hashchange', show);
     show();
 

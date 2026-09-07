@@ -41,6 +41,7 @@ var ProtonBackup = (function () {
      * declaring it here is caught. */
     var STORE_VERSIONS = {
         protonMiningSites:   1,
+        protonMiningSourcingSearches: 1,
         protonCrmLog:        1,
         protonCrmDocuments:  1,
         protonCrmFollowups:  1,

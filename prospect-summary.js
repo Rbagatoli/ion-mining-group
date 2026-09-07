@@ -84,6 +84,7 @@ var ProspectSummary = (function () {
         var since = (typeof CrmInteractions !== 'undefined')
             ? CrmInteractions.daysSinceContact(rec.id, nowMs) : null;
         var next = (typeof CrmFollowups !== 'undefined') ? CrmFollowups.nextFor(rec.id) : null;
+        if (typeof OwnerConfirmation !== 'undefined') next = OwnerConfirmation.nextAction(rec, next, nowMs);
 
         out.standing = {
             stage: stageLabel,
@@ -171,9 +172,11 @@ var ProspectSummary = (function () {
            is reported so a truncated history does not read as a short one. */
         out.history = [];
         out.historyTotal = 0;
-        if (typeof CrmLog !== 'undefined') {
-            var all = CrmLog.forProspect(rec.id);
-            var superseded = CrmLog.supersededIds();
+        if (typeof CrmLog !== 'undefined' || typeof OwnerConfirmation !== 'undefined') {
+            var all = typeof CrmLog !== 'undefined' ? CrmLog.forProspect(rec.id) : [];
+            if (typeof OwnerConfirmation !== 'undefined') all = all.concat(OwnerConfirmation.interactions(rec));
+            all.sort(function (a, b) { var at = a.occurred_at || a.at, bt = b.occurred_at || b.at; return at === bt ? (b.seq || 0) - (a.seq || 0) : at < bt ? 1 : -1; });
+            var superseded = typeof CrmLog !== 'undefined' ? CrmLog.supersededIds() : {};
             var kept = [];
             for (var h = 0; h < all.length; h++) {
                 if (superseded[all[h].id]) continue;      // corrected later; show the correction

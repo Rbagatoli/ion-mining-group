@@ -75,6 +75,12 @@ jobs:
       - name: Prospect evidence and capital checks
         run: node --test tests/prospect-diligence.test.js tests/prospect-energy-economics.test.js tests/site-capacity.test.js tests/site-infrastructure.test.js tests/site-opportunity.test.js tests/site-availability.test.js tests/site-engine.test.js tests/site-capex.test.js tests/landfill-shortlist.test.js tests/landfill-ca.test.js tests/capacity-audit.test.js tests/capex-rate.test.js
 
+      - name: Owner confirmation workflow checks
+        run: node --test tests/owner-confirmation.test.js tests/owner-confirmation-integration.test.js
+
+      - name: Sourcing queue checks
+        run: node --test tests/prospect-sourcing.test.js tests/prospect-sourcing-integration.test.js tests/backup-coverage.test.js
+
       # The generated output is committed, so it can go stale. Re-run every generator and fail
       # if anything changes: a page whose cache-busting stamp does not match its own CSS, or a
       # sitemap missing a post, is exactly the kind of thing nobody notices in review.
@@ -87,6 +93,7 @@ jobs:
           node site/tools/build-seo.js
           node site/tools/build-og.js
           node tools/build-globe-assets.js
+          node tools/build-sourcing-leads.js
           node tools/build-order-catalogue.js
           node tools/build-asset-stamp.js
           if ! git diff --quiet; then
@@ -106,6 +113,9 @@ jobs:
       # fails, which fails this job before anything is uploaded.
       - name: Assemble and verify the site tree
         run: node tools/build-pages.js
+
+      - name: Prospect controls and committed asset checks
+        run: node --test tests/budget-panel.test.js tests/stage-advance.test.js
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

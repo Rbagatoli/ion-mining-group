@@ -49,9 +49,9 @@ var ProspectDetail = (function () {
        An interaction carries occurred_at (which can be backdated); a transition
        only ever happens when it is recorded, so `at` is its own truth. */
     function timeline(prospectId) {
-        if (typeof CrmLog === 'undefined') return [];
-        var all = CrmLog.forProspect(prospectId);
-        var superseded = CrmLog.supersededIds();
+        var all = typeof CrmLog === 'undefined' ? [] : CrmLog.forProspect(prospectId);
+        if (typeof OwnerConfirmation !== 'undefined' && typeof SiteData !== 'undefined') all = all.concat(OwnerConfirmation.interactions(SiteData.get(prospectId)));
+        var superseded = typeof CrmLog === 'undefined' ? {} : CrmLog.supersededIds();
         var out = [];
         for (var i = 0; i < all.length; i++) {
             var e = all[i];
@@ -1629,7 +1629,7 @@ var ProspectDetail = (function () {
                 '<span>' + esc(String(rec.energy_type || rec.source || 'unknown').replace(/_/g, ' ')) + '</span>' +
                 '<span>' + (days === null ? absent('not moved yet')
                                           : esc(String(days)) + ' days in stage') + '</span>' +
-                '<span>' + (since === null ? absent('never contacted')
+                '<span data-pd-contact-age>' + (since === null ? absent('never contacted')
                                            : esc(String(since)) + ' days since contact') + '</span>' +
             '</div>' +
             '<label class="pd-stagepick">Stage<select id="pdStage">' +
@@ -1637,6 +1637,8 @@ var ProspectDetail = (function () {
             '</select></label>' +
             advanceControl(rec) +
         '</div>' +
+        (typeof ProspectSourcingUi !== 'undefined' ? ProspectSourcingUi.render(rec) : '') +
+        (typeof OwnerConfirmationUi !== 'undefined' ? OwnerConfirmationUi.render(rec) : '') +
         (typeof DealRelationshipsUi !== 'undefined' ? DealRelationshipsUi.render(rec, candidateFor(rec)) : '') +
         '<section class="pd-sec"><h3>Build</h3>' + projectBlock(rec) + '</section>' +
         gatesSection(rec) +
@@ -1650,18 +1652,26 @@ var ProspectDetail = (function () {
         '<section class="pd-sec"><h3>Research</h3>' + enrichBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>Documents</h3>' + docsBlock(prospectId) + '</section>' +
         '<section class="pd-sec"><h3>History</h3>' + noteBox() +
-            (events ? '<ul class="pd-tl">' + events + '</ul>'
-                    : '<p class="pd-none">Nothing has happened yet.</p>') +
+            '<div data-pd-events>' + (events ? '<ul class="pd-tl">' + events + '</ul>'
+                    : '<p class="pd-none">Nothing has happened yet.</p>') + '</div>' +
         '</section>';
 
         var sel = document.getElementById('pdStage');
         if (sel) sel.value = rec.stage;
+        if (typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.bind(rec, host);
+        if (typeof OwnerConfirmationUi !== 'undefined') OwnerConfirmationUi.bind(rec, host);
         if (typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.bind(rec, host, candidateFor(rec));
         if (typeof LandfillContacts !== 'undefined') LandfillContacts.mount(host, candidateFor(rec));
         return rec;
     }
 
-    return { render: render, timeline: timeline };
+    function refreshActivity(prospectId, host) {
+        if (!host) return;
+        var slot = host.querySelector('[data-pd-events]'), age = host.querySelector('[data-pd-contact-age]');
+        if (slot) { var events = timeline(prospectId).map(entryRow).join(''); slot.innerHTML = events ? '<ul class="pd-tl">' + events + '</ul>' : '<p class="pd-none">Nothing has happened yet.</p>'; }
+        if (age && typeof CrmInteractions !== 'undefined') { var since = CrmInteractions.daysSinceContact(prospectId); age.textContent = since === null ? 'never contacted' : since + ' days since contact'; }
+    }
+    return { render: render, timeline: timeline, refreshActivity: refreshActivity };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ProspectDetail;

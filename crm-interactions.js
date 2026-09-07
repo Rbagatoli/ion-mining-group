@@ -97,15 +97,16 @@ var CrmInteractions = (function () {
     }
 
     function forProspect(prospectId) {
-        if (typeof CrmLog === 'undefined') return [];
-        return CrmLog.forProspect(prospectId, 'interaction');
+        var all = typeof CrmLog === 'undefined' ? [] : CrmLog.forProspect(prospectId, 'interaction');
+        if (typeof OwnerConfirmation !== 'undefined' && typeof SiteData !== 'undefined') all = all.concat(OwnerConfirmation.interactions(SiteData.get(prospectId)));
+        return all;
     }
 
     /* The current view of the history: corrected entries replaced by their
        corrections, in the order they happened. */
     function currentFor(prospectId) {
         var all = forProspect(prospectId);
-        var superseded = CrmLog.supersededIds();
+        var superseded = typeof CrmLog === 'undefined' ? {} : CrmLog.supersededIds();
         return all.filter(function (e) { return !superseded[e.id]; });
     }
 
@@ -142,6 +143,11 @@ var CrmInteractions = (function () {
         var ms = Date.parse(t);
         if (!isFinite(ms)) return null;
         var now = (typeof nowMs === 'number') ? nowMs : Date.now();
+        // A worksheet records a calendar date, not an invented call time. Respect the local day.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+            var currentDay = new Date(now);
+            return Math.max(0, Math.round((Date.UTC(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate()) - ms) / 86400000));
+        }
         return Math.max(0, Math.floor((now - ms) / 86400000));
     }
 

@@ -1,6 +1,6 @@
 // Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
 // than leaving the superseded copies of the two panels beside the new ones.
-const CACHE_NAME = 'proton-mining-v431';
+const CACHE_NAME = 'proton-mining-v433';
 const ASSETS = [
   // HTML pages
   './index.html',
@@ -24,6 +24,13 @@ const ASSETS = [
   './shared.css',
   './landfill-contacts.css',
   './deal-relationships.css',
+  './owner-confirmation.js',
+  './prospect-sourcing.js',
+  './prospect-sourcing-ui.js',
+  './prospect-sourcing.css',
+  './data/sourcing-leads-2026-09-07.json',
+  './owner-confirmation-ui.js',
+  './owner-confirmation.css',
   './prospect-diligence.js',
   './prospect-diligence-ui.js',
   './prospect-diligence.css',

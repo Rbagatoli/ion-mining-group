@@ -92,10 +92,10 @@ var ProspectBoard = (function () {
        without opening anything. Absent when nothing is owed — an empty line
        would read as a missing date rather than as no promise made. */
     function due(rec) {
-        if (typeof CrmFollowups === 'undefined' || !CrmFollowups.nextFor) return '';
-        var f = CrmFollowups.nextFor(rec.id);
+        var f = typeof CrmFollowups !== 'undefined' && CrmFollowups.nextFor ? CrmFollowups.nextFor(rec.id) : null;
+        if (typeof OwnerConfirmation !== 'undefined') f = OwnerConfirmation.nextAction(rec, f);
         if (!f) return '';
-        var late = f.due_date < CrmFollowups.today();
+        var late = f.due_date < (typeof OwnerConfirmation !== 'undefined' ? OwnerConfirmation.today() : CrmFollowups.today());
         return '<div class="pb-due' + (late ? ' is-late' : '') + '">' +
                (late ? 'overdue: ' : 'due ') + esc(f.due_date) + '</div>';
     }

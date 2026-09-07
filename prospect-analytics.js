@@ -193,9 +193,9 @@ var ProspectAnalytics = (function () {
        inference is a guess about timing. Interactions with no outcome recorded
        leave the denominator entirely — an unanswered question is not a no. */
     function outreach() {
-        if (typeof CrmLog === 'undefined') return { sent: 0, answered: 0, silent: 0, rate: stat(null, 0) };
-        var all = CrmLog.all();
-        var superseded = (CrmLog.supersededIds) ? CrmLog.supersededIds() : {};
+        var all = typeof CrmLog !== 'undefined' ? CrmLog.all() : [];
+        if (typeof OwnerConfirmation !== 'undefined') sites().forEach(function (site) { all = all.concat(OwnerConfirmation.interactions(site)); });
+        var superseded = typeof CrmLog !== 'undefined' && CrmLog.supersededIds ? CrmLog.supersededIds() : {};
         var sent = 0, answered = 0, silent = 0;
         for (var i = 0; i < all.length; i++) {
             var e = all[i];
