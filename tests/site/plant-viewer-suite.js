@@ -345,6 +345,20 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     const buildPanel = unified.document.querySelector('#mb-builder');
     const mode = end => sharedGroup.closest('.dg-fuel-pane').querySelector('[data-mb-end="'+end+'"]').fire('click');
     const change = (id,value) => { const input=unified.document.querySelector('#mb-'+id);input.value=value;input.fire('input');unified.flushInputs();shared.draw(); };
+    check('the SVG handoff reveals a close modern landfill view and the delayed builder update keeps it close', () => {
+        assert.ok(sharedGroup.classList.contains('plant-ready'),'the modern viewer has replaced the SVG');
+        const closeFrame = () => {
+            const ground = new T.Box3().setFromObject(shared.world.getObjectByName('site-ground')), points = [];
+            for (const x of [ground.min.x,ground.max.x]) for (const z of [ground.min.z,ground.max.z]) points.push(new T.Vector3(x,0,z).project(shared.camera));
+            const width = (Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)))/2;
+            const bottom = (1-Math.min(...points.map(p=>p.y)))/2;
+            assert.ok(width>.95 && width<1.01,'the modern foreground fills the screenshot reference width');
+            assert.ok(bottom>.86 && bottom<.96,'the modern foreground stays above the controls');
+        };
+        closeFrame();
+        unified.flushInputs(); shared.draw(); closeFrame();
+        ref(sharedGroup,'reset').fire('click'); shared.draw(); closeFrame();
+    });
     check('Today and the 10 MW build share one canvas, camera, ground and existing infrastructure', () => {
         const originalCanvas=shared.canvas, source=shared.world.getObjectByName('wellfield'), ground=shared.world.getObjectByName('site-ground');
         const deployment=shared.world.getObjectByName('configured-mine');

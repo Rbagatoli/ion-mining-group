@@ -163,20 +163,39 @@ class Surface {
             assert.ok(gas.max.z<front,'gas treatment piping does not extend into empty mining rows');
         }
     });
-    check('configured sites and their expansion fit desktop and phone frames throughout automatic rotation', () => {
+    check('configured sites and their expansion fit phone frames throughout automatic rotation', () => {
         for(const view of ['landfill','pad'])for(const powerMW of [0,1,30]) {
             const yard=shared.buildConfiguredSite(configured(view,{powerMW}));
-            for(const aspect of [320/290,390/290,900/420]){
+            for(const aspect of [320/290,390/290]){
                 const pose=yardCameraPose(yard,aspect),camera=new T.PerspectiveCamera(pose.fov||38,aspect,.1,2000);
                 for(let yaw=0;yaw<Math.PI*2;yaw+=Math.PI/16){
                     camera.position.copy(pose.position).sub(pose.target).applyAxisAngle(new T.Vector3(0,1,0),yaw).add(pose.target);
                     camera.lookAt(pose.target);camera.updateMatrixWorld();
                     for(const x of [yard.bounds.min.x,yard.bounds.max.x])for(const y of [yard.bounds.min.y,yard.bounds.max.y])for(const z of [yard.bounds.min.z,yard.bounds.max.z]){
                         const p=new T.Vector3(x,y,z).project(camera);
-                        assert.ok(Math.abs(p.x)<.95 && Math.abs(p.y)<.78,view+' remains inside its frame');
+                        assert.ok(Math.abs(p.x)<.95 && Math.abs(p.y)<.95,view+' remains inside its frame');
                     }
                 }
             }
+        }
+    });
+    check('Your site opens at the close framing in the screenshot reference, including the presentation fallback', () => {
+        // Reference viewport: 1518 x 558; foreground almost edge to edge, ending
+        // just above the controls. The previous full-orbit fit left it under half width.
+        const width=1518,height=558;
+        for(const configuredView of [true,false]) {
+            const yard=configuredView ? shared.buildConfiguredSite(configured('landfill',M.defaults)) : buildPresentation('landfill');
+            yard.root.updateMatrixWorld(true);
+            const pose=yardCameraPose(yard,width/height),camera=new T.PerspectiveCamera(pose.fov||38,width/height,.1,2000);
+            camera.position.copy(pose.position);camera.lookAt(pose.target);camera.updateMatrixWorld();
+            const ground=new T.Box3().setFromObject(yard.ground||yard.targets.ground),points=[];
+            for(const x of [ground.min.x,ground.max.x])for(const z of [ground.min.z,ground.max.z]) {
+                const p=new T.Vector3(x,0,z).project(camera);points.push([(p.x+1)*width/2,(1-p.y)*height/2]);
+            }
+            const span=Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0]));
+            const bottom=Math.max(...points.map(p=>p[1]));
+            assert.ok(span>width*.95 && span<width*1.01,'the foreground fills the reference width');
+            assert.ok(bottom>height*.86 && bottom<height*.96,'the front edge stays above the controls');
         }
     });
     check('hydro, air and immersion use physically distinct equipment', () => {
@@ -208,7 +227,7 @@ class Surface {
         }
     });
     check('desktop camera reproduces the original projection at several orbit angles', () => {
-        for (const view of Object.keys(files)) {
+        for (const view of ['site','hosting','asic']) {
             const scene = buildPresentation(view), main = definition(view).main, v = main.scene.view;
             const pose = yardCameraPose(scene,v.VB.w/v.VB.h), camera = new T.PerspectiveCamera(pose.fov,v.VB.w/v.VB.h,.1,1000);
             camera.setViewOffset(v.VB.w,v.VB.h,0,pose.verticalOffset*v.VB.h,v.VB.w,v.VB.h);
@@ -314,6 +333,30 @@ class Surface {
     function step(ms = 16) { time += ms; const batch = [...frames]; frames.clear(); batch.forEach(([,fn]) => fn(time)); }
     function advance(ms) { for (let n = 0; n < ms; n += 16) step(Math.min(16,ms-n)); }
     function flush() { let count = 0; while (frames.size && count++<100) step(); assert.ok(count<100,'render loop settles under reduced motion'); }
+    check('the first visible Your site frame is close even when layout arrives after the scene loads', () => {
+        media.matches = false;
+        for (const delayedLayout of [false,true]) for (const configuredView of [true,false]) {
+            const openingHost = new Surface(); document.appendChild(openingHost);
+            openingHost.clientWidth = delayedLayout ? 0 : 1518;
+            openingHost.clientHeight = delayedLayout ? 0 : 558;
+            let opening;
+            const openingApi = mount(openingHost,{onReady:() => {
+                const ground = new T.Box3().setFromObject(renderer.world.getObjectByName('site-ground') || renderer.world.getObjectByName('ground'));
+                const points = [];
+                for (const x of [ground.min.x,ground.max.x]) for (const z of [ground.min.z,ground.max.z]) points.push(new T.Vector3(x,0,z).project(renderer.camera));
+                opening = {width:(Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)))/2,
+                    bottom:(1-Math.min(...points.map(p=>p.y)))/2};
+            }});
+            openingApi.setConfig(configuredView ? configured('landfill',M.defaults) : {view:'landfill',definition:definition('landfill')});
+            openingApi.setProgress(0); openingApi.setActive(true);
+            if (delayedLayout) { openingHost.clientWidth = 1518; openingHost.clientHeight = 558; resizeScene(); }
+            step(); openingApi.dispose();
+            assert.ok(opening,'the initial scene paints');
+            assert.ok(opening.width>.95 && opening.width<1.01,'the first frame fills the reference width, delayed layout: '+delayedLayout);
+            assert.ok(opening.bottom>.86 && opening.bottom<.96,'the foreground stays above the controls');
+        }
+        media.matches = true;
+    });
     const panel = new Surface(), host = new Surface(), callout = new Surface();
     document.appendChild(panel); panel.appendChild(host); panel.appendChild(callout);
     const events = []; let projected = [];

@@ -1184,6 +1184,17 @@ function cameraPose(bounds, target, aspect, direction, sweep = 0, fov = 38, fram
     return target.clone().add(direction.clone().normalize().multiplyScalar(distance*1.02));
 }
 export function yardCameraPose(yard, aspect) {
+    if (aspect >= 2 && (yard.configuredSite || yard.view === 'landfill' || yard.view === 'pad')) {
+        // Your site opens at the close, low viewing angle of the reference: the
+        // foreground nearly spans the panel. Fit the opening angle, rather than
+        // reserving room for every corner of the pad through a full revolution.
+        const ground = new THREE.Box3().setFromObject(yard.ground || yard.targets.ground);
+        const target = ground.getCenter(new THREE.Vector3());
+        target.y = yard.bounds.getSize(new THREE.Vector3()).y*.25;
+        const v = yard.comparisonView || yard.layout, pitch = THREE.MathUtils.degToRad(12), yaw = v?.BASE_YAW || 0;
+        const direction = new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
+        return { target, position: cameraPose(ground,target,aspect,direction,0,38,1.02,.92), fov:38 };
+    }
     if (yard.layout) {
         const v = yard.layout, nativeAspect = v.VB.w/v.VB.h;
         // The authored camera has room for the original two callout columns.
@@ -1200,7 +1211,9 @@ export function yardCameraPose(yard, aspect) {
     const target = yard.bounds.getCenter(new THREE.Vector3());
     target.y = yard.configuredSite ? yard.bounds.getSize(new THREE.Vector3()).y*.25 : yard.view === 'asic' ? .9 : .7;
     const v = yard.comparisonView, direction = v ? new THREE.Vector3(-Math.sin(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH),Math.sin(v.BASE_PITCH),Math.cos(v.BASE_YAW || 0)*Math.cos(v.BASE_PITCH)) : new THREE.Vector3(.8,.86,1.3);
-    return { target, position: cameraPose(yard.bounds,target,aspect,direction,yard.configuredSite || yard.fullOrbit ? Math.PI : .075,38,yard.configuredSite && aspect >= 2 ? .52 : .92,yard.frameHeight || .75) };
+    // Narrow screens retain enough room for the full rotating footprint.
+    const frameHeight = yard.frameHeight || (yard.configuredSite ? .9 : .75);
+    return { target, position: cameraPose(yard.bounds,target,aspect,direction,yard.configuredSite || yard.fullOrbit ? Math.PI : .075,38,.92,frameHeight) };
 }
 
 export function wheelZoomFactor(event, pageHeight = 800) {
@@ -1254,7 +1267,9 @@ export function mountMineScene(host, callbacks = {}) {
         viewportWidth = w; viewportHeight = h;
         renderer.setSize(w,h,false); camera.aspect = w/h; applyViewOffset();
         if (yard && focus) focusPart(focus.id,false);
-        else if (yard && selected < 0) fit(false);
+        // A lazy or initially hidden panel must paint its first frame at the
+        // measured size, before onReady reveals the canvas.
+        else if (yard && selected < 0) fit(!ready);
         else if (yard && selected >= 0) inspect(true,selected);
         wake();
     }
