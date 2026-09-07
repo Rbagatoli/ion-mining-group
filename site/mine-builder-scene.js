@@ -1185,15 +1185,14 @@ function cameraPose(bounds, target, aspect, direction, sweep = 0, fov = 38, fram
 }
 export function yardCameraPose(yard, aspect) {
     if (aspect >= 2 && (yard.configuredSite || yard.view === 'landfill' || yard.view === 'pad')) {
-        // Your site opens at the close, low viewing angle of the reference: the
-        // foreground nearly spans the panel. Fit the opening angle, rather than
-        // reserving room for every corner of the pad through a full revolution.
+        // Match the raised, centered reference view. The front of the pad fills
+        // roughly three quarters of a wide panel, with room to see its depth.
         const ground = new THREE.Box3().setFromObject(yard.ground || yard.targets.ground);
         const target = ground.getCenter(new THREE.Vector3());
-        target.y = yard.bounds.getSize(new THREE.Vector3()).y*.25;
-        const v = yard.comparisonView || yard.layout, pitch = THREE.MathUtils.degToRad(12), yaw = v?.BASE_YAW || 0;
+        target.y = 0;
+        const v = yard.comparisonView || yard.layout, pitch = THREE.MathUtils.degToRad(23.5), yaw = v?.BASE_YAW || 0;
         const direction = new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
-        return { target, position: cameraPose(ground,target,aspect,direction,0,38,1.02,.92), fov:38 };
+        return { target, position: cameraPose(ground,target,aspect,direction,0,38,.75,.92), fov:38 };
     }
     if (yard.layout) {
         const v = yard.layout, nativeAspect = v.VB.w/v.VB.h;

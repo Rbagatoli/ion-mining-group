@@ -179,23 +179,29 @@ class Surface {
             }
         }
     });
-    check('Your site opens at the close framing in the screenshot reference, including the presentation fallback', () => {
-        // Reference viewport: 1518 x 558; foreground almost edge to edge, ending
-        // just above the controls. The previous full-orbit fit left it under half width.
+    check('Your site opens at the raised, centered screenshot angle, including the presentation fallback', () => {
+        // September 7 reference: the whole pad is visible from above, centered
+        // between the labels. Its four corners also constrain the viewing angle.
         const width=1518,height=558;
+        const reference=[[508,184],[1002,182],[209,496],[1306,491]];
         for(const configuredView of [true,false]) {
             const yard=configuredView ? shared.buildConfiguredSite(configured('landfill',M.defaults)) : buildPresentation('landfill');
             yard.root.updateMatrixWorld(true);
             const pose=yardCameraPose(yard,width/height),camera=new T.PerspectiveCamera(pose.fov||38,width/height,.1,2000);
             camera.position.copy(pose.position);camera.lookAt(pose.target);camera.updateMatrixWorld();
             const ground=new T.Box3().setFromObject(yard.ground||yard.targets.ground),points=[];
-            for(const x of [ground.min.x,ground.max.x])for(const z of [ground.min.z,ground.max.z]) {
+            for(const z of [ground.min.z,ground.max.z])for(const x of [ground.min.x,ground.max.x]) {
                 const p=new T.Vector3(x,0,z).project(camera);points.push([(p.x+1)*width/2,(1-p.y)*height/2]);
             }
             const span=Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0]));
             const bottom=Math.max(...points.map(p=>p[1]));
-            assert.ok(span>width*.95 && span<width*1.01,'the foreground fills the reference width');
-            assert.ok(bottom>height*.86 && bottom<height*.96,'the front edge stays above the controls');
+            const top=Math.min(...points.map(p=>p[1]));
+            assert.ok(span>width*.69 && span<width*.75,'the foreground matches the reference width');
+            assert.ok(bottom>height*.85 && bottom<height*.91,'the front edge matches the reference height');
+            assert.ok(top>height*.30 && top<height*.35,'the back edge shows the raised viewing angle');
+            if(configuredView) points.forEach((point,i) => point.forEach((value,axis) => {
+                assert.ok(Math.abs(value-reference[i][axis])<8,'the configured pad corners match the screenshot');
+            }));
         }
     });
     check('hydro, air and immersion use physically distinct equipment', () => {
@@ -333,7 +339,7 @@ class Surface {
     function step(ms = 16) { time += ms; const batch = [...frames]; frames.clear(); batch.forEach(([,fn]) => fn(time)); }
     function advance(ms) { for (let n = 0; n < ms; n += 16) step(Math.min(16,ms-n)); }
     function flush() { let count = 0; while (frames.size && count++<100) step(); assert.ok(count<100,'render loop settles under reduced motion'); }
-    check('the first visible Your site frame is close even when layout arrives after the scene loads', () => {
+    check('the first visible Your site frame matches the reference even when layout arrives after the scene loads', () => {
         media.matches = false;
         for (const delayedLayout of [false,true]) for (const configuredView of [true,false]) {
             const openingHost = new Surface(); document.appendChild(openingHost);
@@ -345,15 +351,17 @@ class Surface {
                 const points = [];
                 for (const x of [ground.min.x,ground.max.x]) for (const z of [ground.min.z,ground.max.z]) points.push(new T.Vector3(x,0,z).project(renderer.camera));
                 opening = {width:(Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)))/2,
-                    bottom:(1-Math.min(...points.map(p=>p.y)))/2};
+                    bottom:(1-Math.min(...points.map(p=>p.y)))/2,
+                    top:(1-Math.max(...points.map(p=>p.y)))/2};
             }});
             openingApi.setConfig(configuredView ? configured('landfill',M.defaults) : {view:'landfill',definition:definition('landfill')});
             openingApi.setProgress(0); openingApi.setActive(true);
             if (delayedLayout) { openingHost.clientWidth = 1518; openingHost.clientHeight = 558; resizeScene(); }
             step(); openingApi.dispose();
             assert.ok(opening,'the initial scene paints');
-            assert.ok(opening.width>.95 && opening.width<1.01,'the first frame fills the reference width, delayed layout: '+delayedLayout);
-            assert.ok(opening.bottom>.86 && opening.bottom<.96,'the foreground stays above the controls');
+            assert.ok(opening.width>.69 && opening.width<.75,'the first frame matches the reference width, delayed layout: '+delayedLayout);
+            assert.ok(opening.bottom>.85 && opening.bottom<.91,'the foreground matches the reference height');
+            assert.ok(opening.top>.30 && opening.top<.35,'the raised camera angle is set before the first frame');
         }
         media.matches = true;
     });
