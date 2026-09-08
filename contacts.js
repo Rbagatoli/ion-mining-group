@@ -27,7 +27,9 @@
     /* The whole view state, so a redraw after an edit puts you back where you
        were rather than at the top of an unfiltered list. */
     var view = { q: '', sort: 'name', filter: null };
-    var editing = null;          // contact id, or '' for a new one, or null
+    var contactParams = new URLSearchParams(location.search), requestedSite = contactParams.get('for');
+    var contactSite = requestedSite && typeof SiteData !== 'undefined' ? SiteData.get(requestedSite) : null;
+    var editing = contactSite && contactParams.get('new') === '1' ? '' : null;          // contact id, or '' for a new one, or null
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)
@@ -127,6 +129,7 @@
         editorHost.innerHTML =
         '<section class="pc-edit">' +
             '<h2>' + (isNew ? 'New contact' : 'Edit contact') + '</h2>' +
+            (contactSite ? '<p class="pc-hint">' + (isNew ? 'This contact will be linked to ' : 'Working on ') + esc(contactSite.name || contactSite.id) + '. <a href="./prospecting.html#p/' + esc(encodeURIComponent(contactSite.id)) + '?tab=contacts">Return to site →</a></p>' : '') +
             '<div class="pc-frow">' +
                 '<label class="pc-grow">Name<input type="text" id="pcName" value="' +
                     esc(c.name) + '"></label>' +
@@ -167,8 +170,7 @@
                 (isNew ? '' : '<button type="button" class="pc-btn pc-btn--rm" id="pcDelete">' +
                               'Delete</button>') +
             '</div>' +
-            '<p class="pc-hint" id="pcHint">A contact with no email and no phone number ' +
-                'lowers the opportunity score of every prospect it is linked to.</p>' +
+            '<p class="pc-hint" id="pcHint" role="status">Add a phone or email when known. Record where you found the details and when you last checked them.</p>' +
         '</section>';
 
         wireEditor(isNew);
@@ -202,6 +204,7 @@
                failed -- not the { ok, err } the rest of the CRM stores use. A
                null read as success is a form that clears itself having saved
                nothing, so it is checked for what it actually returns. */
+            if (isNew && contactSite) patch.linked_prospects = [contactSite.id];
             var res = isNew ? CrmContacts.add(patch) : CrmContacts.update(editing, patch);
             if (!res) {
                 hint.textContent = 'Could not save. Local storage may be full — ' +
@@ -275,7 +278,7 @@
     }
     var addBtn = document.getElementById('pcNew');
     if (addBtn) {
-        addBtn.addEventListener('click', function () { editing = ''; draw(); });
+        addBtn.addEventListener('click', function () { editing = ''; draw(); document.getElementById('pcName').focus(); });
     }
 
     draw();

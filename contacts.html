@@ -133,8 +133,9 @@
             .pc-name { font-size:14px; }
         }
     </style>
+    <link rel="stylesheet" href="./prospect-workspace.css?v=436">
 </head>
-<body>
+<body class="prospect-workspace-page">
 <canvas id="gasField" aria-hidden="true"></canvas>
 <nav id="proton-nav"></nav>
 
@@ -145,8 +146,8 @@
     <div id="prospectNav"></div>
 
     <div class="pc-tools">
-        <input type="search" id="pcSearch" placeholder="Search a name, an organisation, a site">
-        <select id="pcSort">
+        <input type="search" id="pcSearch" aria-label="Search contacts" placeholder="Search a name, an organisation, a site">
+        <select id="pcSort" aria-label="Sort contacts">
             <option value="name">By name</option>
             <option value="reach">By how reachable they are</option>
             <option value="verified">By how long since checked</option>
@@ -155,8 +156,8 @@
         <button type="button" class="pc-btn pc-btn--go" id="pcNew">Add a contact</button>
     </div>
 
-    <div id="pcontacts"></div>
     <div id="pcEditor"></div>
+    <div id="pcontacts"></div>
 </main>
 
 <script src="./firebase-config.js?v=340"></script>
@@ -175,9 +176,9 @@
 <script src="./crm-contacts.js?v=379"></script>
 <script src="./owner-confirmation.js?v=432"></script>
 <script src="./crm-interactions.js?v=432"></script>
-<script src="./prospect-nav.js?v=434"></script>
-<script src="./prospect-contacts.js?v=346"></script>
-<script src="./contacts.js?v=346"></script>
+<script src="./prospect-nav.js?v=436"></script>
+<script src="./prospect-contacts.js?v=436"></script>
+<script src="./contacts.js?v=436"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>

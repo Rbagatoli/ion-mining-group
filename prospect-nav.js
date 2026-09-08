@@ -33,15 +33,15 @@ var ProspectNav = (function () {
        the order is the order somebody works in — what to do today, then the
        pipeline, then the search that feeds it. */
     var VIEWS = [
-        { key: 'today',     label: 'Today',     href: './prospecting.html' },
-        { key: 'board',     label: 'Board',     href: './prospecting.html#board' },
-        { key: 'sourcing',  label: 'Sourcing',  href: './prospecting.html#sourcing' },
-        { key: 'evidence',  label: 'Evidence',  href: './prospecting.html#evidence' },
+        { key: 'today',     label: 'My work',     href: './prospecting.html' },
+        { key: 'board',     label: 'Pipeline',     href: './prospecting.html#board' },
+        { key: 'sourcing',  label: 'Deal openings',  href: './prospecting.html#sourcing' },
+        { key: 'evidence',  label: 'Document review',  href: './prospecting.html#evidence' },
         /* The sourcing map, which is a different map from the fleet one on the
            Map tab. Same file, opened in the mode this section means. */
-        { key: 'map',       label: 'Map',       href: './map.html?mode=prospects' },
+        { key: 'map',       label: 'Find sites',       href: './map.html?mode=prospects' },
         { key: 'contacts',  label: 'Contacts',  href: './contacts.html' },
-        { key: 'analytics', label: 'Analytics', href: './prospecting.html#analytics' }
+        { key: 'analytics', label: 'Reports', href: './prospecting.html#analytics' }
     ];
 
     /* Views whose page does not exist yet render disabled rather than as a link
@@ -58,19 +58,13 @@ var ProspectNav = (function () {
     function render(activeKey, hostId) {
         var host = document.getElementById(hostId || 'prospectNav');
         if (!host) return null;
+        var primary = ['today', 'board', 'map', 'contacts'];
+        function link(v) { var on = v.key === activeKey; return '<a class="psec-tab' + (on ? ' is-on' : '') + '" href="' + esc(v.href) + '"' + (on ? ' aria-current="page"' : '') + '>' + esc(v.label) + '</a>'; }
         var html = '<nav class="psec-nav" aria-label="Prospecting">';
-        for (var i = 0; i < VIEWS.length; i++) {
-            var v = VIEWS[i];
-            var on = (v.key === activeKey);
-            if (BUILT[v.key]) {
-                html += '<a class="psec-tab' + (on ? ' is-on' : '') + '" href="' + esc(v.href) + '"' +
-                        (on ? ' aria-current="page"' : '') + '>' + esc(v.label) + '</a>';
-            } else {
-                html += '<span class="psec-tab is-soon" aria-disabled="true" ' +
-                        'title="Not built yet">' + esc(v.label) + '</span>';
-            }
-        }
-        html += '</nav>';
+        primary.forEach(function (key) { html += link(VIEWS.find(function (v) { return v.key === key; })); });
+        html += '<details class="psec-more' + (primary.indexOf(activeKey) < 0 ? ' is-on' : '') + '"><summary>Research & reports</summary><div>';
+        VIEWS.filter(function (v) { return primary.indexOf(v.key) < 0; }).forEach(function (v) { html += link(v); });
+        html += '</div></details></nav>';
         host.innerHTML = html;
         return host;
     }

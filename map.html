@@ -903,6 +903,7 @@
         .src-missing, .src-trendwrap { margin-top:18px; }
         @media (max-width:600px){ .src-crm-wide { grid-template-columns:1fr; } }
     </style>
+    <link rel="stylesheet" href="./prospect-workspace.css?v=436">
 </head>
 <body>
 <canvas id="gasField" aria-hidden="true"></canvas>
@@ -1265,9 +1266,9 @@ blank on each site rather than being guessed.</p>
             <h3 id="dTitle">Select a prospect</h3>
             <span class="chart-live-value btc-orange" id="dScore"></span>
         </div>
+        <div id="dWorkspaceAction" class="pw-map-action"></div>
         <div id="dBody">
-            <p class="src-empty">Pick a prospect from the list or the map to see satellite evidence,
-            derived capacity, economics and who operates the well.</p>
+            <p class="src-empty">Select a site from the results or map to review its energy, costs and owner contacts.</p>
         </div>
     </div>
       </div>
@@ -1320,8 +1321,8 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="capavoided" class="num">Capital avoided</th>
                         <th data-sort="caprequired" class="num">Capital required</th>
                         <th data-sort="opportunity" class="num">Opportunity</th>
-                        <th data-sort="acquirability" class="num">Acquirable</th>
-                        <th data-sort="combined" class="num">Combined</th>
+                        <th data-sort="acquirability" class="num">Acquisition signals</th>
+                        <th data-sort="combined" class="num">Acquisition rank</th>
                         <th data-sort="allinkw" class="num">All-in $/kW</th>
                         <th data-sort="torevenue" class="num">To revenue</th>
                         <th data-sort="operator">Counterparty</th>
@@ -1607,7 +1608,8 @@ commercial terms are your assumptions.</p>
      loaded on this page, so every lookup silently fell back to the bare record and
      a recorded contact never improved the contactability tier it was meant to. -->
 <script src="./crm-contacts.js?v=379"></script>
-<script src="./prospect-nav.js?v=434"></script>
+<script src="./prospect-nav.js?v=436"></script>
+<script src="./prospect-workspace.js?v=436"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in
      stages standing rather than take the page down with it. */
@@ -1615,7 +1617,8 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=429"></script>
-<script src="./map-sourcing.js?v=431"></script>
+<script src="./prospect-ranking.js?v=435"></script>
+<script src="./map-sourcing.js?v=436"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

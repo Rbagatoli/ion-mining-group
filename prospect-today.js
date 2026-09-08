@@ -127,6 +127,7 @@ var ProspectToday = (function () {
         var host = document.getElementById(hostId || 'ptoday');
         if (!host) return null;
         var d = build(nowMs);
+        if (typeof ProspectWorkspace !== 'undefined') { ProspectWorkspace.renderToday(host, SiteData.list(), d, nowMs); return d; }
         var html = typeof OwnerConfirmationUi !== 'undefined' ? OwnerConfirmationUi.todayMarkup(d.ownerActions) : '';
         if (typeof ProspectSourcingUi !== 'undefined' && typeof SiteData !== 'undefined') html += ProspectSourcingUi.todayMarkup(SiteData.list(), nowMs);
         if (typeof ProspectEvidenceUi !== 'undefined' && typeof SiteData !== 'undefined') html += ProspectEvidenceUi.todayMarkup(SiteData.list(), nowMs);

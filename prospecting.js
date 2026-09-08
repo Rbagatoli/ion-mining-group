@@ -39,7 +39,7 @@
 
     function idFromHash() {
         var h = (location.hash || '').replace('#', '');
-        if (h.indexOf('p/') === 0 || h.indexOf('s/') === 0) return decodeURIComponent(h.slice(2));
+        if (h.indexOf('p/') === 0 || h.indexOf('s/') === 0) return decodeURIComponent(h.slice(2).split('?')[0]);
         return null;
     }
 
@@ -79,6 +79,7 @@
 
     function draw() {
         var recs = records();
+        if (typeof ProspectWorkspace !== 'undefined') { ProspectWorkspace.renderBoard(host, recs); if (note) note.textContent = ''; return; }
         if (!recs.length) { drawEmpty(); return; }
         ProspectBoard.render(recs, 'pboard');
         wireDrag();
@@ -181,8 +182,11 @@
         draw();
     }
 
-    function show() {
+    var lastRoute = null;
+    function show(preserveDraft) {
         var v = viewFromHash();
+        var route = v + ':' + (idFromHash() || '');
+        if (route !== lastRoute) { if (typeof window.scrollTo === 'function') window.scrollTo(0, 0); lastRoute = route; }
         /* The section nav has no tab for a single prospect, so the board stays lit
            while one is open: it is where you came from and where Back goes. */
         ProspectNav.render(v === 'detail' ? 'board' : v);
@@ -196,7 +200,7 @@
         if (v === 'evidence' && typeof ProspectEvidenceUi !== 'undefined') ProspectEvidenceUi.page('pevidence');
         else if (v === 'sourcing' && typeof ProspectSourcingUi !== 'undefined') ProspectSourcingUi.page('psourcing');
         else if (v === 'board') draw();
-        else if (v === 'detail') drawDetail();
+        else if (v === 'detail') drawDetail(preserveDraft === true);
         else if (v === 'analytics') drawAnalytics();
         else if (v === 'summary') drawSummary();
         else drawToday();
@@ -259,10 +263,15 @@
         ProspectAnalytics.render('panalytics');
     }
 
-    function drawDetail() {
+    function drawDetail(preserveDraft) {
         if (typeof ProspectDetail === 'undefined') return;
         var id = idFromHash();
         if (!id) return;
+        var existingHost = document.getElementById('pdetail');
+        if (preserveDraft === true && existingHost && existingHost.dataset.workSite === id && existingHost._workHasDraft && existingHost._workHasDraft()) {
+            existingHost._workRefreshStatus.textContent = 'Updated records are available. Your draft is preserved; save it before refreshing.';
+            return;
+        }
         var relationshipRoot = document.getElementById('dealRelationships');
         if (relationshipRoot && relationshipRoot.getAttribute('data-prospect-id') === id && relationshipRoot._hasDraft && relationshipRoot._hasDraft()) {
             var relationshipStatus = relationshipRoot.querySelector('#relationshipStatus');
@@ -281,8 +290,18 @@
             if (sourcingStatus) sourcingStatus.textContent = 'New saved data is available. Your sourcing draft is preserved; save it or reload saved sourcing.';
             return;
         }
+        var detailHost = document.getElementById('pdetail');
+        var capitalPanel = detailHost && detailHost.querySelector ? detailHost.querySelector('#pwPanel_capital') : null;
+        var stagePanel = detailHost && detailHost.querySelector ? detailHost.querySelector('.pw-stage-editor') : null;
+        var stageWasOpen = !!(stagePanel && stagePanel.open && detailHost.dataset.workSite === id);
+        if (capitalPanel && capitalPanel._diligenceCandidate === id && capitalPanel._diligenceHasDraft && capitalPanel._diligenceHasDraft()) {
+            capitalPanel._diligenceStatus.textContent = 'Saved data changed. Your energy and capital draft is preserved; save it or reload the saved values.';
+            return;
+        }
         ProspectDetail.render(id, 'pdetail');
         wireDetail(id);
+        var newStagePanel = detailHost && detailHost.querySelector ? detailHost.querySelector('.pw-stage-editor') : null;
+        if (stageWasOpen && newStagePanel) newStagePanel.open = true;
     }
 
     /* The detail module asks for a redraw when its lazy catalogue lands; the redraw must come
@@ -290,7 +309,7 @@
        prospect is still open -- the event can arrive after the user has navigated away. */
     document.addEventListener('prospect-detail:refresh', function (e) {
         var id = idFromHash();
-        if (id && e && e.detail && e.detail.id === id) drawDetail();
+        if (id && e && e.detail && e.detail.id === id) drawDetail(true);
     });
 
     function fieldValue(elId) {
@@ -872,7 +891,10 @@
            independent panels sharing a screen, and letting a missing follow-ups module take the
            reconciliation down with it would hide the rarer and worse news. It wires its own
            controls and draws nothing when every link resolves. */
-        if (typeof ProjectLinkAuditUi !== 'undefined') {
+        var freshWorkspace = false;
+        try { freshWorkspace = typeof SiteData !== 'undefined' && SiteData.storeState && SiteData.storeState().state === 'absent' && typeof ProjectData !== 'undefined' && !localStorage.getItem(ProjectData.KEY); } catch (_) {}
+        if (freshWorkspace) { var auditHost = document.getElementById('plaudit'); if (auditHost) auditHost.innerHTML = ''; }
+        if (!freshWorkspace && typeof ProjectLinkAuditUi !== 'undefined') {
             var scanned = ProjectLinkAuditUi.render('plaudit');
             /* Stamping is a WRITE, so it happens once per draw of this screen rather than on
                every render: the date recorded is when the workspace first SAW the link fail,
@@ -936,7 +958,7 @@
             if (typeof CrmContacts !== 'undefined') CrmContacts.reset();
             if (typeof CrmEnrichment !== 'undefined') CrmEnrichment.reset();
             if (typeof CrmDocuments !== 'undefined') CrmDocuments.reset();
-            show();
+            show(true);
         }
     });
 })();

@@ -586,7 +586,7 @@ var MapSourcing = (function() {
     function saveView() {
         try {
             localStorage.setItem(VIEW_KEY, JSON.stringify({
-                _v: 1, sort: _tableSort, sel: _selectedId
+                _v: 1, sel: _selectedId
             }));
         } catch (e) { /* private mode / quota */ }
     }
@@ -622,6 +622,7 @@ var MapSourcing = (function() {
             saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
         } catch (e) { return false; }
         if (!saved || saved._v !== 1) return false;
+        ensureColumnSortOption(saved.fSort);
         FILTER_FIELDS.forEach(function(id) {
             var el = document.getElementById(id);
             if (!el || saved[id] === undefined) return;
@@ -1006,12 +1007,6 @@ var MapSourcing = (function() {
             out.push({ key: id, label: FILTER_LABELS[id],
                        clear: function() {
                            e.checked = false;
-                           // Its sort default came with it, so clearing from the bar has to undo
-                           // that too, or the table stays ranked on a combination nothing selects.
-                           if (id === 'fAcquisition') {
-                               _tableSort = { key: 'opportunity', dir: -1 };
-                               paintTableHead();
-                           }
                        } });
         });
 
@@ -1121,7 +1116,7 @@ var MapSourcing = (function() {
     // restored itself silently at boot and overwrote a chosen country. Recalling a saved search
     // is an explicit act, so "power near Midland" can be a search you keep.
     // NOT captured: the operator drill-down (_companyFilter), which is a click-through from one
-    // site rather than a search, and the table's sort and view, which are display state.
+    // site rather than a search, and the result view. The shared sort lives in fSort.
     function captureSearch() {
         var f = {};
         FILTER_FIELDS.forEach(function(id) {
@@ -1174,6 +1169,7 @@ var MapSourcing = (function() {
     // the search it claims to be.
     function applySearch(s) {
         var missing = [];
+        ensureColumnSortOption(s.f.fSort);
         FILTER_FIELDS.forEach(function(id) {
             var el = document.getElementById(id);
             if (!el || s.f[id] === undefined) return;
@@ -1930,7 +1926,7 @@ var MapSourcing = (function() {
         var stats = { acqSuppressed: 0 };
         var matches = matchesFor(f, _companyFilter, _companyFilterId, stats);
         _acqSuppressed = stats.acqSuppressed;
-        var sortBy = document.getElementById('fSort').value;
+        var sortBy = syncResultSort();
         _filtered = SiteScoring.rank(matches, { jurisdictions: Jurisdictions }, sortBy);
         // 'combined' cannot live in SiteScoring: that module ranks a candidate on its published
         // fields alone, while the combined axis needs the acquirability score, which reads
@@ -1997,6 +1993,14 @@ var MapSourcing = (function() {
                 var ak = a.candidate.powerPotentialKw, bk = b.candidate.powerPotentialKw;
                 return (bk === null || bk === undefined ? -1 : bk) -
                        (ak === null || ak === undefined ? -1 : ak);
+            });
+        }
+        // A header click sets the same Rank-by selection. Sort the complete result set
+        // before either view applies its display limit.
+        if (_tableSort.column) {
+            _filtered.sort(function(a, b) {
+                return ProspectRanking.compare(tableSortValue(a, _tableSort.key),
+                    tableSortValue(b, _tableSort.key), _tableSort.dir, a.candidate.id, b.candidate.id);
             });
         }
         /* The map's rank colouring reads this. Rebuilt on every re-rank so the dots always
@@ -2433,7 +2437,7 @@ var MapSourcing = (function() {
             body.innerHTML = '<tr><td colspan="6" class="wl-empty">' +
                 (all.length
                     ? 'Nothing at this stage.'
-                    : 'No sites saved yet. Open a prospect and use <strong>Save to my sites</strong> ' +
+                    : 'No sites saved yet. Open a prospect and use <strong>Save to pipeline</strong> ' +
                       'to start working it — this is where it will appear, with whatever contact ' +
                       'details you record.') +
                 '</td></tr>';
@@ -3104,7 +3108,29 @@ var MapSourcing = (function() {
     // The other rendering of the same result set. Richer — every column, sortable — and
     // correspondingly not something you want on screen while scanning.
     // Uses RESULT_CAP, shared with the list — see the note there.
-    var _tableSort = { key: 'opportunity', dir: -1 };
+    // Derived from Rank by, never independently restored or applied by the table.
+    var _tableSort = ProspectRanking.decode('combined');
+    function ensureColumnSortOption(value) {
+        var order = ProspectRanking.decode(value), el = document.getElementById('fSort');
+        if (!order || !order.column || !el) return;
+        var option = document.getElementById('fColumnSort');
+        if (!option) {
+            option = document.createElement('option'); option.id = 'fColumnSort'; el.appendChild(option);
+        }
+        option.value = value;
+        option.textContent = sortKeyLabel(order.key) + ' (' + ProspectRanking.direction(order) + ')';
+    }
+    function syncResultSort() {
+        var el = document.getElementById('fSort');
+        _tableSort = ProspectRanking.decode(el.value);
+        if (!_tableSort) { el.value = 'combined'; _tableSort = ProspectRanking.decode('combined'); }
+        if (!_tableSort.column) {
+            var option = document.getElementById('fColumnSort');
+            if (option) option.remove();
+        }
+        paintTableHead();
+        return el.value;
+    }
     var STAGE_ORDER = ['raw_resource', 'permitted', 'constructed', 'energized', 'operating'];
     var _oppCache = {};
     var _acqCache = {};
@@ -3114,7 +3140,7 @@ var MapSourcing = (function() {
     // JSON.parses it, so calling it per candidate would do that 16,125 times and freeze the page.
     function opportunityCtx() {
         if (!_oppCtx) {
-            _oppCtx = { jurisdictions: Jurisdictions, fleet: existingOperations() };
+            _oppCtx = { jurisdictions: Jurisdictions, fleet: existingOperations(), asOf: new Date().toISOString().slice(0, 10) };
         }
         return _oppCtx;
     }
@@ -3170,7 +3196,7 @@ var MapSourcing = (function() {
                 ? manual.distress_signals
                 : (Array.isArray(c.distressSignals) ? c.distressSignals : [])
         };
-        var r = SiteAcquirability.score(merged);
+        var r = SiteAcquirability.score(merged, { asOf: opportunityCtx().asOf });
         _acqCache[c.id] = r;
         return r;
     }
@@ -3190,7 +3216,8 @@ var MapSourcing = (function() {
     function sortDescription() {
         var el = document.getElementById('fSort');
         var by = el ? el.value : 'persistence';
-        return SORT_WORDS[by] || 'ranked';
+        return _tableSort.column ? sortKeyLabel(_tableSort.key) + ' (' + ProspectRanking.direction(_tableSort) + ')'
+            : SORT_WORDS[by] || 'ranked';
     }
 
     function combinedFor(c) {
@@ -3408,11 +3435,11 @@ var MapSourcing = (function() {
             case 'name':        return placeLabel(c).toLowerCase();
             case 'source':      return (c.source || '').toLowerCase();
             case 'iso3':        return (c.iso3 || '').toLowerCase();
-            case 'kw':          var uk = usableKwFor(c); return uk === null ? -1 : uk;
-            case 'duty':        return c.dutyCyclePct === null ? -1 : c.dutyCyclePct;
-            case 'years':       return c.yearsSeen === null ? -1 : c.yearsSeen;
+            case 'kw':          return usableKwFor(c);
+            case 'duty':        return c.dutyCyclePct;
+            case 'years':       return c.yearsSeen;
             case 'operator':    var op = operatorRecord(c);
-                                return op && op.operator ? op.operator.toLowerCase() : '￿';
+                                return op && op.operator ? op.operator.toLowerCase() : null;
             case 'allinkw':
                 var mm = evaluateAt(c);
                 return mm && mm.all_in_cost_per_usable_kw !== null && mm.all_in_cost_per_usable_kw !== undefined
@@ -3442,7 +3469,7 @@ var MapSourcing = (function() {
                 return st === null ? null : SiteOpportunity.STAGE_SCORES[st];
             case 'opportunity':
             default:
-                var s = opportunityFor(c).score;
+                var s = opportunityFor(c).scoreRaw;
                 // Unscoreable prospects sort LAST in either direction rather than as a zero they
                 // did not earn. -Infinity would put them top on an ascending sort.
                 return s === null ? null : s;
@@ -3467,6 +3494,11 @@ var MapSourcing = (function() {
     // The truncation notice used to print the raw data-sort attribute, so a capped table
     // announced "showing the top 250 by allinkw", "by torevenue", "by iso3". The column heading
     // is the name that column actually goes by on screen.
+    function resultSortLabel() {
+        var control = document.getElementById('fSort');
+        var option = control && control.options[control.selectedIndex];
+        return option ? option.textContent : 'Acquisition rank';
+    }
     function sortKeyLabel(key) {
         var th = document.querySelector('#srcTableHead th[data-sort="' + key + '"]');
         var t = th && th.textContent ? th.textContent.trim() : '';
@@ -3481,17 +3513,8 @@ var MapSourcing = (function() {
 
         // No longer filters. Acquisition targets is applied in applyFilters with everything else,
         // so _filtered is already the answer and the table cannot hold a different one.
-        var rows = _filtered.slice();
-        var key = _tableSort.key, dir = _tableSort.dir;
-        rows.sort(function(a, b) {
-            var va = tableSortValue(a, key), vb = tableSortValue(b, key);
-            if (va === null && vb === null) return 0;
-            if (va === null) return 1;              // nulls last, always
-            if (vb === null) return -1;
-            if (va < vb) return -dir;
-            if (va > vb) return dir;
-            return 0;
-        });
+        // List, table and map all consume this already sorted array.
+        var rows = _filtered;
 
         var shown = rows.slice(0, RESULT_CAP);
         if (countEl) {
@@ -3513,7 +3536,7 @@ var MapSourcing = (function() {
         // Never truncate silently — a capped list that says nothing reads as "this is all of it".
         if (capEl) {
             capEl.textContent = rows.length > shown.length
-                ? 'showing the top ' + shown.length + ' by ' + sortKeyLabel(key) +
+                ? 'showing the top ' + shown.length + ' by ' + resultSortLabel() +
                   ' — narrow the filters to see further down'
                 : '';
         }
@@ -3592,21 +3615,12 @@ var MapSourcing = (function() {
         body.innerHTML = html;
     }
 
-    // Acquisition targets. A filter now, so this only has to set the table's default sort and let
-    // applyFilters do the rest — the same handler shape as any other checkbox in the bar.
+    // Acquisition targets changes the eligible sites, while Rank by retains the chosen order.
     function wireAcquisition() {
         var el = document.getElementById('fAcquisition');
         if (!el) return;
         el.addEventListener('change', function() {
             _ignoreNextDocClick = true;
-            // Narrowing to built assets exists in order to rank on both axes, so it brings its own
-            // default sort. Unticking restores opportunity, the honest default while
-            // acquirability is still thin.
-            _tableSort = el.checked ? { key: 'combined', dir: -1 }
-                                    : { key: 'opportunity', dir: -1 };
-            paintTableHead();
-            saveView();
-            saveFilters();
             applyFilters();
         });
     }
@@ -3618,13 +3632,12 @@ var MapSourcing = (function() {
                 var th = e.target.closest('th[data-sort]');
                 if (!th) return;
                 var k = th.getAttribute('data-sort');
-                // Re-clicking the active column flips direction; a new column starts descending,
-                // except the text columns where A-Z is the natural first read.
-                if (_tableSort.key === k) _tableSort.dir = -_tableSort.dir;
-                else _tableSort = { key: k, dir: (k === 'name' || k === 'source' || k === 'iso3' || k === 'operator') ? 1 : -1 };
-                paintTableHead();
-                renderTable();
-                saveView();
+                var control = document.getElementById('fSort');
+                var value = ProspectRanking.next(control.value, k);
+                if (!value) return;
+                ensureColumnSortOption(value);
+                control.value = value;
+                applyFilters('fSort');
             });
         }
         var body = document.getElementById('srcTableBody');
@@ -3655,6 +3668,7 @@ var MapSourcing = (function() {
             var k = ths[i].getAttribute('data-sort');
             ths[i].classList.toggle('sorted', k === _tableSort.key);
             ths[i].classList.toggle('asc', k === _tableSort.key && _tableSort.dir === 1);
+            ths[i].setAttribute('aria-sort', k === _tableSort.key ? (_tableSort.dir === 1 ? 'ascending' : 'descending') : 'none');
         }
     }
 
@@ -3691,7 +3705,7 @@ var MapSourcing = (function() {
     function sortedValueCell(c, opp) {
         var el = document.getElementById('fSort');
         var by = el ? el.value : 'persistence';
-        if (by === 'combined') {
+        if (_tableSort.key === 'combined') {
             var v = combinedFor(c);
             return v === null ? '<span class="src-gap">--</span>' : 'rank ' + Math.round(v);
         }
@@ -4351,8 +4365,8 @@ var MapSourcing = (function() {
         // saved.view is deliberately ignored. Acquisition targets is a filter now and rides in
         // protonMiningProspectFilters with the rest; restoring it from here too would give one
         // control two sources of truth that can disagree after an update.
-        if (saved.sort && typeof saved.sort.key === 'string' &&
-            (saved.sort.dir === 1 || saved.sort.dir === -1)) _tableSort = saved.sort;
+        // Older releases stored a second sort here. Ignore it: the saved Rank-by
+        // control is authoritative, including an explicitly selected column direction.
         // Only restore a selection that still exists. Prospect ids change when a catalog is
         // rebuilt, and a stale id would leave an empty panel claiming a site is open.
         if (saved.sel && ProspectStore.get(saved.sel)) _selectedId = saved.sel;
@@ -4655,6 +4669,24 @@ var MapSourcing = (function() {
         return c.energyType ? String(c.energyType).replace(/_/g, ' ') : 'Source';
     }
 
+    function renderWorkspaceAction(c) {
+        var host = document.getElementById('dWorkspaceAction'); if (!host) return;
+        var saved = findSavedSite(c.id);
+        if (saved) {
+            host.innerHTML = '<a class="pw-primary" href="./prospecting.html#p/' + esc(encodeURIComponent(saved.id)) + '">Open in pipeline &rarr;</a><span>Saved site &middot; contacts, follow-ups and deal progress</span>';
+            return;
+        }
+        host.innerHTML = '<button type="button" id="dAddPipeline" class="pw-primary">Save &amp; open site</button><span>Save this site to start contacting the owner and tracking the deal.</span><p role="status" id="dPipelineStatus"></p>';
+        document.getElementById('dAddPipeline').onclick = function () {
+            var save = document.getElementById('srcSave');
+            if (!save) { document.getElementById('dPipelineStatus').textContent = 'Site details are still loading. Try again in a moment.'; return; }
+            save.click();
+            var savedSite = findSavedSite(c.id);
+            if (savedSite) location.href = './prospecting.html#p/' + encodeURIComponent(savedSite.id);
+            else { var msg = document.getElementById('srcSaveMsg'); document.getElementById('dPipelineStatus').textContent = msg && msg.textContent || 'The site could not be saved. Try again.'; }
+        };
+    }
+
     function renderDetail() {
         var c = ProspectStore.get(_selectedId);
         var body = document.getElementById('dBody');
@@ -4683,9 +4715,11 @@ var MapSourcing = (function() {
         var combined = SiteAcquirability.combine(opp.scoreRaw, acq.scoreRaw);
 
         document.getElementById('dTitle').textContent = placeLabel(c);
+        renderWorkspaceAction(c);
         document.getElementById('dScore').textContent = opp.score === null ? ''
-            : 'opportunity ' + opp.score + '/100' +
-              (acq.score === null ? '' : ' · acquirable ' + acq.score + '/100');
+            : (combined === null ? '' : 'acquisition rank ' + Math.round(combined) + '/100 · ') +
+              'opportunity ' + opp.score + '/100' +
+              (acq.score === null ? '' : ' · acquisition signals ' + acq.score + '/100');
 
         // Priced at the CURRENT SCENARIO so the panel and the map can never disagree.
         var m = evaluateAt(c);
@@ -5633,7 +5667,7 @@ var MapSourcing = (function() {
             '<input type="date" id="crm_outcome_date" value="' +
             esc(contactOutcomeDateOf(saved) || '') + '"></div>' +
             '</div>' +
-            '<div class="src-saverow"><button id="srcSave" class="src-savebtn">Save to my sites</button>' +
+            '<div class="src-saverow"><button id="srcSave" class="src-savebtn">Save to pipeline</button>' +
             // Composes an addressed enquiry and puts it on the clipboard. Only offered where
             // there is somewhere to send it -- an enquiry with no address is a blank page.
             (draftableFor(c) ? '<button id="srcDraft" class="src-draftbtn">Draft enquiry</button>' : '') +
@@ -5802,11 +5836,11 @@ var MapSourcing = (function() {
            reloads: comparing ten sites on the same question -- capacity, capacity, capacity --
            is the actual reading pattern here. */
         var TAB_DEFS = [
-            { id: 'terms',    key: 'contact',  label: 'Terms & contact' },
-            { id: 'scores',   key: 'scores',   label: 'Opportunity & acquirability' },
-            { id: 'capacity', key: 'capacity', label: 'Capacity & capital' },
-            { id: 'econ',     key: 'econ',     label: 'Availability & economics' },
-            { id: 'evidence', key: 'evidence', label: 'Evidence & provenance' }
+            { id: 'terms',    key: 'contact',  label: 'Contact & terms' },
+            { id: 'scores',   key: 'scores',   label: 'Why this site' },
+            { id: 'capacity', key: 'capacity', label: 'Energy & capital' },
+            { id: 'econ',     key: 'econ',     label: 'Economics' },
+            { id: 'evidence', key: 'evidence', label: 'Sources & evidence' }
         ];
         var tabs = TAB_DEFS.filter(function(t) { return !!buckets[t.key]; });
         if (tabs.length) {

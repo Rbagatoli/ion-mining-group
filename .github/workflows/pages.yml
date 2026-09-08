@@ -78,6 +78,9 @@ jobs:
       - name: Owner confirmation workflow checks
         run: node --test tests/owner-confirmation.test.js tests/owner-confirmation-integration.test.js
 
+      - name: Prospect ranking checks
+        run: node --test tests/prospect-ranking.test.js tests/prospect-workspace.test.js
+
       - name: Sourcing queue checks
         run: node --test tests/prospect-sourcing.test.js tests/prospect-sourcing-integration.test.js tests/backup-coverage.test.js
 

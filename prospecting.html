@@ -806,8 +806,9 @@
             .pa-sec { padding:12px 12px 10px; }
         }
     </style>
+    <link rel="stylesheet" href="./prospect-workspace.css?v=436">
 </head>
-<body>
+<body class="prospect-workspace-page">
 <canvas id="gasField" aria-hidden="true"></canvas>
 <nav id="proton-nav"></nav>
 
@@ -846,8 +847,7 @@
              says so. And clicking a card deliberately OPENS it rather than selecting it, which
              is the right call and is also exactly what makes a reader conclude the board cannot
              move anything. Saying both is what stops that conclusion. -->
-        <p class="pb-hint">Drag a card between columns to move a prospect through the pipeline.
-            Clicking one opens it instead — the stage can also be changed from there.</p>
+
         <div class="pb-wrap" id="pboard"></div>
         <p class="p-note" id="boardNote"></p>
     </section>
@@ -882,13 +882,11 @@
      parasitic rates off it, and prospecting.js reads the same two to draw the live reference
      figure beside the capacity field. One definition of the conversion, on both sides. -->
 <script src="./site-capacity.js?v=431"></script>
-<!-- The candidate catalogue, LANDFILL SOURCES ONLY. Everything known about who owns a prospect
-     -- the GHGRP legal parent, the mailing address, the ECCC named contact, the routes to a
-     phone number -- lives on the sourced candidate and was dropped the moment a prospect was
-     saved: this page never loaded the sources, so the CRM showed none of it. The two landfill
-     artifacts are ~2.2MB against the flare survey's 2MB and the facility file's 11.6MB, and
-     prospect-detail loads them LAZILY on the first detail open, not at page boot. -->
+<!-- Source adapters for every saved energy site. The catalogue loads on first detail open. -->
 <script src="./site-sources.js?v=431"></script>
+<script src="./site-catalog.js?v=338"></script>
+<script src="./source-flare-gas.js?v=338"></script>
+<script src="./source-facility.js?v=431"></script>
 <script src="./source-landfill.js?v=431"></script>
 <script src="./source-landfill-ca.js?v=431"></script>
 <script src="./prospect-store.js?v=412"></script>
@@ -924,19 +922,20 @@
 <script src="./owner-confirmation.js?v=432"></script>
 <script src="./owner-confirmation-ui.js?v=432"></script>
 <script src="./prospect-sourcing.js?v=433"></script>
-<script src="./prospect-sourcing-ui.js?v=433"></script>
+<script src="./prospect-sourcing-ui.js?v=436"></script>
 <script src="./prospect-evidence.js?v=434"></script>
-<script src="./prospect-evidence-ui.js?v=434"></script>
+<script src="./prospect-evidence-ui.js?v=436"></script>
 <script src="./crm-interactions.js?v=432"></script>
 <script src="./crm-enrichment.js?v=383"></script>
 <script src="./crm-documents.js?v=379"></script>
-<script src="./prospect-nav.js?v=434"></script>
+<script src="./prospect-nav.js?v=436"></script>
+<script src="./prospect-workspace.js?v=436"></script>
 <script src="./prospect-board.js?v=432"></script>
-<script src="./prospect-today.js?v=434"></script>
-<script src="./prospect-detail.js?v=434"></script>
+<script src="./prospect-today.js?v=436"></script>
+<script src="./prospect-detail.js?v=436"></script>
 <script src="./prospect-analytics.js?v=432"></script>
 <script src="./prospect-summary.js?v=432"></script>
-<script src="./prospecting.js?v=434"></script>
+<script src="./prospecting.js?v=436"></script>
 <script src="./gas-field.js?v=353"></script>
 </body>
 </html>

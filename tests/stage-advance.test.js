@@ -209,17 +209,11 @@ console.log('\n=== the control is WIRED, which no source-reading test would noti
 
 console.log('\n=== the board says what it can do ===');
 {
-    /* Its only mechanism is a drag with no affordance, and clicking a card opens it instead.
-       Both halves have to be said: the second is what makes a reader conclude the board cannot
-       move anything at all. */
-    var hint = /<p class="pb-hint">([\s\S]*?)<\/p>/.exec(HTML);
-    ok('the board carries a hint', !!hint);
-    if (hint) {
-        ok('it says cards drag between columns', /drag/i.test(hint[1]), hint[1]);
-        ok('and that clicking opens instead', /click/i.test(hint[1]), hint[1]);
-    }
-    ok('the cards are actually draggable, so the hint is true',
-       /draggable="true"/.test(fs.readFileSync(path.join(ROOT, 'prospect-board.js'), 'utf8')));
+    // The task workspace replaces the nine-column drag board. Legacy movement remains
+    // tested above; the real browser suite exercises the explicit stage form.
+    ok('the pipeline delegates to the task workspace', /ProspectWorkspace\.renderBoard\(host, recs\)/.test(fs.readFileSync(path.join(ROOT, 'prospecting.js'), 'utf8')));
+    ok('the task workspace is loaded on the page', /prospect-workspace\.js\?v=/.test(HTML));
+    ok('the outdated drag-only hint is removed', !/<p class="pb-hint">/.test(HTML));
 }
 
 console.log('\n=== both new classes are styled ===');

@@ -1537,15 +1537,8 @@ var ProspectDetail = (function () {
                'data-to="' + esc(n.key) + '">Advance to ' + esc(n.label) + '</button>';
     }
 
-    /* ---- The sourced candidate, lazily ----
-     *
-     * The catalogue is 2.2MB of landfill artifacts and this page can be opened fifty times a
-     * day to drag one card, so it loads on the FIRST DETAIL OPEN rather than at boot. Until it
-     * arrives the counterparty section says "loading" and the panel re-renders itself when the
-     * data lands -- absence and latency are both stated, never blank.
-     *
-     * Landfill sources only, by id: discover() filters adapters, so the flare survey's 2MB and
-     * the facility file's 11.6MB never reach this page. */
+    /* Load all registered sources on the first detail open so saved landfill, flare and
+       generating-facility records retain their source context throughout the pipeline. */
     var _candKicked = false, _candErr = null;
     var _lastRender = null;
 
@@ -1568,7 +1561,7 @@ var ProspectDetail = (function () {
         if (ProspectStore.loaded && ProspectStore.loaded()) return ProspectStore.get(rec.id) || null;
         if (!_candKicked) {
             _candKicked = true;
-            ProspectStore.load(['lmop-landfill', 'eccc-landfill-ca'])
+            ProspectStore.load()
                 .then(function () {
                     return (typeof GhgrpContacts !== 'undefined' && GhgrpContacts.load)
                         ? GhgrpContacts.load() : null;
@@ -1586,6 +1579,7 @@ var ProspectDetail = (function () {
         var host = document.getElementById(hostId || 'pdetail');
         if (!host) return null;
         _lastRender = { id: prospectId, host: hostId };
+        if (host.dataset) delete host.dataset.workSite;
         var rec = (typeof SiteData !== 'undefined' && SiteData.get) ? SiteData.get(prospectId) : null;
         if (!rec) {
             host.innerHTML = '<p class="pd-none">That prospect is not in the pipeline.</p>';
@@ -1663,6 +1657,7 @@ var ProspectDetail = (function () {
         if (typeof OwnerConfirmationUi !== 'undefined') OwnerConfirmationUi.bind(rec, host);
         if (typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.bind(rec, host, candidateFor(rec));
         if (typeof LandfillContacts !== 'undefined') LandfillContacts.mount(host, candidateFor(rec));
+        if (typeof ProspectWorkspace !== 'undefined') ProspectWorkspace.enhanceDetail(rec, host, candidateFor(rec));
         return rec;
     }
 
