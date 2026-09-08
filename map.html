@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="./landfill-contacts.css?v=429">
     <link rel="stylesheet" href="./deal-relationships.css?v=430">
 <link rel="stylesheet" href="./prospect-diligence.css?v=431">
-    <link rel="stylesheet" href="./prospect-capital.css?v=438">
+    <link rel="stylesheet" href="./prospect-capital.css?v=440">
     <link rel="stylesheet" href="./map-globe.css?v=429">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <script>
@@ -962,12 +962,12 @@
             <div class="sub" id="sumMatchingSub">of -- in catalog</div>
         </div>
         <div class="metric-card">
-            <div class="label">Combined Potential</div>
+            <div class="label">Screened capacity</div>
             <div class="value" id="sumPower">--</div>
-            <div class="sub">MW available</div>
+            <div class="sub">MW before allocation review</div>
         </div>
         <div class="metric-card">
-            <div class="label">Miners Supported</div>
+            <div class="label">Illustrative miner count</div>
             <div class="value positive" id="sumMiners">--</div>
             <div class="sub">at 3,510 W each</div>
         </div>
@@ -1108,11 +1108,9 @@ blank on each site rather than being guessed.</p>
 <div class="src-field">
                 <label for="fSort">Rank by</label>
                 <select id="fSort">
-                    <!-- Acquisition rank is the default: persistence is a flare-survey metric
-                         that saturates on landfills (1,273 of 1,908 tie at 100), so the list
-                         opened on giant operating landfills instead of shutdown targets. -->
-                    <option value="combined" selected>Acquisition rank</option>
-                    <option value="score">Overall score</option>
+                    <option value="proton_fit" selected>Best fit for Proton</option>
+                    <option value="combined">Acquisition signals</option>
+                    <option value="score">Opportunity score</option>
                     <option value="persistence">Persistence</option>
                     <option value="power_potential">Size</option>
                     <option value="jurisdiction">Jurisdiction</option>
@@ -1121,12 +1119,14 @@ blank on each site rather than being guessed.</p>
                     <option value="all_in_per_kw">Estimated build $/kW (cheapest first)</option>
                 </select>
             </div>
+            <div class="src-field"><label for="fCashLimit">Cash ceiling (USD, optional)</label><input id="fCashLimit" type="number" min="0" step="1000" placeholder="No ceiling set" aria-describedby="priorityHelp"></div>
             <div class="src-field src-field-search">
                 <label for="fSearch">Search</label>
                 <input type="search" id="fSearch" placeholder="name, owner, county, state&hellip;"
                        autocomplete="off">
             </div>
         </div>
+        <p class="priority-help" id="priorityHelp">Best fit for Proton prioritizes remaining cash, operating economics and usable power. Unpriced work stays visible. Sites above the cash ceiling move down; they are not hidden. Change a site's planning size in Capacity &amp; capital.</p>
         <div class="src-sizehint" id="srcSizeHint"></div>
 
         <!-- These were behind a SECOND disclosure nested inside this one. Two doors
@@ -1587,10 +1587,11 @@ commercial terms are your assumptions.</p>
 <script src="./landfill-contacts.js?v=429"></script>
 <script src="./deal-relationships.js?v=430"></script>
 <script src="./deal-relationships-ui.js?v=430"></script>
-<script src="./prospect-diligence.js?v=438"></script>
-<script src="./prospect-capital.js?v=438"></script>
+<script src="./prospect-diligence.js?v=440"></script>
+<script src="./prospect-capital.js?v=439"></script>
+<script src="./prospect-priority.js?v=440"></script>
 <script src="./prospect-people.js?v=437"></script>
-<script src="./prospect-diligence-ui.js?v=437"></script>
+<script src="./prospect-diligence-ui.js?v=440"></script>
 <script src="./contact-routes.js?v=429"></script>
 <script src="./prospect-store.js?v=410"></script>
 <!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
@@ -1620,8 +1621,8 @@ commercial terms are your assumptions.</p>
   catch (e) { if (window.console) console.warn('CRM config not applied:', e); }
 </script>
 <script src="./map.js?v=429"></script>
-<script src="./prospect-ranking.js?v=435"></script>
-<script src="./map-sourcing.js?v=437"></script>
+<script src="./prospect-ranking.js?v=440"></script>
+<script src="./map-sourcing.js?v=440"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing
@@ -1631,7 +1632,7 @@ commercial terms are your assumptions.</p>
 (function() {
     var TITLES = {
         fleet:     ['Fleet Map', 'Geographic distribution of mining operations'],
-        prospects: ['Site Sourcing', 'Gas flares observed from orbit, scored as mining sites']
+        prospects: ['Find energy sites', 'Compare affordable first phases, existing equipment and the path to a power agreement']
     };
 
     function setMode(mode) {

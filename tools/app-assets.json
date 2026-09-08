@@ -158,6 +158,8 @@
   "project-sizing.js",
   "prospect-analytics.js",
   "prospect-board.js",
+  "prospect-capital.css",
+  "prospect-capital.js",
   "prospect-contacts.js",
   "prospect-detail.js",
   "prospect-diligence-ui.js",
@@ -168,6 +170,8 @@
   "prospect-evidence.js",
   "prospect-globe-layer.js",
   "prospect-nav.js",
+  "prospect-people.js",
+  "prospect-priority.js",
   "prospect-ranking.js",
   "prospect-sourcing-ui.js",
   "prospect-sourcing.css",
@@ -204,8 +208,5 @@
   "tokens.css",
   "wallet.html",
   "widget-settings.js",
-  "workstation.html",
-  "prospect-capital.js",
-  "prospect-people.js",
-  "prospect-capital.css"
+  "workstation.html"
 ]

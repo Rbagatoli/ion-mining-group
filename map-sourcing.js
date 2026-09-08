@@ -570,7 +570,7 @@ var MapSourcing = (function() {
     // that country back, and the user's actual choice was silently overwritten for good. The
     // anchor starts at "Anywhere" every session, which makes that failure impossible rather than
     // merely unlikely.
-    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fSearch'];
+    var FILTER_FIELDS = ['fCountry', 'fMinKw', 'fMaxKw', 'fYears', 'fSort', 'fCashLimit', 'fSearch'];
     var SRC_FILTER_KEY = 'protonMiningProspectSources';
     // The four scope controls were removed from this list IN THE SAME CHANGE that removed the
     // markup, deliberately. searchKey() builds its key from FILTER_CHECKS on both sides: leave an
@@ -600,7 +600,7 @@ var MapSourcing = (function() {
                rows, including every site with no generator on it. The saved-search
                path has always carried it as s.hasGen; the last-used path did not.
                Same field name, so the two agree. */
-            var out = { _v: 1, company: _companyFilter, hasGen: !!_hasGenFilter,
+            var out = { _v: 1, priorityVersion: 1, company: _companyFilter, hasGen: !!_hasGenFilter,
                         /* Same reason as hasGen above: not a DOM control, so the field loops
                            below cannot see it and it would be dropped on every reload. */
                         collection: Object.keys(_collFilter) };
@@ -622,6 +622,8 @@ var MapSourcing = (function() {
             saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
         } catch (e) { return false; }
         if (!saved || saved._v !== 1) return false;
+        // Adopt the new default once; explicit saved searches and later sort choices retain their order.
+        if (!saved.priorityVersion && saved.fSort === 'combined') saved.fSort = 'proton_fit';
         ensureColumnSortOption(saved.fSort);
         FILTER_FIELDS.forEach(function(id) {
             var el = document.getElementById(id);
@@ -915,12 +917,8 @@ var MapSourcing = (function() {
     // showing nothing can always be read.
     var FILTER_DEFAULTS = {
         fMinKw: '0', fMaxKw: '5000', fYears: '0',
-        /* 'combined' -- the acquisition rank -- not 'persistence'. Persistence is a flare-survey
-           metric that saturates on landfills: 1,273 of 1,908 tie at 100, so the shipped default
-           opened on giant OPERATING landfills while only 60 of 683 shutdown projects -- the
-           business's actual target class -- reached the visible top 250. The combined axis is
-           the one whose own comment says it answers "what could I actually buy". */
-        fSort: 'combined',
+        // Capital fit is the default. Acquisition signals remain an explicit secondary sort.
+        fSort: 'proton_fit', fCashLimit: '',
         fSearch: '',
         fRegion: '', fRadius: '250',
         fActive: false, fOperator: false, fBurning: false,
@@ -928,7 +926,7 @@ var MapSourcing = (function() {
     };
     var FILTER_LABELS = {
         fMinKw: 'Minimum size', fMaxKw: 'Maximum size', fYears: 'Persistence',
-        fSort: 'Ranked by', fRadius: 'Search radius',
+        fSort: 'Ranked by', fCashLimit: 'Cash ceiling (USD)', fRadius: 'Search radius',
         fSearch: 'Search',
 
         fActive: 'Flare seen in the latest survey',
@@ -1351,18 +1349,18 @@ var MapSourcing = (function() {
             // documented on the control in map.html -- it means no ceiling, not a 5 MW one. The
             // pool really does run to 18 MW, so the hint says so rather than describing a band
             // the filter is not applying.
-            hint: '1 MW and up, ranked by how gettable it is',
+            hint: '1 MW and up; compare remaining cash and usable power',
             set: function() {
                 _hasGenFilter = true;
                 setCheck('fAcquisition', true);
                 setSize(1000, 5000);
-                setSort('combined');
+                setSort('proton_fit');
             }
         },
         {
             id: 'landfill',
             label: 'Landfill gas with the engine still standing',
-            hint: 'Shut-down projects, generator already on site',
+            hint: 'Reported generation; confirm what remains usable',
             set: function() {
                 _srcFilter = {}; _srcFilter['lmop-landfill'] = true;
                 renderSourceFilter();
@@ -1375,7 +1373,7 @@ var MapSourcing = (function() {
                 /* Every LMOP record is American, so the country clause this used
                    to set narrowed nothing and only existed to light the control
                    that has since been removed. */
-                setSort('combined');
+                setSort('proton_fit');
             }
         },
         /* SOMEBODY ELSE ALREADY BUILT IT -- the card this whole reweight exists to produce.
@@ -1393,16 +1391,17 @@ var MapSourcing = (function() {
            diligence, legal, mobilisation -- do not amortise, whatever is standing on the site. */
         {
             id: 'lowest-capital',
-            label: 'Somebody else already built it',
-            hint: 'Collection and gensets already in the ground, richest first',
+            label: 'Affordable power & existing equipment',
+            hint: 'Budget, usable power and remaining work to verify',
             set: function() {
                 _srcFilter = {};
                 _srcFilter['lmop-landfill'] = true;
+                _srcFilter['eia-facility'] = true;
                 _srcFilter['eccc-landfill-ca'] = true;
                 renderSourceFilter();
                 renderCollectionFilter();
-                setSize(1000, 5000);
-                setSort('capital_avoided');
+                setSize(500, 5000);
+                setSort('proton_fit');
             }
         },
         /* CANADA. A different KIND of opportunity from the four around it, which is why it
@@ -1431,7 +1430,7 @@ var MapSourcing = (function() {
                 renderSourceFilter();
                 renderCollectionFilter();
                 setSize(1000, 5000);
-                setSort('combined');
+                setSort('proton_fit');
             }
         },
         {
@@ -1987,6 +1986,7 @@ var MapSourcing = (function() {
                        (ak === null || ak === undefined ? -1 : ak);
             });
         }
+        if (sortBy === 'proton_fit') _filtered.sort(comparePriority);
         // A header click sets the same Rank-by selection. Sort the complete result set
         // before either view applies its display limit.
         if (_tableSort.column) {
@@ -3101,7 +3101,8 @@ var MapSourcing = (function() {
     // correspondingly not something you want on screen while scanning.
     // Uses RESULT_CAP, shared with the list — see the note there.
     // Derived from Rank by, never independently restored or applied by the table.
-    var _tableSort = ProspectRanking.decode('combined');
+    var _tableSort = ProspectRanking.decode('proton_fit');
+    var _priorityCache = {};
     function ensureColumnSortOption(value) {
         var order = ProspectRanking.decode(value), el = document.getElementById('fSort');
         if (!order || !order.column || !el) return;
@@ -3115,7 +3116,7 @@ var MapSourcing = (function() {
     function syncResultSort() {
         var el = document.getElementById('fSort');
         _tableSort = ProspectRanking.decode(el.value);
-        if (!_tableSort) { el.value = 'combined'; _tableSort = ProspectRanking.decode('combined'); }
+        if (!_tableSort) { el.value = 'proton_fit'; _tableSort = ProspectRanking.decode('proton_fit'); }
         if (!_tableSort.column) {
             var option = document.getElementById('fColumnSort');
             if (option) option.remove();
@@ -3136,7 +3137,7 @@ var MapSourcing = (function() {
         }
         return _oppCtx;
     }
-    function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _evalCache = {}; _oppCtx = null; }
+    function invalidateOpportunity() { _oppCache = {}; _acqCache = {}; _evalCache = {}; _priorityCache = {}; _oppCtx = null; }
 
     /* THE MANUAL RECORD, WITH THE BEST LINKED CONTACT ON IT.
      *
@@ -3196,6 +3197,7 @@ var MapSourcing = (function() {
     // Combined rank, on unrounded inputs so the sort key is not quantised into false ties.
     /* Plain words for the active order, for the line above the list. */
     var SORT_WORDS = {
+        proton_fit:      'best fit for Proton: budget, economics and evidence',
         persistence:     'most persistent first',
         score:           'best overall score first',
         combined:        'best acquisition rank first',
@@ -3212,6 +3214,29 @@ var MapSourcing = (function() {
             : SORT_WORDS[by] || 'ranked';
     }
 
+    function priorityFor(c) {
+        var limit = document.getElementById('fCashLimit'), cash = limit ? limit.value : '';
+        var key = c.id + '|' + cash;
+        if (_priorityCache[key]) return _priorityCache[key];
+        var saved = findSavedSite(c.id), operating = ProspectPriority.review(saved);
+        // Unreviewed public leads do not require a revenue simulation on every comparator call.
+        var metrics = operating.current ? evaluateAt(c) : null;
+        return _priorityCache[key] = ProspectPriority.evaluate(c, { estimate: planningFor(c), saved: saved,
+            manual: manualFor(c.id), operator: operatorRecord(c), cashLimitUsd: cash,
+            availability: typeof SiteAvailability !== 'undefined' ? SiteAvailability.evaluate(c) : null,
+            market: metrics && metrics.market, config: metrics && metrics.config });
+    }
+    function renderPriorityHeadline(c) {
+        var el = document.getElementById('dScore'), p = priorityFor(c);
+        if (el) el.textContent = p.label + ' · ' + (p.cashUsd === null ? 'capital unpriced' :
+            '$' + Math.round(p.cashUsd).toLocaleString('en-US') + (p.completeBudget ? ' still to fund' : ' + unpriced work'));
+    }
+    function priorityCell(c, position) {
+        var p = priorityFor(c);
+        return '<span class="priority-chip" title="' + esc(p.nextAction) + '">' +
+            (position ? '#' + position + ' · ' : '') + esc(p.label) + '</span>';
+    }
+    function comparePriority(a, b) { return ProspectRanking.compare(priorityFor(a.candidate).sortValue, priorityFor(b.candidate).sortValue, -1, a.candidate.id, b.candidate.id); }
     function combinedFor(c) {
         var o = opportunityFor(c), a = acquirabilityFor(c);
         return SiteAcquirability.combine(o.scoreRaw, a.scoreRaw);
@@ -3334,7 +3359,7 @@ var MapSourcing = (function() {
     try { _detailTab = localStorage.getItem(DETAIL_TAB_KEY) || null; } catch (e) {}
 
     var _capMarket = null;          // null = let the model default from what is on the ground
-    function clearCapitalCache() { _capCache = {}; _planningCache = {}; }
+    function clearCapitalCache() { _capCache = {}; _planningCache = {}; _priorityCache = {}; }
     function planningFor(c) {
         if (!_planningCache[c.id]) _planningCache[c.id] = ProspectCapital.estimate(c, findSavedSite(c.id), { screened: usableCapacity(c) });
         return _planningCache[c.id];
@@ -3419,6 +3444,7 @@ var MapSourcing = (function() {
     function tableSortValue(row, key) {
         var c = row.candidate;
         switch (key) {
+            case 'priority':    return priorityFor(c).sortValue;
             case 'name':        return placeLabel(c).toLowerCase();
             case 'source':      return (c.source || '').toLowerCase();
             case 'iso3':        return (c.iso3 || '').toLowerCase();
@@ -3481,7 +3507,7 @@ var MapSourcing = (function() {
     function resultSortLabel() {
         var control = document.getElementById('fSort');
         var option = control && control.options[control.selectedIndex];
-        return option ? option.textContent : 'Acquisition rank';
+        return option ? option.textContent : 'Best fit for Proton';
     }
     function sortKeyLabel(key) {
         var th = document.querySelector('#srcTableHead th[data-sort="' + key + '"]');
@@ -3570,7 +3596,7 @@ var MapSourcing = (function() {
                     '<input type="checkbox" data-pf="' + esc(c.id) + '"' +
                     (_portfolio[c.id] ? ' checked' : '') + '></label></td>' +
                 '<td class="name">' + esc(placeLabel(c)) + promotedBadge(c) + tierBadge(c.iso3) +
-                    linkChip(c) + '</td>' +
+                    linkChip(c) + '<div class="priority-row-note">' + priorityCell(c, _tableSort.key === 'priority' ? i + 1 : null) + '</div></td>' +
                 '<td><span class="src-srcchip">' + esc(energyLabel(c)) + '</span></td>' +
                 '<td>' + esc(c.iso3 || '--') + '</td>' +
                 '<td class="num kw">' + fmtKw(usableKwFor(c)) + '</td>' +
@@ -3686,6 +3712,7 @@ var MapSourcing = (function() {
     function sortedValueCell(c, opp) {
         var el = document.getElementById('fSort');
         var by = el ? el.value : 'persistence';
+        if (_tableSort.key === 'priority') return priorityCell(c, (_rankIndex[c.id] || 0) + 1);
         if (_tableSort.key === 'combined') {
             var v = combinedFor(c);
             return v === null ? '<span class="src-gap">--</span>' : 'rank ' + Math.round(v);
@@ -4697,10 +4724,7 @@ var MapSourcing = (function() {
 
         document.getElementById('dTitle').textContent = placeLabel(c);
         renderWorkspaceAction(c);
-        document.getElementById('dScore').textContent = opp.score === null ? ''
-            : (combined === null ? '' : 'acquisition rank ' + Math.round(combined) + '/100 · ') +
-              'opportunity ' + opp.score + '/100' +
-              (acq.score === null ? '' : ' · acquisition signals ' + acq.score + '/100');
+        renderPriorityHeadline(c);
 
         // Priced at the CURRENT SCENARIO so the panel and the map can never disagree.
         var m = evaluateAt(c);
@@ -5794,10 +5818,11 @@ var MapSourcing = (function() {
             var sourceMeta = c.source === 'lmop-landfill' && typeof LandfillSource !== 'undefined' ? LandfillSource.meta()
                 : c.source === 'eccc-landfill-ca' && typeof LandfillCaSource !== 'undefined' ? LandfillCaSource.meta()
                 : c.source === 'eia-facility' && typeof FacilitySource !== 'undefined' ? FacilitySource.meta() : null;
-            diligenceContext = { saved: findSavedSite(c.id), screened: usableCapacity(c), meta: sourceMeta, opportunity: opp, acquirability: acq, metrics: m, findSaved: findSavedSite,
+            diligenceContext = { saved: findSavedSite(c.id), screened: usableCapacity(c), meta: sourceMeta, opportunity: opp, acquirability: acq, metrics: m, priority: priorityFor(c), findSaved: findSavedSite,
                 onSave: function () {
                     _evalCache = {}; _oppCache = {}; _acqCache = {}; clearCapitalCache();
-                    diligenceContext.saved = findSavedSite(c.id); diligenceContext.metrics = evaluateAt(c);
+                    diligenceContext.saved = findSavedSite(c.id); diligenceContext.metrics = evaluateAt(c); diligenceContext.priority = priorityFor(c);
+                    renderPriorityHeadline(c);
                     if (body._diligenceHasDraft && body._diligenceHasDraft()) {
                         if (body._diligenceStatus) body._diligenceStatus.textContent = 'Saved. Finish the other diligence draft or reload before refreshing these sections.';
                     } else ProspectDiligenceUi.refresh(body, c, diligenceContext);
@@ -6375,7 +6400,7 @@ var MapSourcing = (function() {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(function() { applyFilters('fSearch'); }, 220);
         });
-        ['fCountry', 'fYears', 'fSort', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
+        ['fCountry', 'fYears', 'fSort', 'fCashLimit', 'fActive', 'fOperator', 'fBurning', 'fRegion', 'fRadius'].forEach(function(id) {
             var el = document.getElementById(id);
             // The id, not the Event — reconcileGeo has to know WHICH of the two geographic
             // controls the user just moved to decide which one yields.

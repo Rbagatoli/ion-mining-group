@@ -104,6 +104,17 @@ var ProspectDiligence = (function () {
                 if (['auto', 'new', 'used'].indexOf(out.market) < 0 || ['reuse', 'rebuild', 'power'].indexOf(out.strategy) < 0) throw Error('Choose the equipment market and build approach.');
                 if (out.contingency_pct === null || out.contingency_pct > 100) throw Error('Enter a contingency from 0 to 100 percent.');
                 before = s.planning || null; s.planning = out;
+            } else if (c.type === 'economics') {
+                out = proof(v, now);
+                ['capacity_kw', 'all_in_power_usd_kwh', 'minimum_monthly_power_usd', 'fixed_monthly_usd', 'uptime_pct', 'term_months', 'months_to_operation', 'pool_fee_pct'].forEach(function (k) {
+                    out[k] = num(v[k]); if (str(v[k]) && out[k] === null) throw Error('Enter a nonnegative number for ' + k.replace(/_/g, ' ') + '.');
+                });
+                out.cost_basis = choice([['allowance', 'Planning assumption'], ['quote', 'Current scoped offer / cost review']], v.cost_basis, 'the operating cost basis');
+                out.operating_scope_complete = v.operating_scope_complete === true || v.operating_scope_complete === 'yes';
+                if (out.capacity_kw === 0 || out.uptime_pct > 100 || out.pool_fee_pct > 100 || out.months_to_operation > 120 || out.term_months > 600 || out.term_months === 0) throw Error('Use uptime / pool fee up to 100%, a positive supply term up to 600 months, and startup within 120 months.');
+                if (out.operating_scope_complete && ['capacity_kw', 'all_in_power_usd_kwh', 'minimum_monthly_power_usd', 'fixed_monthly_usd', 'uptime_pct', 'term_months', 'months_to_operation', 'pool_fee_pct'].some(function (k) { return out[k] === null; })) throw Error('Fill every operating input before marking the scope complete. Enter zero only when the cited scope establishes zero.');
+                out.quote_expires = str(v.quote_expires); if (out.quote_expires && !day(out.quote_expires)) throw Error('Enter a valid operating quote expiry date.');
+                before = s.economics || null; s.economics = out;
             } else if (c.type === 'capacity') {
                 out = proof(v, now);
                 ['target_kw', 'contracted_kw'].forEach(function (k) { out[k] = num(v[k]); if (str(v[k]) && out[k] === null) throw Error('Capacity must be a nonnegative number.'); });

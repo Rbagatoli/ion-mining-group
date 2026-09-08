@@ -14,6 +14,19 @@ var ProspectDiligenceUi = (function () {
     function input(name, title, type) { return '<label>' + esc(title) + '<input name="' + name + '" type="' + (type || 'text') + '"' + (type === 'number' ? ' min="0" step="any"' : '') + '></label>'; }
     function proofFields() { return '<div class="dg-fields">' + input('source_url', 'Source link, if public', 'url') + input('checked_on', 'Date checked', 'date') + input('reviewer', 'Checked by') + '</div><label>Evidence / document reference and scope<textarea name="evidence_note" rows="3" required></textarea></label>'; }
     function section(title, content) { return '<section class="dg-section src-detail-wide" data-diligence-section><h3>' + esc(title) + '</h3>' + content + '</section>'; }
+    function priorityFor(p, ctx) {
+        if (typeof ProspectPriority === 'undefined') return null;
+        return ctx.priority || ProspectPriority.evaluate(ctx.candidate || {}, { estimate: ProspectCapital.estimate(ctx.candidate || {}, ctx.saved, { profile: p, screened: ctx.screened }), saved: ctx.saved, now: ctx.now,
+            market: ctx.metrics && ctx.metrics.market, config: ctx.metrics && ctx.metrics.config, availability: ctx.metrics && ctx.metrics.availability });
+    }
+    function operatingEditor() {
+        return '<details class="dg-editor"><summary>Record operating costs and startup timing</summary><p class="dg-note">Use one consistent USD operating scope for this planning size. The delivered rate must include fuel, generation operation, auxiliary energy and variable charges. Other monthly costs cover labor, maintenance, lease / royalties, insurance and recurring costs outside that rate. Tax and financing are excluded from the comparison. Leave unknown amounts blank.</p><form data-dg-form="economics"><div class="dg-fields">' +
+            select('cost_basis', 'Cost basis', [['allowance', 'Unconfirmed planning costs'], ['quote', 'Current scoped offer / cost review']]) +
+            input('capacity_kw', 'Operating scope (net mining kW)', 'number') + input('all_in_power_usd_kwh', 'All-in energy cost (USD / mining kWh)', 'number') + input('minimum_monthly_power_usd', 'Minimum monthly energy payment (USD; 0 if none)', 'number') +
+            input('fixed_monthly_usd', 'Other monthly operating costs (USD)', 'number') + input('uptime_pct', 'Expected full-load operating time (%)', 'number') + input('pool_fee_pct', 'Pool fee (%)', 'number') +
+            input('term_months', 'Usable supply term from startup (months)', 'number') + input('months_to_operation', 'Months from review to operation', 'number') + input('quote_expires', 'Operating offer / review expires', 'date') +
+            select('operating_scope_complete', 'All operating inputs and exclusions reviewed', [['no', 'Still incomplete'], ['yes', 'Complete in the cited scope']]) + '</div>' + proofFields() + '<button type="submit">Save operating review</button></form></details>';
+    }
     function capacitySection(p, ctx) {
         var c = p.capacity, b = p.budget, screen = ctx.screened || {};
         var capital = typeof ProspectCapital !== 'undefined' ? ProspectCapital : typeof module !== 'undefined' && module.exports ? require('./prospect-capital') : null;
@@ -49,9 +62,10 @@ var ProspectDiligenceUi = (function () {
         html += '<details class="dg-reference"><summary>Engineering assumptions and dated cost reference</summary><dl class="dg-facts">' + row('Net screening calculation', esc(screen.basis || 'No defensible capacity calculation available.')) + row('Auxiliary load assumption', esc(screen.parasiticPct == null ? 'Not recorded' : screen.parasiticPct + '%')) + '</dl>';
         if (screen.assumptions) html += '<p>Gas composition: <strong>' + esc(screen.assumptions.methanePct) + '% methane</strong> (' + esc(screen.assumptions.methaneBasis) + '). ' + link(screen.sourceUrl, 'EPA standard-engine assumptions') + ': 1,012 Btu/ft³ methane, 11,250 Btu/kWh gross and 7% auxiliary load. Current gas analysis and a selected engine replace the screening inputs.</p>';
         if (p.benchmark) html += p.benchmark.applicable ? '<p><strong>' + esc(usd(p.benchmark.usd2013)) + ' in 2013 USD</strong> for the standard-engine project reference at this planning size. ' + esc(p.benchmark.note) + ' ' + link(p.benchmark.source, 'EPA cost basis, p.33') + '</p><p>No automatic inflation factor or resale discount is applied. This reference is excluded from the quoted budget above.</p>' : '<p>' + esc(p.benchmark.note) + '</p>';
-        return section('Capacity & capital', html + '</details>' + (estimate ? '</details>' : ''));
+        return section('Capacity & capital', html + '</details>' + (estimate ? '</details>' : '') + operatingEditor());
     }
     function scoresSection(p, ctx) {
+        var priority = priorityFor(p, ctx);
         var opp = ctx.opportunity || {}, acq = ctx.acquirability || {}, html = '<p class="dg-intro">Use scores to prioritize research. They are internal heuristics, not probabilities of securing gas or closing a deal.</p><div class="dg-stats">' +
             stat('Opportunity screening', opp.score == null ? 'Not scored' : opp.score + ' / 100', (opp.coverage == null ? '' : opp.coverage + '% of model inputs covered. ') + 'Unknown evidence remains unknown.') +
             stat('Acquisition signals', acq.score == null ? 'Not established' : acq.score + ' / 100', 'Historic shutdowns and reported changes are leads to investigate.') +
@@ -59,7 +73,7 @@ var ProspectDiligenceUi = (function () {
         html += '<details><summary>Score inputs and weighting</summary><dl class="dg-facts">';
         (opp.breakdown || []).filter(function (b) { return b.weight; }).forEach(function (b) { html += row(b.label + ' · ' + b.weight + '%', (b.value == null ? 'Not measured' : Math.round(b.value) + '/100') + '<small>' + esc(b.detail) + '</small>'); });
         (acq.breakdown || []).forEach(function (b) { html += row(str(b.type).replace(/_/g, ' '), (b.value == null ? 'Not recorded' : esc(b.value) + '/100') + '<small>' + esc(b.detail) + '</small>'); });
-        return section('Opportunity & acquirability', html + '</dl></details><p class="dg-note">A shutdown does not prove a contract expired. An operating plant does not prove spare capacity. Procurement, gas rights and approval authority require their own evidence.</p>');
+        return section('Why this site', (priority ? ProspectPriority.summary(priority) : '') + '<details><summary>Opportunity and acquisition signals</summary>' + html + '</dl></details><p class="dg-note">A shutdown does not prove a contract expired. An operating plant does not prove spare capacity. Procurement, gas rights and approval authority require their own evidence.</p></details>');
     }
     function economicsSection(p, ctx) {
         var m = ctx.metrics || {}, av = m.availability || {}, config = m.config || {}, market = m.market || {}, saved = ctx.saved || {};
@@ -78,6 +92,23 @@ var ProspectDiligenceUi = (function () {
             row('BTC price input', esc(usd(market.btcPriceUsd))) + row('Network hashrate input', market.networkHashratePh == null ? 'Unknown' : esc(Number(market.networkHashratePh).toLocaleString()) + ' PH/s') +
             row('Mining equipment input', esc(config.minerModel || 'Not recorded') + (config.minerTh ? ' · ' + esc(config.minerTh) + ' TH/s' : '')) + row('Miner unit cost input', esc(usd(config.minerUnitCostUsd))) + '</dl>';
         html += '<p class="dg-note">Market values above are the app’s current scenario inputs; refresh market data before using them. Capacity factor represents energy produced over a period, not the fraction of hours online and not a guaranteed floor or ceiling.</p>';
+        var priority = priorityFor(p, ctx), comparison = priority && priority.comparison;
+        var publicScenario = html, operating = priority && priority.operating, recorded = operating && operating.value || {};
+        html = '<p class="dg-intro">Use the reviewed operating scope for the current planning phase. Missing costs remain unpriced.</p>';
+        if (Object.keys(recorded).length) html += '<p><strong>' + (operating.current ? 'Current operating scope' : 'Operating review still needed') + '</strong> · ' + esc(operating.reason) + '</p><dl class="dg-facts">' +
+            row('Operating scope', kw(D.num(recorded.capacity_kw))) + row('All-in energy cost', D.num(recorded.all_in_power_usd_kwh) === null ? 'Unpriced' : '$' + Number(recorded.all_in_power_usd_kwh).toFixed(4) + ' / mining kWh') +
+            row('Minimum monthly energy payment', usd(D.num(recorded.minimum_monthly_power_usd))) + row('Other monthly operating costs', usd(D.num(recorded.fixed_monthly_usd))) +
+            row('Full-load operating time', D.num(recorded.uptime_pct) === null ? 'Unknown' : esc(recorded.uptime_pct) + '%') +
+            row('Pool fee', D.num(recorded.pool_fee_pct) === null ? 'Unknown' : esc(recorded.pool_fee_pct) + '%') +
+            row('Supply term from startup', D.num(recorded.term_months) === null ? 'Unknown' : esc(recorded.term_months) + ' months') +
+            row('Startup schedule', D.num(recorded.months_to_operation) === null ? 'Unknown' : esc(recorded.months_to_operation) + ' months from review on ' + esc(recorded.checked_on)) + '</dl>';
+        else html += '<p class="dg-note">Record delivered energy, minimum payments, other operating costs and timing in Capacity &amp; capital.</p>';
+        html += '<details><summary>Other scenario inputs</summary>' + publicScenario + '</details>';
+        html += '<h4>Mining versus buying BTC</h4>' + (comparison ? '<dl class="dg-facts">' +
+            row('BTC bought with the same initial capital', comparison.buyBtc.toFixed(3)) + row('Mining net BTC equivalent · flat difficulty', comparison.flatNetBtc.toFixed(3)) +
+            row('Mining net BTC equivalent · difficulty +1% monthly', comparison.stressNetBtc.toFixed(3)) + '</dl><p class="dg-note">' + esc(comparison.note) + '</p>' +
+            (comparison.operatingShortfallUsd > 0 ? '<p class="dg-warning">Operating shortfall: ' + esc(usd(comparison.operatingShortfallUsd)) + '. This cash requirement is deducted from mining in the comparison; it is not free outside funding.</p>' : '') :
+            '<p class="dg-note">Needs a complete quoted capital budget, documented allocation, a current complete operating review and market data. Record operating costs and timing in Capacity &amp; capital. Unpriced costs do not become zero.</p>');
         return section('Availability & economics', html);
     }
     function evidenceSection(p, ctx) {
@@ -135,7 +166,7 @@ var ProspectDiligenceUi = (function () {
         host._diligenceStatus = status;
         var assetForm = forms.find(function (f) { return f.getAttribute('data-dg-form') === 'asset'; });
         function loadAsset(id) { var map = D.state(saved); fill(assetForm, map.assets[id] || {}); assetForm.elements.namedItem('component').value = id; remember(assetForm); }
-        forms.forEach(function (form) { fill(form, form === assetForm ? {} : form.getAttribute('data-dg-form') === 'planning' ? D.state(saved).planning || {} : D.state(saved).capacity); remember(form); form.addEventListener('submit', function (event) {
+        forms.forEach(function (form) { fill(form, form === assetForm ? {} : form.getAttribute('data-dg-form') === 'planning' ? D.state(saved).planning || {} : form.getAttribute('data-dg-form') === 'economics' ? D.state(saved).economics || {} : D.state(saved).capacity); remember(form); form.addEventListener('submit', function (event) {
             event.preventDefault(); var v = values(form), command = { revision: revision, type: form.getAttribute('data-dg-form'), id: v.component, value: v };
             var result = commit(candidate, command, ctx.findSaved);
             if (!result.ok) { status.textContent = result.err; return; }

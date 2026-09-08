@@ -89,3 +89,45 @@ test('confirmed no-cost reuse lowers remaining work without erasing its replacem
  const s=save({},'asset',proof({presence:'present',condition:'working',access:'agreed',action:'reuse',low_usd:0,base_usd:0,high_usd:0}),'mining_infrastructure'),e=P.estimate(raw(),s,ctx);
  assert.equal(e.miningInfrastructureUsd,0);assert.equal(e.newInfrastructureUsd,2580000);assert.equal(e.remainingInfrastructureUsd,2130000);assert.ok(e.reuseSavingUsd>0);
 });
+
+test('Ergon power purchase budgets mining work and leaves unquoted services unresolved',()=>{
+ const F=require('../source-facility'),data=require('../data/facilities.json');
+ const c={...F.adapter.normalize(data.facilities.find(f=>f.id==='eia_54918')),source:'eia-facility'},e=P.estimate(c,null,{now:NOW});
+ assert.equal(e.targetKw,4800);assert.equal(e.reportedPlantKw,4800);
+ assert.equal(e.newInfrastructureUsd,2160000);assert.equal(e.remainingInfrastructureUsd,2160000);assert.equal(e.minersUsd,2025000);
+ assert.equal(e.base,4812750);assert.equal(e.reuseSavingUsd,0,'supplier-funded generation is not a mining reuse saving');
+ assert.equal(e.budget.complete,false);assert.equal(e.capacity.contractedKw,null);
+ for(const id of ['permits','commissioning']){const a=e.lines.find(a=>a.id===id);assert.equal(a.full,null);assert.equal(a.base,null);assert.ok(e.extras.includes(a.label));}
+ assert.equal(e.servicesUsd,0);assert.equal(e.unpricedServices.length,2);
+ assert.equal(e.lines.find(a=>a.id==='tie_in').supplierFunded,true);assert.ok(!e.extras.includes('Gas tie-in & metering'));
+ const html=P.summary(e);assert.match(html,/New mining installation/);assert.match(html,/Mining installation still to fund/);assert.match(html,/neither figure includes building or buying its plant/);
+ assert.match(html,/No mining reuse allowance is applied/);assert.match(html,/Needs a quote/);assert.match(html,/Priced subtotal, not a complete project budget/);
+ assert.match(P.breakdown(e),/no generating-plant first-fire allowance/);assert.match(P.breakdown(e),/Unpriced/);
+ assert.doesNotMatch(P.form(e),/\$160,000 fixed|\$60 \/ kW/,'inapplicable generation service rates are not shown as active rates');
+});
+
+test('power purchase retains scoped service quotes, payments and package coverage',()=>{
+ let s=save({},'planning',plan({strategy:'power',contingency_pct:0}));
+ const base=P.estimate(raw(),s,ctx).base;
+ s=save(s,'asset',proof({low_usd:20000,base_usd:20000,high_usd:20000,paid_usd:5000}),'permits');
+ s=save(s,'asset',proof({low_usd:30000,base_usd:30000,high_usd:30000}),'commissioning');
+ let e=P.estimate(raw(),s,ctx);assert.equal(e.servicesUsd,45000);assert.deepEqual(e.unpricedServices,[]);assert.equal(e.base,base+45000);
+ s=save(s,'asset',proof({action:'included',included_in:'permits',low_usd:'',base_usd:'',high_usd:''}),'commissioning');
+ e=P.estimate(raw(),s,ctx);assert.equal(e.servicesUsd,15000);assert.equal(e.base,base+15000);
+ s=save(s,'asset',proof({low_usd:70000,base_usd:70000,high_usd:70000}),'generation');
+ e=P.estimate(raw(),s,ctx);assert.equal(e.energyInfrastructureUsd,70000);assert.equal(e.base,base+85000,'recorded Proton plant work overrides a supplier-funding assumption');
+ assert.equal(e.lines.find(a=>a.id==='generation').supplierFunded,undefined);
+});
+
+test('buying power still credits usable mining equipment, limited by size and condition',()=>{
+ let s=save({},'planning',plan({strategy:'power'}));
+ s=save(s,'asset',proof({presence:'present',action:'unknown',capacity_kw:500,low_usd:'',base_usd:'',high_usd:''}),'mining_infrastructure');
+ let e=P.estimate(raw(),s,ctx);assert.equal(e.miningInfrastructureUsd,315000);assert.equal(e.reuseSavingUsd,135000*1.15);
+ assert.equal(e.newInfrastructureUsd,450000);assert.equal(e.remainingInfrastructureUsd,315000);assert.match(P.summary(e),/Reuse allowance applied to/);
+ for(const v of [{access:'denied'},{condition:'failed'},{action:'new'}]){
+  const denied=save(s,'asset',proof({presence:'present',action:'unknown',capacity_kw:500,low_usd:'',base_usd:'',high_usd:'',...v}),'mining_infrastructure');
+  assert.equal(P.estimate(raw(),denied,ctx).miningInfrastructureUsd,450000);
+ }
+ s=save(s,'asset',proof({presence:'present',condition:'working',access:'agreed',action:'reuse',low_usd:0,base_usd:0,high_usd:0}),'mining_infrastructure');
+ e=P.estimate(raw(),s,ctx);assert.equal(e.miningInfrastructureUsd,0);assert.equal(e.newInfrastructureUsd,450000);
+});

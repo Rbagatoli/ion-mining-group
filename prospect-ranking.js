@@ -2,6 +2,7 @@
 var ProspectRanking = (function () {
     'use strict';
     var presets = {
+        proton_fit: { key: 'priority', dir: -1 },
         combined: { key: 'combined', dir: -1 },
         score: { key: 'opportunity', dir: -1 },
         persistence: { key: 'persistence', dir: -1 },
@@ -11,7 +12,7 @@ var ProspectRanking = (function () {
         capital_required: { key: 'caprequired', dir: 1 },
         all_in_per_kw: { key: 'allinkw', dir: 1 }
     };
-    var columns = ['name', 'source', 'iso3', 'kw', 'duty', 'years', 'operator',
+    var columns = ['priority', 'name', 'source', 'iso3', 'kw', 'duty', 'years', 'operator',
         'allinkw', 'torevenue', 'acquirability', 'combined', 'collection',
         'capavoided', 'caprequired', 'infraverified', 'stage', 'opportunity'];
     function decode(value) {

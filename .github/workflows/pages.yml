@@ -82,7 +82,7 @@ jobs:
         run: node --test tests/prospect-capital.test.js tests/prospect-people.test.js
 
       - name: Prospect ranking checks
-        run: node --test tests/prospect-ranking.test.js tests/prospect-workspace.test.js
+        run: node --test tests/prospect-ranking.test.js tests/prospect-priority.test.js tests/prospect-workspace.test.js
 
       - name: Sourcing queue checks
         run: node --test tests/prospect-sourcing.test.js tests/prospect-sourcing-integration.test.js tests/backup-coverage.test.js
