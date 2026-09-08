@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="./landfill-contacts.css?v=429">
     <link rel="stylesheet" href="./deal-relationships.css?v=430">
 <link rel="stylesheet" href="./prospect-diligence.css?v=431">
+    <link rel="stylesheet" href="./prospect-capital.css?v=437">
     <link rel="stylesheet" href="./map-globe.css?v=429">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <script>
@@ -1115,9 +1116,9 @@ blank on each site rather than being guessed.</p>
                     <option value="persistence">Persistence</option>
                     <option value="power_potential">Size</option>
                     <option value="jurisdiction">Jurisdiction</option>
-                    <option value="capital_avoided">Capital avoided</option>
-                    <option value="capital_required">Still to spend (least first)</option>
-                    <option value="all_in_per_kw">All-in $/kW (cheapest first)</option>
+                    <option value="capital_avoided">Potential reuse saving</option>
+                    <option value="capital_required">Estimated build budget (least first)</option>
+                    <option value="all_in_per_kw">Estimated build $/kW (cheapest first)</option>
                 </select>
             </div>
             <div class="src-field src-field-search">
@@ -1319,11 +1320,11 @@ blank on each site rather than being guessed.</p>
                         <th data-sort="collection">Collection</th>
                         <th data-sort="infraverified">Infra</th>
                         <th data-sort="capavoided" class="num">Capital avoided</th>
-                        <th data-sort="caprequired" class="num">Capital required</th>
+                        <th data-sort="caprequired" class="num">Build budget est.</th>
                         <th data-sort="opportunity" class="num">Opportunity</th>
                         <th data-sort="acquirability" class="num">Acquisition signals</th>
                         <th data-sort="combined" class="num">Acquisition rank</th>
-                        <th data-sort="allinkw" class="num">All-in $/kW</th>
+                        <th data-sort="allinkw" class="num">Build $/kW est.</th>
                         <th data-sort="torevenue" class="num">To revenue</th>
                         <th data-sort="operator">Counterparty</th>
                     </tr>
@@ -1586,8 +1587,10 @@ commercial terms are your assumptions.</p>
 <script src="./landfill-contacts.js?v=429"></script>
 <script src="./deal-relationships.js?v=430"></script>
 <script src="./deal-relationships-ui.js?v=430"></script>
-<script src="./prospect-diligence.js?v=431"></script>
-<script src="./prospect-diligence-ui.js?v=431"></script>
+<script src="./prospect-diligence.js?v=437"></script>
+<script src="./prospect-capital.js?v=437"></script>
+<script src="./prospect-people.js?v=437"></script>
+<script src="./prospect-diligence-ui.js?v=437"></script>
 <script src="./contact-routes.js?v=429"></script>
 <script src="./prospect-store.js?v=410"></script>
 <!-- The CRM's data layer. Loaded BEFORE map-sourcing.js because CrmConfig.publish()
@@ -1609,7 +1612,7 @@ commercial terms are your assumptions.</p>
      a recorded contact never improved the contactability tier it was meant to. -->
 <script src="./crm-contacts.js?v=379"></script>
 <script src="./prospect-nav.js?v=436"></script>
-<script src="./prospect-workspace.js?v=436"></script>
+<script src="./prospect-workspace.js?v=437"></script>
 <script>
   /* Fail soft: a pipeline that will not configure should leave the built-in
      stages standing rather than take the page down with it. */
@@ -1618,7 +1621,7 @@ commercial terms are your assumptions.</p>
 </script>
 <script src="./map.js?v=429"></script>
 <script src="./prospect-ranking.js?v=435"></script>
-<script src="./map-sourcing.js?v=436"></script>
+<script src="./map-sourcing.js?v=437"></script>
 <script>
 // ===== Mode switch =====
 // Fleet mode must look and behave exactly as it always has. Prospects mode reveals the sourcing

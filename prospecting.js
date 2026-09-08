@@ -298,7 +298,9 @@
             capitalPanel._diligenceStatus.textContent = 'Saved data changed. Your energy and capital draft is preserved; save it or reload the saved values.';
             return;
         }
+        var capitalEditors = typeof ProspectDiligenceUi !== 'undefined' && detailHost && detailHost.dataset.workSite === id ? ProspectDiligenceUi.openState(capitalPanel) : null;
         ProspectDetail.render(id, 'pdetail');
+        if (capitalEditors) ProspectDiligenceUi.restoreOpen(detailHost.querySelector('#pwPanel_capital'), capitalEditors);
         wireDetail(id);
         var newStagePanel = detailHost && detailHost.querySelector ? detailHost.querySelector('.pw-stage-editor') : null;
         if (stageWasOpen && newStagePanel) newStagePanel.open = true;

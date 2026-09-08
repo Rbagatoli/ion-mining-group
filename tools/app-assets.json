@@ -204,5 +204,8 @@
   "tokens.css",
   "wallet.html",
   "widget-settings.js",
-  "workstation.html"
+  "workstation.html",
+  "prospect-capital.js",
+  "prospect-people.js",
+  "prospect-capital.css"
 ]

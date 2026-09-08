@@ -1950,17 +1950,9 @@ var MapSourcing = (function() {
            required and all-in $/kW rank best-first as SMALLEST-first -- the reader is looking
            for the cheapest way in. Nulls still last: unpriced is not cheap. */
         if (sortBy === 'capital_required' || sortBy === 'all_in_per_kw') {
-            var moneyFor = (sortBy === 'capital_required')
-                ? function(c) { var r = capitalFor(c); return r ? r.requiredUsd : null; }
-                : function(c) {
-                    /* all_in_capital_usd is the ENGINE's top-level metric (see the detail
-                       panel's own read at renderDetail) -- not a field on the capex stack. */
-                    var m = evaluateAt(c);
-                    if (!m || m.all_in_capital_usd === null ||
-                        m.all_in_capital_usd === undefined) return null;
-                    var kw = usableKwFor(c);
-                    return kw > 0 ? m.all_in_capital_usd / kw : null;
-                };
+            var moneyFor = function(c) {
+                var e = planningFor(c); return e.ready ? sortBy === 'capital_required' ? e.base : e.perKw : null;
+            };
             _filtered.sort(function(a, b) {
                 var av = moneyFor(a.candidate), bv = moneyFor(b.candidate);
                 if (av === null && bv === null) return 0;
@@ -1981,7 +1973,7 @@ var MapSourcing = (function() {
             var valueFor = (sortBy === 'combined')
                 ? combinedFor
                 : (sortBy === 'capital_avoided')
-                ? function(c) { var r = capitalFor(c); return r ? r.avoidedUsd : null; }
+                ? function(c) { var r = planningFor(c); return r.ready ? r.reuseSavingUsd : null; }
                 : function(c) { return opportunityFor(c).scoreRaw; };
             _filtered.sort(function(a, b) {
                 var av = valueFor(a.candidate), bv = valueFor(b.candidate);
@@ -2832,10 +2824,10 @@ var MapSourcing = (function() {
                    it is a $200K inheritance or a $2M build. Blank when unpriced (flares):
                    absence of a figure, not a zero. */
                 (function() {
-                    var cr = capitalFor(c);
-                    return (cr && cr.requiredUsd !== null && cr.requiredUsd !== undefined)
-                        ? '<div class="cap" title="Still to spend at the capex model\'s rates">' +
-                          fmtUsdCompact(cr.requiredUsd) + ' to spend</div>'
+                    var cr = planningFor(c);
+                    return cr.ready
+                        ? '<div class="cap" title="Planning estimate; includes miners and contingency, excludes unpriced deal costs">' +
+                          fmtUsdCompact(cr.base) + ' build est.</div>'
                         : '';
                 })() +
                 // The score, because the list is in ranked order and the reason a row is near the
@@ -3209,9 +3201,9 @@ var MapSourcing = (function() {
         combined:        'best acquisition rank first',
         power_potential: 'largest first',
         jurisdiction:    'friendliest jurisdiction first',
-        capital_avoided: 'documented capital savings first',
-        capital_required: 'lowest fully recorded remaining budget first',
-        all_in_per_kw:   'cheapest all-in per kW first'
+        capital_avoided: 'largest conditional reuse saving first',
+        capital_required: 'lowest estimated build budget first; check unpriced costs',
+        all_in_per_kw:   'lowest estimated build cost per planning kW first'
     };
     function sortDescription() {
         var el = document.getElementById('fSort');
@@ -3334,7 +3326,7 @@ var MapSourcing = (function() {
      * it up to four times per row across the columns and the sort. At 250 rows that is a thousand
      * passes for a figure that cannot change between them. The cache is cleared whenever the
      * result set is rebuilt, for the same reason evaluateAt's is. */
-    var _capCache = {};
+    var _capCache = {}, _planningCache = {};
     /* Which detail tab is open. One remembered choice for the whole panel, not one per
        section: the reading pattern is the same question across many prospects. */
     var DETAIL_TAB_KEY = 'protonMiningDetailTab';
@@ -3342,7 +3334,11 @@ var MapSourcing = (function() {
     try { _detailTab = localStorage.getItem(DETAIL_TAB_KEY) || null; } catch (e) {}
 
     var _capMarket = null;          // null = let the model default from what is on the ground
-    function clearCapitalCache() { _capCache = {}; }
+    function clearCapitalCache() { _capCache = {}; _planningCache = {}; }
+    function planningFor(c) {
+        if (!_planningCache[c.id]) _planningCache[c.id] = ProspectCapital.estimate(c, findSavedSite(c.id), { screened: usableCapacity(c) });
+        return _planningCache[c.id];
+    }
     function setCapMarket(m) {
         _capMarket = (m === 'new' || m === 'used') ? m : null;
         clearCapitalCache();
@@ -3415,18 +3411,9 @@ var MapSourcing = (function() {
     }
 
     function capitalCell(c, which) {
-        var r = capitalFor(c);
-        if (!r) return '<span class="src-gap">--</span>';
-        var v = which === 'required' ? r.requiredUsd : r.avoidedUsd;
-        if (v === null || v === undefined) return '<span class="src-gap" title="Not priced with current component evidence">--</span>';
-        var s = '$' + Math.round(v / 1000).toLocaleString() + 'K';
-        if (which === 'required') return s;
-        /* NEVER A BARE NUMBER. The whole thesis rests on this equipment being usable and the
-           dataset cannot tell you that, so an unverified figure is marked wherever it appears. */
-        return s + (r.conditionVerified
-            ? ' <span class="src-verified" title="condition verified on site">&#10003;</span>'
-            : ' <span class="src-unver" title="unverified estimate — condition not estab' +
-              'lished; LMOP records that equipment was installed, never that it still works">~</span>');
+        var e = planningFor(c); if (!e.ready) return '<span class="src-gap">Needs sizing</span>';
+        var v = which === 'required' ? e.base : e.reuseSavingUsd;
+        return '<span title="Planning estimate at ' + Math.round(e.targetKw) + ' kW; unpriced deal costs must be added">' + fmtUsdCompact(v) + ' est.</span>';
     }
 
     function tableSortValue(row, key) {
@@ -3440,10 +3427,7 @@ var MapSourcing = (function() {
             case 'years':       return c.yearsSeen;
             case 'operator':    var op = operatorRecord(c);
                                 return op && op.operator ? op.operator.toLowerCase() : null;
-            case 'allinkw':
-                var mm = evaluateAt(c);
-                return mm && mm.all_in_cost_per_usable_kw !== null && mm.all_in_cost_per_usable_kw !== undefined
-                    ? mm.all_in_cost_per_usable_kw : null;
+            case 'allinkw': var plan = planningFor(c); return plan.ready ? plan.perKw : null;
             case 'torevenue':
                 var mt = evaluateAt(c);
                 return mt && mt.months_to_revenue ? mt.months_to_revenue.min : null;
@@ -3459,9 +3443,9 @@ var MapSourcing = (function() {
             // The primary working number, so it sorts on the real dollars rather than the
             // confidence-adjusted score the ranking uses.
             case 'capavoided':
-                var ca = capitalFor(c); return ca && ca.avoidedUsd !== null ? ca.avoidedUsd : null;
+                var ca = planningFor(c); return ca.ready ? ca.reuseSavingUsd : null;
             case 'caprequired':
-                var cr = capitalFor(c); return cr && cr.requiredUsd !== null ? cr.requiredUsd : null;
+                var cr = planningFor(c); return cr.ready ? cr.base : null;
             case 'infraverified':
                 var cv = capitalFor(c); return cv ? (cv.conditionVerified ? 1 : 0) : null;
             case 'stage':
@@ -3686,11 +3670,8 @@ var MapSourcing = (function() {
                (a.signalCount ? ' <span class="src-signals">' + a.signalCount + '⚠</span>' : '');
     }
     function allInCell(c) {
-        var mm = evaluateAt(c);
-        if (!mm || mm.all_in_cost_per_usable_kw === null || mm.all_in_cost_per_usable_kw === undefined) {
-            return '<span class="src-gap">--</span>';
-        }
-        return '<span class="src-oppcell">$' + Math.round(mm.all_in_cost_per_usable_kw).toLocaleString('en-US') + '</span>';
+        var e = planningFor(c);
+        return e.ready ? '<span class="src-oppcell" title="Estimated build cost per planning kW; unpriced deal costs excluded">$' + Math.round(e.perKw).toLocaleString('en-US') + ' est.</span>' : '<span class="src-gap">Needs sizing</span>';
     }
     function toRevenueCell(c) {
         var mm = evaluateAt(c);
@@ -5327,9 +5308,10 @@ var MapSourcing = (function() {
 
         // ---- Who to contact -----------------------------------------------------
         mark('contact');
-        html += '<div class="src-contact"><div class="section-label">Who to contact</div>';
-        if (typeof DealRelationshipsUi !== 'undefined') html += DealRelationshipsUi.placeholder(c, false);
-        if (typeof LandfillContacts !== 'undefined') html += LandfillContacts.placeholder(c);
+        html += '<div class="src-contact">' + (typeof ProspectPeople === 'undefined' ? '<div class="section-label">Who to contact</div>' : '');
+        if (typeof ProspectPeople !== 'undefined') html += ProspectPeople.placeholder(c, findSavedSite(c.id));
+        else if (typeof LandfillContacts !== 'undefined') html += LandfillContacts.placeholder(c);
+        if (typeof DealRelationshipsUi !== 'undefined') html += '<details><summary>Relationship map &amp; decision process</summary>' + DealRelationshipsUi.placeholder(c, false) + '</details>';
         // Non-flare sources: the owner is published directly by EIA-860 or LMOP, with a postal
         // address in the landfill case. Their record has no distance_m, because there is no
         // nearby well licence involved — the operator IS the site's owner.
@@ -5819,7 +5801,9 @@ var MapSourcing = (function() {
                     if (body._diligenceHasDraft && body._diligenceHasDraft()) {
                         if (body._diligenceStatus) body._diligenceStatus.textContent = 'Saved. Finish the other diligence draft or reload before refreshing these sections.';
                     } else ProspectDiligenceUi.refresh(body, c, diligenceContext);
-                    renderTable();
+                    _filtered.sort(function(a, b) { return ProspectRanking.compare(tableSortValue(a, _tableSort.key), tableSortValue(b, _tableSort.key), _tableSort.dir, a.candidate.id, b.candidate.id); });
+                    _rankIndex = {}; _filtered.forEach(function(row, i) { _rankIndex[row.candidate.id] = i; });
+                    renderResults();
                 } };
             var audited = ProspectDiligenceUi.renderBuckets(c, diligenceContext);
             ['scores', 'capacity', 'econ', 'evidence'].forEach(function (key) { buckets[key] = audited[key]; });
@@ -5888,6 +5872,7 @@ var MapSourcing = (function() {
                    open. */
                 if (id === 'econ') renderTrend(c);
                 if (id === 'terms' && typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
+                if (id === 'terms' && typeof ProspectPeople !== 'undefined') ProspectPeople.mount(body, c, findSavedSite(c.id));
                 if (id === 'terms' && typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.mountResearch(body, c);
             });
             /* And on first paint, when economics is the remembered tab. */
@@ -5896,6 +5881,7 @@ var MapSourcing = (function() {
             }
             if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden &&
                 typeof LandfillContacts !== 'undefined') LandfillContacts.mount(body, c);
+            if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden && typeof ProspectPeople !== 'undefined') ProspectPeople.mount(body, c, findSavedSite(c.id));
             if (body.querySelector('#dtab_terms') && !body.querySelector('#dtab_terms').hidden &&
                 typeof DealRelationshipsUi !== 'undefined') DealRelationshipsUi.mountResearch(body, c);
         })();

@@ -16,6 +16,8 @@ var ProspectDiligenceUi = (function () {
     function section(title, content) { return '<section class="dg-section src-detail-wide" data-diligence-section><h3>' + esc(title) + '</h3>' + content + '</section>'; }
     function capacitySection(p, ctx) {
         var c = p.capacity, b = p.budget, screen = ctx.screened || {};
+        var capital = typeof ProspectCapital !== 'undefined' ? ProspectCapital : typeof module !== 'undefined' && module.exports ? require('./prospect-capital') : null;
+        var estimate = capital ? capital.estimate(ctx.candidate, ctx.saved, Object.assign({}, ctx, { profile: p })) : null;
         var html = '<p class="dg-intro">What is reported on site, what Proton can use, and the cash still required.</p><p class="dg-note">Source release / reporting period: <strong>' + esc(p.source.reportingPeriod || 'not established') + '</strong>' + (c.gasCollectedYear ? '; collected-gas measurements: <strong>' + esc(c.gasCollectedYear) + '</strong>' : '') + '. Current equipment condition and availability require owner evidence.</p><div class="dg-stats">' +
             stat('Reported electrical equipment', kw(c.installedReportedKw), 'Historical source capacity; current condition and access need verification.') +
             stat((ctx.candidate || {}).source === 'eia-facility' ? 'Nameplate basis for screening' : 'Screened net potential', kw(c.screenedKw), (ctx.candidate || {}).source === 'eia-facility' ? 'Historic net capacity factor is applied in economics. Net deliverable power needs owner verification.' : 'A modelled envelope, before contractual allocation and site-specific design.') +
@@ -24,6 +26,7 @@ var ProspectDiligenceUi = (function () {
             '<div class="dg-stats">' + stat(b.complete ? 'Remaining Proton budget · base' : 'Priced subtotal still to spend', usd(b.base), b.complete ? 'USD; includes any recorded planning allowances.' : 'Unpriced work must be added. This subtotal is not the project total.') +
             stat('Recorded low–high range', b.low === null ? 'Unpriced' : usd(b.low) + ' – ' + usd(b.high), b.allowanceCount ? b.allowanceCount + ' budget lines use planning allowances.' : 'Only recorded costs; no assumed discount for old equipment.') +
             stat('Proton payments recorded', usd(b.paid), 'Paid-to-date entries, separate from any prior owner’s spending.') + '</div>';
+        if (estimate) html = capital.summary(estimate, false) + capital.form(estimate) + capital.breakdown(estimate) + '<details class="pc-ledger"><summary>Reviewed budget & equipment evidence (' + b.priced.length + ' of ' + D.COMPONENTS.length + ' lines addressed)</summary>' + html;
         if (c.targetKw !== null) html += '<p class="dg-note">Planning target: <strong>' + esc(kw(c.targetKw)) + '</strong>. ' + (c.contractedKw === null ? 'No confirmed Proton allocation is recorded.' : c.targetKw > c.contractedKw ? 'This exceeds the documented allocation.' : 'Within the recorded allocation; confirm detailed engineering.') + '</p>';
         if (!c.hasReviewedTarget && c.legacySavedKw !== null && c.legacySavedKw !== c.screenedKw) html += '<p class="dg-note">Previously saved usable capacity: <strong>' + esc(kw(c.legacySavedKw)) + '</strong>. That value is retained in the saved record. Review its source and enter the current planning target below.</p>';
         if (c.placeholder) html += '<p class="dg-warning">The old catalogue used a nominal 100 kW placeholder here. It is excluded from sizing and economics.</p>';
@@ -46,7 +49,7 @@ var ProspectDiligenceUi = (function () {
         html += '<details class="dg-reference"><summary>Engineering assumptions and dated cost reference</summary><dl class="dg-facts">' + row('Net screening calculation', esc(screen.basis || 'No defensible capacity calculation available.')) + row('Auxiliary load assumption', esc(screen.parasiticPct == null ? 'Not recorded' : screen.parasiticPct + '%')) + '</dl>';
         if (screen.assumptions) html += '<p>Gas composition: <strong>' + esc(screen.assumptions.methanePct) + '% methane</strong> (' + esc(screen.assumptions.methaneBasis) + '). ' + link(screen.sourceUrl, 'EPA standard-engine assumptions') + ': 1,012 Btu/ft³ methane, 11,250 Btu/kWh gross and 7% auxiliary load. Current gas analysis and a selected engine replace the screening inputs.</p>';
         if (p.benchmark) html += p.benchmark.applicable ? '<p><strong>' + esc(usd(p.benchmark.usd2013)) + ' in 2013 USD</strong> for the standard-engine project reference at this planning size. ' + esc(p.benchmark.note) + ' ' + link(p.benchmark.source, 'EPA cost basis, p.33') + '</p><p>No automatic inflation factor or resale discount is applied. This reference is excluded from the quoted budget above.</p>' : '<p>' + esc(p.benchmark.note) + '</p>';
-        return section('Capacity & capital', html + '</details>');
+        return section('Capacity & capital', html + '</details>' + (estimate ? '</details>' : ''));
     }
     function scoresSection(p, ctx) {
         var opp = ctx.opportunity || {}, acq = ctx.acquirability || {}, html = '<p class="dg-intro">Use scores to prioritize research. They are internal heuristics, not probabilities of securing gas or closing a deal.</p><div class="dg-stats">' +
@@ -108,7 +111,7 @@ var ProspectDiligenceUi = (function () {
     function values(form) { var v = {}; new FormData(form).forEach(function (value, key) { v[key] = value; }); return v; }
     function fill(form, value) {
         form.reset(); Object.keys(value || {}).forEach(function (k) { var el = form.elements.namedItem(k); if (el) el.value = typeof value[k] === 'boolean' ? value[k] ? 'yes' : 'no' : value[k] == null ? '' : value[k]; });
-        if (!form.elements.namedItem('checked_on').value) form.elements.namedItem('checked_on').value = D.today();
+        var checked = form.elements.namedItem('checked_on'); if (checked && !checked.value) checked.value = D.today();
     }
     function commit(candidate, command, findSaved) {
         var site = findSaved ? findSaved(candidate.id) : SiteData.get(candidate.id), result = D.apply(site || { id: candidate.id }, command);
@@ -132,7 +135,7 @@ var ProspectDiligenceUi = (function () {
         host._diligenceStatus = status;
         var assetForm = forms.find(function (f) { return f.getAttribute('data-dg-form') === 'asset'; });
         function loadAsset(id) { var map = D.state(saved); fill(assetForm, map.assets[id] || {}); assetForm.elements.namedItem('component').value = id; remember(assetForm); }
-        forms.forEach(function (form) { fill(form, form === assetForm ? {} : D.state(saved).capacity); remember(form); form.addEventListener('submit', function (event) {
+        forms.forEach(function (form) { fill(form, form === assetForm ? {} : form.getAttribute('data-dg-form') === 'planning' ? D.state(saved).planning || {} : D.state(saved).capacity); remember(form); form.addEventListener('submit', function (event) {
             event.preventDefault(); var v = values(form), command = { revision: revision, type: form.getAttribute('data-dg-form'), id: v.component, value: v };
             var result = commit(candidate, command, ctx.findSaved);
             if (!result.ok) { status.textContent = result.err; return; }
@@ -151,6 +154,7 @@ var ProspectDiligenceUi = (function () {
         }
         host.querySelectorAll('[data-dg-edit]').forEach(function (button) { button.addEventListener('click', function () {
             if (dirty(assetForm)) { status.textContent = 'Save the open component or reload before opening another.'; return; }
+            var ledger = host.querySelector('.pc-ledger'); if (ledger) ledger.open = true;
             loadAsset(this.getAttribute('data-dg-edit')); var editor = host.querySelector('[data-dg-asset-editor]'); editor.open = true; editor.scrollIntoView({ block: 'nearest' }); assetForm.elements.namedItem('component').focus();
         }); });
         var reset = document.createElement('button'); reset.type = 'button'; reset.textContent = 'Reload saved diligence and clear these forms'; reset.className = 'dg-reload';
@@ -161,11 +165,20 @@ var ProspectDiligenceUi = (function () {
             var url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'proton-diligence-' + String(candidate.id).replace(/[^a-z0-9_-]/gi, '_') + '.json'; a.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
         });
     }
+    function openState(host) {
+        return { ledger: !!(host && host.querySelector('.pc-ledger[open]')), forms: host ? Array.from(host.querySelectorAll('[data-dg-form]')).filter(function(f) { return f.closest('details').open; }).map(function(f) { return f.getAttribute('data-dg-form'); }) : [] };
+    }
+    function restoreOpen(host, state) {
+        if (!host || !state) return;
+        var ledger = host.querySelector('.pc-ledger'); if (ledger) ledger.open = state.ledger;
+        host.querySelectorAll('[data-dg-form]').forEach(function(f) { if (state.forms.indexOf(f.getAttribute('data-dg-form')) >= 0) f.closest('details').open = true; });
+    }
     function refresh(host, candidate, ctx) {
+        var editors = openState(host);
         var rendered = renderBuckets(candidate, ctx);
         Object.keys(rendered).forEach(function (key) { var panel = host.querySelector('#dtab_' + (key === 'scores' ? 'scores' : key)); if (panel) { var content = panel.querySelector('.src-detailgrid'); if (content) content.innerHTML = rendered[key]; } });
-        bind(host, candidate, ctx);
+        bind(host, candidate, ctx); restoreOpen(host, editors);
     }
-    return { renderBuckets: renderBuckets, bind: bind, refresh: refresh, commit: commit, values: values, esc: esc };
+    return { openState: openState, restoreOpen: restoreOpen, renderBuckets: renderBuckets, bind: bind, refresh: refresh, commit: commit, values: values, esc: esc };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = ProspectDiligenceUi;

@@ -96,6 +96,12 @@ var ProspectDiligence = (function () {
                     var seen = {}, at = id;
                     while (s.assets[at] && s.assets[at].action === 'included') { if (seen[at]) throw Error('Budget packages cannot refer back to themselves.'); seen[at] = true; at = s.assets[at].included_in; }
                 });
+            } else if (c.type === 'planning') {
+                out = { target_kw: num(v.target_kw), market: str(v.market), strategy: str(v.strategy), contingency_pct: num(v.contingency_pct) };
+                if (str(v.target_kw) && !(out.target_kw > 0)) throw Error('Enter a positive planning size or leave it blank to use the source estimate.');
+                if (['new', 'used'].indexOf(out.market) < 0 || ['reuse', 'rebuild', 'power'].indexOf(out.strategy) < 0) throw Error('Choose the equipment market and build approach.');
+                if (out.contingency_pct === null || out.contingency_pct > 100) throw Error('Enter a contingency from 0 to 100 percent.');
+                before = s.planning || null; s.planning = out;
             } else if (c.type === 'capacity') {
                 out = proof(v, now);
                 ['target_kw', 'contracted_kw'].forEach(function (k) { out[k] = num(v[k]); if (str(v[k]) && out[k] === null) throw Error('Capacity must be a nonnegative number.'); });
@@ -105,6 +111,7 @@ var ProspectDiligence = (function () {
                 out.rights_confirmed = v.rights_confirmed === true || v.rights_confirmed === 'yes';
                 if (out.contracted_kw !== null && !out.rights_confirmed) throw Error('Confirm that the cited agreement allocates net power at the mining meter to Proton.');
                 before = s.capacity; s.capacity = out;
+                if (s.planning) s.planning.target_kw = out.target_kw;
             } else throw Error('Unknown diligence action.');
             s.revision++; s.history.push({ type: c.type, component: c.id || null, before: before, after: out, at: new Date(now == null ? Date.now() : now).toISOString() });
             // Keep a bounded working history; export contains every retained revision.
@@ -156,9 +163,10 @@ var ProspectDiligence = (function () {
         var s = state(site), a = s.error ? {} : s.capacity, u = screened || {}, sd = c.sourceDetail || {}, contracted = num(a.contracted_kw);
         var valid = contracted !== null && a.rights_confirmed && a.evidence_note && a.reviewer && current(a.checked_on, now) && (!a.contract_expires || a.contract_expires >= today(now));
         var placeholder = /placeholder|nominal 100/i.test(str(sd.capacityBasis));
+        var planned = s.error ? null : num((s.planning || {}).target_kw), target = planned !== null ? planned : num(a.target_kw);
         return { reportedKw: num(c.powerPotentialKw), installedReportedKw: num(c.existingGenerationKw),
-            legacySavedKw: num(site && site.usable_kw), hasReviewedTarget: num(a.target_kw) !== null,
-            screenedKw: placeholder ? null : num(u.kw), targetKw: num(a.target_kw) !== null ? num(a.target_kw) : placeholder ? null : num(u.kw),
+            legacySavedKw: num(site && site.usable_kw), hasReviewedTarget: target !== null,
+            screenedKw: placeholder ? null : num(u.kw), targetKw: target !== null ? target : placeholder ? null : num(u.kw),
             contractedKw: valid ? contracted : null, savedContractedKw: contracted,
             allocationStale: contracted !== null && !valid, gasCollectedMmscfd: num(sd.lfgCollectedMmscfd), gasFlaredMmscfd: num(sd.lfgFlaredMmscfd), projectFlowMmscfd: num(sd.lfgFlowToProjectMmscfd),
             gasCollectedYear: sd.lfgCollectedYear || null, gasFlaredYear: sd.lfgFlaredYear || null,
