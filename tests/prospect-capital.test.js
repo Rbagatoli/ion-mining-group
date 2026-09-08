@@ -47,3 +47,45 @@ test('every sized US landfill has a usable planning estimate without creating ve
  let sized=0,estimated=0;for(const row of data.projects){const c={...L.adapter.normalize(row),source:'lmop-landfill'},q=Q.usableCapacity(c);if(q.kw>0){sized++;const e=P.estimate(c,null,{screened:q});if(e.ready&&e.base>0&&e.low<=e.base&&e.base<=e.high)estimated++;assert.equal(e.budget.base,null);}}
  assert.ok(sized>1000);assert.equal(estimated,sized);console.log('Planning estimates available for '+estimated+' sized US landfill project records.');
 });
+
+test('shutdown generation defaults to used pricing while saved choices and other site types are preserved',()=>{
+ const shut={...raw(),existingGenerationKw:2000,sourceDetail:{collectionSystem:'Yes',projectType:'Reciprocating Engine',projectStatus:'Shutdown'}};
+ const auto=P.estimate(shut,null,ctx),explicit=P.estimate(shut,save({},'planning',plan({market:'new'})),ctx);
+ assert.equal(auto.settings.market,'used');assert.equal(auto.settings.automaticUsed,true);assert.equal(auto.rates.generationPerKw,225);assert.equal(explicit.settings.market,'new');assert.ok(auto.base<explicit.base);
+ assert.equal(P.estimate({...shut,existingGenerationKw:null},null,ctx).settings.market,'new');
+ assert.equal(P.estimate({...shut,sourceDetail:{...shut.sourceDetail,projectStatus:'Planned'}},null,ctx).settings.market,'new');
+ assert.equal(P.estimate(shut,save({},'planning',plan({market:'auto'})),ctx).settings.market,'used');
+});
+
+test('from-scratch and remaining infrastructure exclude ASICs, contingency and transaction costs',()=>{
+ const c={...raw(),existingGenerationKw:2000,sourceDetail:{collectionSystem:'Yes',projectType:'Engine',projectStatus:'Operational'}};
+ const e=P.estimate(c,null,ctx);assert.equal(e.newInfrastructureUsd,2580000);assert.equal(e.remainingInfrastructureUsd,1710000);assert.equal(e.miningInfrastructureUsd,450000);
+ assert.equal(e.remainingInfrastructureUsd,e.energyInfrastructureUsd+e.miningInfrastructureUsd+e.servicesUsd);assert.equal(e.base,e.remainingInfrastructureUsd+e.minersUsd+e.contingencyUsd);
+ const withFee=P.estimate(c,save({},'asset',proof({low_usd:500000,base_usd:500000,high_usd:500000}),'acquisition'),ctx);
+ assert.equal(withFee.newInfrastructureUsd,e.newInfrastructureUsd);assert.equal(withFee.remainingInfrastructureUsd,e.remainingInfrastructureUsd);assert.equal(withFee.otherRecordedUsd,500000);assert.ok(withFee.base>e.base);
+ const html=P.summary(e);assert.match(html,/Build infrastructure from scratch/);assert.match(html,/Remaining with existing infrastructure/);assert.match(html,/Mining setup still to fund/);
+});
+
+test('mining setup rates use USD per MW, persist locally, preserve zero and never mutate the shared rate card',()=>{
+ const original=C.ratesFor('new').miningInfraPerKw;
+ let s=save({},'planning',plan({target_kw:500,mining_infra_usd_per_mw:180000})),e=P.estimate(raw(),s,ctx);
+ assert.equal(e.miningInfrastructureUsd,90000);assert.equal(e.rates.miningInfraPerKw,180);assert.equal(C.ratesFor('new').miningInfraPerKw,original);assert.equal(e.budget.base,null);
+ s=save(s,'planning',plan({target_kw:500}));assert.equal(D.state(s).planning.mining_infra_usd_per_mw,180000);
+ s=save(s,'planning',plan({mining_infra_usd_per_mw:0}));assert.equal(P.estimate(raw(),s,ctx).miningInfrastructureUsd,0);
+ s=save(s,'planning',plan({mining_infra_usd_per_mw:''}));assert.equal(P.estimate(raw(),s,ctx).miningInfrastructureUsd,450000);
+ for(const value of [-1,'invalid',Infinity])assert.equal(D.apply({}, {type:'planning',revision:0,value:plan({mining_infra_usd_per_mw:value})},NOW).ok,false);
+});
+
+test('existing mining equipment receives a size-limited allowance, but a landfill generator alone does not',()=>{
+ let s=save({},'asset',proof({presence:'present',action:'unknown',capacity_kw:500,low_usd:'',base_usd:'',high_usd:''}),'mining_infrastructure');
+ assert.equal(P.estimate(raw(),s,ctx).miningInfrastructureUsd,315000);
+ const c={...raw(),existingGenerationKw:2000,sourceDetail:{collectionSystem:'Yes',projectType:'Engine',projectStatus:'Operational'}};
+ assert.equal(P.estimate(c,null,ctx).miningInfrastructureUsd,450000);
+ s=save(s,'asset',proof({presence:'present',action:'new',capacity_kw:1000,low_usd:'',base_usd:'',high_usd:''}),'mining_infrastructure');
+ assert.equal(P.estimate(raw(),s,ctx).miningInfrastructureUsd,450000,'an explicit replacement decision must not receive reuse credit');
+});
+
+test('confirmed no-cost reuse lowers remaining work without erasing its replacement benchmark',()=>{
+ const s=save({},'asset',proof({presence:'present',condition:'working',access:'agreed',action:'reuse',low_usd:0,base_usd:0,high_usd:0}),'mining_infrastructure'),e=P.estimate(raw(),s,ctx);
+ assert.equal(e.miningInfrastructureUsd,0);assert.equal(e.newInfrastructureUsd,2580000);assert.equal(e.remainingInfrastructureUsd,2130000);assert.ok(e.reuseSavingUsd>0);
+});

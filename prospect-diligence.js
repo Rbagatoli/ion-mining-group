@@ -99,7 +99,9 @@ var ProspectDiligence = (function () {
             } else if (c.type === 'planning') {
                 out = { target_kw: num(v.target_kw), market: str(v.market), strategy: str(v.strategy), contingency_pct: num(v.contingency_pct) };
                 if (str(v.target_kw) && !(out.target_kw > 0)) throw Error('Enter a positive planning size or leave it blank to use the source estimate.');
-                if (['new', 'used'].indexOf(out.market) < 0 || ['reuse', 'rebuild', 'power'].indexOf(out.strategy) < 0) throw Error('Choose the equipment market and build approach.');
+                out.mining_infra_usd_per_mw = own(v, 'mining_infra_usd_per_mw') ? num(v.mining_infra_usd_per_mw) : num((s.planning || {}).mining_infra_usd_per_mw);
+                if (str(v.mining_infra_usd_per_mw) && out.mining_infra_usd_per_mw === null) throw Error('Enter a nonnegative mining setup allowance in USD per MW, or leave it blank for the rate card.');
+                if (['auto', 'new', 'used'].indexOf(out.market) < 0 || ['reuse', 'rebuild', 'power'].indexOf(out.strategy) < 0) throw Error('Choose the equipment market and build approach.');
                 if (out.contingency_pct === null || out.contingency_pct > 100) throw Error('Enter a contingency from 0 to 100 percent.');
                 before = s.planning || null; s.planning = out;
             } else if (c.type === 'capacity') {
