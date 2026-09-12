@@ -33,7 +33,7 @@ const PAGES = {
     insertBefore: '<!-- ===== THE MODEL ===== -->',
     eyebrow: 'Inside our mine',
     heading: 'What we actually build.',
-    lede: 'Gas that would otherwise be flared, engines to burn it, a transformer, and containers of machines. Cut the wall away and this is the whole of it.',
+    lede: 'Explore the gas treatment, generation, electrical equipment and miners inside a Proton mine.',
     deps: ['site-kit.js'],
     chain: 'site',
     views: [
@@ -49,7 +49,7 @@ const PAGES = {
     insertBefore: '<!-- ===== TERMS ===== -->',
     eyebrow: 'Inside the container',
     heading: 'Where your machines actually sit.',
-    lede: 'The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.',
+    lede: 'Explore a hydro-cooled container, then use the slider to inspect one miner.',
     link: 'hosting',
     chain: 'cont',
     /* scene-hosting.js reads KIT.COOLER so its roof cooler cannot drift from the one
@@ -89,7 +89,7 @@ const PAGES = {
        existing equipment" and lets whichever drawing is on screen be the
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
-    lede: 'Choose your kind of site, then select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
+    lede: 'Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives

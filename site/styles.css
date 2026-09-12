@@ -4585,7 +4585,7 @@ body {
    A spacing utility is a statement about ONE element that has to outrank the
    component it sits inside. That means last in the file, and it means this block
    should stay last: anything added below it can beat it by accident. */
-.vgap.vgap { margin-top: var(--vg, 24px); }
+
 
 
 /* ===== SECOND MOBILE DENSITY PASS: the windows =====
@@ -4701,4 +4701,101 @@ body {
     .wm-mech-body { padding: 0 15px 15px; }
     .wm-cond { margin-top: 12px; }
     .wm-next { margin-top: 28px; padding-top: 18px; }
+}
+
+/* Mobile copy hierarchy: actions and key facts first, supporting detail on demand. */
+.mobile-details { min-width: 0; }
+.mobile-details > summary { display: none; }
+.mobile-details--article > summary { display: block; list-style: none; }
+.mobile-details--article > summary::-webkit-details-marker { display: none; }
+.mobile-details-body { min-width: 0; }
+.hw-empty-note { font-size: 14px; color: var(--plat-400); line-height: 1.5; }
+.hw-order--empty .hw-totals, .hw-order--empty .hw-actions { display: none; }
+@media (max-width: 640px) {
+    .mobile-details { border-top: 1px solid var(--line-mid); border-bottom: 1px solid var(--line); margin-block: 12px; }
+    .mobile-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 12px 0; list-style: none; cursor: pointer; color: var(--plat-200); font: 500 14px/1.45 var(--sans); }
+    .mobile-details > summary::-webkit-details-marker { display: none; }
+    .mobile-details > summary::after { content: '+'; flex-shrink: 0; color: var(--btc-300); font: 20px/1 var(--mono); }
+    .mobile-details[open] > summary::after { content: '−'; }
+    .mobile-details > summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+    .mobile-details-body { padding-bottom: 14px; }
+    .mobile-details-body > :first-child { margin-top: 0; }
+    .mobile-details-body > :last-child { margin-bottom: 0; }
+    .mobile-details--article > summary h2 { font-size: 17px; line-height: 1.4; margin: 0; }
+    .mobile-details--article .mobile-details-body { padding-top: 2px; }
+    .mobile-details--article .mobile-details-body > p:first-child { margin-top: 0; }
+    .band { padding: 30px 0; }
+    .band--tight { padding: 0 0 30px; }
+    .hero { padding: 34px 0 30px; }
+    .hero .lede { margin-top: 18px; }
+    .hero-note { margin-top: 20px; padding-top: 14px; }
+    .hero-alt { margin-top: 12px; }
+    .band .sec-head { margin-bottom: 16px; }
+    .eyebrow { margin-bottom: 10px; }
+    .vgap.vgap { margin-top: calc(var(--vg, 24px) * .45); }
+    .h-section { font-size: clamp(22px, 6vw, 28px); line-height: 1.15; }
+    .lede { font-size: 15px; line-height: 1.55; }
+    .hero .btn-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 20px; }
+    .hero .btn-row .btn { min-width: 0; min-height: 48px; padding: 10px 8px; font-size: 12px; letter-spacing: .06em; }
+    .hero .btn-row .btn:only-child { grid-column: 1/-1; }
+    .energy-types { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .energy-types .h-card { font-size: 16px; line-height: 1.3; }
+    .energy-types p { font-size: 13.5px; }
+    .track { padding: 18px 14px; }
+    .track .mobile-details { margin: 12px 0; }
+    .track .mobile-details ul { margin: 0; }
+    .track .btn { min-height: 48px; }
+    .grid--split { gap: 18px; }
+    .spec-row { padding: 10px 12px; gap: 4px; }
+    .faq summary { padding-top: 16px; padding-bottom: 16px; font-size: 15px; line-height: 1.45; }
+    .faq details p { padding-bottom: 16px; font-size: 14px; line-height: 1.55; }
+    .form { padding: 16px 14px; }
+    .field input, .field select, .field textarea, .mb-field input, .mb-field select { font-size: 16px; }
+    .field textarea { min-height: 96px; }
+    .calc-models { margin-top: 24px; }
+    .calc-models-lede { margin-bottom: 14px; }
+    .cm { padding: 14px; }
+    .calc-note-cols { gap: 14px; }
+    .calc-note-cols p { font-size: 14px; line-height: 1.55; }
+    .hw-order { padding: 14px; }
+    .hw-order--empty { margin-bottom: 4px; }
+    .hw-order--empty .calc-chart-title { margin-bottom: 6px; padding-bottom: 6px; }
+    .hw-empty-note { margin: 0; }
+    .hw-econ { margin-top: 14px; }
+    .hw-send { margin-top: 24px; }
+    .hw-preview { max-height: 160px; overflow: auto; }
+    .footer { padding: 30px 0 22px; }
+    .footer-top { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 14px; }
+    .footer-top > :first-child { grid-column: 1/-1; }
+    .footer-blurb { max-width: 42ch; margin-top: 10px; font-size: 13px; }
+    .footer-col h4 { margin-bottom: 8px; }
+    .footer-col a { padding: 9px 0; min-height: 44px; font-size: 13px; overflow-wrap: anywhere; }
+    .footer-bottom { margin-top: 20px; padding-top: 16px; gap: 10px; }
+    .bp { padding-top: 30px; }
+    .bp h1, .bl-head h1 { font-size: clamp(26px,7vw,34px); line-height: 1.15; }
+    .bp-body p, .bp-body li { font-size: 15px; line-height: 1.6; }
+    .bp-body p { margin-block: 14px; }
+    .bp-sources { margin-top: 24px; padding-top: 18px; }
+    .bp-next { margin-top: 24px; padding-top: 18px; }
+    .bc-sum { font-size: 14px; line-height: 1.5; }
+    .wm-body > p { font-size: 15px; line-height: 1.6; }
+    .wm-warn p { font-size: 14px; line-height: 1.55; }
+    .wm-body .mobile-details-body > h3 { margin-top: 24px; }
+}
+
+.bp-reading-controls { display: none; }
+@media (max-width: 640px) {
+    .mobile-empty-stats { display: none; }
+    .wm-vs { grid-template-columns: minmax(0, 1fr); }
+    .wm-vs-col { min-width: 0; }
+    .mobile-details-ready .bp-reading-controls { display: flex; margin: 12px 0 18px; }
+    .bp-reading-controls button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--line-mid); background: transparent; color: var(--btc-300); font: 13px/1.5 var(--sans); cursor: pointer; }
+    .bp-reading-controls button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+    .track .arrow-link { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Keep the spacing utility last among unconditional rules. */
+.vgap.vgap { margin-top: var(--vg, 24px); }
+@media (max-width: 640px) {
+    .vgap.vgap { margin-top: calc(var(--vg, 24px) * .45); }
 }

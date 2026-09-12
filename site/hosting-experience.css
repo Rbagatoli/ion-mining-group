@@ -71,3 +71,15 @@
  .hx-globe-panel .hx-toolbar p { flex-basis:100%; margin-bottom:6px; }.hx-credit { padding:0 16px 16px; }
 }
 @media(prefers-reduced-motion:reduce) { .hx-canvas { transition:none; } }
+
+@media(max-width:640px) {
+ .hx-experience,.hx-panel { margin-bottom:20px; }
+ .hx-heading { padding:16px 14px; gap:10px; }.hx-heading h3 { font-size:24px; }.hx-model-note { display:none; }
+ .hx-globe-stage { height:360px; }.hx-globe-place { display:none; }
+ .hx-regions button { min-height:76px; flex-basis:148px; padding:10px 12px; }
+ .hx-regions button>span { margin-bottom:4px; }.hx-regions small { display:none; }
+ .hx-toolbar { padding:8px 12px; }.hx-globe-panel .hx-toolbar p { margin-bottom:2px; }
+ .hx-summary { padding:16px 14px; gap:14px; }.hx-place h4 { font-size:22px; }
+ .hx-metrics dt { margin-bottom:4px; }.hx-metrics dd { font-size:20px; }
+ .hx-note { padding:10px 14px; line-height:1.5; }.hx-credit { padding:0 14px 12px; }
+}

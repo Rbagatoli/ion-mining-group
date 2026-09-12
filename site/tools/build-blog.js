@@ -383,9 +383,22 @@ function relatedTo(post, all) {
 
 /* ---------- the pages ---------- */
 
+// Keep article sections readable in full without JavaScript and on desktop.
+// On mobile the shared site controller turns headings into native disclosures.
+function mobileArticle(body) {
+    const headings = [...body.matchAll(/<h2>([\s\S]*?)<\/h2>/g)];
+    if (!headings.length) return '<details class="mobile-details" data-mobile-details open><summary>Read the article</summary><div class="mobile-details-body">' + body + '</div></details>';
+    let out = body.slice(0, headings[0].index);
+    headings.forEach((h, i) => {
+        const end = i + 1 < headings.length ? headings[i + 1].index : body.length;
+        out += '<details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>' + h[1] + '</h2></summary><div class="mobile-details-body">' + body.slice(h.index + h[0].length, end) + '</div></details>\n';
+    });
+    return out;
+}
+
 function postPage(post, stamp, all) {
     const m = post.meta;
-    const body = markdown(post.body, m.file);
+    const body = mobileArticle(markdown(post.body, m.file));
     const mins = readingMinutes(post.body);
     const words = post.body.split(/\s+/).filter(Boolean).length;
     const related = relatedTo(post, all || []);
@@ -497,6 +510,7 @@ ${draftBanner}      <div class="bp-meta">
       <h1>${esc(m.title)}</h1>
       <p class="lede">${esc(m.summary)}</p>
 ${tags}
+      <div class="bp-reading-controls"><button type="button" data-article-expand aria-expanded="false">Read full article</button></div>
       <div class="bp-body">
 ${body.split('\n').map((l) => (l ? '        ' + l : l)).join('\n')}
       </div>
@@ -508,9 +522,8 @@ ${related.map((r) => '        <a class="bp-rel-item" href="' + r.meta.href + '">
     '<span class="bp-rel-sum">' + esc(r.meta.summary) + '</span></a>').join('\n')}
       </nav>
 ` : ''}      <div class="bp-next">
-        <h2>Working out whether machines beat buying the coin?</h2>
-        <p>The comparison depends entirely on your assumptions, so we do not print one number
-           and call it the answer. Put yours in and see where the crossover lands.</p>
+        <h2>Mining or buying bitcoin?</h2>
+        <p>Compare both using your power cost, budget and market assumptions.</p>
         <div class="bp-next-links">
           <a class="btn btn--primary" href="./calculator.html">Run your own numbers</a>
           <a class="btn btn--ghost" href="./why-mining.html">Why own machines</a>

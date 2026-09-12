@@ -115,7 +115,7 @@ UPSTREAM.forEach(t => {
 });
 
 /* The page lede itself names landfill first. */
-const lede = (energy.match(/<p class="lede">(If you are[^<]+)/) || [])[1] || '';
+const lede = (energy.match(/<p class="lede">([^<]+)/) || [])[1] || '';
 ok(/landfill/i.test(lede) && lede.indexOf('landfill') < lede.indexOf('associated'),
    'the page lede names landfill before associated gas', lede.slice(0, 72) + '...');
 

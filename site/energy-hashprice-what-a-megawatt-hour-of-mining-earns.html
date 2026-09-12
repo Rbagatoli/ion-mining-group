@@ -14,7 +14,7 @@
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=042c9516">
+<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
 <!-- .reveal is opacity:0 until site.js adds .in, so without this the post is a blank page
      between a nav and a footer. build-nav.js does the same for the hand-authored pages; a
      generated page is not in its registry, so it is done here too. -->
@@ -156,10 +156,11 @@
       <h1>Energy hashprice: what a megawatt-hour of mining earns</h1>
       <p class="lede">Hashprice per petahash says what a machine earns. Energy hashprice says what you can afford to pay for power — $41 to $107 per MWh in August 2026.</p>
         <div class="bp-tags"><span class="bp-tag">economics</span><span class="bp-tag">hardware</span></div>
+      <div class="bp-reading-controls"><button type="button" data-article-expand aria-expanded="false">Read full article</button></div>
       <div class="bp-body">
         <p>Hashprice is quoted per petahash per day, and on <strong>17 August 2026</strong> it sat at <a href="https://hashrateindex.com/blog/hashrate-index-roundup-august-17-2026/" rel="noopener nofollow" target="_blank">$31.89 per PH/s per day</a> — a level Hashrate Index described as &quot;at or below breakeven for many miners.&quot; That is a true sentence and a nearly useless one, because it does not tell you whether <em>you</em> are one of them.</p>
         <p>There is a second number in the same report that does, and it is quoted in the same units as your electricity bill.</p>
-        <h2>Energy hashprice is revenue per megawatt-hour</h2>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Energy hashprice is revenue per megawatt-hour</h2></summary><div class="mobile-details-body">
         <p>Hashprice per PH/s tells you what a unit of <em>compute</em> earns. Energy hashprice tells you what a unit of <em>power</em> earns — the revenue a megawatt-hour produces once it has been through your machines. That matters because a megawatt-hour is the thing you actually buy.</p>
         <p>It depends entirely on how efficient your fleet is. On <strong>17 August 2026</strong>, with hashprice at $31.89, Hashrate Index put compute revenue per MWh at:</p>
         <ul>
@@ -170,21 +171,26 @@
         </ul>
         <p>Divide by a thousand and those are cents per kilowatt-hour: <strong>10.7, 7.9, 5.9 and 4.1</strong>. That is the ceiling on what your power can cost before the machines stop paying for the electricity they burn — before rent, staff, network, spares or capital.</p>
         <p>Two weeks earlier, on <strong>3 August 2026</strong>, the same table read <a href="https://hashrateindex.com/blog/hashrate-index-roundup-august-3-2026/" rel="noopener nofollow" target="_blank">$109, $79, $60 and $41 per MWh</a> at a hashprice of $32.10. The bands barely moved. This is not a number that swings around week to week; it moves with hashprice and with difficulty, and both were close to flat across the month.</p>
-        <h2>The spread is the whole story</h2>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>The spread is the whole story</h2></summary><div class="mobile-details-body">
         <p>The top band earns <strong>2.6 times</strong> what the bottom band earns from the same megawatt-hour, on the same day, on the same network.</p>
         <p>That is a bigger gap than most people carry in their heads, and it is the reason &quot;is mining profitable&quot; has no answer. At $60 per MWh power, a sub-14 J/TH fleet is comfortably ahead and a 25 to 38 J/TH fleet is losing money on every hour it runs. Same bitcoin price, same difficulty, same day. The machines decide which business you are in, and the power price decides whether that business works.</p>
         <p>It also explains a behaviour that looks irrational from outside: operators running old hardware into the ground rather than upgrading. If your power is cheap enough, a 30 J/TH machine still clears its electricity. If it is not, no amount of hashrate fixes it, because hashrate is not the constraint — the ceiling on your power price is.</p>
-        <h2>What actually moved in August</h2>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>What actually moved in August</h2></summary><div class="mobile-details-body">
         <p>For context on how stable this was: network difficulty adjusted <strong>+0.99% on 8 August 2026</strong> to <strong>127.48T</strong>, with the next adjustment estimated at <strong>+1.01%</strong>. Network hashrate averaged <strong>920 EH/s</strong> over the seven days to 17 August, against <strong>932 EH/s</strong> two weeks earlier.</p>
         <p>So difficulty crept up, hashrate drifted sideways, and hashprice moved less than a percent. The squeeze in August was not an event. It was a level — and a level is harder to wait out than a shock, because there is nothing obvious to wait for.</p>
-        <h2>If you own the energy, you are not buying at a market rate</h2>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>If you own the energy, you are not buying at a market rate</h2></summary><div class="mobile-details-body">
         <p>Every number above assumes you are a buyer of power at a price somebody else sets. The reason stranded energy is interesting is that it breaks that assumption.</p>
         <p>Gas that is being flared has no customer. Landfill gas is being destroyed under a permit. Curtailed generation is power that exists and cannot be sold. In each case the alternative use is worth approximately nothing to whoever holds it, which is a different starting point from negotiating against an industrial tariff. That is the entire argument for putting compute where the energy is stranded rather than where the grid is convenient, and it is set out at more length on <a href="./why-mining.html">why mining</a>.</p>
         <p>It does not make the arithmetic go away. A 25 to 38 J/TH fleet on stranded gas still has a ceiling of about $41 per MWh at August's hashprice, and the site still has to be built, connected and staffed under that ceiling. What changes is which side of the line you start on.</p>
-        <h2>Run it against your own numbers</h2>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Run it against your own numbers</h2></summary><div class="mobile-details-body">
         <p>The useful exercise is not reading someone else's breakeven. It is taking the band your fleet actually sits in, putting your real all-in power cost next to it, and seeing how much headroom is left — then doing it again with difficulty growing, because it will.</p>
         <p>The <a href="./calculator.html">calculator</a> will do that with your figures rather than with a representative fleet. Two things worth doing while you are in there: run it once with a pessimistic difficulty assumption, and run it once at a power price a cent or two above what you have been quoted. If the answer survives both, it is probably an answer.</p>
-        <p>Figures in this post are from Hashrate Index's weekly roundups for 3 and 17 August 2026 and are accurate as of those dates. Hashprice, difficulty and the efficiency bands all move; check them before relying on any of it.</p>
+        <p>Figures in this post are from Hashrate Index's weekly roundups for 3 and 17 August 2026 and are accurate as of those dates. Hashprice, difficulty and the efficiency bands all move; check them before relying on any of it.</p></div></details>
+
       </div>
       <div class="bp-sources">
         <h2>Sources</h2>
@@ -199,9 +205,8 @@
         <a class="bp-rel-item" href="./hosting-sites-are-being-converted-to-ai.html"><span class="bp-rel-title">Hosting sites are being converted to AI</span><span class="bp-rel-sum">Two operators have told the SEC they stopped mining at sites and are converting them to AI. That is hosting capacity leaving the market.</span></a>
       </nav>
       <div class="bp-next">
-        <h2>Working out whether machines beat buying the coin?</h2>
-        <p>The comparison depends entirely on your assumptions, so we do not print one number
-           and call it the answer. Put yours in and see where the crossover lands.</p>
+        <h2>Mining or buying bitcoin?</h2>
+        <p>Compare both using your power cost, budget and market assumptions.</p>
         <div class="bp-next-links">
           <a class="btn btn--primary" href="./calculator.html">Run your own numbers</a>
           <a class="btn btn--ghost" href="./why-mining.html">Why own machines</a>
@@ -270,8 +275,8 @@
   </div>
 </footer>
 
-<script src="./site.js?v=042c9516"></script>
-<script src="./hero-anim.js?v=042c9516"></script>
-<script src="./cart.js?v=042c9516"></script>
+<script src="./site.js?v=6ed6cd9c"></script>
+<script src="./hero-anim.js?v=6ed6cd9c"></script>
+<script src="./cart.js?v=6ed6cd9c"></script>
 </body>
 </html>

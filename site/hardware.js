@@ -330,6 +330,9 @@
            empty order, and worth saying nothing about either way. */
         if (!t || !lines) return;
         var empty = t.units === 0;
+        var panel = document.querySelector('.hw-order'), emptyNote = $('hwEmpty');
+        if (panel) panel.classList.toggle('hw-order--empty', empty);
+        if (emptyNote) emptyNote.hidden = !empty;
 
         $('hwUnits').textContent = empty ? '—' : t.units.toLocaleString('en-US');
         $('hwHash').textContent = empty ? '—' : dec(t.th, 0) + ' TH/s';

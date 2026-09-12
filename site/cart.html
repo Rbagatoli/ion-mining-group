@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=042c9516">
+<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -107,8 +107,8 @@
   <div class="wrap">
     <div class="calc-head">
       <p class="eyebrow">Your order</p>
-      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Confirm the fleet,<br>and say where it goes.</h1>
-      <p class="lede">Machines, destination and hosting in one place. A deposit reserves the order; the price and the lead time are confirmed on your quote before anything is charged or shipped.</p>
+      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Review your order.</h1>
+      <p class="lede">Review machines, delivery and hosting. Price, lead time and freight are confirmed in your quote.</p>
     </div>
   </div>
 </section>
@@ -120,7 +120,7 @@
          headings over no rows read as a page that failed to load. -->
     <div class="ck-empty" id="ckEmpty" hidden>
       <h2 class="calc-chart-title">Nothing in the order yet</h2>
-      <p class="calc-hint">Pick machines from the catalogue and they will be waiting here. The order is kept in this browser, so you can leave and come back to it.</p>
+      <p class="calc-hint">Choose miners from the catalogue. Your order is saved in this browser.</p>
       <a class="btn btn--primary" href="./hardware.html">Browse the machines</a>
     </div>
 
@@ -137,7 +137,7 @@
           <a class="btn btn--primary" id="ckPayDeposit" href="./pay.html">Pay the deposit</a>
           <a class="btn btn--ghost" id="ckPayFull" href="./pay.html">Pay in full instead</a>
         </div>
-        <p class="form-note">Keep this reference. <strong>Nothing has been charged.</strong> We confirm the price, the lead time and the freight with our distributor, then send you a quote and instructions for the deposit. You can check the order at any time at <a id="ckRefLink" href="./order.html">the status page</a>.</p>
+        <p class="form-note">Keep this reference. <strong>Nothing has been charged.</strong> We will confirm price, lead time, freight and deposit instructions. <a id="ckRefLink" href="./order.html">Track your order</a>.</p>
       </div>
 
     <div class="hw" id="ckBody" hidden>
@@ -192,7 +192,7 @@
             <span class="ct-val" id="ckBalance">&mdash;</span>
           </div>
         </div>
-        <p class="form-note"><strong>Nothing is charged on this page.</strong> Send the order and we come back with a firm quote &mdash; confirmed price, lead time and freight &mdash; along with instructions for the deposit. The deposit reserves your place in the order and comes off the invoice; the balance is due once the quote is agreed and before the machines ship.</p>
+        <p class="form-note">Nothing is charged on this page. We send a firm quote and deposit instructions. The deposit reserves your order and reduces the invoice balance, due after quote acceptance and before shipment.</p>
       </div>
 
       <!-- ---------- destination, hosting, and sending it ---------- -->
@@ -222,7 +222,7 @@
              and never chose, the original wording stands: we do not promise a site we have
              not agreed. checkout.js swaps between them. -->
         <div id="ckFacility"></div>
-        <p class="calc-hint" id="ckIonNote">We will confirm which of our sites has capacity for a fleet this size, and quote hosting on the same order. You do not arrange freight &mdash; the machines are delivered straight to the facility that will run them.</p>
+        <p class="calc-hint" id="ckIonNote">We confirm site capacity and quote hosting with your order. Miners ship directly to the hosting facility.</p>
 
         <!-- Shown for anywhere else. A pallet of ASICs cannot simply be posted:
              somebody has to be there to receive it. -->
@@ -261,7 +261,7 @@
               <input id="ck-country" name="country" type="text" placeholder="Country">
             </div>
           </div>
-          <p class="calc-hint calc-hint--warn">These arrive as palletised freight and need someone able to take delivery on a dock or with a forklift. Tell us if the address cannot, and we will route it through a receiving agent instead. Cross-border orders carry duty and customs clearance, which the quote itemises.</p>
+          <p class="calc-hint calc-hint--warn">Delivery requires a dock or forklift; otherwise tell us so we can arrange a receiving agent. Cross-border duty and customs clearance are itemized in your quote.</p>
         </div>
 
         <h2 class="calc-chart-title">Send it</h2>
@@ -312,7 +312,7 @@
              itself, because a checkout that pops a mail window instead of
              taking payment reads as broken. -->
         <p class="calc-hint calc-hint--warn" id="ckFallback" hidden></p>
-        <p class="form-note">Nothing is charged on the next page either &mdash; it shows what to send and where. The price and the lead time are confirmed with you before the machines ship.</p>
+        <p class="form-note">Nothing is charged on the next page. It shows payment instructions. Price and lead time are confirmed before shipment.</p>
       </form>
 
     </div>
@@ -378,15 +378,15 @@
   </div>
 </footer>
 
-<script src="./site.js?v=042c9516"></script>
-<script src="./hero-anim.js?v=042c9516"></script>
-<script src="./miner-db.js?v=042c9516"></script>
-<script src="./price-list.js?v=042c9516"></script>
-<script src="./facilities.js?v=042c9516"></script>
-<script src="./prepay.js?v=042c9516"></script>
-<script src="./cart.js?v=042c9516"></script>
-<script src="./orders-demo.js?v=042c9516"></script>
-<script src="./orders-api.js?v=042c9516"></script>
-<script src="./checkout.js?v=042c9516"></script>
+<script src="./site.js?v=6ed6cd9c"></script>
+<script src="./hero-anim.js?v=6ed6cd9c"></script>
+<script src="./miner-db.js?v=6ed6cd9c"></script>
+<script src="./price-list.js?v=6ed6cd9c"></script>
+<script src="./facilities.js?v=6ed6cd9c"></script>
+<script src="./prepay.js?v=6ed6cd9c"></script>
+<script src="./cart.js?v=6ed6cd9c"></script>
+<script src="./orders-demo.js?v=6ed6cd9c"></script>
+<script src="./orders-api.js?v=6ed6cd9c"></script>
+<script src="./checkout.js?v=6ed6cd9c"></script>
 </body>
 </html>

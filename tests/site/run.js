@@ -32,7 +32,7 @@ const SUITES = [
     'dupe-ids.js', 'cascade.js', 'contrast.js', 'modifier-suite.js', 'verify.js',
     'calc-suite.js', 'mine-builder-suite.js', 'mine-builder-ui-suite.js', 'plant-scene-suite.js', 'plant-viewer-suite.js', 'hosting-experience-suite.js', 'asic-suite.js', 'host-suite.js', 'dg-regress.js',
     'pad-suite.js', 'landfill-copy-suite.js', 'dg-crop.js',
-    'hardware-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js',
+    'hardware-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js', 'order-status-suite.js',
     'orders-suite.mjs', 'pay-suite.mjs', 'stripe-suite.mjs', 'facility-suite.mjs',
     'blog-suite.mjs',
     /* The deploy tree. It asserts that every sitemap url resolves to a real file and every

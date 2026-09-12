@@ -43,7 +43,6 @@
     function show(id, on) { var el = $(id); if (el) el.hidden = !on; }
 
     function fail(why) {
-        if (order.demo) flagDemo(true);
         show('ordLoading', false);
         show('ordLive', false);
         show('ordError', true);
@@ -152,6 +151,8 @@
         if (el) el.hidden = !on;
     }
     function render(order) {
+        if (order.demo) flagDemo(true);
+        else flagDemo(false);
         $('ordRef').textContent = order.reference;
         var t = order.totals || {};
         $('ordUnits').textContent = Number(t.units).toLocaleString('en-US');

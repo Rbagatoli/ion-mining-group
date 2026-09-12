@@ -143,3 +143,16 @@
     .mb-economics > div:nth-child(even) { border-right: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .mb-panel *, .mb-site-action { animation: none !important; transition: none !important; } }
+
+.mb-estimate-note { margin: 8px 0; color: var(--plat-400); font-size: 12px; line-height: 1.5; }
+@media (max-width: 640px) {
+    .mb-topline, .mb-context-note { padding: 12px 14px; }
+    .mb-form { padding: 16px 14px; }
+    .mb-form-heading { margin-bottom: 12px; }
+    .mb-field { margin-bottom: 12px; }
+    .mb-help { margin-bottom: 12px; }
+    .mb-foot { padding: 16px 14px; }
+    .mb-foot .mobile-details-body { padding-bottom: 0; }
+    .mb-disclaimer { font-size: 12px; line-height: 1.55; }
+    .mb-next { gap: 12px; padding-block: 16px; }
+}

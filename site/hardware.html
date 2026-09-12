@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=042c9516">
+<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -102,8 +102,8 @@
   <div class="wrap">
     <div class="calc-head">
       <p class="eyebrow">Hardware</p>
-      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Buy the machines<br>and the place to run them.</h1>
-      <p class="lede">You do not have to arrive with a container of miners. Pick what you want below, set the quantities, and we will source it &mdash; and host it on the same agreement if you want us to.</p>
+      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Choose your miners.</h1>
+      <p class="lede">Choose models and quantities. We source the miners and can include hosting in your quote.</p>
     </div>
   </div>
 </section>
@@ -130,6 +130,7 @@
            while you are still choosing. -->
       <div class="hw-order">
         <h2 class="calc-chart-title">Your order</h2>
+        <p class="hw-empty-note" id="hwEmpty" hidden>Select miners below to start your order.</p>
         <div class="hw-totals">
           <div><span class="ct-lab">Machines</span><span class="ct-val" id="hwUnits">&mdash;</span></div>
           <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="hwHash">&mdash;</span></div>
@@ -151,11 +152,11 @@
       </div>
 
       <div class="hw-cat">
-        <h2 class="calc-chart-title">Every machine we can source</h2>
+        <h2 class="calc-chart-title">Mining hardware</h2>
         <!-- Specs are the manufacturer's and need no caveat. Price does: we
              broker rather than hold stock, so the number that binds is the one
              on the quote. The date comes from price-list.js. -->
-        <p class="calc-hint calc-hint--warn">Specifications are the manufacturer&rsquo;s. <strong>Prices are indicative as of <span id="hwAsOf">&mdash;</span> and are confirmed on quote</strong> &mdash; we source per order rather than holding stock, so the number that matters is the one on your quote, not the one on this page.</p>
+        <p class="calc-hint calc-hint--warn">Manufacturer specifications. <strong>Indicative prices as of <span id="hwAsOf">&mdash;</span>; confirmed on quote.</strong> We source to order.</p>
         <!-- WHAT THE THREE NEW COLUMNS NEED, AND WHY TWO OF THEM START BLANK.
 
              Revenue needs only the BTC price and the network difficulty, both
@@ -179,9 +180,9 @@
           </div>
           <!-- Rewritten by hardware.js when a site is chosen: at that point the rate is NOT
                the one figure only the visitor knows, it is the one they just picked. -->
-          <p class="calc-hint" id="hwEconNote">Enter it and the last two columns fill in. Nothing is assumed on your behalf &mdash; power is what decides which machine is best, and it is the one figure only you know.</p>
+          <p class="calc-hint" id="hwEconNote">Enter your power price to estimate daily profit and payback.</p>
         </div>
-        <p class="calc-hint calc-hint--warn" id="hwMarketNote">Revenue is <strong>gross mining revenue at today&rsquo;s network difficulty</strong>, before power, pool fees, downtime and any hosting cost. Difficulty has risen in most years, so a payback calculated at today&rsquo;s is the optimistic end of the range rather than a forecast.</p>
+        <p class="calc-hint calc-hint--warn" id="hwMarketNote">Revenue is <strong>gross at today’s difficulty</strong>, before power, pool fees, downtime and hosting. Current-difficulty payback is a scenario, not a forecast.</p>
         <div class="calc-table-scroll">
           <table class="calc-table hw-table">
             <thead>
@@ -197,11 +198,11 @@
             <tbody id="hwRows"></tbody>
           </table>
         </div>
-        <p class="calc-caption">Sorted by efficiency, best first &mdash; joules per terahash decides what a machine costs to run. It is not the same question as which is the best buy: <strong>payback</strong> is, because it is the only column that weighs the purchase price against what the machine earns. A cheap machine with mediocre efficiency often pays for itself first.</p>
+        <p class="calc-caption">Sorted by efficiency. Compare purchase price, operating costs and modeled payback before choosing.</p>
       </div>
 
       <div class="hw-send" id="quote">
-        <h2 class="calc-chart-title">Send it as a quote request</h2>
+        <h2 class="calc-chart-title">Request a quote</h2>
         <pre class="hw-preview" id="hwOrderPreview">No machines selected yet.</pre>
         <form class="form" data-mailto="hosting@protonminingco.com" data-subject="Hardware quote request via protonminingco.com">
           <input type="hidden" name="order" id="hwOrderText">
@@ -240,7 +241,7 @@
           <!-- The button opens a DRAFT and does not send. Where no mail client is
                registered nothing happens at all, so the address is printed here
                and the whole order can be copied instead. -->
-          <p class="form-note">This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>.</p>
+          <p class="form-note">Opens a draft in your mail app; nothing is sent until you send it. If no mail app opens, copy the order to <a href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>.</p>
         </form>
       </div>
     </div>
@@ -306,14 +307,14 @@
   </div>
 </footer>
 
-<script src="./site.js?v=042c9516"></script>
-<script src="./hero-anim.js?v=042c9516"></script>
-<script src="./miner-db.js?v=042c9516"></script>
-<script src="./calc-engine.js?v=042c9516"></script>
-<script src="./price-list.js?v=042c9516"></script>
-<script src="./facilities.js?v=042c9516"></script>
-<script src="./prepay.js?v=042c9516"></script>
-<script src="./cart.js?v=042c9516"></script>
-<script src="./hardware.js?v=042c9516"></script>
+<script src="./site.js?v=6ed6cd9c"></script>
+<script src="./hero-anim.js?v=6ed6cd9c"></script>
+<script src="./miner-db.js?v=6ed6cd9c"></script>
+<script src="./calc-engine.js?v=6ed6cd9c"></script>
+<script src="./price-list.js?v=6ed6cd9c"></script>
+<script src="./facilities.js?v=6ed6cd9c"></script>
+<script src="./prepay.js?v=6ed6cd9c"></script>
+<script src="./cart.js?v=6ed6cd9c"></script>
+<script src="./hardware.js?v=6ed6cd9c"></script>
 </body>
 </html>

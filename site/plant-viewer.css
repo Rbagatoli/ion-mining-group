@@ -69,3 +69,15 @@
     .plant-note { order: 4; }
 }
 @media (prefers-reduced-motion: reduce) { .plant-callout { transition: none; } }
+
+@media (max-width: 640px) {
+    .plant-callouts { gap: 6px; padding: 0 12px 12px; align-items: start; }
+    .plant-callout { min-height: 48px; padding: 10px; }
+    .plant-c-title { margin-bottom: 0; font-size: 10px; line-height: 1.5; }
+    .plant-c-desc { display: none; margin-top: 7px; }
+    .plant-callout[aria-pressed="true"] .plant-c-desc, .plant-callout:focus-visible .plant-c-desc { display: block; }
+    .plant-toolbar { gap: 4px; padding: 6px 10px 10px; }
+    .plant-toolbar button, .plant-toolbar [data-plant="inspect"], .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] { min-height: 44px; min-width: 44px; padding: 8px 9px; font-size: 10px; }
+    .plant-hint { margin-bottom: 2px; }
+    .plant-note { padding: 0 12px 12px; font-size: 11px; }
+}

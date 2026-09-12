@@ -266,3 +266,64 @@
         el.textContent = String(new Date().getFullYear());
     });
 })();
+
+/* Compact supporting detail on phones; preserve the full desktop/no-JS page. */
+(function () {
+    'use strict';
+    if (typeof window.matchMedia !== 'function') return;
+    var media = window.matchMedia('(max-width: 640px)');
+    document.documentElement.classList.add('mobile-details-ready');
+    // Placeholder-only company metrics do not contain a number to compare.
+    document.querySelectorAll('.hero-zone .stats').forEach(function (stats) {
+        var values = Array.from(stats.querySelectorAll('.stat-value'));
+        if (values.length && values.every(function (v) { return v.querySelector('.ph'); })) {
+            var section = stats.closest('section'); if (section) section.classList.add('mobile-empty-stats');
+        }
+    });
+    var groups = Array.from(document.querySelectorAll('details[data-mobile-details]')).map(function (el) {
+        return { el: el, summary: el.querySelector('summary'), mobileOpen: false, wasMobile: false };
+    });
+    function apply(group) {
+        if (group.wasMobile && !media.matches) group.mobileOpen = group.el.open;
+        group.el.open = media.matches ? group.mobileOpen : true;
+        group.wasMobile = media.matches;
+        if (group.summary) group.summary.tabIndex = media.matches ? 0 : -1;
+    }
+    groups.forEach(function (group) {
+        group.el.addEventListener('toggle', function () { if (media.matches) group.mobileOpen = group.el.open; });
+        if (group.summary) group.summary.addEventListener('click', function (event) { if (!media.matches) event.preventDefault(); });
+        apply(group);
+    });
+    document.querySelectorAll('[data-article-expand]').forEach(function (button) {
+        var article = button.closest('article'), sections = Array.from(article.querySelectorAll('details[data-mobile-details]'));
+        function update() {
+            var allOpen = sections.every(function (el) { return el.open; });
+            button.textContent = allOpen ? 'Show section headings' : 'Read full article';
+            button.setAttribute('aria-expanded', String(allOpen));
+        }
+        button.addEventListener('click', function () {
+            var open = !sections.every(function (el) { return el.open; });
+            sections.forEach(function (el) { el.open = open; }); update();
+        });
+        sections.forEach(function (el) { el.addEventListener('toggle', update); });
+        update();
+    });
+    function revealHash() {
+        var id; try { id = decodeURIComponent(location.hash.slice(1)); } catch (_) { return; }
+        if (!id) return;
+        var target = document.getElementById(id), ancestor = target;
+        while (ancestor) {
+            if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+            ancestor = ancestor.parentElement;
+        }
+        if (target) requestAnimationFrame(function () { target.scrollIntoView({ block: 'start' }); });
+    }
+    var change = function () { groups.forEach(apply); revealHash(); };
+    if (media.addEventListener) media.addEventListener('change', change); else media.addListener(change);
+    window.addEventListener('hashchange', revealHash);
+    document.addEventListener('click', function (event) {
+        var a = event.target.closest && event.target.closest('a[href^="#"]');
+        if (a && a.getAttribute('href') === location.hash) revealHash();
+    });
+    revealHash();
+})();

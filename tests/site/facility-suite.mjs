@@ -346,7 +346,7 @@ console.log(CHR + '=== a generator only owns its own section ===');
     ok(survived, 'a section between the diagram block and TERMS survives every generator');
 
     /* And the two that were lost are back, and stay back. */
-    ok(original.indexOf('Everything between the pad and the pool') >= 0,
+    ok(original.indexOf('What hosting includes.') >= 0,
        'the what-you-get section is on the page');
     /* The prepay ladder used to be here too and was lost the same way. It now lives on the
        catalogue page, rendered per site, so what is checked is that it is NOT here — one copy,
