@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./styles.css?v=5835041b">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=6ed6cd9c">
-<link rel="stylesheet" href="./mine-builder.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./plant-viewer.css?v=5835041b">
+<link rel="stylesheet" href="./mine-builder.css?v=5835041b">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -104,43 +104,47 @@
   <div class="wrap">
     <div class="eyebrow">Energy &amp; site owners</div>
     <h1 class="h-display">You are burning it.<br>We will buy it.</h1>
-    <p class="lede">Earn revenue from landfill gas, flared associated gas or surplus power. We finance, build and operate the mine on your land, without a pipeline or capital from you.</p>
+    <p class="lede" data-mobile-copy="Earn revenue from landfill gas, flared associated gas or surplus power. We finance, build and operate the mine on your land, without a pipeline or capital from you.">If you are flaring landfill gas, flaring associated gas, or curtailing generation because there is nowhere to send it, you have a product with no customer. We finance, build, and run the load that turns it into revenue &mdash; on your land, without a pipeline, and without you spending a dollar of capital.</p>
     <div class="btn-row">
       <a class="btn btn--primary" href="#submit">Submit a site</a>
       <a class="btn btn--ghost" href="#structures">See deal structures</a>
     </div>
-    <p class="hero-note">Need your gas or power back? We shut down on your schedule.</p>
+    <p class="hero-note" data-mobile-copy="Need your gas or power back? We shut down on your schedule.">Interruptible by design. If you need the gas or the power back, we shut down &mdash; on your schedule, not ours.</p>
   </div>
 </header>
 
 <!-- ===== WHO THIS IS FOR ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Energy we can buy</span><small>Landfill gas, flared gas and surplus power.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:44px">
       <div class="eyebrow">Who this is for</div>
-      <h2 class="h-section">Energy we can use.</h2>
-      <p class="lede">A local buyer for energy that cannot reach the market.</p>
+      <h2 class="h-section" data-mobile-copy="Energy we can use.">Four kinds of energy we can put to work.</h2>
+      <p class="lede" data-mobile-copy="A local buyer for energy that cannot reach the market.">All of them share one problem: production and demand are in the wrong place, or at the wrong time.</p>
     </div>
 
     <div class="grid grid-2 grid--matrix reveal energy-types">
       <div class="card card--hover">
         <h3 class="h-card">Landfill &amp; digester gas</h3>
-        <p>Collected gas from landfills, wastewater plants or digesters where RNG upgrading is uneconomic. We buy gas currently sent to a flare.</p>
+        <p data-mobile-copy="Collected gas from landfills, wastewater plants or digesters where RNG upgrading is uneconomic. We buy gas currently sent to a flare.">Municipal landfills, wastewater plants, and agricultural digesters with collected gas going to a flare because RNG upgrading does not pencil at your volume. We take gas that is currently destroyed for free and pay for it instead.</p>
       </div>
       <div class="card card--hover">
         <h3 class="h-card">Flared associated gas</h3>
-        <p>Gas without economic pipeline access. We generate power at the wellhead, reducing flaring and paying for the gas.</p>
+        <p data-mobile-copy="Gas without economic pipeline access. We generate power at the wellhead, reducing flaring and paying for the gas.">Oil producers with gas they cannot economically gather. Takeaway is constrained, the pipeline is years away, or the volume never justified the tie-in. We bring generation to the pad and consume the gas at the wellhead &mdash; cutting flare volume while turning a disposal cost into a revenue line.</p>
       </div>
       <div class="card card--hover">
         <h3 class="h-card">Curtailed &amp; stranded renewables</h3>
-        <p>We buy curtailed wind and solar power at the busbar, and stop when the grid needs it.</p>
+        <p data-mobile-copy="We buy curtailed wind and solar power at the busbar, and stop when the grid needs it.">Wind and solar assets that get dispatched down, hit negative pricing, or sit behind a congested interconnect. We become the buyer of last resort at the busbar &mdash; and we get out of the way instantly when the grid wants the power back.</p>
       </div>
       <div class="card card--hover">
         <h3 class="h-card">Behind-the-meter surplus</h3>
-        <p>Unused contracted capacity, self-generation or recoverable waste energy at industrial sites.</p>
+        <p data-mobile-copy="Unused contracted capacity, self-generation or recoverable waste energy at industrial sites.">Industrial sites with contracted capacity they are not using, self-generation running below load, or waste heat and pressure with no offtake. We soak up the margin between what you pay for and what you consume.</p>
       </div>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== THE PAD ===== -->
@@ -149,7 +153,7 @@
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">Your site, before and after</div>
       <h2 class="h-section">The flare goes out. Nothing else moves.</h2>
-      <p class="lede">Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.</p>
+      <p class="lede" data-mobile-copy="Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.">Choose your kind of site, then select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.</p>
     </div>
     <div class="dg-toggle reveal">
       <span class="dg-toggle-on" aria-current="true">Your site</span>
@@ -603,80 +607,90 @@
 <!-- ===== /THE PAD ===== -->
 
 <!-- ===== WHAT EACH SIDE BRINGS ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Who provides what?</span><small>You provide energy and access. We fund and run the mine.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:44px">
       <div class="eyebrow">The split</div>
-      <h2 class="h-section">Who provides what.</h2>
-      <p class="lede">You provide energy and site access. We fund and operate the mine.</p>
+      <h2 class="h-section" data-mobile-copy="Who provides what.">We bring the capital and the complexity.</h2>
+      <p class="lede" data-mobile-copy="You provide energy and site access. We fund and operate the mine.">Most partners want the revenue without inheriting a new line of business. That is exactly how we structure it.</p>
     </div>
 
     <div class="grid grid-2 reveal" style="gap:48px">
       <div>
         <h3 class="h-card metal-btc" style="margin-bottom:22px">What Proton brings</h3>
         <ul class="checks">
-          <li><strong>Capital.</strong> We fund generation, switchgear, containers, miners and site work.</li>
-          <li><strong>Permits.</strong> We handle air, noise, setbacks and interconnection requirements in your jurisdiction.</li>
-          <li><strong>Construction.</strong> Pads, foundations, gas treatment and electrical work under one contract.</li>
-          <li><strong>Operations.</strong> 24/7 monitoring, staffing, engine maintenance, miner repairs and curtailment.</li>
-          <li><strong>Restoration.</strong> Bonded removal and site restoration agreed at signing.</li>
+          <li data-mobile-copy="&lt;strong&gt;Capital.&lt;/strong&gt; We fund generation, switchgear, containers, miners and site work."><strong>All of the capital.</strong> Generation, switchgear, containers, machines, and site work are funded by us. Your capital budget is untouched.</li>
+          <li data-mobile-copy="&lt;strong&gt;Permits.&lt;/strong&gt; We handle air, noise, setbacks and interconnection requirements in your jurisdiction."><strong>Permitting and compliance.</strong> Air permits, noise, setbacks, and interconnect paperwork handled by our team, in your jurisdiction.</li>
+          <li data-mobile-copy="&lt;strong&gt;Construction.&lt;/strong&gt; Pads, foundations, gas treatment and electrical work under one contract."><strong>Build and commissioning.</strong> Pads, foundations, gas conditioning, and electrical, delivered as one contract with one accountable party.</li>
+          <li data-mobile-copy="&lt;strong&gt;Operations.&lt;/strong&gt; 24/7 monitoring, staffing, engine maintenance, miner repairs and curtailment."><strong>Operations, forever.</strong> Staffed and monitored 24/7. Engine maintenance, machine repair, and curtailment response are ours, not yours.</li>
+          <li data-mobile-copy="&lt;strong&gt;Restoration.&lt;/strong&gt; Bonded removal and site restoration agreed at signing."><strong>Decommissioning.</strong> Bonded removal and site restoration at end of term, written into the agreement up front.</li>
         </ul>
       </div>
       <div>
         <h3 class="h-card" style="margin-bottom:22px">What we need from you</h3>
         <ul class="checks">
-          <li><strong>Energy.</strong> Gas volume and composition over time, or available power and a load profile.</li>
+          <li data-mobile-copy="&lt;strong&gt;Energy.&lt;/strong&gt; Gas volume and composition over time, or available power and a load profile."><strong>The energy.</strong> Gas volume and composition over time, or available electrical capacity with a real load profile behind it.</li>
           <li><strong>A pad and access.</strong> Roughly <span class="ph">[X]</span> acres of usable ground per <span class="ph">[X]</span> MW, with year-round vehicle access.</li>
-          <li><strong>Site control.</strong> Surface rights or an assignable lease, verified in diligence.</li>
+          <li data-mobile-copy="&lt;strong&gt;Site control.&lt;/strong&gt; Surface rights or an assignable lease, verified in diligence."><strong>Site control.</strong> Surface rights or a lease you can assign, clean enough to survive diligence.</li>
           <li><strong>A term worth building for.</strong> Reserves, gas duration, or a contract that supports at least <span class="ph">[XX]</span> months of supply.</li>
-          <li><strong>Decision maker.</strong> A contact authorized to agree terms.</li>
+          <li data-mobile-copy="&lt;strong&gt;Decision maker.&lt;/strong&gt; A contact authorized to agree terms."><strong>A decision maker.</strong> Someone who can sign a term sheet without a six-month committee cycle.</li>
         </ul>
       </div>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== DEAL STRUCTURES ===== -->
-<section class="band" id="structures">
+<section class="band mobile-fold-section" id="structures">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Ways to get paid</span><small>Fixed payments, revenue share, or rent + royalty.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:44px">
       <div class="eyebrow">Deal structures</div>
       <h2 class="h-section">Three ways to get paid.</h2>
-      <p class="lede">Choose fixed payments, a share of mining revenue, or rent plus a royalty.</p>
+      <p class="lede" data-mobile-copy="Choose fixed payments, a share of mining revenue, or rent plus a royalty.">Pick the risk profile you want. Fixed and predictable, or tied to the upside &mdash; we will quote any of them on the same site.</p>
     </div>
 
     <div class="grid grid-3 grid--matrix reveal">
       <div class="card card--hover">
         <div class="track-tag">Structure 01</div>
         <h3 class="h-card">Gas or power purchase</h3>
-        <p>We buy gas at <span class="ph">[$X.XX]</span>/MMBtu or power at <span class="ph">[$0.0XX]</span>/kWh under take-or-pay style terms. You avoid direct bitcoin-price exposure; payment still depends on our ability to meet the contract.</p>
+        <p data-mobile-copy="We buy gas at &lt;span class=&quot;ph&quot;&gt;[$X.XX]&lt;/span&gt;/MMBtu or power at &lt;span class=&quot;ph&quot;&gt;[$0.0XX]&lt;/span&gt;/kWh under take-or-pay style terms. You avoid direct bitcoin-price exposure; payment still depends on our ability to meet the contract.">We buy your gas at a fixed <span class="ph">[$X.XX]</span>/MMBtu, or your power at <span class="ph">[$0.0XX]</span>/kWh, on a take-or-pay style contract. Simple, bankable, and it moves the bitcoin price risk off your side of the table. What it does not do is remove that risk from the deal: a fixed price is only as good as the company paying it, so ask what stands behind the obligation before you weigh it against a share.</p>
       </div>
       <div class="card card--hover">
         <div class="track-tag">Structure 02</div>
         <h3 class="h-card">Revenue share</h3>
-        <p>You supply energy; we fund the mine. Mining revenue splits <span class="ph">[XX]/[XX]</span> after agreed operating costs, with open-book reporting. Returns vary with production and price.</p>
+        <p data-mobile-copy="You supply energy; we fund the mine. Mining revenue splits &lt;span class=&quot;ph&quot;&gt;[XX]/[XX]&lt;/span&gt; after agreed operating costs, with open-book reporting. Returns vary with production and price.">You supply the energy, we supply everything else, and mining revenue splits <span class="ph">[XX]</span>/<span class="ph">[XX]</span> after agreed operating costs. Lower floor than a fixed contract, meaningfully higher ceiling. Reporting is open-book, with the same telemetry we run on.</p>
       </div>
       <div class="card card--hover">
         <div class="track-tag">Structure 03</div>
         <h3 class="h-card">Lease plus royalty</h3>
-        <p>Receive <span class="ph">[$X,XXX]</span>/month for the pad and interconnect, plus a <span class="ph">[X]%</span> royalty on gross production. Suits separate landowners and energy owners, including municipalities.</p>
+        <p data-mobile-copy="Receive &lt;span class=&quot;ph&quot;&gt;[$X,XXX]&lt;/span&gt;/month for the pad and interconnect, plus a &lt;span class=&quot;ph&quot;&gt;[X]%&lt;/span&gt; royalty on gross production. Suits separate landowners and energy owners, including municipalities.">You lease us the pad and the interconnect for <span class="ph">[$X,XXX]</span> per month and take a <span class="ph">[X]</span>% royalty on gross production. Most common where the landowner is not the energy owner, or where a municipality needs a clean, predictable line item.</p>
       </div>
     </div>
 
     <p class="lede reveal vgap" style="--vg:32px; font-size:15px">Every structure includes an interruption right: you can call the load down for operational, contractual, or emergency reasons. <span class="ph">[NOTICE REQUIREMENTS AND ANY MINIMUM-TAKE CARVE-OUTS]</span></p>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== SITE CRITERIA ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Site requirements</span><small>Gas or power, land access and reliable supply.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:36px">
       <div class="eyebrow">Screening criteria</div>
       <h2 class="h-section">What a buildable site looks like.</h2>
-      <p class="lede">Send a near-fit site too. We assess sizing and conditions individually.</p>
+      <p class="lede" data-mobile-copy="Send a near-fit site too. We assess sizing and conditions individually.">If your site is close on most of these, send it anyway &mdash; the edges are negotiable and we would rather look than guess.</p>
     </div>
 
-    <details class="mobile-details" data-mobile-details open><summary>Gas, power, land &amp; supply requirements</summary><div class="mobile-details-body">
+
 <div class="spec reveal">
       <div class="spec-row">
         <div class="spec-key">Gas volume</div>
@@ -725,92 +739,104 @@
         </div>
       </div>
     </div>
+
+
 </div></details>
-  </div>
+</div>
 </section>
 
 <!-- ===== TIMELINE ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Project stages</span><small>From first contact to an operating mine.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:36px">
       <div class="eyebrow">Timeline</div>
       <h2 class="h-section">From first email to first hash.</h2>
       <p class="lede">A straightforward wellsite runs <span class="ph">[XX]</span>&ndash;<span class="ph">[XX]</span> weeks end to end. Permitting is usually the long pole, not construction.</p>
     </div>
 
-    <details class="mobile-details" data-mobile-details open><summary>View the five project stages</summary><div class="mobile-details-body">
+
 <div class="steps reveal">
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Screen &mdash; days 1 to 5</h3>
-          <p>Send volumes, gas composition, location and land status. We return a decision and identify any missing evidence.</p>
+          <p data-mobile-copy="Send volumes, gas composition, location and land status. We return a decision and identify any missing evidence.">You send volumes, composition, location, and land status. We run it through our screening model and come back with a yes, a no, or the two specific things that would turn a no into a yes. We do not sit on sites.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Term sheet &mdash; weeks 2 to 4</h3>
-          <p>Agree non-binding price, structure, supply term, interruption rights and pad requirements under NDA.</p>
+          <p data-mobile-copy="Agree non-binding price, structure, supply term, interruption rights and pad requirements under NDA.">Non-binding terms covering structure, price, term, interruption rights, and pad requirements. Signed under NDA, with enough detail that neither side is surprised later.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Diligence &mdash; weeks 4 to 10</h3>
-          <p>We inspect the site, sample gas, review land rights and permits, and test economics across hashprice scenarios.</p>
+          <p data-mobile-copy="We inspect the site, sample gas, review land rights and permits, and test economics across hashprice scenarios.">Site walk, metered gas sampling, title and surface review, permit path confirmation, and a full economic model across hashprice scenarios. This is where a site either earns the build or gets returned to you with our reasoning.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Build &mdash; weeks 10 to 20</h3>
-          <p>Install site works, gas treatment, generation, electrical equipment, containers and network. Long-lead equipment is ordered at term-sheet signing.</p>
+          <p data-mobile-copy="Install site works, gas treatment, generation, electrical equipment, containers and network. Long-lead equipment is ordered at term-sheet signing.">Pad, foundations, gas conditioning, generation, switchgear, containers, and network. Long-lead equipment is ordered at term-sheet signing, not at the end of diligence, which is how the schedule holds.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Energize and operate</h3>
-          <p>Commission the mine, then monitor 24/7. Production reports follow your payment schedule, with direct access to the operating team.</p>
+          <p data-mobile-copy="Commission the mine, then monitor 24/7. Production reports follow your payment schedule, with direct access to the operating team.">Commissioning, then continuous operation with 24/7 monitoring. You get production reporting on the same cadence as your payments, and a direct line to the people actually running the site.</p>
         </div>
       </div>
     </div>
+
+
 </div></details>
-  </div>
+</div>
 </section>
 
 <!-- ===== ENVIRONMENTAL ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Gas use &amp; emissions</span><small>How the project compares with your existing flare.</small></summary><div class="mobile-details-body">
+
     <div class="grid grid-2 grid--split reveal">
       <div>
         <div class="eyebrow">Emissions</div>
         <h2 class="h-section">Better than the flare it replaces.</h2>
-        <p class="lede lede--gap">Compare measured gas use and methane destruction against the site’s existing flare or venting.</p>
+        <p class="lede lede--gap" data-mobile-copy="Compare measured gas use and methane destruction against the site’s existing flare or venting.">This is not a marketing claim about being green. It is a straightforward comparison against what happens to the gas today.</p>
       </div>
-      <details class="mobile-details" data-mobile-details open><summary>Gas use &amp; emissions details</summary><div class="mobile-details-body">
+
 <ul class="checks">
         <li><strong>Flares are unreliable.</strong> An open flare can blow out in wind or run incomplete, releasing unburned methane &mdash; a far more potent greenhouse gas than the CO&#8322; it would have become.</li>
         <li><strong>Engines are enclosed and monitored.</strong> Combustion happens in a controlled chamber at consistent temperature, achieving substantially higher methane destruction than an intermittent open flame.</li>
         <li><strong>Venting stops entirely.</strong> Where gas is currently vented rather than flared, the improvement is not incremental &mdash; it is the difference between releasing methane and destroying it.</li>
         <li><strong>Measured, not asserted.</strong> We meter what we consume and can report volumes and destruction efficiency into your existing environmental reporting. <span class="ph">[SPECIFIC REPORTING STANDARDS OR CREDIT PROGRAMS YOU PARTICIPATE IN]</span></li>
       </ul>
-</div></details>
+
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== SUBMIT A SITE ===== -->
-<section class="band" id="submit">
+<section class="band mobile-fold-section" id="submit">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Submit a site</span><small>Share your energy, location and contact details.</small></summary><div class="mobile-details-body">
+
     <div class="grid grid-2 grid--split reveal">
       <div>
         <div class="eyebrow">Submit a site</div>
         <h2 class="h-section">Send us what you have.</h2>
-        <p class="lede lede--gap">Start with energy volumes, location and who controls the land. A data room is not required.</p>
-        <p class="lede vgap" style="--vg:16px; font-size:15px">Email <a href="mailto:energy@protonminingco.com">energy@protonminingco.com</a>. We answer every submission and explain any decline.</p>
-        <p class="lede vgap" style="--vg:16px; font-size:15px">Submissions are confidential. We can sign your NDA before diligence.</p>
+        <p class="lede lede--gap" data-mobile-copy="Start with energy volumes, location and who controls the land. A data room is not required.">You do not need a data room. Volumes, a location, and who controls the land is enough for us to tell you whether it is worth either side&rsquo;s time.</p>
+        <p class="lede vgap" style="--vg:16px; font-size:15px" data-mobile-copy="Email &lt;a href=&quot;mailto:energy@protonminingco.com&quot;&gt;energy@protonminingco.com&lt;/a&gt;. We answer every submission and explain any decline.">Prefer email? Write to <a class="accent" href="mailto:energy@protonminingco.com">energy@protonminingco.com</a>. We reply to every submission, including the ones we pass on &mdash; with the reason.</p>
+        <p class="lede vgap" style="--vg:16px; font-size:15px" data-mobile-copy="Submissions are confidential. We can sign your NDA before diligence.">Everything you send is treated as confidential. We will sign your NDA before diligence, or send you ours.</p>
       </div>
 
       <form class="form" data-mailto="energy@protonminingco.com" data-subject="Site submission via protonminingco.com">
@@ -870,15 +896,19 @@
           <textarea id="s-notes" name="notes" placeholder="Gas composition, expected duration, current disposition (flared or vented), timeline pressure, preferred deal structure — whatever you have."></textarea>
         </div>
         <button class="btn btn--primary" type="submit">Submit site</button>
-        <p class="form-note">Opens a draft to <a href="mailto:energy@protonminingco.com">energy@protonminingco.com</a> in your mail app. Review it there before sending.</p>
+        <p class="form-note" data-mobile-copy="Opens a draft to &lt;a href=&quot;mailto:energy@protonminingco.com&quot;&gt;energy@protonminingco.com&lt;/a&gt; in your mail app. Review it there before sending.">This opens a pre-filled message in your mail app addressed to energy@protonminingco.com &mdash; nothing is sent until you press send there.</p>
       </form>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== FAQ ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Common questions</span></summary><div class="mobile-details-body">
+
     <div class="reveal" style="margin-bottom:8px">
       <div class="eyebrow">Questions</div>
       <h2 class="h-section">What owners ask first.</h2>
@@ -913,7 +943,9 @@
         <p>Yes. Small pads are frequently buildable when they can be aggregated with neighbouring sites, and one <span class="ph">[XXX]</span> Mcf/d location in the right place can anchor a cluster. Send it. The screening costs you an email and we answer either way.</p>
       </details>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== FOOTER ===== -->
@@ -950,23 +982,29 @@
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
-      <div class="footer-col">
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
         <h4>Services</h4>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./index.html#operate">Site development</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
         <h4>Legal</h4>
         <a href="./privacy.html">Privacy</a>
         <a href="./contact.html">Media &amp; enquiries</a>
-      </div>
+
+</div></details></div>
     </div>
     <div class="footer-bottom">
       <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
@@ -975,23 +1013,23 @@
   </div>
 </footer>
 
-<script src="./site.js?v=6ed6cd9c"></script>
-<script src="./cart.js?v=6ed6cd9c"></script>
-<script src="./diagram-engine.js?v=6ed6cd9c"></script>
-<script src="./hero-anim.js?v=6ed6cd9c"></script>
-<script src="./pad-geometry.js?v=6ed6cd9c"></script>
-<script src="./landfill-geometry.js?v=6ed6cd9c"></script>
-<script src="./site-kit.js?v=6ed6cd9c"></script>
-<script src="./scene-landfill-now.js?v=6ed6cd9c"></script>
-<script src="./scene-landfill-ion.js?v=6ed6cd9c"></script>
-<script src="./scene-pad-now.js?v=6ed6cd9c"></script>
-<script src="./scene-pad-ion.js?v=6ed6cd9c"></script>
-<script src="./plant-viewer.js?v=6ed6cd9c" data-module-src="./mine-builder-scene.js?v=6ed6cd9c"></script>
-<script src="./calc-engine.js?v=6ed6cd9c"></script>
-<script src="./miner-db.js?v=6ed6cd9c"></script>
-<script src="./price-list.js?v=6ed6cd9c"></script>
-<script src="./mine-builder-model.js?v=6ed6cd9c"></script>
-<script src="./mine-builder.js?v=6ed6cd9c"></script>
+<script src="./site.js?v=5835041b"></script>
+<script src="./cart.js?v=5835041b"></script>
+<script src="./diagram-engine.js?v=5835041b"></script>
+<script src="./hero-anim.js?v=5835041b"></script>
+<script src="./pad-geometry.js?v=5835041b"></script>
+<script src="./landfill-geometry.js?v=5835041b"></script>
+<script src="./site-kit.js?v=5835041b"></script>
+<script src="./scene-landfill-now.js?v=5835041b"></script>
+<script src="./scene-landfill-ion.js?v=5835041b"></script>
+<script src="./scene-pad-now.js?v=5835041b"></script>
+<script src="./scene-pad-ion.js?v=5835041b"></script>
+<script src="./plant-viewer.js?v=5835041b" data-module-src="./mine-builder-scene.js?v=5835041b"></script>
+<script src="./calc-engine.js?v=5835041b"></script>
+<script src="./miner-db.js?v=5835041b"></script>
+<script src="./price-list.js?v=5835041b"></script>
+<script src="./mine-builder-model.js?v=5835041b"></script>
+<script src="./mine-builder.js?v=5835041b"></script>
 
 
 

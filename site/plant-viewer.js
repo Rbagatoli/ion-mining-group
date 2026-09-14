@@ -170,7 +170,7 @@
                     '<p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag shift · Right-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom · Two fingers shift</span></p></div>'+
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
                     '<div class="plant-toolbar" aria-label="3D view controls">'+
-                    '<p class="plant-hint">Select a label for details</p>'+
+                    '<p class="plant-hint">Select a label to explore</p>'+
                     '<button type="button" data-plant="power" aria-pressed="true" hidden>Power down</button>'+
                     '<button type="button" data-plant="inspect" aria-pressed="false">Inside a container</button>'+
                     '<button type="button" data-plant="xray" aria-pressed="false">X-ray off</button>'+

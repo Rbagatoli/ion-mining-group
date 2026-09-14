@@ -33,7 +33,8 @@ const PAGES = {
     insertBefore: '<!-- ===== THE MODEL ===== -->',
     eyebrow: 'Inside our mine',
     heading: 'What we actually build.',
-    lede: 'Explore the gas treatment, generation, electrical equipment and miners inside a Proton mine.',
+    lede: 'Gas that would otherwise be flared, engines to burn it, a transformer, and containers of machines. Cut the wall away and this is the whole of it.',
+    mobileLede: 'Explore the gas treatment, generation, electrical equipment and miners inside a Proton mine.',
     deps: ['site-kit.js'],
     chain: 'site',
     views: [
@@ -49,7 +50,8 @@ const PAGES = {
     insertBefore: '<!-- ===== TERMS ===== -->',
     eyebrow: 'Inside the container',
     heading: 'Where your machines actually sit.',
-    lede: 'Explore a hydro-cooled container, then use the slider to inspect one miner.',
+    lede: 'The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.',
+    mobileLede: 'Explore a hydro-cooled container, then use the slider to inspect one miner.',
     link: 'hosting',
     chain: 'cont',
     /* scene-hosting.js reads KIT.COOLER so its roof cooler cannot drift from the one
@@ -89,7 +91,8 @@ const PAGES = {
        existing equipment" and lets whichever drawing is on screen be the
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
-    lede: 'Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.',
+    lede: 'Choose your kind of site, then select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
+    mobileLede: 'Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
@@ -613,13 +616,13 @@ function build(key) {
     </div>${builder}` : comparison;
 
   const section = `<!-- ===== ${cfg.marker} ===== -->
-<section class="band" id="${cfg.sectionId}">
-  <div class="wrap">
+<section class="band${key === 'hosting' ? ' mobile-fold-section' : ''}" id="${cfg.sectionId}">
+  <div class="wrap">${key === 'hosting' ? '<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Inside a hosting container</span><small>Explore the cooling loop, racks and equipment.</small></summary><div class="mobile-details-body">' : ''}
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
-      <p class="lede">${esc(cfg.lede)}</p>
-    </div>${toggle}${content}
+      <p class="lede" data-mobile-copy="${esc(cfg.mobileLede || cfg.lede)}">${esc(cfg.lede)}</p>
+    </div>${toggle}${content}${key === 'hosting' ? '</div></details>' : ''}
   </div>
 </section>
 <!-- ===== /${cfg.marker} ===== -->

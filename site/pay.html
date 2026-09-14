@@ -15,7 +15,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./styles.css?v=5835041b">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -109,8 +109,8 @@
   <div class="wrap">
     <div class="calc-head">
       <p class="eyebrow">Payment</p>
-      <h1 class="h-display" style="font-size:clamp(30px,4vw,44px)">Complete your payment.</h1>
-      <p class="lede">Choose your payment method below. Bitcoin confirmations update automatically; wire transfers are confirmed by email.</p>
+      <h1 class="h-display" style="font-size:clamp(30px,4vw,44px)" data-mobile-copy="Complete your payment.">Send the payment,<br>and we take it from there.</h1>
+      <p class="lede" data-mobile-copy="Choose your payment method below. Bitcoin confirmations update automatically; wire transfers are confirmed by email.">Pay in bitcoin, on-chain or over Lightning. The page updates itself the moment the payment confirms &mdash; you do not need to tell us.</p>
     </div>
   </div>
 </section>
@@ -174,7 +174,7 @@
 
         <div class="pay-rail" id="payLn" hidden>
           <h3 class="pay-rail-title">Lightning</h3>
-          <p class="calc-hint">For smaller payments. If the Lightning quote expires, reload for a new one.</p>
+          <p class="calc-hint" data-mobile-copy="For smaller payments. If the Lightning quote expires, reload for a new one.">Faster, and better suited to the smaller amounts. This quote expires &mdash; if it lapses, reload and a fresh one is issued.</p>
           <p class="pay-bolt" id="payBolt">&mdash;</p>
           <div class="hw-actions">
             <button type="button" class="btn btn--ghost btn--sm" id="payCopyBolt">Copy the invoice</button>
@@ -184,7 +184,7 @@
 
         <div class="pay-rail" id="payCard" hidden>
           <h3 class="pay-rail-title">Card</h3>
-          <p class="calc-hint">Pay securely on Stripe, then return here. Card details go to Stripe, never this site.</p>
+          <p class="calc-hint" data-mobile-copy="Pay securely on Stripe, then return here. Card details go to Stripe, never this site.">You will be handed to Stripe to enter your card, then brought back here. <strong>Your card details never touch this site.</strong></p>
           <p class="calc-hint" id="payCardOnly">Cards are available for the deposit. The balance is settled by wire or bitcoin.</p>
           <div class="hw-actions">
             <button type="button" class="btn btn--primary" id="payCardGo">Pay by card</button>
@@ -231,7 +231,7 @@
       <div class="pay-done" id="payDone" hidden>
         <h2 class="calc-chart-title">Payment received</h2>
         <p class="pay-addr" id="payDoneAmount">&mdash;</p>
-        <p class="form-note" id="payDoneNote">We will email the confirmed price, lead time and freight details. <a id="payDoneLink" href="./order.html">Track your order</a>.</p>
+        <p class="form-note" id="payDoneNote" data-mobile-copy="We will email the confirmed price, lead time and freight details. &lt;a id=&quot;payDoneLink&quot; href=&quot;./order.html&quot;&gt;Track your order&lt;/a&gt;.">Thank you. We are placing the order with our distributor and will email you the confirmed price, the lead time and the freight details. You can follow it on <a id="payDoneLink" href="./order.html">the order page</a>.</p>
       </div>
 
     </div>
@@ -271,23 +271,29 @@
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
-      <div class="footer-col">
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
         <h4>Services</h4>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./index.html#operate">Site development</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
         <h4>Legal</h4>
         <a href="./privacy.html">Privacy</a>
         <a href="./contact.html">Media &amp; enquiries</a>
-      </div>
+
+</div></details></div>
     </div>
     <div class="footer-bottom">
       <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
@@ -296,14 +302,14 @@
   </div>
 </footer>
 
-<script src="./site.js?v=6ed6cd9c"></script>
-<script src="./hero-anim.js?v=6ed6cd9c"></script>
-<script src="./miner-db.js?v=6ed6cd9c"></script>
-<script src="./price-list.js?v=6ed6cd9c"></script>
-<script src="./cart.js?v=6ed6cd9c"></script>
-<script src="./bank-details.js?v=6ed6cd9c"></script>
-<script src="./orders-demo.js?v=6ed6cd9c"></script>
-<script src="./orders-api.js?v=6ed6cd9c"></script>
-<script src="./pay.js?v=6ed6cd9c"></script>
+<script src="./site.js?v=5835041b"></script>
+<script src="./hero-anim.js?v=5835041b"></script>
+<script src="./miner-db.js?v=5835041b"></script>
+<script src="./price-list.js?v=5835041b"></script>
+<script src="./cart.js?v=5835041b"></script>
+<script src="./bank-details.js?v=5835041b"></script>
+<script src="./orders-demo.js?v=5835041b"></script>
+<script src="./orders-api.js?v=5835041b"></script>
+<script src="./pay.js?v=5835041b"></script>
 </body>
 </html>

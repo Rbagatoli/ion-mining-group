@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./styles.css?v=5835041b">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/hosting.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/hosting.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=6ed6cd9c">
-<link rel="stylesheet" href="./hosting-experience.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./plant-viewer.css?v=5835041b">
+<link rel="stylesheet" href="./hosting-experience.css?v=5835041b">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -104,7 +104,7 @@
   <div class="wrap">
     <div class="eyebrow">Hosting</div>
     <h1 class="h-display">Your machines.<br>Our power.<br>Your bitcoin.</h1>
-    <p class="lede">You buy the machines from us. We provide power, cooling, network, security and on-site support. Your pool pays your wallet directly.</p>
+    <p class="lede" data-mobile-copy="You buy the machines from us. We provide power, cooling, network, security and on-site support. Your pool pays your wallet directly.">You buy the machines from us and we handle everything from the pad to the pool: metered power, cooling, network, security, and hands on site. Your hashrate points where you tell it to, and payouts never touch our wallet.</p>
     <div class="btn-row">
       <a class="btn btn--primary" href="./hardware.html">Start mining</a>
       <a class="btn btn--ghost" href="#terms">See commercial terms</a>
@@ -127,7 +127,7 @@
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">Where you can mine</div>
       <h2 class="h-section">Pick a site.</h2>
-      <p class="lede">Compare regions, indicative rates and capacity. Choose a site for your hosting quote.</p>
+      <p class="lede" data-mobile-copy="Compare regions, indicative rates and capacity. Choose a site for your hosting quote.">Compare our hosting regions, capacity and pricing. You choose the location; we handle the pad, the power and the hands on site.</p>
     </div>
 
     <!-- hosting-experience:begin -->
@@ -245,7 +245,8 @@
          the same at every site, which is what makes them showable here. The RATES are not —
          five sites have five of them — so those wait until a site is chosen and appear on the
          catalogue page priced for it. Generated from site/prepay.js. -->
-    <div class="pp-bar reveal">
+    <details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Prepaid hosting discounts</span><small>View discounts by prepaid term.</small></summary><div class="mobile-details-body">
+<div class="pp-bar reveal">
       <!-- prepaybar:begin -->
         <div class="pp-bar-lead">Prepay your electricity</div>
         <div class="pp-bar-track">
@@ -265,6 +266,7 @@
         <div class="pp-bar-foot">Prepaying fixes the discount, not the rate. Power is indexed to gas and CPI, and the discount applies to whatever the prevailing rate is when you are billed. Prepay covers electricity only &mdash; hosting, pad and maintenance are billed monthly throughout the term.</div>
       <!-- prepaybar:end -->
     </div>
+</div></details>
 
     <p class="fac-note reveal">Capacity, power price and availability are
       <span class="fac-ph">indicative</span> and are confirmed on your hosting agreement. Power is
@@ -274,12 +276,12 @@
 </section>
 
 <!-- ===== INSIDE A HOSTED CONTAINER ===== -->
-<section class="band" id="inside-container">
-  <div class="wrap">
+<section class="band mobile-fold-section" id="inside-container">
+  <div class="wrap"><details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Inside a hosting container</span><small>Explore the cooling loop, racks and equipment.</small></summary><div class="mobile-details-body">
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">Inside the container</div>
       <h2 class="h-section">Where your machines actually sit.</h2>
-      <p class="lede">Explore a hydro-cooled container, then use the slider to inspect one miner.</p>
+      <p class="lede" data-mobile-copy="Explore a hydro-cooled container, then use the slider to inspect one miner.">The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.</p>
     </div>
     <div class="dg-toggle reveal">
       <a class="dg-toggle-to dg-toggle-to--back" href="./energy.html#the-pad"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
@@ -456,21 +458,23 @@
       <li><span class="dg-list-title">Integrated supply</span><span class="dg-list-desc">It lives inside the chassis, not in a brick beside it</span></li>
       <li><span class="dg-list-title">Control board</span><span class="dg-list-desc">Ethernet, reset and IP report, on a strip facing the service end</span></li>
       <li><span class="dg-list-title">Copper busbars</span><span class="dg-list-desc">The bolted DC feed from the supply into each board</span></li>
-    </ol>
+    </ol></div></details>
   </div>
 </section>
 <!-- ===== /INSIDE A HOSTED CONTAINER ===== -->
 
 <!-- ===== INCLUDED ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>What hosting includes</span><small>Power, cooling, network and on-site support.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:36px">
       <div class="eyebrow">What you get</div>
-      <h2 class="h-section">What hosting includes.</h2>
-      <p class="lede">Power, cooling, network, monitoring and remote hands in one rate. Replacement parts are billed at cost.</p>
+      <h2 class="h-section" data-mobile-copy="What hosting includes.">Everything between the pad and the pool.</h2>
+      <p class="lede" data-mobile-copy="Power, cooling, network, monitoring and remote hands in one rate. Replacement parts are billed at cost.">One rate covers the whole stack. No separate line items for racking, reboots, or replacing a dead PSU.</p>
     </div>
 
-    <details class="mobile-details" data-mobile-details open><summary>Power, cooling &amp; service details</summary><div class="mobile-details-body">
+
 <div class="spec reveal">
       <div class="spec-row">
         <div class="spec-key">Power</div>
@@ -521,20 +525,24 @@
         </div>
       </div>
     </div>
+
+
 </div></details>
-  </div>
+</div>
 </section>
 
 <!-- ===== TERMS ===== -->
-<section class="band" id="terms">
+<section class="band mobile-fold-section" id="terms">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Rates &amp; contract terms</span><small>Billing, deposits, minimums and exit terms.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:36px">
       <div class="eyebrow">Commercial terms</div>
-      <h2 class="h-section">Hosting terms.</h2>
-      <p class="lede">Rates and terms depend on the site and fleet size. Request a confirmed quote.</p>
+      <h2 class="h-section" data-mobile-copy="Hosting terms.">Priced per kilowatt-hour, billed on what you actually use.</h2>
+      <p class="lede" data-mobile-copy="Rates and terms depend on the site and fleet size. Request a confirmed quote.">Rates move with the site and the size of the deployment. These are the standard terms; large fleets get their own sheet.</p>
     </div>
 
-    <details class="mobile-details" data-mobile-details open><summary>Rates, billing, deposits &amp; exit terms</summary><div class="mobile-details-body">
+
 <div class="spec reveal">
       <div class="spec-row">
         <div class="spec-key">Rate</div>
@@ -581,24 +589,28 @@
         </div>
       </div>
     </div>
+
+
 </div></details>
-  </div>
+</div>
 </section>
 
 <!-- ===== REQUIREMENTS ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>What we need from you</span><small>Fleet, pool and delivery details.</small></summary><div class="mobile-details-body">
+
     <div class="grid grid-2 grid--split reveal">
       <div>
         <div class="eyebrow">Before you ship</div>
         <h2 class="h-section">What we need from you.</h2>
-        <p class="lede">Need miners too? <a href="./hardware.html">Choose machines</a> and request hardware and hosting together.</p>
-        <p class="lede">Choose your fleet and supply your pool details.</p>
+        <p class="lede" data-mobile-copy="Need miners too? &lt;a href=&quot;./hardware.html&quot;&gt;Choose machines&lt;/a&gt; and request hardware and hosting together.">Do not have the machines yet? <a href="./hardware.html">Pick them from our catalogue</a> and we will source and host them on one agreement.</p>
+        <p class="lede" data-mobile-copy="Choose your fleet and supply your pool details.">Short list, and shorter because the machines come from us.</p>
         <div class="btn-row">
           <a class="btn btn--primary" href="./contact.html?topic=hosting">Request a quote</a>
         </div>
       </div>
-      <details class="mobile-details" data-mobile-details open><summary>Fleet, pool &amp; delivery checklist</summary><div class="mobile-details-body">
+
 <ul class="checks">
         <li><strong>Machine selection.</strong> Model and quantity from our catalogue. We confirm the cooling slot before anything ships.</li>
         <li><strong>Cooling class.</strong> <span class="ph">[SUPPORTED MODELS / GENERATIONS]</span>. Anything drawing more than <span class="ph">[XXXX]</span> W per unit needs a hydro slot.</li>
@@ -607,65 +619,73 @@
         <li><strong>Freight.</strong> We arrange inbound from the supplier, receive, inspect, photograph, and report any damage within <span class="ph">[XX]</span> hours of delivery.</li>
         <li><strong>Signed agreement and deposit.</strong> Then we schedule your rack window.</li>
       </ul>
-</div></details>
+
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== ONBOARDING ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Getting started</span><small>Quote, reserve, deliver and go live.</small></summary><div class="mobile-details-body">
+
     <div class="reveal sec-head" style="--sh:36px">
       <div class="eyebrow">Onboarding</div>
       <h2 class="h-section">From first call to first share.</h2>
       <p class="lede">Typically <span class="ph">[X]</span>&ndash;<span class="ph">[X]</span> weeks, depending on freight and available capacity.</p>
     </div>
 
-    <details class="mobile-details" data-mobile-details open><summary>View the five onboarding steps</summary><div class="mobile-details-body">
+
 <div class="steps reveal">
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Scope and quote</h3>
-          <p>Tell us your fleet and start date. We quote the site, rate, capacity and terms, usually within <span class="ph">[X]</span> business days.</p>
+          <p data-mobile-copy="Tell us your fleet and start date. We quote the site, rate, capacity and terms, usually within &lt;span class=&quot;ph&quot;&gt;[X]&lt;/span&gt; business days.">You choose the machines and a target start date. We come back with the site, the rate, the available slot, and a term sheet &mdash; usually within <span class="ph">[X]</span> business days.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Agreement and deposit</h3>
-          <p>Sign the agreement and pay the deposit to reserve capacity. A named contact stays with your account.</p>
+          <p data-mobile-copy="Sign the agreement and pay the deposit to reserve capacity. A named contact stays with your account.">Hosting agreement signed, deposit received, capacity reserved in your name. You get a named point of contact who stays with your account.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Freight and receiving</h3>
-          <p>Ship to the agreed site. We count, serial-scan and photograph each pallet, reporting discrepancies before racking.</p>
+          <p data-mobile-copy="Ship to the agreed site. We count, serial-scan and photograph each pallet, reporting discrepancies before racking.">You ship to the site address on the agreement. Every pallet is opened, counted, serial-scanned, and photographed. Discrepancies are reported before anything is racked.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Rack and commission</h3>
-          <p>We install miners, connect your pool and test rated hashrate and power before marking them live.</p>
+          <p data-mobile-copy="We install miners, connect your pool and test rated hashrate and power before marking them live.">Units are installed, mapped to your account, pointed at your pool, and burned in. We do not call a machine live until it is holding rated hashrate at rated power.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num"></div>
         <div>
           <h3>Live and reporting</h3>
-          <p>Dashboard and alerts start on day one. Your first statement arrives at the end of the billing period.</p>
+          <p data-mobile-copy="Dashboard and alerts start on day one. Your first statement arrives at the end of the billing period.">Dashboard access on day one, alerting from the first hour, and your first statement at the end of the billing period. From there it is our job to keep it boring.</p>
         </div>
       </div>
     </div>
+
+
 </div></details>
-  </div>
+</div>
 </section>
 
 <!-- ===== FAQ ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Common questions</span></summary><div class="mobile-details-body">
+
     <div class="reveal" style="margin-bottom:8px">
       <div class="eyebrow">Questions</div>
       <h2 class="h-section">Things people ask before signing.</h2>
@@ -700,7 +720,9 @@
         <p>The floor is <span class="ph">[XX]</span> machines, and the economics get better for you above <span class="ph">[XXX]</span>. Fleets over <span class="ph">[XXXX]</span> units get dedicated container space, a custom rate, and their own maintenance schedule. Tell us what you have and we will tell you honestly whether we are the right home for it.</p>
       </details>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== CTA ===== -->
@@ -709,7 +731,7 @@
     <div class="cta-band reveal">
       <div class="center">
         <h2 class="h-section">Choose your machines.</h2>
-        <p class="lede vgap" style="--vg:18px">Choose your fleet and start date. We will confirm a site, rate and schedule.</p>
+        <p class="lede vgap" style="--vg:18px" data-mobile-copy="Choose your fleet and start date. We will confirm a site, rate and schedule.">Pick them from the catalogue and tell us when you want them running. We will come back with a site, a rate, and a date.</p>
         <div class="btn-row">
           <a class="btn btn--primary" href="./contact.html?topic=hosting">Request a quote</a>
           <a class="btn btn--ghost" href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>
@@ -753,23 +775,29 @@
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
-      <div class="footer-col">
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
         <h4>Services</h4>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./index.html#operate">Site development</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
         <h4>Legal</h4>
         <a href="./privacy.html">Privacy</a>
         <a href="./contact.html">Media &amp; enquiries</a>
-      </div>
+
+</div></details></div>
     </div>
     <div class="footer-bottom">
       <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
@@ -778,16 +806,16 @@
   </div>
 </footer>
 
-<script src="./site.js?v=6ed6cd9c"></script>
-<script src="./cart.js?v=6ed6cd9c"></script>
-<script src="./diagram-engine.js?v=6ed6cd9c"></script>
-<script src="./hero-anim.js?v=6ed6cd9c"></script>
-<script src="./site-kit.js?v=6ed6cd9c"></script>
-<script src="./scene-hosting.js?v=6ed6cd9c"></script>
-<script src="./scene-asic.js?v=6ed6cd9c"></script>
-<script src="./plant-viewer.js?v=6ed6cd9c" data-module-src="./mine-builder-scene.js?v=6ed6cd9c"></script>
-<script src="./facilities.js?v=6ed6cd9c"></script>
-<script src="./hosting-experience.js?v=6ed6cd9c" data-globe-src="./hosting-globe-scene.js?v=6ed6cd9c" data-world-src="./hosting-earth-data.js?v=6ed6cd9c" data-stage-src="./hosting-stage.js?v=6ed6cd9c"></script>
+<script src="./site.js?v=5835041b"></script>
+<script src="./cart.js?v=5835041b"></script>
+<script src="./diagram-engine.js?v=5835041b"></script>
+<script src="./hero-anim.js?v=5835041b"></script>
+<script src="./site-kit.js?v=5835041b"></script>
+<script src="./scene-hosting.js?v=5835041b"></script>
+<script src="./scene-asic.js?v=5835041b"></script>
+<script src="./plant-viewer.js?v=5835041b" data-module-src="./mine-builder-scene.js?v=5835041b"></script>
+<script src="./facilities.js?v=5835041b"></script>
+<script src="./hosting-experience.js?v=5835041b" data-globe-src="./hosting-globe-scene.js?v=5835041b" data-world-src="./hosting-earth-data.js?v=5835041b" data-stage-src="./hosting-stage.js?v=5835041b"></script>
 
 
 

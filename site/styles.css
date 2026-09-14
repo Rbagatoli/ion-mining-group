@@ -4794,6 +4794,67 @@ body {
     .track .arrow-link { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
+
+/* Desktop retains its original copy and layout. These controls only compact phones. */
+.mobile-only { display: none !important; }
+.mobile-input-details > .mobile-details-body { display: grid; gap: 16px; }
+.hw-empty-note, .mb-estimate-note { display: none; }
+.hw-order--empty .hw-totals { display: grid; }
+.hw-order--empty .hw-actions { display: flex; }
+@media (max-width: 640px) {
+    .desktop-only { display: none !important; }
+    .mobile-only:not([hidden]) { display: block !important; }
+    .btn .mobile-only { display: inline !important; }
+    .hero { padding: 22px 0; }
+    .hero .eyebrow, .sec-head > .eyebrow { display: none; }
+    .hero .lede { margin-top: 14px; font-size: 14px; line-height: 1.5; }
+    .hero .btn-row { margin-top: 16px; }
+    .hero-zone .hero-note { display: none; }
+    .band { padding: 22px 0; }
+    .band--tight { padding: 0 0 22px; }
+    .band .sec-head { margin-bottom: 12px; }
+    .h-section { font-size: 23px; }
+    .lede { font-size: 14px; line-height: 1.5; }
+    .mobile-fold-section { padding: 0; }
+    .mobile-section-details, .mobile-input-details { margin: 0; }
+    .mobile-section-details > summary, .mobile-input-details > summary { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 12px; padding: 13px 0; min-height: 52px; }
+    .mobile-section-details > summary > span, .mobile-input-details > summary > span { grid-column: 1; grid-row: 1; font-weight: 600; }
+    .mobile-section-details > summary > small, .mobile-input-details > summary > small { grid-column: 1; grid-row: 2; font-size: 12px; line-height: 1.5; color: var(--plat-400); }
+    .mobile-section-details > summary::after, .mobile-input-details > summary::after { grid-column: 2; grid-row: 1 / span 2; }
+    .mobile-section-details > .mobile-details-body { padding: 16px 0 20px; }
+    .mobile-input-details > .mobile-details-body { padding: 12px 0; gap: 12px; }
+    .mobile-input-details .calc-group-title { display: none; }
+    .calc-cols { gap: 0; }
+    .calc-cols > .calc-group { padding: 0; }
+    .calc-inputs { gap: 12px; padding-top: 16px; }
+    .calc-results { gap: 16px; }
+    .calc-actions { gap: 8px; }
+    .mobile-catalogue-tools { margin: 12px 0; }
+    .mobile-catalogue-tools label { display: block; font-size: 13px; margin-bottom: 6px; }
+    .mobile-catalogue-tools input { width: 100%; min-height: 44px; padding: 10px 12px; font: 16px/1.4 var(--sans); color: var(--plat-100); background: var(--black); border: 1px solid var(--line-mid); }
+    .mobile-catalogue-tools p { font-size: 12px; margin: 7px 0; color: var(--plat-400); }
+    .mobile-models-button { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line-mid); color: var(--btc-300); background: transparent; font: 14px/1.5 var(--sans); cursor: pointer; }
+    .mobile-hw-hidden { display: none !important; }
+    .mobile-catalogue-tools input:focus-visible, .mobile-models-button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+    .hw-empty-note:not([hidden]), .mb-estimate-note { display: block; }
+    .hw-order--empty .hw-totals, .hw-order--empty .hw-actions { display: none; }
+    .footer { padding: 22px 0 18px; }
+    .footer-top { grid-template-columns: minmax(0,1fr); gap: 0; }
+    .footer-top > :first-child { margin-bottom: 12px; }
+    .footer-blurb { display: none; }
+    .mobile-footer-details { margin: 0; }
+    .mobile-footer-details > summary { min-height: 44px; padding: 10px 0; }
+    .mobile-footer-details .mobile-details-body > h4 { display: none; }
+    .mobile-footer-details .mobile-details-body { padding: 0 0 10px; }
+    .footer-bottom { margin-top: 12px; padding-top: 12px; font-size: 11px; }
+    .footer-bottom > div:last-child:has(.ph) { display: none; }
+    .bc { padding: 14px; }
+    .bc-sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+    .bc-tags { display: none; }
+    .bp { padding-top: 22px; }
+    .bp-sources, .bp-next { margin-top: 20px; padding-top: 14px; }
+}
+
 /* Keep the spacing utility last among unconditional rules. */
 .vgap.vgap { margin-top: var(--vg, 24px); }
 @media (max-width: 640px) {

@@ -273,6 +273,29 @@
     if (typeof window.matchMedia !== 'function') return;
     var media = window.matchMedia('(max-width: 640px)');
     document.documentElement.classList.add('mobile-details-ready');
+    // Desktop HTML is the source copy. Only phone layouts use the short variant.
+    // Keep live nodes (prices, order references, links) instead of recreating them.
+    var copies = Array.from(document.querySelectorAll('[data-mobile-copy]')).map(function (el) {
+        return { el: el, desktop: el.innerHTML, mobile: el.getAttribute('data-mobile-copy'), mode: null, last: el.innerHTML };
+    });
+    function applyCopy(item) {
+        if (item.mode === media.matches) return;
+        if (item.mode === null && !media.matches) { item.mode = false; return; }
+        // These notes are owned by the quote/market renderer once it supplies live content.
+        if (/^hw(Econ|Market)Note$/.test(item.el.id) && item.el.innerHTML !== item.last) return;
+        var template = document.createElement('template');
+        template.innerHTML = media.matches ? item.mobile : item.desktop;
+        var live = Array.from(item.el.querySelectorAll('[id]'));
+        live.filter(function (node) { return !live.some(function (parent) { return parent !== node && parent.contains(node); }); })
+            .forEach(function (node) {
+                var replacement = Array.from(template.content.querySelectorAll('[id]')).find(function (el) { return el.id === node.id; });
+                if (replacement) replacement.replaceWith(node);
+            });
+        item.el.replaceChildren(template.content);
+        item.mode = media.matches; item.last = item.el.innerHTML;
+    }
+    copies.forEach(applyCopy);
+
     // Placeholder-only company metrics do not contain a number to compare.
     document.querySelectorAll('.hero-zone .stats').forEach(function (stats) {
         var values = Array.from(stats.querySelectorAll('.stat-value'));
@@ -312,18 +335,48 @@
         var id; try { id = decodeURIComponent(location.hash.slice(1)); } catch (_) { return; }
         if (!id) return;
         var target = document.getElementById(id), ancestor = target;
+        var child = target && target.querySelector(':scope > .wrap > .mobile-section-details, :scope > .mobile-section-details');
+        if (child) child.open = true;
         while (ancestor) {
             if (ancestor.tagName === 'DETAILS') ancestor.open = true;
             ancestor = ancestor.parentElement;
         }
         if (target) requestAnimationFrame(function () { target.scrollIntoView({ block: 'start' }); });
     }
-    var change = function () { groups.forEach(apply); revealHash(); };
+    var change = function () { copies.forEach(applyCopy); groups.forEach(apply); revealHash(); };
     if (media.addEventListener) media.addEventListener('change', change); else media.addListener(change);
     window.addEventListener('hashchange', revealHash);
     document.addEventListener('click', function (event) {
         var a = event.target.closest && event.target.closest('a[href^="#"]');
         if (a && a.getAttribute('href') === location.hash) revealHash();
     });
+    document.addEventListener('invalid', function (event) {
+        var node = event.target; while (node) { if (node.tagName === 'DETAILS') node.open = true; node = node.parentElement; }
+    }, true);
+
+    // The phone catalogue starts with four models. Search covers the full list;
+    // quantities already selected stay visible when the list is shortened again.
+    var rowsHost = document.getElementById('hwRows'), search = document.getElementById('hwSearch'), showModels = document.getElementById('hwShowModels');
+    if (rowsHost && search && showModels) {
+        var expanded = false;
+        function catalogue() {
+            var rows = Array.from(rowsHost.querySelectorAll('tr')), query = search.value.trim().toLowerCase(), shown = 0;
+            rows.forEach(function (row, i) {
+                var input = row.querySelector('[data-qty]'), name = input ? input.getAttribute('data-qty') : row.textContent;
+                var visible = !media.matches || (name.toLowerCase().includes(query) && (query || expanded || i < 4 || (input && Number(input.value) > 0)));
+                row.classList.toggle('mobile-hw-hidden', !visible); if (visible) shown++;
+            });
+            showModels.hidden = !media.matches || !!query || rows.length <= 4;
+            showModels.textContent = expanded ? 'Show fewer models' : 'Show all ' + rows.length + ' models';
+            showModels.setAttribute('aria-expanded', String(expanded));
+            var result = document.getElementById('hwResults'); if (result) result.textContent = shown ? 'Showing ' + shown + ' of ' + rows.length + ' models' : 'No matching miners. Try another model name.';
+        }
+        search.addEventListener('input', catalogue);
+        showModels.addEventListener('click', function () { expanded = !expanded; catalogue(); });
+        if (typeof MutationObserver !== 'undefined') new MutationObserver(catalogue).observe(rowsHost, { childList: true, subtree: true });
+        if (media.addEventListener) media.addEventListener('change', catalogue); else media.addListener(catalogue);
+        catalogue();
+    }
+
     revealHash();
 })();

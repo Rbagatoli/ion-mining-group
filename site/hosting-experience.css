@@ -83,3 +83,12 @@
  .hx-metrics dt { margin-bottom:4px; }.hx-metrics dd { font-size:20px; }
  .hx-note { padding:10px 14px; line-height:1.5; }.hx-credit { padding:0 14px 12px; }
 }
+
+@media (max-width: 640px) {
+ .hx-heading { display: none; }
+ .hx-globe-stage { height: 260px; }
+ .hx-regions button { min-height: 52px; padding: 8px 12px; }
+ .hx-regions button > span { display: none; }
+ .hx-summary { padding: 12px; gap: 10px; }
+ .hx-globe-panel .hx-toolbar p { display: none; }
+}

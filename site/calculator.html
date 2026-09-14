@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=6ed6cd9c">
+<link rel="stylesheet" href="./styles.css?v=5835041b">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -109,7 +109,7 @@
            and a crawler sees 778 words, nearly all of them form labels. -->
       <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Bitcoin mining<br>calculator.</h1>
       <p class="calc-strap">Run the numbers on your own setup.</p>
-      <p class="lede">Model your fleet or available energy, then compare mining with buying bitcoin. Every assumption is editable.</p>
+      <p class="lede" data-mobile-copy="Model your fleet or available energy, then compare mining with buying bitcoin. Every assumption is editable.">This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you are thinking of buying, or from energy you already have and want to put to work. Every assumption below is yours to change.</p>
     </div>
   </div>
 </section>
@@ -161,7 +161,8 @@
           </div>
         </div>
 
-        <div class="calc-panels">
+        <details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Detailed results &amp; bitcoin comparison</span><small>Day one, lifetime totals and buying bitcoin directly.</small></summary><div class="mobile-details-body">
+<div class="calc-panels">
           <div class="calc-panel">
             <h3>Day one</h3>
             <dl>
@@ -209,6 +210,7 @@
             </dl>
           </div>
         </div>
+</div></details>
 
         <details class="calc-table-wrap">
           <summary>Period-by-period detail</summary>
@@ -263,7 +265,8 @@
         <div class="calc-cols">
 
           <!-- ===== Market ===== -->
-          <div class="calc-group">
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Market assumptions</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+
             <h2 class="calc-group-title">Market Parameters</h2>
 
             <div class="field">
@@ -300,10 +303,12 @@
               <div class="calc-unit">
                 <input id="investPeriod" type="number" min="1" max="730" step="1" value="60" data-default="60"><span class="cu-post" data-period-unit>months</span></div>
             </div>
-          </div>
+
+</div></details></div>
 
           <!-- ===== Machine ===== -->
-          <div class="calc-group">
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Machines &amp; replacements</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+
             <h2 class="calc-group-title">Machine Parameters</h2>
 
             <div class="field">
@@ -330,7 +335,7 @@
               <div class="calc-unit">
                 <input id="machineCount" type="number" min="0" step="1" value="100" data-default="100"><span class="cu-post">units</span></div>
             </div>
-            <p class="calc-hint">Selecting a model fills its specs. Edit them for your operating setup.</p>
+            <p class="calc-hint" data-mobile-copy="Selecting a model fills its specs. Edit them for your operating setup.">Specs fill in from the model you pick, and stay editable &mdash; an underclocked machine is a different machine. <a href="./hardware.html">We can source any of them</a>.</p>
             <div class="field">
               <label for="minerAdditions">Monthly Miner Additions</label>
               <div class="calc-unit">
@@ -429,10 +434,12 @@
                 <span class="cs-desc">Machines added along the way cost CAPEX each. Off means they arrive already paid for</span>
               </span>
             </label>
-          </div>
+
+</div></details></div>
 
           <!-- ===== Energy (only when starting from energy) ===== -->
-          <div class="calc-group" data-when="energy" hidden>
+          <div class="calc-group" data-when="energy" hidden><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Available energy</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+
             <h2 class="calc-group-title">Energy Parameters</h2>
 
             <div class="field">
@@ -469,10 +476,12 @@
                 <input id="heatRate" type="number" min="1" step="100" value="10000" data-default="10000"><span class="cu-post">BTU/kWh</span></div>
             </div>
             <p class="calc-hint">The same constants our internal engine uses &mdash; roughly 1 MMcf/day to 4 MW. Both are editable because heat rate moves with genset model and altitude.</p>
-          </div>
+
+</div></details></div>
 
           <!-- ===== Operating ===== -->
-          <div class="calc-group">
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Operating costs &amp; taxes</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+
             <h2 class="calc-group-title">Operating Parameters</h2>
 
             <div class="field">
@@ -589,7 +598,8 @@
                 <span class="cs-desc">Net fiat profit auto-buys new machines at CAPEX price</span>
               </span>
             </label>
-          </div>
+
+</div></details></div>
 
         </div>
 
@@ -606,22 +616,24 @@
 </section>
 
 <!-- ===== CAVEAT ===== -->
-<section class="band">
+<section class="band mobile-fold-section">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Assumptions &amp; exclusions</span><small>Illustrative estimates, not quotes. Review before deciding.</small></summary><div class="mobile-details-body">
+
     <div class="calc-note">
-      <h2 class="h-section">Read the results carefully.</h2>
+      <h2 class="h-section" data-mobile-copy="Read the results carefully.">What this does and does not tell you.</h2>
       <div class="calc-note-cols">
         <div>
           <h4>It is a model, not a quote</h4>
-          <p>Results depend on your inputs. Test different bitcoin prices and difficulty paths; neither can be forecast reliably.</p>
+          <p data-mobile-copy="Results depend on your inputs. Test different bitcoin prices and difficulty paths; neither can be forecast reliably.">Every figure here comes from assumptions you typed. Bitcoin price and network difficulty are the two that matter most and the two nobody can forecast. Move them and watch how fast the answer changes &mdash; that sensitivity is the most useful thing on this page.</p>
         </div>
         <div>
           <h4>What it leaves out</h4>
-          <p>Excludes curtailment, seasonal derating, shipping, duty, customs, insurance and unexpected failures. Pool variance is averaged; machines run at your entered specs.</p>
+          <p data-mobile-copy="Excludes curtailment, seasonal derating, shipping, duty, customs, insurance and unexpected failures. Pool variance is averaged; machines run at your entered specs.">No curtailment, no seasonal derate, no shipping, customs, or import duty, no insurance, and no bad luck. Pool variance is averaged away. Machines are assumed to run at the specs you entered for their whole life.</p>
         </div>
         <div>
           <h4>Where we come in</h4>
-          <p>Use a confirmed power quote. We develop sites on flared gas, landfill gas and surplus energy.</p>
+          <p data-mobile-copy="Use a confirmed power quote. We develop sites on flared gas, landfill gas and surplus energy.">The single input with the most leverage is your power cost. That is the number we exist to change, by building on energy that is currently being flared, vented, or curtailed. Put a real quote in and see what it does.</p>
         </div>
       </div>
       <div class="calc-cta">
@@ -635,41 +647,64 @@
          one was checked against site/calc-engine.js before it was written down. A page that
          lists capabilities it does not have is worse than a page with no text at all. -->
     <div class="calc-models">
-      <h2 class="h-section">What the model includes.</h2>
-      <p class="calc-models-lede">Long-term outcomes depend on more than today’s daily revenue. Explore the assumptions below.</p>
+      <h2 class="h-section" data-mobile-copy="What the model includes.">What this models that most calculators do not.</h2>
+      <p class="calc-models-lede" data-mobile-copy="Long-term outcomes depend on more than today’s daily revenue. Explore the assumptions below.">Most bitcoin mining calculators answer one question: at
+        today—s price and today—s difficulty, what does this machine earn per day? That number
+        is true for about a fortnight. These are the things that decide whether a machine pays
+        for itself, and they are the ones usually left out.</p>
 
-      <details class="mobile-details" data-mobile-details open><summary>Explore the six modeling features</summary><div class="mobile-details-body">
+
 <div class="calc-models-grid">
         <div class="cm">
           <h3>Buying the machines against buying the coin</h3>
-          <p>Compare a fleet with buying bitcoin on day one using the same outlay. Both positions include the taxes you enter and show any crossover.</p>
+          <p data-mobile-copy="Compare a fleet with buying bitcoin on day one using the same outlay. Both positions include the taxes you enter and show any crossover.">The comparison nobody runs. It plots what a fleet does against putting the same
+            money into bitcoin on day one and holding it, and tells you which period the two
+            cross over in — if they do. Both sides are figured after tax, which matters,
+            because mined coins are income when they are mined and held coins are not.</p>
         </div>
         <div class="cm">
           <h3>Difficulty growth as an input, not an assumption</h3>
-          <p>Set positive or negative difficulty growth. It changes the fleet’s share of mining output over time.</p>
+          <p data-mobile-copy="Set positive or negative difficulty growth. It changes the fleet’s share of mining output over time.">Your share of the network shrinks every time somebody else plugs in, whether or not
+            you do anything. Most models leave this at zero, which quietly assumes the network
+            stops growing. Set it to what you actually believe, including negative — network
+            difficulty fell about 15% over the first eight months of 2026.</p>
         </div>
         <div class="cm">
           <h3>Halvings, on their projected dates</h3>
-          <p>Subsidy falls on projected halving dates through 2100, instead of staying flat.</p>
+          <p data-mobile-copy="Subsidy falls on projected halving dates through 2100, instead of staying flat.">The block subsidy is stepped down on projected halving dates rather than held flat,
+            out to 2100. Over any horizon longer than about three years that is the difference
+            between a projection and a straight line.</p>
         </div>
         <div class="cm">
           <h3>The machine wearing out</h3>
-          <p>Set useful life, salvage value and economic retirement. Choose whether to replace miners, reinvest or withdraw proceeds.</p>
+          <p data-mobile-copy="Set useful life, salvage value and economic retirement. Choose whether to replace miners, reinvest or withdraw proceeds.">Hardware has a lifespan, a salvage value, and a date it stops being economic that
+            arrives before the date it breaks. You can set all three, choose whether retired
+            machines are replaced, and choose whether the proceeds are reinvested or taken out.</p>
         </div>
         <div class="cm">
           <h3>Tax on both sides, separately</h3>
-          <p>Mining income and capital gains are modeled separately, with taxes applied to both mining and direct buying.</p>
+          <p data-mobile-copy="Mining income and capital gains are modeled separately, with taxes applied to both mining and direct buying.">Mining income and capital gains are different taxes at different rates on different
+            events. They are modelled as two figures rather than one blended number, because the
+            comparison against simply holding bitcoin is meaningless if only one side is taxed.</p>
         </div>
         <div class="cm">
           <h3>Sizing from energy instead of from machines</h3>
-          <p>Enter gas volume, heat rate and heating value to size the available power and supported fleet.</p>
+          <p data-mobile-copy="Enter gas volume, heat rate and heating value to size the available power and supported fleet.">If you have gas rather than hardware, start from the gas. Enter volume in mcf per
+            day with your own heat rate and BTU content, and it works out the load that supports
+            and the fleet that fills it. That is the question a flare owner actually has, and it
+            is the reverse of the one every other calculator answers.</p>
         </div>
       </div>
-</div></details>
 
-      <p class="calc-models-foot">Also includes pool fees, uptime, infrastructure, scheduled additions and existing BTC. Share the URL to share your scenario.</p>
+
+      <p class="calc-models-foot" data-mobile-copy="Also includes pool fees, uptime, infrastructure, scheduled additions and existing BTC. Share the URL to share your scenario.">Pool fee, uptime, infrastructure cost, scheduled additions and
+        an existing bitcoin treasury are all inputs too. Nothing is assumed on your behalf, and
+        the scenario travels in the address bar — the URL is the whole state, so you can send
+        it to somebody and they will see exactly what you saw.</p>
     </div>
-  </div>
+
+</div></details>
+</div>
 </section>
 
 <!-- ===== FOOTER ===== -->
@@ -706,23 +741,29 @@
         </a>
         <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
       </div>
-      <div class="footer-col">
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
         <h4>Services</h4>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./index.html#operate">Site development</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
-      </div>
-      <div class="footer-col">
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
         <h4>Legal</h4>
         <a href="./privacy.html">Privacy</a>
         <a href="./contact.html">Media &amp; enquiries</a>
-      </div>
+
+</div></details></div>
     </div>
     <div class="footer-bottom">
       <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
@@ -731,11 +772,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=6ed6cd9c"></script>
-<script src="./hero-anim.js?v=6ed6cd9c"></script>
-<script src="./cart.js?v=6ed6cd9c"></script>
-<script src="./miner-db.js?v=6ed6cd9c"></script>
-<script src="./calc-engine.js?v=6ed6cd9c"></script>
-<script src="./calculator.js?v=6ed6cd9c"></script>
+<script src="./site.js?v=5835041b"></script>
+<script src="./hero-anim.js?v=5835041b"></script>
+<script src="./cart.js?v=5835041b"></script>
+<script src="./miner-db.js?v=5835041b"></script>
+<script src="./calc-engine.js?v=5835041b"></script>
+<script src="./calculator.js?v=5835041b"></script>
 </body>
 </html>

@@ -522,8 +522,9 @@ ${related.map((r) => '        <a class="bp-rel-item" href="' + r.meta.href + '">
     '<span class="bp-rel-sum">' + esc(r.meta.summary) + '</span></a>').join('\n')}
       </nav>
 ` : ''}      <div class="bp-next">
-        <h2>Mining or buying bitcoin?</h2>
-        <p>Compare both using your power cost, budget and market assumptions.</p>
+        <h2 data-mobile-copy="Mining or buying bitcoin?">Working out whether machines beat buying the coin?</h2>
+        <p data-mobile-copy="Compare both using your power cost, budget and market assumptions.">The comparison depends entirely on your assumptions, so we do not print one number
+           and call it the answer. Put yours in and see where the crossover lands.</p>
         <div class="bp-next-links">
           <a class="btn btn--primary" href="./calculator.html">Run your own numbers</a>
           <a class="btn btn--ghost" href="./why-mining.html">Why own machines</a>

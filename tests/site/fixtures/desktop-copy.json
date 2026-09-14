@@ -1,0 +1,616 @@
+{
+  "sourceCommit": "914d96caf9bcd5d04569578bd54185a00c8f682d",
+  "exception": "Power in. Bitcoin out.",
+  "blocks": [
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Proton Mining builds and operates bitcoin mining sites, and runs the machines it sells at every one of them. We are best known for running on power nobody else wants &mdash; landfill gas, flared gas, curtailed grid."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Two ways to work with us: buy machines from us and run them on our power, or let us put our machines on your energy."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Every day, energy gets thrown away because there is no economic way to move it to a buyer. Gas gets flared at the wellhead. Landfill methane gets vented. Wind and solar get curtailed when the grid cannot take them. That energy has no price because it has no customer."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Bitcoin mining is the one industrial load that can show up wherever the energy already is, buy every kilowatt-hour at a price that works, and switch off the moment somebody needs it more."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "h2",
+      "html": "Stranded energy on one side.<br>Hashrate on the other."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Flare gas, landfill gas, curtailed renewables, and behind-the-meter surplus. Real energy, priced at or below zero because nothing is there to consume it."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "We bring generation, containers, and machines to the energy, instead of waiting years for transmission to bring the energy to a market."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Mining is fully interruptible. We curtail in seconds when the grid calls, when prices spike, or when a host needs the power back &mdash; no process to restart, nothing spoiled."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "h2",
+      "html": "Two doors into the same operation."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "We run the sites either way. What changes is which side of the meter you are standing on."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "You own the machines. We provide the power, the racks, the cooling, the network, and the hands &mdash; and you keep every satoshi they earn."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "You have gas you are flaring, methane you are venting, or power you cannot sell. We finance, build, and run the load that buys it &mdash; on your land, on your terms."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "We screen candidate sites against our own database of flare volumes, landfill gas capture, industrial facilities, and environmental permit records before anyone drives out to look at one. Power availability, gas duration, land control, interconnect distance, and jurisdiction all get scored up front &mdash; so the sites that reach diligence are the ones that can actually be built."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Metered gas composition and volume over time, or a real load study behind the meter. We model each site across a full range of hashprice and energy-cost scenarios, not a single optimistic case. If a site only works at one bitcoin price, we do not build it."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Generation, switchgear, transformers, containers, and network go in as one package. Pads, permits, and interconnection are handled before hardware ships. Machines are racked, mapped, and pointed at your pool before a site is called live."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "Monitored around the clock from our own operations software &mdash; per-machine hashrate, temperature, power draw, and payouts, reconciled daily. Curtailment is automated against price and grid signals. You get the same numbers we do, every month, in a statement you can audit."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "We are not a middleman placing your machines in somebody else&rsquo;s facility, and we are not a developer who flips a permitted site and walks away. We source the energy, build the site, and run the fleet &mdash; same team, the whole way down."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "li",
+      "html": "<strong>Energy-first site sourcing.</strong> We built our own screening stack over flare, landfill, facility, and permit data. Site selection is a data problem before it is a real-estate problem."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "li",
+      "html": "<strong>One counterparty, whole stack.</strong> Power procurement, construction, machine deployment, and daily operations sit with one team. Nobody gets handed off when something breaks."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "li",
+      "html": "<strong>Reporting you can check.</strong> Per-machine telemetry, pool payouts, and energy invoices reconciled monthly. If our statement and your pool dashboard disagree, we go find out why."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "li",
+      "html": "<strong>Curtailment is a feature.</strong> Our load is designed to disappear on command &mdash; which is exactly what makes us a welcome neighbour on a constrained grid or an active wellsite."
+    },
+    {
+      "file": "site/index.html",
+      "tag": "p",
+      "html": "A fleet you want bought, racked and running, or a wellhead burning gas with nowhere to send it. Either one starts the same way."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "If you are flaring landfill gas, flaring associated gas, or curtailing generation because there is nowhere to send it, you have a product with no customer. We finance, build, and run the load that turns it into revenue &mdash; on your land, without a pipeline, and without you spending a dollar of capital."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Interruptible by design. If you need the gas or the power back, we shut down &mdash; on your schedule, not ours."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "h2",
+      "html": "Four kinds of energy we can put to work."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "All of them share one problem: production and demand are in the wrong place, or at the wrong time."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Municipal landfills, wastewater plants, and agricultural digesters with collected gas going to a flare because RNG upgrading does not pencil at your volume. We take gas that is currently destroyed for free and pay for it instead."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Oil producers with gas they cannot economically gather. Takeaway is constrained, the pipeline is years away, or the volume never justified the tie-in. We bring generation to the pad and consume the gas at the wellhead &mdash; cutting flare volume while turning a disposal cost into a revenue line."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Wind and solar assets that get dispatched down, hit negative pricing, or sit behind a congested interconnect. We become the buyer of last resort at the busbar &mdash; and we get out of the way instantly when the grid wants the power back."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Industrial sites with contracted capacity they are not using, self-generation running below load, or waste heat and pressure with no offtake. We soak up the margin between what you pay for and what you consume."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "h2",
+      "html": "We bring the capital and the complexity."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Most partners want the revenue without inheriting a new line of business. That is exactly how we structure it."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>All of the capital.</strong> Generation, switchgear, containers, machines, and site work are funded by us. Your capital budget is untouched."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>Permitting and compliance.</strong> Air permits, noise, setbacks, and interconnect paperwork handled by our team, in your jurisdiction."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>Build and commissioning.</strong> Pads, foundations, gas conditioning, and electrical, delivered as one contract with one accountable party."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>Operations, forever.</strong> Staffed and monitored 24/7. Engine maintenance, machine repair, and curtailment response are ours, not yours."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>Decommissioning.</strong> Bonded removal and site restoration at end of term, written into the agreement up front."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>The energy.</strong> Gas volume and composition over time, or available electrical capacity with a real load profile behind it."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>Site control.</strong> Surface rights or a lease you can assign, clean enough to survive diligence."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "li",
+      "html": "<strong>A decision maker.</strong> Someone who can sign a term sheet without a six-month committee cycle."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Pick the risk profile you want. Fixed and predictable, or tied to the upside &mdash; we will quote any of them on the same site."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "We buy your gas at a fixed <span class=\"ph\">[$X.XX]</span>/MMBtu, or your power at <span class=\"ph\">[$0.0XX]</span>/kWh, on a take-or-pay style contract. Simple, bankable, and it moves the bitcoin price risk off your side of the table. What it does not do is remove that risk from the deal: a fixed price is only as good as the company paying it, so ask what stands behind the obligation before you weigh it against a share."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "You supply the energy, we supply everything else, and mining revenue splits <span class=\"ph\">[XX]</span>/<span class=\"ph\">[XX]</span> after agreed operating costs. Lower floor than a fixed contract, meaningfully higher ceiling. Reporting is open-book, with the same telemetry we run on."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "You lease us the pad and the interconnect for <span class=\"ph\">[$X,XXX]</span> per month and take a <span class=\"ph\">[X]</span>% royalty on gross production. Most common where the landowner is not the energy owner, or where a municipality needs a clean, predictable line item."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "If your site is close on most of these, send it anyway &mdash; the edges are negotiable and we would rather look than guess."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "You send volumes, composition, location, and land status. We run it through our screening model and come back with a yes, a no, or the two specific things that would turn a no into a yes. We do not sit on sites."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Non-binding terms covering structure, price, term, interruption rights, and pad requirements. Signed under NDA, with enough detail that neither side is surprised later."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Site walk, metered gas sampling, title and surface review, permit path confirmation, and a full economic model across hashprice scenarios. This is where a site either earns the build or gets returned to you with our reasoning."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Pad, foundations, gas conditioning, generation, switchgear, containers, and network. Long-lead equipment is ordered at term-sheet signing, not at the end of diligence, which is how the schedule holds."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Commissioning, then continuous operation with 24/7 monitoring. You get production reporting on the same cadence as your payments, and a direct line to the people actually running the site."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "This is not a marketing claim about being green. It is a straightforward comparison against what happens to the gas today."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "You do not need a data room. Volumes, a location, and who controls the land is enough for us to tell you whether it is worth either side&rsquo;s time."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Prefer email? Write to <a class=\"accent\" href=\"mailto:energy@protonminingco.com\">energy@protonminingco.com</a>. We reply to every submission, including the ones we pass on &mdash; with the reason."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "Everything you send is treated as confidential. We will sign your NDA before diligence, or send you ours."
+    },
+    {
+      "file": "site/energy.html",
+      "tag": "p",
+      "html": "This opens a pre-filled message in your mail app addressed to energy@protonminingco.com &mdash; nothing is sent until you press send there."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "You buy the machines from us and we handle everything from the pad to the pool: metered power, cooling, network, security, and hands on site. Your hashrate points where you tell it to, and payouts never touch our wallet."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Compare our hosting regions, capacity and pricing. You choose the location; we handle the pad, the power and the hands on site."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "One rate covers the whole stack. No separate line items for racking, reboots, or replacing a dead PSU."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "h2",
+      "html": "Everything between the pad and the pool."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "h2",
+      "html": "Priced per kilowatt-hour, billed on what you actually use."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Rates move with the site and the size of the deployment. These are the standard terms; large fleets get their own sheet."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Do not have the machines yet? <a href=\"./hardware.html\">Pick them from our catalogue</a> and we will source and host them on one agreement."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Short list, and shorter because the machines come from us."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "You choose the machines and a target start date. We come back with the site, the rate, the available slot, and a term sheet &mdash; usually within <span class=\"ph\">[X]</span> business days."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Hosting agreement signed, deposit received, capacity reserved in your name. You get a named point of contact who stays with your account."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "You ship to the site address on the agreement. Every pallet is opened, counted, serial-scanned, and photographed. Discrepancies are reported before anything is racked."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Units are installed, mapped to your account, pointed at your pool, and burned in. We do not call a machine live until it is holding rated hashrate at rated power."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Dashboard access on day one, alerting from the first hour, and your first statement at the end of the billing period. From there it is our job to keep it boring."
+    },
+    {
+      "file": "site/hosting.html",
+      "tag": "p",
+      "html": "Pick them from the catalogue and tell us when you want them running. We will come back with a site, a rate, and a date."
+    },
+    {
+      "file": "site/contact.html",
+      "tag": "p",
+      "html": "Whether you want a container of machines running on cheap power or you have a wellhead burning gas into the sky, the first step is the same conversation."
+    },
+    {
+      "file": "site/contact.html",
+      "tag": "p",
+      "html": "This opens a pre-filled draft in your mail app &mdash; nothing is sent until you press send there. Prefer to write directly? Use the addresses on the left."
+    },
+    {
+      "file": "site/contact.html",
+      "tag": "h2",
+      "html": "You might find it faster here."
+    },
+    {
+      "file": "site/contact.html",
+      "tag": "p",
+      "html": "What is included, what it costs, what we need from you, and how long onboarding takes &mdash; written out in full, with the questions people ask before signing."
+    },
+    {
+      "file": "site/contact.html",
+      "tag": "p",
+      "html": "Screening criteria, the three deal structures, and a short submission form. We answer every submission with a yes, a no, or exactly what would change our mind."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "h1",
+      "html": "Buy the machines<br>and the place to run them."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "h2",
+      "html": "Every machine we can source"
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "You do not have to arrive with a container of miners. Pick what you want below, set the quantities, and we will source it &mdash; and host it on the same agreement if you want us to."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "Specifications are the manufacturer&rsquo;s. <strong>Prices are indicative as of <span id=\"hwAsOf\">&mdash;</span> and are confirmed on quote</strong> &mdash; we source per order rather than holding stock, so the number that matters is the one on your quote, not the one on this page."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "Enter it and the last two columns fill in. Nothing is assumed on your behalf &mdash; power is what decides which machine is best, and it is the one figure only you know."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "Revenue is <strong>gross mining revenue at today&rsquo;s network difficulty</strong>, before power, pool fees, downtime and any hosting cost. Difficulty has risen in most years, so a payback calculated at today&rsquo;s is the optimistic end of the range rather than a forecast."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "Sorted by efficiency, best first &mdash; joules per terahash decides what a machine costs to run. It is not the same question as which is the best buy: <strong>payback</strong> is, because it is the only column that weighs the purchase price against what the machine earns. A cheap machine with mediocre efficiency often pays for itself first."
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "h2",
+      "html": "Send it as a quote request"
+    },
+    {
+      "file": "site/hardware.html",
+      "tag": "p",
+      "html": "This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href=\"mailto:hosting@protonminingco.com\">hosting@protonminingco.com</a>."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you are thinking of buying, or from energy you already have and want to put to work. Every assumption below is yours to change."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Specs fill in from the model you pick, and stay editable &mdash; an underclocked machine is a different machine. <a href=\"./hardware.html\">We can source any of them</a>."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "h2",
+      "html": "What this does and does not tell you."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Every figure here comes from assumptions you typed. Bitcoin price and network difficulty are the two that matter most and the two nobody can forecast. Move them and watch how fast the answer changes &mdash; that sensitivity is the most useful thing on this page."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "No curtailment, no seasonal derate, no shipping, customs, or import duty, no insurance, and no bad luck. Pool variance is averaged away. Machines are assumed to run at the specs you entered for their whole life."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "The single input with the most leverage is your power cost. That is the number we exist to change, by building on energy that is currently being flared, vented, or curtailed. Put a real quote in and see what it does."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "h2",
+      "html": "What this models that most calculators do not."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Most bitcoin mining calculators answer one question: at\n        today—s price and today—s difficulty, what does this machine earn per day? That number\n        is true for about a fortnight. These are the things that decide whether a machine pays\n        for itself, and they are the ones usually left out."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "The comparison nobody runs. It plots what a fleet does against putting the same\n            money into bitcoin on day one and holding it, and tells you which period the two\n            cross over in — if they do. Both sides are figured after tax, which matters,\n            because mined coins are income when they are mined and held coins are not."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Your share of the network shrinks every time somebody else plugs in, whether or not\n            you do anything. Most models leave this at zero, which quietly assumes the network\n            stops growing. Set it to what you actually believe, including negative — network\n            difficulty fell about 15% over the first eight months of 2026."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "The block subsidy is stepped down on projected halving dates rather than held flat,\n            out to 2100. Over any horizon longer than about three years that is the difference\n            between a projection and a straight line."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Hardware has a lifespan, a salvage value, and a date it stops being economic that\n            arrives before the date it breaks. You can set all three, choose whether retired\n            machines are replaced, and choose whether the proceeds are reinvested or taken out."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Mining income and capital gains are different taxes at different rates on different\n            events. They are modelled as two figures rather than one blended number, because the\n            comparison against simply holding bitcoin is meaningless if only one side is taxed."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "If you have gas rather than hardware, start from the gas. Enter volume in mcf per\n            day with your own heat rate and BTU content, and it works out the load that supports\n            and the fleet that fills it. That is the question a flare owner actually has, and it\n            is the reverse of the one every other calculator answers."
+    },
+    {
+      "file": "site/calculator.html",
+      "tag": "p",
+      "html": "Pool fee, uptime, infrastructure cost, scheduled additions and\n        an existing bitcoin treasury are all inputs too. Nothing is assumed on your behalf, and\n        the scenario travels in the address bar — the URL is the whole state, so you can send\n        it to somebody and they will see exactly what you saw."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "h1",
+      "html": "Confirm the fleet,<br>and say where it goes."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "Machines, destination and hosting in one place. A deposit reserves the order; the price and the lead time are confirmed on your quote before anything is charged or shipped."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "Pick machines from the catalogue and they will be waiting here. The order is kept in this browser, so you can leave and come back to it."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "Keep this reference. <strong>Nothing has been charged.</strong> We confirm the price, the lead time and the freight with our distributor, then send you a quote and instructions for the deposit. You can check the order at any time at <a id=\"ckRefLink\" href=\"./order.html\">the status page</a>."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "<strong>Nothing is charged on this page.</strong> Send the order and we come back with a firm quote &mdash; confirmed price, lead time and freight &mdash; along with instructions for the deposit. The deposit reserves your place in the order and comes off the invoice; the balance is due once the quote is agreed and before the machines ship."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "We will confirm which of our sites has capacity for a fleet this size, and quote hosting on the same order. You do not arrange freight &mdash; the machines are delivered straight to the facility that will run them."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "These arrive as palletised freight and need someone able to take delivery on a dock or with a forklift. Tell us if the address cannot, and we will route it through a receiving agent instead. Cross-border orders carry duty and customs clearance, which the quote itemises."
+    },
+    {
+      "file": "site/cart.html",
+      "tag": "p",
+      "html": "Nothing is charged on the next page either &mdash; it shows what to send and where. The price and the lead time are confirmed with you before the machines ship."
+    },
+    {
+      "file": "site/order.html",
+      "tag": "h1",
+      "html": "Where your order<br>has got to."
+    },
+    {
+      "file": "site/order.html",
+      "tag": "p",
+      "html": "Every step, including the ones that are a person rather than a machine. Bookmark this page &mdash; the reference in the address is the only way back to it."
+    },
+    {
+      "file": "site/pay.html",
+      "tag": "h1",
+      "html": "Send the payment,<br>and we take it from there."
+    },
+    {
+      "file": "site/pay.html",
+      "tag": "p",
+      "html": "Pay in bitcoin, on-chain or over Lightning. The page updates itself the moment the payment confirms &mdash; you do not need to tell us."
+    },
+    {
+      "file": "site/pay.html",
+      "tag": "p",
+      "html": "Faster, and better suited to the smaller amounts. This quote expires &mdash; if it lapses, reload and a fresh one is issued."
+    },
+    {
+      "file": "site/pay.html",
+      "tag": "p",
+      "html": "You will be handed to Stripe to enter your card, then brought back here. <strong>Your card details never touch this site.</strong>"
+    },
+    {
+      "file": "site/pay.html",
+      "tag": "p",
+      "html": "Thank you. We are placing the order with our distributor and will email you the confirmed price, the lead time and the freight details. You can follow it on <a id=\"payDoneLink\" href=\"./order.html\">the order page</a>."
+    },
+    {
+      "file": "site/404.html",
+      "tag": "h1",
+      "html": "That page is not<br>on this site."
+    },
+    {
+      "file": "site/404.html",
+      "tag": "p",
+      "html": "Either the address is mistyped or the page has moved. Everything the site actually has is one click away."
+    },
+    {
+      "file": "site/404.html",
+      "tag": "p",
+      "html": "Machines bought from us, racked and running on power nobody else wants. <a href=\"./hosting.html\">Hosting</a>."
+    },
+    {
+      "file": "site/404.html",
+      "tag": "p",
+      "html": "Run a full projection on your own figures. <a href=\"./calculator.html\">Mining calculator</a>."
+    },
+    {
+      "file": "site/privacy.html",
+      "tag": "h1",
+      "html": "What this site<br>collects about you."
+    },
+    {
+      "file": "site/privacy.html",
+      "tag": "p",
+      "html": "Almost nothing. This page says exactly what, and names the two outside services one page here talks to, because a policy that leaves those out is not a policy."
+    },
+    {
+      "file": "site/blog.html",
+      "tag": "h1",
+      "html": "What we are reading, and what it means for a fleet"
+    },
+    {
+      "file": "site/blog.html",
+      "tag": "p",
+      "html": "Short pieces on mining economics, energy markets and hardware. Nothing\n          here is a price quote or tax advice; where a post needs a number it links to the\n          calculator so you can put your own assumptions in."
+    },
+    {
+      "file": "site/blog.html",
+      "tag": "p",
+      "html": "News moves. The case for owning machines rather than coins does not, so it lives on\n          its own page rather than scrolling away down this one."
+    }
+  ]
+}
