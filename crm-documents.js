@@ -123,7 +123,7 @@ var CrmDocuments = (function () {
         if (!prospectId) return { ok: false, err: 'A document must belong to a prospect.' };
         opts = opts || {};
         if (!has(opts.title)) return { ok: false, err: 'A document needs a title.' };
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var kinds = kindKeys();
         var kind = text(opts.kind);
         /* An unconfigured kind is refused rather than stored, because the filter
@@ -166,7 +166,7 @@ var CrmDocuments = (function () {
     var EDITABLE = ['title', 'kind', 'url', 'where', 'signed_on', 'note'];
 
     function update(id, patch) {
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var item = null;
         for (var i = 0; i < data.items.length; i++) if (data.items[i].id === id) item = data.items[i];
         if (!item) return { ok: false, err: 'No such document.' };
@@ -195,7 +195,7 @@ var CrmDocuments = (function () {
        happened -- that is the log's job -- and a mis-typed link that cannot be
        deleted is a register nobody trusts. */
     function remove(id) {
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var out = [];
         var found = false;
         for (var i = 0; i < data.items.length; i++) {

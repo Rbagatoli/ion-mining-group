@@ -136,7 +136,7 @@ var CrmContacts = (function () {
     function nowIso() { return new Date().toISOString(); }
 
     function add(partial) {
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var c = normalize(partial);
         if (!c.id) c.id = newId(data);
         c.created = c.created || nowIso();
@@ -147,7 +147,7 @@ var CrmContacts = (function () {
     }
 
     function update(id, patch) {
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         for (var i = 0; i < data.contacts.length; i++) {
             if (data.contacts[i].id !== id) continue;
             var merged = normalize(Object.assign({}, data.contacts[i], patch || {}));
@@ -161,7 +161,7 @@ var CrmContacts = (function () {
     }
 
     function remove(id) {
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var before = data.contacts.length;
         data.contacts = data.contacts.filter(function (c) { return c.id !== id; });
         if (data.contacts.length === before) return false;

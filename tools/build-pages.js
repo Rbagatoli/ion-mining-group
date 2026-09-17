@@ -120,12 +120,14 @@ function build() {
         if (fs.existsSync(src)) { fs.copyFileSync(src, path.join(OUT, dep)); copied++; }
     }
 
+    copied += require('./build-crm.cjs').build(path.join(OUT, 'crm'));
     return copied;
 }
 
 /* ---------- verification ---------- */
 
 const MUST_EXIST = [
+    'crm/index.html', 'crm/crm.js', 'crm/runtime/agent-control-model.js', 'crm/manifest.webmanifest',
     /* Without this the custom domain does not resolve to the site at all. */
     'CNAME',
     'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html',

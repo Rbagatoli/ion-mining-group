@@ -79,7 +79,10 @@ var CrmFollowups = (function () {
     function dayOf(v) {
         if (!v) return null;
         var s = String(v);
-        return s.length >= 10 ? s.slice(0, 10) : s;
+        s = s.slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+        var d = new Date(s + 'T00:00:00Z');
+        return isFinite(d.getTime()) && d.toISOString().slice(0, 10) === s ? s : null;
     }
 
     function add(partial) {
@@ -87,7 +90,7 @@ var CrmFollowups = (function () {
         if (!partial.prospect_id) return null;
         var due = dayOf(partial.due_date);
         if (!due) return null;                 // a follow-up with no date never resurfaces
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         var item = {
             id: newId(data),
             prospect_id: String(partial.prospect_id),
@@ -116,7 +119,7 @@ var CrmFollowups = (function () {
 
     function setStatus(id, status, opts) {
         if (STATUSES.indexOf(status) < 0) return null;
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         for (var i = 0; i < data.items.length; i++) {
             if (data.items[i].id !== id) continue;
             data.items[i].status = status;

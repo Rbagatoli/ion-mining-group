@@ -114,7 +114,7 @@ var CrmLog = (function () {
     function append(kind, prospectId, payload) {
         if (KINDS.indexOf(kind) < 0) return { ok: false, err: 'Unknown log kind: ' + kind };
         if (!prospectId) return { ok: false, err: 'An entry must belong to a prospect.' };
-        var data = read();
+        var data = JSON.parse(JSON.stringify(read()));
         /* A MONOTONIC COUNTER ALONGSIDE THE TIMESTAMP, because the timestamp is not
            enough. Setting a stage writes a transition, and a UI that sets two in a row
            -- or any scripted import -- produces entries with an identical ISO string

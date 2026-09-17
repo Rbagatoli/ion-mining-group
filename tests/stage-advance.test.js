@@ -113,6 +113,8 @@ var HTML = fs.readFileSync(path.join(ROOT, 'prospecting.html'), 'utf8');
 SiteData.add(SiteData.normalize({ id: 'p1', name: 'Pinelands Park LF',
                                   development_stage: 'raw_resource' }));
 
+// This test covers stage routing for a qualified site. Evidence gates have independent executable tests.
+global.DealQualification = { evaluate: function() { return { canClose: true, score: 100, blockers: [] }; } };
 function renderAt(stage) {
     SiteData.update('p1', { stage: stage });
     els['pdetail'] = mkEl('pdetail');

@@ -1,0 +1,21 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const F = require('../crm-followups'), C = require('../crm-contacts'), D = require('../crm-documents'), L = require('../crm-log');
+test('failed saves never appear successful through a mutated cache', () => {
+    const stored = {}; let fail = false;
+    global.localStorage = { getItem: k => stored[k] || null, setItem: (k, v) => { if (fail) throw new Error('quota'); stored[k] = v; } };
+    [F, C, D, L].forEach(m => m.reset());
+    const contact = C.add({ name: 'Original owner' });
+    const task = F.add({ prospect_id: 'P', due_date: '2026-09-05', description: 'Call owner' });
+    fail = true;
+    assert.equal(C.update(contact.id, { name: 'Unsaved owner' }), null);
+    assert.equal(C.get(contact.id).name, 'Original owner');
+    assert.equal(C.add({ name: 'Phantom contact' }), null); assert.equal(C.list().length, 1);
+    assert.equal(F.done(task.id), null); assert.equal(F.get(task.id).status, 'pending');
+    assert.equal(F.add({ prospect_id: 'P', due_date: '2026-09-06' }), null); assert.equal(F.list().length, 1);
+    assert.equal(D.add('P', { title: 'Unsaved agreement' }).ok, false); assert.equal(D.forProspect('P').length, 0);
+    assert.equal(L.append('note', 'P', { note: 'Unsaved activity' }).ok, false); assert.equal(L.all().length, 0);
+    fail = false;
+    assert.equal(F.snooze(task.id, '2026-02-31'), null); assert.equal(F.get(task.id).status, 'pending');
+    assert.equal(F.add({ prospect_id: 'P', due_date: 'tomorrow-ish' }), null);
+});

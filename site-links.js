@@ -70,7 +70,8 @@ var SiteLinks = (function() {
     // Is this row one of several the SAME project produced, at different landfills? If so the
     // capacity belongs to the project, not to this row, and summing the column over-counts.
     function span(cand) {
-        return (_data && cand && cand.id) ? (_spanByProject[cand.id] || null) : null;
+        return (_data && cand && cand.id) ? (_spanByProject[cand.id] ||
+            (cand.sourceDetail && _spanByProject[cand.sourceDetail.legacyRecordId]) || null) : null;
     }
 
     // Other projects at this same landfill. One owner, one conversation.

@@ -50,6 +50,7 @@
     function leadValid(l) {
         id(l.id); str(l.company,180,'lead company',true); str(l.website,1800,'account website',true); url(l.website);
         str(l.signal,2000,'buying signal'); str(l.contact,300,'public business contact route'); str(l.buyer,180,'buyer role');
+        if(l.serviceFit!==undefined)str(l.serviceFit,2000,'service-buying rationale');
         str(l.nextAction,1000,'next action'); str(l.notes,4000,'lead notes'); str(l.lastNote,2000,'contact / outcome note');
         url(l.source); if(l.checked)date(l.checked); if(l.due)date(l.due); if(l.lastTouch)date(l.lastTouch);
         if(!Object.prototype.hasOwnProperty.call(LEAD_STAGES,l.stage)||!Object.prototype.hasOwnProperty.call(OFFERS,l.offer)||!Object.prototype.hasOwnProperty.call(CHANNELS,l.channel))fail('Choose a valid lead stage, service and channel.');
@@ -73,6 +74,11 @@
             if (!Object.prototype.hasOwnProperty.call(STATUS,t.status)) fail('Invalid task status.');
             str(t.result,18000,'task result'); str(t.blocker,2000,'blocker'); sources(t.sources);
             str(t.reviewNote,3000,'review note'); str(t.handoffAt,40,'handoff date'); str(t.startedAt,40,'start date');
+            if(t.parentTaskId){id(t.parentTaskId);if(t.parentTaskId===t.id||!s.tasks.some(function(x){return x.id===t.parentTaskId;}))fail('The source task is missing.');}
+            if(t.reviewHistory!==undefined){
+                if(!Array.isArray(t.reviewHistory)||t.reviewHistory.length>20)fail('Export review history before adding further review rounds.');
+                t.reviewHistory.forEach(function(h){str(h.result,18000,'reviewed result',true);sources(h.sources);str(h.note,3000,'historical review note',true);if(!['accept','revise'].includes(h.decision)||!Number.isFinite(Date.parse(h.at)))fail('Invalid review history.');});
+            }
             if(t.due) date(t.due); if(t.dealId && !s.deals.some(function(d){return d.id===t.dealId;})) fail('The linked deal is missing.');
         });
         s.deals.forEach(function(d) { str(d.name,180,'customer / opportunity',true); str(d.contact,300,'contact'); str(d.notes,4000,'deal notes'); amount(d.feeCents); if(!Object.prototype.hasOwnProperty.call(STAGES,d.stage) || !Object.prototype.hasOwnProperty.call(OFFERS,d.offer)) fail('Invalid deal stage or offer.'); });
@@ -97,6 +103,8 @@
         case 'lead.save':
             var previous=s.leads.find(function(l){return l.id===p.id;}),lead={id:id(p.id),stage:p.stage,offer:p.offer,channel:p.channel,updatedAt:a.at};
             ['company','website','signal','source','checked','contact','buyer','nextAction','due','notes','lastTouch','lastNote'].forEach(function(k){lead[k]=typeof p[k]==='string'?p[k].trim():'';});
+            if(p.serviceFit!==undefined)lead.serviceFit=str(p.serviceFit,2000,'service-buying rationale');
+            else if(previous&&previous.serviceFit!==undefined)lead.serviceFit=previous.serviceFit;
             lead.website=url(lead.website);lead.source=url(lead.source);leadValid(lead);
             if(previous&&previous.stage==='dnc'&&(lead.stage!=='dnc'||accountKey(previous)!==accountKey(lead)||previous.contact.toLowerCase()!==lead.contact.toLowerCase()))fail('Do-not-contact records cannot be reactivated or reassigned here.');
             if(s.leads.some(function(l){return l.id!==lead.id&&l.stage==='dnc'&&lead.contact&&l.contact.toLowerCase()===lead.contact.toLowerCase();})&&lead.stage!=='dnc')fail('This contact route is marked do not contact.');
@@ -108,6 +116,11 @@
         case 'task.add':
             unique(s,'tasks',p.id);
             s.tasks.push({id:p.id,title:str(p.title,180,'task title',true),brief:str(p.brief,9000,'task brief',true),role:role(p.role),due:p.due?date(p.due):'',dealId:p.dealId||'',status:'draft',result:'',sources:[],blocker:'',reviewNote:'',handoffAt:'',startedAt:'',updatedAt:a.at});
+            if(p.parentTaskId){
+                id(p.parentTaskId);
+                if(p.role==='review'&&s.tasks.some(function(x){return x.id!==p.id&&x.role==='review'&&x.parentTaskId===p.parentTaskId&&!['done','cancelled'].includes(x.status);}))fail('An open Quality Review assignment already exists for this task.');
+                s.tasks[s.tasks.length-1].parentTaskId=p.parentTaskId;
+            }
             message='Task drafted: '+p.title;break;
         case 'task.ready':
             if(s.paused)fail('Resume the queue before preparing a handoff.');
@@ -130,6 +143,8 @@
         case 'task.revise':
             t=get(s,'tasks',p.id);if(t.status!=='review')fail('There is no result awaiting review.');
             t.reviewNote=str(p.note,3000,'review decision',true);
+            if(!t.reviewHistory)t.reviewHistory=[];
+            t.reviewHistory.push({at:a.at,decision:a.type==='task.accept'?'accept':'revise',note:t.reviewNote,result:t.result,sources:clone(t.sources)});
             t.status=a.type==='task.accept'?'done':'blocked';t.blocker=a.type==='task.revise'?t.reviewNote:'';t.updatedAt=a.at;
             message=(t.status==='done'?'Result accepted: ':'Revision requested: ')+t.title;break;
         case 'task.cancel':

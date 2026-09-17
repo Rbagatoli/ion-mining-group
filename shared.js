@@ -173,11 +173,9 @@ function initNav(activePage) {
             /* Every page in the section lights this one — the board, a single
                prospect, contacts, analytics — so moving between them never looks
                like leaving. */
-            '<a href="./prospecting.html" class="' +
-                (activePage === 'prospecting' ? 'active' : '') + '">' +
-                labels[5] + '</a>' +
+            '<a href="../crm/" class="' +
+                (activePage === 'prospecting' || activePage === 'agents' ? 'active' : '') + '">CRM ↗</a>' +
             '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[6] + '</a>' +
-            '<a href="./agent-control.html" class="' + (activePage === 'agents' ? 'active' : '') + '">' + (mobile ? 'Agents' : 'Control Center') + '</a>' +
         '</div>' +
         '<div class="proton-nav-actions">' +
             '<a href="./charts.html" class="proton-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="proton-nav-sparkline-price" id="navSparklinePrice">--</span></a>' +
@@ -233,18 +231,17 @@ function initNav(activePage) {
                 // same-uid path — the overwhelmingly common one — nothing is touched.
                 try {
                     var lastUid = localStorage.getItem('protonMiningLastUid');
-                    if (lastUid && user.uid && lastUid !== user.uid) {
-                        var keepKeys = ['sw_clean_v222', 'protonAgentControlLocal_v1'];
-                        var keep = {};
-                        for (var kk = 0; kk < keepKeys.length; kk++) {
-                            var kv = localStorage.getItem(keepKeys[kk]);
-                            if (kv !== null) keep[keepKeys[kk]] = kv;
-                        }
-                        localStorage.clear();
-                        for (var rk in keep) localStorage.setItem(rk, keep[rk]);
+                    if (lastUid && user.uid && (lastUid !== user.uid || localStorage.getItem('protonAccountSwitch'))) {
+                        SyncEngine.switchAccount(lastUid, user.uid);
+                        location.reload();
+                        return;
                     }
                     if (user.uid) localStorage.setItem('protonMiningLastUid', user.uid);
-                } catch (e) { /* private mode — the guard degrades, nothing is destroyed */ }
+                } catch (e) {
+                    SyncEngine.stopAll();
+                    window.alert('Account sync paused because local data could not be preserved. Export a backup before switching accounts.');
+                    return;
+                }
                 var initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
                 syncBtn.innerHTML = '<span class="proton-nav-avatar">' + initial + '</span>';
                 syncBtn.title = 'Signed in as ' + (user.displayName || user.email) + ' — click to sign out';
@@ -907,3 +904,25 @@ if (window.ION_EMBED) {
         }
     });
 }
+
+// Keep sync failures visible until the affected store succeeds or the user resolves it.
+(function() {
+    var issues = {};
+    window.addEventListener('proton:sync-status', function(event) {
+        var d = event.detail || {}, key = d.key || 'sync';
+        if (d.state === 'saved') delete issues[key];
+        else if (d.state === 'error' || d.state === 'conflict') issues[key] = d.reason;
+        var messages = Object.keys(issues).map(function(k) { return k + ': ' + issues[k]; });
+        var box = document.getElementById('syncIssueNotice');
+        if (!messages.length) { if (box) box.remove(); return; }
+        if (!box) {
+            box = document.createElement('div'); box.id = 'syncIssueNotice'; box.setAttribute('role', 'status');
+            box.style.cssText = 'position:fixed;bottom:12px;right:12px;max-width:440px;z-index:99999;padding:14px;background:#231d13;color:#fff;border:1px solid #d7a552;border-radius:8px';
+            document.body.appendChild(box);
+        }
+        box.textContent = messages.join(' ');
+        var retry = document.createElement('button'); retry.textContent = 'Retry pending sync'; retry.type = 'button';
+        retry.onclick = function() { if (typeof SyncEngine !== 'undefined') SyncEngine.retryPending(); };
+        box.appendChild(retry);
+    });
+})();

@@ -57,6 +57,12 @@ var CrmConfig = (function () {
         { key: 'already_contracted', label: 'Already contracted' },
         { key: 'price',              label: 'Price' },
         { key: 'timing',             label: 'Timing' },
+        { key: 'insufficient_energy', label: 'Insufficient net available energy' },
+        { key: 'short_term',         label: 'Usable contract term too short' },
+        { key: 'competing_rng',      label: 'Competing RNG / other energy use' },
+        { key: 'approvals',          label: 'Approval / procurement path' },
+        { key: 'capital',            label: 'Capital or development cost' },
+        { key: 'owner_priorities',   label: 'Owner priorities changed' },
         { key: 'other',              label: 'Other' }
     ];
 

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Proton CRM">
+  <title>Proton CRM</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./runtime/tokens.css?v=1">
+  <link rel="stylesheet" href="./crm.css?v=1">
+  <link rel="stylesheet" href="./discovery.css?v=1">
+</head>
+<body>
+  <canvas id="gasField" aria-hidden="true"></canvas>
+  <a class="skip" href="#content">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="#today"><img src="./icon.svg" width="38" height="38" alt=""><span>proton<span class="brand-suffix">CRM</span></span></a>
+    <nav id="navigation" aria-label="CRM"></nav>
+    <div class="sidebar-bottom">
+      <a href="#people" class="utility-link" id="peopleLink"></a>
+      <a href="#settings" class="utility-link" id="settingsLink"></a>
+      <a class="app-link" href="../app/index.html">Proton software <span aria-hidden="true">↗</span></a>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span class="mobile-brand">proton <b>CRM</b></span><span class="workspace-label">YOUR WORKSPACE</span><div class="topbar-actions"><button class="connection-button" id="accountButton" data-action="account"><span class="status-dot"></span><span id="connectionLabel">On this device</span></button><a href="#settings" class="mobile-settings" aria-label="Settings">⋯</a></div></header>
+    <main id="content" tabindex="-1"><div class="loading">Opening your workspace…</div></main>
+    <p id="notice" class="toast" role="status" hidden></p>
+  </div>
+  <dialog id="sheet" aria-labelledby="sheetTitle"><header class="sheet-header"><button class="text-button" id="sheetBack" hidden>Back</button><h2 id="sheetTitle"></h2><button id="sheetClose" class="icon-button" aria-label="Close panel">×</button></header><div id="sheetBody"></div><p id="sheetError" class="form-error" role="alert" hidden></p></dialog>
+  <noscript><p>Enable JavaScript to open Proton CRM. <a href="../app/index.html">Return to Proton software</a>.</p></noscript>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js" defer></script>
+  <script src="./runtime/firebase-config.js?v=1" defer></script>
+  <script src="./runtime/sync.js?v=1" defer></script>
+  <script src="./runtime/site-identity.js?v=1" defer></script>
+  <script src="./runtime/deal-qualification.js?v=1" defer></script>
+  <script src="./runtime/site-model.js?v=1" defer></script>
+  <script src="./runtime/crm-config.js?v=1" defer></script>
+  <script src="./runtime/crm-log.js?v=1" defer></script>
+  <script src="./runtime/crm-followups.js?v=1" defer></script>
+  <script src="./runtime/crm-contacts.js?v=1" defer></script>
+  <script src="./runtime/crm-interactions.js?v=1" defer></script>
+  <script src="./runtime/site-sources.js?v=1" defer></script>
+  <script src="./runtime/site-catalog.js?v=1" defer></script>
+  <script src="./runtime/source-landfill.js?v=1" defer></script>
+  <script src="./runtime/source-landfill-ca.js?v=1" defer></script>
+  <script src="./runtime/source-facility.js?v=1" defer></script>
+  <script src="./runtime/source-flare-gas.js?v=1" defer></script>
+  <script src="./runtime/site-links.js?v=1" defer></script>
+  <script src="./runtime/prospect-store.js?v=1" defer></script>
+  <script src="./runtime/miner-db.js?v=1" defer></script>
+  <script src="./runtime/site-engine.js?v=1" defer></script>
+  <script src="./runtime/site-capex.js?v=1" defer></script>
+  <script src="./runtime/site-infrastructure.js?v=1" defer></script>
+  <script src="./runtime/site-capacity.js?v=1" defer></script>
+  <script src="./runtime/site-availability.js?v=1" defer></script>
+  <script src="./runtime/prospect-diligence.js?v=1" defer></script>
+  <script src="./runtime/prospect-capital.js?v=1" defer></script>
+  <script src="./runtime/prospect-priority.js?v=1" defer></script>
+  <script src="./runtime/ghgrp-contacts.js?v=1" defer></script>
+  <script src="./runtime/landfill-contacts.js?v=1" defer></script>
+  <script src="./runtime/deal-relationships.js?v=1" defer></script>
+  <script src="./runtime/prospect-people.js?v=1" defer></script>
+  <script src="./runtime/contact-routes.js?v=1" defer></script>
+  <script src="./contacts.js?v=1" defer></script>
+  <script src="./runtime/agent-control-model.js?v=1" defer></script>
+  <script src="./runtime/agent-control-store.js?v=1" defer></script>
+  <script src="./grok-team.js?v=1" defer></script>
+  <script src="./crm-model.js?v=1" defer></script>
+  <script src="./crm-data.js?v=1" defer></script>
+  <script src="./discovery-model.js?v=1" defer></script>
+  <script src="./discovery.js?v=1" defer></script>
+  <script src="./crm.js?v=1" defer></script>
+  <script src="./runtime/gas-field.js?v=1" defer></script>
+</body>
+</html>

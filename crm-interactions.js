@@ -85,13 +85,15 @@ var CrmInteractions = (function () {
            "I said I'd send the gas spec by Friday" is that Friday morning tells
            you. Made here rather than left to the caller so no screen can forget. */
         if (payload.next_action_due && typeof CrmFollowups !== 'undefined' && CrmFollowups.add) {
-            CrmFollowups.add({
+            var followup = CrmFollowups.add({
                 prospect_id: prospectId,
                 contact_id: payload.contact_id,
                 due_date: payload.next_action_due,
                 description: payload.next_action || 'Follow up',
                 created_from: res.entry.id
             });
+            if (!followup) return { ok: false, partial: true, entry: res.entry,
+                err: 'Interaction saved, but its follow-up could not be saved. Add the follow-up before leaving; do not resubmit the interaction.' };
         }
         return res;
     }

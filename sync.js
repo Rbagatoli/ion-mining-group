@@ -6,6 +6,21 @@ var SyncEngine = (function() {
     var _listeners = {};
     var _syncing = false;
     var _recentSaves = {};
+    var _generation = 0, _incomingTimers = {}, _replayed = {};
+    function currentUid() { var u = ProtonAuth.getUser(); return u && u.uid; }
+    function stillCurrent(uid, generation) { return currentUid() === uid && generation === _generation; }
+    function status(key, state, reason) {
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('proton:sync-status', { detail: { key: key, state: state, reason: reason || '' } }));
+        }
+    }
+    function outbox(uid) {
+        try { return JSON.parse(localStorage.getItem('protonSyncOutbox:' + uid) || '{}'); } catch (e) { return {}; }
+    }
+    function writeOutbox(uid, data) {
+        try { localStorage.setItem('protonSyncOutbox:' + uid, JSON.stringify(data)); return true; }
+        catch (e) { status('', 'error', 'Pending changes could not be saved for retry. Keep this page open and export a backup.'); return false; }
+    }
 
     // Firestore collection/doc mapping
     // Each key maps to: users/{uid}/data/{key}
@@ -14,6 +29,7 @@ var SyncEngine = (function() {
         wallet:      { lsKey: 'protonMiningWallet' },
         payouts:     { lsKey: 'protonMiningPayouts' },
         electricity: { lsKey: 'protonMiningElectricity' },
+        accountingLinks: { lsKey: 'protonMiningAccountingLinks' },
         calculator:  { lsKey: 'btcMinerCalcSettings' },
         settings:    { lsKey: 'protonMiningSettings' },
         alerts:      { lsKey: 'protonMiningAlerts' },
@@ -56,12 +72,12 @@ var SyncEngine = (function() {
         return firebase.firestore();
     }
 
-    function getUserDocRef(key) {
+    function getUserDocRef(key, uid) {
         var db = getDb();
         if (!db) return null;
         var user = ProtonAuth.getUser();
         if (!user) return null;
-        return db.collection('users').doc(user.uid).collection('data').doc(key);
+        return db.collection('users').doc(uid || user.uid).collection('data').doc(key);
     }
 
     // Save data to Firestore (debounced)
@@ -85,110 +101,87 @@ var SyncEngine = (function() {
      *
      * tests/sync-coverage.test.js asserts every SyncEngine.save() call in the repo passes data. */
     function save(key, data) {
-        if (!ProtonAuth.isSignedIn()) return;
-        if (!SYNC_KEYS[key]) return;
-        if (arguments.length < 2 || data === undefined) {
-            console.error('[Sync] save("' + key + '") called with no data — nothing was uploaded. ' +
-                          'This is a bug in the caller: pass the object you just wrote.');
-            return;
-        }
-
-        // Mark as recently saved so listener ignores our own writes
-        _recentSaves[key] = true;
-
-        // Debounce: wait 500ms after last call before writing
-        if (_debounceTimers[key]) clearTimeout(_debounceTimers[key]);
+        if (!ProtonAuth.isSignedIn() || !SYNC_KEYS[key] || data === undefined) return;
+        var uid = currentUid(), generation = _generation, encoded;
+        var localOwner = localStorage.getItem('protonMiningLastUid');
+        if (localOwner && localOwner !== uid) { status(key, 'error', 'Account changed; reload before saving.'); return; }
+        try { encoded = JSON.stringify(data); JSON.parse(encoded); }
+        catch (e) { status(key, 'error', 'Changes could not be encoded for sync.'); return; }
+        var pending = outbox(uid);
+        pending[key] = encoded;
+        writeOutbox(uid, pending);
+        _recentSaves[key] = encoded;
+        status(key, 'pending');
+        clearTimeout(_debounceTimers[key]);
         _debounceTimers[key] = setTimeout(function() {
-            var ref = getUserDocRef(key);
-            if (!ref) { delete _recentSaves[key]; return; }
-
-            var payload;
-            try {
-                payload = {
-                    data: JSON.parse(JSON.stringify(data)),
-                    // Written and, today, read by nothing. Left in place deliberately: if a
-                    // conflict tiebreak is ever wanted, the field is already being recorded on
-                    // every write and the history will be there to use.
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-            } catch (e) {
-                delete _recentSaves[key];
-                console.error('[Sync] ' + key + ' could not be encoded, nothing was uploaded:',
-                              e && e.message);
-                return;
-            }
-
+            delete _debounceTimers[key];
+            if (!stillCurrent(uid, generation)) return;
+            var ref = getUserDocRef(key, uid);
+            if (!ref) return;
+            var payload = { data: JSON.parse(encoded), updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
             ref.set(payload, { merge: true }).then(function() {
-                setTimeout(function() { delete _recentSaves[key]; }, 3000);
+                var rest = outbox(uid);
+                if (rest[key] === encoded) { delete rest[key]; writeOutbox(uid, rest); }
+                if (stillCurrent(uid, generation) && _recentSaves[key] === encoded) {
+                    delete _recentSaves[key]; status(key, 'saved');
+                }
             }).catch(function(err) {
-                delete _recentSaves[key];
-                console.warn('[Sync] Write failed for ' + key + ':', err.message);
+                if (stillCurrent(uid, generation)) status(key, 'error', 'Changes remain on this device; retry sync when connected. ' + err.message);
             });
         }, 500);
     }
 
-    // Listen for remote changes on a key
     function listen(key, callback) {
-        if (!ProtonAuth.isSignedIn()) return;
-        if (!SYNC_KEYS[key]) return;
-
-        // Unsubscribe previous listener if any
-        if (_listeners[key]) {
-            _listeners[key]();
-        }
-
-        var ref = getUserDocRef(key);
+        if (!ProtonAuth.isSignedIn() || !SYNC_KEYS[key]) return;
+        if (_listeners[key]) _listeners[key]();
+        var ref = getUserDocRef(key), uid = currentUid(), generation = _generation;
         if (!ref) return;
-
-        var warmup = true;
-        setTimeout(function() { warmup = false; }, 2000);
-
-        _listeners[key] = ref.onSnapshot(function(doc) {
-            // Skip all snapshots during 2-second warmup (handles page changes)
-            if (warmup) return;
-
-            // Skip local writes — only react to server-confirmed remote changes
-            if (doc.metadata.hasPendingWrites) return;
-
-            // Skip if this change came from our own save (avoid loops)
-            if (_syncing) return;
-
-            // Skip if we recently wrote this key from this device
-            if (_recentSaves[key]) return;
-
-            if (doc.exists) {
-                var remote = doc.data();
-                if (remote && remote.data) {
-                    // Compare with current localStorage — skip if identical
-                    var lsKey = SYNC_KEYS[key].lsKey;
-                    var current = localStorage.getItem(lsKey);
-                    var remoteStr = (key === 'currency') ? remote.data : JSON.stringify(remote.data);
-                    if (current === remoteStr) return;
-
-                    _syncing = true;
-
-                    // Update localStorage
-                    if (key === 'currency') {
-                        localStorage.setItem(lsKey, remote.data);
-                    } else {
-                        localStorage.setItem(lsKey, JSON.stringify(remote.data));
-                    }
-
-                    // Call the page callback to re-render
-                    if (typeof callback === 'function') {
-                        try { callback(remote.data); } catch(e) {}
-                    }
-
-                    setTimeout(function() { _syncing = false; }, 100);
-                }
+        if (!_replayed[uid]) {
+            _replayed[uid] = true;
+            var pending = outbox(uid);
+            Object.keys(pending).forEach(function(k) {
+                try { save(k, JSON.parse(pending[k])); } catch (e) { status(k, 'error', 'Pending changes need recovery from backup.'); }
+            });
+        }
+        function receive(doc) {
+            if (!stillCurrent(uid, generation) || !doc.exists) return;
+            if (_recentSaves[key] || _syncing) {
+                clearTimeout(_incomingTimers[key]);
+                _incomingTimers[key] = setTimeout(function() { receive(doc); }, 1000);
+                return;
             }
-        }, function(err) {
-            console.warn('[Sync] Listen failed for ' + key + ':', err.message);
-        });
+            var remote = doc.data();
+            if (!remote || remote.data === undefined) return;
+            var lsKey = SYNC_KEYS[key].lsKey;
+            try {
+                var current = localStorage.getItem(lsKey);
+                var v = pullVerdict(key, current, remote.data), value = remote.data;
+                if (UNION_SAFE[key] && current) {
+                    var local = JSON.parse(current);
+                    var merged = unionStores(local, value, RECORD_CONTAINER[key]);
+                    if (merged !== null) { local[RECORD_CONTAINER[key]] = merged; value = local; v.write = true; }
+                }
+                if (!v.write) { status(key, 'conflict', v.reason + '. Local records retained; export a backup before resolving.'); return; }
+                var encoded = key === 'currency' ? value : JSON.stringify(value);
+                if (current === encoded) return;
+                _syncing = true;
+                localStorage.setItem(lsKey, encoded);
+                if (typeof callback === 'function') callback(value);
+            } catch (e) { status(key, 'error', 'Incoming changes could not be saved: ' + e.message); }
+            finally { _syncing = false; }
+        }
+        _listeners[key] = ref.onSnapshot(function(doc) {
+            if (doc.metadata && doc.metadata.hasPendingWrites) return;
+            clearTimeout(_incomingTimers[key]);
+            receive(doc);
+        }, function(err) { status(key, 'error', 'Sync unavailable: ' + err.message); });
     }
 
-    // Stop all listeners
     function stopAll() {
+        _generation++;
+        Object.keys(_debounceTimers).forEach(function(k) { clearTimeout(_debounceTimers[k]); });
+        Object.keys(_incomingTimers).forEach(function(k) { clearTimeout(_incomingTimers[k]); });
+        _debounceTimers = {}; _incomingTimers = {}; _recentSaves = {}; _replayed = {}; _syncing = false;
         Object.keys(_listeners).forEach(function(key) {
             if (_listeners[key]) {
                 _listeners[key]();
@@ -299,7 +292,7 @@ var SyncEngine = (function() {
         v.guarded = true;
         v.localCount = localIds.length;
         v.remoteCount = remoteIds.length;
-        var have = {};
+        var have = Object.create(null);
         for (var i = 0; i < remoteIds.length; i++) have[remoteIds[i]] = true;
         for (var j = 0; j < localIds.length; j++) {
             if (!have[localIds[j]]) v.missing.push(localIds[j]);
@@ -351,7 +344,7 @@ var SyncEngine = (function() {
         }
 
         if (Array.isArray(lBox) && Array.isArray(rBox)) {
-            var byId = {}, order = [], i, rec;
+            var byId = Object.create(null), order = [], i, rec;
             for (i = 0; i < lBox.length; i++) {
                 rec = lBox[i];
                 if (!rec || rec.id === undefined || rec.id === null) return null;
@@ -387,8 +380,10 @@ var SyncEngine = (function() {
         var user = ProtonAuth.getUser();
         if (!user) return;
 
+        var generation = _generation;
         var ref = db.collection('users').doc(user.uid).collection('data');
         ref.get().then(function(snapshot) {
+            if (!stillCurrent(user.uid, generation)) return;
             _syncing = true;
             var pulled = 0, held = [], unguarded = [];
 
@@ -397,6 +392,7 @@ var SyncEngine = (function() {
                 if (SYNC_KEYS[key] && doc.data() && doc.data().data) {
                     var lsKey = SYNC_KEYS[key].lsKey;
                     var remoteData = doc.data().data;
+                    if (_recentSaves[key] || outbox(user.uid)[key]) { held.push({ key: key, missing: [], reason: 'Local changes are pending upload' }); return; }
 
                     /* currency is a bare string, not a record store, and has no container --
                        pullVerdict returns write:true unguarded for it, which is correct. */
@@ -444,6 +440,9 @@ var SyncEngine = (function() {
             }
             if (typeof callback === 'function') callback(pulled, held, unguarded);
         }).catch(function(err) {
+            _syncing = false;
+            if (!stillCurrent(user.uid, generation)) return;
+            status('', 'error', 'Could not save cloud data: ' + err.message);
             console.warn('[Sync] Pull all failed:', err.message);
             if (typeof callback === 'function') callback(0, [], []);
         });
@@ -469,8 +468,42 @@ var SyncEngine = (function() {
         });
     }
 
+    function retryPending() {
+        var uid = currentUid();
+        if (!uid) return;
+        var pending = outbox(uid);
+        Object.keys(pending).forEach(function(k) { try { save(k, JSON.parse(pending[k])); } catch (e) { status(k, 'error', 'Pending changes could not be read.'); } });
+    }
+    function switchAccount(previousUid, nextUid) {
+        if (!previousUid || !nextUid) return;
+        var marker = JSON.parse(localStorage.getItem('protonAccountSwitch') || 'null');
+        if (previousUid === nextUid && !marker) return;
+        stopAll();
+        var archive = {}, keys = Object.keys(SYNC_KEYS).map(function(k) { return SYNC_KEYS[k].lsKey; });
+        if (!marker || marker.previousUid !== previousUid) {
+            keys.forEach(function(k) { var value = localStorage.getItem(k); if (value !== null) archive[k] = value; });
+            // Archive and recovery marker must succeed before any local records are removed.
+            localStorage.setItem('protonAccountArchive:' + previousUid, JSON.stringify(archive));
+            localStorage.setItem('protonAccountSwitch', JSON.stringify({ previousUid: previousUid, nextUid: nextUid }));
+        }
+        var restored = JSON.parse(localStorage.getItem('protonAccountArchive:' + nextUid) || '{}');
+        if (!restored || typeof restored !== 'object' || Array.isArray(restored)) throw new Error('Account archive needs recovery.');
+        // Provider sessions and account caches must never follow data into another identity.
+        ['protonStrikeSession', 'protonStrikeUser', 'protonStrikeOnchainAddr', 'protonMiningStrikeBtcBalance',
+         'ionStrikeSession', 'ionStrikeUser', 'protonPortalSession', 'ionPortalSession'].forEach(function(k) { localStorage.removeItem(k); });
+        keys.forEach(function(k) {
+            localStorage.removeItem(k);
+            if (Object.prototype.hasOwnProperty.call(restored, k) && typeof restored[k] === 'string') localStorage.setItem(k, restored[k]);
+        });
+        localStorage.setItem('protonMiningLastUid', nextUid);
+        localStorage.removeItem('protonAccountSwitch');
+    }
+    if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('online', retryPending);
+
     return {
         save: save,
+        retryPending: retryPending,
+        switchAccount: switchAccount,
         listen: listen,
         stopAll: stopAll,
         pullAll: pullAll,

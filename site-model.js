@@ -286,6 +286,7 @@ var SiteData = (function() {
            bag of keys, and a null would make callers guard on every access. */
         if (!s.custom_fields || typeof s.custom_fields !== 'object' ||
             Array.isArray(s.custom_fields)) s.custom_fields = {};
+        if (!s.acquisition || typeof s.acquisition !== 'object' || Array.isArray(s.acquisition)) s.acquisition = {};
         s.name = String(s.name == null ? '' : s.name).slice(0, 120);
         return s;
     }
@@ -302,7 +303,8 @@ var SiteData = (function() {
         var data = getData();
         var site = normalize(partial);
         if (!site.id) site.id = newId();
-        if (data.sites.some(function(s) { return s.id === site.id; })) return { id: site.id, _save: { ok: false, err: "A prospect with this ID is already saved. Open it to update." } };
+        if (data.sites.some(function(s) { return s.id === site.id; })) return { id: site.id,
+            _save: { ok: false, err: 'A prospect with this record ID is already saved. Open the existing prospect to update it.' } };
         site.created = new Date().toISOString();
         site.updated = site.created;
         data.sites.push(site);
@@ -316,6 +318,12 @@ var SiteData = (function() {
         var data = getData();
         for (var i = 0; i < data.sites.length; i++) {
             if (data.sites[i].id !== id) continue;
+            if (changes.stage === 'closed_won' && data.sites[i].stage !== 'closed_won') {
+                var candidate = Object.assign({}, data.sites[i], changes);
+                var qualification = typeof DealQualification !== 'undefined' ? DealQualification.evaluate(candidate) : null;
+                if (!qualification || !qualification.canClose) return { id: id, _save: { ok: false,
+                    err: qualification ? 'Cannot close yet: ' + qualification.blockers.map(function(b) { return b.label; }).join('; ') : 'Open Proton CRM and complete the acquisition evidence before closing.' } };
+            }
             var merged = data.sites[i];
             for (var k in changes) {
                 if (Object.prototype.hasOwnProperty.call(changes, k)) merged[k] = changes[k];
@@ -407,8 +415,22 @@ var SiteData = (function() {
             }
         }
 
-        var res = update(id, { stage: stage });
+        var changes = { stage: stage };
+        if (stage === 'dead' && from !== stage) {
+            var acquisition = JSON.parse(JSON.stringify(before.acquisition || {}));
+            acquisition.loss_history = Array.isArray(acquisition.loss_history) ? acquisition.loss_history : [];
+            if (acquisition.loss) acquisition.loss_history.push(acquisition.loss);
+            acquisition.loss = { reason: opts.deadReason, note: opts.note || '', recorded_at: new Date().toISOString(), from_stage: from };
+            // A previous re-entry plan cannot silently apply to a new loss.
+            if (acquisition.pursuit) {
+                acquisition.pursuit.reentry = null;
+                acquisition.pursuit.revision = (acquisition.pursuit.revision || 0) + 1;
+            }
+            changes.acquisition = acquisition;
+        }
+        var res = update(id, changes);
         if (!res) return null;
+        if (res._save && !res._save.ok) return { ok: false, err: res._save.err };
 
         /* Logged AFTER the record is written, so a failed save never leaves a
            history entry claiming a transition that did not happen. A logged
@@ -423,6 +445,37 @@ var SiteData = (function() {
             });
         }
         return res;
+    }
+
+    // One site write holds the evidence action, history and (only for explicit reactivation)
+    // stage together. The revision detects stale forms; cross-device conflict resolution is
+    // still owned by the existing sync layer.
+    function pursue(id, command) {
+        var before = get(id);
+        if (!before) return { ok: false, err: 'This prospect no longer exists.' };
+        if (typeof DealPursuit === 'undefined') return { ok: false, err: 'The acquisition workflow did not load. Reload Prospecting.' };
+        var result = DealPursuit.apply(before, command);
+        if (!result.ok) return result;
+        if (STAGES.indexOf(result.stage) < 0) return { ok: false, err: 'The Researching stage is not on this configured pipeline. Restore it before using verified re-entry.' };
+        var saved = update(id, { acquisition: result.acquisition, stage: result.stage });
+        if (!saved || !saved._save || !saved._save.ok) return { ok: false, err: saved && saved._save ? saved._save.err : 'The acquisition action was not saved.' };
+        if (before.stage !== saved.stage && typeof CrmLog !== 'undefined' && CrmLog.append) {
+            // Authoritative re-entry history is already in the atomic site record.
+            var log = CrmLog.append('stage', id, { from: before.stage, to: saved.stage, note: 'Reopened after verified change. See acquisition evidence history.' });
+            if (!log || log.ok === false) return { ok: true, site: saved, warning: 'Deal reopened and evidence saved; the separate CRM timeline could not be updated.' };
+        }
+        return { ok: true, site: saved };
+    }
+
+    function negotiate(id, command) {
+        var before = get(id);
+        if (!before) return { ok: false, err: 'This prospect no longer exists.' };
+        if (typeof DealNegotiation === 'undefined') return { ok: false, err: 'The negotiation model did not load. Reload Prospecting.' };
+        var result = DealNegotiation.apply(before, command);
+        if (!result.ok) return result;
+        var saved = update(id, { acquisition: result.acquisition });
+        if (!saved || !saved._save || !saved._save.ok) return { ok: false, err: saved && saved._save ? saved._save.err : 'The negotiation was not saved.' };
+        return { ok: true, site: saved, offer_id: result.offer_id };
     }
 
     /* How long this prospect has sat where it is, in whole days.
@@ -471,10 +524,42 @@ var SiteData = (function() {
     // as missing rather than scoring the site as though it were free.
     function fromCandidate(cand, overrides) {
         if (typeof SiteSources === 'undefined') throw new Error('SiteSources is required to promote a candidate');
-        var existing = list().filter(function(s) { return s.id === cand.id || (s.discovery && s.discovery.sourceId === cand.source && s.discovery.sourceRecordId === cand.id); });
-        if (existing.length > 1) return { id: cand.id, _save: { ok: false, err: "Multiple saved records match this source. Resolve the duplicate before updating." } };
+        var existing = list().filter(function(s) { return typeof SiteIdentity !== 'undefined' ? SiteIdentity.matchesSource(s, cand) : s.id === cand.id || (s.discovery &&
+            s.discovery.sourceId === cand.source && s.discovery.sourceRecordId === cand.id); });
+        if (existing.length > 1) {
+            var primary = typeof SiteIdentity !== 'undefined' && SiteIdentity.savedForCandidate(list(), cand);
+            if (primary) return Object.assign({}, primary, { _existing: true, _save: { ok: true, err: null } });
+            return { id: cand.id, _save: { ok: false, err: 'Multiple saved records match this source. Review their physical identity and primary record before updating.' } };
+        }
         if (existing.length) return Object.assign({}, existing[0], { _existing: true, _save: { ok: true, err: null } });
         return add(SiteSources.toSite(cand, overrides));
+    }
+
+    function reviewIdentity(id, command) {
+        if (typeof SiteIdentity === 'undefined') return { ok: false, err: 'Site identity is unavailable.' };
+        var data = getData(), result = SiteIdentity.review(data.sites, id, command);
+        if (!result.ok) return result;
+        data.sites = result.sites;
+        var saved = saveData(data);
+        return saved.ok ? { ok: true, site: get(id) } : saved;
+    }
+
+    function captureIdentity(id, candidate, expectedDiscovery) {
+        var live = get(id);
+        if (!live || typeof SiteIdentity === 'undefined') return { ok: false, err: 'This prospect or its identity module is unavailable.' };
+        var discovery = live.discovery || {};
+        if (JSON.stringify(discovery) !== expectedDiscovery) return { ok: false, err: 'The saved source identity changed. Reload this panel before saving.' };
+        if (!candidate || !SiteIdentity.matchesSource(live, candidate)) return { ok: false, err: 'This source record does not match the saved prospect.' };
+        var sourceKeys = SiteIdentity.sourceKeys(candidate);
+        if (!sourceKeys.length) return { ok: false, err: 'This source does not supply a supported physical identifier. Record a verified shared identifier in qualification.' };
+        var capture = { identityKeys: sourceKeys, sourceSnapshot: candidate.sourceSnapshot || null, capturedAt: new Date().toISOString() };
+        var captures = Array.isArray(discovery.identityCaptures) ? discovery.identityCaptures.slice() : [];
+        if (!captures.length && discovery.capturedAt) captures.push({ identityKeys: discovery.identityKeys || [], sourceSnapshot: discovery.sourceSnapshot || null, capturedAt: discovery.capturedAt });
+        captures.push(capture);
+        discovery = Object.assign({}, discovery, capture, { sourceId: candidate.source, sourceRecordId: candidate.id,
+            stableSourceRecordId: candidate.stableSourceRecordId || null, identityCaptures: captures });
+        var saved = update(id, { discovery: discovery });
+        return saved && saved._save.ok ? { ok: true, site: saved } : { ok: false, err: saved && saved._save.err || 'Could not save this source identity.' };
     }
 
     /* WHY THIS EXISTS SEPARATELY FROM list().
@@ -524,7 +609,11 @@ var SiteData = (function() {
         update: update,
         remove: remove,
         setStage: setStage,
+        pursue: pursue,
+        negotiate: negotiate,
         fromCandidate: fromCandidate,
+        reviewIdentity: reviewIdentity,
+        captureIdentity: captureIdentity,
         normalize: normalize,
         blankSite: blankSite,
         STATUSES: STATUSES,
