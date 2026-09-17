@@ -66,6 +66,9 @@ jobs:
       # a dev server on 127.0.0.1:8090, and two known failures unrelated to anything published
       # here — gating a deploy on those would mean the site stops deploying for reasons that
       # have nothing to do with the site.
+      - name: Agent Control Center model and storage checks
+        run: node --test tests/agent-control.test.js
+
       - name: Site test suite
         run: node tests/site/run.js
 

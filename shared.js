@@ -177,6 +177,7 @@ function initNav(activePage) {
                 (activePage === 'prospecting' ? 'active' : '') + '">' +
                 labels[5] + '</a>' +
             '<a href="./banking.html" class="' + (activePage === 'banking' ? 'active' : '') + '">' + labels[6] + '</a>' +
+            '<a href="./agent-control.html" class="' + (activePage === 'agents' ? 'active' : '') + '">' + (mobile ? 'Agents' : 'Control Center') + '</a>' +
         '</div>' +
         '<div class="proton-nav-actions">' +
             '<a href="./charts.html" class="proton-nav-sparkline" id="navSparkline"><canvas id="navSparklineCanvas" width="70" height="24"></canvas><span class="proton-nav-sparkline-price" id="navSparklinePrice">--</span></a>' +
@@ -198,6 +199,11 @@ function initNav(activePage) {
                 '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
             '</button>' +
         '</div>';
+    var navTabs = nav.querySelector('.proton-nav-tabs');
+    var activeLink = navTabs && navTabs.querySelector('a.active');
+    if (activeLink && navTabs.scrollWidth > navTabs.clientWidth) {
+        navTabs.scrollLeft = Math.max(0, activeLink.offsetLeft + activeLink.offsetWidth - navTabs.clientWidth);
+    }
     var sel = document.getElementById('currencySelect');
     if (sel) sel.addEventListener('change', function() { switchCurrency(this.value); });
 
@@ -228,7 +234,7 @@ function initNav(activePage) {
                 try {
                     var lastUid = localStorage.getItem('protonMiningLastUid');
                     if (lastUid && user.uid && lastUid !== user.uid) {
-                        var keepKeys = ['sw_clean_v222'];
+                        var keepKeys = ['sw_clean_v222', 'protonAgentControlLocal_v1'];
                         var keep = {};
                         for (var kk = 0; kk < keepKeys.length; kk++) {
                             var kv = localStorage.getItem(keepKeys[kk]);

@@ -1,5 +1,10 @@
 [
   "accounting.html",
+  "agent-control-model.js",
+  "agent-control-store.js",
+  "agent-control.css",
+  "agent-control.html",
+  "agent-control.js",
   "alerts.js",
   "auth-ui.js",
   "backup.js",

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Proton Mining — Control Center</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=338">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./tokens.css?v=405">
+    <link rel="stylesheet" href="./shared.css?v=444">
+    <link rel="stylesheet" href="./agent-control.css?v=2">
+    <script src="./brand-migrate.js?v=338" defer></script>
+    <script src="./theme.js?v=374" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js" defer></script>
+    <script src="./firebase-config.js?v=340" defer></script>
+    <script src="./sync.js?v=420" defer></script>
+    <script src="./auth-ui.js?v=340" defer></script>
+    <script src="./backup.js?v=433" defer></script>
+    <script src="./profile-panel.js?v=375" defer></script>
+    <script src="./shared.js?v=444" defer></script>
+    <script src="./agent-control-model.js?v=3" defer></script>
+    <script src="./agent-control-store.js?v=1" defer></script>
+    <script src="./agent-control.js?v=3" defer></script>
+    <script src="./gas-field.js?v=353" defer></script>
+</head>
+<body>
+<canvas id="gasField" aria-hidden="true"></canvas>
+<nav id="proton-nav" aria-label="Proton Mining"></nav>
+<main class="ac-shell" id="controlCenter">
+    <header class="ac-heading">
+        <div><p class="ac-eyebrow">PROTON / REVENUE DESK</p><h1>Control center<span class="ac-period">.</span></h1><p class="ac-lede">Find a buying signal. Start a conversation. Earn the assignment.</p></div>
+        <div class="ac-actions"><button class="ac-btn" id="setupButton">Set up Grok</button><button class="ac-btn ac-primary" id="newTaskButton">+ New task</button></div>
+    </header>
+    <div class="ac-connection" id="connection" role="status"></div>
+    <div id="notice" class="ac-notice" role="status" hidden></div>
+    <section class="ac-metrics" id="metrics" aria-label="Revenue desk overview"></section>
+    <div class="ac-toolbar">
+        <div class="ac-tabs" role="tablist" aria-label="Control center sections">
+            <button role="tab" id="tab-leads" aria-selected="true" aria-controls="panel-leads" data-tab="leads">Lead desk <span id="leadCount">0</span></button>
+            <button role="tab" id="tab-work" aria-selected="false" aria-controls="panel-work" data-tab="work" tabindex="-1">Work queue <span id="workCount">0</span></button>
+            <button role="tab" id="tab-deals" aria-selected="false" aria-controls="panel-deals" data-tab="deals" tabindex="-1">Opportunities</button>
+            <button role="tab" id="tab-cash" aria-selected="false" aria-controls="panel-cash" data-tab="cash" tabindex="-1">Cash record</button>
+            <button role="tab" id="tab-activity" aria-selected="false" aria-controls="panel-activity" data-tab="activity" tabindex="-1">Activity</button>
+        </div>
+        <div class="ac-actions"><button class="ac-text-btn" id="pauseButton">Pause queue</button><button class="ac-text-btn" id="exportButton">Export backup</button></div>
+    </div>
+    <div class="ac-layout">
+        <div class="ac-content">
+            <section id="panel-leads" role="tabpanel" aria-labelledby="tab-leads">
+                <div class="ac-section-head"><div><h2>Make the next conversation relevant.</h2><p>Research → qualify for outreach → record responses → propose paid work. A public contact is not a buyer.</p></div><button class="ac-btn ac-primary" id="newLeadButton">+ Lead</button></div>
+                <div id="leadSummary" class="ac-lead-summary" aria-label="Current lead stages"></div>
+                <details class="ac-offers"><summary>Two entry offers to test</summary><div class="ac-offer-grid"><article><p class="ac-eyebrow">MINING OPERATORS</p><h3>Quote &amp; Cost Review</h3><p>Compare up to three buyer-supplied hardware or hosting quotes. Flag cost differences, missing terms and downside assumptions.</p><strong>$500 pilot</strong></article><article><p class="ac-eyebrow">MINING &amp; ENERGY SUPPLIERS</p><h3>Supplier Prospect Research</h3><p>25 evidence-linked target accounts, five priority account briefs and outreach drafts for one agreed market.</p><strong>$1,500 pilot</strong></article></div><p class="ac-help">Prices and demand are unvalidated. Sell a bounded research deliverable; meetings, savings and sales are not guaranteed. Offer sourcing or site briefs after a specific need emerges.</p></details>
+                <div class="ac-filterbar"><label class="ac-search"><span class="ac-sr">Search leads</span><input id="leadSearch" type="search" placeholder="Company, signal, contact, or next action"></label><label><span class="ac-sr">Lead stage</span><select id="leadStage" aria-label="Lead stage"><option value="active">Active leads</option></select></label><label><span class="ac-sr">Lead service</span><select id="leadOffer" aria-label="Lead service"><option value="">All services</option></select></label></div>
+                <div id="leads"></div>
+                <p class="ac-help ac-lead-footnote">Qualification here means researched fit for outreach. Confirm need, timing, authority and willingness to pay in conversation. Contact stages are manually reported; this desk does not send messages.</p>
+            </section>
+            <section id="panel-work" role="tabpanel" aria-labelledby="tab-work" hidden>
+                <div class="ac-filterbar"><label class="ac-search"><span class="ac-sr">Search tasks</span><input id="taskSearch" type="search" placeholder="Find a task, result, or blocker"></label><label><span class="ac-sr">Filter by role</span><select id="roleFilter" aria-label="Filter by role"><option value="">All roles</option></select></label><label><span class="ac-sr">Task visibility</span><select id="stateFilter" aria-label="Task visibility"><option value="open">Open work</option><option value="review">Needs review</option><option value="closed">Accepted / cancelled</option><option value="all">All work</option></select></label></div>
+                <div id="tasks"></div>
+            </section>
+            <section id="panel-deals" role="tabpanel" aria-labelledby="tab-deals" hidden><div class="ac-section-head"><div><h2>Customer opportunities</h2><p>Keep each paid assignment connected to the work.</p></div><button class="ac-btn" id="newDealButton">+ Opportunity</button></div><div id="deals"></div></section>
+            <section id="panel-cash" role="tabpanel" aria-labelledby="tab-cash" hidden><div class="ac-section-head"><div><h2>Collected contribution</h2><p>Manual records in USD. Include earned fees and paid costs; exclude customer purchase funds and unearned deposits.</p></div><button class="ac-btn" id="newCashButton">+ Cash entry</button></div><div class="ac-month"><label for="cashMonth">Reporting month</label><input id="cashMonth" type="month"><button class="ac-text-btn" id="goalButton">Change target</button></div><div id="cashSummary"></div><div id="cashEntries"></div></section>
+            <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden><div class="ac-section-head"><div><h2>Desk activity</h2><p>Recorded changes in Proton. Grok's native conversation stays in Grok.</p></div></div><div id="activity"></div></section>
+        </div>
+        <aside class="ac-sidebar" aria-label="Team and operating plan">
+            <div class="ac-side-note ac-lead-priority"><p class="ac-eyebrow">FIRST PRIORITY / ACQUISITION</p><h3>Two markets. Real buying signals.</h3><p>Miners making a purchase or relocation decision. Suppliers selling into mining and energy projects.</p><p>First sprint: research 40 accounts, qualify 20 for outreach, pursue 10 buyer conversations and test two paid pilots. These are targets, not forecasts.</p><button class="ac-btn ac-primary" id="leadSprintButton">Add lead-gen sprint →</button></div>
+            <div class="ac-section-head"><div><p class="ac-eyebrow">THE TEAM</p><h2>Six focused roles</h2></div><span class="ac-small">Grok profiles to set up</span></div>
+            <div id="team"></div>
+            <div class="ac-side-note"><p class="ac-eyebrow">FOLLOW-ON DELIVERY</p><h3>Grow from the first useful result.</h3><p>Offer the $1,500 Sourcing Desk or $2,000 Site Decision Brief when discovery identifies that need. Test repeat research only after a useful paid pilot.</p><p class="ac-small">Pilot prices to validate with buyers.</p><button class="ac-text-btn" id="launchPlanButton">Add the launch tasks →</button></div>
+            <div class="ac-shortcuts"><a href="./prospecting.html">Open prospecting <span>↗</span></a><a href="./calculator.html">Mining calculator <span>↗</span></a><a href="./contacts.html">Contact book <span>↗</span></a></div>
+        </aside>
+    </div>
+    <footer class="ac-footer"><span>One workspace. A clear next action.</span><span id="revisionLabel">Local register</span></footer>
+</main>
+<dialog id="deskDialog" class="ac-dialog" aria-labelledby="dialogTitle"><div class="ac-dialog-head"><div><p class="ac-eyebrow" id="dialogEyebrow">REVENUE DESK</p><h2 id="dialogTitle"></h2></div><button class="ac-close" id="closeDialog" aria-label="Close dialog">×</button></div><div id="dialogBody"></div><p id="dialogError" class="ac-form-error" role="alert" hidden></p></dialog>
+<noscript><p class="ac-noscript">Enable JavaScript to use the Proton control center.</p></noscript>
+</body>
+</html>
