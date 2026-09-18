@@ -21,14 +21,16 @@
     const lines=[buy?'PROTON MINING — BUYER REQUIREMENTS':'PROTON MINING — ASIC SELLER BRIEF','PREPARED ONLY — NOT SUBMITTED','',
       'Company / name: '+(clean(values.company)||'Not provided'),
       (buy?'Requested model(s): ':'Model(s): ')+clean(values.model),
+      'Exact variant / hashrate / cooling: '+(clean(values.variant)||'To confirm'),
       (buy?'Desired quantity: ':'Quantity: ')+quantity,
       (buy?'Delivery location: ':'Equipment location: ')+clean(values.location),
       (buy?'Required condition: ':'Reported condition: ')+clean(values.condition),
       (buy?'Budget and currency: ':'Asking price and currency: ')+(clean(values.price)||'Not provided'),
-      (buy?'Purchase timing: ':'Availability / timing: ')+(clean(values.timing)||'Not provided'),
+      (buy?'Required delivery deadline: ':'Availability / timing: ')+(clean(values.timing)||'To confirm'),
       '',(buy?'Requirements / questions:':'Test records, photos, ownership details and questions:'),clean(values.notes)||'Not provided','',
       'This brief is not an offer, an equipment verification, or a brokerage agreement.'];
-    if(!buy)lines.push('Proposed seller fee: 3% of the completed sale price; final scope and fees agreed before representation. Shipping, inspection and other agreed costs are separate.');
+    if(buy)lines.push('Buyer sourcing scope and any fee: not agreed. The seller commission does not apply automatically to this request. Potential lots, availability, authority to sell, prices and test evidence still need confirmation.');
+    else lines.push('Proposed seller fee: 3% of the completed sale price; final scope and fees agreed before representation. Shipping, inspection and other agreed costs are separate.');
     return lines.join('\n');
   }
   function mount(doc){
@@ -42,6 +44,7 @@
     function syncMode(){
       const buy=values().mode==='buy';
       doc.querySelectorAll('[data-sell-label]').forEach(el=>{el.textContent=el.getAttribute(buy?'data-buy-label':'data-sell-label');});
+      doc.getElementById('brTiming').placeholder=buy?'Required delivery date or timeframe':'Available from / preferred completion';
       panel.hidden=true;output.value='';status.textContent='';
     }
     form.querySelectorAll('[name="mode"]').forEach(el=>el.addEventListener('change',syncMode));

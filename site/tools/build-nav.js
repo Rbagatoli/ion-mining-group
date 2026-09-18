@@ -147,7 +147,7 @@ const CTA = {
   'hosting.html':          { href: './hardware.html', label: 'Start mining' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
   'hardware.html':         { href: '#quote', label: 'Request a quote' },
-  'brokerage.html':        { href: '#prepare', label: 'Prepare a sale' },
+  'brokerage.html':        { href: '#prepare', label: 'Prepare a brief' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'why-mining.html':       { href: './hardware.html', label: 'Start mining' },
   'blog.html':             { href: './why-mining.html', label: 'Why own machines' },
