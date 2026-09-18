@@ -12,7 +12,23 @@
 .br-visual { position: relative; min-width: 0; padding: 24px; border: 1px solid var(--line-mid); background: linear-gradient(135deg,rgba(229,228,226,.055),transparent 65%); }
 .br-visual-head, .br-visual-foot { display: flex; justify-content: space-between; gap: 12px; align-items: center; font: 10px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--br-muted); }
 .br-visual-head span:last-child { color: var(--btc-200); }
-.br-visual svg { width: 100%; height: auto; display: block; margin: 12px 0; }
+.br-scene-stage { position: relative; aspect-ratio: 4 / 3; margin: 16px -8px 0; overflow: hidden; background: radial-gradient(ellipse at 50% 36%,rgba(229,228,226,.045),transparent 65%),#050505; }
+.br-scene-canvas, .br-scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; }
+.br-scene-poster { object-fit: contain; }
+.br-scene-canvas { opacity: 0; }
+.br-scene-ready .br-scene-canvas { opacity: 1; }
+.br-scene-ready .br-scene-poster { visibility: hidden; }
+.br-scene-canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; outline-offset: -3px; }
+.br-scene-canvas canvas:active { cursor: grabbing; }
+.br-scene-canvas canvas:focus-visible, .br-scene-controls button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
+.br-scene-status { margin: 12px 0; font: 10px/1.5 var(--mono); color: var(--br-muted); }
+.br-scene-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
+.br-scene-controls[hidden] { display: none; }
+.br-scene-controls button { min-height: 44px; min-width: 44px; padding: 8px 10px; background: rgba(229,228,226,.035); border: 1px solid var(--line-mid); color: var(--plat-200); font: 11px var(--mono); cursor: pointer; }
+.br-scene-controls button:hover, .br-scene-controls button[aria-pressed="true"] { border-color: var(--btc-300); color: var(--btc-200); }
+.br-scene-hint { width: 100%; margin: 2px 0 0; font: 10px/1.5 var(--mono); color: var(--br-muted); }
+.br-scene-touch { display: none; }
+@media (pointer: coarse) { .br-scene-mouse { display: none; } .br-scene-touch { display: inline; } }
 .br-visual-foot { border-top: 1px solid var(--line); padding-top: 18px; }
 .br-visual-foot strong { font: 500 30px/1 var(--sans); letter-spacing: -.04em; color: var(--plat-100); }
 .br-visual-foot strong small { font: 11px var(--mono); color: var(--br-muted); letter-spacing: 0; margin-left: 5px; }

@@ -13,9 +13,9 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=a2e1675a">
+<link rel="stylesheet" href="./styles.css?v=cbb0c950">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=a2e1675a">
+<link rel="stylesheet" href="./brokerage.css?v=cbb0c950">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -110,33 +110,21 @@
         </div>
         <p class="br-note">Launching with US business sellers. Brokerage enquiries open soon.</p>
       </div>
-      <div class="br-visual" aria-label="Illustration of Bitcoin mining hardware and the brokerage fee">
+      <div class="br-visual" id="brMiner" aria-label="Bitcoin ASIC model and the brokerage fee">
         <div class="br-visual-head"><span>Hardware / next chapter</span><span>SHA-256</span></div>
-        <svg viewBox="0 0 520 350" role="img" aria-label="An illustrated pair of air-cooled ASIC miners">
-          <defs>
-            <linearGradient id="brMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#343432"/><stop offset=".43" stop-color="#bbbcb7"/><stop offset=".48" stop-color="#777975"/><stop offset=".7" stop-color="#c0c1bd"/><stop offset="1" stop-color="#454742"/></linearGradient>
-            <linearGradient id="brSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#555751"/><stop offset="1" stop-color="#161814"/></linearGradient>
-            <linearGradient id="brTop"><stop stop-color="#7b7d77"/><stop offset="1" stop-color="#343631"/></linearGradient>
-            <radialGradient id="brFan"><stop stop-color="#60635b"/><stop offset=".24" stop-color="#242721"/><stop offset=".3" stop-color="#090b08"/><stop offset=".91" stop-color="#1c1f19"/><stop offset="1" stop-color="#74776d"/></radialGradient>
-            <g id="brUnit">
-              <path d="M20 60 112 10 304 29 207 87Z" fill="url(#brTop)" stroke="#9a9d92" stroke-width="1"/>
-              <path d="M207 87 304 29 304 158 207 219Z" fill="url(#brSide)" stroke="#65695e" stroke-width="1"/>
-              <path d="M20 60 207 87 207 219 20 187Z" fill="url(#brMetal)" stroke="#c0c2b8" stroke-width="1"/>
-              <path d="M28 72 111 84 111 183 28 169Z M117 86 199 98 199 199 117 184Z" fill="#121510" stroke="#777b6e"/>
-              <ellipse cx="69" cy="125" rx="36" ry="42" fill="url(#brFan)"/>
-              <ellipse cx="158" cy="139" rx="36" ry="42" fill="url(#brFan)"/>
-              <g stroke="#73796a" stroke-width="1" fill="none" opacity=".8"><ellipse cx="69" cy="125" rx="28" ry="33"/><ellipse cx="69" cy="125" rx="18" ry="22"/><ellipse cx="158" cy="139" rx="28" ry="33"/><ellipse cx="158" cy="139" rx="18" ry="22"/><path d="m35 101 67 47m-59-57 49 70m-59-34 72 7m22-23 63 47m-57-57 49 70m-59-34 72 7"/></g>
-              <ellipse cx="69" cy="125" rx="9" ry="11" fill="#868c7d"/><ellipse cx="158" cy="139" rx="9" ry="11" fill="#868c7d"/>
-              <g stroke="#a4a99a" opacity=".28"><path d="m223 88 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40"/></g>
-              <path d="m70 41 88-24 88 10-86 28Z" fill="#4a4e43" stroke="#989d8d"/><path d="m83 40 65-18m-53 21 65-18m-53 21 65-18m-53 21 65-18m-53 21 65-18" stroke="#8c9380" opacity=".6"/>
-              <path d="m35 181 20 3v6l-20-3Z" fill="#f7931a"/><path d="m164 202 23 4v5l-23-4Z" fill="#40443b"/>
-            </g>
-          </defs>
-          <g fill="none" stroke="#6f7467" opacity=".17"><path d="M12 268 271 121 510 247M12 289 271 142 510 268M12 310 271 163 510 289M12 331 271 184 510 310"/><path d="m80 233 227 109m-169-142 229 110m-166-145 223 113"/></g>
-          <use href="#brUnit" transform="translate(184 21) scale(.78)" opacity=".75"/>
-          <use href="#brUnit" transform="translate(27 94)"/>
-          <path d="M18 325H497" stroke="#777c6e" opacity=".4"/>
-        </svg>
+        <div class="br-scene-stage">
+          <img class="br-scene-poster" src="./brokerage-miner.png" width="996" height="747" alt="Cutaway of a platinum hydro-cooled ASIC, with three cold plates and copper coolant connections">
+          <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
+        </div>
+        <p class="br-scene-status">Hydro ASIC · illustrative model</p>
+        <div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden>
+          <button type="button" data-br-view="inside" aria-pressed="false">Inside miner</button>
+          <button type="button" data-br-view="xray" aria-pressed="false">X-ray off</button>
+          <button type="button" data-br-view="out" aria-label="Zoom out">−</button>
+          <button type="button" data-br-view="in" aria-label="Zoom in">+</button>
+          <button type="button" data-br-view="reset">Reset</button>
+          <p class="br-scene-hint"><span class="br-scene-mouse">Drag to shift · Right-drag to rotate · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom · Two fingers to shift</span></p>
+        </div>
         <div class="br-visual-foot"><strong>$0<small>upfront service fee</small></strong><span>Commission on<br>completed sales</span></div>
       </div>
     </div>
@@ -271,9 +259,12 @@
     </div>
   </div>
 </footer>
-<script src="./site.js?v=a2e1675a"></script>
-<script src="./hero-anim.js?v=a2e1675a"></script>
-<script src="./cart.js?v=a2e1675a"></script>
-<script src="./brokerage.js?v=a2e1675a"></script>
+<script src="./site.js?v=cbb0c950"></script>
+<script src="./hero-anim.js?v=cbb0c950"></script>
+<script src="./cart.js?v=cbb0c950"></script>
+<script src="./brokerage.js?v=cbb0c950"></script>
+<script src="./diagram-engine.js?v=cbb0c950"></script>
+<script src="./scene-asic.js?v=cbb0c950"></script>
+<script src="./brokerage-scene.js?v=cbb0c950" data-module-src="./mine-builder-scene.js?v=brokerage3d20260918"></script>
 </body>
 </html>
