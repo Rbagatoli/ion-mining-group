@@ -325,8 +325,15 @@ console.log(CHR + '=== a generator only owns its own section ===');
        It now stops at its own closing marker. A sentinel is placed in the gap, every generator
        is run, and the sentinel has to still be there. */
     const { execFileSync } = await import('child_process');
-    const page = path.join(REPO_ROOT, 'site', 'hosting.html');
+    const siteDir = path.join(REPO_ROOT, 'site');
+    const page = path.join(siteDir, 'hosting.html');
     const original = fs.readFileSync(page, 'utf8');
+    // These generators touch multiple pages. Restoring only hosting.html left
+    // index.html and energy.html with unstamped script tags after a passing test.
+    // Save bytes for every existing HTML output so this fixture cannot leak its
+    // generated changes into a later release or depend on another suite to repair them.
+    const htmlPages = () => fs.readdirSync(siteDir).filter(name => /\.html$/.test(name)).sort();
+    const originalPages = new Map(htmlPages().map(name => [name, fs.readFileSync(path.join(siteDir, name))]));
 
     const SENTINEL = '<!-- neighbour-sentinel -->';
     const at = original.indexOf('<!-- ===== TERMS ===== -->');
@@ -341,9 +348,12 @@ console.log(CHR + '=== a generator only owns its own section ===');
                                        { stdio: 'pipe' }));
         survived = fs.readFileSync(page, 'utf8').indexOf(SENTINEL) >= 0;
     } finally {
-        fs.writeFileSync(page, original);
+        for (const [name, bytes] of originalPages) fs.writeFileSync(path.join(siteDir, name), bytes);
     }
     ok(survived, 'a section between the diagram block and TERMS survives every generator');
+    ok(JSON.stringify(htmlPages()) === JSON.stringify([...originalPages.keys()]) &&
+       [...originalPages].every(([name, bytes]) => fs.readFileSync(path.join(siteDir, name)).equals(bytes)),
+       'the generator fixture restores every HTML output byte for byte');
 
     /* And the two that were lost are back, and stay back. */
     ok(original.indexOf('What hosting includes.') >= 0,
