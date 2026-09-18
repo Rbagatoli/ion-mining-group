@@ -13,9 +13,9 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=e0dc9b23">
+<link rel="stylesheet" href="./styles.css?v=30659239">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=e0dc9b23">
+<link rel="stylesheet" href="./brokerage.css?v=30659239">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -105,35 +105,51 @@
         <h1 class="br-title">Your next miners.<br><span>New or used.</span></h1>
         <p class="br-intro">Tell us what you need. We find and compare suppliers to help you source the right Bitcoin ASICs at a competitive, evidenced total cost.</p>
         <div class="br-actions">
-          <a class="btn btn--primary" href="#sourcing">Find miners <span aria-hidden="true">↘</span></a>
+          <a class="btn btn--primary" href="#miners">Browse miners <span aria-hidden="true">↘</span></a>
           <a class="btn btn--ghost" href="#selling">Sell miners <span aria-hidden="true">↘</span></a>
         </div>
         <p class="br-note">Bitcoin ASIC sourcing · New, used or either.<br>Enquiries open soon. Prepare your requirements below.</p>
       </div>
-      <div class="br-visual" id="brMiner" aria-label="Illustrative Bitcoin ASIC model">
-        <div class="br-visual-head"><span>Hardware / next chapter</span><span>SHA-256</span></div>
-        <div class="br-scene-stage">
-          <img class="br-scene-poster" src="./brokerage-miner.png?v=lineup20260918" width="996" height="747" alt="Platinum hydro-cooled ASIC design illustration with two copper coolant connections">
-          <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
-        </div>
-        <p class="br-scene-status" role="status">Hydro-cooled · design illustration</p>
-        <div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden>
-          <div class="br-variant-selectors" role="group" aria-label="Choose a miner design">
-            <button type="button" data-br-variant="hydro" aria-pressed="true">Hydro-cooled</button>
-            <button type="button" data-br-variant="air-tower" aria-pressed="false">Air · tower</button>
-            <button type="button" data-br-variant="air-compact" aria-pressed="false">Air · compact</button>
-          </div>
-          <button type="button" data-br-view="play">Pause animation</button>
-          <button type="button" data-br-view="inside" aria-pressed="false">Inside miner</button>
-          <button type="button" data-br-view="xray" aria-pressed="false">X-ray off</button>
-          <button type="button" data-br-view="out" aria-label="Zoom out">−</button>
-          <button type="button" data-br-view="in" aria-label="Zoom in">+</button>
-          <button type="button" data-br-view="reset">Reset</button>
-          <p class="br-scene-hint"><span class="br-scene-mouse">Drag to shift · Right-drag to rotate · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom · Two fingers to shift</span></p>
-        </div>
-        <p class="br-scene-hint br-illustration-note">Design illustrations. Actual model, specifications and availability require confirmation.</p>
-        <div class="br-visual-foot"><strong>New + used</strong><span>Sourced to<br>your requirements</span></div>
+      <div class="br-hero-aside"><span class="br-hero-index">01 — ASIC sourcing</span><p>Find your next fleet.<br>See the machine.<br>Know the numbers.</p><a href="#miners">Explore the lineup <span aria-hidden="true">↓</span></a></div>
+    </div>
+  </section>
+  <section class="br-catalog br-wrap" id="miners" aria-labelledby="brCatalogTitle">
+    <div id="brCatalog">
+      <div class="br-catalog-heading"><div><p class="br-eyebrow">The miner lineup</p><h2 id="brCatalogTitle">Find your fit.</h2></div><p>New and used Bitcoin miners.<br>Choose a family. Compare the variants.</p></div>
+      <div class="br-catalog-tools" id="brCatalogTools" hidden>
+        <label class="br-catalog-search" for="brCatalogSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="br-sr-only">Search miners, variants or manufacturers</span><input id="brCatalogSearch" type="search" autocomplete="off" placeholder="Search S21, M60, Antminer…" aria-controls="brCatalogProduct brCatalogRail"></label>
+        <label class="br-catalog-filter" for="brCatalogCooling"><span class="br-sr-only">Cooling type</span><select id="brCatalogCooling" aria-controls="brCatalogProduct brCatalogRail"><option value="all">All cooling</option><option value="air">Air-cooled</option><option value="hydro">Hydro-cooled</option><option value="immersion">Immersion</option></select></label>
+        <p class="br-catalog-results" id="brCatalogResults" role="status" aria-live="polite"></p>
       </div>
+      <div class="br-catalog-empty" id="brCatalogEmpty" hidden><h3>No matching miners.</h3><p>Try a model family, manufacturer or different cooling type.</p><button class="btn btn--ghost btn--sm" id="brCatalogClear" type="button">Clear filters</button></div>
+      <div class="br-catalog-navigation" id="brCatalogNavigation" hidden>
+        <div class="br-catalog-nav-head"><span id="brCatalogPosition">01 / 01</span><label class="br-sr-only" for="brCatalogSlider">Browse miner families</label><input id="brCatalogSlider" type="range" min="0" max="0" value="0" step="1"><div class="br-catalog-arrows"><button type="button" id="brCatalogPrev" aria-label="Previous miner family">←</button><button type="button" id="brCatalogNext" aria-label="Next miner family">→</button></div></div>
+        <div class="br-catalog-rail" id="brCatalogRail" role="group" aria-label="Miner families"></div>
+      </div>
+      <article class="br-catalog-product" id="brCatalogProduct" aria-labelledby="brCatalogName">
+        <div class="br-visual" id="brMiner" aria-label="Selected Bitcoin ASIC model">
+          <div class="br-scene-stage">
+            <img class="br-scene-poster" src="./miner-models/s21-pro.png" width="1000" height="800" alt="Antminer S21 Pro exterior model">
+            <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
+          </div>
+          <p class="br-catalog-shown" id="brCatalogShown">Shown: Antminer S21 Pro</p>
+          <div class="br-scene-toolbar"><p class="br-scene-status" role="status">Exterior preview</p><div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden><button type="button" data-br-view="play">Pause rotation</button><button type="button" data-br-view="out" aria-label="Zoom out">−</button><button type="button" data-br-view="in" aria-label="Zoom in">+</button><button type="button" data-br-view="reset">Reset</button></div></div>
+          <p class="br-scene-hint"><span class="br-scene-mouse">Drag to explore · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom</span></p>
+        </div>
+        <div class="br-catalog-info">
+          <p class="br-catalog-maker" id="brCatalogMaker">Bitmain <span>Air-cooled</span></p>
+          <h3 id="brCatalogName">Antminer S21 Pro</h3>
+          <p class="br-catalog-subtitle" id="brCatalogSubtitle">SHA-256 · Bitcoin</p>
+          <div class="br-catalog-variants" id="brCatalogVariants" role="group" aria-label="Choose miner variant"></div>
+          <dl class="br-catalog-specs" id="brCatalogSpecs"><div><dt>Hashrate</dt><dd>234 <small>TH/s</small></dd></div><div><dt>Power</dt><dd>3,510 <small>W</small></dd></div><div><dt>Efficiency</dt><dd>15 <small>J/TH</small></dd></div></dl>
+          <div class="br-catalog-economics"><div id="brCatalogMarket"><p class="br-catalog-label">Public market reference</p><p class="br-catalog-price">Check current quote</p><p class="br-catalog-fine">Exact variant, condition and delivery terms matter.</p></div><div id="brCatalogSavings"><p class="br-catalog-label">Hardware price difference / machine</p><p class="br-catalog-saving">Compare with a quote</p><p class="br-catalog-fine">Compare a matching Proton quote with a public asking-price reference.</p></div></div>
+          <details class="br-catalog-compare" id="brCatalogCompare" hidden><summary>Have a Proton quote? Compare it.</summary><div class="br-compare-fields"><label for="brCatalogQuote">USD per machine<input id="brCatalogQuote" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="Enter quoted price" aria-describedby="brCatalogQuoteScope"></label><label for="brCatalogCondition">Quoted condition<select id="brCatalogCondition"><option value="new">New</option><option value="used">Used</option></select></label></div><label class="br-compare-check"><input id="brCatalogQuoteMatch" type="checkbox">This quote matches the selected variant and hashrate.</label><p id="brCatalogQuoteScope">Hardware price only, in USD. Excludes shipping, taxes, duties and fees. This comparison stays on your device.</p><p id="brCatalogQuoteResult" role="status" aria-live="polite"></p></details>
+          <a class="btn btn--primary br-catalog-request" id="brCatalogRequest" href="#prepare" data-brief-mode="buy">Build a request <span aria-hidden="true">↗</span></a>
+          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div></details>
+        </div>
+      </article>
+      <p class="br-catalog-footnote">Sourced to order. Browse supported model families; availability and exact specifications are confirmed with each quote.</p>
+      <noscript><p class="br-note">Enable JavaScript to browse all model families and variants. You can still <a href="#prepare">prepare your requirements</a> below.</p></noscript>
     </div>
   </section>
   <div class="br-wrap">
@@ -289,12 +305,14 @@
     </div>
   </div>
 </footer>
-<script src="./site.js?v=e0dc9b23"></script>
-<script src="./hero-anim.js?v=e0dc9b23"></script>
-<script src="./cart.js?v=e0dc9b23"></script>
-<script src="./brokerage.js?v=e0dc9b23"></script>
-<script src="./diagram-engine.js?v=e0dc9b23"></script>
-<script src="./scene-asic.js?v=e0dc9b23"></script>
-<script src="./brokerage-scene.js?v=e0dc9b23" data-module-src="./mine-builder-scene.js?v=brokeragelineup20260918"></script>
+<script src="./site.js?v=30659239"></script>
+<script src="./hero-anim.js?v=30659239"></script>
+<script src="./cart.js?v=30659239"></script>
+<script src="./brokerage.js?v=30659239"></script>
+<script src="./brokerage-catalog-data.js?v=30659239"></script>
+<script src="./brokerage-catalog.js?v=30659239"></script>
+<script src="./diagram-engine.js?v=30659239"></script>
+<script src="./scene-asic.js?v=30659239"></script>
+<script src="./brokerage-scene.js?v=30659239" data-module-src="./brokerage-stage.js?v=30659239" data-model-src="./brokerage-models.js?v=30659239"></script>
 </body>
 </html>
