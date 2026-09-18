@@ -15,8 +15,9 @@
 .br-scene-stage { position: relative; aspect-ratio: 4 / 3; margin: 16px -8px 0; overflow: hidden; background: radial-gradient(ellipse at 50% 36%,rgba(229,228,226,.045),transparent 65%),#050505; }
 .br-scene-canvas, .br-scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; }
 .br-scene-poster { object-fit: contain; }
-.br-scene-canvas { opacity: 0; }
+.br-scene-canvas { opacity: 0; transition: opacity 180ms ease; }
 .br-scene-ready .br-scene-canvas { opacity: 1; }
+.br-scene-ready.br-scene-changing .br-scene-canvas { opacity: 0; }
 .br-scene-ready .br-scene-poster { visibility: hidden; }
 .br-scene-canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; outline-offset: -3px; }
 .br-scene-canvas canvas:active { cursor: grabbing; }
@@ -26,6 +27,11 @@
 .br-scene-controls[hidden] { display: none; }
 .br-scene-controls button { min-height: 44px; min-width: 44px; padding: 8px 10px; background: rgba(229,228,226,.035); border: 1px solid var(--line-mid); color: var(--plat-200); font: 11px var(--mono); cursor: pointer; }
 .br-scene-controls button:hover, .br-scene-controls button[aria-pressed="true"] { border-color: var(--btc-300); color: var(--btc-200); }
+.br-scene-controls button:disabled { cursor: default; opacity: .6; }
+.br-variant-selectors { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; width: 100%; margin-bottom: 6px; }
+.br-variant-selectors button { padding: 8px 4px; }
+.br-illustration-note { margin-bottom: 16px; }
+@media (prefers-reduced-motion: reduce) { .br-scene-canvas { transition: none; } }
 .br-scene-hint { width: 100%; margin: 2px 0 0; font: 10px/1.5 var(--mono); color: var(--br-muted); }
 .br-scene-touch { display: none; }
 @media (pointer: coarse) { .br-scene-mouse { display: none; } .br-scene-touch { display: inline; } }

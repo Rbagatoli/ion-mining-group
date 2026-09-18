@@ -750,6 +750,66 @@ function buildHostedContainer() {
     return finishScene(root,mats,[unit],{targets,view:'hosting'});
 }
 
+// Brokerage-only alternatives: illustrative envelopes and internals, not exact SKUs.
+// Tower/compact forms follow the air-flow layouts in Bitmain S21 Pro and
+// MicroBT M60-series manufacturer manuals. No hashrate, inventory or compatibility
+// claim is attached to these generic drawings; the existing hydro model is reused.
+export function buildMinerVariant(kind = 'hydro') {
+    if (kind === 'hydro') return buildHydroMachine();
+    if (!['air-tower','air-compact'].includes(kind)) throw new Error('Unknown miner illustration');
+    const compact = kind === 'air-compact', mats = palette(), root = new THREE.Group();
+    const body = part(root,kind), roof = part(body,'removable-roof'), wall = part(body,'service-wall');
+    const length = compact ? 4.3 : 4.5, height = compact ? 1.57 : 2.93, depth = compact ? 1.55 : 2.19;
+    const skinMaterials = [mats.shell.clone()], skin = skinMaterials[0];
+    instances(root,mats.ground,[[0,-.12,0,length+1.05,.22,depth+1]]);
+    instances(body,mats.frame,[[0,.045,0,length,.09,depth]]);
+    instances(body,skin,[[0,height/2,-depth/2,length,height,.04]]);
+    instances(wall,skin,[[0,height/2,depth/2,length,height,.04]]);
+    instances(roof,skin,[[0,height,0,length,.05,depth]]);
+    const fans = [], fanZ = compact ? 0 : .26, fanYs = compact ? [.78] : [.76,2.14], radius = compact ? .68 : .64;
+    for (const end of [-1,1]) {
+        // Open end frames leave a real air path; no solid plate behind the fan.
+        const x = end*(length/2-.12);
+        instances(body,mats.frame,[[x,height/2,-depth/2,.12,height,.06],[x,height/2,depth/2,.12,height,.06],
+            [x,.09,0,.12,.10,depth],[x,height-.08,0,.12,.10,depth]]);
+        const face = part(body,'fan-end'); face.position.x = x; face.rotation.z = -end*Math.PI/2;
+        for (const y of fanYs) {
+            const rotor = fan(face,mats,-end*y,.12,fanZ,radius);
+            fans.push(rotor);
+        }
+    }
+    const boards = part(body,'air-hashboards'), heat = part(body,'finned-heatsinks');
+    const boardZ = compact ? [-.46,0,.46] : [-.38,.19,.76];
+    for (const z of boardZ) {
+        instances(boards,mats.board,[[0,height*.48,z,length-.7,height*.77,.035]]);
+        const fins = [];
+        for (let y = .25; y < height-.25; y += .11) fins.push([0,y,z+.13,length-.9,.03,.22]);
+        instances(heat,mats.silver,fins);
+    }
+    const psu = part(body,'power-supply');
+    if (compact) {
+        instances(psu,mats.silver,[[.1,1.91,0,3.6,.65,1.35]]);
+        instances(psu,mats.dark,[[1.91,1.91,-.25,.025,.30,.38]]);
+        const slots = [];for (let x=-1.48;x<1.7;x+=.18) slots.push([x,2.242,0,.06,.012,1.05]);
+        instances(psu,mats.frame,slots);
+    } else {
+        instances(psu,mats.silver,[[0,1.47,-.84,4.0,2.70,.42]]);
+        instances(psu,mats.dark,[[2.16,2.47,-.83,.07,.29,.28]]);
+        const slots=[];for(let y=.25;y<2.75;y+=.16)slots.push([2.16,y,-.84,.08,.035,.31]);
+        instances(psu,mats.frame,slots);
+    }
+    const ctrl = part(body,'network-control');
+    instances(ctrl,mats.board,[[length/2-.45,height-.18,fanZ,.55,.045,.66]]);
+    instances(ctrl,mats.dark,[[length/2+.01,height-.20,fanZ,.04,.14,.19]]);
+    instances(ctrl,mats.led,[[length/2+.04,height-.20,fanZ+.19,.02,.034,.034]]);
+    const screws=[];for(const x of [-length/2+.25,length/2-.25])for(const y of [.18,height-.16])screws.push([x,y,depth/2+.035,.026,.025,.026,Math.PI/2,0,0]);
+    instances(wall,mats.dark,screws,CYLINDER);
+    instances(body,mats.orange,[[0,.12,depth/2+.025,length-.45,.035,.022]]);
+    const unit={root:body,roof,wall,fans,skinMaterials,cooling:'air',kind:'machine'};
+    return finishScene(root,mats,[unit],{view:'asic',targets:{boards,heat,psu,ctrl},
+        inspectTarget:new THREE.Vector3(0,1.8,0),inspectBounds:new THREE.Box3(new THREE.Vector3(-2.6,0,-1.2),new THREE.Vector3(2.6,4.1,2.3))});
+}
+
 function buildHydroMachine() {
     const mats = palette(), root = new THREE.Group(), body = part(root,'hydro-machine');
     const skinMaterials = [mats.shell.clone(),mats.orange.clone()];
@@ -1253,7 +1313,7 @@ export function mountMineScene(host, callbacks = {}) {
     let powered = true, powerLevel = 1, selected = -1, manual = false, xray = false, progress = 1;
     let displayedProgress = 1, revealing = false;
     let highlight = null, focus = null, hoveredPart = null;
-    let autoRotate = !reduced, dragging = false, resumeAt = 0;
+    let motionEnabled = true, autoRotate = !reduced, dragging = false, resumeAt = 0;
     let annotations = [], viewportWidth = 0, viewportHeight = 0;
     let viewOffset = 0, desiredViewOffset = 0;
     let raf = 0, last = 0, elapsed = 0, buildTime = 0, key = '', transitioning = false;
@@ -1300,6 +1360,7 @@ export function mountMineScene(host, callbacks = {}) {
         raf = 0;
         if (!active || !visible || disposed || lost || document.hidden || !viewportWidth || !viewportHeight) return;
         const dt = last ? Math.min((ms-last)/1000,.05) : 0; last = ms; elapsed += dt; buildTime += dt;
+        let opening = false;
         if (yard) {
             if (revealing) {
                 displayedProgress = reduced ? progress : THREE.MathUtils.damp(displayedProgress,progress,7,dt);
@@ -1320,14 +1381,15 @@ export function mountMineScene(host, callbacks = {}) {
                 unit.root.scale.y = Math.max(.001,assembly);
                 const target = selected === i ? 1 : 0;
                 unit.open = reduced ? target : THREE.MathUtils.damp(unit.open,target,5,dt);
+                opening ||= Math.abs(unit.open-target) > .001;
                 unit.roof.position.y = unit.open*(unit.kind === 'machine' ? 1.1 : 2.5);
                 unit.wall.position.z = unit.open*(unit.kind === 'machine' ? 1.1 : 2.6);
                 unit.wall.position.y = unit.open*.7;
                 unit.wall.visible = unit.open < .97;
             });
-            if (!reduced) yard.fans.forEach(fan => { fan.rotation.y += dt*powerLevel*9; });
+            if (!reduced && motionEnabled) yard.fans.forEach(fan => { fan.rotation.y += dt*powerLevel*9; });
             yard.pulses.forEach(p => {
-                p.mesh.visible = powered && !reduced;
+                p.mesh.visible = powered && !reduced && motionEnabled;
                 if (p.mesh.visible) p.mesh.position.copy(p.curve.getPoint((elapsed*.18+p.offset)%1));
             });
         }
@@ -1354,7 +1416,7 @@ export function mountMineScene(host, callbacks = {}) {
         controls.update(); renderer.render(world,camera); updateCallouts();
         if (!ready && yard) { ready = true; callbacks.onReady?.(); }
         // Idle motion and operating motion pause completely for reduced-motion visitors.
-        if (!reduced || autoRotate || transitioning || revealing) wake();
+        if ((!reduced && motionEnabled) || transitioning || revealing || opening) wake();
     }
     function inspect(open, index) {
         if (!yard || !yard.containers.length || (open && yard.mining && progress < 1)) return;
@@ -1572,7 +1634,7 @@ export function mountMineScene(host, callbacks = {}) {
         camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical)); controls.update(); pauseOrbit(); wake();
     }
     function visibility() { if (document.hidden) stop(); else wake(); }
-    function motion(event) { reduced = event.matches; autoRotate = !reduced; wake(); }
+    function motion(event) { reduced = event.matches; autoRotate = motionEnabled && !reduced; wake(); }
     function touchmove(event) {
         // Keep the gesture with the canvas on mobile browsers that also emit
         // native touch events alongside OrbitControls' pointer events.
@@ -1598,6 +1660,7 @@ export function mountMineScene(host, callbacks = {}) {
     resize();
     return {
         setConfig, inspect, zoom, reset, setXray, setProgress, focusPart, highlightPart,
+        setMotion(value) { motionEnabled = !!value; autoRotate = motionEnabled && !reduced; wake(); },
         setAnnotations(value) { annotations = value || []; updateCallouts(); wake(); },
         energize(value) { powered = !!value; wake(); },
         setActive(value) { active = !!value; if (active) { resize(); wake(); } else stop(); },

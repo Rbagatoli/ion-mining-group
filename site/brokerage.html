@@ -13,9 +13,9 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=afcd72b3">
+<link rel="stylesheet" href="./styles.css?v=e0dc9b23">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=afcd72b3">
+<link rel="stylesheet" href="./brokerage.css?v=e0dc9b23">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -113,11 +113,17 @@
       <div class="br-visual" id="brMiner" aria-label="Illustrative Bitcoin ASIC model">
         <div class="br-visual-head"><span>Hardware / next chapter</span><span>SHA-256</span></div>
         <div class="br-scene-stage">
-          <img class="br-scene-poster" src="./brokerage-miner.png" width="996" height="747" alt="Cutaway of a platinum hydro-cooled ASIC, with three cold plates and copper coolant connections">
+          <img class="br-scene-poster" src="./brokerage-miner.png?v=lineup20260918" width="996" height="747" alt="Platinum hydro-cooled ASIC design illustration with two copper coolant connections">
           <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
         </div>
-        <p class="br-scene-status">Hydro ASIC · illustrative model</p>
+        <p class="br-scene-status" role="status">Hydro-cooled · design illustration</p>
         <div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden>
+          <div class="br-variant-selectors" role="group" aria-label="Choose a miner design">
+            <button type="button" data-br-variant="hydro" aria-pressed="true">Hydro-cooled</button>
+            <button type="button" data-br-variant="air-tower" aria-pressed="false">Air · tower</button>
+            <button type="button" data-br-variant="air-compact" aria-pressed="false">Air · compact</button>
+          </div>
+          <button type="button" data-br-view="play">Pause animation</button>
           <button type="button" data-br-view="inside" aria-pressed="false">Inside miner</button>
           <button type="button" data-br-view="xray" aria-pressed="false">X-ray off</button>
           <button type="button" data-br-view="out" aria-label="Zoom out">−</button>
@@ -125,6 +131,7 @@
           <button type="button" data-br-view="reset">Reset</button>
           <p class="br-scene-hint"><span class="br-scene-mouse">Drag to shift · Right-drag to rotate · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom · Two fingers to shift</span></p>
         </div>
+        <p class="br-scene-hint br-illustration-note">Design illustrations. Actual model, specifications and availability require confirmation.</p>
         <div class="br-visual-foot"><strong>New + used</strong><span>Sourced to<br>your requirements</span></div>
       </div>
     </div>
@@ -282,12 +289,12 @@
     </div>
   </div>
 </footer>
-<script src="./site.js?v=afcd72b3"></script>
-<script src="./hero-anim.js?v=afcd72b3"></script>
-<script src="./cart.js?v=afcd72b3"></script>
-<script src="./brokerage.js?v=afcd72b3"></script>
-<script src="./diagram-engine.js?v=afcd72b3"></script>
-<script src="./scene-asic.js?v=afcd72b3"></script>
-<script src="./brokerage-scene.js?v=afcd72b3" data-module-src="./mine-builder-scene.js?v=brokerage3d20260918"></script>
+<script src="./site.js?v=e0dc9b23"></script>
+<script src="./hero-anim.js?v=e0dc9b23"></script>
+<script src="./cart.js?v=e0dc9b23"></script>
+<script src="./brokerage.js?v=e0dc9b23"></script>
+<script src="./diagram-engine.js?v=e0dc9b23"></script>
+<script src="./scene-asic.js?v=e0dc9b23"></script>
+<script src="./brokerage-scene.js?v=e0dc9b23" data-module-src="./mine-builder-scene.js?v=brokeragelineup20260918"></script>
 </body>
 </html>
