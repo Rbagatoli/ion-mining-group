@@ -33,3 +33,8 @@ test('new assignment retains a valid lead link and rejects missing leads without
  const action={type:'task.add',id:'ev2',revision:s.revision,at:'2026-09-18T12:01:00Z',payload:{id:'linked',leadId:'one',title:'Check One',role:'intelligence',brief:'Research only'}};
  const next=A.reduce(s,action);assert.equal(next.tasks[0].leadId,'one');assert.equal(s.tasks.length,0);assert.throws(()=>A.reduce(s,{...action,payload:{...action.payload,leadId:'missing'}}),/linked lead/);
 });
+test('brokerage labels require the explicit campaign marker and preserve earlier hosting records',()=>{
+ const l={...lead('one'),notes:'PM-ASIC-001 | ASIC brokerage | seller'};assert.equal(F.offerLabel(l),'ASIC brokerage');
+ assert.equal(F.offerLabel({...l,offer:'managed_energy_hosting'}),'Proton Managed Energy Hosting');
+ assert.equal(F.offerLabel({...l,notes:'May be interested in ASIC brokerage'}),'Sourcing Desk');
+});

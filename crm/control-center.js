@@ -55,7 +55,7 @@
     }).join('');
     const pipelineTypes=[['site','Energy sites'],['lead','Buyer leads'],['deal','Service deals']].map(([kind,label])=>'<button class="cc-type" data-action="cc-pipeline" data-id="'+kind+'"><strong>'+v.pipeline.filter(p=>p.kind===kind).length+'</strong><span>'+label+'</span></button>').join('');
     const nextSites=v.withoutNextAction.slice(0,2).map(site=>row({name:site.name,sub:'Set a dated next action',url:href('site',site.id),glyph:'site'})).join('');
-    const nextLeads=v.leads.slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,2).map(l=>row({name:l.company,sub:l.nextAction||'Set the next buyer step',badge:tag(A.LEAD_STAGES[l.stage]),url:href('lead',l.id),glyph:'people'})).join('');
+    const nextLeads=v.leads.slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,2).map(l=>h.leadCard?h.leadCard(l):row({name:l.company,sub:l.nextAction||'Set the next buyer step',badge:tag(A.LEAD_STAGES[l.stage]),url:href('lead',l.id),glyph:'people'})).join('');
     const updates=v.updates.map(e=>'<li><p>'+esc(e.message)+'</p><time datetime="'+esc(e.at)+'">'+esc(new Date(e.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'</time></li>').join('');
     const connection=input.connection;
     const locationLabel=connection.uid&&connection.agent.mode==='cloud'?'Shared account records':connection.uid?'Account connection needs attention':'Records on this device';
