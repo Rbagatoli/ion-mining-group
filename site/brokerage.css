@@ -56,6 +56,7 @@
 .br-example { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; padding: 28px 0 0; margin-top: 42px; border-top: 1px solid var(--line-mid); }
 .br-example .br-eyebrow { margin-bottom: 10px; }
 .br-example > p { margin: 0; }
+.br-cost-note { max-width: 960px; margin-top: 24px; }
 .br-buyer-terms { border-left: 2px solid var(--btc-300); padding-left: 20px; margin: 24px 0; }
 .br-buyer-terms h3 { font-size: 17px; font-weight: 500; margin: 0 0 6px; }
 .br-buyer-terms p { margin: 0; }
