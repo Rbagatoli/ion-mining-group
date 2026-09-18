@@ -45,6 +45,7 @@ test('assignment inputs remain bounded and cannot inject extra context lines or 
 test('browser and Node configuration expose the same eight workflows and keep prior workflows',()=>{
   const context={AgentControlModel:A,URL,window:{}};context.window=context;vm.createContext(context);
   vm.runInContext(fs.readFileSync(require.resolve('../crm/grok-managed-hosting'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(require.resolve('../crm/sourcing'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require.resolve('../crm/grok-team'),'utf8'),context);
   const browser=context.ProtonGrokTeam;
   assert.deepEqual(Object.keys(browser.managedHosting.workflows),Object.keys(H.workflows));
