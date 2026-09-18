@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" class="br-page">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitcoin ASIC Brokerage — Proton Mining</title>
+<meta name="description" content="Sell used Bitcoin ASIC miners with Proton Mining. No upfront service fee, a commission on completed sales, and a clear process from equipment details to closing.">
+<link rel="canonical" href="https://protonminingco.com/brokerage.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bitcoin ASIC Brokerage — Proton Mining">
+<meta property="og:description" content="Sell your ASICs. Pay when they sell. Used Bitcoin mining hardware brokerage from Proton Mining.">
+<meta property="og:url" content="https://protonminingco.com/brokerage.html">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=a2e1675a">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<link rel="stylesheet" href="./brokerage.css?v=a2e1675a">
+<!-- ===== SHARE CARD ===== -->
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://protonminingco.com/og/home.png">
+<!-- ===== /SHARE CARD ===== -->
+</head>
+<body>
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./index.html">Home</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <a href="./brokerage.html" class="active">Brokerage</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="#prepare">Prepare a sale</a>
+    </div>
+  </div>
+</nav>
+<main id="main">
+  <section class="br-hero">
+    <div class="br-wrap br-hero-grid">
+      <div>
+        <p class="br-eyebrow">Proton brokerage / Bitcoin ASICs</p>
+        <h1 class="br-title">Sell your ASICs.<br><span>Pay when<br>they sell.</span></h1>
+        <p class="br-intro">Upgrading your fleet or releasing capital? We help find buyers for your working Bitcoin miners and coordinate the sale. No upfront service fee.</p>
+        <div class="br-actions">
+          <a class="btn btn--primary" href="#prepare" data-brief-mode="sell">Prepare a sale <span aria-hidden="true">↗</span></a>
+          <a class="btn btn--ghost" href="#prepare" data-brief-mode="buy">Buying used ASICs?</a>
+        </div>
+        <p class="br-note">Launching with US business sellers. Brokerage enquiries open soon.</p>
+      </div>
+      <div class="br-visual" aria-label="Illustration of Bitcoin mining hardware and the brokerage fee">
+        <div class="br-visual-head"><span>Hardware / next chapter</span><span>SHA-256</span></div>
+        <svg viewBox="0 0 520 350" role="img" aria-label="An illustrated pair of air-cooled ASIC miners">
+          <defs>
+            <linearGradient id="brMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#343432"/><stop offset=".43" stop-color="#bbbcb7"/><stop offset=".48" stop-color="#777975"/><stop offset=".7" stop-color="#c0c1bd"/><stop offset="1" stop-color="#454742"/></linearGradient>
+            <linearGradient id="brSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#555751"/><stop offset="1" stop-color="#161814"/></linearGradient>
+            <linearGradient id="brTop"><stop stop-color="#7b7d77"/><stop offset="1" stop-color="#343631"/></linearGradient>
+            <radialGradient id="brFan"><stop stop-color="#60635b"/><stop offset=".24" stop-color="#242721"/><stop offset=".3" stop-color="#090b08"/><stop offset=".91" stop-color="#1c1f19"/><stop offset="1" stop-color="#74776d"/></radialGradient>
+            <g id="brUnit">
+              <path d="M20 60 112 10 304 29 207 87Z" fill="url(#brTop)" stroke="#9a9d92" stroke-width="1"/>
+              <path d="M207 87 304 29 304 158 207 219Z" fill="url(#brSide)" stroke="#65695e" stroke-width="1"/>
+              <path d="M20 60 207 87 207 219 20 187Z" fill="url(#brMetal)" stroke="#c0c2b8" stroke-width="1"/>
+              <path d="M28 72 111 84 111 183 28 169Z M117 86 199 98 199 199 117 184Z" fill="#121510" stroke="#777b6e"/>
+              <ellipse cx="69" cy="125" rx="36" ry="42" fill="url(#brFan)"/>
+              <ellipse cx="158" cy="139" rx="36" ry="42" fill="url(#brFan)"/>
+              <g stroke="#73796a" stroke-width="1" fill="none" opacity=".8"><ellipse cx="69" cy="125" rx="28" ry="33"/><ellipse cx="69" cy="125" rx="18" ry="22"/><ellipse cx="158" cy="139" rx="28" ry="33"/><ellipse cx="158" cy="139" rx="18" ry="22"/><path d="m35 101 67 47m-59-57 49 70m-59-34 72 7m22-23 63 47m-57-57 49 70m-59-34 72 7"/></g>
+              <ellipse cx="69" cy="125" rx="9" ry="11" fill="#868c7d"/><ellipse cx="158" cy="139" rx="9" ry="11" fill="#868c7d"/>
+              <g stroke="#a4a99a" opacity=".28"><path d="m223 88 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40m-67 54 67-40"/></g>
+              <path d="m70 41 88-24 88 10-86 28Z" fill="#4a4e43" stroke="#989d8d"/><path d="m83 40 65-18m-53 21 65-18m-53 21 65-18m-53 21 65-18m-53 21 65-18" stroke="#8c9380" opacity=".6"/>
+              <path d="m35 181 20 3v6l-20-3Z" fill="#f7931a"/><path d="m164 202 23 4v5l-23-4Z" fill="#40443b"/>
+            </g>
+          </defs>
+          <g fill="none" stroke="#6f7467" opacity=".17"><path d="M12 268 271 121 510 247M12 289 271 142 510 268M12 310 271 163 510 289M12 331 271 184 510 310"/><path d="m80 233 227 109m-169-142 229 110m-166-145 223 113"/></g>
+          <use href="#brUnit" transform="translate(184 21) scale(.78)" opacity=".75"/>
+          <use href="#brUnit" transform="translate(27 94)"/>
+          <path d="M18 325H497" stroke="#777c6e" opacity=".4"/>
+        </svg>
+        <div class="br-visual-foot"><strong>$0<small>upfront service fee</small></strong><span>Commission on<br>completed sales</span></div>
+      </div>
+    </div>
+  </section>
+  <div class="br-wrap">
+    <div class="br-strip">
+      <p><strong>You own the equipment.</strong>We act as the broker.</p>
+      <p><strong>You approve the deal.</strong>Price and terms stay your decision.</p>
+      <p><strong>The fee follows the sale.</strong>Agree our scope before representation.</p>
+    </div>
+    <section class="br-section" id="process">
+      <div class="br-section-head"><div><p class="br-eyebrow">01 / The process</p><h2>From your fleet<br>to the right conversation.</h2></div><p>A focused brokerage service for used Bitcoin mining hardware. Start with the facts, then work toward a transaction.</p></div>
+      <div class="br-steps">
+        <article class="br-step"><span class="br-step-number">01 — PREPARE</span><h3>Tell us what you have.</h3><p>Share models, quantities, location, asking price and recent test records. We review the lot and agree the brokerage scope and fee with you.</p></article>
+        <article class="br-step"><span class="br-step-number">02 — MATCH</span><h3>Find relevant buyers.</h3><p>We research potential buyers, prepare your equipment details and coordinate questions. You choose which offers to consider.</p></article>
+        <article class="br-step"><span class="br-step-number">03 — CLOSE</span><h3>Agree the handover.</h3><p>Buyer and seller agree inspection, payment and delivery arrangements. Our commission is due on a completed sale under the agreed engagement.</p></article>
+      </div>
+    </section>
+    <section class="br-section" id="fees">
+      <div class="br-split">
+        <div><p class="br-eyebrow">02 / Straightforward fees</p><h2>A fee tied<br>to a completed sale.</h2><p class="br-copy">Our proposed pilot seller fee is <strong>3% of the completed equipment sale price</strong>. No upfront service fee. Final scope, fee and completion conditions are agreed before we represent your equipment.</p><p class="br-copy">Shipping, inspection, escrow, taxes and other third-party costs are separate and need your agreement. Finding a buyer, a particular price or a completion date is not guaranteed.</p></div>
+        <div class="br-fee-card">
+          <label for="brSaleValue">EXAMPLE EQUIPMENT SALE PRICE · USD</label>
+          <div class="br-fee-input"><span aria-hidden="true">$</span><input id="brSaleValue" type="number" inputmode="decimal" min="0.01" max="100000000" step="0.01" value="10000" aria-describedby="brFeeError"></div>
+          <dl class="br-fee-lines" aria-live="polite"><div><dt>Illustrative brokerage fee · 3%</dt><dd id="brFee">$300</dd></div><div class="br-net"><dt>Seller proceeds before other costs</dt><dd id="brNet">$9,700</dd></div></dl>
+          <p class="br-note" id="brFeeError">Illustration only. Seller proceeds shown before shipping, inspection, taxes and other agreed costs.</p>
+        </div>
+      </div>
+    </section>
+    <section class="br-section" id="prepare">
+      <div class="br-split">
+        <div><p class="br-eyebrow">03 / Start with your equipment</p><h2>Make the next<br>conversation easier.</h2><p class="br-copy">Prepare a short seller brief or buyer requirement. Keep the details together so we can assess the fit when the brokerage desk opens.</p>
+          <ul class="br-checklist"><li>Exact model, quantity and equipment location</li><li>Condition, repair history and recent test records</li><li>Asking price or budget, with currency</li><li>Ownership, availability and delivery expectations</li></ul>
+          <a class="br-hardware-link" href="./hardware.html">Looking for new machines? Explore hardware →</a>
+        </div>
+        <div>
+          <div class="br-ready"><strong>Brokerage enquiries open soon.</strong><p>You can prepare and download your brief now. This form does not send your details to Proton or reserve equipment.</p></div>
+          <form class="br-form" id="brBriefForm">
+            <fieldset class="br-mode"><legend>I’m interested in</legend><label><input type="radio" name="mode" value="sell" checked>Selling ASICs</label><label><input type="radio" name="mode" value="buy">Buying ASICs</label></fieldset>
+            <div class="br-fields">
+              <div class="br-field br-field-wide"><label for="brCompany">COMPANY / NAME · OPTIONAL</label><input id="brCompany" name="company" maxlength="180" autocomplete="organization"></div>
+              <div class="br-field"><label for="brModel" data-sell-label="MODEL(S)" data-buy-label="REQUESTED MODEL(S)">MODEL(S)</label><input id="brModel" name="model" maxlength="180" placeholder="e.g. Antminer S19j Pro" required></div>
+              <div class="br-field"><label for="brQuantity" data-sell-label="QUANTITY" data-buy-label="DESIRED QUANTITY">QUANTITY</label><input id="brQuantity" name="quantity" type="number" inputmode="numeric" min="1" max="99999" step="1" placeholder="Number of machines" required></div>
+              <div class="br-field"><label for="brLocation" data-sell-label="EQUIPMENT LOCATION" data-buy-label="DELIVERY LOCATION">EQUIPMENT LOCATION</label><input id="brLocation" name="location" maxlength="180" placeholder="City, state, country" required></div>
+              <div class="br-field"><label for="brCondition" data-sell-label="REPORTED CONDITION" data-buy-label="REQUIRED CONDITION">REPORTED CONDITION</label><select id="brCondition" name="condition"><option>Working / tested</option><option>Working / test records pending</option><option>Mixed condition / details required</option><option>Not established</option></select></div>
+              <div class="br-field"><label for="brPrice" data-sell-label="ASKING PRICE & CURRENCY" data-buy-label="BUDGET & CURRENCY">ASKING PRICE &amp; CURRENCY</label><input id="brPrice" name="price" maxlength="180" placeholder="Total or per machine; include currency"></div>
+              <div class="br-field"><label for="brTiming" data-sell-label="AVAILABILITY / TIMING" data-buy-label="PURCHASE TIMING">AVAILABILITY / TIMING</label><input id="brTiming" name="timing" maxlength="180" placeholder="Your preferred timeframe"></div>
+              <div class="br-field br-field-wide"><label for="brNotes" data-sell-label="TEST RECORDS, OWNERSHIP & QUESTIONS" data-buy-label="REQUIREMENTS & QUESTIONS">TEST RECORDS, OWNERSHIP &amp; QUESTIONS</label><textarea id="brNotes" name="notes" maxlength="1800" placeholder="List the evidence you have and anything we should clarify. Keep sensitive documents out of this brief."></textarea></div>
+            </div>
+            <div class="br-actions"><button class="btn btn--primary" type="submit" disabled data-br-js>Prepare my brief <span aria-hidden="true">↗</span></button></div>
+            <noscript><p class="br-note">The brief builder needs JavaScript. You can use the checklist beside this form to prepare your details.</p></noscript>
+          </form>
+          <p class="br-status" id="brStatus" role="status" aria-live="polite"></p>
+          <div id="brOutputPanel" hidden><label class="br-output-label" for="brOutput">Your prepared brief · not submitted</label><textarea id="brOutput" class="br-output" readonly></textarea><div class="br-actions"><button class="btn btn--ghost btn--sm" id="brCopy" type="button">Copy brief</button><button class="btn btn--ghost btn--sm" id="brDownload" type="button">Download .txt</button></div></div>
+          <p class="br-note">No details are submitted or saved by this form. <a href="./privacy.html">Privacy</a></p>
+        </div>
+      </div>
+    </section>
+    <section class="br-section" id="questions">
+      <p class="br-eyebrow">04 / Before we begin</p><h2>A few useful answers.</h2>
+      <div class="br-faq">
+        <details><summary>Does Proton buy my machines directly?</summary><p>This service is brokerage: we help find a buyer and coordinate a potential transaction. You retain ownership until a sale is completed under the agreed terms. We do not purchase inventory through this service.</p></details>
+        <details><summary>What equipment is a fit?</summary><p>The initial focus is working, used SHA-256 Bitcoin ASICs from US business sellers. Exact models, quantities, condition and location determine whether a lot is suitable. Mixed-condition lots need more information before we can assess them.</p></details>
+        <details><summary>Is there a fee if my equipment does not sell?</summary><p>There is no upfront brokerage service fee. Our commission applies to a completed sale under your agreed engagement. Any separately agreed third-party inspection, shipping or other costs are distinct from the brokerage fee.</p></details>
+        <details><summary>How is equipment condition verified?</summary><p>Seller descriptions and supplied test records are the starting point. Buyer and seller agree any additional inspection or testing before closing. A listing or AI-assisted review is not a physical inspection or a warranty.</p></details>
+        <details><summary>Can I send you a buying requirement?</summary><p>Yes. Choose Buying ASICs in the brief builder and record your desired models, quantity, condition, budget and delivery location. Preparing a brief does not reserve equipment or establish available stock. Intake opens when the brokerage desk is ready.</p></details>
+      </div>
+    </section>
+  </div>
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
+        <h4>Services</h4>
+        <a href="./brokerage.html">ASIC brokerage</a>
+        <a href="./hosting.html">Hosting</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./index.html#operate">Site development</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+
+</div></details></div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div>Bitcoin ASIC brokerage &middot; Seller-led transactions</div>
+    </div>
+  </div>
+</footer>
+<script src="./site.js?v=a2e1675a"></script>
+<script src="./hero-anim.js?v=a2e1675a"></script>
+<script src="./cart.js?v=a2e1675a"></script>
+<script src="./brokerage.js?v=a2e1675a"></script>
+</body>
+</html>

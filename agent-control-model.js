@@ -75,6 +75,7 @@
             str(t.result,18000,'task result'); str(t.blocker,2000,'blocker'); sources(t.sources);
             str(t.reviewNote,3000,'review note'); str(t.handoffAt,40,'handoff date'); str(t.startedAt,40,'start date');
             if(t.parentTaskId){id(t.parentTaskId);if(t.parentTaskId===t.id||!s.tasks.some(function(x){return x.id===t.parentTaskId;}))fail('The source task is missing.');}
+            if(t.leadId){id(t.leadId);if(!leads.some(function(l){return l.id===t.leadId;}))fail('The linked lead is missing.');}
             if(t.reviewHistory!==undefined){
                 if(!Array.isArray(t.reviewHistory)||t.reviewHistory.length>20)fail('Export review history before adding further review rounds.');
                 t.reviewHistory.forEach(function(h){str(h.result,18000,'reviewed result',true);sources(h.sources);str(h.note,3000,'historical review note',true);if(!['accept','revise'].includes(h.decision)||!Number.isFinite(Date.parse(h.at)))fail('Invalid review history.');});
@@ -116,6 +117,7 @@
         case 'task.add':
             unique(s,'tasks',p.id);
             s.tasks.push({id:p.id,title:str(p.title,180,'task title',true),brief:str(p.brief,9000,'task brief',true),role:role(p.role),due:p.due?date(p.due):'',dealId:p.dealId||'',status:'draft',result:'',sources:[],blocker:'',reviewNote:'',handoffAt:'',startedAt:'',updatedAt:a.at});
+            if(p.leadId)s.tasks[s.tasks.length-1].leadId=id(p.leadId);
             if(p.parentTaskId){
                 id(p.parentTaskId);
                 if(p.role==='review'&&s.tasks.some(function(x){return x.id!==p.id&&x.role==='review'&&x.parentTaskId===p.parentTaskId&&!['done','cancelled'].includes(x.status);}))fail('An open Quality Review assignment already exists for this task.');

@@ -2,7 +2,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'..');
-const shell=['index.html','crm.css','crm.js','crm-model.js','control-center.js','control-center.css','crm-data.js','contacts.js','public-infrastructure.js','public-infrastructure.css','discovery.css','discovery-model.js','discovery.js','discovery-globe.js','grok-managed-hosting.js','grok-team.js','manifest.webmanifest','icon.svg'];
+const shell=['index.html','crm.css','crm.js','crm-model.js','control-center.js','control-center.css','workflow.js','workflow.css','crm-data.js','contacts.js','public-infrastructure.js','public-infrastructure.css','discovery.css','discovery-model.js','discovery.js','discovery-globe.js','grok-managed-hosting.js','grok-team.js','manifest.webmanifest','icon.svg'];
 function assets(){
   const html=fs.readFileSync(path.join(ROOT,'crm/index.html'),'utf8');
   const runtime=[...html.matchAll(/(?:src|href)="\.\/runtime\/([^"?]+)(?:\?[^"\s]*)?"/g)].map(m=>m[1]);

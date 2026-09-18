@@ -446,7 +446,7 @@ p + p { margin-top: 16px; }
 .nav.is-stuck { background: rgba(0, 0, 0, 0.95); }
 
 .nav-inner {
-    max-width: var(--max);
+    max-width: 1380px;
     margin: 0 auto;
     padding: 0 var(--gut);
     height: 68px;
@@ -3324,8 +3324,8 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
    Measured with the longest CTA on the page, which is the worst case:
      full-size row   needs ~1480px  ->  only used above 1560
-     compact row     needs ~1200px  ->  used from 1241 to 1560
-     drawer          always fits    ->  used at 1240 and below
+     compact row     needs ~1200px  ->  used from 1341 to 1560
+     drawer          always fits    ->  used at 1340 and below
 
    TO RE-DERIVE AFTER ADDING A NAV ITEM: load the page with the longest CTA, step the viewport
    down, and watch document.body.scrollWidth against clientWidth. The first width where they
@@ -3338,10 +3338,9 @@ a.fac:hover .fac-go { color: var(--btc-200); }
     .nav-links a.nav-cta { padding: 10px 14px; }
 }
 
-/* The drawer, at 1240 rather than 940: the compact row above needs ~1200px and was being asked
-   to render at 941. Between 941 and 1240 the nav now opens as a drawer, which is a visible
-   change on a small laptop and the correct one — the alternative is a row that does not fit. */
-@media (max-width: 1240px) {
+/* Brokerage adds one link. The 1380px row and 1340px drawer breakpoint keep
+   the longest CTA and a populated order badge within the navigation. */
+@media (max-width: 1340px) {
     .nav-toggle { display: inline-flex; }
     .nav-links {
         position: absolute;

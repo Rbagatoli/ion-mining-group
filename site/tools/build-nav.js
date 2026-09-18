@@ -17,10 +17,9 @@ const PAGES = {
   'hosting.html': 'hosting',
   'energy.html':  'energy',
   'hardware.html': 'hardware',
+  'brokerage.html': 'brokerage',
   'calculator.html': 'calculator',
-  /* Both highlight the same nav item. "Learn" is one slot, not two: the nav is already seven
-     items and the note beside it warns against an eighth thing to read. The evergreen page is
-     the destination and the blog is reached from it. */
+  /* Learn covers the evergreen guide and the blog. */
   'why-mining.html': 'learn',
   'blog.html':    'learn',
   'contact.html': 'contact',
@@ -104,6 +103,7 @@ function nav(active, cta) {
       <a href="./index.html"${on('home')}>Home</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
       <a href="./hardware.html"${on('hardware')}>Hardware</a>
+      <a href="./brokerage.html"${on('brokerage')}>Brokerage</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
@@ -147,6 +147,7 @@ const CTA = {
   'hosting.html':          { href: './hardware.html', label: 'Start mining' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
   'hardware.html':         { href: '#quote', label: 'Request a quote' },
+  'brokerage.html':        { href: '#prepare', label: 'Prepare a sale' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'why-mining.html':       { href: './hardware.html', label: 'Start mining' },
   'blog.html':             { href: './why-mining.html', label: 'Why own machines' },
@@ -248,6 +249,7 @@ for (const [file, active] of Object.entries(PAGES)) {
   let html = fs.readFileSync(p, 'utf8');
   const before = html;
 
+  html = html.replace(/(<h4>Services<\/h4>)(?!\s*<a href="\.\/brokerage.html">)/, '$1\n        <a href="./brokerage.html">ASIC brokerage</a>');
   html = applyHold(html, file);
   html = ensureNoscript(html, file);
   html = replaceBlock(html, '<nav class="nav">', '</nav>', nav(active, CTA[file]), 'nav', file);
