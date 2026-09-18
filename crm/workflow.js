@@ -9,11 +9,26 @@
   const active=t=>A.actionable(t);
   const role=id=>(A.ROLES.find(r=>r.id===id)||{name:'Revenue Lead'}).name;
   const stamp=t=>t.updatedAt||t.startedAt||'';
+  function listedLeads(brief,known){
+    const ids=new Set();
+    // An explicit field may follow its Artifact path on the same line. Never scan
+    // arbitrary prose, annotations or predecessor references for lead IDs.
+    for(const field of String(brief||'').matchAll(/(?:^|[\r\n])[ \t]*(?:Artifact:[ \t]*\S+[ \t]+)?Leads:[ \t]*/gi)){
+      let rest=String(brief).slice(field.index+field[0].length),entry;
+      while((entry=/^[ \t\r\n]*([A-Za-z0-9_-]{1,90})(?:[ \t]*\([^()\r\n]*\))?[ \t]*(?=$|[,;\r\n]|\.(?:[ \t\r\n]|$))/.exec(rest))){
+        if(known.has(entry[1]))ids.add(entry[1]);
+        rest=rest.slice(entry[0].length);
+        if(!/^[,;\r\n]/.test(rest))break;
+        rest=rest.slice(1);
+      }
+    }
+    return ids;
+  }
   function linkedTasks(lead,state){
-    const tasks=state.tasks||[],ids=new Set();
+    const tasks=state.tasks||[],ids=new Set(),known=new Set((state.leads||[]).map(l=>l.id));
     const escaped=String(lead.id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const explicit=new RegExp('(?:Lead ID:\\s*|#pipeline/lead/)'+escaped+'(?=$|[\\s?#/)])','i');
-    tasks.forEach(t=>{if(t.leadId===lead.id||explicit.test(t.brief||'')||(t.sources||[]).some(u=>explicit.test(u)))ids.add(t.id);});
+    tasks.forEach(t=>{if(t.leadId===lead.id||explicit.test(t.brief||'')||(t.sources||[]).some(u=>explicit.test(u))||listedLeads(t.brief,known).has(lead.id))ids.add(t.id);});
     // A review inherits its source's explicit lead link. Never match a company name or a domain.
     for(let n=0;n<tasks.length;n++){let changed=false;tasks.forEach(t=>{if(t.parentTaskId&&ids.has(t.parentTaskId)&&!ids.has(t.id)){ids.add(t.id);changed=true;}});if(!changed)break;}
     return tasks.filter(t=>ids.has(t.id)).sort((a,b)=>stamp(b).localeCompare(stamp(a))||a.id.localeCompare(b.id));
@@ -34,10 +49,10 @@
   }
   function matches(t,filter){return filter==='all'||filter==='open'&&active(t)||filter==='reference'&&['reference','superseded'].includes(bucket(t))||bucket(t)===filter;}
   function taskMeaning(task,state){
-    const qa=(state.tasks||[]).find(t=>t.parentTaskId===task.id&&t.role==='review'&&active(t)),evidence=A.reviewEvidence(state,task),kind=bucket(task);
+    const qa=(state.tasks||[]).find(t=>t.parentTaskId===task.id&&t.role==='review'&&active(t)),kind=bucket(task);
     if(['reference','superseded'].includes(kind))return {label:kind==='reference'?'Reference':'Superseded',owner:'No action queued',next:task.routing?.reason||'Operating charter retained for reference; it is not an execution assignment.',qa,kind};
     if(kind==='owner')return {label:'Owner decision',owner:'Renzo',next:task.routing.reason,qa,kind};
-    const review=task.role==='review'?['Coordinator review','Revenue Lead','Check the actual Quality verdict and evidence, then record acceptance or corrections. No second QA loop.']:evidence.length?['Coordinator review','Revenue Lead','Record the linked Quality verdict for this result; accept supported work or return corrections.']:qa?['Agent review','Quality Review','Complete the linked independent review, then return the verdict to Revenue.']:['Agent review','Quality Review','Review this result independently; Revenue records the verdict and next step.'];
+    const review=A.reviewRole(state,task)==='revenue'?['Coordinator review','Revenue Lead',task.role==='review'?'Check the actual Quality verdict and evidence, then record acceptance or corrections. No second QA loop.':'Record the linked Quality verdict for this result; accept supported work or return corrections.']:qa?['Agent review','Quality Review','Complete the linked independent review, then return the verdict to Revenue.']:['Agent review','Quality Review','Review this result independently; Revenue records the verdict and next step.'];
     const meanings={draft:['Not queued','Revenue Lead','Confirm prerequisites, then queue this assignment.'],ready:['Queued',role(task.role),'Claim the eligible assignment at the next coordinator check.'],working:['Work reported',role(task.role),'Save a result and the next action.'],review,blocked:kind==='correction'?['Corrections requested',role(task.role),task.blocker||'Correct the reviewed findings and submit a new result.']:['Execution blocked','Revenue Lead',task.blocker||'Identify and resolve the execution blocker.'],done:['Result accepted','Revenue Lead','Advance the next supported dependency within the authorized scope.'],cancelled:['Cancelled','Revenue Lead','Choose another assignment if work is still needed.']};
     const [label,owner,next]=meanings[task.status]||['Status unknown','Revenue Lead','Check the saved assignment.'];
     return {label,owner,next,qa,kind};

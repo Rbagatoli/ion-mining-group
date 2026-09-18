@@ -87,6 +87,7 @@
     function reviewEvidence(s,t) {
         return s.tasks.filter(function(q){return taskKind(q)==='work'&&q.role==='review'&&q.parentTaskId===t.id&&q.status==='done'&&q.reviewOfVersion===resultVersion(t)&&q.qualityVerdict&&q.reviewHistory&&q.reviewHistory.some(function(h){return h.decision==='accept'&&h.review&&h.review.version===resultVersion(q)&&h.review.sourceVersion===q.reviewOfVersion&&h.review.qualityVerdict===q.qualityVerdict;});});
     }
+    function reviewRole(s,t) { return t.role==='review'||reviewEvidence(s,t).length?'revenue':'review'; }
     function recordedReview(s,t,p,accept) {
         var r=clone(p.review);r.version=resultVersion(t);reviewValid(r);
         if(taskKind(t)!=='work')fail('Reference and superseded records do not need result acceptance.');
@@ -171,7 +172,7 @@
             if(p.leadId)s.tasks[s.tasks.length-1].leadId=id(p.leadId);
             if(p.parentTaskId){
                 id(p.parentTaskId);
-                if(p.role==='review'&&s.tasks.some(function(x){return x.id!==p.id&&x.role==='review'&&x.parentTaskId===p.parentTaskId&&!['done','cancelled'].includes(x.status);}))fail('An open Quality Review assignment already exists for this task.');
+                if(p.role==='review'&&s.tasks.some(function(x){return x.id!==p.id&&x.role==='review'&&x.parentTaskId===p.parentTaskId&&actionable(x);}))fail('An open Quality Review assignment already exists for this task.');
                 s.tasks[s.tasks.length-1].parentTaskId=p.parentTaskId;
                 var source=s.tasks.find(function(x){return x.id===p.parentTaskId;});
                 if(p.role==='review'&&source&&source.result)s.tasks[s.tasks.length-1].reviewOfVersion=resultVersion(source);
@@ -281,5 +282,5 @@
     function kickoff(page) {
         return '# Create the Proton Revenue Desk\n\nCreate six dedicated Proton bots with the profiles below and add them to a Proton Revenue Desk group. Before creating anything, verify that this is a Grok/Cursor account dedicated to Proton, separate from the account used for Stoneport. Separate bot names or group chats on one account do not isolate its cloud computer, files, browser sessions or app connections. If the account is shared with Stoneport or its identity is uncertain, STOP and request the separate Proton login. Never create, message or configure Proton bots in the Stoneport account. Within the verified Proton account, reuse matching Proton profiles and add only missing roles.\n\n'+COMMON+'\n\nLead generation has first priority. Spend the initial sprint researching prospects and testing two offers: a $500 Quote & Cost Review for miners and a $1,500 Supplier Prospect Research pilot for mining/energy vendors. Prices are hypotheses. Track actual replies, meetings and paid work; account counts are not demand. Keep broader sourcing and site briefs as follow-on services.\n\n'+ROLES.map(function(r){return '## Proton '+r.name+'\n'+r.prompt;}).join('\n\n')+'\n\nControl center: '+page+'\nThe control center is the task, lead and result register. First verify it is reachable, that the owner has authorized the account access, and that you see the correct Proton workspace. A localhost address is not reachable from your cloud computer. Do not assume a pasted URL establishes a connection.\n\nFirst return the six bot names and group confirmation. Then, when cloud access is available, complete a harmless task round trip: find a ready task, claim it, submit a source-linked result, and leave it for owner review. Do not begin recurring execution until this round trip is verified. Routines must honor queue pauses, claim only ready tasks and recheck the task before taking a consequential action. To stop active work, the owner must also send Stop now in Grok.\n';
     }
-    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence};
+    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence,reviewRole:reviewRole};
 }));

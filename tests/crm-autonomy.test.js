@@ -67,3 +67,88 @@ test('changed source cannot use the prior Quality version and projection never m
  let s=withQA();s=accept(s,'quality');const original=JSON.stringify(s);F.overview(s);F.taskMeaning(s.tasks[0],s);assert.equal(JSON.stringify(s),original);assert.equal(s.tasks[0].status,'review');
  const packet=G.packet(s,s.tasks[0],'https://example.test/crm/');assert.match(packet,/existing four-hour native schedule/);assert.match(packet,/specific.*owner decision|Owner decisions|owner decision/);assert.match(packet,/never bulk accept/i);
 });
+
+const todayTasks=s=>M.today({sites:[],leads:[],tasks:s.tasks,followups:[],date:'2026-09-18'});
+function assertReviewer(s,id,expectedRole){
+ const task=s.tasks.find(t=>t.id===id),before=JSON.stringify(s),owner=A.ROLES.find(r=>r.id===expectedRole).name;
+ assert.equal(task.status,'review');assert.equal(A.reviewRole(s,task),expectedRole);
+ assert.equal(F.taskMeaning(task,s).owner,owner);
+ assert.equal(todayTasks(s).find(t=>t.id===id).context,'Team review · '+owner);
+ assert.equal(JSON.stringify(s),before,'Read-only projections must preserve the pending result');
+}
+
+test('Today and workflow route exact accepted Quality evidence to Revenue without accepting the source',()=>{
+ let s=withQA();assertReviewer(s,'source','review');assertReviewer(s,'quality','revenue');
+ s=accept(s,'quality');assertReviewer(s,'source','revenue');
+ assert.equal(A.metrics(s,'2026-09').review,1);assert.equal(todayTasks(s).some(t=>t.id==='quality'),false);
+ s=accept(s,'source',review('quality'));assert.equal(A.metrics(s,'2026-09').review,0);assert.deepEqual(todayTasks(s),[]);
+});
+
+test('Today and workflow keep missing, unattributed, unrelated and stale evidence with Quality',()=>{
+ const missing=result(add(A.initial(),'source'),'source');assertReviewer(missing,'source','review');
+ const legacy=apply(withQA(),'task.accept',{id:'quality',note:'Synthetic legacy decision without attribution'});assertReviewer(legacy,'source','review');
+ let unrelated=accept(withQA(),'quality');unrelated=result(add(unrelated,'other_source'),'other_source');assertReviewer(unrelated,'other_source','review');
+ let stale=accept(withQA(),'quality');stale=apply(stale,'task.revise',{id:'source',note:'Synthetic new source correction',review:review('quality')});stale=result(stale,'source',{result:'Synthetic replacement result version two'});
+ assert.equal(stale.tasks[0].resultVersion,2);assertReviewer(stale,'source','review');
+ assert.throws(()=>accept(stale,'source',review('quality')),/exact result version/);
+});
+
+test('historical accepted Quality evidence cannot become the next-reviewer authority',()=>{
+ for(const kind of ['reference','superseded']){
+  let s=accept(withQA(),'quality');s=apply(s,'task.route',{id:'quality',kind,reviewOwner:'team',reason:'Synthetic historical review; not current evidence',recordedBy:'Synthetic coordinator'});
+  assertReviewer(s,'source','review');assert.deepEqual(A.reviewEvidence(s,s.tasks[0]),[]);
+  assert.throws(()=>accept(s,'source',review('quality')),/accepted, attributed/);
+ }
+});
+
+test('accepted adverse Quality verdicts route to Revenue for a saved correction disposition',()=>{
+ for(const verdict of ['revise','blocked']){
+  let s=accept(withQA(verdict),'quality');assertReviewer(s,'source','revenue');
+  assert.throws(()=>accept(s,'source',review('quality')),/corrections|blocker/);
+  s=apply(s,'task.revise',{id:'source',note:'Synthetic supported correction required',review:review('quality')});
+  assert.equal(F.taskMeaning(s.tasks[0],s).label,'Corrections requested');assert.equal(todayTasks(s)[0].context,'Corrections requested');
+  assert.equal(A.metrics(s,'2026-09').review,0);assert.equal(s.tasks[0].status,'blocked');
+  assert.equal(s.tasks[0].reviewHistory[0].review.evidenceTaskId,'quality');
+ }
+});
+
+test('actual owner routing overrides ordinary reviewer projection in Today and workflow',()=>{
+ let s=accept(withQA(),'quality');const reason='Synthetic actual purchase decision requires owner authority';
+ s=apply(s,'task.route',{id:'source',kind:'work',reviewOwner:'owner',reason,recordedBy:'Synthetic coordinator'});
+ const before=JSON.stringify(s),source=s.tasks[0];assert.equal(A.reviewRole(s,source),'revenue');
+ assert.equal(F.taskMeaning(source,s).owner,'Renzo');assert.equal(F.taskMeaning(source,s).label,'Owner decision');
+ assert.equal(todayTasks(s).find(t=>t.id==='source').context,'Owner decision · '+reason);assert.equal(JSON.stringify(s),before);
+ assert.throws(()=>accept(s,'source',review('quality')),/owner decision/);
+});
+
+function withPendingQA(status){
+ let s=result(add(A.initial(),'source'),'source');s=add(s,'quality','review',{parentTaskId:'source'});
+ if(status==='ready'||status==='working')s=apply(s,'task.ready',{id:'quality'});
+ if(status==='working')s=apply(s,'task.start',{id:'quality'});
+ if(status==='review')s=result(s,'quality',{qualityVerdict:'pass',confirmCurrentSource:true});
+ if(status==='blocked')s=apply(s,'task.block',{id:'quality',reason:'Synthetic missing independent evidence',blockerKind:'execution'});
+ assert.equal(s.tasks[1].status,status);return s;
+}
+
+test('routed historical Quality assignments permit replacement while preserving their status and history',()=>{
+ for(const kind of ['reference','superseded'])for(const status of ['draft','ready','working','review','blocked']){
+  let s=withPendingQA(status);
+  s=apply(s,'task.route',{id:'quality',kind:'work',reviewOwner:'team',reason:'Synthetic original review responsibility',recordedBy:'Synthetic coordinator'});
+  s=apply(s,'task.route',{id:'quality',kind,reviewOwner:'team',reason:'Synthetic historical assignment; replacement needed',recordedBy:'Synthetic coordinator'});
+  const original=JSON.stringify(s.tasks[1]);assert.equal(A.actionable(s.tasks[1]),false);
+  s=add(s,'replacement','review',{parentTaskId:'source'});
+  assert.equal(JSON.stringify(s.tasks[1]),original);assert.equal(s.tasks[1].routingHistory.length,1);assert.equal(s.tasks[1].status,status);
+  assert.equal(s.tasks[2].parentTaskId,'source');assert.equal(s.tasks[2].reviewOfVersion,1);assert.equal(s.tasks[2].status,'draft');
+  assert.equal(s.tasks[0].status,'review');assert.equal(s.tasks.filter(t=>t.role==='review'&&A.actionable(t)).length,1);
+  assert.throws(()=>add(s,'duplicate','review',{parentTaskId:'source'}),/open Quality Review/);
+ }
+});
+
+test('genuine pending Quality assignments still prevent duplicate review across every active status',()=>{
+ for(const status of ['draft','ready','working','review','blocked']){
+  const s=withPendingQA(status),before=JSON.stringify(s);assert.equal(A.actionable(s.tasks[1]),true);
+  assert.throws(()=>add(s,'duplicate','review',{parentTaskId:'source'}),/open Quality Review/);assert.equal(JSON.stringify(s),before);
+  const anotherSource=result(add(s,'another_source'),'another_source');
+  assert.doesNotThrow(()=>add(anotherSource,'other_quality','review',{parentTaskId:'another_source'}));
+ }
+});
