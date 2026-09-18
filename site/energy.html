@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=5835041b">
+<link rel="stylesheet" href="./styles.css?v=0dc9f0e2">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
@@ -22,8 +22,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=5835041b">
-<link rel="stylesheet" href="./mine-builder.css?v=5835041b">
+<link rel="stylesheet" href="./plant-viewer.css?v=0dc9f0e2">
+<link rel="stylesheet" href="./mine-builder.css?v=0dc9f0e2">
 </head>
 <body>
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -606,15 +606,25 @@
 </section>
 <!-- ===== /THE PAD ===== -->
 
+<section class="band mobile-fold-section" id="managed-hosting">
+  <div class="wrap"><details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Managed Energy Hosting</span><small>You own the infrastructure. We manage the hosting.</small></summary><div class="mobile-details-body">
+    <div class="sec-head"><div class="eyebrow">For energy &amp; site owners</div><h2 class="h-section">Your infrastructure.<br>Our hosting operations.</h2><p class="lede" data-mobile-copy="You fund and own the agreed infrastructure. Customers own the miners. Proton coordinates development and runs the hosting service.">Proton Managed Energy Hosting gives owners another way to develop an energy site: you fund and own the agreed infrastructure, customers own their miners, and Proton coordinates development, customer acquisition and hosting operations.</p></div>
+    <div class="grid grid-3"><div class="card"><h3 class="h-card">Build on what exists</h3><p>We assess usable equipment, available power and remaining work before proposing a phased, owner-funded budget. Equipment condition and rights are checked separately.</p></div><div class="card"><h3 class="h-card">Agree the economics</h3><p>Paid development milestones lead to site-specific energy and asset-access payments. The agreement can include a capital-recovery rate followed by a lower operating rate. Returns depend on costs and customer use.</p></div><div class="card"><h3 class="h-card">Operate with clear roles</h3><p>Proton manages customer onboarding, monitoring and billing. The owner funds agreed major infrastructure maintenance; customers fund miner repairs unless included in their terms.</p></div></div>
+    <details class="vgap" style="--vg:24px"><summary>Optional launch support</summary><p>A site-specific agreement may include a funded, time-limited minimum owner payment after phase acceptance. Availability and ordinary owner payments reduce the top-up, subject to a dollar cap. This is payment support, not a promise of occupied machines or a return guarantee.</p></details>
+    <div class="btn-row"><a class="btn btn--primary" href="./contact.html?topic=managed-hosting">Discuss managed hosting</a><a class="btn btn--ghost" href="#submit">Submit your site</a></div>
+  </div></details></div>
+</section>
+
 <!-- ===== WHAT EACH SIDE BRINGS ===== -->
 <section class="band mobile-fold-section">
   <div class="wrap">
-<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Who provides what?</span><small>You provide energy and access. We fund and run the mine.</small></summary><div class="mobile-details-body">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Who provides what?</span><small>A separate structure, subject to committed project funding.</small></summary><div class="mobile-details-body">
 
     <div class="reveal sec-head" style="--sh:44px">
-      <div class="eyebrow">The split</div>
+      <div class="eyebrow">Alternative: a Proton-funded project</div>
+      <p class="form-note">This section describes a separately agreed Proton-funded project, subject to committed financing. Managed Energy Hosting uses the owner-funded structure above.</p>
       <h2 class="h-section" data-mobile-copy="Who provides what.">We bring the capital and the complexity.</h2>
-      <p class="lede" data-mobile-copy="You provide energy and site access. We fund and operate the mine.">Most partners want the revenue without inheriting a new line of business. That is exactly how we structure it.</p>
+      <p class="lede" data-mobile-copy="This alternative requires agreed Proton funding. Managed Energy Hosting uses owner funding.">Most partners want the revenue without inheriting a new line of business. That is exactly how we structure it.</p>
     </div>
 
     <div class="grid grid-2 reveal" style="gap:48px">
@@ -892,6 +902,9 @@
           </div>
         </div>
         <div class="field">
+          <label for="s-service">Preferred model</label><select id="s-service" name="service"><option>Explore the best fit</option><option>Owner-funded Managed Energy Hosting</option><option>Gas or power purchase</option><option>Revenue share</option><option>Lease plus royalty</option></select>
+          <label for="s-infrastructure">Existing equipment and remaining work</label><textarea id="s-infrastructure" name="infrastructure" placeholder="Collection, generators, electrical, cooling; include source documents if available."></textarea>
+          <label for="s-funding">Owner infrastructure funding</label><select id="s-funding" name="owner_funding"><option>Not yet established</option><option>Budget under review</option><option>Funding available for a defined scope</option><option>Seeking a separately funded structure</option></select>
           <label for="s-notes">Anything else</label>
           <textarea id="s-notes" name="notes" placeholder="Gas composition, expected duration, current disposition (flared or vented), timeline pressure, preferred deal structure — whatever you have."></textarea>
         </div>
@@ -987,6 +1000,7 @@
         <h4>Services</h4>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
+        <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
         <a href="./index.html#operate">Site development</a>
 
 </div></details></div>
@@ -1013,23 +1027,23 @@
   </div>
 </footer>
 
-<script src="./site.js?v=5835041b"></script>
-<script src="./cart.js?v=5835041b"></script>
-<script src="./diagram-engine.js?v=5835041b"></script>
-<script src="./hero-anim.js?v=5835041b"></script>
-<script src="./pad-geometry.js?v=5835041b"></script>
-<script src="./landfill-geometry.js?v=5835041b"></script>
-<script src="./site-kit.js?v=5835041b"></script>
-<script src="./scene-landfill-now.js?v=5835041b"></script>
-<script src="./scene-landfill-ion.js?v=5835041b"></script>
-<script src="./scene-pad-now.js?v=5835041b"></script>
-<script src="./scene-pad-ion.js?v=5835041b"></script>
-<script src="./plant-viewer.js?v=5835041b" data-module-src="./mine-builder-scene.js?v=5835041b"></script>
-<script src="./calc-engine.js?v=5835041b"></script>
-<script src="./miner-db.js?v=5835041b"></script>
-<script src="./price-list.js?v=5835041b"></script>
-<script src="./mine-builder-model.js?v=5835041b"></script>
-<script src="./mine-builder.js?v=5835041b"></script>
+<script src="./site.js?v=0dc9f0e2"></script>
+<script src="./cart.js?v=0dc9f0e2"></script>
+<script src="./diagram-engine.js?v=0dc9f0e2"></script>
+<script src="./hero-anim.js?v=0dc9f0e2"></script>
+<script src="./pad-geometry.js?v=0dc9f0e2"></script>
+<script src="./landfill-geometry.js?v=0dc9f0e2"></script>
+<script src="./site-kit.js?v=0dc9f0e2"></script>
+<script src="./scene-landfill-now.js?v=0dc9f0e2"></script>
+<script src="./scene-landfill-ion.js?v=0dc9f0e2"></script>
+<script src="./scene-pad-now.js?v=0dc9f0e2"></script>
+<script src="./scene-pad-ion.js?v=0dc9f0e2"></script>
+<script src="./plant-viewer.js?v=0dc9f0e2" data-module-src="./mine-builder-scene.js?v=0dc9f0e2"></script>
+<script src="./calc-engine.js?v=0dc9f0e2"></script>
+<script src="./miner-db.js?v=0dc9f0e2"></script>
+<script src="./price-list.js?v=0dc9f0e2"></script>
+<script src="./mine-builder-model.js?v=0dc9f0e2"></script>
+<script src="./mine-builder.js?v=0dc9f0e2"></script>
 
 
 

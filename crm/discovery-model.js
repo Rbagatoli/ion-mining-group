@@ -27,11 +27,11 @@
     if(!matches(searchable(c),f.query)||!matches(placeSearch(c),f.location))return false;
     if(f.generation&&!(Number.isFinite(c.existingGenerationKw)&&c.existingGenerationKw>0))return false;
     if(f.tracking==='saved'&&!saved||f.tracking==='new'&&saved)return false;
-    const min=numeric(f.minMw),max=numeric(f.maxMw),kw=c.powerPotentialKw;
-    if((min!==null||max!==null)&&(!Number.isFinite(kw)||min!==null&&kw<min*1000||max!==null&&kw>max*1000))return false;
     return true;
   }
+  function matchCapacity(row,f){const min=numeric(f.minMw),max=numeric(f.maxMw),kw=row.kw;return (min===null&&max===null)||Number.isFinite(kw)&&(min===null||kw>=min*1000)&&(max===null||kw<=max*1000);}
+  function matchInfrastructure(row,f){return !f.infrastructure||f.infrastructure==='reported'&&row.infrastructureReported||f.infrastructure==='reuse'&&row.reuseDocumented;}
   function matchCash(row,f){const n=numeric(f.cash);return n===null||Number.isFinite(row.cash)&&row.cash<=n;}
   function suggestions(candidates,country){const found=new Set();candidates.forEach(c=>{if(country&&country!==c.iso3)return;const s=c.sourceDetail||{},raw=s.state||s.province||s.region||'',region=(regions[c.iso3]||{})[raw]||raw;if(region)found.add(region);if(s.city)found.add([s.city,region].filter(Boolean).join(', '));});return [...found].sort((a,b)=>a.localeCompare(b));}
-  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCash,suggestions,sourceColors,mw,sliderBounds,moveSlider};
+  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCapacity,matchInfrastructure,matchCash,suggestions,sourceColors,mw,sliderBounds,moveSlider};
 }));

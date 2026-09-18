@@ -55,12 +55,17 @@
       return {id:site.id,name:site.name,energyType:site.energy_type||'unknown',source:site.discovery&&site.discovery.sourceId||'manual',lat:site.latitude,lng:site.longitude,iso3:site.jurisdiction,operator:site.operator,powerPotentialKw:null,existingGenerationKw:null,sourceDetail:{},sourceSnapshot:site.discovery&&site.discovery.sourceSnapshot||null};
     }
     function saved(c){return SiteIdentity.savedForCandidate(SiteData.list(),c)||null;}
-    function estimate(c,site){return ProspectCapital.estimate(c,site||null);}
+    function estimate(c,site){
+      const ctx={screened:SiteCapacity.usableCapacity(c)};ctx.profile=ProspectDiligence.profile(c,site||null,ctx);
+      ctx.profile.inventory=ProtonPublicInfrastructure.enrichInventory(c,ctx.profile.inventory);
+      return ProspectCapital.estimate(c,site||null,ctx);
+    }
     function priority(c,site,e,cashLimit){return ProspectPriority.evaluate(c,{saved:site,estimate:e,manual:site?CrmContacts.contactCtx(site.id):null,operator:{operator:c.operator||site&&site.operator},availability:SiteAvailability.evaluate(c),cashLimitUsd:cashLimit});}
     function summary(c,site,cashLimit){
-      const key=String(c.id)+'|'+(site&&site.updated||'')+'|'+(cashLimit==null?'':cashLimit);if(priced.has(key))return priced.get(key);
+      const key=String(c.id)+'|'+(site&&site.updated||'')+'|'+(cashLimit==null?'':cashLimit)+'|'+ProspectDiligence.today();if(priced.has(key))return priced.get(key);
       const e=estimate(c,site),p=priority(c,site,e,cashLimit);
-      const out={id:c.id,name:c.name||c.id,kind:c.energyType,country:c.iso3,operator:c.operator||c.operatorId||'',cash:e.ready?e.base:null,priority:p.sortValue,label:p.label,next:p.nextAction,kw:e.targetKw,budgetComplete:e.budget.complete};
+      const infrastructureReported=e.inventory.some(a=>['collection','generation','gas_treatment','electrical','civil','mining_infrastructure'].includes(a.id)&&['reported','historical','present'].includes(a.presence)&&(a.userRecorded||a.id==='generation'||a.id==='collection'&&/^(yes|shutdown)$/i.test(c.sourceDetail?.collectionSystem||'')));
+      const out={id:c.id,name:c.name||c.id,kind:c.energyType,country:c.iso3,operator:c.operator||c.operatorId||'',cash:e.ready?e.base:null,priority:p.sortValue,label:p.label,next:p.nextAction,kw:e.targetKw,budgetComplete:e.budget.complete,quotedBudget:e.budget.complete&&!e.budget.allowanceCount,infrastructureReported,reuseDocumented:!!e.creditedAssets?.length};
       priced.set(key,out);return out;
     }
     function load(){

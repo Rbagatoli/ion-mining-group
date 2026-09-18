@@ -145,7 +145,7 @@ var ProspectDiligence = (function () {
         COMPONENTS.forEach(function (x) { rows[x[0]] = { id: x[0], label: x[1], scope: x[2], presence: 'unknown', finding: 'No component-level evidence in this record.', source_url: src.url, reportingPeriod: src.reportingPeriod, condition: 'unknown', access: 'unknown' }; });
         var collection = str(sd.collectionSystem).toLowerCase();
         if (collection === 'yes' || collection === 'no' || collection === 'shutdown') {
-            rows.collection.presence = collection === 'shutdown' ? 'historical' : 'reported';
+            rows.collection.presence = collection === 'no' ? 'absent' : collection === 'shutdown' ? 'historical' : 'reported';
             rows.collection.finding = 'LMOP reports collection system: ' + sd.collectionSystem + '. This does not establish current capacity, condition or access.';
             var quantities = [];
             if (num(sd.wellCount) !== null) quantities.push(sd.wellCount + ' wells');
@@ -194,11 +194,12 @@ var ProspectDiligence = (function () {
             var a = assets[id]; if (!a) return { id: id, known: false, reason: 'Scope, funding and cost not agreed.' };
             if (!a.evidence_note || !a.reviewer || !current(a.checked_on, now)) return { id: id, known: false, reason: 'Evidence needs a current review.' };
             if (a.quote_expires && a.quote_expires < today(now)) return { id: id, known: false, reason: 'Quote expired.' };
+            var sized = ['collection', 'gas_treatment', 'generation', 'electrical', 'civil', 'mining_infrastructure', 'miners'].indexOf(id) >= 0;
+            if (sized && a.action !== 'not_required' && targetKw > 0 && !(num(a.capacity_kw) >= targetKw)) return { id: id, known: false, reason: 'Confirm that the quote, funding agreement or reusable equipment covers the current net kW target.' };
             if (a.action === 'included') {
                 var seen = (visited || []).concat(id); if (seen.indexOf(a.included_in) >= 0) return { id: id, known: false, reason: 'Circular package reference.' };
                 var parent = line(a.included_in, seen); return { id: id, known: parent.known, included: a.included_in, reason: parent.known ? 'Cost counted in the covering package.' : 'Covering package is not fully priced.' };
             }
-            if (['generation', 'gas_treatment', 'electrical', 'mining_infrastructure', 'miners'].indexOf(id) >= 0 && a.action !== 'not_required' && a.payer !== 'partner' && targetKw > 0 && !(num(a.capacity_kw) >= targetKw)) return { id: id, known: false, reason: 'Confirm that the quote or reusable equipment covers the current net kW target.' };
             if (a.action === 'reuse' && a.presence === 'present' && a.condition === 'working' && a.access === 'agreed') return { id: id, known: true, low: 0, base: 0, high: 0, paid: 0, reason: 'Inspected reuse with documented access.' };
             if (a.action === 'not_required') return { id: id, known: true, low: 0, base: 0, high: 0, paid: 0, reason: 'Documented design exclusion.' };
             if (a.action !== 'new' && a.action !== 'refurbish') return { id: id, known: false, reason: 'Remaining work has not been agreed.' };

@@ -1,7 +1,8 @@
 // Bumped with the asset stamps on prospecting.html, so activate() drops the old cache rather
 // than leaving the superseded copies of the two panels beside the new ones.
-const CACHE_NAME = 'proton-mining-crm-20260917';
+const CACHE_NAME = 'proton-mining-crm-hosting-20260917';
 const ASSETS = [
+  './deal-qualification.js',
   './agent-control.html',
   './agent-control.css',
   './agent-control.js',

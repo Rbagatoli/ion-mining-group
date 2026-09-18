@@ -2,12 +2,20 @@
 const test=require('node:test'),assert=require('node:assert/strict'),S=require('../crm/discovery-model');
 const filters={query:'',location:'',kind:'all',country:'',generation:false,cash:'',minMw:'',maxMw:'',tracking:''};
 const site={id:'lmop:123',name:'Énergie North Ridge',operator:'Waste Management',iso3:'USA',energyType:'landfill_gas',existingGenerationKw:750,powerPotentialKw:1800,lat:0,lng:0,sourceDetail:{state:'TX',city:'Fort Worth',county:'Tarrant'}};
+
+test('capital searches use the priced plan and distinguish reported equipment from documented reuse',()=>{
+ const row={kw:498,cash:1800000,infrastructureReported:true,reuseDocumented:false};
+ assert(S.matchCapacity(row,{...filters,minMw:'.498',maxMw:'.498'}));
+ assert(!S.matchCapacity(row,{...filters,minMw:'1'}));
+ assert(S.matchInfrastructure(row,{infrastructure:'reported'}));assert(!S.matchInfrastructure(row,{infrastructure:'reuse'}));
+ assert(S.matchInfrastructure({...row,reuseDocumented:true},{infrastructure:'reuse'}));
+});
 test('search tolerates accents, punctuation and word order; short region codes match whole words',()=>{
  assert(S.matchCandidate(site,{...filters,query:'management energie'},null));assert(S.matchCandidate(site,{...filters,location:'Texas Fort Worth'},null));assert(S.matchCandidate(site,{...filters,location:'TX'},null));assert(!S.matchCandidate(site,{...filters,location:'CA'},null));assert(S.location(site).includes('Texas'));
  assert(S.matchCandidate({...site,iso3:'CAN',sourceDetail:{province:'QC',city:'Montréal'}},{...filters,location:'Montreal Quebec Canada'},null));
 });
 test('capacity and capital filters preserve unknowns and valid zero, with inclusive boundaries',()=>{
- assert(S.matchCandidate(site,{...filters,minMw:'1.8',maxMw:'1.8'},null));assert(!S.matchCandidate({...site,powerPotentialKw:null},{...filters,minMw:'0'},null));assert(S.matchCandidate({...site,powerPotentialKw:0},{...filters,maxMw:'0'},null));
+ assert(S.matchCapacity({kw:1800},{...filters,minMw:'1.8',maxMw:'1.8'}));assert(!S.matchCapacity({kw:null},{...filters,minMw:'0'}));assert(S.matchCapacity({kw:0},{...filters,maxMw:'0'}));
  assert(!S.matchCash({cash:null},{cash:'0'}));assert(S.matchCash({cash:0},{cash:'0'}));assert(S.matchCash({cash:null},{cash:''}));assert(!S.matchCash({cash:1001},{cash:'1000'}));
 });
 test('generation is positive source evidence and tracking follows actual saved identity',()=>{
@@ -23,7 +31,7 @@ test('MW slider pushes crossing handles, keeps its upper end unbounded and suppo
  assert.deepEqual(S.sliderBounds(filters),{low:0,high:5,ceiling:5});
  let f=S.moveSlider({...filters,maxMw:'1'},'min',2,5);assert.equal(f.minMw,'2');assert.equal(f.maxMw,'2');
  f=S.moveSlider(f,'max',0,5);assert.equal(f.minMw,'');assert.equal(f.maxMw,'0');
- f=S.moveSlider(f,'max',5,5);assert.equal(f.maxMw,'');assert(S.matchCandidate({...site,powerPotentialKw:500000},f,null));
- const exact={...filters,minMw:'8.125',maxMw:'8.125'},bounds=S.sliderBounds(exact);assert(bounds.ceiling>8.125);assert(S.matchCandidate({...site,powerPotentialKw:8125},exact,null));assert(!S.matchCandidate({...site,powerPotentialKw:8126},exact,null));
+ f=S.moveSlider(f,'max',5,5);assert.equal(f.maxMw,'');assert(S.matchCapacity({kw:500000},f));
+ const exact={...filters,minMw:'8.125',maxMw:'8.125'},bounds=S.sliderBounds(exact);assert(bounds.ceiling>8.125);assert(S.matchCapacity({kw:8125},exact));assert(!S.matchCapacity({kw:8126},exact));
  assert.equal(S.mw(8125),'8.125 MW');assert.equal(S.mw(null),'MW unknown');
 });

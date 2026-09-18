@@ -215,5 +215,10 @@
   "tokens.css",
   "wallet.html",
   "widget-settings.js",
-  "workstation.html"
+  "workstation.html",
+  "managed-hosting.js",
+  "managed-hosting-ui.js",
+  "managed-hosting-page.js",
+  "managed-hosting.css",
+  "managed-hosting.html"
 ]

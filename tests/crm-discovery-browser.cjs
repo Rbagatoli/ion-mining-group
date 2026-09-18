@@ -19,12 +19,24 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
  await check('location aliases, native suggestions and stable canvas through search',async()=>{
   await page.locator('#discoveryGlobe canvas').evaluate(e=>e.dataset.original='yes');await input('discoveryLocation','Texas');const count=await page.locator('#discoveryList .row').count();assert(count>0);assert((await page.locator('#discoveryList .row .sub').allTextContents()).every(t=>t.includes('Texas')));assert((await page.locator('#discoveryPlaces option').allTextContents()).length>0);await input('discoveryLocation','TX');assert.equal(await page.locator('#discoveryList .row').count(),count);assert.equal(await page.locator('#discoveryGlobe canvas').getAttribute('data-original'),'yes');
  });
+ await check('every catalog estimate reconciles and public records never establish reusable assets',async()=>{
+  const audit=await page.evaluate(()=>{
+   const bySource={},problems=[];
+   for(const c of ProspectStore.all()){
+    const e=ProspectCapital.estimate(c,null),a=bySource[c.source]||(bySource[c.source]={records:0,sized:0,reuseOpportunities:0,documentedReuse:0,flowConflicts:0});a.records++;if(e.capacity.flowRatingConflict)a.flowConflicts++;
+    if(e.ready){a.sized++;if(e.possibleReuseSavingUsd>0)a.reuseOpportunities++;a.documentedReuse+=e.creditedAssets.length;
+     if(![e.base,e.low,e.high,e.rebuildUsd,e.reuseScenarioUsd].every(Number.isFinite)||e.low>e.base||e.base>e.high||e.reuseScenarioUsd>e.base||Math.abs(e.lines.reduce((n,l)=>n+(l.base||0),0)-e.base)>.01||e.creditedAssets.length||e.budget.complete)problems.push(c.id);
+    }
+   }return {bySource,problems};
+  });
+  assert.deepEqual(audit.problems,[]);assert(Object.keys(audit.bySource).length>=4);fs.writeFileSync(path.join(out,'capital-catalog-audit.json'),JSON.stringify(audit,null,2));
+ });
  await check('multiword operator and site search finds an exact real record',async()=>{
   const c=await page.evaluate(()=>ProspectStore.all().find(c=>c.energyType==='landfill_gas'&&c.sourceDetail?.state==='TX'&&c.operator&&c.name.split(' ').length>1));await input('discoverySearch',c.name.split(' ').reverse().join(' '));assert((await page.locator('#discoveryList').innerText()).includes(c.name));
  });
  await check('combined generation, capacity and cost filters keep map and list synchronized',async()=>{
   await input('discoverySearch','');await click('generation');await settled();await click('filters');await input('discoveryMinMw','0.25');await input('discoveryMaxMw','20');await input('discoveryCash','5000000');
-  const rows=await page.locator('#discoveryList .row').evaluateAll(es=>es.map(e=>e.dataset.id));assert(rows.length>0);const sourceRows=await page.evaluate(ids=>ids.map(id=>ProspectStore.get(id)),rows);assert(sourceRows.every(c=>c.existingGenerationKw>0&&c.powerPotentialKw>=250&&c.powerPotentialKw<=20000));
+  const rows=await page.locator('#discoveryList .row').evaluateAll(es=>es.map(e=>e.dataset.id));assert(rows.length>0);assert(await page.evaluate(ids=>ids.every(id=>{const c=ProspectStore.get(id),kw=SiteCapacity.usableCapacity(c).kw;return c.existingGenerationKw>0&&kw>=250&&kw<=20000;}),rows));
   await select('discoverySort','capital');const cash=(await page.locator('#discoveryList .row-end>span:first-child').allTextContents()).map(v=>Number(v.replace(/[^\d.]/g,'')));assert(cash.every((v,i)=>v<=5000000&&(!i||v>=cash[i-1])));assert(Number(await page.locator('#discoveryGlobe').getAttribute('data-prospect-markers'))>=rows.length);
  });
  await check('invalid ranges and no matches have a visible recovery action',async()=>{
@@ -36,7 +48,21 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
   await page.locator('#discoveryGlobe').scrollIntoViewIfNeeded();const b=await page.locator('#discoveryGlobe').boundingBox();await page.mouse.click(b.x+b.width/2,b.y+b.height/2);await page.locator('#discoveryDetail').waitFor({state:'visible'});assert((await page.locator('#discoveryDetailBody').innerText()).includes(c.name));assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);
   for(const name of ['.discover-map','.discover-results','.discover-detail']){const r=await page.locator(name).boundingBox();assert(r.y>=0&&r.y+r.height<=1001,name+' must fit on screen');}
   await page.screenshot({path:path.join(out,'discover-inline-overview.png'),fullPage:false});await click('collapse-detail');
-  await page.locator('#discoveryList .row').first().click();assert((await page.locator('#discoveryDetailBody').innerText()).includes(c.name));await page.getByRole('button',{name:'Capital',exact:true}).click();assert.match(await page.locator('#discoveryDetailBody').innerText(),/Remaining with existing infrastructure/);assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);await page.screenshot({path:path.join(out,'discover-inline-capital.png')});await click('collapse-detail');
+  await page.locator('#discoveryList .row').first().click();assert((await page.locator('#discoveryDetailBody').innerText()).includes(c.name));await page.getByRole('button',{name:'Capital',exact:true}).click();assert.match(await page.locator('#discoveryDetailBody').innerText(),/Remaining to fund/);assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);await page.screenshot({path:path.join(out,'discover-inline-capital.png')});await click('collapse-detail');
+ });
+ await check('capital shows consistent MW, conditional savings and dated equipment without changing records',async()=>{
+  const before=await page.evaluate(()=>localStorage.getItem('protonMiningSites'));
+  await click('clear-all');await settled();await input('discoverySearch','Pennsauken');await input('discoveryMinMw','.498');await input('discoveryMaxMw','.498');
+  assert.equal(await page.locator('#discoveryList .row').count(),1);assert.match(await page.locator('#discoveryList').innerText(),/0.498 MW plan/);
+  await page.locator('#discoveryList .row').first().click();await page.getByRole('button',{name:'Capital',exact:true}).click();
+  const estimates=await page.locator('.crm-capital .sheet-stat strong').allTextContents();assert(Number(estimates[0].replace(/\D/g,''))>Number(estimates[1].replace(/\D/g,'')));
+  await page.getByText('Where the money goes',{exact:true}).click();await page.getByText('Rates, dates & assumptions',{exact:true}).click();assert.match(await page.locator('.crm-capital').innerText(),/2022/);assert.match(await page.locator('.crm-capital').innerText(),/new equipment|New equipment/);assert.match(await page.locator('.crm-capital').innerText(),/498 net kW/);
+  await page.locator('.crm-capital-asset').first().locator('summary').click();assert.match(await page.locator('.crm-capital-assets').innerText(),/199 wells/);assert(await page.locator('.crm-capital-asset a[href^="https:"]').count()>0);
+  await page.screenshot({path:path.join(out,'capital-audit-desktop.png')});await page.setViewportSize({width:390,height:900});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert(await page.locator('.crm-capital').evaluate(e=>e.scrollWidth<=e.clientWidth+1));await page.screenshot({path:path.join(out,'capital-audit-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});await click('collapse-detail');
+  await click('clear-all');await settled();await select('discoveryInfrastructure','reported');assert(await page.locator('#discoveryList .row').count()>0);await select('discoveryInfrastructure','reuse');assert.equal(await page.locator('#discoveryList .row').count(),0,'public reports alone cannot satisfy documented reuse');await select('discoveryInfrastructure','');
+  assert.equal(await page.evaluate(()=>localStorage.getItem('protonMiningSites')),before);await select('discoveryKind','landfill_gas');
  });
  await check('Contacts & terms exposes the full site research inline and fits on a phone',async()=>{
   const before=await page.evaluate(()=>localStorage.getItem('protonMiningSites'));
@@ -65,7 +91,7 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
  });
  await check('phone and tablet layouts switch between sites and globe without overflow',async()=>{
   await click('clear-all');await settled();await select('discoveryKind','landfill_gas');
-  for(const width of [1000,800,390,320]){await page.setViewportSize({width,height:900});const first=await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,wide:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,5).map(e=>({tag:e.tagName,id:e.id,cls:e.className,width:e.getBoundingClientRect().width}))}));if(first.width>first.viewport+1)console.log('RESIZE BEFORE LAYOUT '+JSON.stringify(first));await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'settled overflow '+width);await click('view-globe');await page.locator('#discoveryGlobe canvas').waitFor({state:'visible'});const box=await page.locator('#discoveryGlobe canvas').boundingBox();assert(box.width<=width&&box.height>250);if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-globe.png'),fullPage:true});await click('view-sites');assert(await page.locator('#discoveryList').isVisible());if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-sites.png'),fullPage:true});}
+  for(const width of [1000,800,390,320]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow '+width);await click('view-globe');await page.locator('#discoveryGlobe canvas').waitFor({state:'visible'});const box=await page.locator('#discoveryGlobe canvas').boundingBox();assert(box.width<=width&&box.height>250);if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-globe.png'),fullPage:true});await click('view-sites');assert(await page.locator('#discoveryList').isVisible());if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-sites.png'),fullPage:true});}
  });
  await check('navigation cleans up canvases and preserves search controls',async()=>{
   await input('discoveryLocation','Alberta');for(let i=0;i<3;i++){await page.goto(origin+'/crm/#today');assert.equal(await page.locator('#discoveryGlobe canvas').count(),0);await page.goto(origin+'/crm/#discover');await settled();await page.waitForFunction(()=>document.querySelector('#discoveryGlobe')?.dataset.globeReady==='true');assert.equal(await page.locator('#discoveryGlobe canvas').count(),1);assert.equal(await page.locator('#discoveryLocation').inputValue(),'Alberta');}

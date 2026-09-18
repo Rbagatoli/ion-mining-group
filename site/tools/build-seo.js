@@ -13,6 +13,7 @@
    attached and serving this directory. Until then it points at a URL that does
    not resolve, which is a launch item rather than a bug in this script. */
 const fs = require('fs');
+const writeGenerated = require('../../tools/write-generated.cjs');
 const path = require('path');
 
 const SITE = path.join(__dirname, '..');
@@ -208,15 +209,15 @@ function injectLd(html, file) {
 
 /* ---------- write ---------- */
 
-fs.writeFileSync(path.join(SITE, 'robots.txt'), robots);
+writeGenerated(path.join(SITE, 'robots.txt'), robots);
 console.log('robots.txt: ' + Object.keys(PAGES).length + ' pages allowed, sitemap pointed at ' + BASE);
 
-fs.writeFileSync(path.join(SITE, 'sitemap.xml'), sitemap);
+writeGenerated(path.join(SITE, 'sitemap.xml'), sitemap);
 console.log('sitemap.xml: ' + Object.keys(PAGES).length + ' pages + ' +
             postUrls().length + ' published post(s)');
 
 const homePath = path.join(SITE, 'index.html');
 const before = fs.readFileSync(homePath, 'utf8');
 const after = injectLd(before, 'index.html');
-if (after !== before) fs.writeFileSync(homePath, after);
+if (after !== before) writeGenerated(homePath, after);
 console.log('index.html: Organization structured data' + (after === before ? ' — unchanged' : ''));

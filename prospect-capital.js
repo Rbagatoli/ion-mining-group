@@ -12,10 +12,10 @@ var ProspectCapital = (function () {
     function kw(v) { return v == null ? 'Not sized' : Math.round(v).toLocaleString('en-US') + ' kW'; }
     function settings(site, candidate, profile) {
         var s = D.state(site), v = s.error ? {} : s.planning || {};
-        var selection = v.market || 'auto', inventory = profile ? profile.inventory : D.inventory(candidate, site), generation = inventory.find(function (a) { return a.id === 'generation'; });
-        var automaticUsed = candidate.energyType !== 'grid_facility' && generation && generation.presence === 'historical';
-        return { market: selection === 'auto' ? automaticUsed ? 'used' : 'new' : selection, marketSelection: selection,
-            automaticUsed: selection === 'auto' && !!automaticUsed, mining_infra_usd_per_mw: D.num(v.mining_infra_usd_per_mw),
+        var selection = v.market || 'auto';
+        // A shutdown record does not establish a used-equipment purchase price (or cheap mining containers).
+        return { market: selection === 'auto' ? 'new' : selection, marketSelection: selection,
+            automaticUsed: false, mining_infra_usd_per_mw: D.num(v.mining_infra_usd_per_mw),
             strategy: v.strategy || (candidate.energyType === 'grid_facility' ? 'power' : 'reuse'), contingency_pct: D.num(v.contingency_pct) == null ? 15 : Number(v.contingency_pct), target_kw: D.num(v.target_kw) };
     }
     function estimate(candidate, site, ctx) {
@@ -43,7 +43,7 @@ var ProspectCapital = (function () {
         out.reportedPlantKw = D.num(c.existingGenerationKw);
         out.plantTechnology = sd.technology || sd.projectType || '';
         out.plantStatus = sd.statusLabel || sd.projectStatus || '';
-        var modeled = 0, modeledRebuild = 0;
+        var possibleSaving = 0, documentedReuse = 0, replacement = 0;
         inv.forEach(function (a, i) {
             if (a.id === 'reserves') return;
             var quote = p.budget.lines[i], full = null, reuse = 0;
@@ -58,15 +58,16 @@ var ProspectCapital = (function () {
                 if (a.id === 'generation' && scope === null) scope = D.num(c.existingGenerationKw) === null ? null : c.existingGenerationKw * 0.93;
                 if (scope !== null) reuse *= Math.min(1, scope / target);
             }
-            var line = { id: a.id, label: a.label, finding: a.finding, presence: a.presence, sourceUrl: a.source_url, work: WORK[a.id] || a.scope, estimated: !quote.known, low: null, base: null, high: null, reuse: reuse > 0, full: full };
+            var line = { id: a.id, label: a.label, finding: a.finding, presence: a.presence, sourceUrl: a.source_url, work: WORK[a.id] || a.scope, estimated: !quote.known || !!quote.allowance, low: null, base: null, high: null, reuse: false, possibleReuse: !quote.known && reuse > 0, possibleSavingUsd: 0, full: full, evidenceReason: quote.reason };
+            if (full !== null) replacement += full;
             if (quote.known) {
                 line.low = quote.included ? 0 : quote.low; line.base = quote.included ? 0 : quote.base; line.high = quote.included ? 0 : quote.high;
                 line.work = quote.reason; line.reuse = false;
-                if (a.action === 'reuse' && full !== null) { line.reuse = true; modeledRebuild += full; }
+                if (a.action === 'reuse' && full !== null) { line.reuse = true; documentedReuse += full; }
             } else if (full !== null) {
-                line.base = full * (1 - reuse); line.low = line.base * 0.7; line.high = full * 1.4;
-                if (reuse) line.work = 'Inspect, adapt and repair reported equipment; allowance assumes ' + Math.round(reuse * 100) + '% of replacement cost can be retained';
-                modeled += line.base; modeledRebuild += full;
+                line.base = full; line.low = full * 0.7; line.high = full * 1.4;
+                line.possibleSavingUsd = full * reuse; possibleSaving += line.possibleSavingUsd;
+                if (reuse) line.work = 'Replacement allowance until reuse is scoped. The separate reuse scenario assumes ' + Math.round(reuse * 100) + '% of replacement cost can be retained; inspection, access and a repair quote are still required.';
             } else if (power && ['collection', 'gas_treatment', 'generation', 'electrical', 'civil', 'tie_in'].indexOf(a.id) >= 0) {
                 line.low = line.base = line.high = 0;
                 line.supplierFunded = true;
@@ -97,20 +98,27 @@ var ProspectCapital = (function () {
         out.servicesUsd = out.lines.filter(function (a) { return a.id === 'permits' || a.id === 'commissioning'; }).reduce(function (n, a) { return n + (a.base || 0); }, 0);
         out.unpricedServices = out.lines.filter(function (a) { return (a.id === 'permits' || a.id === 'commissioning') && a.base === null; }).map(function (a) { return a.label; });
         out.creditedAssets = out.lines.filter(function (a) { return a.reuse; }).map(function (a) { return a.label; });
+        out.possibleReuseAssets = out.lines.filter(function (a) { return a.possibleReuse; }).map(function (a) { return a.label; });
         out.otherRecordedUsd = out.infrastructureUsd - out.remainingInfrastructureUsd;
         out.contingencyUsd = reserve.base;
-        out.reuseSavingUsd = (modeledRebuild - modeled) * (1 + (reserves.known ? 0 : cfg.contingency_pct / 100));
-        out.rebuildUsd = out.base + out.reuseSavingUsd;
+        var reserveFactor = 1 + (reserves.known ? 0 : cfg.contingency_pct / 100);
+        out.reuseSavingUsd = documentedReuse * reserveFactor;
+        out.possibleReuseSavingUsd = possibleSaving * reserveFactor;
+        out.reuseScenarioUsd = Math.max(0, out.base - out.possibleReuseSavingUsd);
+        // Independent reference: modeled construction + miners + planned contingency only.
+        // Quotes, payments, funding and recorded transaction costs never rewrite replacement rates.
+        out.rebuildUsd = replacement * (1 + cfg.contingency_pct / 100);
+        out.estimated = !p.budget.complete || p.budget.allowanceCount > 0;
         out.perKw = out.base / target; out.ready = true;
         return out;
     }
     function summary(e, compact) {
         if (!e.ready) return '<section class="pc-summary"><h4>Build cost estimate</h4><p>' + esc(e.reason) + '</p></section>';
-        var approach = e.settings.strategy === 'power' ? 'Buy power; supplier funds generation' : e.settings.strategy === 'rebuild' ? 'Full build selected; no assumed reuse' : 'Reuse reported equipment where feasible';
+        var approach = e.settings.strategy === 'power' ? 'Buy power; supplier funds generation' : e.settings.strategy === 'rebuild' ? 'Full build selected; no assumed reuse' : 'Investigate reuse; fund replacement until scoped';
         var market = e.settings.market === 'used' ? 'Used equipment' : 'New equipment';
         var mining = e.inventory.find(function (a) { return a.id === 'mining_infrastructure'; });
         var miningEstablished = ['reported', 'present', 'historical'].indexOf(mining.presence) >= 0;
-        var reused = e.creditedAssets.length ? 'Reuse allowance applied to: ' + e.creditedAssets.join(', ') + '.' :
+        var reused = e.creditedAssets.length ? 'Documented reuse applied to: ' + e.creditedAssets.join(', ') + '.' :
             e.settings.strategy === 'rebuild' ? 'This scenario does not assume reuse.' :
             e.powerPurchase && !miningEstablished ? 'Mining containers and mining electrical equipment are not documented at this site. No mining reuse allowance is applied, so both figures can be equal.' :
             'No equipment qualifies for an assumed reuse allowance. Recorded quotes, payments and funding can still change the remaining cost.';
@@ -120,7 +128,7 @@ var ProspectCapital = (function () {
             (e.reportedPlantKw > 0 ? 'Reported plant capacity: ' + esc(kw(e.reportedPlantKw)) + (e.plantTechnology ? ' &middot; ' + esc(e.plantTechnology) : '') + (e.plantStatus ? ' &middot; ' + esc(e.plantStatus) : '') + '.' : 'Existing generation has not been established in this record.') +
             ' This scenario buys power from the operator; neither figure includes building or buying its plant. Power availability, the connection and commercial terms still need agreement.</p>' +
             (e.source.reportingPeriod ? '<small>Source reporting period: ' + esc(e.source.reportingPeriod) + '. Plant capacity is not an allocation to Proton.</small>' : '') + '</div>';
-        html += '<div class="pc-comparison"><div><span>' + (e.powerPurchase ? 'New mining installation' : 'Build infrastructure from scratch') + '</span><strong data-pc-new>' + usd(e.newInfrastructureUsd) + '</strong><small>Replace the modeled infrastructure at the selected rates.</small></div><div class="pc-remaining"><span>' + (e.settings.strategy === 'rebuild' ? 'Remaining in the full-build scenario' : e.powerPurchase ? 'Mining installation still to fund' : 'Remaining with existing infrastructure') + '</span><strong data-pc-remaining>' + usd(e.remainingInfrastructureUsd) + '</strong><small>' + (e.settings.strategy === 'rebuild' ? 'Recorded scope and quotes still take precedence.' : 'Only eligible assets and recorded costs reduce this figure.') + '</small></div></div>' +
+        html += '<div class="pc-comparison"><div><span>' + (e.powerPurchase ? 'New mining installation' : 'Build infrastructure from scratch') + '</span><strong data-pc-new>' + usd(e.newInfrastructureUsd) + '</strong><small>Replace the modeled infrastructure at the selected rates.</small></div><div class="pc-remaining"><span>' + (e.settings.strategy === 'rebuild' ? 'Remaining in the full-build scenario' : e.powerPurchase ? 'Mining installation still to fund' : 'Remaining with existing infrastructure') + '</span><strong data-pc-remaining>' + usd(e.remainingInfrastructureUsd) + '</strong><small>' + (e.settings.strategy === 'rebuild' ? 'Recorded scope and quotes still take precedence.' : 'Only current scoped evidence reduces this figure. Reported equipment alone earns no deduction.') + '</small></div></div>' +
             '<p class="pc-reuse-basis">' + esc(reused) + '</p>' +
             '<p class="pc-basis">Same capacity and component scope in both figures. Mining machines, contingency, site purchase' + (e.powerPurchase ? ', separately quoted services' : '') + ' and other deal costs are separate.</p>' +
             '<dl class="pc-split"><div><dt>Energy infrastructure still to fund</dt><dd>' + (e.powerPurchase && e.energyInfrastructureUsd === 0 ? 'Supplier scope' : usd(e.energyInfrastructureUsd)) + '</dd>' + (e.powerPurchase ? '<small>Owner-funded plant assumed in the power price; confirm the agreement.</small>' : '') + '</div><div><dt>Mining setup still to fund</dt><dd>' + usd(e.miningInfrastructureUsd) + '</dd><small>Full setup rate: ' + usd(e.rates.miningInfraPerKw * 1000) + '/MW. Containers, mining electrical, pads and installation; excludes machines and generation.</small></div><div><dt>Engineering & commissioning</dt><dd>' + (e.unpricedServices.length ? e.servicesUsd > 0 ? usd(e.servicesUsd) + ' + unpriced work' : 'Needs a quote' : usd(e.servicesUsd)) + '</dd>' + (e.powerPurchase ? '<small>Mining approvals and startup testing need a separate scope or explicit package coverage. New generation development and first-fire allowances are excluded.</small>' : '') + '</div></dl>' +
@@ -130,6 +138,7 @@ var ProspectCapital = (function () {
         if (e.capacity.contractedKw != null && e.targetKw > e.capacity.contractedKw) html += '<p class="pc-extras"><strong>Planning size exceeds the documented power allocation.</strong> Reduce the target or confirm additional power.</p>';
         if (e.capacity.flowRatingConflict) html += '<p class="pc-extras"><strong>Capacity needs review:</strong> reported gas flow exceeds the published collection-system rating. Reconcile the equipment scope and measurements before relying on this size.</p>';
         if (e.extras.length) html += '<p class="pc-extras"><strong>Add to this estimate:</strong> ' + esc(e.extras.join('; ')) + '. These costs are unpriced, not zero.</p>';
+        if (e.possibleReuseSavingUsd > 0) html += '<p class="pc-extras"><strong>Unconfirmed reuse scenario: ' + usd(e.reuseScenarioUsd) + ' + unpriced work.</strong> Potential saving of ' + usd(e.possibleReuseSavingUsd) + ' if reported assets can be reused. No inspection or use agreement is established by the source record.</p>';
         if (e.estimated) html += '<p class="pc-basis">Screening estimate using Proton\'s existing internal rate card and miner assumptions, not current supplier quotes. ' + (e.reuseSavingUsd > 0 ? 'The reuse case depends on inspection, capacity and agreed access; an equipment purchase or lease price must be added.' : 'Unknown equipment carries a replacement allowance at the selected rates.') + '</p>';
         if (compact) {
             var assets = e.inventory.filter(function (a) { return ['reported', 'present', 'historical', 'planned'].indexOf(a.presence) >= 0; });
@@ -150,12 +159,12 @@ var ProspectCapital = (function () {
         return '<details class="dg-editor"><summary>Change project size or mining setup cost</summary><p class="dg-note">Save a planning scenario for this site. Documented power rights and supplier quotes stay in the evidence ledger below.</p><form data-dg-form="planning"><div class="dg-fields">' +
             '<label>Planning size (net kW)<input name="target_kw" type="number" min="1" step="any" placeholder="Use screened potential" value="' + (e.settings.target_kw || '') + '"></label>' +
             '<label>Build approach<select name="strategy">' + option('reuse', 'Reuse reported equipment if suitable', e.settings.strategy) + option('rebuild', 'Build without assuming reuse', e.settings.strategy) + option('power', 'Buy power; supplier funds generation', e.settings.strategy) + '</select></label>' +
-            '<label>Equipment market<select name="market">' + option('auto', 'Auto: used for shutdown generation', e.settings.marketSelection) + option('new', 'New equipment', e.settings.marketSelection) + option('used', 'Used equipment', e.settings.marketSelection) + '</select></label>' +
+            '<label>Equipment market<select name="market">' + option('auto', 'Default: new equipment', e.settings.marketSelection) + option('new', 'New equipment', e.settings.marketSelection) + option('used', 'Used equipment', e.settings.marketSelection) + '</select></label>' +
             '<label>Construction contingency (%)<input name="contingency_pct" type="number" min="0" max="100" step="any" value="' + e.settings.contingency_pct + '"></label>' +
             '<label>Full mining setup allowance (USD / MW)<input name="mining_infra_usd_per_mw" type="number" min="0" step="any" placeholder="Default: ' + C.ratesFor(e.settings.market).miningInfraPerKw * 1000 + '" value="' + (e.settings.mining_infra_usd_per_mw === null ? '' : e.settings.mining_infra_usd_per_mw) + '"></label></div>' +
             '<p class="dg-note">The mining setup allowance covers containers, cooling, mining-side electrical distribution, pads, network and installation. It excludes miners and the generating plant. Enter your own complete-scope allowance, or leave it blank to use the rate card. A container-only price needs the other work added. Reuse is credited separately where existing mining equipment is recorded.</p>' +
             '<button type="submit">Save estimate assumptions</button></form><details><summary>Rate card and estimate basis</summary>' +
-            '<p class="dg-note">Internal planning inputs in USD, not current supplier quotes. Auto uses the secondary equipment market for reported shutdown generation; an explicitly saved new/used choice is retained. Mining hardware uses ' + esc(e.fleet ? e.fleet.model : E.DEFAULT_CONFIG.minerModel) + ' at ' + usd(E.DEFAULT_CONFIG.minerUnitCostUsd) + ' each; freight, taxes and spares still need pricing. New-scope range: 70% to 140% of base. Reported reuse retains 60% of replacement cost (35% for shutdown / rework), limited by known equipment size; the high case allows full replacement. Unknown ancillary equipment receives no reuse credit. A landfill generator does not establish the presence of mining containers or mining electrical infrastructure.</p>' +
+            '<p class="dg-note">Internal planning inputs in USD, not current supplier quotes. Default uses new-equipment rates; used pricing requires an explicit choice. Mining hardware uses ' + esc(e.fleet ? e.fleet.model : E.DEFAULT_CONFIG.minerModel) + ' at ' + usd(E.DEFAULT_CONFIG.minerUnitCostUsd) + ' each; freight, taxes and spares still need pricing. New-scope range: 70% to 140% of base. The separate, unconfirmed reuse scenario assumes 60% of replacement cost retained (35% for shutdown / rework), limited by known equipment size. These assumptions do not reduce the funding estimate or establish current condition. Unknown ancillary equipment receives no reuse credit. A landfill generator does not establish the presence of mining containers or mining electrical infrastructure.</p>' +
             (e.powerPurchase ? '<p class="dg-note">Only the mining setup rate applies to unquoted construction in this power-purchase scenario. Generation-side rates, including generation permitting and commissioning, are not applied. Price mining approvals and testing in the evidence ledger or document their inclusion in an installation package.</p>' : '') +
             '<dl class="dg-facts">' + Object.keys(RATE_KEYS).filter(function (id) { return !e.powerPurchase || id === 'mining_infrastructure'; }).map(function (id) { var title = D.COMPONENTS.find(function (a) { return a[0] === id; })[1]; return '<div><dt>' + esc(title) + '</dt><dd>' + usd(e.rates[RATE_KEYS[id]]) + (id === 'permits' ? ' fixed' : ' / kW') + '</dd></div>'; }).join('') + '</dl></details></details>';
     }

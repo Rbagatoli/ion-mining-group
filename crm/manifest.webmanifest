@@ -3,7 +3,7 @@
   "name": "Proton CRM",
   "short_name": "Proton CRM",
   "description": "Energy deals, revenue leads and your AI team in one workspace.",
-  "start_url": "./#today",
+  "start_url": "./#control",
   "scope": "./",
   "display": "standalone",
   "background_color": "#000000",

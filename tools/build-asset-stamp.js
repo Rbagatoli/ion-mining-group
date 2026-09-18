@@ -27,6 +27,7 @@
  */
 
 const fs = require('fs');
+const writeGenerated = require('./write-generated.cjs');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -120,7 +121,7 @@ function write(area) {
            unstamped local asset is a page that can go stale invisibly. */
         const after = before.replace(REF, (whole, rel) =>
             whole.slice(0, whole.indexOf('"') + 1) + rel + '?v=' + stamp + '"');
-        if (after !== before) { fs.writeFileSync(p, after); changed++; }
+        if (after !== before) { writeGenerated(p, after); changed++; }
     }
     return { stamp, hashed, changed, pages: pagesOf(area.dir).length };
 }

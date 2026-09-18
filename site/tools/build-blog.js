@@ -23,6 +23,7 @@
  * until somebody says otherwise.
  */
 const fs = require('fs');
+const writeGenerated = require('../../tools/write-generated.cjs');
 const path = require('path');
 
 const SITE = path.join(__dirname, '..');
@@ -636,7 +637,7 @@ for (const post of posts) {
         process.exit(1);
     }
     const before = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
-    if (before !== next) { fs.writeFileSync(p, next); wrote++; }
+    if (before !== next) { writeGenerated(p, next); wrote++; }
 }
 
 /* A post file that was deleted or renamed leaves its page behind, still linked from nowhere and
@@ -665,7 +666,7 @@ if (fs.existsSync(INDEX_PAGE)) {
        absent from every path that leads to it. */
     const next = html.slice(0, a) + BEGIN + '\n' + indexCards(live) + '\n    ' +
                  html.slice(b);
-    if (next !== html) { fs.writeFileSync(INDEX_PAGE, next); wrote++; }
+    if (next !== html) { writeGenerated(INDEX_PAGE, next); wrote++; }
 } else {
     console.log('  blog.html does not exist yet; skipping the index');
 }
@@ -685,7 +686,7 @@ if (fs.existsSync(HUB_PAGE)) {
         railItems(live) + '\n' +
         '        <a class="wm-rail-all" href="./blog.html">All notes</a>\n        ' +
         hub.slice(rb);
-    if (nextHub !== hub) { fs.writeFileSync(HUB_PAGE, nextHub); wrote++; }
+    if (nextHub !== hub) { writeGenerated(HUB_PAGE, nextHub); wrote++; }
 }
 
 const drafts = posts.length - live.length;

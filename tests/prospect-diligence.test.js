@@ -69,6 +69,17 @@ test('reuse needs component inspection, access and sufficient scope; a site-wide
   const r=save(raw,'asset',{...bad,presence:'present',condition:'working',access:'agreed'},'generation');
   assert.equal(D.budget(r,NOW,1000).base,0);assert.equal(D.budget(r,NOW,2000).base,null);
 });
+test('collection No is absent; partner funding and included scope must cover the mine size',()=>{
+  const inv=D.inventory({source:'lmop-landfill',sourceDetail:{collectionSystem:'No'}});
+  assert.equal(inv.find(a=>a.id==='collection').presence,'absent');
+  let r=save(record(),'asset',asset({payer:'partner',capacity_kw:500,paid_usd:0}),'generation');
+  assert.equal(D.budget(r,NOW,1000).lines.find(a=>a.id==='generation').known,false);
+  r=save(r,'asset',asset({capacity_kw:1000}),'generation');
+  r=save(r,'asset',asset({action:'included',included_in:'generation',capacity_kw:500,low_usd:null,base_usd:null,high_usd:null,paid_usd:0}),'mining_infrastructure');
+  assert.equal(D.budget(r,NOW,1000).lines.find(a=>a.id==='mining_infrastructure').known,false);
+  r=save(r,'asset',asset({presence:'present',condition:'working',access:'agreed',action:'reuse',capacity_kw:500,low_usd:0,base_usd:0,high_usd:0,paid_usd:0}),'collection');
+  assert.equal(D.budget(r,NOW,1000).lines.find(a=>a.id==='collection').known,false);
+});
 test('capacity allocation requires an explicit current agreement and expires without becoming zero',()=>{
   let r=record();assert.equal(D.apply(r,{revision:0,type:'capacity',value:proof({target_kw:1000,contracted_kw:0,rights_confirmed:false})},NOW).ok,false);
   r=save(r,'capacity',proof({target_kw:1000,contracted_kw:0,rights_confirmed:true,contract_expires:'2026-09-08'}));
