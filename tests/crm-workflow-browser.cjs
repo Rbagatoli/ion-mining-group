@@ -22,6 +22,22 @@ async function check(name,fn){await fn();checks.push(name);console.log('PASS '+n
  await check('lead panel connects stage, responsible bot, exact task and its next action',async()=>{await page.locator('#pipelineList .wf-lead-card').click();await page.getByRole('heading',{name:'Revenue opportunity',exact:true}).waitFor();assert.match(await page.locator('.wf-detail').innerText(),/Quality Review/);assert.equal(await page.locator('.wf-lead-path [aria-current=step]').innerText(),'04\nReview draft');await page.locator('.wf-linked').getByRole('link',{name:/Review the fleet message/}).click();await page.getByRole('heading',{name:'Team assignment',exact:true}).waitFor();assert.match(await page.locator('.wf-task-context').innerText(),/Waiting for the next coordinator check/);await page.getByRole('button',{name:'Close panel',exact:true}).click();assert.equal(await page.evaluate(()=>localStorage.getItem('protonAgentControlLocal_v1')),stored);});
  await check('new bot assignments preserve an explicit lead link',async()=>{await page.goto(origin+'/crm/#pipeline/lead/lead_buyer');await page.getByRole('button',{name:'Assign bot work',exact:true}).click();assert.equal(await page.getByLabel('Linked lead',{exact:true}).inputValue(),'lead_buyer');await page.getByRole('button',{name:'Save draft',exact:true}).click();await page.locator('#sheet').waitFor({state:'hidden'});const task=await page.evaluate(()=>JSON.parse(localStorage.getItem('protonAgentControlLocal_v1')).tasks.at(-1));assert.equal(task.leadId,'lead_buyer');assert.equal(task.status,'draft');});
  await check('progress and lead detail fit desktop, tablet and phone with no horizontal overflow',async()=>{await page.goto(origin+'/crm/#team');await page.locator('[data-action=team-tab][data-id=workflow]').click();for(const width of [1440,1000,620,390,320]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow '+width);if(width===1440)await page.screenshot({path:path.join(out,'team-progress-desktop.png'),fullPage:true});if(width===390)await page.screenshot({path:path.join(out,'team-progress-phone.png'),fullPage:true});}await page.goto(origin+'/crm/#pipeline/lead/lead_fleet');assert(await page.locator('#sheet').evaluate(el=>el.scrollWidth<=el.clientWidth+1));});
+ await check('lead detail stacks readable status, email hold and linked work below the six-step path',async()=>{
+  await page.goto(origin+'/crm/#pipeline/lead/lead_fleet');
+  for(const width of [1440,1000,790,620,390,320]){
+   await page.setViewportSize({width,height:1300});
+   const layout=await page.locator('.wf-detail').evaluate(el=>{
+    const rect=n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,width:r.width};};
+    const parts=['.wf-lead-path','.wf-now','.wf-hold','.wf-linked'].map(s=>el.querySelector(s));
+    return {width:el.clientWidth,children:[...el.querySelector('.wf-lead-path').children].map(n=>n.tagName),direct:parts.every(n=>n.parentElement===el),parts:parts.map(rect)};
+   });
+   assert.deepEqual(layout.children,Array(6).fill('LI'),'Only the six stages belong inside the progress list at '+width);
+   assert(layout.direct,'Status, hold and linked tasks must be siblings of the stage path at '+width);
+   for(let i=1;i<layout.parts.length;i++){assert(layout.parts[i].top>=layout.parts[i-1].bottom-1,'Details stack without overlap at '+width);assert(layout.parts[i].width>=layout.width*.95,'Detail uses the available panel width at '+width);}
+   assert(await page.locator('#sheet').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Panel fits at '+width);
+   if(width===790||width===390)await page.screenshot({path:path.join(out,'lead-detail-fixed-'+width+'.png'),fullPage:true});
+  }
+ });
  await check('no missing assets or runtime errors',async()=>{assert.deepEqual(errors,[]);assert.deepEqual(missing,[]);});
  fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify({checks},null,2));
 })().catch(async e=>{console.error(e);if(page)await page.screenshot({path:path.join(out,'failure.png'),fullPage:true});process.exitCode=1;}).finally(async()=>{await browser?.close();server.close();});
