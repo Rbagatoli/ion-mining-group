@@ -1,7 +1,11 @@
 /* The 3D catalogue replaces only the former hardware table. */
-.hardware-page .hw-order { position: static; }
+.hardware-page .hw-order { position: static; scroll-margin-top: 96px; }
 .hardware-page .hw-cat.br-catalog { display: block; min-width: 0; max-width: none; margin: 0; padding: 0 !important; }
 .hardware-page .br-catalog-heading h2 { font-size: clamp(28px,3vw,40px); }
+.hardware-page .br-catalog-nav-head { display: grid; grid-template-columns: 64px minmax(0,1fr) 64px; gap: 18px; align-items: center; }
+.hardware-page .br-catalog-nav-head > span { text-align: center; font-size: 12px; }
+.hardware-page .br-catalog-arrows button { width: 64px; height: 64px; border-color: #786047; color: var(--btc-200); font-size: 34px; background: linear-gradient(135deg,rgba(247,147,26,.11),rgba(229,228,226,.025)); }
+.hardware-page .br-catalog-arrows button:hover { border-color: var(--btc-200); background-color: rgba(247,147,26,.08); }
 .hardware-page [data-catalog-purpose="hosting"] .br-catalog-compare { display: none !important; }
 .hardware-page .hw-site-choice { max-width: 470px; margin-bottom: 24px; }
 .hardware-page .hw-site-choice label > span { margin-left: 7px; font: 10px var(--sans); color: var(--plat-400); letter-spacing: 0; text-transform: none; }
@@ -18,6 +22,8 @@
 .hardware-page .hw-catalog-added:empty { display: none; }
 .hardware-page .hw-catalog-quantity input:focus-visible, .hardware-page .hw-site-choice select:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 4px; }
 @media (max-width: 700px) {
+  .hardware-page .br-catalog-nav-head { grid-template-columns: 60px minmax(0,1fr) 60px; }
+  .hardware-page .br-catalog-arrows button { width: 60px; height: 60px; font-size: 32px; }
   .hardware-page .br-catalog-heading { align-items: start; gap: 15px; }
   .hardware-page .br-catalog-heading h2 { font-size: 25px; }
   .hardware-page .br-catalog-heading > p { max-width: 125px; }

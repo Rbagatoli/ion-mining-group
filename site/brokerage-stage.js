@@ -3,7 +3,7 @@ import * as THREE from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
 
-export function mountMinerStage(host,{buildMiner,disposeMiner,onReady=()=>{},onError=()=>{},onInteraction=()=>{}}) {
+export function mountMinerStage(host,{buildMiner,disposeMiner,animateMiner=()=>{},onReady=()=>{},onError=()=>{},onInteraction=()=>{}}) {
     const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
     renderer.setClearColor(0x000000,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.8));
     renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
@@ -25,7 +25,8 @@ export function mountMinerStage(host,{buildMiner,disposeMiner,onReady=()=>{},onE
     const fill=new THREE.DirectionalLight(0xffffff,.75);fill.position.set(-6,1,-2);world.add(fill);
     let model=null,visible=true,active=true,moving=true,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frame=0,last=0,width=0,height=0,disposed=false,lost=false,ready=false,homeDistance=10,phase=0,modelSignature='';
-    const homeDirection=new THREE.Vector3(1,.68,1.55).normalize(),homeTarget=new THREE.Vector3();
+    const homeDirection=new THREE.Vector3(1,.68,1.55).normalize(),homeTarget=new THREE.Vector3(),orbitOffset=new THREE.Vector3(),orbitAxis=new THREE.Vector3(0,1,0);
+    function motionState(){host.dataset.motion=reduced?'reduced':!active||!visible||document.hidden?'suspended':moving?'playing':'paused';}
     function fit(){
         if(!model||!width||!height)return;model.root.position.y=-model.dimensionsMM[2]/200;model.root.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(model.root),size=bounds.getSize(new THREE.Vector3());bounds.getCenter(homeTarget);
@@ -47,7 +48,7 @@ export function mountMinerStage(host,{buildMiner,disposeMiner,onReady=()=>{},onE
     function draw(time){
         frame=0;if(!active||!visible||disposed||lost||document.hidden||!model||!width||!height)return;
         const dt=last?Math.min((time-last)/1000,.05):0;last=time;
-        if(moving&&!reduced){const offset=camera.position.clone().sub(controls.target);offset.applyAxisAngle(new THREE.Vector3(0,1,0),dt*.042);camera.position.copy(controls.target).add(offset);phase+=dt;model.root.position.y=-model.dimensionsMM[2]/200+Math.sin(phase*.55)*.035;controls.update();}
+        if(moving&&!reduced){orbitOffset.copy(camera.position).sub(controls.target).applyAxisAngle(orbitAxis,dt*.042);camera.position.copy(controls.target).add(orbitOffset);phase+=dt;model.root.position.y=-model.dimensionsMM[2]/200+Math.sin(phase*.55)*.035;animateMiner(model,dt);controls.update();}
         renderer.render(world,camera);if(!ready){ready=true;onReady();}if(moving&&!reduced)wake();
     }
     function setModel(modelKey,variant){
@@ -58,7 +59,7 @@ export function mountMinerStage(host,{buildMiner,disposeMiner,onReady=()=>{},onE
         host.dataset.modelKey=modelKey;resize();fit();wake();
     }
     function zoom(factor){if(!model)return;const offset=camera.position.clone().sub(controls.target);offset.setLength(THREE.MathUtils.clamp(offset.length()*factor,controls.minDistance,controls.maxDistance));camera.position.copy(controls.target).add(offset);controls.update();wake();}
-    function interact(){moving=false;onInteraction();wake();}
+    function interact(){moving=false;last=0;motionState();onInteraction();wake();}
     function keyboard(event){
         if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Escape'].includes(event.key))return;event.preventDefault();interact();
         if(event.key==='Escape'){fit();return;}if(['+','=','-'].includes(event.key)){zoom(event.key==='-'?1.18:.85);return;}
@@ -69,13 +70,13 @@ export function mountMinerStage(host,{buildMiner,disposeMiner,onReady=()=>{},onE
     }
     controls.addEventListener('start',interact);controls.addEventListener('change',wake);canvas.addEventListener('keydown',keyboard);
     const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host);
-    const observer=new IntersectionObserver(entries=>{visible=entries.at(-1).isIntersecting;if(visible)wake();else stop();});observer.observe(host);
-    const preference=matchMedia('(prefers-reduced-motion: reduce)');function motion(event){reduced=event.matches;if(reduced)moving=false;wake();}preference.addEventListener('change',motion);
-    function visibility(){if(document.hidden)stop();else wake();}document.addEventListener('visibilitychange',visibility);
+    const observer=new IntersectionObserver(entries=>{visible=entries.at(-1).isIntersecting;motionState();if(visible)wake();else stop();});observer.observe(host);
+    const preference=matchMedia('(prefers-reduced-motion: reduce)');function motion(event){reduced=event.matches;if(reduced)moving=false;last=0;motionState();wake();}preference.addEventListener('change',motion);
+    function visibility(){motionState();if(document.hidden)stop();else wake();}document.addEventListener('visibilitychange',visibility);
     function contextLost(event){event.preventDefault();lost=true;ready=false;stop();onError();}
     function contextRestored(){try{rebuildEnvironment();lost=false;fit();wake();}catch(_){lost=true;onError();}}canvas.addEventListener('webglcontextlost',contextLost);canvas.addEventListener('webglcontextrestored',contextRestored);
-    resize();
-    return {setModel,zoom,reset:fit,setMotion(value){moving=!!value;wake();},setActive(value){active=!!value;if(active){resize();wake();}else stop();},
+    resize();motionState();
+    return {setModel,zoom,reset:fit,setMotion(value){const next=!!value;if(moving!==next)last=0;moving=next;motionState();wake();},setActive(value){active=!!value;motionState();if(active){resize();wake();}else stop();},
         dispose(){disposed=true;stop();observer.disconnect();resizeObserver.disconnect();preference.removeEventListener('change',motion);document.removeEventListener('visibilitychange',visibility);canvas.removeEventListener('keydown',keyboard);canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',contextRestored);controls.dispose();disposeMiner(model);environment.dispose();renderer.dispose();canvas.remove();}
     };
 }

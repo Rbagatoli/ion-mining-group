@@ -71,7 +71,7 @@ assert.match(hostingRequirements({cooling:'immersion'},{powerW:4050}).detail,/ap
 
 /* Exercise the mounted controller contract with small DOM test doubles. No
    Three/WebGL is needed to prove hosting selection and optional controls. */
-function harness({purpose='hosting',comparisonControls=false,marketStatus='current'}={}) {
+function harness({purpose='hosting',comparisonControls=false,marketStatus='current',withRail=false}={}) {
   class Element {
     constructor(){this.children=[];this.dataset={};this.events={};this.attributes={};this.value='';this.checked=false;this.hidden=true;this.style={setProperty(){}};this._text='';}
     set textContent(value){this._text=String(value);this.children=[];}
@@ -85,7 +85,8 @@ function harness({purpose='hosting',comparisonControls=false,marketStatus='curre
     querySelector(){return null;}
     focus(){}
   }
-  const ids=['brCatalog','brCatalogSearch','brCatalogCooling','brCatalogRail','brCatalogSlider','brCatalogVariants','brCatalogProduct','brCatalogPrev','brCatalogNext','brCatalogSavings','brCatalogEvidence','brCatalogMarket','brCatalogPosition','brCatalogName','brCatalogShown','brCatalogMaker','brCatalogSubtitle','brCatalogSpecs','brCatalogResults','brCatalogEmpty','brCatalogNavigation','brCatalogClear','brCatalogRequest','brCatalogTools','brCatalogCompare'];
+  const ids=['brCatalog','brCatalogSearch','brCatalogCooling','brCatalogVariants','brCatalogProduct','brCatalogPrev','brCatalogNext','brCatalogSavings','brCatalogEvidence','brCatalogMarket','brCatalogPosition','brCatalogName','brCatalogShown','brCatalogMaker','brCatalogSubtitle','brCatalogSpecs','brCatalogResults','brCatalogEmpty','brCatalogNavigation','brCatalogClear','brCatalogRequest','brCatalogTools','brCatalogCompare'];
+  if(withRail)ids.push('brCatalogRail');
   if(comparisonControls)ids.push('brCatalogQuote','brCatalogQuoteMatch','brCatalogCondition','brCatalogQuoteResult');
   const nodes=Object.fromEntries(ids.map(id=>[id,new Element()]));nodes.brCatalog.dataset.catalogPurpose=purpose;nodes.brCatalogCooling.value='all';
   const info=new Element();nodes.brCatalog.querySelector=selector=>selector==='.br-catalog-info'?info:null;
@@ -116,4 +117,24 @@ withUnusedInputs.nodes.brCatalogQuote.value='1000';withUnusedInputs.nodes.brCata
 const stale=harness({marketStatus:'stale'});mount(stale.doc,stale.catalog,stale.win);assert.match(stale.nodes.brCatalogMarket.textContent,/Price needs refresh.*2026-09-18/);
 const unavailable=harness({marketStatus:'unavailable'});mount(unavailable.doc,unavailable.catalog,unavailable.win);assert.match(unavailable.nodes.brCatalogMarket.textContent,/Reference unavailable/);
 const legacy=harness({purpose:'brokerage',comparisonControls:true});mount(legacy.doc,legacy.catalog,legacy.win);assert.equal(legacy.nodes.brCatalogCompare.hidden,false);assert.match(legacy.nodes.brCatalogSavings.textContent,/Hardware price difference/);assert.match(legacy.nodes.brCatalogSubtitle.textContent,/New & used sourcing/);assert.equal(legacy.counts().savingsCalls,1);
+const navigation=harness(),navigationUI=mount(navigation.doc,navigation.catalog,navigation.win);
+assert.equal(navigation.doc.getElementById('brCatalogSlider'),null,'No slider is required to mount or browse.');
+assert.equal(navigation.doc.getElementById('brCatalogRail'),null,'No family strip is required to mount or browse.');
+navigation.nodes.brCatalogNext.fire('click');assert.equal(navigationUI.getSelection().family.id,'s21-hyd');
+navigation.nodes.brCatalogPrev.fire('click');assert.equal(navigationUI.getSelection().family.id,'s21');
+navigation.nodes.brCatalogPrev.fire('click');assert.equal(navigationUI.getSelection().family.id,'m60','Previous wraps to the last matching family.');
+navigation.nodes.brCatalogNext.fire('click');assert.equal(navigationUI.getSelection().family.id,'s21');
+const railNavigation=harness({withRail:true}),railUI=mount(railNavigation.doc,railNavigation.catalog,railNavigation.win);
+let prevented=0;
+for(const [key,id] of [['End','m60'],['Home','s21'],['ArrowRight','s21-hyd'],['ArrowLeft','s21']]) {
+  railNavigation.nodes.brCatalogRail.fire('keydown',{key,target:{closest:()=>({})},preventDefault(){prevented++;}});
+  assert.equal(railUI.getSelection().family.id,id,'Family rail keyboard '+key);
+}
+assert.equal(prevented,4);
+navigation.nodes.brCatalogCooling.value='hydro';navigation.nodes.brCatalogCooling.fire('change');
+assert.equal(navigation.nodes.brCatalogPrev.disabled,true);assert.equal(navigation.nodes.brCatalogNext.disabled,true);
+assert.equal(navigation.nodes.brCatalogPosition.textContent,'01 / 01');
+navigation.nodes.brCatalogNext.fire('click');assert.equal(navigationUI.getSelection().family.id,'s21-hyd');
+navigation.nodes.brCatalogSearch.value='missing miner';navigation.nodes.brCatalogSearch.fire('input');assert.equal(navigation.nodes.brCatalogNavigation.hidden,true);
+navigation.nodes.brCatalogClear.fire('click');assert.equal(navigation.nodes.brCatalogNavigation.hidden,false);assert.equal(navigation.nodes.brCatalogNext.disabled,false);
 console.log('  ok    catalogue UI: search, exact variants, safe evidence, legacy comparison and hosting selection/requirements');

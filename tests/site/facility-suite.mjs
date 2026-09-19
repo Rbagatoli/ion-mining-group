@@ -716,7 +716,7 @@ console.log('\n=== monthly site costs stay separate from hardware capital ===');
 console.log('\n=== Hardware retains full saved orders without the old table ===');
 {
     const source = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
-    function runtime(staleCount, knownCount) {
+    function runtime(staleCount, knownCount, withQuote = true) {
         const nodes = {}, callbacks = {}, itemised = [];
         function element() {
             return {textContent: '', innerHTML: '', value: '', hidden: false, disabled: false,
@@ -725,22 +725,29 @@ console.log('\n=== Hardware retains full saved orders without the old table ==='
         ['hwUnits', 'hwHash', 'hwPower', 'hwCost', 'hwItemised', 'hwUnpriced', 'hwOrderText',
          'hwOrderPreview', 'hwSubmit', 'hwCopy', 'hwCheckout', 'hwRunAll', 'hwPrepay', 'hwFacility',
          'hwClear', 'hwEmpty'].forEach(id => { nodes[id] = element(); });
+        if (!withQuote) ['hwOrderText', 'hwOrderPreview', 'hwSubmit', 'hwCopy'].forEach(id => { delete nodes[id]; });
         let stale = staleCount;
         const line = {model: 'Known model', qty: knownCount, hashrate: 200, power: 3.5, each: 1000};
         const totals = {units: knownCount, th: knownCount * 200, kw: knownCount * 3.5,
             usd: knownCount * 1000, unpriced: 0, unknownHash: 0, unknownPower: 0, depositRate: 0.25};
-        const site = Facilities.byId('cold-lake'), term = Prepay.byId('12m');
+        const site = Facilities.byId('cold-lake');
+        let term = Prepay.byId('12m');
         const ctx = {
             document: {readyState: 'complete', getElementById: id => nodes[id] || null,
                 querySelector: () => null, querySelectorAll: () => []},
             window: {addEventListener(name, cb) { callbacks[name] = cb; }},
             Cart: {totals: () => totals, lines: () => knownCount ? [line] : [],
                 get: () => ({'Retired exact bin': stale}), stale: () => stale ? ['Retired exact bin'] : [],
-                count: () => knownCount + stale, onChange(cb) { callbacks.cart = cb; }, clear() {}},
+                count: () => knownCount + stale, onChange(cb) { callbacks.cart = cb; }, clear() {
+                    knownCount = 0; stale = 0;
+                    Object.assign(totals, {units: 0, th: 0, kw: 0, usd: 0});
+                    callbacks.cart();
+                }},
             MinerDB: {findByModel: model => model === line.model ? line : null},
             PriceList: {ASOF: '2026-09-18'},
             Facilities: Object.assign({}, Facilities, {chosen: () => site, bannerHtml: () => ''}),
-            Prepay: Object.assign({}, Prepay, {chosen: () => term, itemisedHtml(opts) {
+            Prepay: Object.assign({}, Prepay, {chosen: () => term,
+                choose: id => { term = Prepay.byId(id); }, clearChoice: () => { term = null; }, itemisedHtml(opts) {
                 itemised.push(opts); return Prepay.itemisedHtml(opts);
             }})
         };
@@ -773,6 +780,62 @@ console.log('\n=== Hardware retains full saved orders without the old table ==='
        'Cart subscription restores complete known totals after stale selections are removed');
     ok(!recovered.nodes.hwRunAll.hidden && recovered.nodes.hwRunAll.href.includes('machineCount=1'),
        'the complete legacy order retains its calculator action');
+
+    const noQuote = runtime(0, 1, false);
+    ok(['hwOrderText', 'hwOrderPreview', 'hwSubmit', 'hwCopy'].every(id => !noQuote.nodes[id]),
+       'runtime fixture removes every quote-section dependency');
+    ok(noQuote.nodes.hwUnits.textContent === '1' && !noQuote.nodes.hwCheckout.hidden &&
+       noQuote.nodes.hwPrepay.innerHTML.includes('12 months prepaid'),
+       'order and prepaid energy initialize without a quote form or old miner table');
+    noQuote.nodes.hwPrepay.click({target: {closest(selector) {
+        return selector === '.pp-tier--pick' ? {getAttribute: () => '24m'} : null;
+    }}});
+    ok(noQuote.nodes.hwItemised.innerHTML.includes('24 months prepaid') &&
+       noQuote.nodes.hwPrepay.innerHTML.includes('data-term="24m" aria-pressed="true"'),
+       'prepay selection still refreshes the relocated order when quote fields are absent');
+    noQuote.nodes.hwClear.click();
+    ok(noQuote.nodes.hwUnits.textContent === '—' && noQuote.nodes.hwCheckout.hidden &&
+       noQuote.nodes.hwPrepay.innerHTML.includes('Add machines to price the term'),
+       'clearing the order still hides checkout and clears full-fleet energy amounts');
+}
+
+console.log('\n=== the 3D order adapter does not depend on the removed quote section ===');
+{
+    const {mount} = require(path.join(REPO_ROOT, 'site', 'hardware-catalog.js'));
+    const bridge = require(path.join(REPO_ROOT, 'site', 'hardware-order-catalog.js'));
+    const catalog = require(path.join(REPO_ROOT, 'site', 'brokerage-catalog-data.js'));
+    const prices = require(path.join(REPO_ROOT, 'site', 'price-list.js'));
+    const nodes = {}, events = {}, changed = [], held = {'Antminer S19 Pro': 7};
+    for (const id of ['hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogPriceNote', 'hwCatalogAdded',
+                      'hwCheckout', 'hwCatalogCheckout', 'hwSiteChoice']) {
+        nodes[id] = {value: '', hidden: false, textContent: '', children: [],
+            addEventListener(name, fn) { this[name] = fn; }, append(option) { this.children.push(option); },
+            setCustomValidity(message) { this.validationMessage = message; }, reportValidity() { return !this.validationMessage; }};
+    }
+    let site = Facilities.byId('permian');
+    const win = {
+        location: {href: 'https://example.test/hardware.html?site=permian#miners'},
+        history: {replaceState(_a, _b, target) { win.location.href = new URL(target, win.location.href).href; }},
+        Cart: {isEmpty: () => Object.keys(held).length === 0, onChange(fn) { changed.push(fn); },
+            add(key, count) { held[key] = (held[key] || 0) + count; changed.forEach(fn => fn()); }},
+        Facilities: {...Facilities, chosen: () => site, choose(id) { site = Facilities.byId(id); }},
+        PriceList: prices, HardwareOrderCatalog: bridge, BrokerageCatalogSelection: catalog.findVariant('s21-pro-245'),
+        CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
+        addEventListener(name, fn) { events[name] = fn; }, dispatchEvent(event) { events[event.type]?.(event); }
+    };
+    const doc = {getElementById: id => nodes[id] || null, createElement: () => ({})};
+    const mounted = mount(doc, win);
+    ok(!!mounted && nodes.hwCheckout.href === './cart.html?site=permian',
+       'adapter initializes and preserves location-qualified checkout with no quote nodes');
+    nodes.hwCatalogQuantity.value = '3';
+    win.dispatchEvent(new win.CustomEvent('hardware:choose-miner', {detail: catalog.findVariant('s21-pro-245')}));
+    ok(held['catalogue:s21-pro-245'] === 3 && held['Antminer S19 Pro'] === 7,
+       'adding an exact variant still appends to the existing order without a quote form');
+    ok(!nodes.hwCatalogCheckout.hidden && nodes.hwCatalogAdded.textContent.includes('245 TH/s'),
+       'checkout and add confirmation remain available without removed preview/copy fields');
+    nodes.hwSiteChoice.value = 'bakken';nodes.hwSiteChoice.change();
+    ok(site.id === 'bakken' && nodes.hwCheckout.href === './cart.html?site=bakken',
+       'changing the site still carries the selected location into checkout');
 }
 
 console.log('\n=== the itemised figures agree with the term that was chosen ===');

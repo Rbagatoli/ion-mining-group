@@ -11,7 +11,7 @@ const workspace=dependencyRoot();
 const {chromium}=require(process.env.PROTON_PLAYWRIGHT_PATH||path.join(workspace,'tools/.cache/hosting-terrain-browser/node_modules/playwright-core'));
 const chrome=process.env.PROTON_CHROME_PATH||['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe','/usr/bin/google-chrome','/usr/bin/chromium'].find(p=>fs.existsSync(p));
 if(!chrome)throw Error('Chrome is unavailable. Set PROTON_CHROME_PATH.');
-const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-checkout-restore-2026-09-19'));
+const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-layout-motion-2026-09-19'));
 fs.mkdirSync(out,{recursive:true});
 const viewports=[{width:320,height:740,label:'mobile320'},{width:390,height:844,label:'mobile390'},{width:1440,height:1000,label:'desktop'}];
 const legacyCart={'Antminer S19 Pro':1},pricedCart={'Antminer S19 Pro':1,'Antminer S21 Pro':2},requestKey='catalogue:s21-pro-245';
@@ -27,6 +27,11 @@ const server=http.createServer((req,res)=>{
     const real=fs.realpathSync(file),realSite=fs.realpathSync(site);if(!real.startsWith(realSite+path.sep)){res.writeHead(403);return res.end();}
     let body=fs.readFileSync(file);
     if(path.basename(file)==='orders-api.js')body=Buffer.from(stubAPI);
+    if(path.basename(file)==='brokerage-scene.js'){
+      const source=body.toString('utf8'),needle='buildMiner:models.buildMiner';
+      if(!source.includes(needle))throw Error('Review animation probe after changing the model factory.');
+      body=Buffer.from(source.replace(needle,'buildMiner:(...args)=>{const model=models.buildMiner(...args);window.__testMiner=model;return model;}'));
+    }
     if(path.basename(file)==='checkout.js'){
       const source=body.toString('utf8'),needle=/window\.location\.href\s*=\s*'\.\/pay\.html\?ref='/;
       if(!needle.test(source))throw Error('Payment interception needs review; no payment page will be opened.');
@@ -51,6 +56,11 @@ async function init(context){await context.addInitScript(cart=>{
   Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.__testCopied=text;}}});
 },legacyCart);}
 async function noOverflow(page){assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'The page overflows horizontally.');}
+async function motionState(page){return page.evaluate(()=>{
+  const model=window.__testMiner,rotors=[],leds=[],faults=[];
+  model.root.traverse(node=>{if(node.name==='fan-rotor')rotors.push(node.rotation.z);if(node.name==='status-led')leds.push(node.material.emissiveIntensity);if(node.name==='fault-led'){const color=node.material.emissive;faults.push(node.material.emissiveIntensity*Math.max(color.r,color.g,color.b));}});
+  return {model:model.modelKey,rotors,leds,faults};
+});}
 async function state(page){return page.evaluate(()=>({cart:Cart.get(),lines:Cart.lines(),totals:Cart.totals(),site:Facilities.chosen()&&Facilities.chosen().id,term:Prepay.chosen()&&Prepay.chosen().id}));}
 async function snapshot(page,prefix){return page.evaluate(prefix=>({units:document.getElementById(prefix+'Units').textContent,hash:document.getElementById(prefix+'Hash').textContent,power:document.getElementById(prefix+'Power').textContent,cost:document.getElementById(prefix+'Cost').textContent,itemised:document.getElementById(prefix+'Itemised').innerText.replace(/\s+/g,' ').trim()}),prefix);}
 function sameAmounts(actual,expected){for(const field of ['units','hash','power','itemised']){if(['hash','power'].includes(field)&&/to confirm/i.test(expected[field]))assert.match(actual[field],/to confirm/i);else assert.equal(actual[field],expected[field],field+' differs between hardware and checkout');}assert.deepEqual(actual.cost.match(/\$[\d,]+(?:\.\d+)?/g),expected.cost.match(/\$[\d,]+(?:\.\d+)?/g));assert.equal(/quote/i.test(actual.cost),/quote/i.test(expected.cost));}
@@ -72,12 +82,41 @@ async function assertQuoteGate(page){
     const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,serviceWorkers:'block'});await network(context,origin);await init(context);
     const page=await context.newPage();page.setDefaultTimeout(15000);observe(page,viewport.label);let pricedSnapshot,mixedSnapshot,unknownKey;
     await page.goto(origin+'/hardware.html?site=permian',{waitUntil:'domcontentloaded'});
-    await check(viewport.label+' restores site, prepay, order and quote sections beside the working 3D catalogue',async()=>{
-      for(const selector of ['#hwFacility','#hwPrepay','.hw-order','#hwItemised','#quote','#hwOrderPreview','#hwOrderText','#hwSubmit','#hwCopy'])assert.equal(await page.locator(selector).count(),1,selector+' is missing');
+    await check(viewport.label+' places the order below the catalogue and removes the quote section and slider',async()=>{
+      for(const selector of ['#hwFacility','#hwPrepay','.hw-order','#hwOrder','#hwItemised'])assert.equal(await page.locator(selector).count(),1,selector+' is missing');
+      for(const selector of ['#quote','#hwOrderPreview','#hwOrderText','#hwSubmit','#hwCopy','#brCatalogSlider'])assert.equal(await page.locator(selector).count(),0,selector+' should be removed');
+      assert(await page.evaluate(()=>!!(document.getElementById('miners').compareDocumentPosition(document.getElementById('hwOrder'))&Node.DOCUMENT_POSITION_FOLLOWING)));
       assert.match(await page.locator('h1').innerText(),/Choose your miners|Buy the machines/);assert.equal(await page.locator('.hw-order').evaluate(node=>getComputedStyle(node).position),'static','The order must not cover the3D catalogue while scrolling.');
       assert.equal(await page.locator('#hwSiteChoice').inputValue(),'permian');assert.match(await page.locator('#hwFacility').innerText(),/Permian Basin/);assert.equal((await state(page)).site,'permian');
       await page.locator('#brMiner').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.getElementById('brMiner').classList.contains('br-scene-ready'),{},{timeout:45000});assert.equal(await page.locator('#brMinerCanvas canvas').count(),1);assert.equal(await page.locator('#brCatalogCompare').isVisible(),false);
       await noOverflow(page);await page.screenshot({path:path.join(out,viewport.label+'-catalog.png')});
+    });
+    await check(viewport.label+' larger arrows browse in both directions without changing the order',async()=>{
+      const before=await page.evaluate(()=>({family:BrokerageCatalogSelection.family.id,cart:Cart.get()}));
+      for(const id of ['brCatalogPrev','brCatalogNext']){const box=await page.locator('#'+id).boundingBox();assert(box.width>=48&&box.height>=48,'Arrow targets must be larger and comfortable to tap.');}
+      await page.locator('#brCatalogNext').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id!==id,before.family);
+      await page.locator('#brCatalogPrev').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id===id,before.family);
+      assert.deepEqual(await page.evaluate(()=>Cart.get()),before.cart);await noOverflow(page);
+    });
+    await check(viewport.label+' actual rendered fan rotors and status LEDs animate and pause together',async()=>{
+      await page.locator('#brMiner').scrollIntoViewIfNeeded();await page.waitForFunction(()=>window.__testMiner?.modelKey==='s21-pro');
+      const play=page.locator('[data-br-view="play"]');if(await play.getAttribute('aria-pressed')!=='true')await play.click();
+      const before=await motionState(page);assert.equal(before.rotors.length,7);assert(before.leds.length>0);
+      await page.waitForTimeout(380);const after=await motionState(page);assert(after.rotors.some((angle,i)=>Math.abs(angle-before.rotors[i])>.001),'Visible fans must turn in the actual stage loop.');
+      const intensities=[...after.leds];for(let i=0;i<5;i++){await page.waitForTimeout(120);intensities.push(...(await motionState(page)).leds);}
+      assert(intensities.every(value=>value>0),'Healthy status LEDs stay powered.');assert(Math.max(...intensities)-Math.min(...intensities)>.01,'Status LEDs show activity.');
+      assert((await motionState(page)).faults.every(value=>value===0),'Red fault LEDs remain off.');
+      await play.click();await page.waitForTimeout(80);const paused=await motionState(page);await page.waitForTimeout(220);assert.deepEqual(await motionState(page),paused);
+      await page.screenshot({path:path.join(out,viewport.label+'-animated-miner.png')});
+      await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelector('[data-br-view="play"]').disabled);await page.waitForTimeout(80);const reduced=await motionState(page);await page.waitForTimeout(180);assert.deepEqual(await motionState(page),reduced);
+      await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>!document.querySelector('[data-br-view="play"]').disabled);await play.click();
+      await page.evaluate(()=>document.getElementById('brMiner').style.visibility='hidden');
+      // IntersectionObserver is geometric: move the model completely outside the viewport.
+      await page.evaluate(()=>document.getElementById('brMiner').style.transform='translateY(-100000px)');await page.waitForTimeout(160);
+      const hidden=await motionState(page);await page.waitForTimeout(220);assert.deepEqual(await motionState(page),hidden,'Offscreen models stop animating.');
+      await page.evaluate(()=>{const figure=document.getElementById('brMiner');figure.style.removeProperty('visibility');figure.style.removeProperty('transform');});
+      await page.waitForTimeout(280);assert.notDeepEqual((await motionState(page)).rotors,hidden.rotors,'Visible models resume.');
+      await noOverflow(page);
     });
     await check(viewport.label+' adds 234 TH/s machines to an existing legacy cart and carries Bakken / 24 months',async()=>{
       await page.locator('#hwSiteChoice').selectOption('bakken');assert.equal((await state(page)).site,'bakken');assert.match(await page.locator('#hwFacility').innerText(),/Bakken/);
@@ -126,8 +165,8 @@ async function assertQuoteGate(page){
     await context.close();
   }
   const context=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false,serviceWorkers:'block'});await network(context,origin);const page=await context.newPage();observe(page,'no-js');await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});
-  await check('JavaScript-disabled hardware retains a static model, original order/quote and direct email',async()=>{
-    const poster=page.locator('#brMiner .br-scene-poster');await poster.scrollIntoViewIfNeeded();assert(await poster.isVisible());assert.equal(await page.locator('#brMinerCanvas canvas').count(),0);assert.equal(await page.locator('.hw-order').count(),1);assert.equal(await page.locator('#quote').count(),1);assert.equal(await page.locator('#hwSubmit').isDisabled(),true);assert(await page.locator('a[href="mailto:hosting@protonminingco.com"]').count()>0);await noOverflow(page);await page.screenshot({path:path.join(out,'no-js.png')});
+  await check('JavaScript-disabled hardware retains a static model, order and direct email without the removed quote form',async()=>{
+    const poster=page.locator('#brMiner .br-scene-poster');await poster.scrollIntoViewIfNeeded();assert(await poster.isVisible());assert.equal(await page.locator('#brMinerCanvas canvas').count(),0);assert.equal(await page.locator('.hw-order').count(),1);assert.equal(await page.locator('#quote').count(),0);assert.equal(await page.locator('#hwSubmit').count(),0);assert(await page.locator('a[href="mailto:hosting@protonminingco.com"]').count()>0);await noOverflow(page);await page.screenshot({path:path.join(out,'no-js.png')});
   });await context.close();
   await check('all viewports have no runtime errors, failed local assets or attempted HTTP writes',async()=>{assert.deepEqual(runtimeErrors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(localFailures,[]);assert.deepEqual(blockedWrites,[]);assert(requests.every(request=>['GET','HEAD'].includes(request.method)));});
 })().catch(error=>{process.exitCode=1;console.error(error.stack||error);}).finally(async()=>{

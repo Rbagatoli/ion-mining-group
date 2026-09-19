@@ -18,8 +18,8 @@ async function main() {
     width: 0, height: 0, getContext: () => ({ fillRect() {}, fillText() {} })
   }) } };
   vm.createContext(context);
-  vm.runInContext(source + '\nthis.api = { MODEL_DEFINITIONS, buildMiner, disposeMiner };', context);
-  const { MODEL_DEFINITIONS, buildMiner, disposeMiner } = context.api;
+  vm.runInContext(source + '\nthis.api = { MODEL_DEFINITIONS, buildMiner, animateMiner, disposeMiner };', context);
+  const { MODEL_DEFINITIONS, buildMiner, animateMiner, disposeMiner } = context.api;
   const nodes = (model, name) => {
     const result = []; model.root.traverse(node => { if (node.name === name) result.push(node); }); return result;
   };
@@ -49,6 +49,49 @@ async function main() {
   assert.throws(() => buildMiner('s21-pro', { renderDimensionsMM: [450, 0, NaN] }), /Invalid physical miner dimensions/);
   const mainFans = { 's21-pro': 4, 's19-air': 4, 'whatsminer-air': 2, 'avalon-a15': 2, 'avalon-a16': 2, 'sealminer-air': 4 };
   for (const [key, model] of models) assert.strictEqual(nodes(model, 'main-air-fan').length, mainFans[key] || 0, key + ' verified cooling architecture');
+  const fanEnclosures = {
+    's21-pro': ['hashboard-enclosure', 'side-power-supply'],
+    's19-air': ['hashboard-enclosure', 'side-power-supply'],
+    'whatsminer-air': ['airflow-tunnel', 'top-power-supply'],
+    'avalon-a15': ['avalon-body', 'avalon-power-supply'],
+    'avalon-a16': ['avalon-body', 'avalon-power-supply'],
+    'sealminer-air': ['sealminer-air-enclosure', 'side-power-supply']
+  };
+  for (const [key, names] of Object.entries(fanEnclosures)) {
+    const model = models.get(key);
+    for (const rotor of model.animation.rotors) {
+      const enclosure = nodes(model, names[rotor.parent.name === 'power-supply-fan' ? 1 : 0])[0];
+      const bounds = new THREE.Box3().setFromObject(enclosure), center = position(rotor);
+      const facesForward = rotor.localToWorld(new THREE.Vector3(0, 0, 1)).z > center.z;
+      assert(facesForward ? center.z > bounds.max.z : center.z < bounds.min.z,
+        key + ' ' + rotor.parent.name + ' blades are outside the opaque enclosure face, not animated behind it');
+    }
+  }
+  for (const [key, model] of models) {
+    const rotors = nodes(model, 'fan-rotor'), status = nodes(model, 'status-led'), faults = nodes(model, 'fault-led');
+    assert.strictEqual(model.animation.rotors.length, rotors.length, key + ' animates every existing rotor');
+    assert.strictEqual(rotors.length, nodes(model, 'main-air-fan').length + nodes(model, 'power-supply-fan').length,
+      key + ' only physical main/PSU fans have animation');
+    assert.strictEqual(model.animation.statusLights.length, status.length);
+    assert.strictEqual(model.animation.faultLights.length, faults.length);
+    const fixed = [];
+    model.root.traverse(node => { if (node.name !== 'fan-rotor') fixed.push([node, node.position.clone(), node.quaternion.clone()]); });
+    const before = rotors.map(node => node.rotation.z), green = status.map(node => node.material.emissiveIntensity);
+    for (const dt of [0, -1, NaN, Infinity]) animateMiner(model, dt);
+    assert.deepStrictEqual(rotors.map(node => node.rotation.z), before, 'invalid or zero elapsed time never moves a fan');
+    for (let i = 0; i < 30; i++) animateMiner(model, 1 / 60);
+    rotors.forEach((rotor, index) => assert.notStrictEqual(rotor.rotation.z, before[index], key + ' rotor visibly spins'));
+    fixed.forEach(([node, position, rotation]) => {
+      assert(node.position.equals(position) && node.quaternion.equals(rotation), key + ' only rotors move, not grilles/enclosures');
+    });
+    status.forEach((led, index) => {
+      assert.notStrictEqual(led.material.emissiveIntensity, green[index], key + ' green status activity changes');
+      assert(led.material.emissiveIntensity >= 1.5 && led.material.emissiveIntensity <= 2.1, 'powered LED never goes dark');
+    });
+    faults.forEach(led => assert.strictEqual(led.material.emissive.getHex(), 0, key + ' healthy preview does not light red fault LEDs'));
+    assert.strictEqual(status.length, key === 'avalon-immersion' ? 0 : 1,
+      'unreferenced status indicators are not invented');
+  }
   for (const key of ['s21-pro', 's19-air']) {
     const model = models.get(key);
     assert.strictEqual(nodes(model, 'power-supply-fan').length, 3, key + ' three small PSU fans');
@@ -78,6 +121,47 @@ async function main() {
   assert.deepStrictEqual(Array.from(models.get('sealminer-air').dimensionsMM), [365, 197, 292]);
   assert.deepStrictEqual(Array.from(models.get('sealminer-hydro').dimensionsMM), [665, 482, 86]);
 
+  // Exercise the actual stage loop with GPU/DOM adapters: there must be one
+  // scheduler, with no elapsed catch-up when a hidden or paused view resumes.
+  const frames = new Map(), events = {}, canvasEvents = {};
+  let frameId = 0, intersect, preferenceChange, activeModel, renderCount = 0;
+  const canvas = {style: {}, setAttribute() {}, addEventListener(name, cb) { canvasEvents[name] = cb; }, removeEventListener() {}, remove() {}};
+  class Renderer { constructor() { this.domElement = canvas; } setClearColor() {} setPixelRatio() {} setSize() {} render() { renderCount++; } dispose() {} }
+  class Controls extends THREE.EventDispatcher { constructor() { super(); this.target = new THREE.Vector3(); } update() {} dispose() {} }
+  class Environment extends THREE.Scene { dispose() {} }
+  class PMREM { fromScene() { return {texture: new THREE.Texture(), dispose() {}}; } dispose() {} }
+  const host = {clientWidth: 800, clientHeight: 600, dataset: {}, appendChild() {}};
+  const doc = {hidden: false, addEventListener(name, cb) { events[name] = cb; }, removeEventListener() {}};
+  const stageContext = {
+    THREE: {...THREE, WebGLRenderer: Renderer, PMREMGenerator: PMREM}, OrbitControls: Controls, RoomEnvironment: Environment,
+    document: doc, devicePixelRatio: 1,
+    matchMedia: () => ({matches: false, addEventListener(name, cb) { preferenceChange = cb; }, removeEventListener() {}}),
+    requestAnimationFrame: cb => { frames.set(++frameId, cb); return frameId; }, cancelAnimationFrame: id => frames.delete(id),
+    ResizeObserver: class { observe() {} disconnect() {} },
+    IntersectionObserver: class { constructor(cb) { intersect = cb; } observe() {} disconnect() {} }
+  };
+  const stageSource = fs.readFileSync(path.join(site, 'brokerage-stage.js'), 'utf8').replace(/^import .*;\s*$/gm, '').replace(/^export /gm, '');
+  vm.createContext(stageContext); vm.runInContext(stageSource + '\nthis.mount = mountMinerStage;', stageContext);
+  const stage = stageContext.mount(host, {buildMiner(key) { activeModel = buildMiner(key); return activeModel; }, disposeMiner, animateMiner});
+  const tick = time => { assert(frames.size <= 1, 'only one animation frame can be scheduled'); const entry = frames.entries().next().value; if (entry) { frames.delete(entry[0]); entry[1](time); } };
+  stage.setModel('s21-pro'); tick(1000); tick(1016);
+  assert(activeModel.animation.elapsed > 0 && host.dataset.motion === 'playing', 'stage drives real fan/LED animation');
+  stage.setMotion(false); const paused = activeModel.animation.elapsed; tick(1032);
+  assert.strictEqual(activeModel.animation.elapsed, paused); assert.strictEqual(frames.size, 0, 'paused scene stops scheduling');
+  stage.setMotion(true); tick(3000); assert.strictEqual(activeModel.animation.elapsed, paused, 'resume does not jump through paused elapsed time'); tick(3016);
+  intersect([{isIntersecting: false}]); const offscreen = activeModel.animation.elapsed;
+  assert.strictEqual(frames.size, 0); tick(4000); assert.strictEqual(activeModel.animation.elapsed, offscreen);
+  intersect([{isIntersecting: true}]); tick(5000); tick(5016);
+  doc.hidden = true; events.visibilitychange(); assert.strictEqual(frames.size, 0, 'background tabs stop animation');
+  doc.hidden = false; events.visibilitychange(); tick(6000); tick(6016);
+  preferenceChange({matches: true}); const reduced = activeModel.animation.elapsed; tick(6032);
+  assert.strictEqual(activeModel.animation.elapsed, reduced); assert.strictEqual(frames.size, 0, 'reduced motion stops all animation');
+  assert.strictEqual(host.dataset.motion, 'reduced');
+  stage.setMotion(true); tick(6048); assert.strictEqual(activeModel.animation.elapsed, reduced, 'play cannot override reduced motion');
+  stage.setActive(false); assert.strictEqual(frames.size, 0);
+  assert(renderCount > 0, 'a static frame remains renderable while animation is disabled');
+  stage.dispose(); assert.strictEqual(frames.size, 0, 'teardown cancels the scheduler');
+
   // InstancedMesh owns separate instanceMatrix/instanceColor GPU buffers. Its
   // dispose event releases those even when shared geometry is disposed below.
   const sample = models.get('s21-pro'), resources = new Set(), disposed = new Set(), instances = new Set(), disposedInstances = new Set();
@@ -94,6 +178,6 @@ async function main() {
   assert.strictEqual(disposedInstances.size, instances.size, 'every InstancedMesh releases its instance buffers');
   assert.strictEqual(disposed.size, resources.size, 'all detached model GPU resources are disposed');
   for (const [key, model] of models) if (key !== 's21-pro') disposeMiner(model);
-  console.log('  ok   15 catalogue models: physical envelopes, fan layouts, distinct cooling architectures, connector positions and disposal');
+  console.log('  ok   15 catalogue models: physical envelopes, fan layouts, cooling architectures, fan/LED animation, pause/visibility/reduced-motion scheduling and disposal');
 }
 main().catch(error => { console.error('  FAIL ' + error.stack); process.exitCode = 1; });

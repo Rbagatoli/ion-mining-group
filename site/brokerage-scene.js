@@ -6,7 +6,7 @@
     const controls=figure.querySelector('.br-scene-controls'),status=figure.querySelector('.br-scene-status'),poster=figure.querySelector('.br-scene-poster'),play=controls.querySelector('[data-br-view="play"]');
     const media=matchMedia('(prefers-reduced-motion: reduce)');let scene=null,loading=false,disposed=false,suspended=false,playing=!media.matches;
     let selection=window.BrokerageCatalogSelection||{modelKey:'s21-pro',variant:{name:'Antminer S21 Pro'}};
-    function sync(){play.textContent=media.matches?'Motion off':playing?'Pause rotation':'Rotate miner';play.disabled=media.matches;play.setAttribute('aria-pressed',String(playing&&!media.matches));if(scene)scene.setMotion(playing&&!media.matches);}
+    function sync(){play.textContent=media.matches?'Motion off':playing?'Pause animation':'Play animation';play.disabled=media.matches;play.setAttribute('aria-label',media.matches?'Animation disabled by reduced-motion preference':playing?'Pause rotation, fans and status light activity':'Play rotation, fans and status light activity');play.setAttribute('aria-pressed',String(playing&&!media.matches));if(scene)scene.setMotion(playing&&!media.matches);}
     function pause(){playing=false;sync();}
     function fallback(){figure.classList.remove('br-scene-ready');controls.hidden=true;host.inert=true;status.textContent='Exterior preview';}
     function modelVariant(){return {...selection.variant,previewName:selection.family?.name||selection.variant?.name||selection.modelKey};}
@@ -16,7 +16,7 @@
         if(scene||loading||disposed)return;loading=true;
         try{
             const [stage,models]=await Promise.all([import(stageURL),import(modelsURL)]);if(disposed)return;
-            scene=stage.mountMinerStage(host,{buildMiner:models.buildMiner,disposeMiner:models.disposeMiner,
+            scene=stage.mountMinerStage(host,{buildMiner:models.buildMiner,disposeMiner:models.disposeMiner,animateMiner:models.animateMiner,
                 onReady(){figure.classList.add('br-scene-ready');controls.hidden=false;host.inert=false;status.textContent='Drag to rotate';sync();},onError:fallback,onInteraction:pause});
             scene.setModel(selection.modelKey,modelVariant());scene.setActive(!suspended);sync();
         }catch(_){scene?.dispose();scene=null;fallback();}finally{loading=false;}

@@ -74,7 +74,7 @@
     const families = catalog.families.filter(family => Array.isArray(family.variants) && family.variants.length);
     if (!families.length) return null;
     const search = el('brCatalogSearch'), cooling = el('brCatalogCooling'), rail = el('brCatalogRail');
-    const slider = el('brCatalogSlider'), variants = el('brCatalogVariants'), product = el('brCatalogProduct');
+    const variants = el('brCatalogVariants'), product = el('brCatalogProduct');
     const prev = el('brCatalogPrev'), next = el('brCatalogNext'), quote = el('brCatalogQuote'), quoteMatch = el('brCatalogQuoteMatch'), quoteCondition = el('brCatalogCondition');
     let filtered = filterFamilies(families, '', 'all');
     let selectedFamily = families.find(family => family.modelKey === 's21-pro' || family.variants.some(variant => variant.id === 's21-pro')) || families[0];
@@ -163,18 +163,18 @@
     }
     function renderNavigation(scrollCurrent) {
       const index = filtered.findIndex(item => item.family.id === selectedFamily.id), total = filtered.length;
-      slider.max = String(Math.max(0, total - 1)); slider.value = String(Math.max(0, index)); slider.disabled = total < 2;
-      slider.style.setProperty('--br-progress', (total > 1 ? index / (total - 1) * 100 : 0) + '%');
-      slider.setAttribute('aria-valuetext', selectedFamily.name + ', ' + (index + 1) + ' of ' + total);
       el('brCatalogPosition').textContent = String(index + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+      el('brCatalogPosition').setAttribute('aria-label', selectedFamily.name + ', ' + (index + 1) + ' of ' + total);
       prev.disabled = total < 2; next.disabled = total < 2;
-      rail.replaceChildren();
-      filtered.forEach(({family}, position) => {
-        const button = node('button', family.name); button.type = 'button'; button.dataset.brCatalogFamily = family.id;
-        button.setAttribute('aria-pressed', String(position === index)); button.append(node('span', family.maker + ' · ' + (coolingNames[family.cooling] || family.cooling)));
-        rail.append(button);
-        if (position === index && scrollCurrent) revealChoice(rail, button);
-      });
+      if (rail) {
+        rail.replaceChildren();
+        filtered.forEach(({family}, position) => {
+          const button = node('button', family.name); button.type = 'button'; button.dataset.brCatalogFamily = family.id;
+          button.setAttribute('aria-pressed', String(position === index)); button.append(node('span', family.maker + ' · ' + (coolingNames[family.cooling] || family.cooling)));
+          rail.append(button);
+          if (position === index && scrollCurrent) revealChoice(rail, button);
+        });
+      }
     }
     function renderSelection(scrollCurrent) {
       el('brCatalogName').textContent = selectedVariant.name.split(' · ')[0];
@@ -214,12 +214,22 @@
     search.addEventListener('input', applyFilters); cooling.addEventListener('change', applyFilters);
     el('brCatalogClear').addEventListener('click', () => { search.value = ''; cooling.value = 'all'; applyFilters(); search.focus(); });
     prev.addEventListener('click', () => step(-1)); next.addEventListener('click', () => step(1));
-    slider.addEventListener('input', () => selectFamily(Number(slider.value)));
-    rail.addEventListener('click', event => {
-      const button = event.target.closest('[data-br-catalog-family]'); if (!button) return;
-      selectFamily(filtered.findIndex(item => item.family.id === button.dataset.brCatalogFamily));
-      const selectedButton = rail.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
-    });
+    if (rail) {
+      rail.addEventListener('click', event => {
+        const button = event.target.closest('[data-br-catalog-family]'); if (!button) return;
+        selectFamily(filtered.findIndex(item => item.family.id === button.dataset.brCatalogFamily));
+        const selectedButton = rail.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
+      });
+      rail.addEventListener('keydown', event => {
+        if (event.altKey || event.ctrlKey || event.metaKey || !event.target.closest('[data-br-catalog-family]')) return;
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !filtered.length) return;
+        event.preventDefault();
+        if (event.key === 'Home') selectFamily(0);
+        else if (event.key === 'End') selectFamily(filtered.length - 1);
+        else step(event.key === 'ArrowRight' ? 1 : -1);
+        const selectedButton = rail.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
+      });
+    }
     variants.addEventListener('click', event => {
       const button = event.target.closest('[data-br-catalog-variant]'); if (!button) return;
       const variant = selectedFamily.variants.find(item => item.id === button.dataset.brCatalogVariant); if (!variant) return;

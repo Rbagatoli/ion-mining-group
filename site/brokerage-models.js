@@ -25,7 +25,7 @@ function materials() {
     return {shell:mat(0xc5c7c8,.36,.88),edge:mat(0x7e8184,.31,.9),silver:mat(0xe0e1df,.27,.95),
         black:mat(0x17191b,.6,.18),fan:mat(0x27292b,.62,.2),grille:mat(0x767a7b,.36,.88),
         socket:mat(0x070809,.68,.05),label:mat(0xf0efea,.87,.02),yellow:mat(0xe4bf48,.72,.05),
-        green:mat(0x538653,.45,.12,{emissive:0x315a22,emissiveIntensity:.25}),red:mat(0x77332b,.5,.15),
+        green:mat(0x56c870,.34,.08,{emissive:0x36d861,emissiveIntensity:1.5}),red:mat(0x492720,.5,.15),
         copper:mat(0xa59167,.34,.88),board:mat(0x243629,.8,.15)};
 }
 function box(parent,material,x,y,z,w,h,d,name='') {
@@ -72,7 +72,7 @@ function airFan(parent,m,x,y,z,size,{guard=true,small=false,depth=size*.30}={}) 
     const r=size*.445,rail=size*.045,d=depth;
     for(const sign of [-1,1]){box(fan,m.black,sign*(size-rail)/2,0,0,rail,size,d);box(fan,m.black,0,sign*(size-rail)/2,0,size,rail,d);}
     const throat=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d,48,1,true),m.black);throat.rotation.x=Math.PI/2;fan.add(throat);
-    const rotor=new THREE.Group();rotor.name='fan-rotor';fan.add(rotor);
+    const rotor=new THREE.Group();rotor.name='fan-rotor';rotor.userData.angularSpeed=small?19:11;fan.add(rotor);
     for(let i=0;i<7;i++){
         const shape=new THREE.Shape();shape.moveTo(r*.2,0);shape.bezierCurveTo(r*.58,r*.1,r*.93,r*.12,r*.91,r*.32);shape.quadraticCurveTo(r*.5,r*.33,r*.25,r*.21);shape.closePath();
         const blade=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.013,bevelEnabled:false,curveSegments:8}),m.fan);blade.rotation.z=i*Math.PI*2/7;blade.position.z=.001;rotor.add(blade);
@@ -146,7 +146,9 @@ function antminer(root,m,L,W,H,def) {
     label(root,'BITMAIN',-W/2-.015,H*.72,0,L*.40,.19,{rotation:-Math.PI/2,bg:null});
 }
 function whatsminer(root,m,L,W,H,def) {
-    const bodyH=Math.min(H*.69,W+.02),bodyL=L-.30;
+    // Leave the rotor planes outside the opaque tunnel end faces. The fan
+    // frames still define the same overall length and cover the case seam.
+    const bodyH=Math.min(H*.69,W+.02),bodyL=L-.52;
     box(root,m.edge,0,bodyH/2,0,W,bodyH,bodyL,'airflow-tunnel');
     for(const x of [-W/2,W/2])plainSide(root,m,x,bodyH/2,0,bodyL,bodyH);
     box(root,m.shell,0,.03,0,W,.06,bodyL);box(root,m.shell,0,bodyH,0,W,.035,bodyL);
@@ -339,8 +341,27 @@ export function buildMiner(modelKey,variant={}) {
     root.userData={modelKey,dimensionsMM:[...dims],exteriorOnly:true,referenceModel:definition.name,accuracy:'reference-based exterior; small component dimensions estimated'};
     ({antminer,hydro,whatsminer,avalon,rack,immersion,sealAir,avalonImmersion,antminerImmersion,avalonHydro}[definition.type])(root,m,L,W,H,def);
     root.position.y=-H/2;root.updateMatrixWorld(true);
-    const bounds=new THREE.Box3().setFromObject(root);
-    return {root,bounds,dimensionsMM:[...dims],modelKey};
+    const bounds=new THREE.Box3().setFromObject(root),animation={elapsed:0,rotors:[],statusLights:[],faultLights:[]};
+    // Discover only modeled exterior parts once. Hydro/immersion machines do
+    // not acquire air fans or lights that were absent in the reference model.
+    root.traverse(node=>{
+        if(node.name==='fan-rotor')animation.rotors.push(node);
+        if(node.name==='status-led')animation.statusLights.push(node);
+        if(node.name==='fault-led')animation.faultLights.push(node);
+    });
+    return {root,bounds,dimensionsMM:[...dims],modelKey,animation};
+}
+
+// An illustrative running state, not live telemetry or a claimed fan RPM.
+// Grilles, screws and fan housings are siblings of each rotor and stay fixed.
+export function animateMiner(model,dt) {
+    if(!model?.animation||!Number.isFinite(dt)||dt<=0)return;
+    const animation=model.animation;animation.elapsed=(animation.elapsed+Math.min(dt,.05))%(Math.PI*20);
+    for(const rotor of animation.rotors)rotor.rotation.z=(rotor.rotation.z+rotor.userData.angularSpeed*Math.min(dt,.05))%(Math.PI*2);
+    // Green remains powered throughout the activity pulse; a healthy preview
+    // never flashes its red fault indicator.
+    const activity=1.5+.6*Math.pow(.5+.5*Math.sin(animation.elapsed*2.3),6);
+    for(const led of animation.statusLights)led.material.emissiveIntensity=activity;
 }
 
 export function disposeMiner(model) {

@@ -13,10 +13,10 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=b8598d5f">
+<link rel="stylesheet" href="./styles.css?v=16aaa1f0">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=b8598d5f">
-<link rel="stylesheet" href="./hardware-catalog.css?v=b8598d5f">
+<link rel="stylesheet" href="./brokerage.css?v=16aaa1f0">
+<link rel="stylesheet" href="./hardware-catalog.css?v=16aaa1f0">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -94,7 +94,7 @@
            current layout, where Pages publishes the root and site/ is excluded. If the marketing
            site ever becomes the domain root, this becomes /portal/ — one line, here. -->
       <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
-      <a class="btn btn--primary btn--sm nav-cta" href="#quote">Request a quote</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="#hwOrder">Review order</a>
     </div>
   </div>
 </nav>
@@ -130,43 +130,17 @@
 
     <div class="hw">
 
-      <!-- The running order, kept above the catalogue so the totals are visible
-           while you are still choosing. -->
-      <div class="hw-order">
-        <h2 class="calc-chart-title">Your order</h2>
-        <p class="hw-empty-note" id="hwEmpty" hidden>Select miners below to start your order.</p>
-        <div class="hw-totals">
-          <div><span class="ct-lab">Machines</span><span class="ct-val" id="hwUnits">&mdash;</span></div>
-          <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="hwHash">&mdash;</span></div>
-          <div><span class="ct-lab">Power draw</span><span class="ct-val" id="hwPower">&mdash;</span></div>
-          <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="hwCost">&mdash;</span></div>
-        </div>
-        <p class="calc-explain" id="hwUnpriced" hidden></p>
-        <!-- Two costs, named separately, because they are two purchases: hardware Proton buys
-             on the customer's behalf, and electricity bought forward under the hosting
-             agreement. They are paid at different moments to different schedules, so a single
-             "total" with no breakdown would be the least useful true number on the page. -->
-        <div id="hwItemised"></div>
-
-        <div class="hw-actions">
-          <a class="btn btn--primary btn--sm" id="hwCheckout" href="./cart.html" hidden>Review the order</a>
-          <a class="btn btn--ghost btn--sm" id="hwRunAll" href="./calculator.html" hidden>Run these numbers</a>
-          <button type="button" class="btn btn--ghost btn--sm" id="hwClear">Clear</button>
-        </div>
-      </div>
-
   <section class="hw-cat br-catalog" id="miners" aria-labelledby="brCatalogTitle">
     <div id="brCatalog" data-catalog-purpose="hosting">
       <div class="br-catalog-heading"><div><p class="br-eyebrow">The miner lineup</p><h2 id="brCatalogTitle">Explore the machines.</h2></div><p>Choose a model. Compare the variants. <br>Set quantities. Add them to your order.</p></div>
       <div class="br-catalog-tools" id="brCatalogTools" hidden>
-        <label class="br-catalog-search" for="brCatalogSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="br-sr-only">Search miners, variants or manufacturers</span><input id="brCatalogSearch" type="search" autocomplete="off" placeholder="Search S21, M60, Antminer…" aria-controls="brCatalogProduct brCatalogRail"></label>
-        <label class="br-catalog-filter" for="brCatalogCooling"><span class="br-sr-only">Cooling type</span><select id="brCatalogCooling" aria-controls="brCatalogProduct brCatalogRail"><option value="all">All cooling</option><option value="air">Air-cooled</option><option value="hydro">Hydro-cooled</option><option value="immersion">Immersion</option></select></label>
+        <label class="br-catalog-search" for="brCatalogSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="br-sr-only">Search miners, variants or manufacturers</span><input id="brCatalogSearch" type="search" autocomplete="off" placeholder="Search S21, M60, Antminer…" aria-controls="brCatalogProduct"></label>
+        <label class="br-catalog-filter" for="brCatalogCooling"><span class="br-sr-only">Cooling type</span><select id="brCatalogCooling" aria-controls="brCatalogProduct"><option value="all">All cooling</option><option value="air">Air-cooled</option><option value="hydro">Hydro-cooled</option><option value="immersion">Immersion</option></select></label>
         <p class="br-catalog-results" id="brCatalogResults" role="status" aria-live="polite"></p>
       </div>
       <div class="br-catalog-empty" id="brCatalogEmpty" hidden><h3>No matching miners.</h3><p>Try a model family, manufacturer or different cooling type.</p><button class="btn btn--ghost btn--sm" id="brCatalogClear" type="button">Clear filters</button></div>
       <div class="br-catalog-navigation" id="brCatalogNavigation" hidden>
-        <div class="br-catalog-nav-head"><span id="brCatalogPosition">01 / 01</span><label class="br-sr-only" for="brCatalogSlider">Browse miner families</label><input id="brCatalogSlider" type="range" min="0" max="0" value="0" step="1"><div class="br-catalog-arrows"><button type="button" id="brCatalogPrev" aria-label="Previous miner family">←</button><button type="button" id="brCatalogNext" aria-label="Next miner family">→</button></div></div>
-        <div class="br-catalog-rail" id="brCatalogRail" role="group" aria-label="Miner families"></div>
+        <div class="br-catalog-nav-head br-catalog-arrows" role="group" aria-label="Browse miner families"><button type="button" id="brCatalogPrev" aria-label="Previous miner family">←</button><span id="brCatalogPosition" aria-live="polite">01 / 01</span><button type="button" id="brCatalogNext" aria-label="Next miner family">→</button></div>
       </div>
       <article class="br-catalog-product" id="brCatalogProduct" aria-labelledby="brCatalogName">
         <div class="br-visual" id="brMiner" aria-label="Selected Bitcoin ASIC model">
@@ -175,7 +149,7 @@
             <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
           </div>
           <p class="br-catalog-shown" id="brCatalogShown">Shown: Antminer S21 Pro</p>
-          <div class="br-scene-toolbar"><p class="br-scene-status" role="status">Exterior preview</p><div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden><button type="button" data-br-view="play">Pause rotation</button><button type="button" data-br-view="out" aria-label="Zoom out">−</button><button type="button" data-br-view="in" aria-label="Zoom in">+</button><button type="button" data-br-view="reset">Reset</button></div></div>
+          <div class="br-scene-toolbar"><p class="br-scene-status" role="status">Exterior preview</p><div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden><button type="button" data-br-view="play">Pause animation</button><button type="button" data-br-view="out" aria-label="Zoom out">−</button><button type="button" data-br-view="in" aria-label="Zoom in">+</button><button type="button" data-br-view="reset">Reset</button></div></div>
           <p class="br-scene-hint"><span class="br-scene-mouse">Drag to explore · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom</span></p>
         </div>
         <div class="br-catalog-info">
@@ -201,51 +175,29 @@
     </div>
   </section>
 
-      <details id="mobile-quote" class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Request a hardware quote</span><small>Review your machines and send us your requirements.</small></summary><div class="mobile-details-body">
-<div class="hw-send" id="quote">
-        <h2 class="calc-chart-title" data-mobile-copy="Request a quote">Send it as a quote request</h2>
-        <pre class="hw-preview" id="hwOrderPreview">No machines selected yet.</pre>
-        <form class="form" data-mailto="hosting@protonminingco.com" data-subject="Hardware quote request via protonminingco.com">
-          <input type="hidden" name="order" id="hwOrderText">
-          <div class="form-row">
-            <div class="field">
-              <label for="hw-name">Name</label>
-              <input id="hw-name" name="name" type="text" required placeholder="Your name">
-            </div>
-            <div class="field">
-              <label for="hw-company">Company</label>
-              <input id="hw-company" name="company" type="text" placeholder="Optional">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="hw-email">Email</label>
-              <input id="hw-email" name="email" type="email" required placeholder="you@company.com">
-            </div>
-            <div class="field">
-              <label for="hw-host">Host them with us?</label>
-              <select id="hw-host" name="hosting">
-                <option value="yes">Yes &mdash; quote hosting too</option>
-                <option value="maybe">Maybe &mdash; send both numbers</option>
-                <option value="no">No &mdash; hardware only</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="hw-notes">Anything else</label>
-            <textarea id="hw-notes" name="notes" placeholder="Timing, delivery address, power available, whatever is relevant."></textarea>
-          </div>
-          <div class="hw-actions">
-            <button class="btn btn--primary" type="submit" id="hwSubmit" disabled>Open this in my mail app</button>
-            <button class="btn btn--ghost" type="button" id="hwCopy" disabled>Copy the order</button>
-          </div>
-          <!-- The button opens a DRAFT and does not send. Where no mail client is
-               registered nothing happens at all, so the address is printed here
-               and the whole order can be copied instead. -->
-          <p class="form-note" data-mobile-copy="Opens a draft in your mail app; nothing is sent until you send it. If no mail app opens, copy the order to &lt;a href=&quot;mailto:hosting@protonminingco.com&quot;&gt;hosting@protonminingco.com&lt;/a&gt;.">This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>.</p>
-        </form>
+      <!-- Review the selected fleet after browsing the catalogue. -->
+      <div class="hw-order" id="hwOrder" aria-labelledby="hwOrderTitle">
+        <h2 class="calc-chart-title" id="hwOrderTitle">Your order</h2>
+        <p class="hw-empty-note" id="hwEmpty" hidden>Add miners above to start your order.</p>
+        <div class="hw-totals">
+          <div><span class="ct-lab">Machines</span><span class="ct-val" id="hwUnits">&mdash;</span></div>
+          <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="hwHash">&mdash;</span></div>
+          <div><span class="ct-lab">Power draw</span><span class="ct-val" id="hwPower">&mdash;</span></div>
+          <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="hwCost">&mdash;</span></div>
+        </div>
+        <p class="calc-explain" id="hwUnpriced" hidden></p>
+        <!-- Two costs, named separately, because they are two purchases: hardware Proton buys
+             on the customer's behalf, and electricity bought forward under the hosting
+             agreement. They are paid at different moments to different schedules, so a single
+             "total" with no breakdown would be the least useful true number on the page. -->
+        <div id="hwItemised"></div>
+
+        <div class="hw-actions">
+          <a class="btn btn--primary btn--sm" id="hwCheckout" href="./cart.html" hidden>Review the order</a>
+          <a class="btn btn--ghost btn--sm" id="hwRunAll" href="./calculator.html" hidden>Run these numbers</a>
+          <button type="button" class="btn btn--ghost btn--sm" id="hwClear">Clear</button>
+        </div>
       </div>
-</div></details>
     </div>
   </div>
 </section>
@@ -318,21 +270,21 @@
   </div>
 </footer>
 
-<script src="./site.js?v=b8598d5f"></script>
-<script src="./hero-anim.js?v=b8598d5f"></script>
-<script src="./miner-db.js?v=b8598d5f"></script>
-<script src="./price-list.js?v=b8598d5f"></script>
-<script src="./calc-engine.js?v=b8598d5f"></script>
-<script src="./facilities.js?v=b8598d5f"></script>
-<script src="./prepay.js?v=b8598d5f"></script>
-<script src="./brokerage-catalog-data.js?v=b8598d5f"></script>
-<script src="./hardware-order-catalog.js?v=b8598d5f"></script>
-<script src="./cart.js?v=b8598d5f"></script>
-<script src="./hardware.js?v=b8598d5f"></script>
-<script src="./brokerage-catalog.js?v=b8598d5f"></script>
-<script src="./hardware-catalog.js?v=b8598d5f"></script>
-<script src="./diagram-engine.js?v=b8598d5f"></script>
-<script src="./scene-asic.js?v=b8598d5f"></script>
-<script src="./brokerage-scene.js?v=b8598d5f" data-module-src="./brokerage-stage.js?v=b8598d5f" data-model-src="./brokerage-models.js?v=b8598d5f"></script>
+<script src="./site.js?v=16aaa1f0"></script>
+<script src="./hero-anim.js?v=16aaa1f0"></script>
+<script src="./miner-db.js?v=16aaa1f0"></script>
+<script src="./price-list.js?v=16aaa1f0"></script>
+<script src="./calc-engine.js?v=16aaa1f0"></script>
+<script src="./facilities.js?v=16aaa1f0"></script>
+<script src="./prepay.js?v=16aaa1f0"></script>
+<script src="./brokerage-catalog-data.js?v=16aaa1f0"></script>
+<script src="./hardware-order-catalog.js?v=16aaa1f0"></script>
+<script src="./cart.js?v=16aaa1f0"></script>
+<script src="./hardware.js?v=16aaa1f0"></script>
+<script src="./brokerage-catalog.js?v=16aaa1f0"></script>
+<script src="./hardware-catalog.js?v=16aaa1f0"></script>
+<script src="./diagram-engine.js?v=16aaa1f0"></script>
+<script src="./scene-asic.js?v=16aaa1f0"></script>
+<script src="./brokerage-scene.js?v=16aaa1f0" data-module-src="./brokerage-stage.js?v=16aaa1f0" data-model-src="./brokerage-models.js?v=16aaa1f0"></script>
 </body>
 </html>

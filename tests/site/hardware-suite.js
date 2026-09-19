@@ -1,4 +1,4 @@
-/* Only the miner table was replaced. Order, location, energy and quote sections remain. */
+/* Browse the 3D catalogue, review the order below, then continue through checkout. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,18 +12,27 @@ for (const quantity of ['', '0', '-1', '1.5', '100001', 'NaN', 'Infinity', 'bad'
 }
 for (const quantity of ['1', '2', '100000']) assert.equal(validQuantity(quantity), Number(quantity));
 for (const id of ['hwFacility', 'hwSiteChoice', 'hwPrepay', 'hwUnits', 'hwHash', 'hwPower', 'hwCost',
-  'hwItemised', 'hwCheckout', 'hwRunAll', 'hwClear', 'quote', 'hwOrderPreview', 'hwOrderText', 'hwCopy', 'hwSubmit',
-  'brCatalogSlider', 'brMinerCanvas', 'hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogCheckout']) {
+  'hwItemised', 'hwCheckout', 'hwRunAll', 'hwClear', 'hwOrder', 'hwOrderTitle',
+  'brCatalogPrev', 'brCatalogNext', 'brCatalogPosition', 'brMinerCanvas', 'hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogCheckout']) {
   assert.match(html, new RegExp('id="' + id + '"'), 'Preserve ' + id);
 }
 assert.match(html, /Buy the machines<br>and the place to run them\./);
-assert.match(html, /Send it as a quote request/);
+assert.doesNotMatch(html, /Send it as a quote request|id="(?:quote|mobile-quote|hwOrderPreview|hwOrderText|hwSubmit|hwCopy|brCatalogSlider|brCatalogRail)"|href="#quote"|type="range"/);
+assert.match(html, /href="#hwOrder">Review order/);
+assert.doesNotMatch(html, /aria-controls="[^"]*(?:brCatalogRail|brCatalogSlider)/);
+const catalogueEnd = html.indexOf('</section>', html.indexOf('id="miners"'));
+assert.ok(catalogueEnd > 0 && html.indexOf('id="hwOrder"') > catalogueEnd, 'Order follows the entire miner catalogue');
+assert.ok(html.indexOf('id="hwPrepay"') < html.indexOf('id="miners"'), 'Site/prepay remain before the catalogue');
+const navSource = fs.readFileSync(path.join(root, 'site/tools/build-nav.js'), 'utf8');
+assert.match(navSource, /'hardware\.html':\s*\{ href: '#hwOrder', label: 'Review order' \}/);
+const fragmentLinks = [...html.matchAll(/href="#([^" ]+)"/g)].map(match => match[1]);
+for (const fragment of fragmentLinks) assert.ok(html.includes('id="' + fragment + '"'), 'Local link has a target: ' + fragment);
 assert.match(html, /data-catalog-purpose="hosting"/);
 assert.match(html, /id="hwCatalogCheckout" href="\.\/cart\.html"/);
 assert.match(html, /id="hwCatalogQuantity"[^>]*min="1"[^>]*max="100000"/);
 assert.doesNotMatch(html, /Every machine we can source|id="hwRows"|id="hwHostingForm"/);
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
-assert.equal(ids.length, new Set(ids).size, 'No duplicate IDs after restoring sections');
+assert.equal(ids.length, new Set(ids).size, 'No duplicate catalogue or order IDs');
 function scripts(source) { return [...source.matchAll(/<script\s+src="\.\/([^"?]+)/g)].map(match => match[1]); }
 for (const [source, controller] of [[html, 'hardware.js'], [checkout, 'checkout.js']]) {
   const loaded = scripts(source);
@@ -40,4 +49,4 @@ assert.ok(scripts(html).includes('brokerage-scene.js'));
 assert.match(checkout, /id="ckQuoteReview"[^>]*hidden/);
 assert.match(checkout, /id="ckQuoteRequest"[^>]*hidden/);
 assert.match(checkout, /id="ckPaymentChoice"/);
-console.log('  ok    hardware: restored sections, shared cart and checkout, exact-variant dependencies and quantity boundaries');
+console.log('  ok    hardware: catalogue/order sequence, removed quote and scrolling navigation, shared checkout and quantity boundaries');
