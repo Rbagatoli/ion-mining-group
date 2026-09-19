@@ -20,6 +20,16 @@ assert.match(html, /Buy the machines<br>and the place to run them\./);
 assert.doesNotMatch(html, /Send it as a quote request|id="(?:quote|mobile-quote|hwOrderPreview|hwOrderText|hwSubmit|hwCopy|brCatalogSlider|brCatalogRail)"|href="#quote"|type="range"/);
 assert.match(html, /href="#hwOrder">Review order/);
 assert.doesNotMatch(html, /aria-controls="[^"]*(?:brCatalogRail|brCatalogSlider)/);
+assert.doesNotMatch(html, /data-br-view="play"|Pause animation|Pause rotation/);
+for (const control of ['out', 'in', 'reset']) assert.match(html, new RegExp('data-br-view="' + control + '"'), 'Keep ' + control + ' model control');
+for (const id of ['brCatalogPrev', 'brCatalogNext']) {
+  const button = html.match(new RegExp('<button\\b[^>]*id="' + id + '"[^>]*>[\\s\\S]*?<\\/button>'));
+  assert.ok(button, id + ' remains a native keyboard-operable button');
+  assert.match(button[0], /aria-label="(?:Previous|Next) miner family"/);
+  assert.match(button[0], /<svg[^>]*aria-hidden="true"[^>]*focusable="false"/);
+}
+assert.match(html, /Swipe sideways to rotate · Swipe up to scroll/);
+assert.doesNotMatch(html, /Pinch to zoom|user-scalable\s*=\s*no|maximum-scale\s*=/i, 'Model hints do not claim or restrict native page zoom');
 const catalogueEnd = html.indexOf('</section>', html.indexOf('id="miners"'));
 assert.ok(catalogueEnd > 0 && html.indexOf('id="hwOrder"') > catalogueEnd, 'Order follows the entire miner catalogue');
 assert.ok(html.indexOf('id="hwPrepay"') < html.indexOf('id="miners"'), 'Site/prepay remain before the catalogue');

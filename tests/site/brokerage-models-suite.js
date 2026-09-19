@@ -123,10 +123,12 @@ async function main() {
 
   // Exercise the actual stage loop with GPU/DOM adapters: there must be one
   // scheduler, with no elapsed catch-up when a hidden or paused view resumes.
-  const frames = new Map(), events = {}, canvasEvents = {};
-  let frameId = 0, intersect, preferenceChange, activeModel, renderCount = 0;
-  const canvas = {style: {}, setAttribute() {}, addEventListener(name, cb) { canvasEvents[name] = cb; }, removeEventListener() {}, remove() {}};
-  class Renderer { constructor() { this.domElement = canvas; } setClearColor() {} setPixelRatio() {} setSize() {} render() { renderCount++; } dispose() {} }
+  const frames = new Map(), events = {}, canvasEvents = {}, windowEvents = {}, eventOptions = {}, capturedPointers = new Set();
+  let frameId = 0, intersect, preferenceChange, activeModel, activeCamera, renderCount = 0;
+  const canvas = {style: {}, setAttribute() {}, addEventListener(name, cb, options) { canvasEvents[name] = cb; eventOptions[name] = options; },
+    removeEventListener(name) { delete canvasEvents[name]; }, remove() {}, setPointerCapture(id) { capturedPointers.add(id); },
+    hasPointerCapture: id => capturedPointers.has(id), releasePointerCapture: id => capturedPointers.delete(id)};
+  class Renderer { constructor() { this.domElement = canvas; } setClearColor() {} setPixelRatio() {} setSize() {} render(world, camera) { activeCamera = camera; renderCount++; } dispose() {} }
   class Controls extends THREE.EventDispatcher { constructor() { super(); this.target = new THREE.Vector3(); } update() {} dispose() {} }
   class Environment extends THREE.Scene { dispose() {} }
   class PMREM { fromScene() { return {texture: new THREE.Texture(), dispose() {}}; } dispose() {} }
@@ -134,7 +136,7 @@ async function main() {
   const doc = {hidden: false, addEventListener(name, cb) { events[name] = cb; }, removeEventListener() {}};
   const stageContext = {
     THREE: {...THREE, WebGLRenderer: Renderer, PMREMGenerator: PMREM}, OrbitControls: Controls, RoomEnvironment: Environment,
-    document: doc, devicePixelRatio: 1,
+    document: doc, devicePixelRatio: 1, window: {addEventListener(name, cb) { windowEvents[name] = cb; }, removeEventListener(name) { delete windowEvents[name]; }},
     matchMedia: () => ({matches: false, addEventListener(name, cb) { preferenceChange = cb; }, removeEventListener() {}}),
     requestAnimationFrame: cb => { frames.set(++frameId, cb); return frameId; }, cancelAnimationFrame: id => frames.delete(id),
     ResizeObserver: class { observe() {} disconnect() {} },
@@ -149,6 +151,52 @@ async function main() {
   stage.setMotion(false); const paused = activeModel.animation.elapsed; tick(1032);
   assert.strictEqual(activeModel.animation.elapsed, paused); assert.strictEqual(frames.size, 0, 'paused scene stops scheduling');
   stage.setMotion(true); tick(3000); assert.strictEqual(activeModel.animation.elapsed, paused, 'resume does not jump through paused elapsed time'); tick(3016);
+  const touch = (type, id, x, y, primary = true, pointerType = 'touch') => {
+    const event = {pointerType, pointerId: id, clientX: x, clientY: y, isPrimary: primary, stopped: false,
+      stopImmediatePropagation() { this.stopped = true; }, preventDefault() { throw new Error('Touch must not cancel native scroll or pinch'); }};
+    canvasEvents[type](event); return event;
+  };
+  assert.strictEqual(canvas.style.touchAction, 'pan-y pinch-zoom', 'vertical page scroll and native pinch zoom are explicitly allowed');
+  for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
+    assert(eventOptions[type].capture && eventOptions[type].passive, type + ' filters touch before OrbitControls without cancelling browser defaults');
+  }
+  let cameraBefore = activeCamera.position.clone();
+  assert(touch('pointerdown', 1, 100, 100).stopped, 'touch does not enter OrbitControls immediate drag handling');
+  touch('pointermove', 1, 102, 125);
+  touch('pointermove', 1, 180, 128);
+  assert(activeCamera.position.equals(cameraBefore), 'a vertical gesture stays locked to page scroll even when it later travels sideways');
+  assert.strictEqual(capturedPointers.size, 0, 'the stage never captures a vertical gesture');
+  touch('pointercancel', 1, 180, 128);
+  touch('pointerdown', 2, 100, 100); touch('pointermove', 2, 105, 101);
+  assert(activeCamera.position.equals(cameraBefore), 'a tap or small finger movement does not rotate the model');
+  touch('pointermove', 2, 130, 101);
+  assert(!activeCamera.position.equals(cameraBefore), 'deliberate horizontal touch rotates the camera');
+  assert(capturedPointers.has(2), 'horizontal rotation captures its pointer only after direction lock');
+  assert.strictEqual(host.dataset.orbit, 'manual'); assert.strictEqual(host.dataset.motion, 'playing');
+  touch('pointerup', 2, 130, 101); assert.strictEqual(capturedPointers.size, 0, 'touch completion releases capture');
+  const running = activeModel.animation.elapsed; cameraBefore = activeCamera.position.clone(); tick(3032);
+  assert(activeModel.animation.elapsed > running, 'fans and LEDs keep running after manual rotation');
+  assert(activeCamera.position.equals(cameraBefore), 'automatic orbit does not fight the chosen manual view');
+  touch('pointerdown', 3, 100, 100); touch('pointerdown', 4, 150, 100, false);
+  touch('pointermove', 3, 70, 100); touch('pointermove', 4, 180, 100, false);
+  assert(activeCamera.position.equals(cameraBefore), 'multitouch never rotates or zooms the camera in place of native page pinch');
+  touch('pointercancel', 3, 70, 100); touch('pointercancel', 4, 180, 100, false);
+  touch('pointerdown', 6, 100, 100); touch('pointermove', 6, 130, 100);
+  assert(capturedPointers.has(6)); touch('pointerdown', 7, 180, 100, false);
+  assert(!capturedPointers.has(6), 'a second finger releases horizontal capture to native pinch');
+  const outsideEnd = id => ({pointerId: id, preventDefault() { throw new Error('Global cleanup must not cancel events'); },
+    stopImmediatePropagation() { throw new Error('Global cleanup must not suppress events'); }});
+  windowEvents.pointerup(outsideEnd(6)); windowEvents.pointercancel(outsideEnd(7));
+  cameraBefore = activeCamera.position.clone(); touch('pointerdown', 8, 100, 100); touch('pointermove', 8, 130, 100);
+  assert(!activeCamera.position.equals(cameraBefore), 'ending a pinch outside the canvas cannot leave stale pointers blocking the next swipe');
+  touch('pointercancel', 8, 130, 100);
+  cameraBefore = activeCamera.position.clone(); touch('pointerdown', 9, 100, 100); touch('pointermove', 9, 130, 100);
+  assert(!activeCamera.position.equals(cameraBefore), 'a cancelled touch does not block a fresh horizontal gesture');
+  touch('pointerup', 9, 130, 100);
+  assert(!touch('pointerdown', 5, 100, 100, true, 'mouse').stopped, 'mouse input remains available to OrbitControls');
+  canvasEvents.keydown({key: 'ArrowLeft', preventDefault() {}});
+  assert(!activeCamera.position.equals(cameraBefore), 'keyboard rotation remains available');
+  stage.reset(); assert.strictEqual(host.dataset.orbit, 'automatic', 'reset restores the automatic presentation');
   intersect([{isIntersecting: false}]); const offscreen = activeModel.animation.elapsed;
   assert.strictEqual(frames.size, 0); tick(4000); assert.strictEqual(activeModel.animation.elapsed, offscreen);
   intersect([{isIntersecting: true}]); tick(5000); tick(5016);
@@ -161,6 +209,9 @@ async function main() {
   stage.setActive(false); assert.strictEqual(frames.size, 0);
   assert(renderCount > 0, 'a static frame remains renderable while animation is disabled');
   stage.dispose(); assert.strictEqual(frames.size, 0, 'teardown cancels the scheduler');
+  assert(!canvasEvents.pointerdown && !canvasEvents.pointermove && !canvasEvents.pointerup && !canvasEvents.pointercancel,
+    'teardown removes every custom touch listener');
+  assert(!windowEvents.pointerup && !windowEvents.pointercancel, 'teardown removes global completion observers');
 
   // InstancedMesh owns separate instanceMatrix/instanceColor GPU buffers. Its
   // dispose event releases those even when shared geometry is disposed below.
@@ -178,6 +229,6 @@ async function main() {
   assert.strictEqual(disposedInstances.size, instances.size, 'every InstancedMesh releases its instance buffers');
   assert.strictEqual(disposed.size, resources.size, 'all detached model GPU resources are disposed');
   for (const [key, model] of models) if (key !== 's21-pro') disposeMiner(model);
-  console.log('  ok   15 catalogue models: physical envelopes, fan layouts, cooling architectures, fan/LED animation, pause/visibility/reduced-motion scheduling and disposal');
+  console.log('  ok   15 catalogue models: geometry, fan/LED animation, deliberate horizontal touch, native scroll/pinch intent, manual view independence, visibility/reduced motion and disposal');
 }
 main().catch(error => { console.error('  FAIL ' + error.stack); process.exitCode = 1; });

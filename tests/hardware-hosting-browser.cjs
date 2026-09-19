@@ -4,18 +4,21 @@
  * pay navigation is captured and mailto links are inspected, never activated.
  * Overrides: PROTON_PLAYWRIGHT_PATH, PROTON_CHROME_PATH, PROTON_HARDWARE_REPORT_DIR. */
 'use strict';
-const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..'),site=path.join(root,'site');
 function dependencyRoot(){let current=root;for(;;){if(fs.existsSync(path.join(current,'tools/.cache/hosting-terrain-browser/node_modules/playwright-core')))return current;const parent=path.dirname(current);if(parent===current)return root;current=parent;}}
 const workspace=dependencyRoot();
 const {chromium}=require(process.env.PROTON_PLAYWRIGHT_PATH||path.join(workspace,'tools/.cache/hosting-terrain-browser/node_modules/playwright-core'));
 const chrome=process.env.PROTON_CHROME_PATH||['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe','/usr/bin/google-chrome','/usr/bin/chromium'].find(p=>fs.existsSync(p));
 if(!chrome)throw Error('Chrome is unavailable. Set PROTON_CHROME_PATH.');
-const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-layout-motion-2026-09-19'));
+const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-touch-controls-2026-09-19'));
 fs.mkdirSync(out,{recursive:true});
-const viewports=[{width:320,height:740,label:'mobile320'},{width:390,height:844,label:'mobile390'},{width:1440,height:1000,label:'desktop'}];
+const viewports=[{width:320,height:740,label:'mobile320'},{width:390,height:844,label:'mobile390'},{width:1440,height:1000,label:'desktop'}].filter(v=>!process.env.PROTON_HARDWARE_VIEWPORTS||process.env.PROTON_HARDWARE_VIEWPORTS.split(',').includes(v.label));
 const legacyCart={'Antminer S19 Pro':1},pricedCart={'Antminer S19 Pro':1,'Antminer S21 Pro':2},requestKey='catalogue:s21-pro-245';
-const checks=[],blocked=[],blockedWrites=[],localFailures=[],requests=[],runtimeErrors=[],consoleErrors=[];let browser;
+const checks=[],blocked=[],blockedWrites=[],localFailures=[],requests=[],runtimeErrors=[],consoleErrors=[],gestures=[],orderSizing=[];let browser;
+const baselineResult=spawnSync('git',['show','e812fa5:site/hardware-catalog.css'],{cwd:root,encoding:'utf8',windowsHide:true});
+if(baselineResult.status!==0)throw Error('The comparison CSS from release e812fa5 must be available.');
+const baselineCSS=baselineResult.stdout;
 const stubAPI=`var OrdersAPI={base:function(){return location.origin+'/api';},isLocal:function(){return true;},demoAllowed:function(){return false;},explain:function(e){return e.message;},post:async function(route,payload){window.__testOrderCalls=window.__testOrderCalls||[];window.__testOrderCalls.push({route:route,payload:payload});return {ok:true,body:{reference:'SYNTHETIC-NO-PAYMENT',demo:true}};}};`;
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.wasm':'application/wasm'};
 const server=http.createServer((req,res)=>{
@@ -31,6 +34,11 @@ const server=http.createServer((req,res)=>{
       const source=body.toString('utf8'),needle='buildMiner:models.buildMiner';
       if(!source.includes(needle))throw Error('Review animation probe after changing the model factory.');
       body=Buffer.from(source.replace(needle,'buildMiner:(...args)=>{const model=models.buildMiner(...args);window.__testMiner=model;return model;}'));
+    }
+    if(path.basename(file)==='brokerage-stage.js'){
+      const source=body.toString('utf8'),needle='controls.enablePan=false;';
+      if(!source.includes(needle))throw Error('Review the read-only camera probe after changing stage setup.');
+      body=Buffer.from(source.replace(needle,'window.__testStage={camera,controls};'+needle));
     }
     if(path.basename(file)==='checkout.js'){
       const source=body.toString('utf8'),needle=/window\.location\.href\s*=\s*'\.\/pay\.html\?ref='/;
@@ -61,6 +69,46 @@ async function motionState(page){return page.evaluate(()=>{
   model.root.traverse(node=>{if(node.name==='fan-rotor')rotors.push(node.rotation.z);if(node.name==='status-led')leds.push(node.material.emissiveIntensity);if(node.name==='fault-led'){const color=node.material.emissive;faults.push(node.material.emissiveIntensity*Math.max(color.r,color.g,color.b));}});
   return {model:model.modelKey,rotors,leds,faults};
 });}
+async function cameraState(page){return page.evaluate(()=>{const s=window.__testStage,o=s.camera.position.clone().sub(s.controls.target);return {theta:Math.atan2(o.x,o.z),phi:Math.acos(o.y/o.length()),distance:o.length(),scrollY,scale:visualViewport.scale};});}
+function angleDifference(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));}
+async function canvasPoint(page){
+  await page.locator('#brMinerCanvas').evaluate(el=>{const r=el.getBoundingClientRect();window.scrollBy(0,r.top-160);});
+  await page.waitForTimeout(100);const box=await page.locator('#brMinerCanvas canvas').boundingBox();
+  return {x:box.x+box.width/2,y:Math.min(box.y+box.height*.62,(await page.evaluate(()=>innerHeight))-100)};
+}
+async function touchDrag(cdp,page,start,dx,dy,cancel=false){
+  const point=(x,y)=>({x,y,id:1,radiusX:3,radiusY:3,force:1});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(start.x,start.y)]});
+  for(let i=1;i<=10;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(start.x+dx*i/10,start.y+dy*i/10)]});await page.waitForTimeout(24);}
+  await cdp.send('Input.dispatchTouchEvent',{type:cancel?'touchCancel':'touchEnd',touchPoints:[]});await page.waitForTimeout(200);
+}
+async function nativePinch(cdp,page,center){
+  function points(distance){return [{x:center.x-distance,y:center.y,id:1,radiusX:3,radiusY:3,force:1},{x:center.x+distance,y:center.y,id:2,radiusX:3,radiusY:3,force:1}];}
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(28)});
+  for(let i=1;i<=12;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(28+i*4)});await page.waitForTimeout(24);}
+  // Finish beyond the inset canvas edges: a released rotation capture must
+  // not leave a tracked finger behind when a native pinch ends elsewhere.
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points((await page.evaluate(()=>innerWidth))/2-5)});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(250);
+}
+async function waitForFanMovement(page,before){
+  await page.waitForFunction(angles=>{const next=[];window.__testMiner?.root.traverse(node=>{if(node.name==='fan-rotor')next.push(node.rotation.z);});return next.some((angle,i)=>Math.abs(angle-angles[i])>.001);},before.rotors,{timeout:4000});
+  return motionState(page);
+}
+function contextOptions(viewport){return {viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,isMobile:viewport.width<700,hasTouch:viewport.width<700,serviceWorkers:'block'};}
+async function orderMeasure(page,label,suffix){
+  const box=await page.locator('#hwOrder').boundingBox(),text=await page.locator('#hwOrder').innerText();
+  await page.locator('#hwOrder').screenshot({path:path.join(out,label+'-order-'+suffix+'.png')});
+  return {height:box.height,width:box.width,text:text.replace(/\s+/g,' ').trim()};
+}
+async function orderBaseline(viewport,origin){
+  const context=await browser.newContext(contextOptions(viewport));await network(context,origin);await init(context);
+  await context.route('**/hardware-catalog.css?*',route=>route.fulfill({status:200,contentType:'text/css',body:baselineCSS}));
+  const page=await context.newPage();observe(page,viewport.label+'-baseline');await page.goto(origin+'/hardware.html?site=permian',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.getElementById('hwUnits')?.textContent==='1');
+  const monthly=await orderMeasure(page,viewport.label,'before-monthly');await page.locator('#hwPrepay [data-term="24m"]').click();
+  const prepaid=await orderMeasure(page,viewport.label,'before-24m');await context.close();return {monthly,prepaid};
+}
 async function state(page){return page.evaluate(()=>({cart:Cart.get(),lines:Cart.lines(),totals:Cart.totals(),site:Facilities.chosen()&&Facilities.chosen().id,term:Prepay.chosen()&&Prepay.chosen().id}));}
 async function snapshot(page,prefix){return page.evaluate(prefix=>({units:document.getElementById(prefix+'Units').textContent,hash:document.getElementById(prefix+'Hash').textContent,power:document.getElementById(prefix+'Power').textContent,cost:document.getElementById(prefix+'Cost').textContent,itemised:document.getElementById(prefix+'Itemised').innerText.replace(/\s+/g,' ').trim()}),prefix);}
 function sameAmounts(actual,expected){for(const field of ['units','hash','power','itemised']){if(['hash','power'].includes(field)&&/to confirm/i.test(expected[field]))assert.match(actual[field],/to confirm/i);else assert.equal(actual[field],expected[field],field+' differs between hardware and checkout');}assert.deepEqual(actual.cost.match(/\$[\d,]+(?:\.\d+)?/g),expected.cost.match(/\$[\d,]+(?:\.\d+)?/g));assert.equal(/quote/i.test(actual.cost),/quote/i.test(expected.cost));}
@@ -79,9 +127,20 @@ async function assertQuoteGate(page){
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
   browser=await chromium.launch({headless:true,executablePath:chrome,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
   for(const viewport of viewports){
-    const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,serviceWorkers:'block'});await network(context,origin);await init(context);
+    const baseline=await orderBaseline(viewport,origin);
+    const context=await browser.newContext(contextOptions(viewport));await network(context,origin);await init(context);
     const page=await context.newPage();page.setDefaultTimeout(15000);observe(page,viewport.label);let pricedSnapshot,mixedSnapshot,unknownKey;
     await page.goto(origin+'/hardware.html?site=permian',{waitUntil:'domcontentloaded'});
+    await check(viewport.label+' order widget is shorter with the same one-unit location and energy information',async()=>{
+      await page.waitForFunction(()=>document.getElementById('hwUnits')?.textContent==='1');
+      const monthly=await orderMeasure(page,viewport.label,'after-monthly');await page.locator('#hwPrepay [data-term="24m"]').click();
+      const prepaid=await orderMeasure(page,viewport.label,'after-24m');await page.locator('#hwPrepay .pp-clear').click();
+      for(const [name,before,after]of [['monthly',baseline.monthly,monthly],['24m',baseline.prepaid,prepaid]]){
+        assert.equal(after.text,before.text,'Compacting the widget must preserve its information.');
+        assert(after.height<before.height-5,'The '+name+' widget should become shorter.');
+        orderSizing.push({viewport:viewport.label,term:name,baselineRevision:'e812fa5',beforeHeight:before.height,afterHeight:after.height,reductionPercent:Math.round((1-after.height/before.height)*1000)/10,fixture:{model:'Antminer S19 Pro',quantity:1,site:'permian'}});
+      }
+    });
     await check(viewport.label+' places the order below the catalogue and removes the quote section and slider',async()=>{
       for(const selector of ['#hwFacility','#hwPrepay','.hw-order','#hwOrder','#hwItemised'])assert.equal(await page.locator(selector).count(),1,selector+' is missing');
       for(const selector of ['#quote','#hwOrderPreview','#hwOrderText','#hwSubmit','#hwCopy','#brCatalogSlider'])assert.equal(await page.locator(selector).count(),0,selector+' should be removed');
@@ -91,25 +150,74 @@ async function assertQuoteGate(page){
       await page.locator('#brMiner').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.getElementById('brMiner').classList.contains('br-scene-ready'),{},{timeout:45000});assert.equal(await page.locator('#brMinerCanvas canvas').count(),1);assert.equal(await page.locator('#brCatalogCompare').isVisible(),false);
       await noOverflow(page);await page.screenshot({path:path.join(out,viewport.label+'-catalog.png')});
     });
-    await check(viewport.label+' larger arrows browse in both directions without changing the order',async()=>{
+    await check(viewport.label+' rectangular arrows are centered and browse without changing the order',async()=>{
       const before=await page.evaluate(()=>({family:BrokerageCatalogSelection.family.id,cart:Cart.get()}));
-      for(const id of ['brCatalogPrev','brCatalogNext']){const box=await page.locator('#'+id).boundingBox();assert(box.width>=48&&box.height>=48,'Arrow targets must be larger and comfortable to tap.');}
+      for(const id of ['brCatalogPrev','brCatalogNext']){
+        const geometry=await page.locator('#'+id).evaluate(button=>{const r=button.getBoundingClientRect(),glyph=button.querySelector('svg,span');let g;if(glyph)g=glyph.getBoundingClientRect();else{const range=document.createRange();range.selectNodeContents(button);g=range.getBoundingClientRect();}return {width:r.width,height:r.height,dx:(g.left+g.right-r.left-r.right)/2,dy:(g.top+g.bottom-r.top-r.bottom)/2,touchAction:getComputedStyle(button).touchAction};});
+        assert(geometry.width>=64&&geometry.height>=44&&geometry.width/geometry.height>=1.35,'Arrows must be wide rectangular touch targets.');
+        assert(Math.abs(geometry.dx)<=2&&Math.abs(geometry.dy)<=3,'Arrow glyph must be centered within its button.');assert.match(geometry.touchAction,/manipulation/);
+      }
       await page.locator('#brCatalogNext').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id!==id,before.family);
       await page.locator('#brCatalogPrev').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id===id,before.family);
       assert.deepEqual(await page.evaluate(()=>Cart.get()),before.cart);await noOverflow(page);
     });
-    await check(viewport.label+' actual rendered fan rotors and status LEDs animate and pause together',async()=>{
+    if(viewport.width<700){
+      const cdp=await context.newCDPSession(page);
+      await check(viewport.label+' successive real double taps browse two families without zooming the page',async()=>{
+        await page.locator('#brCatalogNext').scrollIntoViewIfNeeded();const box=await page.locator('#brCatalogNext').boundingBox();
+        const before=await page.evaluate(()=>({id:BrokerageCatalogSelection.family.id,scale:visualViewport.scale,ids:BrokerageCatalog.families.map(f=>f.id)}));
+        await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);await page.waitForTimeout(70);await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);
+        const expected=before.ids[(before.ids.indexOf(before.id)+2)%before.ids.length];await page.waitForFunction(id=>BrokerageCatalogSelection.family.id===id,expected);
+        const after=await page.evaluate(()=>visualViewport.scale);assert(Math.abs(after-before.scale)<.01);gestures.push({viewport:viewport.label,kind:'double-tap-next',beforeScale:before.scale,afterScale:after,family:expected});
+        await selectVariant(page,'234','s21-pro-234');await page.locator('#brCatalogSearch').fill('');
+      });
+      await check(viewport.label+' native vertical canvas swipe scrolls without rotating the model',async()=>{
+        await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);const start=await canvasPoint(page),before=await cameraState(page);
+        await touchDrag(cdp,page,start,0,-170);const after=await cameraState(page);
+        assert(after.scrollY-before.scrollY>40,'Vertical swipe must scroll the page.');assert(angleDifference(after.theta,before.theta)<.002&&Math.abs(after.phi-before.phi)<.002,'Vertical swipe must not rotate the miner.');
+        gestures.push({viewport:viewport.label,kind:'vertical',before,after});
+      });
+      await check(viewport.label+' native horizontal drag rotates without scrolling and recovers after touch cancellation',async()=>{
+        let start=await canvasPoint(page),before=await cameraState(page);await touchDrag(cdp,page,{x:start.x-55,y:start.y},110,0);let after=await cameraState(page);
+        assert(angleDifference(after.theta,before.theta)>.03,'Horizontal drag must rotate the miner.');assert(Math.abs(after.scrollY-before.scrollY)<3,'Horizontal rotation must not scroll the page.');
+        gestures.push({viewport:viewport.label,kind:'horizontal',before,after});
+        start=await canvasPoint(page);await touchDrag(cdp,page,{x:start.x-40,y:start.y},80,0,true);
+        start=await canvasPoint(page);before=await cameraState(page);await touchDrag(cdp,page,start,0,-150);after=await cameraState(page);
+        assert(after.scrollY-before.scrollY>35,'A cancelled rotation must not trap the next vertical swipe.');assert(angleDifference(after.theta,before.theta)<.002);
+        gestures.push({viewport:viewport.label,kind:'cancel-then-vertical',before,after});
+      });
+      await check(viewport.label+' fans keep running while a real touch rotation is held',async()=>{
+        await page.emulateMedia({reducedMotion:'no-preference'});const start=await canvasPoint(page);
+        const touch=(x)=>({x,y:start.y,id:1,radiusX:3,radiusY:3,force:1});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(start.x-35)]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(start.x+20)]});
+        const before=await motionState(page);await page.waitForTimeout(240);const after=await motionState(page);
+        assert(after.rotors.some((angle,i)=>Math.abs(angle-before.rotors[i])>.001),'Holding a rotation must not stop the fans.');
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.emulateMedia({reducedMotion:'reduce'});
+      });
+      await check(viewport.label+' native two-finger pinch preserves page zoom',async()=>{
+        const start=await canvasPoint(page),before=await cameraState(page);await nativePinch(cdp,page,start);const after=await cameraState(page);
+        assert(after.scale>before.scale+.1,'Page pinch zoom must remain enabled over the miner.');
+        assert.doesNotMatch(await page.locator('meta[name="viewport"]').getAttribute('content'),/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\D|$)/i);
+        gestures.push({viewport:viewport.label,kind:'pinch',beforeScale:before.scale,afterScale:after.scale});await cdp.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});
+        const recoveryStart=await canvasPoint(page),recoveryBefore=await cameraState(page);await touchDrag(cdp,page,{x:recoveryStart.x-50,y:recoveryStart.y},100,0);
+        assert(angleDifference((await cameraState(page)).theta,recoveryBefore.theta)>.03,'Rotation must work after fingers finish outside the canvas.');
+        await page.emulateMedia({reducedMotion:'no-preference'});
+      });
+      await cdp.detach();
+    }
+    await check(viewport.label+' fan rotors and healthy LEDs continue after interaction, with no pause control',async()=>{
       await page.locator('#brMiner').scrollIntoViewIfNeeded();await page.waitForFunction(()=>window.__testMiner?.modelKey==='s21-pro');
-      const play=page.locator('[data-br-view="play"]');if(await play.getAttribute('aria-pressed')!=='true')await play.click();
+      assert.equal(await page.locator('[data-br-view="play"]').count(),0);await page.locator('#brMinerCanvas canvas').press('ArrowRight');
       const before=await motionState(page);assert.equal(before.rotors.length,7);assert(before.leds.length>0);
-      await page.waitForTimeout(380);const after=await motionState(page);assert(after.rotors.some((angle,i)=>Math.abs(angle-before.rotors[i])>.001),'Visible fans must turn in the actual stage loop.');
+      const after=await waitForFanMovement(page,before);
+      assert(after.rotors.some((angle,i)=>Math.abs(angle-before.rotors[i])>.001),'Visible fans must turn in the actual stage loop. '+JSON.stringify(await page.evaluate(()=>({motion:document.getElementById('brMinerCanvas').dataset.motion,orbit:document.getElementById('brMinerCanvas').dataset.orbit,hidden:document.hidden,rect:document.getElementById('brMinerCanvas').getBoundingClientRect().toJSON(),scrollY,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches}))));
       const intensities=[...after.leds];for(let i=0;i<5;i++){await page.waitForTimeout(120);intensities.push(...(await motionState(page)).leds);}
       assert(intensities.every(value=>value>0),'Healthy status LEDs stay powered.');assert(Math.max(...intensities)-Math.min(...intensities)>.01,'Status LEDs show activity.');
       assert((await motionState(page)).faults.every(value=>value===0),'Red fault LEDs remain off.');
-      await play.click();await page.waitForTimeout(80);const paused=await motionState(page);await page.waitForTimeout(220);assert.deepEqual(await motionState(page),paused);
       await page.screenshot({path:path.join(out,viewport.label+'-animated-miner.png')});
-      await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelector('[data-br-view="play"]').disabled);await page.waitForTimeout(80);const reduced=await motionState(page);await page.waitForTimeout(180);assert.deepEqual(await motionState(page),reduced);
-      await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>!document.querySelector('[data-br-view="play"]').disabled);await play.click();
+      await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(80);const reduced=await motionState(page);await page.waitForTimeout(180);assert.deepEqual(await motionState(page),reduced);
+      await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForTimeout(150);
       await page.evaluate(()=>document.getElementById('brMiner').style.visibility='hidden');
       // IntersectionObserver is geometric: move the model completely outside the viewport.
       await page.evaluate(()=>document.getElementById('brMiner').style.transform='translateY(-100000px)');await page.waitForTimeout(160);
@@ -171,6 +279,6 @@ async function assertQuoteGate(page){
   await check('all viewports have no runtime errors, failed local assets or attempted HTTP writes',async()=>{assert.deepEqual(runtimeErrors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(localFailures,[]);assert.deepEqual(blockedWrites,[]);assert(requests.every(request=>['GET','HEAD'].includes(request.method)));});
 })().catch(error=>{process.exitCode=1;console.error(error.stack||error);}).finally(async()=>{
   if(browser)await browser.close();if(server.listening)await new Promise(resolve=>server.close(resolve));
-  fs.writeFileSync(path.join(out,'browser-report.json'),JSON.stringify({checkedAt:new Date().toISOString(),sourceRoot:root,chrome,viewports,checks,blockedExternalRequests:[...new Set(blocked)],blockedWrites,runtimeErrors,consoleErrors,localFailures,requestCount:requests.length,ordersAPI:'in-memory synthetic stub only',paymentNavigationIntercepted:true,mailLinksInspectedOnly:true,syntheticStorageOnly:true,externalNetworkBlocked:true},null,2)+'\n');
+  fs.writeFileSync(path.join(out,'browser-report.json'),JSON.stringify({checkedAt:new Date().toISOString(),sourceRoot:root,chrome,viewports,checks,gestures,orderSizing,mobileInput:'Chrome isMobile/hasTouch and native CDP Input.dispatchTouchEvent; no synthetic PointerEvents',cameraProbe:'read-only test-server response injection; no production globals',blockedExternalRequests:[...new Set(blocked)],blockedWrites,runtimeErrors,consoleErrors,localFailures,requestCount:requests.length,ordersAPI:'in-memory synthetic stub only',paymentNavigationIntercepted:true,mailLinksInspectedOnly:true,syntheticStorageOnly:true,externalNetworkBlocked:true},null,2)+'\n');
   console.log('Hardware checkout browser report: '+path.join(out,'browser-report.json'));
 });

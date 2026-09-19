@@ -8,7 +8,7 @@ The 3D catalogue replaces the original miner-selection table and its table-speci
 
 ## From browsing to the saved order
 
-Browsing does not add machines automatically. Larger Previous/Next arrows replace the range slider and scrolling family strip; search, cooling filters and exact-variant buttons remain available. The customer selects an exact variant and quantity, then uses the catalogue's order action. The selection enters the same persistent cart used by the order summary and checkout. Existing saved lines are preserved and can coexist with the new catalogue selections.
+Browsing does not add machines automatically. Centered Previous/Next arrows in wide rectangular buttons replace the range slider and scrolling family strip; search, cooling filters and exact-variant buttons remain available. The buttons use local touch handling that suppresses double-tap zoom while preserving browser pinch zoom. The customer selects an exact variant and quantity, then uses the catalogue's order action. The selection enters the same persistent cart used by the compact order summary below the catalogue and checkout. Existing saved lines are preserved and can coexist with the new catalogue selections.
 
 `HardwareOrderCatalog` explicitly matches **12** catalogue configurations to existing order SKUs by manufacturer/model identity and exact hashrate and power. Those aliases reuse their existing cart keys and the legacy indicative pricing authority. The remaining **51** configurations use stable `catalogue:<variantId>` keys, preserve their exact display names and nullable specifications, and remain quote-required. A neighboring bin's price or identity is never borrowed to make a selection orderable.
 
@@ -32,7 +32,9 @@ Payment and order backends are unchanged. Fully supported legacy-key orders reta
 
 The shared catalogue and rendering files retain their `brokerage-*` names for reuse. Their filenames do not indicate a separate public brokerage service.
 
-The running preview turns the modeled main and power-supply fan rotors independently of their fixed grilles and enclosures. Modeled green status LEDs stay lit with a restrained activity pulse; red fault indicators stay off. Hydro and immersion exteriors do not acquire air fans. These are illustrative animations, not live telemetry or manufacturer fan-speed claims. The existing render loop stops fan, LED and camera motion when paused, offscreen, hidden or under reduced-motion preferences.
+The running preview turns the modeled main and power-supply fan rotors independently of their fixed grilles and enclosures. Modeled green status LEDs stay lit with a restrained activity pulse; red fault indicators stay off. Hydro and immersion exteriors do not acquire air fans. These are illustrative animations, not live telemetry or manufacturer fan-speed claims. The pause button is removed. Manual rotation or zoom stops the camera's automatic orbit while fan and LED animation continues; Reset restores the default orbit. Offscreen, hidden and reduced-motion states stop automatic animation.
+
+On touchscreens, one-finger horizontal intent rotates the model only after a movement threshold. Vertical and diagonal drags scroll the page; multitouch remains available to the browser for pinch zoom. Mouse dragging and keyboard rotation remain available. Touch events are kept out of OrbitControls so it cannot capture the start of a page scroll, and no global touch suppression or viewport zoom restriction is used.
 
 Each variant contains specification links and a `specNote`; each market observation records its seller URL, exact hashrate bin, condition, currency, scope, check date and availability wording. Conflicting power or efficiency fields remain `null`, including the affected Avalon configurations. Unknown dimensions are not inferred from a similar miner.
 
