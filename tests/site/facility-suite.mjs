@@ -231,14 +231,14 @@ console.log(CHR + '=== prepaid electricity: longer term, better rate ===');
     eq(Prepay.all().filter(t => t.featured).length, 1, 'exactly one tier is featured');
     eq(Prepay.all().filter(t => t.featured)[0].id, '36m', 'and it is the longest');
 
-    /* THE LADDER LIVES ON THE CATALOGUE PAGE, NOT THE HOSTING PAGE — and that is the whole
-       point of it: the rate shown is the rate of the site the customer picked on the way in.
-       On the hosting page, with no site chosen, every figure would have to be a "from" price
-       across five different rates. So the tiers are rendered by hardware.js at runtime from the
-       chosen facility, and what is asserted here is the wiring rather than baked-in markup. */
+    /* Hardware now prepares a hosting enquiry. Facility selection remains, but a
+       visitor is not pushed into a checkout or a prepaid term. The legacy pricing
+       module is still checked below because existing carts continue to use it. */
     const hw = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.html'), 'utf8');
-    ok(hw.indexOf('id="hwPrepay"') >= 0, 'the catalogue page has somewhere to put the ladder');
-    ok(/<script src="\.\/prepay\.js/.test(hw), '...and loads the module that prices it');
+    ok(hw.indexOf('id="hwHostingFacility"') >= 0, 'the Hardware enquiry retains a facility choice');
+    ok(/<script src="\.\/facilities\.js/.test(hw), '...and loads the shared facility module');
+    ok(hw.indexOf('id="hwPrepay"') < 0 && !/<script src="\.\/hardware\.js/.test(hw),
+       'the hosting enquiry does not load the legacy prepaid-order flow');
 
     const hwjs = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
     ok(hwjs.indexOf('Prepay.rateFor') >= 0 || hwjs.indexOf('Prepay.rateLabel') >= 0,
@@ -657,17 +657,21 @@ console.log('\n=== the electricity total is stated once ===');
        'and both the site and the term are withheld when it is not ours');
 }
 
-console.log('\n=== the itemisation is on both pages the customer reads ===');
+console.log('\n=== checkout itemisation survives the Hardware enquiry transition ===');
 {
-    /* The catalogue is where the order is assembled and the checkout is where it is confirmed.
-       Itemising on one and not the other means the breakdown appears or vanishes depending on
-       which way the customer navigates. */
-    const PAGES = [['hardware.html', 'hwItemised'], ['cart.html', 'ckItemised']];
+    /* Existing checkout still needs the complete shared price breakdown. The new
+       Hardware page instead carries the selected configuration into an enquiry. */
+    const PAGES = [['cart.html', 'ckItemised']];
     for (const pair of PAGES) {
         const h = fs.readFileSync(path.join(REPO_ROOT, 'site', pair[0]), 'utf8');
         ok(h.indexOf('id="' + pair[1] + '"') >= 0, pair[0] + ' has somewhere to put it');
         ok(h.indexOf('prepay.js') >= 0, pair[0] + ' loads the module that builds it');
     }
+    const hardware = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.html'), 'utf8');
+    ok(hardware.indexOf('id="hwHostingSummary"') >= 0 && hardware.indexOf('id="hwHostingConfiguration"') >= 0,
+       'Hardware keeps the selected configuration in its enquiry summary and payload');
+    ok(hardware.indexOf('id="hwItemised"') < 0,
+       'Hardware does not present an unconfirmed hosting enquiry as a checkout total');
     const SCRIPTS = [['hardware.js', 'hwItemised'], ['checkout.js', 'ckItemised']];
     for (const pair of SCRIPTS) {
         const j = fs.readFileSync(path.join(REPO_ROOT, 'site', pair[0]), 'utf8');

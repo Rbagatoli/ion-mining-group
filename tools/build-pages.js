@@ -130,7 +130,7 @@ const MUST_EXIST = [
     'crm/index.html', 'crm/crm.js', 'crm/runtime/agent-control-model.js', 'crm/manifest.webmanifest',
     /* Without this the custom domain does not resolve to the site at all. */
     'CNAME',
-    'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html',
+    'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html', 'brokerage.html',
     'sitemap.xml', 'robots.txt', '404.html', 'styles.css',
     'portal/index.html',
     /* The portal's two parent-directory dependencies. Without them the portal renders as a
@@ -145,6 +145,15 @@ const MUST_NOT_EXIST = [
     'app/robots.txt',
     'worker-portal', 'worker-orders',
 ];
+
+/* One retired public URL remains as a noindex compatibility route. Keep this
+   exception specific: another page cannot quietly canonicalize elsewhere. */
+function isHardwareRedirect(html) {
+    return /<link rel="canonical" href="https:\/\/protonminingco\.com\/hardware\.html">/.test(html)
+        && /<meta name="robots" content="noindex, follow">/.test(html)
+        && /<a\b[^>]*href="\.\/hardware\.html#miners"/.test(html)
+        && /<script>\s*location\.replace\('\.\/hardware\.html'\s*\+\s*location\.search\s*\+\s*'#miners'\);\s*<\/script>/.test(html);
+}
 
 function verify() {
     const problems = [];
@@ -195,6 +204,10 @@ function verify() {
     /* And every canonical must agree with where the file actually landed. */
     for (const f of fs.readdirSync(OUT).filter((x) => /\.html$/.test(x))) {
         const h = fs.readFileSync(path.join(OUT, f), 'utf8');
+        if (f === 'brokerage.html') {
+            if (!isHardwareRedirect(h)) problems.push('brokerage.html must redirect to the Hardware catalogue, preserve its query, and provide a canonical and a no-script link');
+            continue;
+        }
         const m = /rel="canonical" href="([^"]+)"/.exec(h);
         if (!m) continue;
         const want = new URL(m[1]).pathname.replace(/^\//, '') || 'index.html';
@@ -286,4 +299,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { build, verify, OUT, NEVER, SITE_SKIP, APP_SKIP };
+module.exports = { build, verify, OUT, NEVER, SITE_SKIP, APP_SKIP, isHardwareRedirect };

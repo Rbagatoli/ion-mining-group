@@ -11,13 +11,16 @@ const path = require('path');
 
 const SITE = path.join(__dirname, '..');
 
+/* Retired routes still resolve for existing links. They have no generated nav,
+   but their filenames remain reserved so a blog post cannot overwrite them. */
+const COMPATIBILITY_PAGES = ['brokerage.html'];
+
 /* Which nav item is highlighted on which page. */
 const PAGES = {
   'index.html':   'home',
   'hosting.html': 'hosting',
   'energy.html':  'energy',
   'hardware.html': 'hardware',
-  'brokerage.html': 'brokerage',
   'calculator.html': 'calculator',
   /* Learn covers the evergreen guide and the blog. */
   'why-mining.html': 'learn',
@@ -103,7 +106,6 @@ function nav(active, cta) {
       <a href="./index.html"${on('home')}>Home</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
       <a href="./hardware.html"${on('hardware')}>Hardware</a>
-      <a href="./brokerage.html"${on('brokerage')}>Brokerage</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
@@ -146,8 +148,7 @@ const CTA = {
   // machines somebody already has.
   'hosting.html':          { href: './hardware.html', label: 'Start mining' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
-  'hardware.html':         { href: '#quote', label: 'Request a quote' },
-  'brokerage.html':        { href: '#prepare', label: 'Prepare a brief' },
+  'hardware.html':         { href: '#quote', label: 'Plan hosting' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'why-mining.html':       { href: './hardware.html', label: 'Start mining' },
   'blog.html':             { href: './why-mining.html', label: 'Why own machines' },
@@ -237,7 +238,7 @@ function replaceBlock(html, startTag, endTag, replacement, label, file) {
    Post pages are generated in full, so they cannot be spliced by the loop below the way a
    hand-authored page is - and a second copy of the nav is the exact drift this file exists to
    stop. Run build-blog.js after this one and generated pages pick up any nav change. */
-module.exports = { nav, CTA, PAGES, COMPANY_COL, LEGAL_COL, BRAND_MARK };
+module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, BRAND_MARK };
 
 /* Guarded, so requiring this file does not rewrite eleven pages as a side effect. */
 if (require.main !== module) return;
@@ -249,7 +250,8 @@ for (const [file, active] of Object.entries(PAGES)) {
   let html = fs.readFileSync(p, 'utf8');
   const before = html;
 
-  html = html.replace(/(<h4>Services<\/h4>)(?!\s*<a href="\.\/brokerage.html">)/, '$1\n        <a href="./brokerage.html">ASIC brokerage</a>');
+  html = html.replace(/\s*<a href="\.\/brokerage\.html">ASIC brokerage<\/a>/g, '');
+  html = html.replace(/(<h4>Services<\/h4>)(?!\s*<a href="\.\/hardware\.html#miners">)/, '$1\n        <a href="./hardware.html#miners">Mining hardware</a>');
   html = applyHold(html, file);
   html = ensureNoscript(html, file);
   html = replaceBlock(html, '<nav class="nav">', '</nav>', nav(active, CTA[file]), 'nav', file);

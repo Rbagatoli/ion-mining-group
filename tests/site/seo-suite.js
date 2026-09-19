@@ -149,6 +149,40 @@ navPages.forEach(function (p) {
 ok(disagree.length === 0, 'every canonical shares the generator origin',
    disagree.join('; '));
 
+/* The retired Brokerage URL is a compatibility entry, not another marketed
+   service or a second indexed copy of the Hardware catalogue. */
+var legacyHardware = fs.readFileSync(S + 'brokerage.html', 'utf8');
+var pagesBuild = require(REPO_ROOT + 'tools/build-pages.js');
+ok(pagesBuild.isHardwareRedirect(legacyHardware),
+   'the old Brokerage URL has the precise Hardware compatibility contract');
+ok(navPages.indexOf('brokerage.html') < 0 && seoPages.indexOf('brokerage.html') < 0 &&
+   sitemap.indexOf('/brokerage.html') < 0,
+   'the retired service is absent from navigation and the sitemap');
+var redirectScript = /<script>([\s\S]*?)<\/script>/.exec(legacyHardware);
+var redirectedTo = '';
+require('vm').runInNewContext(redirectScript ? redirectScript[1] : '', {
+    location: { search: '?facility=cold-lake&utm_source=legacy', replace: function (url) { redirectedTo = url; } }
+});
+ok(redirectedTo === './hardware.html?facility=cold-lake&utm_source=legacy#miners',
+   'legacy visits preserve their query and land on the miner catalogue', redirectedTo);
+ok(!/<script\b[^>]*\bsrc=/.test(legacyHardware) && !/id="(?:brForm|brCatalog|quoteForm)"/.test(legacyHardware),
+   'the compatibility page cannot load the retired sales experience');
+[
+    legacyHardware.replace('rel="canonical" href="' + BASE + '/hardware.html"', 'rel="canonical" href="' + BASE + '/brokerage.html"'),
+    legacyHardware.replace('href="./hardware.html#miners"', 'href="./contact.html"'),
+    legacyHardware.replace(" + location.search", ''),
+    legacyHardware.replace("'#miners'", "'#prepare'"),
+    legacyHardware.replace('content="noindex, follow"', 'content="index, follow"')
+].forEach(function (html, i) {
+    ok(!pagesBuild.isHardwareRedirect(html), 'the deploy exception rejects a broken compatibility contract ' + (i + 1));
+});
+var promotedLegacy = [];
+fs.readdirSync(S).filter(function (file) { return /\.html$/.test(file); }).forEach(function (file) {
+    var html = fs.readFileSync(S + file, 'utf8');
+    if (/<a\b[^>]*href="\.\/brokerage\.html(?:[?#][^"]*)?"/.test(html)) promotedLegacy.push(file);
+});
+ok(promotedLegacy.length === 0, 'public pages promote Hardware instead of the retired standalone service', promotedLegacy.join(', '));
+
 /* ---- structured data ---- */
 
 /* THE PLACEHOLDER SHAPE, NOT ANY BRACKET.

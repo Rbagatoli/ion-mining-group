@@ -4,17 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hardware — Proton Mining</title>
-<meta name="description" content="Pick your machines, set the quantities, and send it as a quote. We source the hardware and can host it on the same order.">
+<meta name="description" content="Explore Bitcoin miners in 3D, compare exact variants, and plan hosting for your fleet. Bring your own machines or ask Proton to source them.">
 <link rel="canonical" href="https://protonminingco.com/hardware.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Hardware — Proton Mining">
-<meta property="og:description" content="Browse ASIC miners, build an order, and have it hosted on the same agreement.">
+<meta property="og:description" content="Explore Bitcoin miners, choose your configuration, and build a hosting enquiry.">
 <meta property="og:url" content="https://protonminingco.com/hardware.html">
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=30659239">
+<link rel="stylesheet" href="./styles.css?v=9149bf89">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<link rel="stylesheet" href="./brokerage.css?v=9149bf89">
+<link rel="stylesheet" href="./hardware-catalog.css?v=9149bf89">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -23,7 +25,7 @@
 <meta name="twitter:image" content="https://protonminingco.com/og/home.png">
 <!-- ===== /SHARE CARD ===== -->
 </head>
-<body>
+<body class="br-page hardware-page">
 <canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
 
 <nav class="nav">
@@ -66,7 +68,6 @@
       <a href="./index.html">Home</a>
       <a href="./hosting.html">Hosting</a>
       <a href="./hardware.html" class="active">Hardware</a>
-      <a href="./brokerage.html">Brokerage</a>
       <!-- Sits after both audience pages because it is what you reach for once
            you know which side of the business you are on: you have machines,
            or you have energy. Either way the next question is the numbers. -->
@@ -93,165 +94,104 @@
            current layout, where Pages publishes the root and site/ is excluded. If the marketing
            site ever becomes the domain root, this becomes /portal/ — one line, here. -->
       <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
-      <a class="btn btn--primary btn--sm nav-cta" href="#quote">Request a quote</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="#quote">Plan hosting</a>
     </div>
   </div>
 </nav>
 
-<!-- ===== HEADER ===== -->
-<section class="hero-zone">
-  <div class="wrap">
-    <div class="calc-head">
-      <p class="eyebrow">Hardware</p>
-      <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)" data-mobile-copy="Choose your miners.">Buy the machines<br>and the place to run them.</h1>
-      <p class="lede" data-mobile-copy="Choose models and quantities. We source the miners and can include hosting in your quote.">You do not have to arrive with a container of miners. Pick what you want below, set the quantities, and we will source it &mdash; and host it on the same agreement if you want us to.</p>
+<main id="hwMain">
+  <section class="br-hero hw-hero">
+    <div class="br-wrap br-hero-grid">
+      <div>
+        <p class="br-eyebrow">Hardware / Hosting</p>
+        <h1 class="br-title">Find your miners.<br><span>Plan their next home.</span></h1>
+        <p class="br-intro">Compare Bitcoin miners and build a hosting plan. Bring your own machines, or ask us to source them.</p>
+        <div class="br-actions">
+          <a class="btn btn--primary" href="#miners">Explore miners <span aria-hidden="true">↓</span></a>
+          <a class="btn btn--ghost" href="#quote" id="hwHaveMiners">I have miners <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="br-hero-aside"><span class="br-hero-index">Hardware → Hosting</span><p>Choose your model.<br>Set your quantity.<br>Find the right site.</p><a href="./hosting.html">Explore hosting <span aria-hidden="true">↗</span></a></div>
     </div>
-  </div>
-</section>
-
-<!-- ===== CATALOGUE ===== -->
-<section class="band">
-  <div class="wrap">
-
-    <!-- Which site these machines are being bought FOR.
-         Empty unless the customer arrived from a facility card, because most of the
-         catalogue's traffic has not chosen one and an empty box saying "no site
-         selected" is a worse first impression than no box. hardware.js fills it. -->
-    <div id="hwFacility"></div>
-
-    <!-- The prepaid electricity ladder for THE SITE THEY PICKED.
-         Empty until a site is chosen, because the whole point is that the rate is that site's
-         rate — a ladder shown before there is a site to apply it to would have to quote a
-         "from" price, and a from-price is the thing this page can now avoid. -->
-    <div id="hwPrepay"></div>
-
-    <div class="hw">
-
-      <!-- The running order, kept above the catalogue so the totals are visible
-           while you are still choosing. -->
-      <div class="hw-order">
-        <h2 class="calc-chart-title">Your order</h2>
-        <p class="hw-empty-note" id="hwEmpty" hidden>Select miners below to start your order.</p>
-        <div class="hw-totals">
-          <div><span class="ct-lab">Machines</span><span class="ct-val" id="hwUnits">&mdash;</span></div>
-          <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="hwHash">&mdash;</span></div>
-          <div><span class="ct-lab">Power draw</span><span class="ct-val" id="hwPower">&mdash;</span></div>
-          <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="hwCost">&mdash;</span></div>
-        </div>
-        <p class="calc-explain" id="hwUnpriced" hidden></p>
-        <!-- Two costs, named separately, because they are two purchases: hardware Proton buys
-             on the customer's behalf, and electricity bought forward under the hosting
-             agreement. They are paid at different moments to different schedules, so a single
-             "total" with no breakdown would be the least useful true number on the page. -->
-        <div id="hwItemised"></div>
-
-        <div class="hw-actions">
-          <a class="btn btn--primary btn--sm" id="hwCheckout" href="./cart.html" hidden>Review the order</a>
-          <a class="btn btn--ghost btn--sm" id="hwRunAll" href="./calculator.html" hidden>Run these numbers</a>
-          <button type="button" class="btn btn--ghost btn--sm" id="hwClear">Clear</button>
-        </div>
+  </section>
+  <section class="br-catalog br-wrap" id="miners" aria-labelledby="brCatalogTitle">
+    <div id="brCatalog" data-catalog-purpose="hosting">
+      <div class="br-catalog-heading"><div><p class="br-eyebrow">The miner lineup</p><h2 id="brCatalogTitle">Explore the machines.</h2></div><p>Choose a model. Compare the variants. <br>Build your hosting enquiry.</p></div>
+      <div class="br-catalog-tools" id="brCatalogTools" hidden>
+        <label class="br-catalog-search" for="brCatalogSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="br-sr-only">Search miners, variants or manufacturers</span><input id="brCatalogSearch" type="search" autocomplete="off" placeholder="Search S21, M60, Antminer…" aria-controls="brCatalogProduct brCatalogRail"></label>
+        <label class="br-catalog-filter" for="brCatalogCooling"><span class="br-sr-only">Cooling type</span><select id="brCatalogCooling" aria-controls="brCatalogProduct brCatalogRail"><option value="all">All cooling</option><option value="air">Air-cooled</option><option value="hydro">Hydro-cooled</option><option value="immersion">Immersion</option></select></label>
+        <p class="br-catalog-results" id="brCatalogResults" role="status" aria-live="polite"></p>
       </div>
-
-      <div class="hw-cat">
-        <h2 class="calc-chart-title" data-mobile-copy="Mining hardware">Every machine we can source</h2>
-        <!-- Specs are the manufacturer's and need no caveat. Price does: we
-             broker rather than hold stock, so the number that binds is the one
-             on the quote. The date comes from price-list.js. -->
-        <p class="calc-hint calc-hint--warn" data-mobile-copy="Manufacturer specifications. &lt;strong&gt;Indicative prices as of &lt;span id=&quot;hwAsOf&quot;&gt;&amp;mdash;&lt;/span&gt;; confirmed on quote.&lt;/strong&gt; We source to order.">Specifications are the manufacturer&rsquo;s. <strong>Prices are indicative as of <span id="hwAsOf">&mdash;</span> and are confirmed on quote</strong> &mdash; we source per order rather than holding stock, so the number that matters is the one on your quote, not the one on this page.</p>
-        <!-- WHAT THE THREE NEW COLUMNS NEED, AND WHY TWO OF THEM START BLANK.
-
-             Revenue needs only the BTC price and the network difficulty, both
-             fetched live, so it can be shown to everybody without assuming
-             anything about them.
-
-             Profit and payback need a power price, and there is no honest default
-             for one: it is the single number that decides which machine is best, it
-             varies by more than an order of magnitude between a stranded-gas site
-             and a domestic tariff, and seeding it would quietly flatter every figure
-             in the table. So those two columns stay empty until somebody types
-             their own. -->
-        <div class="hw-econ">
-          <div class="field">
-            <label for="hwElec">Your power price</label>
-            <div class="calc-unit"><span class="cu-pre">$</span>
-              <!-- step is 0.00001, not 0.001: a site rate is 0.05568 $/kWh and a coarser step makes
-                   the browser call the autofilled value invalid. -->
-              <input id="hwElec" type="number" min="0" step="0.00001" placeholder="0.000"
-                     aria-describedby="hwEconNote"><span class="cu-post">/kWh</span></div>
-          </div>
-          <!-- Rewritten by hardware.js when a site is chosen: at that point the rate is NOT
-               the one figure only the visitor knows, it is the one they just picked. -->
-          <p class="calc-hint" id="hwEconNote" data-mobile-copy="Enter your power price to estimate daily profit and payback.">Enter it and the last two columns fill in. Nothing is assumed on your behalf &mdash; power is what decides which machine is best, and it is the one figure only you know.</p>
-        </div>
-        <p class="calc-hint calc-hint--warn" id="hwMarketNote" data-mobile-copy="Revenue is &lt;strong&gt;gross at today’s difficulty&lt;/strong&gt;, before power, pool fees, downtime and hosting. Current-difficulty payback is a scenario, not a forecast.">Revenue is <strong>gross mining revenue at today&rsquo;s network difficulty</strong>, before power, pool fees, downtime and any hosting cost. Difficulty has risen in most years, so a payback calculated at today&rsquo;s is the optimistic end of the range rather than a forecast.</p>
-        <div class="mobile-only mobile-catalogue-tools"><label for="hwSearch">Find a miner</label><input id="hwSearch" type="search" placeholder="Search model name" autocomplete="off"><p id="hwResults" aria-live="polite"></p></div>
-        <div class="calc-table-scroll">
-          <table class="calc-table hw-table">
-            <thead>
-              <tr>
-                <th>Machine</th><th>Hashrate</th><th>Draw</th><th>Efficiency</th>
-                <th>Indicative</th>
-                <th class="hw-num">Revenue&thinsp;/&thinsp;day</th>
-                <th class="hw-num">Profit&thinsp;/&thinsp;day</th>
-                <th class="hw-num">Payback</th>
-                <th>Quantity</th><th></th>
-              </tr>
-            </thead>
-            <tbody id="hwRows"></tbody>
-          </table>
-        </div>
-        <button type="button" class="mobile-only mobile-models-button" id="hwShowModels" aria-controls="hwRows" aria-expanded="false">Show all models</button>
-        <p class="calc-caption" data-mobile-copy="Sorted by efficiency. Compare purchase price, operating costs and modeled payback before choosing.">Sorted by efficiency, best first &mdash; joules per terahash decides what a machine costs to run. It is not the same question as which is the best buy: <strong>payback</strong> is, because it is the only column that weighs the purchase price against what the machine earns. A cheap machine with mediocre efficiency often pays for itself first.</p>
+      <div class="br-catalog-empty" id="brCatalogEmpty" hidden><h3>No matching miners.</h3><p>Try a model family, manufacturer or different cooling type.</p><button class="btn btn--ghost btn--sm" id="brCatalogClear" type="button">Clear filters</button></div>
+      <div class="br-catalog-navigation" id="brCatalogNavigation" hidden>
+        <div class="br-catalog-nav-head"><span id="brCatalogPosition">01 / 01</span><label class="br-sr-only" for="brCatalogSlider">Browse miner families</label><input id="brCatalogSlider" type="range" min="0" max="0" value="0" step="1"><div class="br-catalog-arrows"><button type="button" id="brCatalogPrev" aria-label="Previous miner family">←</button><button type="button" id="brCatalogNext" aria-label="Next miner family">→</button></div></div>
+        <div class="br-catalog-rail" id="brCatalogRail" role="group" aria-label="Miner families"></div>
       </div>
-
-      <details id="mobile-quote" class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Request a hardware quote</span><small>Review your machines and send us your requirements.</small></summary><div class="mobile-details-body">
-<div class="hw-send" id="quote">
-        <h2 class="calc-chart-title" data-mobile-copy="Request a quote">Send it as a quote request</h2>
-        <pre class="hw-preview" id="hwOrderPreview">No machines selected yet.</pre>
-        <form class="form" data-mailto="hosting@protonminingco.com" data-subject="Hardware quote request via protonminingco.com">
-          <input type="hidden" name="order" id="hwOrderText">
-          <div class="form-row">
-            <div class="field">
-              <label for="hw-name">Name</label>
-              <input id="hw-name" name="name" type="text" required placeholder="Your name">
-            </div>
-            <div class="field">
-              <label for="hw-company">Company</label>
-              <input id="hw-company" name="company" type="text" placeholder="Optional">
-            </div>
+      <article class="br-catalog-product" id="brCatalogProduct" aria-labelledby="brCatalogName">
+        <div class="br-visual" id="brMiner" aria-label="Selected Bitcoin ASIC model">
+          <div class="br-scene-stage">
+            <img class="br-scene-poster" src="./miner-models/s21-pro.png" width="1000" height="800" alt="Antminer S21 Pro exterior model">
+            <div class="br-scene-canvas" id="brMinerCanvas" inert></div>
           </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="hw-email">Email</label>
-              <input id="hw-email" name="email" type="email" required placeholder="you@company.com">
-            </div>
-            <div class="field">
-              <label for="hw-host">Host them with us?</label>
-              <select id="hw-host" name="hosting">
-                <option value="yes">Yes &mdash; quote hosting too</option>
-                <option value="maybe">Maybe &mdash; send both numbers</option>
-                <option value="no">No &mdash; hardware only</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="hw-notes">Anything else</label>
-            <textarea id="hw-notes" name="notes" placeholder="Timing, delivery address, power available, whatever is relevant."></textarea>
-          </div>
-          <div class="hw-actions">
-            <button class="btn btn--primary" type="submit" id="hwSubmit" disabled>Open this in my mail app</button>
-            <button class="btn btn--ghost" type="button" id="hwCopy" disabled>Copy the order</button>
-          </div>
-          <!-- The button opens a DRAFT and does not send. Where no mail client is
-               registered nothing happens at all, so the address is printed here
-               and the whole order can be copied instead. -->
-          <p class="form-note" data-mobile-copy="Opens a draft in your mail app; nothing is sent until you send it. If no mail app opens, copy the order to &lt;a href=&quot;mailto:hosting@protonminingco.com&quot;&gt;hosting@protonminingco.com&lt;/a&gt;.">This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>.</p>
-        </form>
-      </div>
-</div></details>
+          <p class="br-catalog-shown" id="brCatalogShown">Shown: Antminer S21 Pro</p>
+          <div class="br-scene-toolbar"><p class="br-scene-status" role="status">Exterior preview</p><div class="br-scene-controls" role="group" aria-label="ASIC model controls" hidden><button type="button" data-br-view="play">Pause rotation</button><button type="button" data-br-view="out" aria-label="Zoom out">−</button><button type="button" data-br-view="in" aria-label="Zoom in">+</button><button type="button" data-br-view="reset">Reset</button></div></div>
+          <p class="br-scene-hint"><span class="br-scene-mouse">Drag to explore · Scroll to zoom</span><span class="br-scene-touch">Drag to rotate · Pinch to zoom</span></p>
+        </div>
+        <div class="br-catalog-info">
+          <p class="br-catalog-maker" id="brCatalogMaker">Bitmain <span>Air-cooled</span></p>
+          <h3 id="brCatalogName">Antminer S21 Pro</h3>
+          <p class="br-catalog-subtitle" id="brCatalogSubtitle">SHA-256 · Bitcoin</p>
+          <div class="br-catalog-variants" id="brCatalogVariants" role="group" aria-label="Choose miner variant"></div>
+          <dl class="br-catalog-specs" id="brCatalogSpecs"><div><dt>Hashrate</dt><dd>234 <small>TH/s</small></dd></div><div><dt>Power</dt><dd>3,510 <small>W</small></dd></div><div><dt>Efficiency</dt><dd>15 <small>J/TH</small></dd></div></dl>
+          <div class="br-catalog-economics"><div id="brCatalogMarket"><p class="br-catalog-label">Public market reference</p><p class="br-catalog-price">Check current quote</p><p class="br-catalog-fine">Exact variant, condition and delivery terms matter.</p></div><div id="brCatalogSavings"><p class="br-catalog-label">Hosting requirements</p><p class="br-catalog-saving">Air-cooled</p><p class="br-catalog-fine">Facility fit and cooling capacity need confirmation.</p></div></div>
+          <details class="br-catalog-compare" id="brCatalogCompare" hidden><summary>Have a Proton quote? Compare it.</summary><div class="br-compare-fields"><label for="brCatalogQuote">USD per machine<input id="brCatalogQuote" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="Enter quoted price" aria-describedby="brCatalogQuoteScope"></label><label for="brCatalogCondition">Quoted condition<select id="brCatalogCondition"><option value="new">New</option><option value="used">Used</option></select></label></div><label class="br-compare-check"><input id="brCatalogQuoteMatch" type="checkbox">This quote matches the selected variant and hashrate.</label><p id="brCatalogQuoteScope">Hardware price only, in USD. Excludes shipping, taxes, duties and fees. This comparison stays on your device.</p><p id="brCatalogQuoteResult" role="status" aria-live="polite"></p></details>
+          <a class="btn btn--primary br-catalog-request" id="brCatalogRequest" href="#quote">Plan hosting with this miner <span aria-hidden="true">↗</span></a>
+          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div></details>
+        </div>
+      </article>
+      <p class="br-catalog-footnote">Browse model families and exact variants. Cooling compatibility, facility capacity, equipment availability and hosting terms are confirmed separately.</p>
+      <noscript><p class="br-note">Enable JavaScript to browse all model families and variants. You can still <a href="#quote">enter your miner and hosting requirements</a> below.</p></noscript>
     </div>
-  </div>
-</section>
+  </section>
+
+  <section class="hw-hosting br-wrap" id="quote" aria-labelledby="hwHostingTitle">
+    <div class="hw-hosting-intro">
+      <p class="br-eyebrow">Your hosting plan</p>
+      <h2 id="hwHostingTitle">Let's find a place<br>for your miners.</h2>
+      <p>Tell us what you have in mind. We will confirm site fit, capacity, cooling requirements and the costs before you commit.</p>
+      <a href="./hosting.html">Compare hosting locations <span aria-hidden="true">↗</span></a>
+    </div>
+    <form class="form hw-hosting-form" id="hwHostingForm" data-mailto="hosting@protonminingco.com" data-subject="Hosting enquiry">
+      <input type="hidden" name="configuration" id="hwHostingConfiguration">
+      <div class="field">
+        <label for="hwHostingModel">Selected miner</label>
+        <input id="hwHostingModel" name="miner" type="text" readonly placeholder="Choose a model above" aria-describedby="hwHostingModelHint">
+        <p class="hw-field-note" id="hwHostingModelHint">Select the exact variant in the catalogue, or enter your own model below.</p>
+      </div>
+      <label class="hw-manual-check" for="hwHostingManual"><input type="checkbox" id="hwHostingManual" name="manual_model" value="yes">My miner is not listed</label>
+      <div class="field" id="hwHostingOther">
+        <label for="hwHostingOtherModel">Your miner model &amp; variant</label>
+        <input id="hwHostingOtherModel" name="other_miner" type="text" maxlength="240" placeholder="e.g. Antminer S19j Pro · 104 TH/s · air-cooled">
+      </div>
+      <div class="form-row">
+        <div class="field"><label for="hwHostingQuantity">Number of miners</label><input id="hwHostingQuantity" name="quantity" type="number" min="1" max="100000" step="1" inputmode="numeric" value="1" required></div>
+        <div class="field"><label for="hwHostingOwnership">Your machines</label><select id="hwHostingOwnership" name="ownership"><option value="needed">I need miners for hosting</option><option value="owned">I already own these miners</option><option value="undecided">Still deciding</option></select></div>
+      </div>
+      <div class="field"><label for="hwHostingFacility">Preferred hosting location</label><select id="hwHostingFacility" name="facility"><option value="">Help me choose a location</option></select><p class="hw-field-note">A location preference is an enquiry, not a capacity reservation.</p></div>
+      <pre class="hw-hosting-summary" id="hwHostingSummary" aria-live="polite">Choose a miner to see the rated power and hashrate for your fleet.</pre>
+      <div class="form-row">
+        <div class="field"><label for="hwHostingName">Name</label><input id="hwHostingName" name="name" type="text" autocomplete="name" maxlength="180" required placeholder="Your name"></div>
+        <div class="field"><label for="hwHostingEmail">Email</label><input id="hwHostingEmail" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@company.com"></div>
+      </div>
+      <div class="field"><label for="hwHostingCompany">Company <span class="hw-optional">Optional</span></label><input id="hwHostingCompany" name="company" type="text" autocomplete="organization" maxlength="180"></div>
+      <div class="field"><label for="hwHostingNotes">Timing &amp; anything else <span class="hw-optional">Optional</span></label><textarea id="hwHostingNotes" name="notes" maxlength="3000" rows="3" placeholder="Your target start date, current location, cooling needs or questions."></textarea></div>
+      <div class="br-actions hw-hosting-actions"><button class="btn btn--primary" id="hwHostingSubmit" type="submit" disabled>Open hosting enquiry <span aria-hidden="true">↗</span></button><button class="btn btn--ghost" id="hwHostingCopy" type="button" hidden>Copy enquiry</button></div>
+      <p class="hw-copy-status" id="hwHostingCopyStatus" role="status" aria-live="polite"></p>
+      <p class="form-note">Opens a draft in your mail app; nothing is sent until you send it. You can also write to <a href="mailto:hosting@protonminingco.com">hosting@protonminingco.com</a>.</p>
+      <noscript><p class="form-note">Enter your miner model above, then email your requirements to <a href="mailto:hosting@protonminingco.com?subject=Hosting%20enquiry">hosting@protonminingco.com</a>. The interactive catalogue and enquiry builder need JavaScript.</p></noscript>
+    </form>
+  </section>
+</main>
 
 <!-- ===== FOOTER ===== -->
 <footer class="footer">
@@ -290,7 +230,7 @@
       <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
 
         <h4>Services</h4>
-        <a href="./brokerage.html">ASIC brokerage</a>
+        <a href="./hardware.html#miners">Mining hardware</a>
         <a href="./hosting.html">Hosting</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./index.html#operate">Site development</a>
@@ -319,14 +259,15 @@
   </div>
 </footer>
 
-<script src="./site.js?v=30659239"></script>
-<script src="./hero-anim.js?v=30659239"></script>
-<script src="./miner-db.js?v=30659239"></script>
-<script src="./calc-engine.js?v=30659239"></script>
-<script src="./price-list.js?v=30659239"></script>
-<script src="./facilities.js?v=30659239"></script>
-<script src="./prepay.js?v=30659239"></script>
-<script src="./cart.js?v=30659239"></script>
-<script src="./hardware.js?v=30659239"></script>
+<script src="./site.js?v=9149bf89"></script>
+<script src="./hero-anim.js?v=9149bf89"></script>
+<script src="./facilities.js?v=9149bf89"></script>
+<script src="./cart.js?v=9149bf89"></script>
+<script src="./brokerage-catalog-data.js?v=9149bf89"></script>
+<script src="./brokerage-catalog.js?v=9149bf89"></script>
+<script src="./hardware-catalog.js?v=9149bf89"></script>
+<script src="./diagram-engine.js?v=9149bf89"></script>
+<script src="./scene-asic.js?v=9149bf89"></script>
+<script src="./brokerage-scene.js?v=9149bf89" data-module-src="./brokerage-stage.js?v=9149bf89" data-model-src="./brokerage-models.js?v=9149bf89"></script>
 </body>
 </html>

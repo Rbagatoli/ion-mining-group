@@ -87,6 +87,7 @@ console.log('=== front matter refuses what it cannot trust ===');
        duplicate-id check cover them for free; the price is that a slug could overwrite a page. */
     refuses(fm({ slug: 'hosting' }), 'collides', 'a slug that would overwrite hosting.html');
     refuses(fm({ slug: 'index' }), 'collides', 'or the home page');
+    refuses(fm({ slug: 'brokerage' }), 'collides', 'or the retained Hardware compatibility URL');
 
     refuses(fm({ status: 'live' }), 'status must be', 'an invented status is refused');
     refuses(fm({ summary: 'x'.repeat(161) }), 'under 160',

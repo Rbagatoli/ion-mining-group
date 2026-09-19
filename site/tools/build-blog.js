@@ -30,7 +30,7 @@ const SITE = path.join(__dirname, '..');
 const POSTS = path.join(SITE, 'posts');
 const INDEX_PAGE = path.join(SITE, 'blog.html');
 
-const { nav, CTA, PAGES: NAV_PAGES } = require('./build-nav.js');
+const { nav, CTA, PAGES: NAV_PAGES, COMPATIBILITY_PAGES } = require('./build-nav.js');
 const LAUNCH = require('./launch.js');
 
 /* Kept in step with build-seo.js by blog-suite.mjs: two origins for one page is the classic way
@@ -109,7 +109,7 @@ function parseFrontMatter(file, raw) {
 
     /* THE FLAT NAMESPACE, GUARDED. A post slugged "hosting" would overwrite the hosting page on
        the next run, and the only symptom would be the marketing site quietly losing a page. */
-    const reserved = Object.keys(NAV_PAGES).map((p) => p.replace(/\.html$/, ''));
+    const reserved = [...Object.keys(NAV_PAGES), ...COMPATIBILITY_PAGES].map((p) => p.replace(/\.html$/, ''));
     if (reserved.indexOf(meta.slug) >= 0) {
         fail(file, 'slug "' + meta.slug + '" collides with the page ' + meta.slug + '.html');
     }

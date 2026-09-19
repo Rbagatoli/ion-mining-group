@@ -392,7 +392,14 @@ ok(/prefers-reduced-motion[\s\S]{0,400}\.reveal[^}]*opacity:\s*1/.test(css),
 const PAGES = fs.readdirSync(D).filter(f => f.endsWith('.html'));
 ok(PAGES.length >= 18, 'every page in site/ is being checked', PAGES.length + ' pages');
 
-const noField = PAGES.filter(f =>
+/* A compatibility redirect is intentionally lightweight. Verify its exact
+   destination before excluding that one retired URL from animation checks. */
+const isHardwareRedirect = require(REPO_ROOT + 'tools/build-pages.js').isHardwareRedirect;
+ok(isHardwareRedirect(fs.readFileSync(D + 'brokerage.html', 'utf8')),
+   '  the retired URL is a verified Hardware redirect, not an unanimated marketing page');
+const CONTENT_PAGES = PAGES.filter(f => f !== 'brokerage.html');
+
+const noField = CONTENT_PAGES.filter(f =>
     (fs.readFileSync(D + f, 'utf8').match(/anim-field anim-field--page/g) || []).length !== 1);
 ok(noField.length === 0,
    '  every page carries exactly one page-wide field',
@@ -402,16 +409,15 @@ ok(noField.length === 0,
    paints -- but it must not be inside a section, because .hero-zone and .dg-wrap
    are position:relative and a future transform or filter on an ancestor would
    turn it into that ancestor's containing block and shrink the field to it. */
-const notBodyChild = PAGES.filter(f => {
+const notBodyChild = CONTENT_PAGES.filter(f => {
     const src = fs.readFileSync(D + f, 'utf8');
-    return src.indexOf('<body>\n<canvas class="anim-field anim-field--page') < 0 &&
-           src.indexOf('<body>\r\n<canvas class="anim-field anim-field--page') < 0;
+    return !/<body(?:\s[^>]*)?>\s*<canvas class="anim-field anim-field--page/.test(src);
 });
 ok(notBodyChild.length === 0,
    '  and it is the first child of <body>, out of every section\'s reach',
    notBodyChild.join(', '));
 
-const noDriver = PAGES.filter(f => fs.readFileSync(D + f, 'utf8').indexOf('hero-anim.js') < 0);
+const noDriver = CONTENT_PAGES.filter(f => fs.readFileSync(D + f, 'utf8').indexOf('hero-anim.js') < 0);
 ok(noDriver.length === 0, '  and loads the driver that paints it', noDriver.join(', '));
 
 const stillHead = PAGES.filter(f => fs.readFileSync(D + f, 'utf8').indexOf('anim-field--head') >= 0);

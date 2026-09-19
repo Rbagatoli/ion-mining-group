@@ -58,7 +58,7 @@ const CARDS = [
     /* The calculator and contact pages have no drawing of their own. They get
        the whole-mine card: it is what the company builds, which is the honest
        thing to show beside either title. */
-    { file: 'home.png',      scene: null, pages: ['brokerage.html', 'calculator.html', 'contact.html', 'hardware.html', 'cart.html', 'pay.html', 'order.html'] },
+    { file: 'home.png',      scene: null, pages: ['calculator.html', 'contact.html', 'hardware.html', 'cart.html', 'pay.html', 'order.html'] },
 ];
 
 /* ---------- the mark ----------

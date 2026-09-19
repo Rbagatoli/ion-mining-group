@@ -34,10 +34,21 @@
     if (result && result.status === 'not-comparable') return {label, value: 'No matched comparison', detail: 'Variant, condition and pricing scope must match.'};
     return {label, value: 'Quote required', detail: 'Calculated when a comparable Proton quote is available.'};
   }
-  function availabilityText(variant) {
+  function availabilityText(variant, purpose) {
     if (variant.availability === 'preorder') return 'SHA-256 · Bitcoin · Future batch · availability to confirm';
     if (variant.availability === 'sold-out') return 'SHA-256 · Bitcoin · Listed sold out · availability to confirm';
-    return variant.hashrateTH == null ? 'SHA-256 · Bitcoin · Exact hashrate bin to confirm' : 'SHA-256 · Bitcoin · New & used sourcing';
+    return variant.hashrateTH == null ? 'SHA-256 · Bitcoin · Exact hashrate bin to confirm' : purpose === 'hosting' ? 'SHA-256 · Bitcoin · Published specifications · confirm exact unit' : 'SHA-256 · Bitcoin · New & used sourcing';
+  }
+  function hostingRequirements(family, variant) {
+    const requirements = {
+      air: 'Confirm intake airflow, exhaust capacity and site electrical compatibility.',
+      hydro: 'Confirm coolant requirements, flow, heat rejection and site electrical compatibility.',
+      immersion: 'Confirm an approved immersion fluid, compatible tank and heat rejection system, and site electrical compatibility.'
+    };
+    const power = variant.powerW != null && Number.isFinite(Number(variant.powerW)) && Number(variant.powerW) > 0
+      ? number(variant.powerW) + ' W at the miner; facility cooling and other site loads are additional.'
+      : 'Miner power requires confirmation; facility cooling and other site loads are additional.';
+    return {label: 'Hosting requirements', value: coolingNames[family.cooling] || 'Compatibility check', detail: (requirements[family.cooling] || 'Confirm site electrical and cooling compatibility for the exact unit.') + ' ' + power};
   }
   function evidenceReferences(variant, market) {
     const result = [], seen = new Set();
@@ -59,6 +70,7 @@
     const el = id => doc.getElementById(id);
     const section = el('brCatalog');
     if (!section || !catalog || !Array.isArray(catalog.families) || !catalog.families.length) return null;
+    const hosting = section.dataset.catalogPurpose === 'hosting';
     const families = catalog.families.filter(family => Array.isArray(family.variants) && family.variants.length);
     if (!families.length) return null;
     const search = el('brCatalogSearch'), cooling = el('brCatalogCooling'), rail = el('brCatalogRail');
@@ -78,27 +90,34 @@
         else if (itemBounds.right > bounds.right) container.scrollLeft += itemBounds.right - bounds.right;
       });
     }
-    function resetQuote() { quote.value = ''; quoteMatch.checked = false; quoteCondition.value = 'new'; el('brCatalogQuoteResult').textContent = ''; }
+    function resetQuote() { if (quote) quote.value = ''; if (quoteMatch) quoteMatch.checked = false; if (quoteCondition) quoteCondition.value = 'new'; if (el('brCatalogQuoteResult')) el('brCatalogQuoteResult').textContent = ''; }
     function renderSavings() {
+      const target = el('brCatalogSavings');
+      if (!target) return;
+      if (hosting) {
+        const presentation = hostingRequirements(selectedFamily, selectedVariant);
+        target.replaceChildren(node('p', presentation.label, 'br-catalog-label'), node('p', presentation.value, 'br-catalog-saving'), node('p', presentation.detail, 'br-catalog-fine'));
+        return;
+      }
       let result = typeof catalog.savingsFor === 'function' ? catalog.savingsFor(selectedVariant) : {status: 'quote-required'};
-      const raw = quote.value.trim();
-      if (raw && quoteMatch.checked && typeof catalog.compareQuote === 'function') {
+      const raw = quote ? quote.value.trim() : '', quoteResult = el('brCatalogQuoteResult');
+      if (raw && quoteMatch && quoteMatch.checked && typeof catalog.compareQuote === 'function') {
         const usd = Number(raw);
         if (Number.isFinite(usd) && usd > 0 && usd <= 1000000) {
-          result = catalog.compareQuote(selectedVariant, {usd, currency: 'USD', condition: quoteCondition.value, hashrateTH: selectedVariant.hashrateTH, scope: 'hardware-only'});
-          el('brCatalogQuoteResult').textContent = result.note || comparisonText(result).detail;
+          result = catalog.compareQuote(selectedVariant, {usd, currency: 'USD', condition: quoteCondition ? quoteCondition.value : 'new', hashrateTH: selectedVariant.hashrateTH, scope: 'hardware-only'});
+          if (quoteResult) quoteResult.textContent = result.note || comparisonText(result).detail;
         } else {
           result = {status: 'quote-required'};
-          el('brCatalogQuoteResult').textContent = 'Enter a positive per-machine price of up to $1,000,000.';
+          if (quoteResult) quoteResult.textContent = 'Enter a positive per-machine price of up to $1,000,000.';
         }
-      } else el('brCatalogQuoteResult').textContent = raw ? 'Confirm the exact variant and hashrate to compare this quote.' : '';
-      const presentation = comparisonText(result), target = el('brCatalogSavings');
+      } else if (quoteResult) quoteResult.textContent = raw ? 'Confirm the exact variant and hashrate to compare this quote.' : '';
+      const presentation = comparisonText(result);
       target.replaceChildren(node('p', presentation.label, 'br-catalog-label'), node('p', presentation.value, 'br-catalog-saving'), node('p', presentation.detail, 'br-catalog-fine'));
     }
     function renderEvidence(market) {
       const target = el('brCatalogEvidence'), list = node('ul');
       target.replaceChildren();
-      target.append(node('p', 'Manufacturer-rated specifications for the selected variant. Actual performance depends on operating conditions; confirm exact batch, electrical and cooling requirements before purchase.'));
+      target.append(node('p', hosting ? 'Published specifications for the selected variant. Confirm the exact unit, electrical requirements and cooling compatibility with the hosting site. Listed miner power excludes facility cooling and other site loads.' : 'Manufacturer-rated specifications for the selected variant. Actual performance depends on operating conditions; confirm exact batch, electrical and cooling requirements before purchase.'));
       if (selectedVariant.specNote) target.append(node('p', selectedVariant.specNote));
       if (selectedFamily.renderNote) target.append(node('p', selectedFamily.renderNote));
       if (selectedVariant.dimensionsMM && selectedVariant.dimensionsMM.length === 3) target.append(node('p', 'Machine dimensions (L × W × H): ' + selectedVariant.dimensionsMM.map(number).join(' × ') + ' mm.'));
@@ -113,18 +132,24 @@
         list.append(item);
       });
       if (list.childNodes.length) target.append(list);
-      target.append(node('p', market.note || 'Public asking prices are reference points, not Proton offers. Compare the same variant, condition and pricing scope.'));
-      target.append(node('p', 'Market references cover hardware only and exclude shipping, taxes, duties, inspection and sourcing fees. An advertised listing does not confirm available stock. No savings are guaranteed.'));
+      if (hosting) {
+        const count = Number(market.count);
+        target.append(node('p', count === 1 ? 'One observed hardware asking-price reference, not a market average or Proton offer.' : count > 1 ? 'The reference uses ' + number(count) + ' observed hardware asking-price listings, not the whole market or a Proton offer.' : 'Public hardware asking prices are reference points, not Proton offers. Confirm the exact variant, condition and current listing.'));
+        target.append(node('p', 'Hardware references exclude shipping, taxes, duties and hosting costs. A listing does not confirm stock or compatibility with a hosting site.'));
+      } else {
+        target.append(node('p', market.note || 'Public asking prices are reference points, not Proton offers. Compare the same variant, condition and pricing scope.'));
+        target.append(node('p', 'Market references cover hardware only and exclude shipping, taxes, duties, inspection and sourcing fees. An advertised listing does not confirm available stock. No savings are guaranteed.'));
+      }
       target.append(node('p', '3D previews follow public manufacturer references. They are not manufacturer CAD files; exact batch details may vary.'));
     }
     function renderMarket() {
       const market = typeof catalog.marketFor === 'function' ? catalog.marketFor(selectedVariant) : {status: 'unavailable'};
-      let value = 'Quote required', note = 'No current comparable public price confirmed.';
+      let value = hosting ? 'Reference unavailable' : 'Quote required', note = 'No current comparable public price confirmed.';
       if (market.status === 'current' && Number.isFinite(market.low) && Number.isFinite(market.high)) {
         value = market.low === market.high ? money(market.low) : money(market.low) + '–' + money(market.high);
         note = 'USD / machine · new hardware' + (market.checkedOn ? ' · checked ' + market.checkedOn : '');
-      } else if (market.status === 'stale') { value = 'Price needs refresh'; note = market.checkedOn ? 'Last reference checked ' + market.checkedOn + '.' : 'A fresh matching quote is needed.'; }
-      el('brCatalogMarket').replaceChildren(node('p', 'Public market reference', 'br-catalog-label'), node('p', value, 'br-catalog-price'), node('p', note, 'br-catalog-fine'));
+      } else if (market.status === 'stale') { value = 'Price needs refresh'; note = market.checkedOn ? 'Last reference checked ' + market.checkedOn + '.' : hosting ? 'A fresh matching listing needs to be checked.' : 'A fresh matching quote is needed.'; }
+      el('brCatalogMarket').replaceChildren(node('p', hosting ? 'Public hardware reference' : 'Public market reference', 'br-catalog-label'), node('p', value, 'br-catalog-price'), node('p', note, 'br-catalog-fine'));
       renderEvidence(market); renderSavings();
     }
     function renderVariants() {
@@ -155,7 +180,7 @@
       el('brCatalogName').textContent = selectedVariant.name.split(' · ')[0];
       el('brCatalogShown').textContent = 'Shown: ' + selectedFamily.name;
       el('brCatalogMaker').replaceChildren(doc.createTextNode(selectedFamily.maker + ' '), node('span', coolingNames[selectedFamily.cooling] || selectedFamily.cooling));
-      el('brCatalogSubtitle').textContent = availabilityText(selectedVariant);
+      el('brCatalogSubtitle').textContent = availabilityText(selectedVariant, hosting ? 'hosting' : 'brokerage');
       const specs = el('brCatalogSpecs'); specs.replaceChildren();
       [['Hashrate', selectedVariant.hashrateTH, 'TH/s'], ['Power', selectedVariant.powerW, 'W'], ['Efficiency', selectedVariant.efficiency, 'J/TH']].forEach(([label, value, unit]) => {
         const known = value != null && value !== '' && Number.isFinite(Number(value));
@@ -211,17 +236,21 @@
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.7) step(dx < 0 ? 1 : -1);
     }, {passive: true});
     info.addEventListener('touchcancel', () => { touchStart = null; }, {passive: true});
-    [quote, quoteCondition, quoteMatch].forEach(input => input.addEventListener(input === quote ? 'input' : 'change', renderSavings));
+    if (!hosting) [quote, quoteCondition, quoteMatch].filter(Boolean).forEach(input => input.addEventListener(input === quote ? 'input' : 'change', renderSavings));
     el('brCatalogRequest').addEventListener('click', () => {
+      if (hosting) {
+        win.dispatchEvent(new win.CustomEvent('hardware:choose-miner', {detail: {family: selectedFamily, variant: selectedVariant}}));
+        return;
+      }
       const form = el('brBriefForm'); if (!form) return;
       const buy = form.querySelector('[name="mode"][value="buy"]'); if (buy) { buy.checked = true; buy.dispatchEvent(new win.Event('change', {bubbles: true})); }
       el('brModel').value = selectedVariant.name;
       el('brVariant').value = selectedVariant.name + ' · ' + number(selectedVariant.hashrateTH) + ' TH/s · ' + (coolingNames[selectedFamily.cooling] || selectedFamily.cooling);
       el('brModel').dispatchEvent(new win.Event('input', {bubbles: true}));
     });
-    el('brCatalogTools').hidden = false; el('brCatalogNavigation').hidden = false; el('brCatalogCompare').hidden = typeof catalog.compareQuote !== 'function';
+    el('brCatalogTools').hidden = false; el('brCatalogNavigation').hidden = false; if (el('brCatalogCompare')) el('brCatalogCompare').hidden = hosting || typeof catalog.compareQuote !== 'function';
     renderSelection(false); el('brCatalogResults').textContent = filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families');
     return {applyFilters, selectFamily, getSelection: () => ({family: selectedFamily, variant: selectedVariant})};
   }
-  return {filterFamilies, safeURL, comparisonText, availabilityText, evidenceReferences, mount};
+  return {filterFamilies, safeURL, comparisonText, availabilityText, hostingRequirements, evidenceReferences, mount};
 }));

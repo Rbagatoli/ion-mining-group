@@ -1,15 +1,32 @@
-# Brokerage miner catalog
+# Hardware catalogue and hosting enquiries
 
-The brokerage page browses **15 representative industrial Bitcoin miner families and 63 configurations, bins or operating modes**, researched on **2026-09-18**. It covers Bitmain Antminer, MicroBT WhatsMiner, Canaan Avalon and Bitdeer SEALMINER. All 28 model names from the previous catalog remain discoverable. Unsupported bins remain request-only with unknown specifications rather than inheriting estimates.
+The Hardware page is a browsing guide for customers planning a hosted mining fleet. Its 3D catalogue covers **15 representative industrial Bitcoin miner families and 63 configurations, bins or operating modes**, researched on **2026-09-18**: Bitmain Antminer, MicroBT WhatsMiner, Canaan Avalon and Bitdeer SEALMINER. All 28 model names from the previous catalogue remain discoverable. Unsupported bins retain unknown specifications rather than inheriting estimates.
 
-This is a sourcing catalog. A visible product, quote request or seller listing does not establish Proton inventory, supplier allocation or delivery availability. Residential and non-SHA-256 products are outside the current scope.
+Customers may already own miners, need miners for hosting, or still be deciding. The page helps them compare models and prepare hosting requirements; it has no independent buy/sell sourcing form. A visible model or public price reference does not establish Proton inventory, supplier allocation, hosting capacity or delivery availability. Residential and non-SHA-256 products are outside the current catalogue scope; an unlisted miner can be entered manually for an enquiry.
+
+`brokerage.html` remains only as a lightweight compatibility page. Its script preserves the incoming query string and redirects to `hardware.html#miners`; its ordinary link works without JavaScript. It canonicalizes to Hardware, stays out of the sitemap, and is not promoted in navigation or the Services footer. The filename remains reserved against generated blog posts.
+
+## From browsing to a hosting enquiry
+
+Browsing or changing a variant does not overwrite an existing enquiry. The explicit **Plan hosting with this miner** action copies the selected family and exact variant into the form. Quantity then determines the rated fleet hashrate and miner power from that variant's known specifications. Unknown values remain **To confirm**, and miner power excludes facility cooling and other overhead. Air, hydro and immersion cooling requirements remain distinct; a catalogue selection cannot establish site compatibility.
+
+The form retains whether the customer owns the machines, needs them or is undecided, along with an optional preferred hosting location, contact details and notes. A manually entered model does not inherit specifications from the last browsed miner. Availability, electrical supply, cooling compatibility and commercial terms require confirmation before commitment.
+
+Submitting opens a draft addressed to `hosting@protonminingco.com` in the visitor's mail application. The draft includes the exact variant ID, model, quantity, ownership choice, known rated totals and hosting requirements. Nothing is sent until the visitor sends it. **Copy enquiry** provides the same preparation route without opening a mail application. These actions neither submit a CRM lead nor reserve equipment, a site or a hosting rate.
+
+Existing saved carts and their checkout remain accessible and unchanged. The new catalogue does not populate or clear them: mapping an exact catalogue variant to a guessed legacy cart SKU would misstate the selected equipment.
 
 ## Files and source evidence
 
 - `site/brokerage-catalog-data.js`: browser/Node data module, source records, freshness rules and comparison API.
-- `site/brokerage-catalog.js`: search, family/variant selection, evidence and local quote comparison.
+- `site/hardware.html`, `site/hardware-catalog.css`: the Hardware browsing guide and hosting enquiry.
+- `site/hardware-catalog.js`: exact selection, quantity calculations and customer-controlled email/copy preparation.
+- `site/brokerage-catalog.js`: shared search, family/variant selection and evidence; Hardware uses its hosting mode.
 - `site/brokerage-scene.js`, `site/brokerage-stage.js`, `site/brokerage-models.js`: preview lifecycle, rendering and representative exteriors.
 - `tests/site/brokerage-catalog-data-suite.js`: pricing and evidence regression checks.
+- `tests/site/hardware-suite.js`: hosting configuration, unknown specifications and enquiry boundaries.
+
+The shared catalogue and rendering files retain their `brokerage-*` names for reuse. Their filenames do not indicate a separate public brokerage service.
 
 Each variant contains specification links and a `specNote`; each market observation records its seller URL, exact hashrate bin, condition, currency, scope, check date and availability wording. Conflicting power or efficiency fields remain `null`, including the affected Avalon configurations. Unknown dimensions are not inferred from a similar miner.
 
@@ -25,7 +42,7 @@ One eligible listing is one asking-price reference. Multiple eligible listings y
 
 An observation remains eligible for seven calendar days after its check date, unless it expires earlier. On day eight it becomes stale. Future or invalid dates are rejected. A date stamp records the last check; it is not a seller guarantee that the price will remain available for seven days. There is no background price refresh.
 
-`compareQuote(variant, quote, date)` compares an entered per-machine hardware price with matching references. It requires numeric positive USD, exact hashrate, condition and `scope: 'hardware-only'`. The displayed difference is reference median minus entered quote. A negative difference remains a higher cost, and unknown costs are never silently zero. The browser worksheet is local and does not issue or verify a Proton offer.
+The Hardware hosting mode shows public references and hosting requirements. It does not expose the former quote-comparison worksheet or a claimed Proton saving. The shared `compareQuote(variant, quote, date)` API remains available and tested for other callers: it requires a positive USD price, exact hashrate, condition and `scope: 'hardware-only'`. Its arithmetic is reference median minus entered quote; a negative difference remains a higher cost, and unknown costs are never silently zero. It cannot issue or verify a Proton offer.
 
 All catalog `protonQuote` fields are currently `null`. Consequently `savingsFor` returns `quote-required`. The old miner database estimates and inherited price list are not executable Proton quotes and must not be reused as offers or used to invent a discount percentage.
 
@@ -34,7 +51,7 @@ All catalog `protonQuote` fields are currently `null`. Consequently `savingsFor`
 1. Open the exact manufacturer's specification and seller product page. Check the selected bin, condition, included accessories, batch, delivery wording, currency and commercial terms. Keep ambiguous or unavailable listings as evidence with `comparable: false` or their actual unavailable status.
 2. Update the variant's observations with the observed amount, exact HTTPS URL, seller, bin, condition, `currency: 'USD'`, scope, real `checkedOn` date, availability and a concise note. Preserve material exclusions. Do not attach a neighboring bin's cheapest category price. Add `expiresOn` when the offer supplies an expiry.
 3. For an actual Proton offer, obtain the approved per-machine hardware quote and match its bin, condition, quantity and commercial scope. Populate `protonQuote` only with verified `confirmed: true`, `comparable: true`, `usd`, `currency`, `hashrateTH`, `condition`, `scope`, `checkedOn` and `expiresOn`. Retain the supporting commercial evidence in the appropriate internal record; do not publish private supplier documents or customer details. A missing component or unmatched scope keeps the quote unconfirmed.
-4. Update source notes and the research packet, then run `node tests/site/brokerage-catalog-data-suite.js` and the site's standard build/check workflow. Check the browser's source details, current and expired price states, selected bin, and any negative difference before release.
+4. Update source notes and the research packet, then run `node tests/site/brokerage-catalog-data-suite.js`, `node tests/site/brokerage-catalog-ui-suite.js`, `node tests/site/hardware-suite.js` and the site's standard build/check workflow. Check source details, current and expired price states, exact variant selection and the resulting hosting enquiry before release. If a separate caller exposes quote comparisons, verify negative differences there as well.
 
 Keep the seven-day check and explicit quote expiry when refreshing data. Do not make an expired offer look current merely by changing the top-level catalog date. If a total delivered comparison is added later, it needs matched destination, quantity, delivery, warranty and all landed charges on both sides; this module does not calculate that total.
 

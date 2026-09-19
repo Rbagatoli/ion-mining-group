@@ -7,7 +7,11 @@ const decode=s=>s.replace(/&(amp|quot|lt|gt|#10);/g,(_,c)=>({amp:'&',quot:'"',lt
 const ids=s=>[...s.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]).sort();
 let variants=0;
 assert.equal(fixture.blocks.length,122);
-for(const block of fixture.blocks){
+/* Hardware was explicitly replaced with the hosting catalogue on 2026-09-19.
+   Keep the earlier desktop-copy lock on every page outside that requested redesign. */
+const retainedBlocks=fixture.blocks.filter(block=>block.file!=='site/hardware.html');
+assert.equal(retainedBlocks.length,113);
+for(const block of retainedBlocks){
  const source=read(block.file),matches=[...source.matchAll(new RegExp('<'+block.tag+'\\b[^>]*data-mobile-copy="([^"]*)"[^>]*>([\\s\\S]*?)<\\/'+block.tag+'>','g'))];
  assert.ok(matches.some(m=>m[2]===block.html),block.file+' lost original desktop copy: '+block.html.slice(0,75));
 }
@@ -18,10 +22,10 @@ for(const f of fs.readdirSync(path.join(root,'site')).filter(f=>f.endsWith('.htm
   assert.ok(!/<(?:input|select|textarea|button|script)\b/i.test(short+m[3]),f+' must not replace interactive controls through copy switching');
  }
 }
-assert.ok(variants>=137,'Expected mobile variants on every edited page and generated article CTA');
+assert.ok(variants>=128,'Expected mobile variants outside the replaced Hardware catalogue');
 assert.match(read('site/index.html'),/<h1[^>]*>Power in\.<br>Bitcoin out\.<\/h1>/);
 assert.match(read('site/site.js'),/max-width: 640px/);
 assert.match(read('site/site.js'),/replacement\.replaceWith\(node\)/,'Live price and order-link nodes must survive a layout switch');
-console.log('ok 122 original desktop copy blocks retained');
+console.log('ok 113 original desktop copy blocks retained outside the requested Hardware redesign');
 console.log('ok '+variants+' mobile variants preserve live targets and avoid replacing controls');
 console.log('ok the requested headline is shared by both layouts');
