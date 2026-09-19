@@ -71,30 +71,48 @@ assert.match(hostingRequirements({cooling:'immersion'},{powerW:4050}).detail,/ap
 
 /* Exercise the mounted controller contract with small DOM test doubles. No
    Three/WebGL is needed to prove hosting selection and optional controls. */
-function harness({purpose='hosting',comparisonControls=false,marketStatus='current',withRail=false}={}) {
+function harness({purpose='hosting',comparisonControls=false,marketStatus='current',withRail=false,orientation='horizontal'}={}) {
+  let focused=null;const pendingFrames=[];
   class Element {
-    constructor(){this.children=[];this.dataset={};this.events={};this.attributes={};this.value='';this.checked=false;this.hidden=true;this.style={setProperty(){}};this._text='';}
+    constructor(){this.children=[];this.dataset={};this.events={};this.attributes={};this.value='';this.checked=false;this.hidden=true;this.style={setProperty(){}};this._text='';this.scrollTop=0;this.scrollLeft=0;}
     set textContent(value){this._text=String(value);this.children=[];}
     get textContent(){return this._text+this.children.map(child=>child.textContent||'').join('');}
     get childNodes(){return this.children;}
-    append(...children){this.children.push(...children);}
-    replaceChildren(...children){this._text='';this.children=children;}
+    append(...children){for(const child of children){child.parentNode=this;this.children.push(child);}}
+    replaceChildren(...children){this._text='';for(const child of this.children)child.parentNode=null;this.children=[];if(this.layout){this.scrollTop=0;this.scrollLeft=0;}this.append(...children);}
     setAttribute(name,value){this.attributes[name]=value;}
     addEventListener(name,handler){(this.events[name]||=([])).push(handler);}
     fire(name,event={}){for(const handler of this.events[name]||[])handler(event);}
-    querySelector(){return null;}
-    focus(){}
+    querySelector(selector){return selector==='[aria-pressed="true"]'?this.children.find(child=>child.attributes?.['aria-pressed']==='true')||null:null;}
+    closest(selector){if(selector==='[data-br-catalog-family]'&&this.dataset.brCatalogFamily)return this;if(selector==='[data-br-catalog-variant]'&&this.dataset.brCatalogVariant)return this;return this.parentNode?.closest?.(selector)||null;}
+    get isConnected(){return !!this.isRoot||!!this.parentNode?.isConnected;}
+    getBoundingClientRect(){
+      if(this.bounds)return this.bounds;
+      const parent=this.parentNode;
+      if(parent?.layout){
+        const rect=parent.getBoundingClientRect(),index=parent.children.indexOf(this);
+        const left=rect.left+(parent.layout==='horizontal'?index*90:0)-parent.scrollLeft;
+        const top=rect.top+(parent.layout==='vertical'?index*60:0)-parent.scrollTop;
+        return {left,right:left+(parent.layout==='horizontal'?90:200),top,bottom:top+(parent.layout==='vertical'?60:40)};
+      }
+      return {left:0,right:100,top:0,bottom:100};
+    }
+    focus(options){focused=this;this.focusOptions=options;}
+    scrollIntoView(){throw new Error('Catalogue browsing must not scroll page ancestors');}
   }
   const ids=['brCatalog','brCatalogSearch','brCatalogCooling','brCatalogVariants','brCatalogProduct','brCatalogPrev','brCatalogNext','brCatalogSavings','brCatalogEvidence','brCatalogMarket','brCatalogPosition','brCatalogName','brCatalogShown','brCatalogMaker','brCatalogSubtitle','brCatalogSpecs','brCatalogResults','brCatalogEmpty','brCatalogNavigation','brCatalogClear','brCatalogRequest','brCatalogTools','brCatalogCompare'];
   if(withRail)ids.push('brCatalogRail');
   if(comparisonControls)ids.push('brCatalogQuote','brCatalogQuoteMatch','brCatalogCondition','brCatalogQuoteResult');
-  const nodes=Object.fromEntries(ids.map(id=>[id,new Element()]));nodes.brCatalog.dataset.catalogPurpose=purpose;nodes.brCatalogCooling.value='all';
+  const nodes=Object.fromEntries(ids.map(id=>[id,new Element()]));for(const item of Object.values(nodes))item.isRoot=true;
+  nodes.brCatalog.dataset.catalogPurpose=purpose;nodes.brCatalogCooling.value='all';
+  nodes.brCatalogVariants.layout='horizontal';nodes.brCatalogVariants.bounds={left:0,right:120,top:400,bottom:440};
+  if(withRail){nodes.brCatalogRail.dataset.orientation=orientation;nodes.brCatalogRail.layout=orientation;nodes.brCatalogRail.bounds={left:0,right:200,top:100,bottom:220};}
   const info=new Element();nodes.brCatalog.querySelector=selector=>selector==='.br-catalog-info'?info:null;
   const doc={getElementById:id=>nodes[id]||null,createElement:()=>new Element(),createTextNode:value=>({textContent:value})};
-  const emitted=[],win={requestAnimationFrame(){},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},Event:class{constructor(type){this.type=type;}},dispatchEvent:event=>emitted.push(event)};
+  const emitted=[],win={scrollY:500,scrollTo(){throw new Error('Catalogue browsing must not scroll the page');},requestAnimationFrame(callback){pendingFrames.push(callback);},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},Event:class{constructor(type){this.type=type;}},dispatchEvent:event=>emitted.push(event)};
   let savingsCalls=0,comparisonCalls=0;
   const catalog={families:families.map(f=>({...f,modelKey:f.id,variants:f.variants.map(v=>({...v,powerW:f.cooling==='hydro'?5925:3510,sources:[],market:{observations:[]}}))})),marketFor:()=>({status:marketStatus,low:2695,high:2695,count:1,checkedOn:'2026-09-18',note:'A brokerage-only comparison note with sourcing fees.'}),savingsFor:()=>{savingsCalls++;return{status:'quote-required'};},compareQuote:()=>{comparisonCalls++;return{status:'current',usd:100};}};
-  return {nodes,doc,win,catalog,emitted,counts:()=>({savingsCalls,comparisonCalls})};
+  return {nodes,doc,win,catalog,emitted,flush(){while(pendingFrames.length)pendingFrames.shift()();},focused:()=>focused,counts:()=>({savingsCalls,comparisonCalls})};
 }
 const hosting=harness(),hostingUI=mount(hosting.doc,hosting.catalog,hosting.win);
 assert(hostingUI,'Hosting should mount without quote inputs or a brokerage form.');
@@ -137,4 +155,72 @@ assert.equal(navigation.nodes.brCatalogPosition.textContent,'01 / 01');
 navigation.nodes.brCatalogNext.fire('click');assert.equal(navigationUI.getSelection().family.id,'s21-hyd');
 navigation.nodes.brCatalogSearch.value='missing miner';navigation.nodes.brCatalogSearch.fire('input');assert.equal(navigation.nodes.brCatalogNavigation.hidden,true);
 navigation.nodes.brCatalogClear.fire('click');assert.equal(navigation.nodes.brCatalogNavigation.hidden,false);assert.equal(navigation.nodes.brCatalogNext.disabled,false);
-console.log('  ok    catalogue UI: search, exact variants, safe evidence, legacy comparison and hosting selection/requirements');
+
+const vertical=harness({withRail:true,orientation:'vertical'}),verticalUI=mount(vertical.doc,vertical.catalog,vertical.win);
+const rail=vertical.nodes.brCatalogRail;
+function railKey(key,extra={}) {
+  let prevented=false;
+  rail.fire('keydown',{key,target:rail.querySelector('[aria-pressed="true"]'),preventDefault(){prevented=true;},...extra});
+  vertical.flush();return prevented;
+}
+function selectedVisible(label) {
+  const selected=rail.querySelector('[aria-pressed="true"]'),item=selected.getBoundingClientRect(),bounds=rail.getBoundingClientRect();
+  assert(item.top>=bounds.top&&item.bottom<=bounds.bottom,label+' stays inside the rail viewport');
+  assert.equal(rail.children.filter(child=>child.attributes['aria-pressed']==='true').length,1,label+' has one announced selection');
+  assert.equal(vertical.win.scrollY,500,label+' does not move the page');
+  assert.equal(rail.scrollLeft,0,label+' does not scroll the vertical rail sideways');
+}
+vertical.flush();selectedVisible('Initial family');
+assert(railKey('End'));assert.equal(verticalUI.getSelection().family.id,'m60');assert.equal(rail.scrollTop,60);selectedVisible('End');
+assert.deepEqual(vertical.focused().focusOptions,{preventScroll:true},'Keyboard selection focuses without scrolling page ancestors.');
+assert(railKey('ArrowUp'));assert.equal(verticalUI.getSelection().family.id,'s21-hyd');selectedVisible('ArrowUp');
+assert(railKey('ArrowDown'));assert.equal(verticalUI.getSelection().family.id,'m60');selectedVisible('ArrowDown');
+assert(railKey('Home'));assert.equal(verticalUI.getSelection().family.id,'s21');assert.equal(rail.scrollTop,0);selectedVisible('Home');
+assert(!railKey('ArrowRight'),'Vertical rails do not consume horizontal navigation keys.');
+assert(!railKey('ArrowDown',{ctrlKey:true}),'Modified keys are left to the browser.');
+const lastButton=rail.children.at(-1);lastButton.focus({preventScroll:true});
+assert(railKey('ArrowUp',{target:lastButton}));assert.equal(verticalUI.getSelection().family.id,'s21-hyd','Keyboard movement starts at the actually focused family.');
+vertical.nodes.brCatalogNext.fire('click');vertical.flush();selectedVisible('Next-family button');
+const heldSelection=verticalUI.getSelection().family.id;
+rail.scrollTop=0;rail.fire('scroll');
+assert.equal(verticalUI.getSelection().family.id,heldSelection,'Native scrollbar movement does not choose a model.');
+vertical.nodes.brCatalogNext.fire('click');vertical.flush();assert.equal(verticalUI.getSelection().family.id,'s21');selectedVisible('Wrapped next-family button');
+verticalUI.selectFamily(2);vertical.flush();vertical.nodes.brCatalogCooling.value='air';vertical.nodes.brCatalogCooling.fire('change');vertical.flush();
+assert.equal(verticalUI.getSelection().family.id,'m60','Filtering retains a matching current family.');selectedVisible('Retained filter selection');
+vertical.nodes.brCatalogSearch.value='216';vertical.nodes.brCatalogSearch.fire('input');vertical.flush();
+assert.equal(verticalUI.getSelection().variant.id,'s21-plus-216','Search chooses the exact matching bin when the previous family is excluded.');
+assert(vertical.nodes.brCatalogPrev.disabled&&vertical.nodes.brCatalogNext.disabled,'One result disables both family-step buttons.');selectedVisible('One result');
+vertical.nodes.brCatalogSearch.value='missing miner';vertical.nodes.brCatalogSearch.fire('input');vertical.flush();
+assert.equal(rail.children.length,0,'Empty results remove stale family choices.');
+assert.equal(vertical.nodes.brCatalogPosition.textContent,'00 / 00');assert(vertical.nodes.brCatalogPrev.disabled&&vertical.nodes.brCatalogNext.disabled);
+assert(vertical.nodes.brCatalogProduct.hidden&&vertical.nodes.brCatalogNavigation.hidden,'Empty results hide obsolete product/navigation details.');
+vertical.nodes.brCatalogClear.fire('click');vertical.flush();selectedVisible('Cleared filters');
+assert.deepEqual(vertical.nodes.brCatalogSearch.focusOptions,{preventScroll:true},'Clearing filters does not move the page to focus search.');
+const variantRow=vertical.nodes.brCatalogVariants;
+variantRow.fire('click',{target:variantRow.children[0]});vertical.flush();
+variantRow.fire('click',{target:variantRow.children[1]});vertical.flush();
+assert.equal(variantRow.scrollLeft,60,'Exact-variant options keep their horizontal reveal behavior.');
+assert.equal(variantRow.scrollTop,0);assert.equal(vertical.win.scrollY,500);
+assert(!vertical.emitted.some(event=>event.type==='hardware:choose-miner'),'Browsing, keys, scrolling and filters never add to the order.');
+const stableCount=harness({withRail:true,orientation:'vertical'});
+stableCount.catalog.families[2].name='WhatsMiner family with a deliberately long representative model name';
+stableCount.catalog.families[0].variants[1].name='Antminer S21+ with a deliberately long exact operating configuration';
+const stableUI=mount(stableCount.doc,stableCount.catalog,stableCount.win),initialCount=stableCount.nodes.brCatalogResults.textContent;
+stableUI.selectFamily(2);stableCount.flush();
+assert.equal(stableCount.nodes.brCatalogResults.textContent,initialCount,'Long family names do not reflow the results count or move browsing arrows.');
+assert.equal(stableCount.nodes.brCatalogPosition.attributes['aria-label'],stableCount.catalog.families[2].name+', 3 of 3','Selection remains announced independently of the stable results count.');
+stableUI.selectFamily(0);stableCount.nodes.brCatalogVariants.fire('click',{target:stableCount.nodes.brCatalogVariants.children[1]});stableCount.flush();
+assert.equal(stableCount.nodes.brCatalogResults.textContent,initialCount,'Long variant names do not reflow the results count or move browsing arrows.');
+assert.equal(stableCount.nodes.brCatalogName.textContent,stableCount.catalog.families[0].variants[1].name,'The full selected variant remains visible in the product title.');
+for(const orientation of ['vertical','horizontal']) {
+  const retained=harness({withRail:true,orientation});
+  retained.catalog.families[2].variants.push({...retained.catalog.families[2].variants[0],id:'m60s-second-bin',name:'WhatsMiner M60S second bin',hashrateTH:190});
+  const retainedUI=mount(retained.doc,retained.catalog,retained.win);retainedUI.selectFamily(2);retained.flush();
+  const retainedRail=retained.nodes.brCatalogRail,offset=orientation==='vertical'?'scrollTop':'scrollLeft';
+  const before=retainedRail[offset];assert(before>0,orientation+' fixture starts with a scrolled family list');
+  retained.nodes.brCatalogVariants.fire('click',{target:retained.nodes.brCatalogVariants.children[1]});retained.flush();
+  assert.equal(retainedUI.getSelection().variant.id,'m60s-second-bin');
+  assert.equal(retainedRail[offset],before,orientation+' family list retains its scroll position when a variant changes');
+  assert.equal(retained.win.scrollY,500,'Variant selection leaves the page scroll position unchanged.');
+}
+console.log('  ok    catalogue UI: search, exact variants, evidence, hosting, vertical family scrolling/focus, keyboard navigation and unchanged order boundaries');

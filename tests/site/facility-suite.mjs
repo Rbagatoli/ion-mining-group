@@ -806,36 +806,64 @@ console.log('\n=== the 3D order adapter does not depend on the removed quote sec
     const catalog = require(path.join(REPO_ROOT, 'site', 'brokerage-catalog-data.js'));
     const prices = require(path.join(REPO_ROOT, 'site', 'price-list.js'));
     const nodes = {}, events = {}, changed = [], held = {'Antminer S19 Pro': 7};
+    const element = () => ({value: '', hidden: false, textContent: '', children: [],
+        addEventListener(name, fn) { this[name] = fn; }, append(...items) { this.children.push(...items); },
+        replaceChildren(...items) { this.children = items; },
+        setCustomValidity(message) { this.validationMessage = message; }, reportValidity() { return !this.validationMessage; }});
     for (const id of ['hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogPriceNote', 'hwCatalogAdded',
-                      'hwCheckout', 'hwCatalogCheckout', 'hwSiteChoice']) {
-        nodes[id] = {value: '', hidden: false, textContent: '', children: [],
-            addEventListener(name, fn) { this[name] = fn; }, append(option) { this.children.push(option); },
-            setCustomValidity(message) { this.validationMessage = message; }, reportValidity() { return !this.validationMessage; }};
+                      'hwCheckout', 'hwCatalogCheckout', 'hwSiteChoice', 'hwOrder', 'hwOrderLines', 'hwOrderDock',
+                      'hwDockSummary', 'hwDockCost', 'hwDockCheckout', 'hwCost', 'hwUnits', 'miners']) {
+        nodes[id] = element();
     }
+    nodes.hwCost.textContent = '$15,400';
+    let observeVisibility, observeAmounts;
     let site = Facilities.byId('permian');
     const win = {
+        innerWidth: 390,
+        IntersectionObserver: class { constructor(fn) { observeVisibility = fn; } observe() {} },
+        MutationObserver: class { constructor(fn) { observeAmounts = fn; } observe() {} },
         location: {href: 'https://example.test/hardware.html?site=permian#miners'},
         history: {replaceState(_a, _b, target) { win.location.href = new URL(target, win.location.href).href; }},
         Cart: {isEmpty: () => Object.keys(held).length === 0, onChange(fn) { changed.push(fn); },
+            count: () => Object.values(held).reduce((sum, qty) => sum + qty, 0), get: () => held,
+            stale: () => Object.keys(held).filter(key => key === 'Retired model'),
+            lines: () => Object.keys(held).filter(key => key !== 'Retired model').map(key => ({
+                model: key, displayName: bridge.resolve(key)?.displayName, qty: held[key]})),
             add(key, count) { held[key] = (held[key] || 0) + count; changed.forEach(fn => fn()); }},
         Facilities: {...Facilities, chosen: () => site, choose(id) { site = Facilities.byId(id); }},
         PriceList: prices, HardwareOrderCatalog: bridge, BrokerageCatalogSelection: catalog.findVariant('s21-pro-245'),
         CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
         addEventListener(name, fn) { events[name] = fn; }, dispatchEvent(event) { events[event.type]?.(event); }
     };
-    const doc = {getElementById: id => nodes[id] || null, createElement: () => ({})};
+    const doc = {getElementById: id => nodes[id] || null, createElement: element, body: {classList: {toggle() {}}}};
     const mounted = mount(doc, win);
     ok(!!mounted && nodes.hwCheckout.href === './cart.html?site=permian',
        'adapter initializes and preserves location-qualified checkout with no quote nodes');
+    observeVisibility([{target: nodes.miners, isIntersecting: true}, {target: nodes.hwOrder, isIntersecting: false}]);
+    ok(!nodes.hwOrderDock.hidden && nodes.hwDockSummary.textContent === 'Your order · 7 miners' &&
+       nodes.hwDockCost.textContent === '$15,400 · hardware estimate', 'compact order mirrors the canonical amount while browsing');
     nodes.hwCatalogQuantity.value = '3';
     win.dispatchEvent(new win.CustomEvent('hardware:choose-miner', {detail: catalog.findVariant('s21-pro-245')}));
     ok(held['catalogue:s21-pro-245'] === 3 && held['Antminer S19 Pro'] === 7,
        'adding an exact variant still appends to the existing order without a quote form');
     ok(!nodes.hwCatalogCheckout.hidden && nodes.hwCatalogAdded.textContent.includes('245 TH/s'),
        'checkout and add confirmation remain available without removed preview/copy fields');
+    ok(nodes.hwOrderLines.children[1].children[0].textContent.includes('245 TH/s') &&
+       nodes.hwOrderLines.children[1].children[1].textContent === '× 3', 'the order lists the exact chosen variant and quantity');
+    nodes.hwCost.textContent = '$15,400 known + quote required'; observeAmounts();
+    ok(nodes.hwDockCost.textContent === nodes.hwCost.textContent, 'compact order keeps the partial-price qualification');
     nodes.hwSiteChoice.value = 'bakken';nodes.hwSiteChoice.change();
-    ok(site.id === 'bakken' && nodes.hwCheckout.href === './cart.html?site=bakken',
+    ok(site.id === 'bakken' && nodes.hwCheckout.href === './cart.html?site=bakken' && nodes.hwDockCheckout.href === nodes.hwCheckout.href,
        'changing the site still carries the selected location into checkout');
+    observeVisibility([{target: nodes.hwOrder, isIntersecting: true}]);
+    ok(nodes.hwOrderDock.hidden, 'compact order yields when the full order enters view');
+    observeVisibility([{target: nodes.hwOrder, isIntersecting: false}]); win.innerWidth = 1440; events.resize();
+    ok(nodes.hwOrderDock.hidden, 'desktop uses the full order sidebar without a second overlay');
+    held['Retired model'] = 2; changed.forEach(fn => fn());
+    ok(nodes.hwOrderLines.children.at(-1).children[0].textContent === 'Retired model · needs review', 'unavailable saved selections stay visible');
+    Object.keys(held).forEach(key => delete held[key]); changed.forEach(fn => fn());
+    ok(nodes.hwDockSummary.textContent === 'Your order · 0 miners' && nodes.hwDockCost.textContent === 'Add miners to start' &&
+       nodes.hwDockCheckout.hidden && nodes.hwOrderLines.hidden, 'clearing the order resets the dock, selected list and checkout');
 }
 
 console.log('\n=== the itemised figures agree with the term that was chosen ===');

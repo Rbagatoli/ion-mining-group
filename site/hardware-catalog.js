@@ -14,6 +14,38 @@
     const quantity = el('hwCatalogQuantity'), button = el('brCatalogRequest');
     if (!quantity || !button || !win.Cart || !win.HardwareOrderCatalog) return null;
     let selected = win.BrokerageCatalogSelection;
+    const dock = el('hwOrderDock'), order = el('hwOrder'), orderLines = el('hwOrderLines');
+    let catalogueVisible = false, orderVisible = false;
+    function syncDockVisibility() {
+      if (!dock) return;
+      const visible = win.innerWidth < 1180 && catalogueVisible && !orderVisible;
+      dock.hidden = !visible;
+      doc.body.classList.toggle('hw-order-dock-visible', visible);
+    }
+    function syncOrderSummary() {
+      if (!dock) return;
+      const count = win.Cart.count(), cost = el('hwCost')?.textContent || '';
+      el('hwDockSummary').textContent = 'Your order · ' + count.toLocaleString('en-US') + (count === 1 ? ' miner' : ' miners');
+      // Mirror the existing order calculation, including partial-price and
+      // quote-required wording. A compact view must not invent another total.
+      el('hwDockCost').textContent = !count ? 'Add miners to start'
+        : cost && cost !== '—' ? cost + (/quote|required|confirm/i.test(cost) ? '' : ' · hardware estimate')
+          : 'Hardware price to confirm';
+    }
+    function renderOrderLines() {
+      if (!orderLines) return;
+      const lines = win.Cart.lines();
+      if (!lines) { orderLines.hidden = true; return; }
+      const held = win.Cart.get(), stale = win.Cart.stale() || [];
+      const rows = lines.map(line => ({name: line.displayName || line.model, qty: line.qty}));
+      stale.forEach(key => rows.push({name: key + ' · needs review', qty: held[key]}));
+      orderLines.replaceChildren(...rows.map(line => {
+        const row = doc.createElement('li'), name = doc.createElement('span'), count = doc.createElement('strong');
+        name.textContent = line.name; count.textContent = '× ' + line.qty.toLocaleString('en-US');
+        row.append(name, count); return row;
+      }));
+      orderLines.hidden = !rows.length;
+    }
     function priceNote() {
       const target = el('hwCatalogPriceNote');
       if (!target || !selected) return;
@@ -27,9 +59,10 @@
     function syncCheckout() {
       const chosen = win.Facilities && win.Facilities.chosen();
       const href = './cart.html' + (chosen ? '?site=' + encodeURIComponent(chosen.id) : '');
-      ['hwCheckout', 'hwCatalogCheckout'].forEach(id => {
+      ['hwCheckout', 'hwCatalogCheckout', 'hwDockCheckout'].forEach(id => {
         const link = el(id); if (link) { link.href = href; link.hidden = win.Cart.isEmpty(); }
       });
+      renderOrderLines(); syncOrderSummary();
     }
     win.addEventListener('brokerage:model', event => { selected = event.detail; priceNote(); });
     win.addEventListener('hardware:choose-miner', event => {
@@ -65,6 +98,23 @@
       });
     }
     win.Cart.onChange(syncCheckout);
+    if (dock && order && typeof win.IntersectionObserver === 'function') {
+      const visibility = new win.IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.target === order) orderVisible = entry.isIntersecting;
+          else catalogueVisible = entry.isIntersecting;
+        });
+        syncDockVisibility();
+      }, {rootMargin: '-76px 0px -100px 0px'});
+      visibility.observe(el('miners')); visibility.observe(order);
+      win.addEventListener('resize', syncDockVisibility, {passive: true});
+      // hardware.js initializes at DOMContentLoaded and updates its totals
+      // before this mirror is refreshed, regardless of listener registration.
+      if (typeof win.MutationObserver === 'function') {
+        const amounts = new win.MutationObserver(syncOrderSummary);
+        ['hwCost', 'hwUnits'].forEach(id => { if (el(id)) amounts.observe(el(id), {childList: true, characterData: true, subtree: true}); });
+      }
+    }
     priceNote(); syncCheckout();
     return {syncCheckout};
   }

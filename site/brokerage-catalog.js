@@ -86,8 +86,13 @@
       win.requestAnimationFrame(() => {
         if (!button.isConnected) return;
         const itemBounds = button.getBoundingClientRect(), bounds = container.getBoundingClientRect();
-        if (itemBounds.left < bounds.left) container.scrollLeft -= bounds.left - itemBounds.left;
-        else if (itemBounds.right > bounds.right) container.scrollLeft += itemBounds.right - bounds.right;
+        if (container.dataset.orientation === 'vertical') {
+          if (itemBounds.top < bounds.top) container.scrollTop -= bounds.top - itemBounds.top;
+          else if (itemBounds.bottom > bounds.bottom) container.scrollTop += itemBounds.bottom - bounds.bottom;
+        } else {
+          if (itemBounds.left < bounds.left) container.scrollLeft -= bounds.left - itemBounds.left;
+          else if (itemBounds.right > bounds.right) container.scrollLeft += itemBounds.right - bounds.right;
+        }
       });
     }
     function resetQuote() { if (quote) quote.value = ''; if (quoteMatch) quoteMatch.checked = false; if (quoteCondition) quoteCondition.value = 'new'; if (el('brCatalogQuoteResult')) el('brCatalogQuoteResult').textContent = ''; }
@@ -167,6 +172,7 @@
       el('brCatalogPosition').setAttribute('aria-label', selectedFamily.name + ', ' + (index + 1) + ' of ' + total);
       prev.disabled = total < 2; next.disabled = total < 2;
       if (rail) {
+        const scrollTop = rail.scrollTop, scrollLeft = rail.scrollLeft;
         rail.replaceChildren();
         filtered.forEach(({family}, position) => {
           const button = node('button', family.name); button.type = 'button'; button.dataset.brCatalogFamily = family.id;
@@ -174,6 +180,9 @@
           rail.append(button);
           if (position === index && scrollCurrent) revealChoice(rail, button);
         });
+        // Removing every child can clamp the native scroll offset to zero.
+        // Variant-only changes must not jump the family list back to its start.
+        rail.scrollTop = scrollTop; rail.scrollLeft = scrollLeft;
       }
     }
     function renderSelection(scrollCurrent) {
@@ -195,16 +204,20 @@
     function selectFamily(index, scrollCurrent = true) {
       const target = filtered[index]; if (!target) return;
       selectedFamily = target.family; selectedVariant = target.variants[0]; resetQuote(); renderSelection(scrollCurrent);
-      el('brCatalogResults').textContent = filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families') + ' · Showing ' + selectedVariant.name;
+      el('brCatalogResults').textContent = filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families');
     }
     function applyFilters() {
       filtered = filterFamilies(families, search.value, cooling.value);
       const empty = !filtered.length; el('brCatalogEmpty').hidden = !empty; product.hidden = empty; el('brCatalogNavigation').hidden = empty;
       el('brCatalogResults').textContent = empty ? 'No matching miners' : filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families');
-      if (empty) return;
+      if (empty) {
+        if (rail) rail.replaceChildren(); prev.disabled = true; next.disabled = true;
+        el('brCatalogPosition').textContent = '00 / 00'; el('brCatalogPosition').setAttribute('aria-label', 'No matching miner families');
+        return;
+      }
       const current = filtered.find(item => item.family.id === selectedFamily.id);
-      if (current) { if (!current.variants.some(variant => variant.id === selectedVariant.id)) { selectedVariant = current.variants[0]; resetQuote(); } renderSelection(false); }
-      else selectFamily(0, false);
+      if (current) { if (!current.variants.some(variant => variant.id === selectedVariant.id)) { selectedVariant = current.variants[0]; resetQuote(); } renderSelection(true); }
+      else selectFamily(0, true);
     }
     function step(direction) {
       if (filtered.length < 2) return;
@@ -212,7 +225,7 @@
       selectFamily((index + direction + filtered.length) % filtered.length);
     }
     search.addEventListener('input', applyFilters); cooling.addEventListener('change', applyFilters);
-    el('brCatalogClear').addEventListener('click', () => { search.value = ''; cooling.value = 'all'; applyFilters(); search.focus(); });
+    el('brCatalogClear').addEventListener('click', () => { search.value = ''; cooling.value = 'all'; applyFilters(); search.focus({preventScroll: true}); });
     prev.addEventListener('click', () => step(-1)); next.addEventListener('click', () => step(1));
     if (rail) {
       rail.addEventListener('click', event => {
@@ -221,12 +234,19 @@
         const selectedButton = rail.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
       });
       rail.addEventListener('keydown', event => {
-        if (event.altKey || event.ctrlKey || event.metaKey || !event.target.closest('[data-br-catalog-family]')) return;
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !filtered.length) return;
+        const button = event.target.closest('[data-br-catalog-family]');
+        if (event.altKey || event.ctrlKey || event.metaKey || !button) return;
+        const backward = rail.dataset.orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
+        const forward = rail.dataset.orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight';
+        if (![backward, forward, 'Home', 'End'].includes(event.key) || !filtered.length) return;
         event.preventDefault();
         if (event.key === 'Home') selectFamily(0);
         else if (event.key === 'End') selectFamily(filtered.length - 1);
-        else step(event.key === 'ArrowRight' ? 1 : -1);
+        else {
+          const focused = filtered.findIndex(item => item.family.id === button.dataset?.brCatalogFamily);
+          const index = focused < 0 ? filtered.findIndex(item => item.family.id === selectedFamily.id) : focused;
+          selectFamily((index + (event.key === forward ? 1 : -1) + filtered.length) % filtered.length);
+        }
         const selectedButton = rail.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
       });
     }
@@ -235,7 +255,7 @@
       const variant = selectedFamily.variants.find(item => item.id === button.dataset.brCatalogVariant); if (!variant) return;
       selectedVariant = variant; resetQuote(); renderSelection(false);
       const selectedButton = variants.querySelector('[aria-pressed="true"]'); if (selectedButton) selectedButton.focus({preventScroll: true});
-      el('brCatalogResults').textContent = filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families') + ' · Showing ' + variant.name;
+      el('brCatalogResults').textContent = filtered.length + ' model ' + (filtered.length === 1 ? 'family' : 'families');
     });
     /* The model keeps drag-to-rotate. A short horizontal swipe over its details browses families. */
     const info = section.querySelector('.br-catalog-info');
