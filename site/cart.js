@@ -136,6 +136,9 @@ var Cart = (function () {
     function prices() {
         return (typeof PriceList !== 'undefined') ? PriceList : null;
     }
+    function orderCatalog() {
+        return (typeof HardwareOrderCatalog !== 'undefined') ? HardwareOrderCatalog : null;
+    }
 
     /* Enriched lines, in catalogue order — best efficiency first, the same order
        the catalogue lists — so the checkout and the catalogue agree.
@@ -150,7 +153,7 @@ var Cart = (function () {
         var P = prices();
         var held = read();
 
-        return M.getAll().slice()
+        var result = M.getAll().slice()
             .sort(function (a, b) { return a.efficiency - b.efficiency; })
             .filter(function (m) { return held[m.model] > 0; })
             .map(function (m) {
@@ -168,6 +171,20 @@ var Cart = (function () {
                     usd: each === null ? null : each * qty
                 };
             });
+        var catalogue = orderCatalog();
+        if (catalogue && typeof catalogue.resolve === 'function') {
+            Object.keys(held).forEach(function (key) {
+                var item = catalogue.resolve(key);
+                if (!item) return;
+                /* Only quantity is persisted. Specifications are resolved from
+                   the shipped catalogue; request prices remain unknown. */
+                item.qty = held[key];
+                item.each = null;
+                item.usd = null;
+                result.push(item);
+            });
+        }
+        return result;
     }
 
     /* A machine held in the order that the spec table no longer lists — the
@@ -179,19 +196,33 @@ var Cart = (function () {
         if (!M) return null;
         var known = {};
         M.getAll().forEach(function (m) { known[m.model] = true; });
-        return Object.keys(read()).filter(function (k) { return !known[k]; });
+        var catalogue = orderCatalog();
+        return Object.keys(read()).filter(function (k) {
+            return !Object.prototype.hasOwnProperty.call(known, k) &&
+                !(catalogue && typeof catalogue.resolve === 'function' && catalogue.resolve(k));
+        });
     }
 
     function totals() {
         var ls = lines();
         if (!ls) return null;
         var t = { units: 0, th: 0, kw: 0, usd: 0, unpriced: 0, lines: ls.length };
+        t.knownTh = 0;
+        t.knownKw = 0;
+        t.unknownHash = 0;
+        t.unknownPower = 0;
+        t.quoteRequired = false;
         ls.forEach(function (l) {
             t.units += l.qty;
-            t.th += l.hashrate * l.qty;
-            t.kw += l.power * l.qty;
+            if (typeof l.hashrate === 'number' && isFinite(l.hashrate)) t.knownTh += l.hashrate * l.qty;
+            else t.unknownHash += l.qty;
+            if (typeof l.power === 'number' && isFinite(l.power)) t.knownKw += l.power * l.qty;
+            else t.unknownPower += l.qty;
             if (l.usd === null) t.unpriced += l.qty; else t.usd += l.usd;
+            if (l.quoteRequired) t.quoteRequired = true;
         });
+        t.th = t.unknownHash ? null : t.knownTh;
+        t.kw = t.unknownPower ? null : t.knownKw;
 
         /* The deposit is a commercial term, not a computed fact, and it is
            indicative for exactly the reason the prices are: it is a share of a
@@ -199,7 +230,7 @@ var Cart = (function () {
            there is one place to change it. */
         var P = prices();
         t.depositRate = P && typeof P.DEPOSIT_RATE === 'number' ? P.DEPOSIT_RATE : null;
-        t.deposit = t.depositRate === null ? null : t.usd * t.depositRate;
+        t.deposit = t.depositRate === null || t.quoteRequired ? null : t.usd * t.depositRate;
         t.balance = t.deposit === null ? null : t.usd - t.deposit;
         return t;
     }

@@ -31,6 +31,7 @@
         return '$' + Math.round(v).toLocaleString('en-US');
     }
     function dec(v, dp) {
+        if (typeof v !== 'number' || !isFinite(v)) return 'To confirm';
         return v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
     }
     function esc(s) {
@@ -55,10 +56,11 @@
             : '<span class="hw-price">' + money(l.usd) + '</span>';
         return '' +
         '<tr data-model="' + esc(l.model) + '">' +
-          '<td class="hw-name">' + esc(l.model) + '</td>' +
-          '<td>' + l.hashrate.toLocaleString('en-US') + ' TH/s</td>' +
-          '<td>' + l.power.toFixed(3) + ' kW</td>' +
-          '<td>' + each + '</td>' +
+          '<td class="hw-name">' + esc(l.displayName || l.model) +
+            (l.quoteRequired ? '<br><small>Exact configuration · quote required</small>' : '') + '</td>' +
+          '<td data-label="Hashrate">' + (l.hashrate === null ? 'To confirm' : dec(l.hashrate, 0) + ' TH/s') + '</td>' +
+          '<td data-label="Power draw">' + (l.power === null ? 'To confirm' : dec(l.power, 3) + ' kW') + '</td>' +
+          '<td data-label="Each">' + each + '</td>' +
           /* The same control as the catalogue, so changing a quantity here and
              changing it there are the same gesture. */
           '<td class="hw-qty">' +
@@ -71,7 +73,7 @@
                   'aria-label="Quantity of ' + esc(l.model) + ', one more">+</button>' +
             '</div>' +
           '</td>' +
-          '<td>' + line + '</td>' +
+          '<td data-label="Line total">' + line + '</td>' +
           '<td class="ck-drop">' +
             '<button type="button" class="ck-remove" data-remove="' + esc(l.model) + '" ' +
                 'aria-label="Remove ' + esc(l.model) + ' from the order">Remove</button>' +
@@ -83,16 +85,20 @@
 
     function orderText(lines, t) {
         var out = lines.map(function (l) {
-            return l.qty + ' x ' + l.model +
-                '  (' + l.hashrate + ' TH, ' + l.power.toFixed(3) + ' kW each' +
+            return l.qty + ' x ' + (l.displayName || l.model) +
+                (l.variantId ? ' [variant: ' + l.variantId + ']' : '') +
+                '  (' + dec(l.hashrate, 0) + ' TH, ' + dec(l.power, 3) + ' kW each' +
                 (l.each === null ? ', price on request' : ', ' + money(l.each) + ' each') + ')';
+        });
+        (Cart.stale() || []).forEach(function (key) {
+            out.push((Cart.get()[key] || 0) + ' x ' + key + ' (saved selection requires review; specs and price unconfirmed)');
         });
 
         out.push('');
         out.push('Total: ' + t.units + ' machines, ' + dec(t.th, 0) + ' TH/s, ' + dec(t.kw, 2) + ' kW');
-        out.push('Indicative hardware: ' + money(t.usd) +
+        out.push('Indicative hardware: ' + (t.unpriced && !t.usd ? 'Quote required' : money(t.usd)) +
             (t.unpriced ? ' (excludes ' + t.unpriced + ' machines priced on request)' : ''));
-        if (t.depositRate !== null) {
+        if (t.depositRate !== null && !requiresQuote(t)) {
             out.push('Deposit to reserve (' + pct(t.depositRate) + '): ' + money(t.deposit));
             out.push('Balance before shipping: ' + money(t.balance));
         }
@@ -151,15 +157,53 @@
        instantly disowned, which is the one failure this page exists to avoid. */
     var placed = false;
 
+    /* Cart keeps its established legacy subtotal contract. A saved selection
+       whose specification has disappeared still belongs to the whole order;
+       it makes the fleet specification and full cost unknown, not zero. */
+    function orderTotals() {
+        var raw = Cart.totals();
+        if (!raw) return null;
+        var total = {};
+        Object.keys(raw).forEach(function (key) { total[key] = raw[key]; });
+        var held = Cart.get();
+        var staleUnits = (Cart.stale() || []).reduce(function (sum, key) {
+            return sum + (held[key] || 0);
+        }, 0);
+        if (staleUnits) {
+            total.units += staleUnits;
+            total.unpriced += staleUnits;
+            total.unknownHash = (total.unknownHash || 0) + staleUnits;
+            total.unknownPower = (total.unknownPower || 0) + staleUnits;
+            total.th = null;
+            total.kw = null;
+            total.deposit = null;
+            total.balance = null;
+            total.quoteRequired = true;
+        }
+        return total;
+    }
+
+    function requiresQuote(t) {
+        return !!(t && (t.quoteRequired || t.unpriced || t.unknownHash || t.unknownPower)) || (Cart.stale() || []).length > 0;
+    }
+
+    function quoteHref(text) {
+        var contact = ['ck-name', 'ck-company', 'ck-email', 'ck-phone', 'ck-notes'].map(function (id) {
+            var field = $(id); return field && field.value.trim() ? id.slice(3) + ': ' + field.value.trim() : '';
+        }).filter(Boolean).join('\n');
+        return 'mailto:hosting@protonminingco.com?subject=' + encodeURIComponent('Hardware and hosting quote request') +
+            '&body=' + encodeURIComponent(text + '\n\n' + contact);
+    }
+
     function render() {
         if (placed) return;
         var lines = Cart.lines();
-        var t = Cart.totals();
+        var t = orderTotals();
         /* null means the spec table never loaded, which is a broken page rather
            than an empty order — say nothing rather than claiming it is empty. */
         if (!lines || !t) return;
 
-        var empty = lines.length === 0;
+        var empty = lines.length === 0 && !(Cart.stale() || []).length;
         var emptyBox = $('ckEmpty'), body = $('ckBody');
         if (emptyBox) emptyBox.hidden = !empty;
         if (body) body.hidden = empty;
@@ -170,12 +214,12 @@
         $('ckUnits').textContent = t.units.toLocaleString('en-US');
         $('ckHash').textContent = dec(t.th, 0) + ' TH/s';
         $('ckPower').textContent = dec(t.kw, 2) + ' kW';
-        $('ckCost').textContent = money(t.usd);
+        $('ckCost').textContent = t.unpriced ? (t.usd ? money(t.usd) + ' + quote' : 'Quote required') : money(t.usd);
 
         var rate = $('ckRate');
         if (rate) rate.textContent = t.depositRate === null ? '' : '(' + pct(t.depositRate) + ')';
-        $('ckDeposit').textContent = money(t.deposit);
-        $('ckBalance').textContent = money(t.balance);
+        $('ckDeposit').textContent = requiresQuote(t) ? 'After quote' : money(t.deposit);
+        $('ckBalance').textContent = requiresQuote(t) ? 'After quote' : money(t.balance);
 
         /* THE ITEMISATION IS SCOPED TO AN PROTON DESTINATION. A customer shipping to their own
            site is buying hardware from us and nothing else — inventing an electricity line
@@ -187,17 +231,19 @@
             itSlot.innerHTML = Prepay.itemisedHtml({
                 site: isIon ? chosenSite() : null,
                 term: isIon ? chosenTerm() : null,
-                hardwareUsd: t.usd,
-                kw: t.kw,
+                hardwareUsd: t.unpriced ? null : t.usd,
+                kw: t.unknownPower ? null : t.kw,
                 units: t.units,
-                depositRate: t.depositRate
+                depositRate: t.depositRate,
+                unpriced: t.unpriced,
+                unknownPower: t.unknownPower
             });
         }
 
         var unpriced = $('ckUnpriced');
         if (unpriced) {
             unpriced.textContent = t.unpriced
-                ? t.unpriced + ' of those machines have no price on file and are not in the total, the deposit or the balance.'
+                ? t.unpriced + ' selected machines need a confirmed hardware quote. They remain in your order; payment for the complete order follows quote confirmation.'
                 : '';
             unpriced.hidden = !t.unpriced;
         }
@@ -207,9 +253,9 @@
         var staleNote = $('ckStale');
         if (staleNote) {
             staleNote.textContent = stale.length
-                ? (stale.length === 1 ? 'One machine' : stale.length + ' machines') +
-                  ' in your saved order are no longer in the catalogue (' + stale.join(', ') +
-                  '). They are not counted above. Mention them and we will tell you what replaced them.'
+                ? (stale.length === 1 ? 'One saved configuration is' : stale.length + ' saved configurations are') +
+                  ' no longer in the catalogue (' + stale.join(', ') +
+                  '). Their specifications and prices need confirmation. They remain in your order and quote request.'
                 : '';
             staleNote.hidden = stale.length === 0;
         }
@@ -220,12 +266,18 @@
         var pre = $('ckPreview');
         if (pre) pre.textContent = text;
 
+        var quoteOnly = requiresQuote(t);
+        var quotePanel = $('ckQuoteReview'); if (quotePanel) quotePanel.hidden = !quoteOnly;
+        var quoteLink = $('ckQuoteRequest'); if (quoteLink) { quoteLink.hidden = !quoteOnly; quoteLink.href = quoteHref(text); }
+        var payChoice = $('ckPaymentChoice'); if (payChoice) payChoice.hidden = quoteOnly;
+        var submit = $('ckSubmit'); if (submit) { submit.hidden = quoteOnly; submit.disabled = quoteOnly; }
+
         /* What each choice actually costs, beside the choice itself. Reading
            'deposit' and having to scroll back up to find out what that is in
            dollars is the kind of small friction that loses an order. */
         var legNote = $('ckLegNote');
         if (legNote) {
-            legNote.textContent = legWanted() === 'full'
+            legNote.textContent = quoteOnly ? 'Price confirmation is needed before payment for this order.' : legWanted() === 'full'
                 ? 'You will be asked for ' + money(t.usd) + ' on the next page. Nothing further is due before shipping.'
                 : 'You will be asked for ' + money(t.deposit) + ' on the next page. The remaining ' +
                   money(t.balance) + ' falls due once the quote is agreed and before the machines ship.';
@@ -478,6 +530,13 @@
             e.preventDefault();
             if (!form.reportValidity()) return;
             if (Cart.isEmpty()) return;
+            /* Every selected line must be priced by the service. Never send only the
+               supported subset of a mixed cart or charge against a public market reference. */
+            if (requiresQuote(Cart.totals())) {
+                render();
+                var review = $('ckQuoteReview'); if (review) review.scrollIntoView({block: 'nearest'});
+                return;
+            }
 
             if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 

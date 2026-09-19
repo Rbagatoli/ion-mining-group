@@ -4247,6 +4247,23 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 .ck-remove:hover { color: var(--loss); }
 .ck-remove:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 1px; }
 
+/* Checkout has different columns from the catalogue: keep each value labeled
+   when its table becomes a compact mobile list. The desktop table is unchanged. */
+@media (max-width: 720px) {
+    .ck-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-items: start; padding: 18px 0; }
+    .ck-table tr::before, .ck-table tr::after { display: none; }
+    .ck-table td { order: 2; min-width: 0; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+    .ck-table td.hw-name { order: 1; grid-column: 1 / -1; padding: 0; font-size: 14px; }
+    .ck-table td.hw-name small { display: block; color: var(--plat-400); font: 11px/1.6 var(--sans); margin-top: 4px; }
+    .ck-table td[data-label]::before { content: attr(data-label); display: block; color: var(--plat-400); font: 10px/1.5 var(--sans); margin-bottom: 4px; }
+    .ck-table td[data-label="Each"], .ck-table td[data-label="Line total"] { order: 3; }
+    .ck-table td.hw-qty { order: 4; padding-top: 0; }
+    .ck-table .hw-qty .calc-unit { min-height: 44px; }
+    .ck-table .hw-qty .hw-step { min-width: 40px; min-height: 44px; }
+    .ck-table td.ck-drop { order: 4; justify-self: end; align-self: end; width: auto; }
+    .ck-table .ck-remove { min-height: 44px; padding: 10px 0 10px 10px; }
+}
+
 /* The deposit split sits under the totals and above the caveat, because the
    order of reading is what it costs, what you pay now, what is left. Ruled off
    rather than boxed: it is the same figure divided, not a second summary. */

@@ -1,30 +1,34 @@
-# Hardware catalogue and hosting enquiries
+# Hardware catalogue, orders and hosting
 
 The Hardware page is a browsing guide for customers planning a hosted mining fleet. Its 3D catalogue covers **15 representative industrial Bitcoin miner families and 63 configurations, bins or operating modes**, researched on **2026-09-18**: Bitmain Antminer, MicroBT WhatsMiner, Canaan Avalon and Bitdeer SEALMINER. All 28 model names from the previous catalogue remain discoverable. Unsupported bins retain unknown specifications rather than inheriting estimates.
 
-Customers may already own miners, need miners for hosting, or still be deciding. The page helps them compare models and prepare hosting requirements; it has no independent buy/sell sourcing form. A visible model or public price reference does not establish Proton inventory, supplier allocation, hosting capacity or delivery availability. Residential and non-SHA-256 products are outside the current catalogue scope; an unlisted miner can be entered manually for an enquiry.
+The 3D catalogue replaces the original miner-selection table and its table-specific search and economics controls. The surrounding Hardware workflow remains: facility selection, site power rates and monthly estimates, prepaid-electricity options, the saved order summary, checkout and the site quote form. There is no independent buy/sell brokerage form. A visible model or public price reference does not establish Proton inventory, supplier allocation, hosting capacity or delivery availability. Residential and non-SHA-256 products are outside the current catalogue scope.
 
 `brokerage.html` remains only as a lightweight compatibility page. Its script preserves the incoming query string and redirects to `hardware.html#miners`; its ordinary link works without JavaScript. It canonicalizes to Hardware, stays out of the sitemap, and is not promoted in navigation or the Services footer. The filename remains reserved against generated blog posts.
 
-## From browsing to a hosting enquiry
+## From browsing to the saved order
 
-Browsing or changing a variant does not overwrite an existing enquiry. The explicit **Plan hosting with this miner** action copies the selected family and exact variant into the form. Quantity then determines the rated fleet hashrate and miner power from that variant's known specifications. Unknown values remain **To confirm**, and miner power excludes facility cooling and other overhead. Air, hydro and immersion cooling requirements remain distinct; a catalogue selection cannot establish site compatibility.
+Browsing does not add machines automatically. The customer selects an exact variant and quantity, then uses the catalogue's order action. The selection enters the same persistent cart used by the order summary and checkout. Existing saved lines are preserved and can coexist with the new catalogue selections.
 
-The form retains whether the customer owns the machines, needs them or is undecided, along with an optional preferred hosting location, contact details and notes. A manually entered model does not inherit specifications from the last browsed miner. Availability, electrical supply, cooling compatibility and commercial terms require confirmation before commitment.
+`HardwareOrderCatalog` explicitly matches **12** catalogue configurations to existing order SKUs by manufacturer/model identity and exact hashrate and power. Those aliases reuse their existing cart keys and the legacy indicative pricing authority. The remaining **51** configurations use stable `catalogue:<variantId>` keys, preserve their exact display names and nullable specifications, and remain quote-required. A neighboring bin's price or identity is never borrowed to make a selection orderable.
 
-Submitting opens a draft addressed to `hosting@protonminingco.com` in the visitor's mail application. The draft includes the exact variant ID, model, quantity, ownership choice, known rated totals and hosting requirements. Nothing is sent until the visitor sends it. **Copy enquiry** provides the same preparation route without opening a mail application. These actions neither submit a CRM lead nor reserve equipment, a site or a hosting rate.
+The order summary and checkout multiply only known per-machine specifications. `unknownHash` and `unknownPower` count units whose specifications are missing; complete `th` or `kw` totals are `null` when incomplete, with known subtotals retained separately. Missing hardware prices remain quote-required. Unknown power prevents a fabricated prepaid-electricity total, and an unpriced hardware line prevents an apparently complete hardware-plus-electricity sum or deposit. Air, hydro and immersion cooling requirements remain distinct and require site confirmation.
 
-Existing saved carts and their checkout remain accessible and unchanged. The new catalogue does not populate or clear them: mapping an exact catalogue variant to a guessed legacy cart SKU would misstate the selected equipment.
+The original copy-order, facility, term selection and site-quote workflow remain available. Selecting or clearing a hosting location refreshes its rate, prepaid options and order breakdown. With no prepaid term, the monthly estimate uses 730 hours at the selected site's published rate and is shown separately from hardware capital. Unknown fleet power prevents that estimate. Calculator shortcuts remain available for known legacy models; an unsupported catalogue key or unknown specification cannot silently select a different miner in the calculator. Saved keys that are no longer recognized remain counted and named in the order, with specifications and prices requiring confirmation.
+
+Payment and order backends are unchanged. Fully supported legacy-key orders retain their existing checkout behavior. An order containing request-only catalogue lines keeps the exact selection and provides a quote-request path rather than submitting unsupported keys to the payment backend. Public seller references are not converted into payable Proton prices, and this page does not create inventory, site capacity, a binding quote or a CRM lead.
 
 ## Files and source evidence
 
 - `site/brokerage-catalog-data.js`: browser/Node data module, source records, freshness rules and comparison API.
-- `site/hardware.html`, `site/hardware-catalog.css`: the Hardware browsing guide and hosting enquiry.
-- `site/hardware-catalog.js`: exact selection, quantity calculations and customer-controlled email/copy preparation.
+- `site/hardware.html`, `site/hardware-catalog.css`: the 3D selection area within the restored Hardware page.
+- `site/hardware-catalog.js`: exact variant and quantity selection into the saved order.
+- `site/hardware.js`, `site/cart.js`: retained order summary, facility/prepay controls and persistent cart.
+- `site/checkout.js`, `site/prepay.js`: checkout and complete-versus-unknown price breakdowns.
 - `site/brokerage-catalog.js`: shared search, family/variant selection and evidence; Hardware uses its hosting mode.
 - `site/brokerage-scene.js`, `site/brokerage-stage.js`, `site/brokerage-models.js`: preview lifecycle, rendering and representative exteriors.
 - `tests/site/brokerage-catalog-data-suite.js`: pricing and evidence regression checks.
-- `tests/site/hardware-suite.js`: hosting configuration, unknown specifications and enquiry boundaries.
+- `tests/site/hardware-suite.js`: restored page sections, exact selection and unknown specification boundaries.
 
 The shared catalogue and rendering files retain their `brokerage-*` names for reuse. Their filenames do not indicate a separate public brokerage service.
 
@@ -51,7 +55,7 @@ All catalog `protonQuote` fields are currently `null`. Consequently `savingsFor`
 1. Open the exact manufacturer's specification and seller product page. Check the selected bin, condition, included accessories, batch, delivery wording, currency and commercial terms. Keep ambiguous or unavailable listings as evidence with `comparable: false` or their actual unavailable status.
 2. Update the variant's observations with the observed amount, exact HTTPS URL, seller, bin, condition, `currency: 'USD'`, scope, real `checkedOn` date, availability and a concise note. Preserve material exclusions. Do not attach a neighboring bin's cheapest category price. Add `expiresOn` when the offer supplies an expiry.
 3. For an actual Proton offer, obtain the approved per-machine hardware quote and match its bin, condition, quantity and commercial scope. Populate `protonQuote` only with verified `confirmed: true`, `comparable: true`, `usd`, `currency`, `hashrateTH`, `condition`, `scope`, `checkedOn` and `expiresOn`. Retain the supporting commercial evidence in the appropriate internal record; do not publish private supplier documents or customer details. A missing component or unmatched scope keeps the quote unconfirmed.
-4. Update source notes and the research packet, then run `node tests/site/brokerage-catalog-data-suite.js`, `node tests/site/brokerage-catalog-ui-suite.js`, `node tests/site/hardware-suite.js` and the site's standard build/check workflow. Check source details, current and expired price states, exact variant selection and the resulting hosting enquiry before release. If a separate caller exposes quote comparisons, verify negative differences there as well.
+4. Update source notes and the research packet, then run `node tests/site/brokerage-catalog-data-suite.js`, `node tests/site/brokerage-catalog-ui-suite.js`, `node tests/site/hardware-suite.js`, `node tests/site/facility-suite.mjs` and the site's standard build/check workflow. Check source details, current and expired price states, exact variants reaching the saved order, mixed legacy/request-only carts and unknown-cost checkout states before release. If a separate caller exposes quote comparisons, verify negative differences there as well.
 
 Keep the seven-day check and explicit quote expiry when refreshing data. Do not make an expired offer look current merely by changing the top-level catalog date. If a total delivered comparison is added later, it needs matched destination, quantity, delivery, warranty and all landed charges on both sides; this module does not calculate that total.
 

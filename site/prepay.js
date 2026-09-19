@@ -195,20 +195,22 @@ var Prepay = (function () {
         var site = opts.site, term = opts.term;
         var hardware = opts.hardwareUsd, kw = opts.kw, depositRate = opts.depositRate;
 
-        if (typeof hardware !== 'number' || !isFinite(hardware)) return '';
+        var hardwareKnown = typeof hardware === 'number' && isFinite(hardware) && !opts.unpriced;
+        if (!hardwareKnown && !opts.units) return '';
 
         var rows = [];
         rows.push({
             label: 'Machines',
             sub: (opts.units || 0) + ' machine' + (opts.units === 1 ? '' : 's') +
                  ', indicative until quoted',
-            value: hardware,
-            when: depositRate
+            value: hardwareKnown ? hardware : null,
+            display: hardwareKnown ? null : 'Quote required',
+            when: !hardwareKnown ? 'confirmed on quote before payment' : depositRate
                 ? Math.round(depositRate * 100) + '% deposit now, balance before they ship'
                 : 'deposit now, balance before they ship'
         });
 
-        var power = (site && term) ? totalFor(site, term, kw) : null;
+        var power = (site && term && !opts.unknownPower) ? totalFor(site, term, kw) : null;
         if (power !== null) {
             rows.push({
                 label: 'Electricity, ' + term.label.toLowerCase(),
@@ -221,13 +223,31 @@ var Prepay = (function () {
                 value: power,
                 when: 'due when the hosting agreement is signed'
             });
+        } else if (site && term && opts.units && (opts.unknownPower || !isNum(kw))) {
+            rows.push({
+                label: 'Electricity, ' + term.label.toLowerCase(),
+                sub: rateLabel(site, term) + ' at ' + site.name + '; full fleet power must be confirmed',
+                value: null,
+                display: 'Power to confirm',
+                when: 'confirmed on the hosting agreement'
+            });
+        } else if (site && !term && opts.units) {
+            var monthly = !opts.unknownPower && isNum(kw) && kw > 0 && isNum(site.powerCents)
+                ? Math.round(kw * HOURS_PER_YEAR / 12 * site.powerCents / 100 * 100) / 100 : null;
+            rows.push({
+                label: 'Hosting & power, monthly estimate',
+                sub: site.name + ', ' + site.powerCents + ' cents/kWh; 730 hours at continuous miner draw, excluding additional facility loads',
+                value: monthly,
+                display: monthly === null ? 'Power to confirm' : null,
+                when: 'monthly billing; final scope and rate confirmed on the hosting agreement'
+            });
         }
 
         var body = rows.map(function (r) {
             return '<div class="it-row">' +
                 '<div class="it-what"><span class="it-lab">' + esc(r.label) + '</span>' +
                     '<span class="it-sub">' + esc(r.sub) + '</span></div>' +
-                '<div class="it-money"><span class="it-val">' + money(r.value) + '</span>' +
+                '<div class="it-money"><span class="it-val">' + (r.display ? esc(r.display) : money(r.value)) + '</span>' +
                     '<span class="it-when">' + esc(r.when) + '</span></div>' +
             '</div>';
         }).join('');
@@ -236,7 +256,7 @@ var Prepay = (function () {
            other kind of dishonest: a customer comparing hosts wants to know what the whole
            thing costs, and making them add two numbers up is not candour. */
         var sum = rows.reduce(function (a, r) { return a + r.value; }, 0);
-        var total = rows.length > 1
+        var total = term && rows.length > 1 && rows.every(function (r) { return isNum(r.value); })
             ? '<div class="it-row it-row--total">' +
                 '<div class="it-what"><span class="it-lab">Both together</span>' +
                     '<span class="it-sub">not a single payment &mdash; see the timings above</span></div>' +

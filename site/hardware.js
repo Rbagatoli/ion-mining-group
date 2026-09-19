@@ -30,6 +30,29 @@
     function dec(v, dp) {
         return v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
     }
+    function known(v) { return typeof v === 'number' && isFinite(v) && v >= 0; }
+    function hashText(t) { return t.unknownHash || !known(t.th) ? 'Hashrate to confirm' : dec(t.th, 0) + ' TH/s'; }
+    function powerText(t) { return t.unknownPower || !known(t.kw) ? 'Power to confirm' : dec(t.kw, 2) + ' kW'; }
+    function hardwareText(t) {
+        if (t.unpriced) return t.usd > 0 ? money(t.usd) + ' known + quote required' : 'Quote required';
+        return money(t.usd);
+    }
+    function lineName(line) { return line.displayName || line.model; }
+    function orderSnapshot() {
+        var totals = Cart.totals(), lines = Cart.lines();
+        if (!totals || !lines) return null;
+        var held = Cart.get(), stale = Cart.stale() || [];
+        var staleUnits = stale.reduce(function (count, key) { return count + (held[key] || 0); }, 0);
+        var t = Object.assign({}, totals, { units: Cart.count() });
+        if (staleUnits) {
+            t.unpriced = (t.unpriced || 0) + staleUnits;
+            t.unknownHash = (t.unknownHash || 0) + staleUnits;
+            t.unknownPower = (t.unknownPower || 0) + staleUnits;
+            t.th = null; t.kw = null;
+            t.deposit = null; t.balance = null;
+        }
+        return { totals: t, lines: lines, stale: stale, held: held };
+    }
 
     function esc(s) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -300,7 +323,7 @@
         out.push('  status: ' + site.status);
 
         if (term) {
-            var power = Prepay.totalFor(site, term, t.kw);
+            var power = Prepay.totalFor(site, term, t.unknownPower ? null : t.kw);
             out.push('  electricity: ' + term.label + ' at ' + Prepay.rateLabel(site, term) +
                      ' (indicative)');
             if (power !== null) {
@@ -309,8 +332,10 @@
                 /* Stated the same way it is on screen. A pasted order that adds the two up
                    without saying they are paid apart is the one place the breakdown could still
                    mislead somebody. */
-                out.push('  both together: ' + money(t.usd + power) +
+                if (!t.unpriced) out.push('  both together: ' + money(t.usd + power) +
                          ' (not a single payment)');
+            } else if (t.unknownPower || !known(t.kw)) {
+                out.push('  electricity total: confirm miner power before pricing the term');
             }
         }
 
@@ -324,21 +349,21 @@
     /* ---------- the order ---------- */
 
     function renderOrder() {
-        var t = Cart.totals();
-        var lines = Cart.lines();
+        var snapshot = orderSnapshot();
         /* null means the spec table never loaded — a broken page rather than an
            empty order, and worth saying nothing about either way. */
-        if (!t || !lines) return;
+        if (!snapshot) return;
+        var t = snapshot.totals, lines = snapshot.lines;
         var empty = t.units === 0;
         var panel = document.querySelector('.hw-order'), emptyNote = $('hwEmpty');
         if (panel) panel.classList.toggle('hw-order--empty', empty);
         if (emptyNote) emptyNote.hidden = !empty;
 
         $('hwUnits').textContent = empty ? '—' : t.units.toLocaleString('en-US');
-        $('hwHash').textContent = empty ? '—' : dec(t.th, 0) + ' TH/s';
-        $('hwPower').textContent = empty ? '—' : dec(t.kw, 2) + ' kW';
+        $('hwHash').textContent = empty ? '—' : hashText(t);
+        $('hwPower').textContent = empty ? '—' : powerText(t);
         /* Indicative, and only for the lines that have a price on file. */
-        $('hwCost').textContent = empty ? '—' : money(t.usd);
+        $('hwCost').textContent = empty ? '—' : hardwareText(t);
 
         renderItemised(t);
 
@@ -353,13 +378,17 @@
         /* Written out, so the checkout is not the only place the order can be
            read and the Copy button has something to copy. */
         var text = lines.map(function (l) {
-            return l.qty + ' x ' + l.model +
-                '  (' + l.hashrate + ' TH, ' + l.power.toFixed(3) + ' kW each' +
+            return l.qty + ' x ' + lineName(l) +
+                '  (' + (known(l.hashrate) ? l.hashrate + ' TH' : 'hashrate to confirm') + ', ' +
+                (known(l.power) ? l.power.toFixed(3) + ' kW each' : 'power to confirm') +
                 (l.each === null ? ', price on request' : ', ' + money(l.each) + ' each') + ')';
-        }).join('\n');
+        }).concat(snapshot.stale.map(function (key) {
+            return snapshot.held[key] + ' x ' + key +
+                '  (saved selection unavailable; specifications and price require confirmation)';
+        })).join('\n');
         var summary = empty ? '' : text + '\n\n' +
-            'Total: ' + t.units + ' machines, ' + dec(t.th, 0) + ' TH/s, ' + dec(t.kw, 2) + ' kW\n' +
-            'Indicative hardware: ' + money(t.usd) +
+            'Total: ' + t.units + ' machines, ' + hashText(t) + ', ' + powerText(t) + '\n' +
+            'Indicative hardware: ' + hardwareText(t) +
             (t.unpriced ? ' (excludes ' + t.unpriced + ' machines priced on request)' : '') + '\n' +
             orderExtras(t) +
             'Prices indicative as of ' + (typeof PriceList !== 'undefined' ? PriceList.ASOF : '') +
@@ -389,7 +418,10 @@
            calculator already reads both from the query string. */
         var runAll = $('hwRunAll');
         if (runAll) {
-            if (empty) {
+            var calculatorCompatible = snapshot.stale.length === 0 && lines.every(function (line) {
+                return known(line.hashrate) && known(line.power) && typeof MinerDB !== 'undefined' && MinerDB.findByModel(line.model);
+            });
+            if (empty || !calculatorCompatible) {
                 runAll.hidden = true;
             } else {
                 var biggest = lines.slice().sort(function (a, b) { return b.qty - a.qty; })[0];
@@ -423,13 +455,13 @@
     }
 
     function init() {
-        if (!$('hwRows') || typeof MinerDB === 'undefined' || typeof Cart === 'undefined') return;
+        if ((!$('hwRows') && !$('hwUnits')) || typeof Cart === 'undefined') return;
         buildCatalogue();
 
         var body = $('hwRows');
         /* Two listeners on the catalogue rather than three per row, so the
            handlers do not scale with the number of machines. */
-        body.addEventListener('input', function (e) {
+        if (body) body.addEventListener('input', function (e) {
             if (!e.target || !e.target.hasAttribute || !e.target.hasAttribute('data-qty')) return;
             /* Mirror the typed value so the row lights the same way a stepped one
                does. Not setQty(): rewriting .value mid-keystroke fights the
@@ -438,7 +470,7 @@
             e.target.setAttribute('value', String(q));
             Cart.set(e.target.getAttribute('data-qty'), q);
         });
-        body.addEventListener('click', function (e) {
+        if (body) body.addEventListener('click', function (e) {
             var btn = e.target.closest && e.target.closest('.hw-step');
             if (!btn) return;
             Cart.add(btn.getAttribute('data-for'), parseInt(btn.getAttribute('data-step'), 10));
@@ -457,6 +489,7 @@
            when the order does — otherwise a customer adds three machines and the ladder is
            still quoting the sum for the two they had a moment ago. */
         Cart.onChange(function () { syncInputs(); renderOrder(); renderPrepay(); });
+        window.addEventListener('hardware:site-change', renderFacility);
 
         renderFacility();
         wirePrepay();
@@ -525,8 +558,11 @@
         slot.innerHTML = Prepay.itemisedHtml({
             site: Facilities.chosen(),
             term: Prepay.chosen(),
-            hardwareUsd: t.usd,
-            kw: t.kw,
+            hardwareUsd: t.unpriced ? null : t.usd,
+            kw: t.unknownPower ? null : t.kw,
+            unpriced: t.unpriced || 0,
+            unknownHash: t.unknownHash || 0,
+            unknownPower: t.unknownPower || 0,
             units: t.units,
             depositRate: t.depositRate
         });
@@ -544,16 +580,23 @@
        behalf. If the value in the box is still that, it is ours and may be updated when the term
        changes; the moment it differs, they have typed something and it is never touched again.
        A field that fights back while you are typing in it is worse than one that starts empty. */
-    var autoElec = null;
+    var autoElec = null, originalEconNote = null;
 
     function fillPowerPrice(site, term) {
         var f = $('hwElec');
         var note = $('hwEconNote');
         if (!f) return;
+        if (note && originalEconNote === null) originalEconNote = note.innerHTML;
 
-        if (!site || typeof Prepay === 'undefined') {
-            /* No site: leave whatever is there. Clearing it would throw away a figure the
-               visitor typed before they went to pick one. */
+        if (!site) {
+            /* Clearing the location also clears only its automatic rate. A
+               rate the visitor entered belongs to them and survives. */
+            if (autoElec !== null && f.value === autoElec) f.value = '';
+            autoElec = null;
+            if (note) note.innerHTML = originalEconNote;
+            return;
+        }
+        if (typeof Prepay === 'undefined') {
             return;
         }
 
@@ -576,8 +619,8 @@
             note.innerHTML = mine
                 ? 'Filled in from <strong>' + esc(site.name) + '</strong>' +
                   (term ? ' on the ' + esc(term.label) + ' rate' : '') +
-                  '. Change it to model a different price &mdash; nothing here is locked, and ' +
-                  'the last two columns follow whatever is in the box.'
+                  '. Change it to model a different price &mdash; nothing here is locked' +
+                  ($('hwRows') ? ', and the last two columns follow whatever is in the box.' : '.')
                 : 'Using the price you entered rather than ' + esc(site.name) +
                   '&rsquo;s. Clear the box to go back to the site rate.';
         }
@@ -604,8 +647,12 @@
         /* The draw the customer is actually buying, so the prepaid sum is THEIR number rather
            than an example. Zero until there is something in the order, in which case only the
            rate is shown — a total of nothing is not a useful figure. */
-        var kw = 0;
-        try { kw = (Cart.totals() || {}).kw || 0; } catch (e) { kw = 0; }
+        var kw = 0, unknownPower = false;
+        try {
+            var totals = (orderSnapshot() || {}).totals || {};
+            unknownPower = !!totals.unknownPower || totals.units > 0 && !known(totals.kw);
+            kw = unknownPower ? null : (known(totals.kw) ? totals.kw : 0);
+        } catch (e) { kw = null; unknownPower = true; }
 
         var cards = Prepay.all().map(function (t) {
             var on = picked && picked.id === t.id;
@@ -626,7 +673,7 @@
                         ? '<span class="pp-total">' + money(total) +
                           ' up front<br><span class="pp-saved">saves ' + money(saved) +
                           ' over ' + t.months + ' months at today&rsquo;s rate</span></span>'
-                        : '<span class="pp-total pp-total--empty">Add machines to price the term</span>') +
+                        : '<span class="pp-total pp-total--empty">' + (unknownPower ? 'Confirm miner power to price the term' : 'Add machines to price the term') + '</span>') +
                 '</span>' +
                 '<span class="pp-pick">' + (on ? 'Selected' : 'Choose this term') + '</span>' +
             '</button>';
@@ -681,6 +728,8 @@
             renderFacility();
         });
     }
+
+    window.HardwarePage = { refresh: renderFacility };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

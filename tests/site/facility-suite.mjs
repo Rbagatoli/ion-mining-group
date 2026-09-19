@@ -18,6 +18,7 @@ const REPO_ROOT = new URL('../../', import.meta.url).pathname.replace(/^\/([A-Za
 
 import fs from 'fs';
 import path from 'path';
+import { runInNewContext } from 'node:vm';
 
 const W = REPO_ROOT + 'worker-orders/';
 const worker = await import('file:///' + W + 'index.js');
@@ -231,14 +232,14 @@ console.log(CHR + '=== prepaid electricity: longer term, better rate ===');
     eq(Prepay.all().filter(t => t.featured).length, 1, 'exactly one tier is featured');
     eq(Prepay.all().filter(t => t.featured)[0].id, '36m', 'and it is the longest');
 
-    /* Hardware now prepares a hosting enquiry. Facility selection remains, but a
-       visitor is not pushed into a checkout or a prepaid term. The legacy pricing
-       module is still checked below because existing carts continue to use it. */
+    /* THE LADDER LIVES ON THE CATALOGUE PAGE, NOT THE HOSTING PAGE — and that is the whole
+       point of it: the rate shown is the rate of the site the customer picked on the way in.
+       On the hosting page, with no site chosen, every figure would have to be a "from" price
+       across five different rates. So the tiers are rendered by hardware.js at runtime from the
+       chosen facility, and what is asserted here is the wiring rather than baked-in markup. */
     const hw = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.html'), 'utf8');
-    ok(hw.indexOf('id="hwHostingFacility"') >= 0, 'the Hardware enquiry retains a facility choice');
-    ok(/<script src="\.\/facilities\.js/.test(hw), '...and loads the shared facility module');
-    ok(hw.indexOf('id="hwPrepay"') < 0 && !/<script src="\.\/hardware\.js/.test(hw),
-       'the hosting enquiry does not load the legacy prepaid-order flow');
+    ok(hw.indexOf('id="hwPrepay"') >= 0, 'the catalogue page has somewhere to put the ladder');
+    ok(/<script src="\.\/prepay\.js/.test(hw), '...and loads the module that prices it');
 
     const hwjs = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
     ok(hwjs.indexOf('Prepay.rateFor') >= 0 || hwjs.indexOf('Prepay.rateLabel') >= 0,
@@ -657,27 +658,121 @@ console.log('\n=== the electricity total is stated once ===');
        'and both the site and the term are withheld when it is not ours');
 }
 
-console.log('\n=== checkout itemisation survives the Hardware enquiry transition ===');
+console.log('\n=== the itemisation is on both pages the customer reads ===');
 {
-    /* Existing checkout still needs the complete shared price breakdown. The new
-       Hardware page instead carries the selected configuration into an enquiry. */
-    const PAGES = [['cart.html', 'ckItemised']];
+    /* The catalogue is where the order is assembled and the checkout is where it is confirmed.
+       Itemising on one and not the other means the breakdown appears or vanishes depending on
+       which way the customer navigates. */
+    const PAGES = [['hardware.html', 'hwItemised'], ['cart.html', 'ckItemised']];
     for (const pair of PAGES) {
         const h = fs.readFileSync(path.join(REPO_ROOT, 'site', pair[0]), 'utf8');
         ok(h.indexOf('id="' + pair[1] + '"') >= 0, pair[0] + ' has somewhere to put it');
         ok(h.indexOf('prepay.js') >= 0, pair[0] + ' loads the module that builds it');
     }
-    const hardware = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.html'), 'utf8');
-    ok(hardware.indexOf('id="hwHostingSummary"') >= 0 && hardware.indexOf('id="hwHostingConfiguration"') >= 0,
-       'Hardware keeps the selected configuration in its enquiry summary and payload');
-    ok(hardware.indexOf('id="hwItemised"') < 0,
-       'Hardware does not present an unconfirmed hosting enquiry as a checkout total');
     const SCRIPTS = [['hardware.js', 'hwItemised'], ['checkout.js', 'ckItemised']];
     for (const pair of SCRIPTS) {
         const j = fs.readFileSync(path.join(REPO_ROOT, 'site', pair[0]), 'utf8');
         ok(j.indexOf(pair[1]) >= 0, pair[0] + ' fills it');
         ok(j.indexOf('Prepay.itemisedHtml') >= 0, pair[0] + ' uses the shared builder');
     }
+}
+
+console.log('\n=== request-only variants do not fabricate complete costs ===');
+{
+    const site = Facilities.byId('cold-lake'), term = Prepay.byId('12m');
+    const noHardware = Prepay.itemisedHtml({site, term, hardwareUsd: null, kw: 30, units: 5, unpriced: 5, depositRate: 0.25});
+    ok(/Machines/.test(noHardware) && /quote required|on request/i.test(noHardware),
+       'unpriced machines remain visible with their quote requirement');
+    ok(/Electricity/.test(noHardware), 'known fleet power can still show its own electricity cost');
+    ok(!/Both together|it-row--total/.test(noHardware), 'unknown hardware prevents a fabricated combined cost');
+    ok(!/deposit now/.test(noHardware), 'unpriced hardware does not invent a deposit due now');
+
+    const noPower = Prepay.itemisedHtml({site, term, hardwareUsd: 25000, kw: 30, units: 5, unknownPower: 1, depositRate: 0.25});
+    ok(/\$25,000/.test(noPower), 'a known hardware cost is retained independently');
+    ok(/power[^<]*(?:confirm|unknown)|confirm[^<]*power/i.test(noPower),
+       'unknown miner power is explicitly identified before pricing electricity');
+    ok(!/Both together|it-row--total/.test(noPower), 'a known power subtotal is not presented as the complete electricity cost');
+
+    const unknown = Prepay.itemisedHtml({site, term, hardwareUsd: null, kw: null, units: 5, unpriced: 5, unknownPower: 5});
+    ok(/quote required|on request/i.test(unknown) && /power[^<]*(?:confirm|unknown)|confirm[^<]*power/i.test(unknown),
+       'both missing costs remain explicit');
+    ok(!/NaN|class="it-val">\$0(?:\.0+)?<|Both together|it-row--total/.test(unknown), 'missing inputs cannot become a zero-dollar complete price');
+}
+
+console.log('\n=== monthly site costs stay separate from hardware capital ===');
+{
+    const site = Facilities.byId('cold-lake'), kw = 30;
+    const expected = '$' + Math.round(kw * 730 * site.powerCents / 100).toLocaleString('en-US');
+    const monthly = Prepay.itemisedHtml({site, term: null, hardwareUsd: 25000, kw, units: 5, depositRate: 0.25});
+    ok(monthly.includes('monthly estimate') && monthly.includes('730 hours') && monthly.includes(expected),
+       'no-term monthly estimate uses fleet kW times 730 hours times the selected site rate');
+    ok(monthly.includes('$25,000') && !/Both together|it-row--total/.test(monthly),
+       'recurring monthly cost is not added to upfront hardware capital');
+    const partial = Prepay.itemisedHtml({site, term: null, hardwareUsd: 25000, kw, units: 5, unknownPower: 1});
+    ok(partial.includes('Power to confirm') && !partial.includes('class="it-val">' + expected + '<'),
+       'unknown power blocks a monthly estimate from a known fleet subtotal');
+}
+
+console.log('\n=== Hardware retains full saved orders without the old table ===');
+{
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
+    function runtime(staleCount, knownCount) {
+        const nodes = {}, callbacks = {}, itemised = [];
+        function element() {
+            return {textContent: '', innerHTML: '', value: '', hidden: false, disabled: false,
+                classList: {toggle() {}}, addEventListener(name, cb) { this[name] = cb; }};
+        }
+        ['hwUnits', 'hwHash', 'hwPower', 'hwCost', 'hwItemised', 'hwUnpriced', 'hwOrderText',
+         'hwOrderPreview', 'hwSubmit', 'hwCopy', 'hwCheckout', 'hwRunAll', 'hwPrepay', 'hwFacility',
+         'hwClear', 'hwEmpty'].forEach(id => { nodes[id] = element(); });
+        let stale = staleCount;
+        const line = {model: 'Known model', qty: knownCount, hashrate: 200, power: 3.5, each: 1000};
+        const totals = {units: knownCount, th: knownCount * 200, kw: knownCount * 3.5,
+            usd: knownCount * 1000, unpriced: 0, unknownHash: 0, unknownPower: 0, depositRate: 0.25};
+        const site = Facilities.byId('cold-lake'), term = Prepay.byId('12m');
+        const ctx = {
+            document: {readyState: 'complete', getElementById: id => nodes[id] || null,
+                querySelector: () => null, querySelectorAll: () => []},
+            window: {addEventListener(name, cb) { callbacks[name] = cb; }},
+            Cart: {totals: () => totals, lines: () => knownCount ? [line] : [],
+                get: () => ({'Retired exact bin': stale}), stale: () => stale ? ['Retired exact bin'] : [],
+                count: () => knownCount + stale, onChange(cb) { callbacks.cart = cb; }, clear() {}},
+            MinerDB: {findByModel: model => model === line.model ? line : null},
+            PriceList: {ASOF: '2026-09-18'},
+            Facilities: Object.assign({}, Facilities, {chosen: () => site, bannerHtml: () => ''}),
+            Prepay: Object.assign({}, Prepay, {chosen: () => term, itemisedHtml(opts) {
+                itemised.push(opts); return Prepay.itemisedHtml(opts);
+            }})
+        };
+        runInNewContext(source, ctx, {filename: 'hardware.js'});
+        return {nodes, callbacks, itemised, totals, removeStale() { stale = 0; callbacks.cart(); }};
+    }
+    for (const knownCount of [0, 1]) {
+        const r = runtime(2, knownCount), label = knownCount ? 'mixed saved cart' : 'stale-only cart';
+        eq(r.nodes.hwUnits.textContent, String(knownCount + 2), label + ' keeps every saved unit');
+        ok(/confirm/i.test(r.nodes.hwHash.textContent) && /confirm/i.test(r.nodes.hwPower.textContent),
+           label + ' does not turn a partial subtotal into full fleet specifications');
+        ok(/quote required/i.test(r.nodes.hwCost.textContent) && r.nodes.hwCost.textContent !== '$0',
+           label + ' states missing hardware price rather than a complete subtotal');
+        const opts = r.itemised.at(-1);
+        ok(opts.units === knownCount + 2 && opts.hardwareUsd === null && opts.kw === null &&
+           opts.unpriced === 2 && opts.unknownPower === 2, label + ' passes complete unknown counts to the cost builder');
+        ok(r.nodes.hwOrderText.value.includes('2 x Retired exact bin') &&
+           !/both together|electricity total: \$/i.test(r.nodes.hwOrderText.value),
+           label + ' keeps unavailable selections in copied orders without a fabricated combined sum');
+        ok(r.nodes.hwRunAll.hidden && !r.nodes.hwCheckout.hidden && !r.nodes.hwCopy.disabled,
+           label + ' remains reviewable without routing partial fleet figures to the calculator');
+        ok(r.nodes.hwPrepay.innerHTML.includes('Confirm miner power to price the term'),
+           label + ' cannot price prepaid electricity from a partial fleet');
+        eq(r.totals.unknownPower, 0, label + ' does not mutate the Cart totals object');
+    }
+    const recovered = runtime(2, 1);
+    recovered.removeStale();
+    ok(recovered.nodes.hwUnits.textContent === '1' && recovered.nodes.hwHash.textContent === '200 TH/s' &&
+       recovered.nodes.hwPower.textContent === '3.50 kW' && recovered.nodes.hwCost.textContent === '$1,000',
+       'Cart subscription restores complete known totals after stale selections are removed');
+    ok(!recovered.nodes.hwRunAll.hidden && recovered.nodes.hwRunAll.href.includes('machineCount=1'),
+       'the complete legacy order retains its calculator action');
 }
 
 console.log('\n=== the itemised figures agree with the term that was chosen ===');

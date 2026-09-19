@@ -1,65 +1,29 @@
-/* The shared miner catalogue, followed by a hosting enquiry. */
-.hardware-page .hw-hero { padding-top: 72px; padding-bottom: 58px; }
-.hardware-page .br-hero-grid { grid-template-columns: minmax(0,1.45fr) minmax(0,.55fr); }
-.hardware-page .br-title { font-size: clamp(40px,4.8vw,68px); }
-.hardware-page .br-intro { max-width: 535px; }
+/* The 3D catalogue replaces only the former hardware table. */
+.hardware-page .hw-order { position: static; }
+.hardware-page .hw-cat.br-catalog { display: block; min-width: 0; max-width: none; margin: 0; padding: 0 !important; }
 .hardware-page .br-catalog-heading h2 { font-size: clamp(28px,3vw,40px); }
 .hardware-page [data-catalog-purpose="hosting"] .br-catalog-compare { display: none !important; }
-.hardware-page .hw-hosting { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); align-items: start; gap: 72px; padding-top: 58px; padding-bottom: 88px; scroll-margin-top: 95px; }
-.hw-hosting-intro { min-width: 0; border-top: 1px solid var(--line-mid); padding-top: 28px; }
-.hw-hosting-intro .br-eyebrow { margin-bottom: 20px; }
-.hw-hosting-intro h2 { color: var(--plat-100); font-size: clamp(30px,3.3vw,43px); font-weight: 500; line-height: 1.13; letter-spacing: -.04em; margin: 0; }
-.hw-hosting-intro > p:not(.br-eyebrow) { max-width: 350px; color: var(--br-muted); font-size: 14px; line-height: 1.8; margin: 24px 0 18px; }
-.hw-hosting-intro > a { display: inline-flex; align-items: center; gap: 24px; color: var(--btc-200); min-height: 44px; font-size: 12px; }
-.hw-hosting-form { min-width: 0; max-width: none; gap: 0; padding: 28px 0 0; border: 0; border-top: 1px solid var(--line-mid); background: transparent; }
-.hw-hosting-form::before { display: none; }
-.hw-hosting-form .form-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
-.hw-hosting-form .field { min-width: 0; margin-bottom: 20px; }
-.hw-hosting-form label { color: var(--plat-200); font: 12px/1.5 var(--sans); letter-spacing: 0; text-transform: none; }
-.hw-hosting-form input, .hw-hosting-form select, .hw-hosting-form textarea { min-width: 0; max-width: 100%; min-height: 46px; border-radius: 9px; border: 1px solid var(--line-mid); padding: 12px; background: #0c0c0b; color: var(--plat-100); font: 14px/1.5 var(--sans); }
-.hw-hosting-form input::placeholder, .hw-hosting-form textarea::placeholder { color: #93918d; opacity: 1; }
-.hw-hosting-form input[readonly] { color: #ffd19a; border-color: #63503a; background: linear-gradient(120deg,rgba(247,147,26,.045),rgba(229,228,226,.02)); }
-.hw-hosting-form textarea { resize: vertical; }
-.hw-hosting-form .hw-field-note { color: var(--br-muted); font-size: 11px; line-height: 1.6; margin: 8px 0 0; }
-.hw-hosting-form .hw-manual-check { display: flex; align-items: center; gap: 11px; min-height: 44px; margin: -8px 0 15px; cursor: pointer; }
-.hw-hosting-form .hw-manual-check input { width: 17px; min-height: 17px; height: 17px; flex: 0 0 17px; margin: 0; padding: 0; accent-color: var(--btc-300); }
-.hw-hosting-form .hw-optional { margin-left: 6px; color: #999792; font-size: 10px; }
-.hw-hosting-summary { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--plat-200); font: 12px/1.9 var(--mono); margin: 2px 0 27px; padding: 17px 0 17px 17px; border-left: 2px solid #9a6829; background: transparent; }
-.hw-hosting-actions { margin-top: 25px; align-items: center; }
-.hw-hosting-actions .btn { min-height: 48px; gap: 24px; font-size: 12px; white-space: normal; text-align: center; }
-.hw-hosting-form .form-note { color: var(--br-muted); font-size: 11px; line-height: 1.8; margin-top: 12px; overflow-wrap: anywhere; }
-.hw-hosting-form .form-note a { color: var(--btc-200); }
-.hw-copy-status { color: var(--btc-200); font-size: 12px; line-height: 1.6; margin: 10px 0 0; }
-.hw-copy-status:empty { display: none; }
-.hw-hosting [hidden] { display: none !important; }
-.hw-hosting-form input:focus-visible, .hw-hosting-form select:focus-visible, .hw-hosting-form textarea:focus-visible, .hw-hosting a:focus-visible, .hw-hosting button:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 4px; }
-@media (max-width: 1000px) {
-  .hardware-page .hw-hosting { gap: 42px; grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr); }
-  .hw-hosting-form .form-row { gap: 14px; }
-}
+.hardware-page .hw-site-choice { max-width: 470px; margin-bottom: 24px; }
+.hardware-page .hw-site-choice label > span { margin-left: 7px; font: 10px var(--sans); color: var(--plat-400); letter-spacing: 0; text-transform: none; }
+.hardware-page .hw-site-choice select { min-height: 46px; }
+.hardware-page .hw-catalog-actions { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 12px; align-items: end; }
+.hardware-page .hw-catalog-quantity { min-width: 0; }
+.hardware-page .hw-catalog-quantity label { font: 11px/1.5 var(--sans); color: var(--plat-300); letter-spacing: 0; text-transform: none; }
+.hardware-page .hw-catalog-quantity input { min-width: 0; width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--line-mid); border-radius: 8px; background: #0c0c0b; color: var(--plat-100); font: 14px/1.5 var(--sans); }
+.hardware-page .hw-catalog-actions .btn { min-height: 48px; min-width: 0; width: 100%; padding: 12px 16px; justify-content: center; gap: 20px; font-size: 11px; white-space: normal; text-align: center; }
+.hardware-page .hw-catalog-checkout { grid-column: 1 / -1; }
+.hardware-page .hw-catalog-price-note { grid-column: 1 / -1; margin: 0; color: var(--br-muted); font: 11px/1.7 var(--sans); }
+.hardware-page .hw-catalog-price-note:empty { display: none; }
+.hardware-page .hw-catalog-added { margin: 10px 0 0; color: var(--btc-200); font: 12px/1.7 var(--sans); overflow-wrap: anywhere; }
+.hardware-page .hw-catalog-added:empty { display: none; }
+.hardware-page .hw-catalog-quantity input:focus-visible, .hardware-page .hw-site-choice select:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 4px; }
 @media (max-width: 700px) {
-  .hardware-page .hw-hero { padding-top: 43px; padding-bottom: 35px; }
-  .hardware-page .br-hero-grid { grid-template-columns: minmax(0,1fr); }
-  .hardware-page .br-title { font-size: clamp(36px,8.6vw,54px); margin-bottom: 19px; }
-  .hardware-page .br-intro { font-size: 14px; line-height: 1.7; margin-bottom: 22px; }
-  .hardware-page .br-hero .br-actions { gap: 8px; }
-  .hardware-page .br-hero .br-actions .btn { flex: 1 1 0; width: auto; min-width: 0; gap: 8px; padding: 12px 10px; font-size: 11px; min-height: 46px; white-space: normal; text-align: center; }
   .hardware-page .br-catalog-heading { align-items: start; gap: 15px; }
   .hardware-page .br-catalog-heading h2 { font-size: 25px; }
   .hardware-page .br-catalog-heading > p { max-width: 125px; }
-  .hardware-page .br-catalog-request { gap: 12px; font-size: 11px; }
-  .hardware-page .hw-hosting { grid-template-columns: minmax(0,1fr); gap: 27px; padding-top: 25px; padding-bottom: 52px; }
-  .hw-hosting-intro { padding-top: 24px; }
-  .hw-hosting-intro .br-eyebrow { margin-bottom: 13px; }
-  .hw-hosting-intro h2 { font-size: 33px; }
-  .hw-hosting-intro > p:not(.br-eyebrow) { max-width: 100%; margin-top: 17px; margin-bottom: 8px; font-size: 13px; }
-  .hw-hosting-form { padding-top: 0; border-top: 0; }
-  .hw-hosting-form .form-row { grid-template-columns: minmax(0,1fr); gap: 0; }
-  .hw-hosting-form input, .hw-hosting-form select, .hw-hosting-form textarea { font-size: 16px; }
-  .hw-hosting-form .field { margin-bottom: 17px; }
-  .hw-hosting-summary { font-size: 11px; padding-left: 12px; margin-bottom: 22px; }
-  .hw-hosting-actions { flex-direction: row; margin-top: 22px; gap: 8px; }
-  .hw-hosting-actions .btn { flex: 1 1 auto; padding: 13px 16px; }
+  .hardware-page .hw-catalog-actions { grid-template-columns: 85px minmax(0,1fr); gap: 10px; }
+  .hardware-page .hw-catalog-quantity input { font-size: 16px; }
+  .hardware-page .hw-catalog-actions .btn { gap: 10px; }
 }
 @media (max-width: 380px) {
   .hardware-page .br-catalog-heading { display: block; }

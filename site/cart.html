@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=9149bf89">
+<link rel="stylesheet" href="./styles.css?v=b8598d5f">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -290,6 +290,7 @@
           <textarea id="ck-notes" name="notes" placeholder="Timing, power available at the destination, whether you want hosting quoted, anything relevant."></textarea>
         </div>
 
+        <div id="ckPaymentChoice">
         <h2 class="calc-chart-title">How you want to pay</h2>
         <div class="field">
           <label for="ck-leg">Payment</label>
@@ -299,11 +300,15 @@
           </select>
         </div>
         <p class="calc-hint" id="ckLegNote">&mdash;</p>
+        </div>
+
+        <p class="calc-hint calc-hint--warn" id="ckQuoteReview" hidden>Some selected configurations need a confirmed quote before payment. Review your complete order, site and energy costs below, then email a quote request. Nothing is charged or removed from your order. The email link opens a draft for you to send.</p>
 
         <pre class="hw-preview" id="ckPreview">No machines selected yet.</pre>
 
         <div class="hw-actions">
           <button class="btn btn--primary" type="submit" id="ckSubmit">Continue to payment</button>
+          <a class="btn btn--primary" id="ckQuoteRequest" href="mailto:hosting@protonminingco.com" hidden>Email quote request</a>
           <button class="btn btn--ghost" type="button" id="ckCopy">Copy the order</button>
           <button class="btn btn--ghost" type="button" id="ckClear">Empty the order</button>
         </div>
@@ -385,15 +390,17 @@
   </div>
 </footer>
 
-<script src="./site.js?v=9149bf89"></script>
-<script src="./hero-anim.js?v=9149bf89"></script>
-<script src="./miner-db.js?v=9149bf89"></script>
-<script src="./price-list.js?v=9149bf89"></script>
-<script src="./facilities.js?v=9149bf89"></script>
-<script src="./prepay.js?v=9149bf89"></script>
-<script src="./cart.js?v=9149bf89"></script>
-<script src="./orders-demo.js?v=9149bf89"></script>
-<script src="./orders-api.js?v=9149bf89"></script>
-<script src="./checkout.js?v=9149bf89"></script>
+<script src="./site.js?v=b8598d5f"></script>
+<script src="./hero-anim.js?v=b8598d5f"></script>
+<script src="./miner-db.js?v=b8598d5f"></script>
+<script src="./price-list.js?v=b8598d5f"></script>
+<script src="./facilities.js?v=b8598d5f"></script>
+<script src="./prepay.js?v=b8598d5f"></script>
+<script src="./brokerage-catalog-data.js?v=b8598d5f"></script>
+<script src="./hardware-order-catalog.js?v=b8598d5f"></script>
+<script src="./cart.js?v=b8598d5f"></script>
+<script src="./orders-demo.js?v=b8598d5f"></script>
+<script src="./orders-api.js?v=b8598d5f"></script>
+<script src="./checkout.js?v=b8598d5f"></script>
 </body>
 </html>
