@@ -30,7 +30,6 @@
 .hardware-page .hw-order-lines li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; color: var(--plat-200); font: 11px/1.5 var(--sans); border-bottom: 1px solid var(--line); }
 .hardware-page .hw-order-lines li > :first-child { min-width: 0; overflow-wrap: anywhere; }
 .hardware-page .hw-order-lines li > :last-child { flex: 0 0 auto; color: var(--btc-200); }
-.hardware-page .hw-browser-wrap { max-width: 1660px; }
 .hardware-page .hw-browser-layout { align-items: start; overflow-anchor: none; }
 .hardware-page .hw-cat.br-catalog { display: block; min-width: 0; max-width: none; margin: 0; padding: 0 !important; }
 .hardware-page .br-catalog-heading h2 { font-size: clamp(28px,3vw,40px); }
