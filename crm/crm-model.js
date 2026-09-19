@@ -12,14 +12,30 @@
     ...leads.map(l=>({id:l.id,kind:'lead',name:l.company,stage:l.stage,group:group('lead',l.stage),subtitle:l.buyer||l.contact||'Revenue lead',updated:l.updatedAt||''})),
     ...deals.map(d=>({id:d.id,kind:'deal',name:d.name,stage:d.stage,group:group('deal',d.stage),subtitle:d.offer,updated:d.updatedAt||''}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated)||a.name.localeCompare(b.name)||String(a.id).localeCompare(String(b.id)));}
-  function today({sites,leads,tasks,followups,date}){
+  function today({sites,leads,tasks,followups,date,state}){
     const siteMap=new Map(sites.map(s=>[String(s.id),s])),actions=[];
     followups.filter(f=>['pending','snoozed'].includes(f.status)&&f.due_date<=date).forEach(f=>{
       const site=siteMap.get(String(f.prospect_id));
       actions.push({id:f.id,kind:'followup',target:f.prospect_id,name:f.description,context:site?site.name:'Unlinked reminder',due:f.due_date,rank:f.due_date<date?0:2});
     });
-    leads.filter(l=>!['dnc','disqualified'].includes(l.stage)&&l.due&&l.due<=date).forEach(l=>actions.push({id:l.id,kind:'lead',name:l.nextAction||'Set the next action',context:l.company,due:l.due,rank:l.due<date?0:2}));
+    leads.forEach(l=>{
+      const contact=state&&A.outreachForLead(state,l,{now:date+'T12:00:00Z'});
+      if(contact?.unknown){actions.push({id:l.id,kind:'lead',name:'Reconcile uncertain contact before retry',context:l.company,due:date,rank:-2});return;}
+      if(contact?.paused&&!contact.suppressed){actions.push({id:l.id,kind:'lead',name:'Review reply · prospecting paused',context:l.company,due:date,rank:-1});return;}
+      if(contact?.suppressed||contact?.parked||['dnc','disqualified'].includes(l.stage))return;
+      if(l.due&&l.due<=date)actions.push({id:l.id,kind:'lead',name:l.nextAction||'Set the next action',context:l.company,due:l.due,rank:l.due<date?0:2});
+    });
     tasks.filter(t=>A.actionable(t)&&(t.routing?.reviewOwner==='owner'||t.status==='review'||t.status==='blocked'||t.due&&t.due<=date)).forEach(t=>actions.push({id:t.id,kind:'task',name:t.title,context:t.routing?.reviewOwner==='owner'?'Owner decision · '+t.routing.reason:t.status==='review'?'Team review · '+(A.reviewRole({tasks},t)==='revenue'?'Revenue Lead':'Quality Review'):t.status==='blocked'?(t.blockerKind==='correction'?'Corrections requested':'Execution blocker · Revenue Lead'):'Team task',due:t.due,rank:t.routing?.reviewOwner==='owner'?0:t.status==='review'?1:t.status==='blocked'?2:3}));
+    if(state)actions.forEach(action=>{
+      if(action.kind!=='task')return;
+      const task=tasks.find(t=>t.id===action.id);
+      if(task.role!=='outreach'||task.status==='review'||task.routing?.reviewOwner==='owner')return;
+      const lead=leads.find(l=>l.id===task.leadId),contact=lead&&A.outreachForLead(state,lead,{now:date+'T12:00:00Z'});
+      if(lead?.stage==='dnc'||contact?.suppressed){action.name='Review stale outreach · contact restricted';action.context='Revenue Lead · keep refusal in place';}
+      else if(contact?.unknown){action.name='Reconcile uncertain contact before retry';action.context='Revenue Lead · check actual provider outcome';action.rank=-2;}
+      else if(contact?.paused){action.name='Review buyer reply · prospecting paused';action.context='Revenue Lead · requested conversation only';action.rank=-1;}
+      else if(contact?.parked){action.name='Review stale outreach · sequence parked';action.context='Revenue Lead · no automatic restart';}
+    });
     return actions.sort((a,b)=>a.rank-b.rank||(a.due||'9999').localeCompare(b.due||'9999')||String(a.id).localeCompare(String(b.id)));
   }
   function safeUrl(value){try{const u=new URL(value);return /^https?:$/.test(u.protocol)&&!u.username&&!u.password?u.href:null;}catch(_){return null;}}

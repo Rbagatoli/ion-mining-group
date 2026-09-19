@@ -38,7 +38,10 @@
                 });
                 if(generation!==epoch)throw new Error('The account changed while saving; check the original account for the result.');
             } else {
-                var save=function(){var before=localRead();var next=Model.reduce(before,action);storage.setItem(LOCAL,JSON.stringify(next));state=next;emit();};
+                var save=function(){
+                    if(generation!==epoch||uid!==owner||mode!=='local')throw new Error('The workspace changed while waiting to save. Refresh and try again.');
+                    var before=localRead();var next=Model.reduce(before,action);storage.setItem(LOCAL,JSON.stringify(next));state=next;emit();
+                };
                 // Browser-wide lock closes the read/write race between local tabs.
                 if(root.navigator&&root.navigator.locks)await root.navigator.locks.request(LOCAL,save);else save();
             }

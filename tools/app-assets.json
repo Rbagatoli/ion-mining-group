@@ -1,6 +1,7 @@
 [
   "accounting.html",
   "agent-control-model.js",
+  "crm/outreach-model.js",
   "agent-control-store.js",
   "agent-control.css",
   "agent-control.html",

@@ -52,6 +52,13 @@
     const qa=(state.tasks||[]).find(t=>t.parentTaskId===task.id&&t.role==='review'&&active(t)),kind=bucket(task);
     if(['reference','superseded'].includes(kind))return {label:kind==='reference'?'Reference':'Superseded',owner:'No action queued',next:task.routing?.reason||'Operating charter retained for reference; it is not an execution assignment.',qa,kind};
     if(kind==='owner')return {label:'Owner decision',owner:'Renzo',next:task.routing.reason,qa,kind};
+    if(task.role==='outreach'&&active(task)&&task.status!=='review'&&task.leadId){
+      const lead=(state.leads||[]).find(l=>l.id===task.leadId),contact=lead&&A.outreachForLead(state,lead);
+      if(lead?.stage==='dnc'||contact?.suppressed)return {label:'Contact restricted',owner:'Revenue Lead',next:'Keep the contact restriction in place. Review or close stale outreach work; do not send or switch channels.',qa,kind};
+      if(contact?.unknown)return {label:'Reconcile uncertain contact',owner:'Revenue Lead',next:'Resolve the actual provider outcome before any retry or alternate channel.',qa,kind};
+      if(contact?.paused)return {label:'Reply recorded · sequence paused',owner:'Revenue Lead',next:'Review the reply. Continue only the specifically requested conversation through an eligible route.',qa,kind};
+      if(contact?.parked)return {label:'Prospecting sequence parked',owner:'Revenue Lead',next:'Keep proactive follow-ups parked; review stale assignments without restarting the sequence.',qa,kind};
+    }
     const review=A.reviewRole(state,task)==='revenue'?['Coordinator review','Revenue Lead',task.role==='review'?'Check the actual Quality verdict and evidence, then record acceptance or corrections. No second QA loop.':'Record the linked Quality verdict for this result; accept supported work or return corrections.']:qa?['Agent review','Quality Review','Complete the linked independent review, then return the verdict to Revenue.']:['Agent review','Quality Review','Review this result independently; Revenue records the verdict and next step.'];
     const meanings={draft:['Not queued','Revenue Lead','Confirm prerequisites, then queue this assignment.'],ready:['Queued',role(task.role),'Claim the eligible assignment at the next coordinator check.'],working:['Work reported',role(task.role),'Save a result and the next action.'],review,blocked:kind==='correction'?['Corrections requested',role(task.role),task.blocker||'Correct the reviewed findings and submit a new result.']:['Execution blocked','Revenue Lead',task.blocker||'Identify and resolve the execution blocker.'],done:['Result accepted','Revenue Lead','Advance the next supported dependency within the authorized scope.'],cancelled:['Cancelled','Revenue Lead','Choose another assignment if work is still needed.']};
     const [label,owner,next]=meanings[task.status]||['Status unknown','Revenue Lead','Check the saved assignment.'];
@@ -59,7 +66,8 @@
   }
   function leadProgress(lead,state){
     const tasks=linkedTasks(lead,state),work=tasks.filter(active),current=work.find(t=>bucket(t)==='owner')||work.find(t=>t.status==='working')||work.find(t=>t.status==='blocked')||work.find(t=>t.status==='ready')||work.find(t=>t.status==='review')||work.find(t=>t.status==='draft');
-    const suppressed=lead.stage==='dnc'||!!lead.contact&&(state.leads||[]).some(l=>l.stage==='dnc'&&l.contact&&l.contact.trim().toLowerCase()===lead.contact.trim().toLowerCase());
+    const contact=A.outreachForLead(state,lead);
+    const suppressed=!!contact?.suppressed||lead.stage==='dnc'||!!lead.contact&&(state.leads||[]).some(l=>l.stage==='dnc'&&l.contact&&l.contact.trim().toLowerCase()===lead.contact.trim().toLowerCase());
     const closed=suppressed||lead.stage==='disqualified',sendHold=hold(state);
     let step='research',now='Research needed',owner='Lead Intelligence',next=lead.nextAction||'Check the buying signal and a public contact route.';
     if(lead.stage==='qualified'){step='qualify';now='Fit recorded';owner='Outreach & Channels';next=lead.nextAction||'Prepare a personalized message for review.';}
@@ -78,8 +86,11 @@
     if(sendHold&&step==='contact'&&lead.stage!=='contacted'&&bucket(current||{})!=='owner'){now='Draft accepted · email readiness pending';owner='Revenue Lead';next=sendHold.next;}
     if(suppressed){step='closed';now='Do not contact';owner='No outreach';next='Keep this contact suppressed.';}
     else if(closed){step='closed';now='Not a fit';owner='No active follow-up';next='Keep the reason in the lead notes.';}
+    else if(contact?.unknown){now='Reconcile uncertain contact';owner='Revenue Lead';next='Check the actual provider or conversation outcome before any retry or alternate channel.';}
+    else if(contact?.paused){step='conversation';now='Reply recorded · sequence paused';owner='Revenue Lead';next='Review the buyer’s reply and continue only the requested conversation through an eligible channel.';}
+    else if(contact?.parked){now='Prospecting sequence parked';owner='Revenue Lead';next='Keep proactive follow-ups parked. A new calendar period does not restart the sequence.';}
     if(state.paused&&!closed&&current&&['draft','ready'].includes(current.status)){now+=' · queue paused';next='Resume the queue when ready. '+next;}
-    return {lead,step,now,owner,next,tasks,current,closed,sendHold,updated:[lead.updatedAt||'',tasks[0]?stamp(tasks[0]):''].sort().pop()};
+    return {lead,step,now,owner,next,tasks,current,closed,sendHold,contact,updated:[lead.updatedAt||'',tasks[0]?stamp(tasks[0]):''].sort().pop()};
   }
   function campaigns(state){
     const groups=new Map();

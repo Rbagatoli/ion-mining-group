@@ -1,9 +1,9 @@
 /* Proton Revenue Desk. Pure state transitions; no provider calls or external actions. */
 (function (root, factory) {
-    var api = factory();
+    var api = factory(typeof module !== 'undefined' && module.exports ? require('./crm/outreach-model.js') : root.ProtonCrmOutreach);
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.AgentControlModel = api;
-}(typeof window !== 'undefined' ? window : this, function () {
+}(typeof window !== 'undefined' ? window : this, function (Outreach) {
     'use strict';
     var ROLES = [
         { id: 'intelligence', name: 'Lead Intelligence', initials: 'LI', job: 'Buying signals · account research · qualification', output: 'Evidence-backed accounts with a reason to buy now.', prompt: 'Prioritize lead generation. Research two buyer groups: miners facing a purchase, hosting renewal or relocation; and mining/energy suppliers that need better prospect research. Record the account website, dated original buying signal, relevant buyer role, public business contact route, best-fit service and next action in the lead register. A directory listing is account fit, not buying intent. Mark unknowns; never invent contacts, demand or replies. Deduplicate accounts by domain and offer. Respect do-not-contact records. Qualify for outreach only with a specific signal and contact route; this is not sales qualification or consent to contact.' },
@@ -105,6 +105,10 @@
     function valid(s) {
         if (!s || s.schema !== 1 || !Number.isSafeInteger(s.revision) || s.revision < 0 || typeof s.paused !== 'boolean') fail('This control-center record needs recovery. Export the original before making changes.');
         amount(s.goalCents);
+        if(s.outreach!==undefined){
+            if(!Outreach)fail('Contact-channel support is missing. Reload before changing this register.');
+            Outreach.valid(s.outreach,s.leads||[]);
+        }
         if(s.outreachReadiness!==undefined)readinessValid(s.outreachReadiness);
         if(s.outreachReadinessHistory!==undefined){if(!Array.isArray(s.outreachReadinessHistory)||s.outreachReadinessHistory.length>20)fail('Invalid readiness history.');s.outreachReadinessHistory.forEach(readinessValid);}
         // Existing schema-1 records may omit leads. Preserve them and add the register on the next write.
@@ -142,7 +146,7 @@
             if(reserveBalance<0)fail('A release cannot exceed cash reserved as of that date. Correct the associated release first.');
         });
         // Keep comfortably below Firestore's 1 MiB document cap, including UTF-8 text.
-        if(new TextEncoder().encode(JSON.stringify(s)).length > 700000) fail('The pilot register is full. Export it and arrange an archive before adding more work.');
+        if(new TextEncoder().encode(JSON.stringify(s)).length > 700000) fail(s.outreach?'The register is full. This change was not saved. Preserve all contact restrictions and history; move to a durable event store before adding more work.':'The pilot register is full. Export it and arrange an archive before adding more work.');
         return s;
     }
     function get(s,k,key) { var x=s[k].find(function(r){return r.id===key;}); if(!x)fail('That record no longer exists. Refresh and try again.');return x; }
@@ -256,12 +260,18 @@
             s.outreachReadiness=readiness;message='Outbound email readiness recorded; no message sent';break;
         case 'pause':
             s.paused=!s.paused;message=s.paused?'New task claims paused; active Grok work must be stopped in Grok':'Task queue resumed';break;
-        default: fail('Unknown action.');
+        default:
+            if(typeof a.type==='string'&&a.type.indexOf('outreach.')===0){
+                if(!Outreach)fail('Contact-channel support is missing. Reload before changing this register.');
+                s.outreach=Outreach.reduce(s.outreach,a,s.leads);
+                message='Contact-channel record updated; no message sent';
+            }else fail('Unknown action.');
         }
         s.revision++;
         s.activity.unshift({id:id(a.id),at:a.at,message:message});s.activity=s.activity.slice(0,150);
         return valid(s);
     }
+    function outreachForLead(s,l,options) { return s.outreach&&Outreach?Outreach.forLead(s,l.id,options):null; }
     function metrics(s, month) {
         var out={earned:0,delivery:0,software:0,reserve:0,release:0,contribution:0,open:0,review:0,pipeline:0};
         s.entries.filter(function(e){return !e.voidedAt && e.date.slice(0,7)===month;}).forEach(function(e){out[e.kind]+=e.cents;});
@@ -282,5 +292,5 @@
     function kickoff(page) {
         return '# Create the Proton Revenue Desk\n\nCreate six dedicated Proton bots with the profiles below and add them to a Proton Revenue Desk group. Before creating anything, verify that this is a Grok/Cursor account dedicated to Proton, separate from the account used for Stoneport. Separate bot names or group chats on one account do not isolate its cloud computer, files, browser sessions or app connections. If the account is shared with Stoneport or its identity is uncertain, STOP and request the separate Proton login. Never create, message or configure Proton bots in the Stoneport account. Within the verified Proton account, reuse matching Proton profiles and add only missing roles.\n\n'+COMMON+'\n\nLead generation has first priority. Spend the initial sprint researching prospects and testing two offers: a $500 Quote & Cost Review for miners and a $1,500 Supplier Prospect Research pilot for mining/energy vendors. Prices are hypotheses. Track actual replies, meetings and paid work; account counts are not demand. Keep broader sourcing and site briefs as follow-on services.\n\n'+ROLES.map(function(r){return '## Proton '+r.name+'\n'+r.prompt;}).join('\n\n')+'\n\nControl center: '+page+'\nThe control center is the task, lead and result register. First verify it is reachable, that the owner has authorized the account access, and that you see the correct Proton workspace. A localhost address is not reachable from your cloud computer. Do not assume a pasted URL establishes a connection.\n\nFirst return the six bot names and group confirmation. Then, when cloud access is available, complete a harmless task round trip: find a ready task, claim it, submit a source-linked result, and leave it for owner review. Do not begin recurring execution until this round trip is verified. Routines must honor queue pauses, claim only ready tasks and recheck the task before taking a consequential action. To stop active work, the owner must also send Stop now in Grok.\n';
     }
-    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence,reviewRole:reviewRole};
+    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence,reviewRole:reviewRole,outreachForLead:outreachForLead};
 }));

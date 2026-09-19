@@ -8,11 +8,11 @@
   const openLead=l=>!['dnc','disqualified'].includes(l.stage);
   const hasText=v=>typeof v==='string'&&!!v.trim();
   function summary({sites,state,followups,contacts,date}){
-    const leads=(state.leads||[]).filter(openLead),tasks=state.tasks.filter(A.actionable);
+    const leads=(state.leads||[]).filter(l=>openLead(l)&&!A.outreachForLead(state,l)?.suppressed),tasks=state.tasks.filter(A.actionable);
     const pipeline=M.pipeline(sites,state.leads||[],state.deals).filter(r=>r.group!=='closed');
     const activeSites=sites.filter(s=>!['dead','closed_won'].includes(s.stage));
     const reminders=followups.filter(f=>['pending','snoozed'].includes(f.status));
-    const actions=M.today({sites,leads:state.leads||[],tasks:state.tasks,followups:reminders,date});
+    const actions=M.today({sites,leads:state.leads||[],tasks:state.tasks,followups:reminders,date,state});
     const dated=actions.filter(a=>a.due&&a.due<=date);
     const nextWeek=new Date(date+'T12:00:00Z');nextWeek.setUTCDate(nextWeek.getUTCDate()+7);
     const future=reminders.filter(f=>f.due_date>date&&f.due_date<=nextWeek.toISOString().slice(0,10));
