@@ -19,6 +19,27 @@ function ok(cond, label, detail) {
 
 var seo = fs.readFileSync(S + 'tools/build-seo.js', 'utf8');
 var nav = fs.readFileSync(S + 'tools/build-nav.js', 'utf8');
+var siteNavigation = require(S + 'tools/build-nav.js');
+var sourcingNav = siteNavigation.nav('sites', siteNavigation.CTA['energy-sites.html']);
+ok(siteNavigation.PAGES['energy-sites.html'] === 'sites', 'energy site sourcing has its own navigation identity');
+ok(/href="\.\/energy-sites\.html" class="active">Find a site<\/a>/.test(sourcingNav),
+   'Find a site identifies the buyer-facing service');
+ok(/class="brand" href="\.\/index\.html"/.test(sourcingNav) && !/>Home<\/a>/.test(sourcingNav),
+   'the brand retains Home without an extra navigation text link');
+ok(/href="\.\/energy\.html">Energy Partners<\/a>/.test(sourcingNav),
+   'the owner-facing Energy Partners route remains available');
+ok(siteNavigation.CTA['energy-sites.html'].href === '#request', 'the sourcing CTA targets its request brief');
+ok((siteNavigation.SERVICES_COL.match(/href="\.\/energy-sites\.html"/g) || []).length === 1,
+   'the shared Services footer promotes sourcing exactly once');
+ok((siteNavigation.SERVICES_COL.match(/href="\.\/energy\.html#managed-hosting"/g) || []).length === 1,
+   'the shared Services footer preserves Managed Energy Hosting');
+['index.html', 'hosting.html', 'energy.html'].forEach(function (file) {
+    var page = fs.readFileSync(S + file, 'utf8');
+    var content = page.slice(page.indexOf('</nav>') + 6, page.indexOf('<footer'));
+    ok(/href="\.\/energy-sites\.html"/.test(content), file + ' provides a contextual route to site sourcing');
+});
+ok(!/middleman placing your machines|developer who flips|not brokers\./.test(fs.readFileSync(S + 'index.html', 'utf8')),
+   'homepage operating positioning is compatible with the independent sourcing service');
 
 /* The origin, read from the generator rather than restated here. */
 var BASE = (function () {

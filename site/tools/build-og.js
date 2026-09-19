@@ -53,7 +53,7 @@ const WEIGHT = {
 
 const CARDS = [
     { file: 'home.png',      scene: '../scene-site.js',    pages: ['index.html'] },
-    { file: 'energy.png',    scene: '../scene-pad-now.js', pages: ['energy.html'] },
+    { file: 'energy.png',    scene: '../scene-pad-now.js', pages: ['energy.html', 'energy-sites.html'] },
     { file: 'hosting.png',   scene: '../scene-hosting.js', pages: ['hosting.html'] },
     /* The calculator and contact pages have no drawing of their own. They get
        the whole-mine card: it is what the company builds, which is the honest

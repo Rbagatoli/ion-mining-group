@@ -20,6 +20,7 @@ const PAGES = {
   'index.html':   'home',
   'hosting.html': 'hosting',
   'energy.html':  'energy',
+  'energy-sites.html': 'sites',
   'hardware.html': 'hardware',
   'calculator.html': 'calculator',
   /* Learn covers the evergreen guide and the blog. */
@@ -103,7 +104,7 @@ function nav(active, cta) {
            on it, then one container inside that mine. Someone reading the nav
            left to right is walking the same chain the renderings do. -->
       <a href="./energy.html"${on('energy')}>Energy Partners</a>
-      <a href="./index.html"${on('home')}>Home</a>
+      <a href="./energy-sites.html"${on('sites')}>Find a site</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
       <a href="./hardware.html"${on('hardware')}>Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
@@ -148,6 +149,7 @@ const CTA = {
   // machines somebody already has.
   'hosting.html':          { href: './hardware.html', label: 'Start mining' },
   'energy.html':           { href: '#submit', label: 'Submit a site' },
+  'energy-sites.html':     { href: '#request', label: 'Find a site' },
   'hardware.html':         { href: '#hwOrder', label: 'Review order' },
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'why-mining.html':       { href: './hardware.html', label: 'Start mining' },
@@ -173,6 +175,16 @@ const COMPANY_COL = `<h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>`;
+
+/* Buyer-facing site sourcing and owner-facing energy partnerships are separate
+   services. Share this column with generated articles as well as static pages. */
+const SERVICES_COL = `<h4>Services</h4>
+        <a href="./hardware.html#miners">Mining hardware</a>
+        <a href="./hosting.html">Hosting</a>
+        <a href="./energy-sites.html">Energy site sourcing</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
+        <a href="./index.html#operate">Site development</a>`;
 
 /* ---- the page is not blank without JavaScript ----
 
@@ -238,7 +250,7 @@ function replaceBlock(html, startTag, endTag, replacement, label, file) {
    Post pages are generated in full, so they cannot be spliced by the loop below the way a
    hand-authored page is - and a second copy of the nav is the exact drift this file exists to
    stop. Run build-blog.js after this one and generated pages pick up any nav change. */
-module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, BRAND_MARK };
+module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, SERVICES_COL, BRAND_MARK };
 
 /* Guarded, so requiring this file does not rewrite eleven pages as a side effect. */
 if (require.main !== module) return;
@@ -250,8 +262,8 @@ for (const [file, active] of Object.entries(PAGES)) {
   let html = fs.readFileSync(p, 'utf8');
   const before = html;
 
-  html = html.replace(/\s*<a href="\.\/brokerage\.html">ASIC brokerage<\/a>/g, '');
-  html = html.replace(/(<h4>Services<\/h4>)(?!\s*<a href="\.\/hardware\.html#miners">)/, '$1\n        <a href="./hardware.html#miners">Mining hardware</a>');
+  html = replaceBlock(html, '<h4>Services</h4>', './index.html#operate">Site development</a>',
+                      SERVICES_COL, 'footer Services column', file);
   html = applyHold(html, file);
   html = ensureNoscript(html, file);
   html = replaceBlock(html, '<nav class="nav">', '</nav>', nav(active, CTA[file]), 'nav', file);

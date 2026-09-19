@@ -10,7 +10,7 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Two ways to work with us: buy machines from us and run them on our power, or let us put our machines on your energy."
+      "html": "Buy and host miners, find a site for your own operation, or put your energy to work."
     },
     {
       "file": "site/index.html",
@@ -45,12 +45,12 @@
     {
       "file": "site/index.html",
       "tag": "h2",
-      "html": "Two doors into the same operation."
+      "html": "Choose your next step."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "We run the sites either way. What changes is which side of the meter you are standing on."
+      "html": "Buy and host miners with Proton, ask us to find a potential site for your own operation, or explore a partnership around your energy."
     },
     {
       "file": "site/index.html",
@@ -85,7 +85,7 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "We are not a middleman placing your machines in somebody else&rsquo;s facility, and we are not a developer who flips a permitted site and walks away. We source the energy, build the site, and run the fleet &mdash; same team, the whole way down."
+      "html": "For Proton-hosted projects, we source the energy, coordinate the build and operate the fleet. For your own mining or hosting operation, our separate energy site sourcing service helps assess potential locations, existing infrastructure and remaining capital."
     },
     {
       "file": "site/index.html",
@@ -110,7 +110,7 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "A fleet you want bought, racked and running, or a wellhead burning gas with nowhere to send it. Either one starts the same way."
+      "html": "Whether you need miners and hosting, a potential energy site for your own operation, or a buyer for your gas or power, start with your requirements."
     },
     {
       "file": "site/energy.html",
@@ -350,7 +350,7 @@
     {
       "file": "site/contact.html",
       "tag": "p",
-      "html": "Whether you want a container of machines running on cheap power or you have a wellhead burning gas into the sky, the first step is the same conversation."
+      "html": "Whether you need miners and hosting, a site with power, or a partner for your energy asset, tell us what you are planning."
     },
     {
       "file": "site/contact.html",

@@ -130,7 +130,7 @@ const MUST_EXIST = [
     'crm/index.html', 'crm/crm.js', 'crm/runtime/agent-control-model.js', 'crm/manifest.webmanifest',
     /* Without this the custom domain does not resolve to the site at all. */
     'CNAME',
-    'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html', 'brokerage.html',
+    'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html', 'brokerage.html', 'energy-sites.html',
     'sitemap.xml', 'robots.txt', '404.html', 'styles.css',
     'portal/index.html',
     /* The portal's two parent-directory dependencies. Without them the portal renders as a

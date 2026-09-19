@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Site Sourcing for Bitcoin Mining | Proton Mining</title>
+<meta name="description" content="Find potential energy sites for your mining or hosting operation. Compare power, existing infrastructure and remaining capital needs with a shortlist built around your requirements.">
+<link rel="canonical" href="https://protonminingco.com/energy-sites.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Find an Energy Site — Proton Mining">
+<meta property="og:description" content="Potential sites for mining operators, hosting companies and independent miners. Power, existing infrastructure and remaining capital, in one search.">
+<meta property="og:url" content="https://protonminingco.com/energy-sites.html">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=cf57b56f">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<link rel="stylesheet" href="./energy-sites.css?v=cf57b56f">
+<!-- ===== SHARE CARD ===== -->
+<meta property="og:image" content="https://protonminingco.com/og/energy.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
+<!-- ===== /SHARE CARD ===== -->
+</head>
+<body class="sites-page">
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Ordered like the drawings are: the partner's site, the mine we build
+           on it, then one container inside that mine. Someone reading the nav
+           left to right is walking the same chain the renderings do. -->
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./energy-sites.html" class="active">Find a site</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="#request">Find a site</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="hero sites-hero">
+  <div class="wrap sites-hero-grid">
+    <div>
+      <div class="eyebrow">Energy site sourcing</div>
+      <h1 class="h-display">Find the power.<br><span class="accent">Build your next mine.</span></h1>
+      <p class="lede" data-mobile-copy="Potential energy sites matched to your power needs, location and upfront budget.">Find potential energy sites for your mining or hosting operation, with a search built around the power you need, where you want to operate and what you can invest upfront.</p>
+      <div class="btn-row"><a class="btn btn--primary" href="#request">Find a site <span aria-hidden="true">↗</span></a><a class="btn btn--ghost" href="#shortlist">What you receive</a></div>
+      <p class="hero-note">For mining companies, hosting operators and independent miners.</p>
+    </div>
+    <aside class="sites-brief" aria-labelledby="brief-title">
+      <div class="sites-brief-top"><span class="eyebrow">Your shortlist</span><span class="sites-tag">Built around your budget</span></div>
+      <h2 id="brief-title">Power is only <br>part of the picture.</h2>
+      <dl class="sites-brief-rows">
+        <div><dt><span aria-hidden="true">01</span> The energy</dt><dd>Potential MW, supply terms and constraints</dd></div>
+        <div><dt><span aria-hidden="true">02</span> What is already there</dt><dd>Documented infrastructure and reuse questions</dd></div>
+        <div><dt><span aria-hidden="true">03</span> What you still need</dt><dd>Remaining work, capital estimates and gaps</dd></div>
+        <div><dt><span aria-hidden="true">04</span> The next conversation</dt><dd>Owner contacts and a path to confirm the opportunity</dd></div>
+      </dl>
+      <p class="sites-brief-note">A search brief and researched opportunities. Site access and supply terms are confirmed with the owner.</p>
+    </aside>
+  </div>
+</header>
+
+<section class="band sites-section" id="shortlist" aria-labelledby="shortlist-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><div class="eyebrow">What you receive</div><h2 class="h-section" id="shortlist-title">A shortlist you can act on.</h2><p class="lede" data-mobile-copy="Compare power, existing assets, remaining spend and next steps.">Compare the opportunity and the work required to make it usable, with source dates and open questions beside the estimates.</p></div>
+    <div class="sites-deliverables reveal">
+      <article><span class="sites-index">01 / Power</span><h3>Supply that fits your operation.</h3><p data-mobile-copy="Location, source and potential MW, plus rate, curtailment, cooling and energization questions.">Location, energy source, reported capacity and potential supply. Screen rates, curtailment, gas quality, cooling needs and the steps to energization.</p></article>
+      <article><span class="sites-index">02 / Infrastructure</span><h3>See what is already built.</h3><p data-mobile-copy="Documented gas, generation, electrical and site assets, with reuse and inspection gaps.">Available evidence on gas collection, generation, electrical equipment, site access and buildings. Identify what may be reusable and what still needs inspection or owner confirmation.</p></article>
+      <article><span class="sites-index">03 / Upfront capital</span><h3>Understand the remaining spend.</h3><p data-mobile-copy="Remaining buildout and upgrades, preliminary cost ranges, assumptions and unpriced work.">Separate existing assets from new construction, upgrades and connection work. See preliminary cost ranges, their assumptions and work that has not yet been priced.</p></article>
+      <article><span class="sites-index">04 / Owner &amp; next steps</span><h3>Reach the right conversation.</h3><p data-mobile-copy="Owner contact routes, commercial questions and introductions where the parties agree.">Relevant owner and operator contact routes, commercial questions and a plan for further diligence. We can help coordinate introductions where the parties agree.</p></article>
+    </div>
+    <div class="sites-capital-note reveal"><span class="sites-note-mark" aria-hidden="true">↓</span><div><h3>Start with what you can afford to build.</h3><p data-mobile-copy="We prioritize potentially reusable assets when upfront capital is tight. Ownership, access, condition and capacity must support any assumed savings.">If upfront capital is the constraint, we prioritize sites with infrastructure that may be reusable. Equipment on a site only reduces your budget when ownership, access, condition and usable capacity support that assumption.</p></div></div>
+  </div>
+</section>
+
+<section class="band sites-section" aria-labelledby="search-title">
+  <div class="wrap sites-search-grid">
+    <div class="reveal"><div class="eyebrow">Where we look</div><h2 class="h-section" id="search-title">Several routes to power.</h2><p class="lede" data-mobile-copy="Search across gas, surplus power and sites with existing electrical infrastructure.">The right route depends on your scale, operating flexibility and willingness to develop a site.</p></div>
+    <ul class="sites-sources reveal">
+      <li><strong>Landfill &amp; digester gas</strong><span>Collection systems, gas use commitments and conversion needs.</span></li>
+      <li><strong>Stranded &amp; flared gas</strong><span>Supply access, gas treatment, generation and operating life.</span></li>
+      <li><strong>Surplus &amp; curtailed power</strong><span>Deliverable capacity, availability windows and tariff conditions.</span></li>
+      <li><strong>Sites with power infrastructure</strong><span>Existing connections and equipment, with supply rights checked separately.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="band sites-section" aria-labelledby="process-title">
+  <div class="wrap">
+    <div class="sec-head reveal"><div class="eyebrow">How it works</div><h2 class="h-section" id="process-title">Your requirements. A focused search.</h2></div>
+    <ol class="sites-process reveal">
+      <li><span>01</span><h3>Set the brief.</h3><p>Share your power target, location, timeline and capital limit. We agree the search scope, deliverables and fees before work begins.</p></li>
+      <li><span>02</span><h3>Compare potential sites.</h3><p>Review a tailored shortlist with the evidence available, existing assets, estimated remaining work and the questions still to resolve.</p></li>
+      <li><span>03</span><h3>Progress the right leads.</h3><p>Choose the opportunities to pursue. Confirm availability with owners, arrange further diligence and discuss the commercial terms.</p></li>
+    </ol>
+    <div class="sites-evidence reveal"><strong>Know what has been confirmed.</strong><p>Public records can identify a lead. They do not establish spare power, access rights or a site for sale. We distinguish reported facts, estimates and owner-confirmed information. A site is secured only when the required agreements are in place.</p></div>
+  </div>
+</section>
+
+<section class="band sites-section" id="request" aria-labelledby="request-title">
+  <div class="wrap sites-request-grid">
+    <div class="reveal">
+      <div class="eyebrow">Start your search</div><h2 class="h-section" id="request-title">What would make<br>a site work for you?</h2>
+      <p class="lede">Start with your location and power target. Add a budget or timeline if you have one.</p>
+      <p class="sites-direct">Email directly<br><a class="accent" href="mailto:energy@protonminingco.com?subject=Energy%20site%20sourcing%20enquiry">energy@protonminingco.com</a></p>
+      <div class="sites-other-route"><p>Already own an energy site?</p><a class="arrow-link" href="./energy.html#submit">Explore energy partnerships <span aria-hidden="true">↗</span></a></div>
+      <div class="sites-other-route"><p>Buying machines to run with Proton?</p><a class="arrow-link" href="./hosting.html">See Proton hosting <span aria-hidden="true">↗</span></a></div>
+    </div>
+    <form class="form sites-form" id="siteSearchForm" data-mailto="energy@protonminingco.com" data-subject="Energy site sourcing enquiry via protonminingco.com">
+      <div class="form-row"><div class="field"><label for="ss-name">Name</label><input id="ss-name" name="name" type="text" autocomplete="name" required maxlength="100"></div><div class="field"><label for="ss-email">Email</label><input id="ss-email" name="email" type="email" autocomplete="email" required maxlength="180" placeholder="you@company.com"></div></div>
+      <div class="form-row"><div class="field"><label for="ss-company">Company <span>(optional)</span></label><input id="ss-company" name="company" type="text" autocomplete="organization" maxlength="120"></div><div class="field"><label for="ss-role">I am looking as</label><select id="ss-role" name="role"><option>Mining operator</option><option>Hosting company</option><option>Independent miner</option><option>Developer or investor</option></select></div></div>
+      <div class="form-row"><div class="field"><label for="ss-region">Preferred location</label><input id="ss-region" name="region" type="text" required maxlength="140" placeholder="Country, state/province, or flexible"></div><div class="field"><label for="ss-power">Initial power needed (MW)</label><input id="ss-power" name="power_mw" type="number" min="0.001" step="any" inputmode="decimal" required placeholder="e.g. 2.5"><small>1 MW = 1,000 kW. Approximate is fine.</small></div></div>
+      <details class="sites-form-options"><summary>Budget, timing &amp; preferences <span>Optional</span></summary><div class="sites-form-options-body">
+        <div class="form-row"><div class="field"><label for="ss-budget">Site budget, excluding miners (USD)</label><input id="ss-budget" name="site_budget_usd" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 250000"><small>Land, infrastructure and connection work.</small></div><div class="field"><label for="ss-rate">Energy-only target (US ¢/kWh)</label><input id="ss-rate" name="power_cost_cents" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 5.5"><small>Energy target, before hosting services.</small></div></div>
+        <div class="form-row"><div class="field"><label for="ss-timing">Target start</label><select id="ss-timing" name="timeline"><option value="Not specified">Flexible / exploring</option><option>Within 3 months</option><option>3–6 months</option><option>6–12 months</option><option>More than 12 months</option></select></div><div class="field"><label for="ss-priority">Infrastructure preference</label><select id="ss-priority" name="infrastructure"><option value="Not specified">No preference yet</option><option>Prioritize existing infrastructure</option><option>Open to a partial buildout</option><option>Open to a new build</option></select></div></div>
+        <div class="field"><label for="ss-notes">Equipment &amp; other requirements</label><textarea id="ss-notes" name="requirements" maxlength="1200" placeholder="Cooling type, expansion MW, power reliability, equipment you own, or willingness to use off-grid gas."></textarea></div>
+      </div></details>
+      <button class="btn btn--primary" type="submit" data-mailto-enable disabled>Open email draft <span aria-hidden="true">↗</span></button>
+      <p class="form-note">Opens your search brief in your mail app. Review it and press Send there. Nothing is submitted automatically.</p>
+      <noscript><p class="form-note">Email your requirements to <a href="mailto:energy@protonminingco.com">energy@protonminingco.com</a>. The draft builder needs JavaScript.</p></noscript>
+    </form>
+  </div>
+</section>
+
+<section class="band sites-section sites-faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="sec-head"><div class="eyebrow">Before you start</div><h2 class="h-section" id="faq-title">A few useful distinctions.</h2></div>
+    <div class="sites-faq-list">
+      <details><summary>Do I have to host with Proton?</summary><p>No. Site sourcing is available for your own mining or hosting operation. For machines purchased from Proton, our <a href="./hosting.html">hosting service</a> is a separate option.</p></details>
+      <details><summary>Are these sites already available or under contract?</summary><p>A shortlist may include opportunities identified from public records and research. We state the confirmation level for each one. Owner interest, energy availability, access and commercial terms must be checked before you rely on a site.</p></details>
+      <details><summary>Does an existing gas system mean the mine is ready?</summary><p>No. Gas collection, electricity generation and mining infrastructure are separate. An existing collection system may still need treatment, generators, electrical work and a gas agreement. Reuse depends on the equipment, its condition and your right to use it.</p></details>
+      <details><summary>How are fees and capital estimates handled?</summary><p>Search fees and deliverables are agreed for your brief before work starts. Preliminary capital ranges separate priced work from unresolved items; engineering, inspections and supplier quotes are needed to establish a build budget. Hardware, land and transaction costs are identified separately where relevant.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining sites built on landfill gas, flared gas, and curtailed power.</p>
+      </div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
+        <h4>Services</h4>
+        <a href="./hardware.html#miners">Mining hardware</a>
+        <a href="./hosting.html">Hosting</a>
+        <a href="./energy-sites.html">Energy site sourcing</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
+        <a href="./index.html#operate">Site development</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+
+</div></details></div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div><span class="ph">[REGISTERED ENTITY NAME]</span> &middot; <span class="ph">[CITY, JURISDICTION]</span></div>
+    </div>
+  </div>
+</footer>
+<script src="./site.js?v=cf57b56f"></script>
+<script src="./hero-anim.js?v=cf57b56f"></script>
+<script src="./cart.js?v=cf57b56f"></script>
+</body>
+</html>

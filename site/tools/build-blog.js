@@ -30,7 +30,7 @@ const SITE = path.join(__dirname, '..');
 const POSTS = path.join(SITE, 'posts');
 const INDEX_PAGE = path.join(SITE, 'blog.html');
 
-const { nav, CTA, PAGES: NAV_PAGES, COMPATIBILITY_PAGES } = require('./build-nav.js');
+const { nav, CTA, PAGES: NAV_PAGES, COMPATIBILITY_PAGES, SERVICES_COL } = require('./build-nav.js');
 const LAUNCH = require('./launch.js');
 
 /* Kept in step with build-seo.js by blog-suite.mjs: two origins for one page is the classic way
@@ -548,8 +548,9 @@ ${footerFor()}
 
 /* The footer, lifted from a page that already has one rather than written a second time here.
    privacy.html is the reference because it is the plainest page on the site: no page-specific
-   markup to accidentally carry across. build-nav.js owns two of its columns and will keep
-   rewriting them there, so this copy follows along on the next run of this generator. */
+   markup to accidentally carry across. All three link columns are generated;
+   the Services definition is also applied here so its new links do not depend
+   on the reference page having been regenerated first. */
 function footerFor() {
     const ref = fs.readFileSync(path.join(SITE, 'privacy.html'), 'utf8');
     const a = ref.indexOf('<footer');
@@ -558,6 +559,7 @@ function footerFor() {
         console.error('privacy.html: no footer to copy'); process.exit(1);
     }
     return ref.slice(a, b + '</footer>'.length)
+              .replace(/<h4>Services<\/h4>[\s\S]*?<a href="\.\/index\.html#operate">Site development<\/a>/, SERVICES_COL)
               .replace(/\?v=[0-9a-f]+/g, '');   // the stamper puts these back
 }
 

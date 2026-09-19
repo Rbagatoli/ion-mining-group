@@ -232,6 +232,10 @@
                 setTimeout(function () { btn.textContent = original; }, 4000);
             }
         });
+        // Opt-in forms remain disabled without JavaScript, so their fields
+        // cannot fall through to a native GET submission.
+        var draftButton = form.querySelector('button[type="submit"][data-mailto-enable]');
+        if (draftButton) draftButton.disabled = false;
     });
 
     /* --- Deep links like contact.html?topic=hosting preselect the subject,
@@ -240,6 +244,7 @@
     if (topicSelect) {
         var routes = {
             hosting:     { to: 'hosting@protonminingco.com', subject: 'Hosting enquiry via protonminingco.com' },
+            'site-sourcing': { to: 'energy@protonminingco.com', subject: 'Energy site sourcing enquiry via protonminingco.com' },
             energy:      { to: 'energy@protonminingco.com',  subject: 'Site / energy enquiry via protonminingco.com' },
             'managed-hosting': { to: 'energy@protonminingco.com', subject: 'Managed Energy Hosting enquiry via protonminingco.com' },
             partnership: { to: 'hello@protonminingco.com',   subject: 'Partnership enquiry via protonminingco.com' },
