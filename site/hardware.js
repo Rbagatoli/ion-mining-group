@@ -554,7 +554,14 @@
     function renderItemised(t) {
         var slot = $('hwItemised');
         if (!slot || typeof Prepay === 'undefined' || typeof Facilities === 'undefined') return;
-        if (!t || !t.units) { slot.innerHTML = ''; return; }
+        var energy = $('hwOrderEnergy'), details = $('hwOrderDetails');
+        if (details) details.hidden = !t || !t.units;
+        if (energy) energy.hidden = !t || !t.units;
+        if (!t || !t.units) {
+            slot.innerHTML = '';
+            if (energy) ['hwOrderEnergyLabel', 'hwOrderEnergyValue', 'hwOrderEnergyTerm'].forEach(function (id) { $(id).textContent = ''; });
+            return;
+        }
         slot.innerHTML = Prepay.itemisedHtml({
             site: Facilities.chosen(),
             term: Prepay.chosen(),
@@ -566,6 +573,16 @@
             units: t.units,
             depositRate: t.depositRate
         });
+        if (energy) {
+            // Prepay owns the amounts and qualifications. Its second non-total
+            // row is energy; mirror that row instead of computing another cost.
+            var row = slot.querySelectorAll('.it-row:not(.it-row--total)')[1];
+            $('hwOrderEnergyLabel').textContent = row
+                ? row.querySelector('.it-lab').textContent + (Prepay.chosen() ? ' (estimate)' : '')
+                : 'Hosting';
+            $('hwOrderEnergyValue').textContent = row ? row.querySelector('.it-val').textContent : 'Choose a site';
+            $('hwOrderEnergyTerm').textContent = row ? row.querySelector('.it-sub').textContent : 'Location and energy costs at checkout.';
+        }
     }
 
     /* ---- the power price fills itself in ----

@@ -64,7 +64,11 @@
       });
       renderOrderLines(); syncOrderSummary();
     }
-    win.addEventListener('brokerage:model', event => { selected = event.detail; priceNote(); });
+    win.addEventListener('brokerage:model', event => {
+      const pane = el('hwCatalogInfoScroll');
+      if (pane && selected?.family?.id !== event.detail?.family?.id) pane.scrollTop = 0;
+      selected = event.detail; priceNote();
+    });
     win.addEventListener('hardware:choose-miner', event => {
       const detail = event.detail;
       const count = validQuantity(quantity.value);

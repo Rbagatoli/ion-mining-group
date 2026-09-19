@@ -15,6 +15,17 @@
 .hardware-page .hw-order .it-row--total { margin-top: 2px; padding-top: 8px; }
 .hardware-page .hw-order .hw-actions { gap: 8px; }
 .hardware-page .hw-order .hw-actions .btn { min-height: 44px; padding: 9px 14px; }
+.hardware-page .hw-order-overview { display: grid; gap: 12px; min-width: 0; }
+.hardware-page .hw-order-selection, .hardware-page .hw-order-energy { min-width: 0; }
+.hardware-page .hw-order-energy[hidden] { display: none; }
+.hardware-page .hw-order-energy p { margin: 0; overflow-wrap: anywhere; }
+.hardware-page #hwOrderEnergyLabel { color: var(--plat-400); font: 10px/1.4 var(--sans); }
+.hardware-page #hwOrderEnergyValue { margin-top: 4px; color: var(--btc-200); font: 500 18px/1.3 var(--sans); }
+.hardware-page #hwOrderEnergyTerm { margin-top: 4px; color: var(--plat-400); font: 10px/1.45 var(--sans); }
+.hardware-page .hw-order-details { min-width: 0; border-top: 1px solid var(--line); }
+.hardware-page .hw-order-details > summary { min-height: 36px; padding-top: 9px; color: var(--plat-200); cursor: pointer; font: 11px/1.5 var(--sans); }
+.hardware-page .hw-order-details > summary span { margin-left: 12px; color: var(--plat-400); font-size: 10px; }
+.hardware-page .hw-order-details > summary:focus-visible, .hardware-page .hw-catalog-info-scroll:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
 .hardware-page .hw-order-lines { list-style: none; margin: 0; padding: 0; max-height: 130px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #81735e #1a1917; }
 .hardware-page .hw-order-lines li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; color: var(--plat-200); font: 11px/1.5 var(--sans); border-bottom: 1px solid var(--line); }
 .hardware-page .hw-order-lines li > :first-child { min-width: 0; overflow-wrap: anywhere; }
@@ -59,25 +70,57 @@
 .hardware-page .hw-order-dock[hidden] { display: none; }
 .hardware-page .hw-order-dock { display: none; }
 @media (min-width: 1180px) {
-  .hardware-page .hw-browser-layout { grid-template-columns: minmax(0,1fr) 270px; gap: 28px; }
-  .hardware-page .hw-order { position: sticky; top: 96px; max-height: calc(100dvh - 112px); overflow-y: auto; padding: 14px; scrollbar-width: thin; scrollbar-color: #81735e #1a1917; }
-  .hardware-page .hw-order:not(.hw-order--empty) .hw-totals { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 12px; }
+  .hardware-page .hw-browser-wrap { --hw-browse-height: clamp(360px,calc(100dvh - 400px),460px); }
+  .hardware-page .hw-browser-layout { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .hardware-page .hw-order { padding: 12px 16px 3px; gap: 8px; }
+  .hardware-page .hw-order-overview { grid-template-columns: minmax(150px,.8fr) minmax(330px,1.45fr) minmax(220px,1.05fr) 185px; gap: 20px; align-items: start; }
+  .hardware-page .hw-order .calc-chart-title { padding-bottom: 5px; margin: 0; }
+  .hardware-page .hw-order-lines { max-height: 62px; }
+  .hardware-page .hw-order-lines li { padding: 4px 0; }
+  .hardware-page .hw-order:not(.hw-order--empty) .hw-totals { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; padding-top: 3px; }
   .hardware-page .hw-order .ct-val { font-size: 18px; }
-  .hardware-page .hw-order .it-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 10px; }
-  .hardware-page .hw-order .it-what, .hardware-page .hw-order .it-money { display: contents; }
-  .hardware-page .hw-order .it-lab { grid-column: 1; grid-row: 1; }
-  .hardware-page .hw-order .it-val { grid-column: 2; grid-row: 1; text-align: right; max-width: 120px; overflow-wrap: anywhere; }
-  .hardware-page .hw-order .it-sub { grid-column: 1 / -1; grid-row: 2; }
-  .hardware-page .hw-order .it-when { grid-column: 1 / -1; grid-row: 3; }
-  .hardware-page .hw-order .hw-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
+  .hardware-page .hw-order .hw-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 8px; }
   .hardware-page .hw-order .hw-actions > :first-child { grid-column: 1 / -1; }
-  .hardware-page .hw-order .hw-actions .btn { min-width: 0; padding: 9px 10px; justify-content: center; font-size: 10px; white-space: normal; text-align: center; }
-  .hardware-page .br-catalog-heading > p { max-width: 275px; }
-  .hardware-page .br-catalog-info h3 { font-size: clamp(28px,2.7vw,40px); }
+  .hardware-page .hw-order .hw-actions .btn { min-width: 0; padding: 8px 9px; justify-content: center; font-size: 10px; white-space: normal; text-align: center; }
+  .hardware-page .hw-order .hw-actions > :not(:first-child) { min-height: 28px; padding: 4px 8px; background: transparent; border-color: var(--line-mid); }
+  .hardware-page .hw-order-details .itemised { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 32px; }
+  .hardware-page .hw-order-details .it-head, .hardware-page .hw-order-details .it-row--total { grid-column: 1 / -1; }
+  .hardware-page .hw-order-details .it-row { align-items: start; }
+  .hardware-page .hw-order-details .it-money { max-width: 45%; }
+  .hardware-page .br-catalog-heading { padding-top: 12px; margin-bottom: 10px; align-items: center; }
+  .hardware-page .br-catalog-heading > div { display: flex; gap: 16px; align-items: baseline; }
+  .hardware-page .br-catalog-heading .br-eyebrow { margin: 0; font-size: 9px; }
+  .hardware-page .br-catalog-heading h2 { font-size: 28px; }
+  .hardware-page .br-catalog-heading > p { max-width: 380px; font-size: 11px; line-height: 1.5; }
+  .hardware-page .hw-catalog-browser { padding-top: 12px; }
+  .hardware-page .br-catalog-navigation { position: static; }
+  .hardware-page .br-catalog-rail { height: calc(var(--hw-browse-height) - 131px); }
+  .hardware-page .br-catalog-product { grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 28px; height: var(--hw-browse-height); }
+  .hardware-page .br-visual { min-height: 0; }
+  .hardware-page .br-scene-stage { height: calc(var(--hw-browse-height) - 77px); aspect-ratio: auto; max-height: none; }
+  .hardware-page .br-catalog-shown { margin-top: 4px; }
+  .hardware-page .br-scene-toolbar { margin-top: 0; }
+  .hardware-page .br-visual > .br-scene-hint { display: none; }
+  .hardware-page .br-catalog-info { display: grid; grid-template-rows: minmax(0,1fr) auto auto; gap: 8px; height: var(--hw-browse-height); min-height: 0; }
+  .hardware-page .hw-catalog-info-scroll { overflow-y: auto; min-height: 0; padding: 3px 10px 3px 3px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #9f7d4c #201d19; }
+  .hardware-page .br-catalog-maker { margin-bottom: 8px; }
+  .hardware-page .br-catalog-info h3 { font-size: 32px; }
+  .hardware-page .br-catalog-subtitle { margin-top: 7px; font-size: 11px; }
+  .hardware-page .br-catalog-variants { margin: 12px 0; flex-wrap: nowrap; overflow-x: auto; padding: 3px 3px 7px; scrollbar-width: thin; scrollbar-color: #514f49 transparent; }
+  .hardware-page .br-catalog-variants button { flex: 0 0 auto; white-space: nowrap; }
+  .hardware-page .br-catalog-specs { margin-bottom: 12px; padding-bottom: 12px; }
   .hardware-page .br-catalog-specs dd { font-size: 25px; }
+  .hardware-page .br-catalog-economics { margin-bottom: 10px; }
   .hardware-page .br-catalog-price, .hardware-page .br-catalog-saving { font-size: 21px; }
+  .hardware-page .hw-catalog-actions { grid-template-columns: 84px minmax(0,1fr) minmax(0,1fr); gap: 7px 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .hardware-page .hw-catalog-checkout { grid-column: 3; grid-row: 1; }
+  .hardware-page .hw-catalog-price-note { grid-column: 1 / -1; grid-row: 2; font-size: 10px; line-height: 1.45; }
+  .hardware-page .hw-catalog-actions .btn { padding: 10px 12px; gap: 8px; font-size: 10px; }
+  .hardware-page .hw-catalog-added { margin: 0; font-size: 10px; line-height: 1.4; }
+  .hardware-page .br-catalog-footnote { margin-top: 8px; font-size: 9px; line-height: 1.5; }
 }
 @media (max-width: 1179px) {
+  .hardware-page .hw-order-details > summary { min-height: 44px; }
   html:has(body.hardware-page.hw-order-dock-visible) { scroll-padding-bottom: calc(100px + env(safe-area-inset-bottom,0px)); }
   .hardware-page.hw-order-dock-visible { padding-bottom: calc(88px + env(safe-area-inset-bottom,0px)); }
   .hardware-page .hw-order-dock { position: fixed; z-index: 60; inset: auto 0 0; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px 18px; padding: 12px max(20px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px)); background: rgba(13,13,12,.97); border-top: 1px solid #736049; box-shadow: 0 -8px 24px #0005; }
@@ -88,7 +131,7 @@
   .hardware-page.hw-order-dock-visible .hw-catalog-browser, .hardware-page.hw-order-dock-visible .hw-catalog-actions { scroll-margin-bottom: 100px; }
   .hardware-page.hw-order-dock-visible .br-catalog button, .hardware-page.hw-order-dock-visible .br-catalog input, .hardware-page.hw-order-dock-visible .br-catalog select, .hardware-page.hw-order-dock-visible .br-catalog summary, .hardware-page.hw-order-dock-visible .hw-catalog-actions a { scroll-margin-block: 96px 100px; }
 }
-@media (min-width: 701px) and (max-width: 1359px) {
+@media (min-width: 701px) and (max-width: 1179px) {
   .hardware-page .hw-catalog-browser { grid-template-columns: 140px minmax(0,1fr); gap: 20px; }
   .hardware-page .br-catalog-product { grid-template-columns: minmax(0,1fr); gap: 24px; }
   .hardware-page .br-scene-stage { aspect-ratio: 1.5; max-height: 420px; }

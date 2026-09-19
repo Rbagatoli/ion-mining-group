@@ -13,10 +13,10 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=95133fe2">
+<link rel="stylesheet" href="./styles.css?v=7e990c94">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=95133fe2">
-<link rel="stylesheet" href="./hardware-catalog.css?v=95133fe2">
+<link rel="stylesheet" href="./brokerage.css?v=7e990c94">
+<link rel="stylesheet" href="./hardware-catalog.css?v=7e990c94">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -161,6 +161,7 @@
           <p class="br-scene-hint"><span class="br-scene-mouse">Drag to explore · Scroll to zoom</span><span class="br-scene-touch">Swipe sideways to rotate · Swipe up to scroll</span></p>
         </div>
         <div class="br-catalog-info">
+          <div class="hw-catalog-info-scroll" id="hwCatalogInfoScroll" tabindex="0" role="region" aria-label="Miner specifications and price sources">
           <p class="br-catalog-maker" id="brCatalogMaker">Bitmain <span>Air-cooled</span></p>
           <h3 id="brCatalogName">Antminer S21 Pro</h3>
           <p class="br-catalog-subtitle" id="brCatalogSubtitle">SHA-256 · Bitcoin</p>
@@ -168,6 +169,8 @@
           <dl class="br-catalog-specs" id="brCatalogSpecs"><div><dt>Hashrate</dt><dd>234 <small>TH/s</small></dd></div><div><dt>Power</dt><dd>3,510 <small>W</small></dd></div><div><dt>Efficiency</dt><dd>15 <small>J/TH</small></dd></div></dl>
           <div class="br-catalog-economics"><div id="brCatalogMarket"><p class="br-catalog-label">Public market reference</p><p class="br-catalog-price">Check current quote</p><p class="br-catalog-fine">Exact variant, condition and delivery terms matter.</p></div><div id="brCatalogSavings"><p class="br-catalog-label">Hosting requirements</p><p class="br-catalog-saving">Air-cooled</p><p class="br-catalog-fine">Facility fit and cooling capacity need confirmation.</p></div></div>
           <details class="br-catalog-compare" id="brCatalogCompare" hidden><summary>Have a Proton quote? Compare it.</summary><div class="br-compare-fields"><label for="brCatalogQuote">USD per machine<input id="brCatalogQuote" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="Enter quoted price" aria-describedby="brCatalogQuoteScope"></label><label for="brCatalogCondition">Quoted condition<select id="brCatalogCondition"><option value="new">New</option><option value="used">Used</option></select></label></div><label class="br-compare-check"><input id="brCatalogQuoteMatch" type="checkbox">This quote matches the selected variant and hashrate.</label><p id="brCatalogQuoteScope">Hardware price only, in USD. Excludes shipping, taxes, duties and fees. This comparison stays on your device.</p><p id="brCatalogQuoteResult" role="status" aria-live="polite"></p></details>
+          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div></details>
+          </div>
           <div class="hw-catalog-actions">
             <div class="field hw-catalog-quantity"><label for="hwCatalogQuantity">Quantity</label><input id="hwCatalogQuantity" type="number" min="1" max="100000" step="1" value="1" inputmode="numeric" required></div>
             <button class="btn btn--primary br-catalog-request" id="brCatalogRequest" type="button">Add to order <span aria-hidden="true">+</span></button>
@@ -175,7 +178,6 @@
             <a class="btn btn--ghost hw-catalog-checkout" id="hwCatalogCheckout" href="./cart.html">Continue to checkout <span aria-hidden="true">↗</span></a>
           </div>
           <p class="hw-catalog-added" id="hwCatalogAdded" role="status" aria-live="polite"></p>
-          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div></details>
         </div>
       </article>
       </div>
@@ -184,29 +186,29 @@
     </div>
   </section>
 
-      <!-- Keep the selected fleet beside the catalogue on larger screens. -->
+      <!-- Review the selected fleet directly below the miner browser. -->
       <div class="hw-order" id="hwOrder" aria-labelledby="hwOrderTitle" tabindex="-1">
+        <div class="hw-order-overview">
+        <div class="hw-order-selection">
         <h2 class="calc-chart-title" id="hwOrderTitle">Your order</h2>
         <p class="hw-empty-note" id="hwEmpty" hidden>Add miners to start your order.</p>
         <ul id="hwOrderLines" class="hw-order-lines" aria-label="Selected miners" hidden></ul>
+        </div>
         <div class="hw-totals">
           <div><span class="ct-lab">Machines</span><span class="ct-val" id="hwUnits">&mdash;</span></div>
           <div><span class="ct-lab">Hashrate</span><span class="ct-val" id="hwHash">&mdash;</span></div>
           <div><span class="ct-lab">Power draw</span><span class="ct-val" id="hwPower">&mdash;</span></div>
           <div><span class="ct-lab">Hardware, indicative</span><span class="ct-val ct-val--btc" id="hwCost">&mdash;</span></div>
         </div>
-        <p class="calc-explain" id="hwUnpriced" hidden></p>
-        <!-- Two costs, named separately, because they are two purchases: hardware Proton buys
-             on the customer's behalf, and electricity bought forward under the hosting
-             agreement. They are paid at different moments to different schedules, so a single
-             "total" with no breakdown would be the least useful true number on the page. -->
-        <div id="hwItemised"></div>
-
+        <div class="hw-order-energy" id="hwOrderEnergy" hidden><p id="hwOrderEnergyLabel">Hosting &amp; power</p><p id="hwOrderEnergyValue"></p><p id="hwOrderEnergyTerm"></p></div>
         <div class="hw-actions">
           <a class="btn btn--primary btn--sm" id="hwCheckout" href="./cart.html" hidden>Review order</a>
           <a class="btn btn--ghost btn--sm" id="hwRunAll" href="./calculator.html" hidden>Calculator</a>
           <button type="button" class="btn btn--ghost btn--sm" id="hwClear">Clear</button>
         </div>
+        </div>
+        <p class="calc-explain" id="hwUnpriced" hidden></p>
+        <details class="hw-order-details" id="hwOrderDetails"><summary>Cost breakdown <span>Payment timing &amp; assumptions</span></summary><div id="hwItemised"></div></details>
       </div>
     </div>
   </div>
@@ -286,21 +288,21 @@
   </div>
 </footer>
 
-<script src="./site.js?v=95133fe2"></script>
-<script src="./hero-anim.js?v=95133fe2"></script>
-<script src="./miner-db.js?v=95133fe2"></script>
-<script src="./price-list.js?v=95133fe2"></script>
-<script src="./calc-engine.js?v=95133fe2"></script>
-<script src="./facilities.js?v=95133fe2"></script>
-<script src="./prepay.js?v=95133fe2"></script>
-<script src="./brokerage-catalog-data.js?v=95133fe2"></script>
-<script src="./hardware-order-catalog.js?v=95133fe2"></script>
-<script src="./cart.js?v=95133fe2"></script>
-<script src="./hardware.js?v=95133fe2"></script>
-<script src="./brokerage-catalog.js?v=95133fe2"></script>
-<script src="./hardware-catalog.js?v=95133fe2"></script>
-<script src="./diagram-engine.js?v=95133fe2"></script>
-<script src="./scene-asic.js?v=95133fe2"></script>
-<script src="./brokerage-scene.js?v=95133fe2" data-module-src="./brokerage-stage.js?v=95133fe2" data-model-src="./brokerage-models.js?v=95133fe2"></script>
+<script src="./site.js?v=7e990c94"></script>
+<script src="./hero-anim.js?v=7e990c94"></script>
+<script src="./miner-db.js?v=7e990c94"></script>
+<script src="./price-list.js?v=7e990c94"></script>
+<script src="./calc-engine.js?v=7e990c94"></script>
+<script src="./facilities.js?v=7e990c94"></script>
+<script src="./prepay.js?v=7e990c94"></script>
+<script src="./brokerage-catalog-data.js?v=7e990c94"></script>
+<script src="./hardware-order-catalog.js?v=7e990c94"></script>
+<script src="./cart.js?v=7e990c94"></script>
+<script src="./hardware.js?v=7e990c94"></script>
+<script src="./brokerage-catalog.js?v=7e990c94"></script>
+<script src="./hardware-catalog.js?v=7e990c94"></script>
+<script src="./diagram-engine.js?v=7e990c94"></script>
+<script src="./scene-asic.js?v=7e990c94"></script>
+<script src="./brokerage-scene.js?v=7e990c94" data-module-src="./brokerage-stage.js?v=7e990c94" data-model-src="./brokerage-models.js?v=7e990c94"></script>
 </body>
 </html>

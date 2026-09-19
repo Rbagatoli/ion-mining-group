@@ -11,9 +11,10 @@ const workspace=dependencyRoot();
 const {chromium}=require(process.env.PROTON_PLAYWRIGHT_PATH||path.join(workspace,'tools/.cache/hosting-terrain-browser/node_modules/playwright-core'));
 const chrome=process.env.PROTON_CHROME_PATH||['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe','/usr/bin/google-chrome','/usr/bin/chromium'].find(p=>fs.existsSync(p));
 if(!chrome)throw Error('Chrome is unavailable. Set PROTON_CHROME_PATH.');
-const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-browser-layout-2026-09-19'));
+const out=path.resolve(process.env.PROTON_HARDWARE_REPORT_DIR||path.join(workspace,'reports/hardware-order-strip-2026-09-19'));
 fs.mkdirSync(out,{recursive:true});
-const viewports=[{width:320,height:740,label:'mobile320'},{width:390,height:844,label:'mobile390'},{width:1024,height:900,label:'tablet1024'},{width:1440,height:1000,label:'desktop'}].filter(v=>!process.env.PROTON_HARDWARE_VIEWPORTS||process.env.PROTON_HARDWARE_VIEWPORTS.split(',').includes(v.label));
+const layoutOnly=process.env.PROTON_HARDWARE_LAYOUT_ONLY==='1';
+const viewports=[{width:1440,height:900,label:'desktop'},{width:1366,height:768,label:'laptop1366'},{width:320,height:740,label:'mobile320'},{width:390,height:844,label:'mobile390'},{width:1024,height:900,label:'tablet1024'}].filter(v=>!process.env.PROTON_HARDWARE_VIEWPORTS||process.env.PROTON_HARDWARE_VIEWPORTS.split(',').includes(v.label));
 const legacyCart={'Antminer S19 Pro':1},pricedCart={'Antminer S19 Pro':1,'Antminer S21 Pro':2},requestKey='catalogue:s21-pro-245';
 const checks=[],blocked=[],blockedWrites=[],localFailures=[],requests=[],runtimeErrors=[],consoleErrors=[],gestures=[],layouts=[];let browser,activePage;
 const stubAPI=`var OrdersAPI={base:function(){return location.origin+'/api';},isLocal:function(){return true;},demoAllowed:function(){return false;},explain:function(e){return e.message;},post:async function(route,payload){window.__testOrderCalls=window.__testOrderCalls||[];window.__testOrderCalls.push({route:route,payload:payload});return {ok:true,body:{reference:'SYNTHETIC-NO-PAYMENT',demo:true}};}};`;
@@ -108,9 +109,13 @@ async function noDockOverlap(page,selector){
   assert.equal(overlap,false,selector+' is covered by the order dock.');
 }
 async function state(page){return page.evaluate(()=>({cart:Cart.get(),lines:Cart.lines(),totals:Cart.totals(),site:Facilities.chosen()&&Facilities.chosen().id,term:Prepay.chosen()&&Prepay.chosen().id}));}
-async function snapshot(page,prefix){return page.evaluate(prefix=>({units:document.getElementById(prefix+'Units').textContent,hash:document.getElementById(prefix+'Hash').textContent,power:document.getElementById(prefix+'Power').textContent,cost:document.getElementById(prefix+'Cost').textContent,itemised:document.getElementById(prefix+'Itemised').innerText.replace(/\s+/g,' ').trim()}),prefix);}
+async function snapshot(page,prefix){return page.evaluate(prefix=>{const details=prefix==='hw'&&document.getElementById('hwOrderDetails'),wasOpen=details&&details.open;if(details)details.open=true;const value={units:document.getElementById(prefix+'Units').textContent,hash:document.getElementById(prefix+'Hash').textContent,power:document.getElementById(prefix+'Power').textContent,cost:document.getElementById(prefix+'Cost').textContent,itemised:document.getElementById(prefix+'Itemised').innerText.replace(/\s+/g,' ').trim()};if(details)details.open=wasOpen;return value;},prefix);}
 function sameAmounts(actual,expected){for(const field of ['units','hash','power','itemised']){if(['hash','power'].includes(field)&&/to confirm/i.test(expected[field]))assert.match(actual[field],/to confirm/i);else assert.equal(actual[field],expected[field],field+' differs between hardware and checkout');}assert.deepEqual(actual.cost.match(/\$[\d,]+(?:\.\d+)?/g),expected.cost.match(/\$[\d,]+(?:\.\d+)?/g));assert.equal(/quote/i.test(actual.cost),/quote/i.test(expected.cost));}
 function money(value){return '$'+Math.round(value).toLocaleString('en-US');}
+async function energyMatches(page){
+  const summary=await page.evaluate(()=>{const row=document.querySelectorAll('#hwItemised .it-row:not(.it-row--total)')[1],text=node=>(node?.textContent||'').replace(/\s+/g,' ').trim();return {value:text(document.getElementById('hwOrderEnergyValue')),term:text(document.getElementById('hwOrderEnergyTerm')),expectedValue:text(row?.querySelector('.it-val')),expectedTerm:text(row?.querySelector('.it-sub'))};});
+  assert.equal(summary.value,summary.expectedValue,'Compact energy amount must match the canonical cost breakdown.');assert.equal(summary.term,summary.expectedTerm,'Compact energy assumptions must match the canonical cost breakdown.');
+}
 async function selectVariant(page,query,id){await page.locator('#brCatalogSearch').fill(query);await page.waitForFunction(id=>BrokerageCatalogSelection.variant.id===id,id);}
 async function checkout(page,origin){await page.locator('#hwCatalogCheckout').click();await page.waitForURL(url=>url.origin===origin&&url.pathname==='/cart.html',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof Cart!=='undefined'&&document.getElementById('ckBody').hidden===false);}
 async function contact(page){await page.locator('#ck-name').fill('Synthetic browser test');await page.locator('#ck-email').fill('synthetic@example.test');}
@@ -128,20 +133,46 @@ async function assertQuoteGate(page){
     const context=await browser.newContext(contextOptions(viewport));await network(context,origin);await init(context);
     const page=await context.newPage();activePage=page;page.setDefaultTimeout(15000);observe(page,viewport.label);let pricedSnapshot,mixedSnapshot,unknownKey;
     await page.goto(origin+'/hardware.html?site=permian',{waitUntil:'domcontentloaded'});
-    await check(viewport.label+' places a vertical family list beside the model and keeps an order view available',async()=>{
+    await check(viewport.label+' places a wide order strip beneath the miner browser',async()=>{
       for(const selector of ['#hwFacility','#hwPrepay','.hw-order','#hwOrder','#hwItemised'])assert.equal(await page.locator(selector).count(),1,selector+' is missing');
       for(const selector of ['#quote','#hwOrderPreview','#hwOrderText','#hwSubmit','#hwCopy','#brCatalogSlider'])assert.equal(await page.locator(selector).count(),0,selector+' should be removed');
       assert.match(await page.locator('h1').innerText(),/Choose your miners|Buy the machines/);
       assert.equal(await page.locator('#hwSiteChoice').inputValue(),'permian');assert.match(await page.locator('#hwFacility').innerText(),/Permian Basin/);assert.equal((await state(page)).site,'permian');
       await page.locator('#brMiner').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.getElementById('brMiner').classList.contains('br-scene-ready'),{},{timeout:45000});assert.equal(await page.locator('#brMinerCanvas canvas').count(),1);assert.equal(await page.locator('#brCatalogCompare').isVisible(),false);
+      if(viewport.width>=1180){await page.locator('#miners').evaluate(el=>window.scrollBy({top:el.getBoundingClientRect().top-84,behavior:'instant'}));await page.screenshot({path:path.join(out,viewport.label+'-catalogue-start.png')});layouts.push({viewport:viewport.label,framing:'catalogue-start',...(await page.evaluate(()=>({model:document.getElementById('brMiner').getBoundingClientRect().toJSON(),order:document.getElementById('hwOrder').getBoundingClientRect().toJSON()})))});}
       await browsePosition(page);
-      const layout=await page.evaluate(()=>{const rect=id=>document.getElementById(id).getBoundingClientRect().toJSON();return {rail:rect('brCatalogRail'),model:rect('brMiner'),order:rect('hwOrder'),railScrollHeight:document.getElementById('brCatalogRail').scrollHeight,railClientHeight:document.getElementById('brCatalogRail').clientHeight,orderPosition:getComputedStyle(document.getElementById('hwOrder')).position};});
+      const layout=await page.evaluate(()=>{const rect=id=>document.getElementById(id).getBoundingClientRect().toJSON();return {rail:rect('brCatalogRail'),model:rect('brMiner'),order:rect('hwOrder'),browser:document.querySelector('.hw-catalog-browser').getBoundingClientRect().toJSON(),info:document.querySelector('.br-catalog-info').getBoundingClientRect().toJSON(),railScrollHeight:document.getElementById('brCatalogRail').scrollHeight,railClientHeight:document.getElementById('brCatalogRail').clientHeight,orderPosition:getComputedStyle(document.getElementById('hwOrder')).position};});
       assert(layout.rail.right<=layout.model.left+2,'Family list must be left of the rendered miner.');assert(layout.railScrollHeight>layout.railClientHeight+30,'Family list must scroll vertically.');
-      if(viewport.width>=1180){assert.equal(layout.orderPosition,'sticky');assert(layout.order.top>=65&&layout.order.top<viewport.height-100);assert(layout.order.left>=layout.model.right-2);assert.equal(await page.locator('#hwOrderDock').isVisible(),false);}
+      assert.equal(layout.orderPosition,'static');assert(layout.order.top>=Math.max(layout.model.bottom,layout.rail.bottom,layout.info.bottom)-2,'Order must follow the complete model/list/details browser.');assert(Math.abs(layout.order.left-layout.browser.left)<=2&&Math.abs(layout.order.right-layout.browser.right)<=2,'Order strip spans the full browser width.');
+      if(viewport.width>=1180){assert(layout.model.top>=68&&layout.rail.top>=68);assert(layout.order.bottom<=viewport.height-8,'Model, list and full collapsed order must fit together: '+JSON.stringify(layout));assert(layout.order.height<=220,'Collapsed desktop order should be a thin strip.');assert.equal(await page.locator('#hwOrderDock').isVisible(),false);}
       else{assert.equal(layout.orderPosition,'static');await page.waitForFunction(()=>!document.getElementById('hwOrderDock').hidden);assert(await page.locator('#hwOrderDock').isVisible());assert.match(await page.locator('#hwDockSummary').innerText(),/1/);assert.match(await page.locator('#hwDockCost').innerText(),/2,200/);}
       layouts.push({viewport:viewport.label,...layout});await noOverflow(page);await page.screenshot({path:path.join(out,viewport.label+'-workspace.png')});
+      if(viewport.width>=1180){const specs=await page.evaluate(()=>{const pane=document.getElementById('hwCatalogInfoScroll').getBoundingClientRect();return Array.from(document.querySelectorAll('#brCatalogSpecs dd')).map(el=>({text:el.textContent,top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,paneTop:pane.top,paneBottom:pane.bottom}));});assert(specs.every(value=>value.top>=value.paneTop-2&&value.bottom<=value.paneBottom+2),'Core miner ratings should be visible without scrolling the details: '+JSON.stringify(specs));}
     });
+    await check(viewport.label+' compact order keeps key totals visible and expands the full cost breakdown',async()=>{
+      const details=page.locator('#hwOrderDetails');assert.equal(await details.count(),1);assert.equal(await details.evaluate(el=>el.open),false);
+      for(const selector of ['#hwUnits','#hwHash','#hwPower','#hwCost','#hwCheckout','#hwClear','#hwOrderEnergy'])assert(await page.locator(selector).isVisible(),selector+' stays visible outside the cost disclosure.');
+      assert.match(await page.locator('#hwCost').innerText(),/2,200/);assert.match(await page.locator('#hwOrderEnergy').innerText(),/168/);await energyMatches(page);assert.equal(await page.locator('#hwItemised').isVisible(),false);
+      await details.locator('summary').click();assert.equal(await details.evaluate(el=>el.open),true);assert(await page.locator('#hwItemised').isVisible());const amounts=await snapshot(page,'hw');assert.match(amounts.itemised,/Permian Basin/);assert.match(amounts.itemised,/\$168/);assert.match(amounts.itemised,/monthly/i);
+      await noOverflow(page);await page.screenshot({path:path.join(out,viewport.label+'-expanded-order.png')});await details.locator('summary').click();assert.equal(await details.evaluate(el=>el.open),false);
+    });
+    if(viewport.width>=1180)await check(viewport.label+' choosing another miner returns its scrollable information to the top',async()=>{
+      await browsePosition(page);const before=await page.evaluate(()=>BrokerageCatalogSelection.family.id);
+      await page.locator('#hwCatalogInfoScroll').evaluate(el=>el.scrollTop=el.scrollHeight);assert(await page.locator('#hwCatalogInfoScroll').evaluate(el=>el.scrollTop)>0);
+      await page.locator('#brCatalogNext').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id!==id,before);await page.waitForFunction(()=>document.getElementById('hwCatalogInfoScroll').scrollTop<1);
+      await page.locator('#brCatalogPrev').click();await page.waitForFunction(id=>BrokerageCatalogSelection.family.id===id,before);await noOverflow(page);
+    });
+    if(viewport.width>=1180)await check(viewport.label+' four known machines and the whole catalogue fit together from the catalogue heading',async()=>{
+      await page.evaluate(()=>{Cart.set('Antminer S19 Pro',2);Cart.set('Antminer S21 Pro',2);});await page.locator('#miners').evaluate(el=>window.scrollBy({top:el.getBoundingClientRect().top-84,behavior:'instant'}));
+      const bounds=await page.locator('#hwOrder').evaluate(el=>el.getBoundingClientRect().toJSON());assert(bounds.bottom<=viewport.height-8,'Four-machine order remains fully on screen: '+JSON.stringify(bounds));assert(bounds.height<=220);assert.equal((await page.locator('#hwUnits').innerText()).trim(),'4');assert.match(await page.locator('#hwOrderLines').innerText(),/Antminer S19 Pro/);assert.match(await page.locator('#hwOrderLines').innerText(),/Antminer S21 Pro/);await energyMatches(page);await noOverflow(page);
+      layouts.push({viewport:viewport.label,framing:'catalogue-start-four-known',order:bounds});await page.screenshot({path:path.join(out,viewport.label+'-four-machine-catalogue.png')});
+      await page.evaluate(()=>{history.replaceState(null,'',location.pathname+location.search);window.scrollTo({top:0,behavior:'instant'});location.hash='miners';});await page.waitForFunction(()=>{const target=document.getElementById('miners');return Math.abs(target.getBoundingClientRect().top-parseFloat(getComputedStyle(target).scrollMarginTop))<2;});
+      const anchored=await page.locator('#hwOrder').evaluate(el=>el.getBoundingClientRect().toJSON());assert(anchored.bottom<=viewport.height-2,'Native catalogue anchor keeps the order visible: '+JSON.stringify(anchored));layouts.push({viewport:viewport.label,framing:'native-miners-anchor-four-known',order:anchored});await page.screenshot({path:path.join(out,viewport.label+'-native-anchor.png')});
+      await page.evaluate(()=>{Cart.clear();Cart.add('Antminer S19 Pro',1);});await browsePosition(page);
+    });
+    if(layoutOnly){await context.close();continue;}
     await check(viewport.label+' up and down arrows are centered and browse without changing the order or page position',async()=>{
+      await browsePosition(page);
       const before=await page.evaluate(()=>({family:BrokerageCatalogSelection.family.id,cart:Cart.get()}));
       for(const id of ['brCatalogPrev','brCatalogNext']){
         assert.equal(await page.locator('#'+id+' svg path').getAttribute('d'),id==='brCatalogPrev'?'M12 19V5m-7 7 7-7 7 7':'M12 5v14m-7-7 7 7 7-7','Family arrows point vertically.');
@@ -251,7 +282,7 @@ async function assertQuoteGate(page){
       await browsePosition(page);
       if(viewport.width<1180){await page.waitForFunction(()=>!document.getElementById('hwOrderDock').hidden);assert.match(await page.locator('#hwDockSummary').innerText(),/3 miners/);assert.match(await page.locator('#hwDockCost').innerText(),/10,720/);assert.match(await page.locator('#hwDockCheckout').getAttribute('href'),/site=bakken/);}
       await page.locator('#hwPrepay [data-term="24m"]').click();assert.equal((await state(page)).term,'24m');assert.equal(await page.locator('#hwPrepay [data-term="24m"]').getAttribute('aria-pressed'),'true');
-      pricedSnapshot=await snapshot(page,'hw');const energy=0.068*0.92*10.27*8760*2;assert(pricedSnapshot.itemised.includes(money(energy)));assert(pricedSnapshot.itemised.includes(money(10720+energy)));assert.match(pricedSnapshot.itemised,/24 months/);await noOverflow(page);
+      pricedSnapshot=await snapshot(page,'hw');const energy=0.068*0.92*10.27*8760*2;assert(pricedSnapshot.itemised.includes(money(energy)));assert(pricedSnapshot.itemised.includes(money(10720+energy)));assert.match(pricedSnapshot.itemised,/24 months/);await energyMatches(page);await noOverflow(page);
     });
     await check(viewport.label+' checkout preserves the exact priced lines, site, term and itemised amounts',async()=>{
       await checkout(page,origin);const s=await state(page);assert.deepEqual(s.cart,pricedCart);assert.equal(s.site,'bakken');assert.equal(s.term,'24m');sameAmounts(await snapshot(page,'ck'),pricedSnapshot);
@@ -264,6 +295,8 @@ async function assertQuoteGate(page){
       await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});await selectVariant(page,'245','s21-pro-245');await page.locator('#hwCatalogQuantity').fill('3');await page.locator('#brCatalogRequest').click();
       const s=await state(page);assert.deepEqual(s.cart,{...pricedCart,[requestKey]:3});assert.equal(s.totals.units,6);assert.equal(s.totals.th,1313);assert(Math.abs(s.totals.kw-21.295)<1e-9);assert.equal(s.totals.usd,10720);assert.equal(s.totals.unpriced,3);assert.equal(s.totals.quoteRequired,true);assert.equal(s.totals.deposit,null);
       await browsePosition(page);if(viewport.width<1180){await page.waitForFunction(()=>!document.getElementById('hwOrderDock').hidden);assert.match(await page.locator('#hwDockSummary').innerText(),/6 miners/);assert.match(await page.locator('#hwDockCost').innerText(),/quote/i);}
+      assert.equal(await page.locator('#hwOrderDetails').evaluate(el=>el.open),false);assert(await page.locator('#hwUnpriced').isVisible(),'Quote warning must stay outside the collapsed cost disclosure.');
+      await energyMatches(page);
       assert.match(await page.locator('#hwOrderLines').innerText(),/S21 Pro.*245 TH\/s/);await page.screenshot({path:path.join(out,viewport.label+'-mixed-workspace.png')});
       const line=s.lines.find(line=>line.model===requestKey);assert.equal(line.hashrate,245);assert.equal(line.power,3.675);assert.equal(line.each,null);mixedSnapshot=await snapshot(page,'hw');
       await checkout(page,origin);sameAmounts(await snapshot(page,'ck'),mixedSnapshot);const row=page.locator('#ckLines tr[data-model="'+requestKey+'"]');assert.match(await row.innerText(),/245 TH\/s/);assert.doesNotMatch(await row.innerText(),/234 TH\/s/);assert.equal(await row.locator('input[data-qty]').inputValue(),'3');
@@ -276,6 +309,7 @@ async function assertQuoteGate(page){
     await check(viewport.label+' unknown power stays unconfirmed and never produces a zero electricity total',async()=>{
       await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});await selectVariant(page,'S23 air','s23-air');await page.locator('#hwCatalogQuantity').fill('1');await page.locator('#brCatalogRequest').click();unknownKey='catalogue:s23-air';
       let s=await state(page);assert.equal(s.cart[unknownKey],1);assert.equal(s.totals.kw,null);assert.equal(s.totals.th,null);assert.equal(s.totals.unknownPower,1);assert.match(await page.locator('#hwPower').innerText(),/To confirm/i);assert.match(await page.locator('#hwPrepay').innerText(),/Confirm miner power/);
+      await energyMatches(page);
       const hw=await snapshot(page,'hw');assert.doesNotMatch(hw.itemised,/\$0(?:\.00)?(?:\s|$)/);assert.equal(await page.locator('#hwItemised .it-row--total').count(),0);
       await checkout(page,origin);sameAmounts(await snapshot(page,'ck'),hw);const row=page.locator('#ckLines tr[data-model="'+unknownKey+'"]');assert.match(await row.innerText(),/To confirm/i);assert.match(await page.locator('#ckPower').innerText(),/To confirm/i);assert.equal(await page.locator('#ckItemised .it-row--total').count(),0);
       const draft=await assertQuoteGate(page);assert.match(draft,/S23 air/);assert.doesNotMatch(draft,/NaN|null|undefined/);await noOverflow(page);await page.screenshot({path:path.join(out,viewport.label+'-unknown-checkout.png')});
@@ -303,7 +337,7 @@ async function assertQuoteGate(page){
     });
     await context.close();
   }
-  {
+  if(!layoutOnly){
     const shortContext=await browser.newContext({viewport:{width:1024,height:600},serviceWorkers:'block'});await network(shortContext,origin);await init(shortContext);
     const shortPage=await shortContext.newPage();activePage=shortPage;observe(shortPage,'landscape1024x600');await shortPage.goto(origin+'/hardware.html?site=permian',{waitUntil:'domcontentloaded'});
     await check('short landscape keeps both family arrows inside the browsing viewport and above the order dock',async()=>{
@@ -314,10 +348,10 @@ async function assertQuoteGate(page){
       layouts.push({viewport:'landscape1024x600',...geometry});await shortPage.screenshot({path:path.join(out,'landscape1024x600-workspace.png')});
     });await shortContext.close();
   }
-  const context=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false,serviceWorkers:'block'});await network(context,origin);const page=await context.newPage();activePage=page;observe(page,'no-js');await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});
+  if(!layoutOnly){const context=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false,serviceWorkers:'block'});await network(context,origin);const page=await context.newPage();activePage=page;observe(page,'no-js');await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});
   await check('JavaScript-disabled hardware retains a static model, order and direct email without the removed quote form',async()=>{
     const poster=page.locator('#brMiner .br-scene-poster');await poster.scrollIntoViewIfNeeded();assert(await poster.isVisible());assert.equal(await page.locator('#brMinerCanvas canvas').count(),0);assert.equal(await page.locator('.hw-order').count(),1);assert.equal(await page.locator('#quote').count(),0);assert.equal(await page.locator('#hwSubmit').count(),0);assert(await page.locator('a[href="mailto:hosting@protonminingco.com"]').count()>0);await noOverflow(page);await page.screenshot({path:path.join(out,'no-js.png')});
-  });await context.close();
+  });await context.close();}
   await check('all viewports have no runtime errors, failed local assets or attempted HTTP writes',async()=>{assert.deepEqual(runtimeErrors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(localFailures,[]);assert.deepEqual(blockedWrites,[]);assert(requests.every(request=>['GET','HEAD'].includes(request.method)));});
 })().catch(error=>{process.exitCode=1;console.error(error.stack||error);}).finally(async()=>{
   if(browser)await browser.close();if(server.listening)await new Promise(resolve=>server.close(resolve));

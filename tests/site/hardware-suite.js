@@ -1,4 +1,4 @@
-/* Browse the vertical family list with an order view available at every width. */
+/* Browse the vertical family list and review a compact order below the rendering. */
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -13,7 +13,8 @@ for (const quantity of ['', '0', '-1', '1.5', '100001', 'NaN', 'Infinity', 'bad'
 }
 for (const quantity of ['1', '2', '100000']) assert.equal(validQuantity(quantity), Number(quantity));
 for (const id of ['hwFacility', 'hwSiteChoice', 'hwPrepay', 'hwUnits', 'hwHash', 'hwPower', 'hwCost',
-  'hwItemised', 'hwCheckout', 'hwRunAll', 'hwClear', 'hwOrder', 'hwOrderTitle', 'hwOrderLines',
+  'hwItemised', 'hwCheckout', 'hwRunAll', 'hwClear', 'hwOrder', 'hwOrderTitle', 'hwOrderLines', 'hwOrderDetails',
+  'hwOrderEnergy', 'hwOrderEnergyLabel', 'hwOrderEnergyValue', 'hwOrderEnergyTerm', 'hwCatalogInfoScroll',
   'hwOrderDock', 'hwDockSummary', 'hwDockCost', 'hwDockReview', 'hwDockCheckout',
   'brCatalogPrev', 'brCatalogNext', 'brCatalogPosition', 'brCatalogRail', 'brMinerCanvas', 'hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogCheckout']) {
   assert.match(html, new RegExp('id="' + id + '"'), 'Preserve ' + id);
@@ -42,15 +43,20 @@ assert.ok(prevAt < railAt && railAt < nextAt, 'Vertical family list sits between
 assert.match(html, /Swipe sideways to rotate · Swipe up to scroll/);
 assert.doesNotMatch(html, /Pinch to zoom|user-scalable\s*=\s*no|maximum-scale\s*=/i, 'Model hints do not claim or restrict native page zoom');
 const catalogueEnd = html.indexOf('</section>', html.indexOf('id="miners"'));
-assert.ok(catalogueEnd > 0 && html.indexOf('id="hwOrder"') > catalogueEnd, 'Full order follows catalogue in reading order and stacks below it on mobile');
+assert.ok(catalogueEnd > 0 && html.indexOf('id="hwOrder"') > catalogueEnd, 'Full order follows the complete miner catalogue');
 assert.match(html, /class="hw hw-browser-layout"/);
 assert.match(html, /id="hwOrder"[^>]*tabindex="-1"/, 'Dock anchor can move focus to the full order');
 assert.match(html, /<aside[^>]*id="hwOrderDock"[^>]*aria-label="Your order"[^>]*hidden/);
 assert.match(html, /id="hwDockReview" href="#hwOrder"/);
 assert.match(html, /id="hwDockCheckout" href="\.\/cart\.html"[^>]*hidden/);
 assert.match(html, /id="hwOrderLines"[^>]*aria-label="Selected miners"[^>]*hidden/);
-assert.match(css, /@media \(min-width: 1180px\)[\s\S]*?\.hw-browser-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,1fr\) 270px/);
-assert.match(css, /\.hw-order\s*\{[^}]*position: sticky;[^}]*max-height: calc\(100dvh - 112px\);[^}]*overflow-y: auto/);
+assert.match(css, /@media \(min-width: 1180px\)[\s\S]*?\.hw-browser-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,1fr\);/);
+assert.doesNotMatch(css, /\.hw-order\s*\{[^}]*position: sticky|grid-template-columns:\s*minmax\(0,1fr\) 270px/);
+assert.match(html, /<details class="hw-order-details" id="hwOrderDetails"><summary>Cost breakdown[\s\S]*?<div id="hwItemised"><\/div><\/details>/);
+assert.ok(html.indexOf('id="hwUnpriced"') < html.indexOf('id="hwOrderDetails"'), 'Quote warnings stay outside the collapsed breakdown');
+assert.ok(html.indexOf('id="hwOrderEnergy"') < html.indexOf('id="hwOrderDetails"'), 'Energy cost and term remain visible');
+assert.match(html, /id="hwCatalogInfoScroll"[^>]*tabindex="0"[^>]*role="region"/, 'Scrollable specifications region is keyboard accessible');
+assert.match(css, /\.hw-catalog-info-scroll\s*\{[^}]*overflow-y: auto/);
 assert.match(css, /\.br-catalog-rail\s*\{[^}]*overflow-x: hidden;[^}]*overflow-y: scroll;[^}]*scrollbar-gutter: stable/);
 assert.match(css, /\.hw-order-dock\s*\{[^}]*position: fixed;[^}]*safe-area-inset-bottom/);
 assert.match(css, /\.hardware-page\.hw-order-dock-visible\s*\{[^}]*padding-bottom:/);
@@ -81,4 +87,4 @@ assert.ok(scripts(html).includes('brokerage-scene.js'));
 assert.match(checkout, /id="ckQuoteReview"[^>]*hidden/);
 assert.match(checkout, /id="ckQuoteRequest"[^>]*hidden/);
 assert.match(checkout, /id="ckPaymentChoice"/);
-console.log('  ok    hardware: vertical family navigation, responsive order panel/dock, shared checkout and quantity boundaries');
+console.log('  ok    hardware: vertical family navigation, horizontal order strip, expandable cost breakdown, shared checkout and quantity boundaries');
