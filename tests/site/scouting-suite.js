@@ -118,8 +118,8 @@ check('public packet contains no private account, payment, agent-instruction or 
 check('unified workspace loads visual dependencies in order and exposes honest preview/draft boundaries', () => {
   const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g), m => m[1].split('?')[0]);
   const styles = Array.from(html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g), m => m[1].split('?')[0]);
-  assert.deepEqual(scripts, ['./sample-data.js', './visual-data.js', './site-visuals.js', './energy-access-data.js', './site-access.js', './scouting.js']);
-  assert.deepEqual(styles, ['./scouting.css', './site-access.css']);
+  assert.deepEqual(scripts, ['./sample-data.js', './visual-data.js', './site-visuals.js', './energy-access-data.js', './site-access.js', './energy-preferences.js', './site-diligence.js', './scouting.js']);
+  assert.deepEqual(styles, ['./scouting.css', './site-access.css', './site-diligence.css']);
   assert.doesNotMatch(html, /<iframe\b|<form\b[^>]*\baction=|<script\b[^>]*>(?!\s*<\/script>)[\s\S]+?<\/script>/i);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
   assert.match(html, /Workspace preview/); assert.match(html, /unsent draft/);
@@ -238,6 +238,7 @@ function boot(saved, storageBlocked = false, options = {}) {
   const document = { getElementById: element, querySelector: element, querySelectorAll: () => [],
     addEventListener(type, fn) { listeners[type] = fn; } };
   const window = { ProtonScoutingSample: data, confirm: () => true, addEventListener() {}, scrollTo() {} };
+  vm.runInNewContext(read('energy-preferences.js'), { window }, { timeout: 1000 });
   if (options.visuals) {
     window.PROTON_VISUAL_DATA = visualData;
     vm.runInNewContext(visualSource, { window, URL }, { timeout: 1000 });
@@ -284,16 +285,30 @@ check('actual site route omits Alpha from the locator and uses its official addr
     assert.equal(h.stored.get(h.sentinel), 'must remain untouched');
   }
 });
+check('loaded source preferences survive legacy migration and reach the unsent client request', () => {
+  const h = boot({v:1, brief:{energySources:['flare_gas','hydro','nuclear'],delivery:'Delivered electricity only',operating:'Seasonal operation acceptable'}});
+  assert.match(h.element('main').innerHTML,/Flare gas, Hydro, Nuclear/);
+  assert.match(h.element('main').innerHTML,/New research is needed/);
+  h.listeners.click({target:{closest(selector){return selector==='[data-action]'?{dataset:{action:'draft-feedback'}}:null;}}});
+  assert.match(h.element('draftText').value,/Energy sources: Flare gas, Hydro, Nuclear/);
+  assert.match(h.element('draftText').value,/Supply arrangement: Delivered electricity only/);
+  assert.match(h.element('draftText').value,/Operating flexibility: Seasonal operation acceptable/);
+  assert.equal(h.stored.get(h.sentinel),'must remain untouched');
+  const any=boot({v:1,brief:{energySources:[]}});
+  assert.match(any.element('main').innerHTML,/Any energy source/);
+  const legacy=boot({v:1,brief:{minMw:'1',maxMw:'2'}});
+  assert.match(legacy.element('main').innerHTML,/Energy sources: Landfill gas/);
+});
 check('nested workspace assets participate in cache stamping and are mandatory publish outputs', () => {
   const stamping = require(path.join(ROOT, 'tools/build-asset-stamp.js'));
   const area = stamping.AREAS.find(a => a.name === 'scouting');
   assert(area, 'The nested scouting directory needs its own stamp area');
   assert.equal(area.dir, 'portal/scouting');
   assert.deepEqual(stamping.pagesOf(area.dir), ['index.html']);
-  assert.deepEqual(stamping.expected(area).assets, ['./energy-access-data.js', './sample-data.js', './scouting.css', './scouting.js', './site-access.css', './site-access.js', './site-visuals.js', './visual-data.js']);
+  assert.deepEqual(stamping.expected(area).assets, ['./energy-access-data.js', './energy-preferences.js', './sample-data.js', './scouting.css', './scouting.js', './site-access.css', './site-access.js', './site-diligence.css', './site-diligence.js', './site-visuals.js', './visual-data.js']);
   const build = fs.readFileSync(path.join(ROOT, 'tools/build-pages.js'), 'utf8');
   const required = build.match(/const MUST_EXIST\s*=\s*\[([\s\S]*?)\];/);
   assert(required, 'Published output contract missing');
-  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js', 'visual-data.js', 'site-visuals.js', 'energy-access-data.js', 'site-access.css', 'site-access.js']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
+  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js', 'visual-data.js', 'site-visuals.js', 'energy-access-data.js', 'site-access.css', 'site-access.js', 'energy-preferences.js', 'site-diligence.js', 'site-diligence.css']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
 });
 console.log('\n' + checks + ' scouting contract checks passed.');

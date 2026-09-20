@@ -12,6 +12,7 @@
   function contacts(p) { return array(packet(p)?.contacts).slice().sort((a, b) => a.priority - b.priority); }
   function validLoad(brief) { return brief && Number.isFinite(Number(brief.minMw)) && Number.isFinite(Number(brief.maxMw)) && Number(brief.minMw) > 0 && Number(brief.maxMw) >= Number(brief.minMw); }
   function outlook(p, brief) {
+    if (Array.isArray(brief?.energySources) && brief.energySources.length && !brief.energySources.includes('landfill_gas')) return { label: 'Outside your selected energy sources', tone: 'hold', title: 'This landfill example does not match your energy preferences.', next: 'Request new research for your chosen energy sources. This report still contains the four original landfill examples.' };
     if (!packet(p)) return { label: 'Access not assessed', tone: 'neutral', title: 'Further research is needed.', next: 'Identify the owner and energy rights holder before assessing access.' };
     if (p.status === 'excluded') return { label: 'Low fit for a power-first search', tone: 'excluded', title: 'A competing gas use is the main obstacle.', next: 'Check whether any gas or power is outside the RNG arrangement before commissioning technical work.' };
     if (p.status === 'hold') return { label: 'Hold for a status check', tone: 'hold', title: 'Clarify the generator plan first.', next: 'Ask whether the generator is still operating and whether the county will consider a new energy user.' };
@@ -82,6 +83,9 @@
       '5. What space, access, cooling and permit constraints would apply? Is there a feasible start date and supply term?',
       '6. Could you share an indicative delivered-power rate with all charges, and outline remaining site work, deposits and who would pay?', '',
       `Target start: ${brief.timing}. Infrastructure preference: ${brief.infrastructure}.`,
+      ...(window.ProtonEnergyPreferences?.draftLines(brief) || []),
+      brief.delivery ? `Supply arrangement: ${brief.delivery}.` : '',
+      brief.operating ? `Operating flexibility: ${brief.operating}.` : '',
       brief.budget ? `Site capital budget, excluding miners: USD ${brief.budget}.` : '',
       brief.rate ? `Energy-only target: ${brief.rate} US cents/kWh (before other charges).` : '', '',
       'Please flag any records we have misunderstood or that are no longer current. No commitment is being made by this enquiry.'
