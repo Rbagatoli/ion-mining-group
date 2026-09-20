@@ -108,6 +108,8 @@ check('the public brief covers the same sources and starts unrestricted without 
   assert.match(form, /name="minimum_availability_pct"[^>]*min="0" max="100"/);
   assert.match(form, /name="exclusions"/);
   assert.match(form, /name="capital_responsibility"/);
-  assert.match(page, /four landfill research reports/);
+  assert.match(page, /Real public-research examples from a landfill search/);
+  assert.match(page, /Other energy sources are researched to your brief/);
+  assert.match(page, /this preview is not a list of available power offers/);
 });
 console.log('\n' + checks + ' energy preference checks passed.');

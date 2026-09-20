@@ -36,6 +36,12 @@ check('invalid forms and a checkout takeover never open a mail draft',()=>{
 check('a standalone energy-search brief preserves its data-mailto route without a topic selector',()=>{
  const h=harness('',{topic:false,to:'energy@protonminingco.com',subject:'Energy site sourcing enquiry via protonminingco.com'});h.submit();const url=new URL(h.navigation[0]);assert.equal(url.pathname,'energy@protonminingco.com');assert.equal(url.searchParams.get('subject'),'Energy site sourcing enquiry via protonminingco.com');
 });
+check('source preferences include only checked enabled controls and use their visible labels',()=>{
+ const h=harness('',{topic:false,to:'energy@protonminingco.com'});
+ for(const [name,checked,disabled] of [['Hydro',true,false],['Solar',true,false],['Nuclear',false,false],['Wind',true,true]]) h.form.elements.push({name:'energy_sources',type:'checkbox',value:name,checked,disabled,labels:[{textContent:name}],closest:()=>null});
+ h.submit();const body=new URL(h.navigation[0]).searchParams.get('body');
+ assert.match(body,/Energy sources: Hydro, Solar/);assert.doesNotMatch(body,/Nuclear|Wind/);
+});
 check('only opted-in draft buttons are enabled after attaching the submit handler',()=>{
  const draft=harness('',{topic:false,enableDraft:true,disabled:true,to:'energy@protonminingco.com'});assert.equal(draft.button.disabled,false);assert.deepEqual(draft.navigation,[]);
  const other=harness('',{disabled:true});assert.equal(other.button.disabled,true);assert.deepEqual(other.navigation,[]);

@@ -100,11 +100,9 @@ function nav(active, cta) {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
     <div class="nav-links">
-      <!-- Ordered like the drawings are: the partner's site, the mine we build
-           on it, then one container inside that mine. Someone reading the nav
-           left to right is walking the same chain the renderings do. -->
-      <a href="./energy.html"${on('energy')}>Energy Partners</a>
+      <!-- Lead with the site search; keep the separate owner and hosting routes close. -->
       <a href="./energy-sites.html"${on('sites')}>Find a site</a>
+      <a href="./energy.html"${on('energy')}>Energy Partners</a>
       <a href="./hosting.html"${on('hosting')}>Hosting</a>
       <a href="./hardware.html"${on('hardware')}>Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
@@ -141,7 +139,7 @@ function nav(active, cta) {
 
 /* Per-page CTA, preserved from what each page already had. */
 const CTA = {
-  'index.html':            { href: './contact.html', label: 'Start a conversation' },
+  'index.html':            { href: './energy-sites.html', label: 'Find a site' },
   // Hosting sells the pad, but the machines on it have to come from somewhere, and a
   // prospect who does not own ASICs yet cannot act on a hosting quote. The page's own copy
   // already says Proton will "source and host them on one agreement", so the top-of-page
@@ -183,9 +181,9 @@ const FOOTER_BLURB = 'Bitcoin mining, hosting and nationwide energy site sourcin
 /* Buyer-facing site sourcing and owner-facing energy partnerships are separate
    services. Share this column with generated articles as well as static pages. */
 const SERVICES_COL = `<h4>Services</h4>
+        <a href="./energy-sites.html">Energy site sourcing</a>
         <a href="./hardware.html#miners">Mining hardware</a>
         <a href="./hosting.html">Hosting</a>
-        <a href="./energy-sites.html">Energy site sourcing</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
         <a href="./index.html#operate">Site development</a>`;

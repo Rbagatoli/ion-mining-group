@@ -227,7 +227,7 @@
                 }
                 if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
                 var field = el.closest('.field');
-                var label = field && field.querySelector('label');
+                var label = (el.labels && el.labels[0]) || (field && field.querySelector('label'));
                 var key = label ? label.textContent.trim() : el.name;
                 var value = el.multiple && el.options ? Array.prototype.filter.call(el.options, function (item) { return item.selected && !item.disabled; }).map(function (item) { return item.value; }).join(', ') : el.value;
                 lines.push(key + ': ' + (value || '—'));

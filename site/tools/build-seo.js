@@ -29,7 +29,7 @@ const BASE = 'https://protonminingco.com';
 const PAGES = {
   'index.html':      { priority: '1.0', changefreq: 'monthly' },
   'energy.html':     { priority: '0.9', changefreq: 'monthly' },
-  'energy-sites.html': { priority: '0.8', changefreq: 'monthly' },
+  'energy-sites.html': { priority: '0.9', changefreq: 'monthly' },
   'hosting.html':    { priority: '0.9', changefreq: 'monthly' },
   'calculator.html': { priority: '0.8', changefreq: 'monthly' },
   'hardware.html':   { priority: '0.8', changefreq: 'monthly' },

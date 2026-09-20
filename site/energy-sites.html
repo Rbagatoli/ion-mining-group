@@ -13,9 +13,11 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=493a1eda">
+<link rel="stylesheet" href="./styles.css?v=c30632b9">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./energy-sites.css?v=493a1eda">
+<link rel="stylesheet" href="./energy-sites.css?v=c30632b9">
+<link rel="stylesheet" href="../portal/scouting/site-locator.css?v=c30632b9">
+<link rel="stylesheet" href="./energy-sites-preview.css?v=c30632b9">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
 <meta property="og:image:width" content="1200">
@@ -59,11 +61,9 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
     <div class="nav-links">
-      <!-- Ordered like the drawings are: the partner's site, the mine we build
-           on it, then one container inside that mine. Someone reading the nav
-           left to right is walking the same chain the renderings do. -->
-      <a href="./energy.html">Energy Partners</a>
+      <!-- Lead with the site search; keep the separate owner and hosting routes close. -->
       <a href="./energy-sites.html" class="active">Find a site</a>
+      <a href="./energy.html">Energy Partners</a>
       <a href="./hosting.html">Hosting</a>
       <a href="./hardware.html">Hardware</a>
       <!-- Sits after both audience pages because it is what you reach for once
@@ -102,10 +102,10 @@
   <div class="wrap sites-hero-grid">
     <div>
       <div class="eyebrow">Nationwide energy site sourcing</div>
-      <h1 class="h-display">Find the power.<br><span class="accent">Build your next mine.</span></h1>
-      <p class="lede" data-mobile-copy="Search across U.S. energy sources for power that fits your operation, delivered cost and upfront budget.">Find potential energy opportunities across the United States, from hydro and nuclear plants to gas, renewables and grid supply. Your search starts with usable power, delivered cost, operating needs and what you can invest upfront.</p>
-      <div class="btn-row"><a class="btn btn--primary" href="#request">Find a site <span aria-hidden="true">↗</span></a><a class="btn btn--ghost" href="../portal/scouting/">Explore the client workspace <span aria-hidden="true">↗</span></a></div>
-      <p class="hero-note">For mining companies, hosting operators and independent miners.</p>
+      <h1 class="h-display">Your next mine<br>starts with <span class="accent">the right site.</span></h1>
+      <p class="lede" data-mobile-copy="Find potential energy sites. Compare power, existing infrastructure and the capital still needed.">Find potential energy sites across the United States for your mining or hosting operation. We research the power, the infrastructure and the people behind each location, with your upfront budget at the center of the search.</p>
+      <div class="btn-row"><a class="btn btn--primary" href="#request">Find a site <span aria-hidden="true">↗</span></a><a class="btn btn--ghost" href="#workspace">Try the site-finding UI <span aria-hidden="true">↓</span></a></div>
+      <p class="hero-note">For mining companies, hosting operators and independent miners.</p><a class="sites-source-jump" href="#energy-options">Gas · Hydro · Wind · Solar · Nuclear · Industrial · Grid <span aria-hidden="true">↓</span></a>
     </div>
     <aside class="sites-brief" aria-labelledby="brief-title">
       <div class="sites-brief-top"><span class="eyebrow">Your shortlist</span><span class="sites-tag">Built around your budget</span></div>
@@ -121,8 +121,18 @@
   </div>
 </header>
 
-<section class="band sites-section" id="shortlist" aria-labelledby="shortlist-title">
+<section class="band sites-section sites-workspace-section" id="workspace" aria-labelledby="workspace-title">
   <div class="wrap">
+    <div class="sec-head sites-workspace-head"><div><div class="eyebrow">Meet Proton Energy Sites</div><h2 class="h-section" id="workspace-title">A site search.<br>A clear next step.</h2></div><p class="lede" data-mobile-copy="Try the map. Compare a site. See the evidence and who to contact.">Go from a location on the map to the evidence, the remaining work and the right person to contact. Try it below.</p></div>
+    <div class="energy-preview" id="energyWorkspacePreview"><div class="sites-preview-fallback"><h3>Your research, in one workspace.</h3><p>Explore the map, infrastructure evidence and owner contact routes in the public client preview.</p><a class="btn btn--ghost" href="../portal/scouting/#sites">Open the client workspace ↗</a></div></div>
+    <p class="sites-demo-note">Real public-research examples from a landfill search. Other energy sources are researched to your brief; this preview is not a list of available power offers.</p>
+    <div class="sites-feature-strip"><div><span>01</span><strong>Find your location</strong><p>A geographic shortlist with city and state context.</p></div><div><span>02</span><strong>See what needs proving</strong><p>Infrastructure, energy access and unpriced work.</p></div><div><span>03</span><strong>Start the right conversation</strong><p>Named contacts, source links and the questions to ask.</p></div></div>
+  </div>
+</section>
+
+<section class="band sites-section sites-collapsible" id="shortlist" aria-labelledby="shortlist-title">
+  <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>What you receive</span><small>Power, infrastructure, remaining capital and contacts.</small></summary><div class="mobile-details-body">
     <div class="sec-head reveal"><div class="eyebrow">What you receive</div><h2 class="h-section" id="shortlist-title">A shortlist you can act on.</h2><p class="lede" data-mobile-copy="Compare power, existing assets, remaining spend and next steps.">Compare the opportunity and the work required to make it usable, with source dates and open questions beside the estimates.</p></div>
     <div class="sites-deliverables reveal">
       <article><span class="sites-index">01 / Power</span><h3>Supply that fits your operation.</h3><p data-mobile-copy="Location, source and net available MW, plus delivered cost, uptime, curtailment and seasonal limits.">Compare location, permitted energy sources and net MW potentially available after existing commitments. Screen all-in delivered cost, uptime, curtailment, seasonal limits, fuel quality and the steps to energization.</p></article>
@@ -131,34 +141,36 @@
       <article><span class="sites-index">04 / Owner &amp; next steps</span><h3>Reach the right conversation.</h3><p data-mobile-copy="Owner contact routes, commercial questions and introductions where the parties agree.">Relevant owner and operator contact routes, commercial questions and a plan for further diligence. We can help coordinate introductions where the parties agree.</p></article>
     </div>
     <div class="sites-capital-note reveal"><span class="sites-note-mark" aria-hidden="true">↓</span><div><h3>Start with what you can afford to build.</h3><p data-mobile-copy="We prioritize potentially reusable assets when upfront capital is tight. Ownership, access, condition and capacity must support any assumed savings.">If upfront capital is the constraint, we prioritize sites with infrastructure that may be reusable. Equipment on a site only reduces your budget when ownership, access, condition and usable capacity support that assumption.</p></div></div>
-  </div>
+  </div></details>
+</div>
 </section>
 
-<section class="band sites-section" aria-labelledby="search-title">
-  <div class="wrap sites-search-grid">
-    <div class="reveal"><div class="eyebrow">Where we look</div><h2 class="h-section" id="search-title">Across the country.<br>Across energy sources.</h2><p class="lede" data-mobile-copy="Hydro, nuclear, gas, renewables, industrial surplus and grid supply, screened against your needs.">A low headline rate is only useful if the power can serve your operation. We compare potential supply against your geography, total energy cost, reliability, connection, capital and timing requirements.</p><p class="sites-coverage-note">The client workspace currently demonstrates four landfill research reports. They show the report format; they are not the full scope of this service or confirmed offers.</p></div>
-    <ul class="sites-sources reveal">
-      <li><strong>Hydro &amp; nuclear</strong><span>Potential allocations, existing sales commitments, operating schedules and connection terms. Plant size does not establish spare supply.</span></li>
-      <li><strong>Wind, solar, geothermal &amp; marine</strong><span>Output patterns, deliverable power, curtailment and the cost of any firming arrangement. Marine includes tidal and wave resources where relevant.</span></li>
-      <li><strong>Natural gas, coal &amp; oil plants</strong><span>Fuel and operating costs, capacity commitments, permitted operation and commercial willingness to serve a new load.</span></li>
-      <li><strong>Landfill, flare, biomass &amp; biogas</strong><span>Resource access, treatment or generation needs, existing commitments and expected supply life.</span></li>
-      <li><strong>Waste-to-energy &amp; recovered energy</strong><span>Existing conversion equipment, fuel or waste-heat availability, competing uses and net electrical output.</span></li>
-      <li><strong>Industrial surplus &amp; grid supply</strong><span>Surplus power offered by industrial operators, supplier terms, tariffs, connection work and interruptible supply options.</span></li>
-      <li><strong>Storage-backed &amp; hybrid arrangements</strong><span>Underlying energy sources, charging costs, losses and delivery duration. Storage shifts energy; it is not an additional primary energy source.</span></li>
-    </ul>
-  </div>
-</section>
+<section class="band sites-section" id="energy-options" aria-labelledby="search-title"><div class="wrap">
+  <div class="sec-head"><div class="eyebrow">More ways to power a mine</div><h2 class="h-section" id="search-title">Start with the fit.<br>Keep the source open.</h2><p class="lede" data-mobile-copy="A nationwide search built around cost, location and how you operate.">Choose your preferred energy sources, or let the economics lead. We screen each route for usable power, existing infrastructure, operating constraints and the cost to connect.</p></div>
+  <div class="sites-route-grid"><article><span class="sites-energy-number">01 <span aria-hidden="true">↗</span></span><h3>Hydro</h3><p>Seasonal output, delivery rights and usable electrical capacity.</p></article>
+<article><span class="sites-energy-number">02 <span aria-hidden="true">↗</span></span><h3>Nuclear</h3><p>Potential allocations, sales commitments, outage coverage and connection terms.</p></article>
+<article><span class="sites-energy-number">03 <span aria-hidden="true">↗</span></span><h3>Wind, solar & geothermal</h3><p>Output patterns, deliverable power, curtailment and any firming costs.</p></article>
+<article><span class="sites-energy-number">04 <span aria-hidden="true">↗</span></span><h3>Natural gas, coal & oil</h3><p>Fuel costs, capacity commitments, permitted operation and supply terms.</p></article>
+<article><span class="sites-energy-number">05 <span aria-hidden="true">↗</span></span><h3>Landfill, flare & biogas</h3><p>Resource access, treatment, generation needs and expected supply life.</p></article>
+<article><span class="sites-energy-number">06 <span aria-hidden="true">↗</span></span><h3>Biomass & waste-to-energy</h3><p>Conversion equipment, fuel availability, competing uses and net electrical output.</p></article>
+<article><span class="sites-energy-number">07 <span aria-hidden="true">↗</span></span><h3>Industrial surplus & grid</h3><p>Offered surplus, supplier terms, tariffs, connection work and interruptible supply.</p></article>
+<article><span class="sites-energy-number">08 <span aria-hidden="true">↗</span></span><h3>Storage & hybrid supply</h3><p>Underlying energy sources, charging costs, losses and delivery duration.</p></article></div>
+  <div class="sites-scope-note"><strong>Research coverage, not promised inventory.</strong><p>Your source and location preferences define the search. New source categories require dedicated research; they are not ready-to-use inventory. Marine resources, including tidal and wave, can be considered where relevant. Storage shifts energy and must have an underlying supply.</p></div>
+  <details class="sites-method"><summary>What we check for each energy route</summary><p>Generation capacity, output and power available to a new customer are different measures. We check source-specific constraints against <a href="https://www.eia.gov/tools/faqs/faq.php?id=104&amp;t=3" target="_blank" rel="noopener noreferrer">EIA guidance</a>, <a href="https://www.energy.gov/cmei/water/how-hydropower-works" target="_blank" rel="noopener noreferrer">DOE hydropower guidance</a> and <a href="https://www.energy.gov/policy/articles/electricity-rate-designs-large-loads-evolving-practices-and-opportunities" target="_blank" rel="noopener noreferrer">DOE large-load rate research</a>. Every potential site still needs its own owner, technical and commercial checks.</p></details>
+</div></section>
 
-<section class="band sites-section" aria-labelledby="process-title">
+<section class="band sites-section sites-collapsible" aria-labelledby="process-title">
   <div class="wrap">
+<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>How the search works</span><small>Set your brief, compare sites, progress the right leads.</small></summary><div class="mobile-details-body">
     <div class="sec-head reveal"><div class="eyebrow">How it works</div><h2 class="h-section" id="process-title">Your requirements. A focused search.</h2></div>
     <ol class="sites-process reveal">
       <li><span>01</span><h3>Set the brief.</h3><p>Set your location, usable MW, allowed sources, delivered cost target, operating flexibility, timeline and capital limit. We agree the search scope, deliverables and fees before work begins.</p></li>
-      <li><span>02</span><h3>Compare potential sites.</h3><p>Review a tailored shortlist with the evidence available, existing assets, estimated remaining work and the questions still to resolve.</p></li>
-      <li><span>03</span><h3>Progress the right leads.</h3><p>Choose the opportunities to pursue. Confirm availability with owners, arrange further diligence and discuss the commercial terms.</p></li>
+      <li><span>02</span><h3>Compare potential sites.</h3><p>Review your shortlist in Proton Energy Sites: map locations, compare infrastructure, check the evidence and identify the capital still to scope.</p></li>
+      <li><span>03</span><h3>Progress the right leads.</h3><p>Use the contact routes and questions provided to test owner interest. We can help coordinate introductions and further diligence within the agreed scope.</p></li>
     </ol>
     <div class="sites-evidence reveal"><strong>Know what has been confirmed.</strong><p>Public records can identify a lead. They do not establish spare power, access rights or a site for sale. We distinguish reported facts, estimates and owner-confirmed information, and show missing evidence alongside the comparison. Coverage depends on the source and record date; no search establishes that every U.S. opportunity is known. A site is secured only when the required agreements are in place.</p></div>
-  </div>
+  </div></details>
+</div>
 </section>
 
 <section class="band sites-section" id="request" aria-labelledby="request-title">
@@ -211,6 +223,9 @@
   <div class="wrap">
     <div class="sec-head"><div class="eyebrow">Before you start</div><h2 class="h-section" id="faq-title">A few useful distinctions.</h2></div>
     <div class="sites-faq-list">
+      <details><summary>Which energy sources can I request?</summary><p>Hydro, nuclear, wind, solar, geothermal, natural gas generation, landfill and flare gas, biomass or biogas, waste-to-energy, coal, oil, industrial surplus and grid supply. You can also describe storage-backed, hybrid or other proposals. We agree a realistic research scope for your location and scale before starting; selecting a source does not mean a site is already available.</p></details>
+      <details><summary>What does the service cost?</summary><p>We quote the research scope before work begins, based on your region, power requirement and depth of diligence. The scope identifies the deliverables, fee and any further work requiring separate agreement.</p></details>
+      <details><summary>Will I receive a guaranteed power supply?</summary><p>The starting service delivers a researched shortlist and a route to qualification. Site owners or energy rights holders must confirm willingness, net available power, terms and access. Research findings and preliminary capital ranges are kept separate from confirmed offers and contractor quotes.</p></details>
       <details><summary>Do I have to host with Proton?</summary><p>No. Site sourcing is available for your own mining or hosting operation. For machines purchased from Proton, our <a href="./hosting.html">hosting service</a> is a separate option.</p></details>
       <details><summary>Are these sites already available or under contract?</summary><p>A shortlist may include opportunities identified from public records and research. We state the confirmation level for each one. Owner interest, energy availability, access and commercial terms must be checked before you rely on a site.</p></details>
       <details><summary>Does an existing gas system mean the mine is ready?</summary><p>No. Gas collection, electricity generation and mining infrastructure are separate. An existing collection system may still need treatment, generators, electrical work and a gas agreement. Reuse depends on the equipment, its condition and your right to use it.</p></details>
@@ -257,9 +272,9 @@
       <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
 
         <h4>Services</h4>
+        <a href="./energy-sites.html">Energy site sourcing</a>
         <a href="./hardware.html#miners">Mining hardware</a>
         <a href="./hosting.html">Hosting</a>
-        <a href="./energy-sites.html">Energy site sourcing</a>
         <a href="./energy.html">Energy partnerships</a>
         <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
         <a href="./index.html#operate">Site development</a>
@@ -287,8 +302,13 @@
     </div>
   </div>
 </footer>
-<script src="./site.js?v=493a1eda"></script>
-<script src="./hero-anim.js?v=493a1eda"></script>
-<script src="./cart.js?v=493a1eda"></script>
+<script src="./site.js?v=c30632b9"></script>
+<script src="./hero-anim.js?v=c30632b9"></script>
+<script src="./cart.js?v=c30632b9"></script>
+<script src="../portal/scouting/sample-data.js?v=c30632b9"></script>
+<script src="../portal/scouting/energy-access-data.js?v=c30632b9"></script>
+<script src="../portal/scouting/locator-geography.js?v=c30632b9"></script>
+<script src="../portal/scouting/site-locator.js?v=c30632b9"></script>
+<script src="./energy-sites-preview.js?v=c30632b9"></script>
 </body>
 </html>
