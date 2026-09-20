@@ -67,7 +67,7 @@ jobs:
       # here — gating a deploy on those would mean the site stops deploying for reasons that
       # have nothing to do with the site.
       - name: Agent Control Center model and storage checks
-        run: node --test tests/agent-control.test.js
+        run: node --test tests/agent-control.test.js tests/completed-team-review.test.js
 
       - name: Standalone CRM and shared storage checks
         run: node --test tests/crm-app.test.js tests/crm-discovery.test.js tests/crm-grok-team.test.js tests/crm-save-integrity.test.js tests/sync-lifecycle.test.js tests/sync-pull.test.js tests/sync-union.test.js tests/crm-qualification.test.js tests/crm-control-center.test.js tests/crm-workflow.test.js tests/managed-hosting.test.js tests/crm-managed-hosting-team.test.js tests/generated-write.test.js tests/crm-public-infrastructure.test.js tests/crm-sourcing.test.js tests/crm-autonomy.test.js tests/crm-outreach.test.js tests/crm-outreach-integration.test.js

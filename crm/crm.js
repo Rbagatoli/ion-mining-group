@@ -9,6 +9,7 @@
   const kinds={site:'Energy site',lead:'Revenue lead',deal:'Service deal'},energy={landfill_gas:'Landfill gas',flare_gas:'Flare gas',grid_facility:'Power facility',unknown:'Other energy'};
   let current='control',selection=null,siteTab='overview',pipelineKind='all',pipelineGroup='all',pipelineSearch='',pipelineLimit=60,pipelineWorkflow='all',teamTab='workflow',taskFilter='open',taskRole='',month=day().slice(0,7),peopleSearch='',modalForm=false,modalBack=null,focusBefore=null,busy=false,noticeTimer,renderQueued=false;
   const sheet=$('sheet'),expandedLeads=new Set(),expandedLeadSections=new Set(),outreachPlans=new Map();
+  let completedReviewSession=null;
   const sidebarKey='protonCrmSidebarCollapsed_v1';
   function setSidebarCollapsed(collapsed){
     document.body.classList.toggle('sidebar-collapsed',collapsed);
@@ -33,12 +34,13 @@
   function note(message){$('notice').textContent=message;$('notice').hidden=false;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').hidden=true,7000);}
   function error(e){const target=sheet.open?$('sheetError'):$('notice');target.textContent=e.message||String(e);target.hidden=false;}
   function modal(title,html,back,form=false){
+    completedReviewSession=null;
     if(!sheet.open)focusBefore=document.activeElement;
     $('sheetTitle').textContent=title;$('sheetBody').innerHTML=html;$('sheetError').hidden=true;modalBack=back||null;modalForm=form;
     $('sheetBack').hidden=!back;if(!sheet.open)sheet.showModal();sheet.scrollTop=0;
     const first=$('sheetBody').querySelector(form?'input:not([type=hidden]),select,textarea':'[autofocus]');if(first)first.focus();else $('sheetClose').focus();
   }
-  function close(){sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
+  function close(){completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
   function nav(){
     const labels={control:'Control Center',today:'Today',pipeline:'Pipeline',discover:'Discover',team:'Team'};
     $('navigation').innerHTML=Object.keys(labels).map(name=>'<a class="nav-item" href="#'+name+'" aria-label="'+labels[name]+'" title="'+labels[name]+'"'+(current===name?' aria-current="page"':'')+'>'+icon(name)+'<span>'+labels[name]+'</span></a>').join('');
@@ -111,7 +113,7 @@
   window.addEventListener('hashchange',route);
   $('sheetClose').onclick=close;$('sheetBack').onclick=()=>modalBack&&modalBack();
   sheet.addEventListener('cancel',e=>{e.preventDefault();close();});
-  D.subscribe(reason=>{if(reason==='account'){expandedLeads.clear();expandedLeadSections.clear();if(selection?.kind==='lead')expandedLeads.add(selection.id);discovery.collapseDetail(false);}if(reason==='account'&&sheet.open){sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}if(reason!=='catalog')queueRender();if(reason==='remote'&&sheet.open)note('Updated records arrived. Reopen this panel to see the latest version.');if(reason==='agents'&&sheet.open&&!modalForm&&selection){if(selection.kind==='task')openTask(selection.id);if(selection.kind==='lead')openLead(selection.id);}});
+  D.subscribe(reason=>{if(reason==='account'){expandedLeads.clear();expandedLeadSections.clear();if(selection?.kind==='lead')expandedLeads.add(selection.id);discovery.collapseDetail(false);}if(reason==='account'&&sheet.open){if(completedReviewSession)freezeCompletedReviewAccount();else{sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}}if(reason!=='catalog')queueRender();if(reason==='remote'&&sheet.open)note('Updated records arrived. Reopen this panel to see the latest version.');if(reason==='agents'&&completedReviewSession?.pending)reconcileCompletedReview(completedReviewSession);else if(reason==='agents'&&sheet.open&&!modalForm&&selection){if(selection.kind==='task')openTask(selection.id);if(selection.kind==='lead')openLead(selection.id);}});
   // Event handlers are attached after the form and detail definitions.
   let activeSite=null,activeCandidate=null,detailRequest=0;
   const fact=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value==null||value===''?'Not recorded':value)+'</dd></div>';
@@ -259,7 +261,7 @@
     modal(title,'<form id="editForm" class="crm-form">'+fields+'<div class="form-actions"><button type="button" class="button" data-action="cancel-form">Cancel</button><button type="submit" class="button primary">'+esc(label)+'</button></div></form>',back,true);
     $('editForm').addEventListener('submit',async event=>{
       event.preventDefault();if(busy)return;busy=true;const submit=event.currentTarget.querySelector('[type=submit]');submit.disabled=true;$('sheetError').hidden=true;
-      try{await onSave(Object.fromEntries(new FormData(event.currentTarget)));}catch(e){error(e);}finally{busy=false;if(submit.isConnected)submit.disabled=false;}
+      try{await onSave(Object.fromEntries(new FormData(event.currentTarget)));}catch(e){error(e);}finally{busy=false;if(submit.isConnected)submit.disabled=!!completedReviewSession?.accountChanged;}
     });
   }
   function siteForm(id){
@@ -449,8 +451,9 @@
     if(A.actionable(t)&&['ready','working','blocked'].includes(t.status))actions+=button('Submit result','task-result',id,true);
     if(A.taskKind(t)==='work'&&(t.status==='review'||t.role==='review'&&t.status==='done')){actions+=button(t.role==='review'?'Record coordinator review':'Record review decision','task-review',id,true);if(t.role!=='review')actions+=button('Request Quality Review','task-quality',id);else actions+=button('Record Quality verdict','task-verdict',id);}actions+=button('Record routing','task-routing',id);
     const linked=agent().tasks.filter(x=>x.parentTaskId===id&&x.role==='review');
+    if(linked.some(q=>A.completedReviewEligibility(agent(),t,q).eligible))actions+=button('Record completed team review','task-completed-review',id);
     const qualityLinks=linked.map(x=>'<a class="text-button" href="'+href('task',x.id)+'">Quality Review · '+esc(A.STATUS[x.status])+' →</a>').join('');
-    const history=(t.reviewHistory||[]).map((h,i)=>'<article class="contact-card"><h3>Review '+(i+1)+' · '+esc(h.decision==='accept'?'Accepted':'Revision requested')+'</h3><p>'+esc(new Date(h.at).toLocaleString())+'</p><p class="note-text">'+esc(h.note)+'</p>'+(h.review?'<p class="quiet-note">Recorded by '+esc(h.review.reviewer)+' · '+esc(h.review.actor)+' · result version '+h.review.version+'<br>'+esc(h.review.basis)+'</p>':'<p class="quiet-note">Legacy review · attribution not recorded.</p>')+'<details><summary>Result reviewed in this round</summary><p class="note-text">'+esc(h.result)+'</p>'+h.sources.map(u=>external(u)).join('<br>')+'</details></article>').join('');
+    const history=(t.reviewHistory||[]).map((h,i)=>'<article class="contact-card"><h3>Review '+(i+1)+' · '+esc(h.decision==='accept'?'Accepted':'Revision requested')+'</h3><p>'+esc(new Date(h.at).toLocaleString())+'</p><p class="note-text">'+esc(h.note)+'</p>'+(h.review?'<p class="quiet-note">Recorded by '+esc(h.review.reviewer)+' · '+esc(h.review.actor)+' · result version '+h.review.version+'<br>'+esc(h.review.basis)+'</p>':'<p class="quiet-note">Legacy review · attribution not recorded.</p>')+(h.closeoutId?'<p class="quiet-note">Completed review receipt: '+esc(h.closeoutId)+'</p>':'')+(h.completedReview?completedReviewProof(h.completedReview):'')+'<details><summary>Result reviewed in this round</summary><p class="note-text">'+esc(h.result)+'</p>'+h.sources.map(u=>external(u)).join('<br>')+'</details></article>').join('');
     if(A.actionable(t))actions+=textButton('Record blocker','task-block',id)+textButton('Cancel task','task-cancel',id);
     modal('Team assignment','<div class="sheet-intro">'+tag(F.taskMeaning(t,agent()).label,t.status==='review')+'<h3>'+esc(t.title)+'</h3><p>'+esc(role(t.role).botName)+' · '+(t.due?'Due '+esc(t.due):'No due date')+'</p></div>'+F.taskContext(t,agent())+reviewAttribution(t)+(S.stepOf(t)?'<div class="next-action"><small>Procurement evidence · separate from task approval</small><p>'+esc(S.recordState(t).label)+'</p><p class="quiet-note">A reported quote is not confirmed stock. A reviewed result is not an accepted order. Use a new linked task for each revised offer.</p></div>':'')+'<details class="wf-brief" open><summary>Assignment brief</summary><p class="note-text">'+esc(t.brief)+'</p></details>'+(t.blocker?'<div class="next-action"><small>'+esc(A.taskKind(t)==='work'?'Recorded blocker':'Historical blocker')+'</small><p>'+esc(t.blocker)+'</p></div>':'')+(t.result?'<p class="group-label">Reported result</p><p class="note-text">'+esc(t.result)+'</p><p class="quiet-note">'+t.sources.map(u=>external(u)).join('<br>')+'</p>':'')+(t.reviewNote?'<p class="group-label">Review decision</p><p class="note-text">'+esc(t.reviewNote)+'</p>':'')+(t.parentTaskId?'<p><a class="text-button" href="'+href('task',t.parentTaskId)+'">Open source assignment →</a></p>':'')+(qualityLinks?'<div class="actions">'+qualityLinks+'</div>':'')+(history?'<details class="review-history"><summary>Review history · '+t.reviewHistory.length+' rounds</summary>'+history+'</details>':'')+'<div class="actions" style="margin-top:24px">'+actions+'</div><p class="quiet-note">'+(t.handoffAt?'Handoff recorded '+esc(new Date(t.handoffAt).toLocaleString())+'. ':'')+'The CRM records task progress; it does not independently verify that a bot is running.</p>');
   }
@@ -467,6 +470,84 @@
       if(type==='result'){v.sources=v.sources.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);S.validateResult(task,v.result,v.sources);if(task.role==='review'){if(!v.qualityVerdict)throw Error('Choose the actual Quality verdict.');if(task.parentTaskId&&v.confirmCurrentSource!=='on')throw Error('Reopen the current source result before confirming this review.');}v.confirmCurrentSource=v.confirmCurrentSource==='on';}
       await D.dispatch(command,Object.assign(v,{id}),rev);openTask(id);note('Task updated.');
     },back);
+  }
+  function completedReviewProof(receipt){
+    const original=receipt.request.attribution;
+    return '<details class="completed-review-proof"><summary>Completed team review evidence</summary><p class="quiet-note">Source '+esc(receipt.sourceId)+' · result '+receipt.sourceVersion+'<br>Quality '+esc(receipt.qaId)+' · input result '+receipt.qaVersion+' · saved result '+receipt.qaResultVersion+'</p><p class="note-text">'+esc('Original reviewer: '+original.reviewer+'\nCompleted: '+original.reviewedAt+'\nVerdict: '+original.verdict+'\nEvidence: '+original.evidence+'\nRecorded by: '+original.recordedBy)+'</p><div class="actions"><a class="text-button" data-action="open-task" data-id="'+esc(receipt.sourceId)+'" href="'+href('task',receipt.sourceId)+'">Open exact source →</a><a class="text-button" data-action="open-task" data-id="'+esc(receipt.qaId)+'" href="'+href('task',receipt.qaId)+'">Open exact Quality assignment →</a></div></details>';
+  }
+  function sameCompletedRequest(a,b){
+    if(a===b)return true;
+    if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+    const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(k=>Object.prototype.hasOwnProperty.call(b,k)&&sameCompletedRequest(a[k],b[k]));
+  }
+  function completedReviewAccountMatches(session){const status=D.status();return !session.accountChanged&&status.uid===session.uid&&status.epoch===session.epoch;}
+  function freezeCompletedReviewAccount(session=completedReviewSession){
+    if(!session||completedReviewSession!==session||session.accountChanged)return;
+    session.accountChanged=true;
+    const fields=Object.fromEntries(new FormData($('editForm'))),qa=session.state.tasks.find(q=>q.id===fields.qaId);
+    const draft={account:session.uid||'Local workspace',boardRevision:session.state.revision,sourceId:session.source.id,sourceVersion:A.resultVersion(session.source),qaVersion:qa?A.resultVersion(qa):null,closeoutId:session.closeoutId,fields,pendingRequest:session.pending||null};
+    $('completedReviewNotice').innerHTML='<p class="banner" role="alert">Account changed. This draft belongs to the original workspace and cannot be saved here. Copy it before closing; return to the original account and reopen the exact records to check any pending save.</p>'+area('retainedDraft','Retained original-account review draft',JSON.stringify(draft,null,2),'readonly');
+    $('editForm').querySelectorAll('input,select,textarea').forEach(el=>{if(el.tagName==='SELECT'||el.type==='checkbox')el.disabled=true;else el.readOnly=true;});
+    $('editForm').querySelector('[type=submit]').disabled=true;$('checkCompletedReceipt').disabled=true;$('sheetBack').hidden=true;modalBack=null;
+  }
+  function reconcileCompletedReview(session){
+    if(completedReviewSession!==session||!session.pending||!completedReviewAccountMatches(session))return false;
+    const receipt=A.completedReviewReceipt(agent(),session.closeoutId);if(!receipt)return false;
+    if(!sameCompletedRequest(receipt.request,session.pending)){error(Error('A different request uses this receipt ID. Your draft is retained; reopen the exact records before making changes.'));return false;}
+    session.saved=true;
+    modal('Completed team review saved','<div role="status"><h3>'+esc(receipt.decision==='accept'?'Source accepted':'Source returned for correction')+'</h3><p>The Quality finding and source decision were recorded together.</p><p class="quiet-note">'+esc(D.status().agent.mode==='cloud'?'Saved in the connected account.':'Saved on this device.')+' '+esc(new Date(receipt.at).toLocaleString())+'<br>Receipt: '+esc(session.closeoutId)+'</p></div>'+completedReviewProof(receipt)+'<div class="actions">'+button('Open source assignment','open-task',receipt.sourceId,true)+button('Open Quality assignment','open-task',receipt.qaId)+'</div>',()=>openTask(receipt.sourceId));
+    return true;
+  }
+  function completedReviewForm(id){
+    const state=JSON.parse(JSON.stringify(agent())),source=state.tasks.find(t=>t.id===id),status=D.status();
+    const linked=state.tasks.filter(q=>q.parentTaskId===id&&q.role==='review'),eligible=linked.filter(q=>A.completedReviewEligibility(state,source,q).eligible);
+    if(!eligible.length)throw Error('No existing linked Quality assignment is eligible. Use the original result, review or correction controls.');
+    const session={state,source,uid:status.uid,epoch:status.epoch,closeoutId:uid('closeout'),pending:null,saved:false,accountChanged:false};
+    const preview=t=>'<p class="quiet-note">'+esc(t.id)+' · '+esc(A.STATUS[t.status])+' · result version '+A.resultVersion(t)+'</p><p class="note-text">'+esc(t.result||'No result recorded. Supply the actual independently completed Quality result below.')+'</p>'+t.sources.map(u=>external(u)).join('<br>');
+    const choices=Object.assign({'':'Choose the exact existing Quality assignment'},Object.fromEntries(eligible.map(q=>[q.id,q.title+' · '+q.id+' · result '+A.resultVersion(q)])));
+    const excluded=linked.filter(q=>!eligible.includes(q));
+    const fields='<div id="completedReviewNotice" role="status"></div><p class="quiet-note">Record an independent review that has already happened. This form uses the source and Quality versions from board revision '+state.revision+'.</p>'+disclosure('Source result · '+source.title,preview(source),true)+select('qaId','Existing linked Quality assignment',choices,'')+(excluded.length?disclosure('Other linked reviews · use existing controls',excluded.map(q=>'<p class="quiet-note">'+esc(q.title+' · '+q.id+': '+A.completedReviewEligibility(state,source,q).reason)+'</p>').join('')):'')+'<div id="completedReviewFields"></div><p class="quiet-note">Acceptance covers the recorded result. Outreach, spending and account access retain their separate requirements.</p><button type="button" class="text-button" id="checkCompletedReceipt">Check saved receipt</button>';
+    form('Record completed team review',fields,'Save completed team review',async v=>{
+      if(completedReviewSession!==session)return;
+      if(!completedReviewAccountMatches(session)){freezeCompletedReviewAccount(session);throw Error('The account changed. Your original draft is retained; no write was attempted in this account.');}
+      if(session.saved||reconcileCompletedReview(session))return;
+      const qa=state.tasks.find(q=>q.id===v.qaId),eligibility=A.completedReviewEligibility(state,source,qa);
+      if(!eligibility.eligible)throw Error(eligibility.reason);
+      const decision=(prefix,extra={})=>({note:v[prefix+'Note'],review:{actor:'coordinator',reviewer:v.recordedBy,basis:v[prefix+'Basis'],checks:{evidence:v[prefix+'Evidence'],arithmetic:v[prefix+'Arithmetic'],fit:v[prefix+'Fit']}},...extra});
+      const payload={sourceId:id,qaId:qa.id,expectedSourceVersion:A.resultVersion(source),expectedQaVersion:A.resultVersion(qa),closeoutId:session.closeoutId,confirmCurrentSource:v.confirmCurrentSource==='on',attribution:{reviewer:v.originalReviewer,reviewedAt:v.reviewedAt,evidence:v.originalEvidence,recordedBy:v.recordedBy,verdict:v.verdict,independent:v.independent==='on'},sourceDecision:decision('source',{decision:v.decision})};
+      payload.sourceDecision.review.evidenceTaskId=qa.id;
+      if(eligibility.needsQaResult)payload.qaResult={result:v.qaResult,sources:v.qaSources.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),verdict:v.verdict};
+      if(!eligibility.reuseQa)payload.qaReview=decision('qa');
+      // Normalize and validate against the frozen input before any store transaction.
+      const previewState=A.reduce(state,{type:'task.completed-review',payload,revision:state.revision,id:uid('preview'),at:new Date().toISOString()});
+      const request=A.completedReviewReceipt(previewState,session.closeoutId).request;
+      if(session.pending&&!sameCompletedRequest(session.pending,request))throw Error('A save was already attempted for this receipt. Check its saved result before changing the request. Your edited draft remains here.');
+      session.pending=request;
+      try{await D.dispatch('task.completed-review',request,state.revision);}catch(e){
+        if(completedReviewSession!==session)return;
+        if(session.saved||reconcileCompletedReview(session))return;
+        if(!completedReviewAccountMatches(session))freezeCompletedReviewAccount(session);
+        throw Error((e.message||String(e))+' Your draft and original versions are retained. Check saved receipt before retrying; reopening is required if the records changed.');
+      }
+      if(completedReviewSession!==session)return;
+      if(session.saved||reconcileCompletedReview(session))return;
+      if(!completedReviewAccountMatches(session)){freezeCompletedReviewAccount(session);return;}
+      $('completedReviewNotice').textContent='Save returned; waiting for the exact saved receipt. Check saved receipt before retrying. This form retains its original versions.';
+    },()=>openTask(id));
+    completedReviewSession=session;$('f_qaId').required=true;
+    $('checkCompletedReceipt').addEventListener('click',()=>{
+      if(!completedReviewAccountMatches(session)){freezeCompletedReviewAccount(session);return;}
+      if(!reconcileCompletedReview(session))$('completedReviewNotice').textContent=session.pending?'No matching saved receipt is visible in the current register yet. Keep this draft; retry uses the same receipt and original versions.':'No save has been attempted from this form.';
+    });
+    $('f_qaId').addEventListener('change',()=>{
+      const qa=state.tasks.find(q=>q.id===$('f_qaId').value);if(!qa){$('completedReviewFields').innerHTML='';return;}
+      const eligibility=A.completedReviewEligibility(state,source,qa),original=(qa.qualityHistory||[]).slice().reverse().find(h=>h.resultVersion===A.resultVersion(qa)&&h.sourceVersion===A.resultVersion(source)&&h.reviewer&&h.reviewedAt&&h.independent===true);
+      const checks={unchecked:'Not checked',pass:'Pass',na:'Not applicable'},verdicts={'':'Choose the actual completed verdict',pass:'Pass',revise:'Corrections required',blocked:'Blocked'};
+      const reviewFields=(prefix,label)=>'<h3>'+label+'</h3>'+area(prefix+'Basis',label+' · evidence / basis','','required maxlength="2000"')+select(prefix+'Evidence',label+' · evidence check',checks,'unchecked')+pair(select(prefix+'Arithmetic',label+' · arithmetic check',checks,'unchecked'),select(prefix+'Fit',label+' · fit check',checks,'unchecked'))+area(prefix+'Note',label+' · decision notes','','required maxlength="3000"');
+      $('completedReviewFields').innerHTML=disclosure('Selected Quality result · '+qa.title,preview(qa)+reviewAttribution(qa),true)+(eligibility.needsQaResult?area('qaResult','Actual completed independent Quality result','','required maxlength="18000"')+area('qaSources','Quality evidence URLs · one per line','','maxlength="6000"'):'<p class="quiet-note">The existing Quality result and URLs stay unchanged.</p>')+'<h3>Original independent review</h3>'+field('originalReviewer','Actual independent reviewer',original?.reviewer||'','text','required maxlength="180"')+field('reviewedAt','Original review completed at · ISO time with timezone',original?.reviewedAt||'','text','required maxlength="40" placeholder="2026-09-20T07:45:00Z"')+area('originalEvidence','Original review artifact / evidence reference',original?.evidence||'','required maxlength="2000"')+select('verdict','Actual completed Quality verdict',verdicts,original?.verdict||qa.qualityVerdict||'')+check('independent','The actual Quality reviewer worked independently of the source author.',false)+check('confirmCurrentSource','This actual review covers the exact source result, evidence, recipient and scope shown above.',false)+field('recordedBy','Revenue coordinator recording this review','','text','required maxlength="180"')+(eligibility.reuseQa?'<p class="quiet-note">This accepted Quality finding is eligible for reuse. Its result, attribution and acceptance history will stay unchanged.</p>':reviewFields('qa','Accept the Quality finding'))+'<h3>Source decision</h3>'+select('decision','Source disposition',{'':'Choose a decision',accept:'Accept this source result',revise:'Return source for correction'},'')+reviewFields('source','Source coordinator review');
+      $('f_verdict').addEventListener('change',updateSourceDecision);updateSourceDecision();
+    });
+    function updateSourceDecision(){const adverse=['revise','blocked'].includes($('f_verdict').value),accept=$('f_decision').querySelector('[value=accept]');accept.disabled=adverse;if(adverse&&$('f_decision').value==='accept')$('f_decision').value='';}
   }
   function reviewAttribution(task){
     const route=task.routing,quality=task.qualityHistory||[],last=task.reviewHistory?.at(-1);
@@ -543,7 +624,7 @@
     if(action==='team-tab'){teamTab=id;return render();}if(action==='role'){const r=role(id);modal(r.botName,'<p class="note-text">'+esc(r.instructions)+'</p><div class="actions" style="margin-top:20px">'+button('Assign a task','role-task',id,true)+button('View assignments','role-filter',id)+'</div><p class="quiet-note">Use this exact name in Proton Revenue Desk. These instructions and task counts are not live bot telemetry.</p>');return;}
     if(action==='role-task')return taskForm({role:id});if(action==='role-filter'){taskRole=id;teamTab='tasks';close();render();return;}
     if(['task-result','task-review','task-block'].includes(action))return taskActionForm(id,action.slice(5));
-    if(action==='task-quality')return qualityTask(id);if(action==='task-routing')return routingForm(id);if(action==='task-verdict')return qualityVerdictForm(id);if(action==='email-readiness')return emailReadinessForm();
+    if(action==='task-quality')return qualityTask(id);if(action==='task-routing')return routingForm(id);if(action==='task-verdict')return qualityVerdictForm(id);if(action==='task-completed-review')return completedReviewForm(id);if(action==='email-readiness')return emailReadinessForm();
     if(action==='task-packet')return copy(G.packet(agent(),agent().tasks.find(t=>t.id===id),location.href));
     if(['task-ready','task-start','task-handoff'].includes(action)){await D.dispatch(action.replace('-','.'),{id},taskRevision);openTask(id);return;}
     if(action==='task-cancel'){const rev=taskRevision;modal('Cancel assignment?','<p class="quiet-note">Cancellation closes the CRM task. Relay a stop to Grok if work is already running.</p><div class="actions">'+button('Keep task','open-task',id)+button('Confirm cancellation','confirm-task-cancel',id,true)+'</div>',()=>openTask(id));taskRevision=rev;return;}

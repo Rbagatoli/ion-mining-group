@@ -102,6 +102,126 @@
         if(t.role==='review'){if(t.qualityVerdict)r.qualityVerdict=t.qualityVerdict;if(t.reviewOfVersion!==undefined)r.sourceVersion=t.reviewOfVersion;}
         return r;
     }
+    function submitResult(s,t,p,at) {
+        if(!['ready','working','blocked'].includes(t.status))fail('This task cannot receive a result in its current state.');
+        t.result=str(p.result,18000,'result',true);t.sources=sources(p.sources||[]);t.resultVersion=resultVersion(t)+1;
+        delete t.qualityVerdict;
+        if(p.qualityVerdict){if(t.role!=='review'||!['pass','revise','blocked'].includes(p.qualityVerdict))fail('Choose the actual Quality verdict.');t.qualityVerdict=p.qualityVerdict;}
+        if(t.role==='review'&&t.parentTaskId&&p.confirmCurrentSource===true){var currentSource=get(s,'tasks',t.parentTaskId);if(!currentSource.result)fail('The source has no submitted result.');t.reviewOfVersion=resultVersion(currentSource);}
+        t.status='review';t.blocker='';t.reviewNote='';delete t.blockerKind;t.updatedAt=at;
+    }
+    function attributeQuality(s,t,p,at,extra) {
+        if(t.role!=='review'||!['review','done'].includes(t.status)||!t.result)fail('Choose a submitted or accepted Quality result.');
+        if(!['pass','revise','blocked'].includes(p.verdict)||p.confirmCurrentSource!==true)fail('Confirm the actual verdict and reviewed source version.');
+        str(p.evidence,2000,'verdict evidence',true);str(p.recordedBy,180,'verdict recorded by',true);t.qualityVerdict=p.verdict;
+        if(p.sourceTaskId){var reviewed=get(s,'tasks',p.sourceTaskId);if(reviewed.id===t.id||reviewed.role==='review'||!reviewed.result||t.parentTaskId&&t.parentTaskId!==reviewed.id||t.leadId&&reviewed.leadId&&t.leadId!==reviewed.leadId)fail('Choose this Quality result’s exact specialist source.');t.parentTaskId=reviewed.id;if(!t.leadId&&reviewed.leadId)t.leadId=reviewed.leadId;}
+        if(t.parentTaskId)t.reviewOfVersion=resultVersion(get(s,'tasks',t.parentTaskId));
+        if(!t.qualityHistory)t.qualityHistory=[];
+        t.qualityHistory.push(Object.assign({evidence:p.evidence,recordedBy:p.recordedBy,at:at,verdict:p.verdict,sourceTaskId:t.parentTaskId||'',sourceVersion:t.reviewOfVersion??null},extra||{}));t.updatedAt=at;
+    }
+    function decideResult(s,t,p,accept,at,extra) {
+        if(t.status!=='review'&&!(accept&&t.status==='done'&&t.role==='review'&&p.review))fail('There is no result awaiting review.');
+        if(taskKind(t)!=='work')fail('Reference and superseded records do not need result acceptance.');
+        if(t.routing&&t.routing.reviewOwner==='owner'&&!p.review)fail('Record an attributed owner decision for this item.');
+        t.reviewNote=str(p.note,3000,'review decision',true);
+        var review=p.review?recordedReview(s,t,p,accept):null;
+        if(!t.reviewHistory)t.reviewHistory=[];
+        t.reviewHistory.push(Object.assign({at:at,decision:accept?'accept':'revise',note:t.reviewNote,result:t.result,sources:clone(t.sources)},extra||{}));
+        if(review)t.reviewHistory[t.reviewHistory.length-1].review=review;
+        t.status=accept?'done':'blocked';t.blocker=accept?'':t.reviewNote;t.updatedAt=at;
+        if(accept)delete t.blockerKind;else t.blockerKind='correction';
+    }
+    function completedReviewTargets(s,source,qa) {
+        if(!source||source.role==='review'||taskKind(source)!=='work'||source.status!=='review'||!source.result)fail('Choose a specialist result currently awaiting team review.');
+        if(source.routing&&source.routing.reviewOwner==='owner')fail('This source is assigned to an owner decision.');
+        if(!qa||qa.id===source.id||qa.role!=='review'||qa.parentTaskId!==source.id||qa.leadId&&source.leadId&&qa.leadId!==source.leadId)fail('Choose an existing Quality assignment linked to this exact source.');
+        if(taskKind(qa)!=='work'||qa.routing&&qa.routing.reviewOwner==='owner')fail('Resolve historical or owner Quality routing through the existing controls.');
+        if(!['ready','working','blocked','review','done'].includes(qa.status))fail('This Quality assignment is not eligible for a completed team review.');
+        if(qa.reviewOfVersion!==undefined&&qa.reviewOfVersion!==resultVersion(source))fail('The Quality assignment refers to a stale source version.');
+        if(qa.reviewOfVersion===undefined){
+            var oldVersions=(qa.reviewHistory||[]).filter(function(h){return h.review&&h.review.version===resultVersion(qa);}).map(function(h){return h.review.sourceVersion;});
+            (qa.qualityHistory||[]).forEach(function(h){if(h.resultVersion===undefined||h.resultVersion===resultVersion(qa))oldVersions.push(h.sourceVersion);});
+            if(oldVersions.some(function(v){return Number.isSafeInteger(v)&&v!==resultVersion(source);}))fail('The historical Quality evidence refers to a stale source version. Use the existing correction controls.');
+        }
+        var needsResult=['ready','working','blocked'].includes(qa.status);
+        if(needsResult&&qa.result||!needsResult&&!qa.result)fail('Resolve the existing Quality result through the result or correction controls.');
+        return {eligible:true,reason:'',needsQaResult:needsResult,reuseQa:reviewEvidence(s,source).some(function(q){return q.id===qa.id;})};
+    }
+    function completedReviewEligibility(s,source,qa) {
+        try{return completedReviewTargets(s,source,qa);}catch(e){return {eligible:false,reason:e.message,needsQaResult:false,reuseQa:false};}
+    }
+    function reviewAttribution(p,at) {
+        if(!p||p.independent!==true)fail('Confirm that the actual Quality reviewer worked independently of the source author.');
+        var r={reviewer:str(p.reviewer,180,'actual independent reviewer',true),reviewedAt:str(p.reviewedAt,40,'original Quality review time',true),evidence:str(p.evidence,2000,'original Quality evidence reference',true),recordedBy:str(p.recordedBy,180,'Quality evidence recorded by',true),verdict:p.verdict,independent:true};
+        if(!['pass','revise','blocked'].includes(r.verdict))fail('Choose the actual Quality verdict.');
+        if(!Number.isFinite(Date.parse(r.reviewedAt))||Date.parse(r.reviewedAt)>Date.parse(at))fail('The original Quality review time must be a completed time, not a future time.');
+        return r;
+    }
+    function coordinatorDecision(p,sourceDecision) {
+        if(!p||!p.review||p.review.actor!=='coordinator')fail('Record an attributed coordinator decision; this form cannot record owner decisions.');
+        var r=clone(p.review);r.version=0;reviewValid(r);delete r.version;
+        r.reviewer=str(r.reviewer,180,'reviewer identity',true);r.basis=str(r.basis,2000,'review evidence',true);
+        // These are populated from the exact records by recordedReview, never trusted from a form.
+        delete r.sourceVersion;delete r.qualityVerdict;
+        var out={note:str(p.note,3000,'review decision',true),review:r};
+        if(sourceDecision){if(!['accept','revise'].includes(p.decision))fail('Choose a supported source acceptance or correction decision.');out.decision=p.decision;}
+        return out;
+    }
+    function completedReviewRequest(p,at) {
+        var out={sourceId:id(p.sourceId),qaId:id(p.qaId),closeoutId:id(p.closeoutId),expectedSourceVersion:p.expectedSourceVersion,expectedQaVersion:p.expectedQaVersion,confirmCurrentSource:p.confirmCurrentSource};
+        ['expectedSourceVersion','expectedQaVersion'].forEach(function(k){if(!Number.isSafeInteger(out[k])||out[k]<0)fail('Record both exact source and Quality result versions.');});
+        if(p.confirmCurrentSource!==true)fail('Confirm the independent review covers this exact current source version.');
+        out.attribution=reviewAttribution(p.attribution,at);
+        if(p.qaResult){out.qaResult={result:str(p.qaResult.result,18000,'actual completed Quality result',true),sources:sources(p.qaResult.sources||[]),verdict:p.qaResult.verdict};if(out.qaResult.verdict!==out.attribution.verdict)fail('The supplied Quality result and attributed verdict conflict.');}
+        if(p.qaReview)out.qaReview=coordinatorDecision(p.qaReview,false);
+        out.sourceDecision=coordinatorDecision(p.sourceDecision,true);
+        if(out.sourceDecision.review.evidenceTaskId!==out.qaId)fail('The source decision must use the explicitly selected Quality assignment.');
+        function identity(v){return v.trim().replace(/\s+/g,' ').toLowerCase();}
+        [out.qaReview,out.sourceDecision].filter(Boolean).forEach(function(d){if(identity(d.review.reviewer)===identity(out.attribution.reviewer))fail('Record the independent Quality reviewer separately from the coordinator.');});
+        return out;
+    }
+    function completedReviewReceipt(s,closeoutId) {
+        var found=null;
+        s.tasks.forEach(function(t){(t.reviewHistory||[]).forEach(function(h){if(h.closeoutId===closeoutId&&h.completedReview)found=Object.assign({at:h.at},clone(h.completedReview));});});
+        return found;
+    }
+    function sameValue(a,b) {
+        if(a===b)return true;
+        if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+        var keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(function(k){return Object.prototype.hasOwnProperty.call(b,k)&&sameValue(a[k],b[k]);});
+    }
+    function currentQualityVerdict(qa,source) {
+        if(qa.qualityVerdict)return qa.qualityVerdict;
+        var attributed=(qa.qualityHistory||[]).slice().reverse().find(function(h){return h.sourceVersion===resultVersion(source)&&(h.resultVersion===undefined||h.resultVersion===resultVersion(qa));});
+        if(attributed)return attributed.verdict;
+        var reviewed=(qa.reviewHistory||[]).slice().reverse().find(function(h){return h.review&&h.review.version===resultVersion(qa)&&h.review.sourceVersion===resultVersion(source)&&h.review.qualityVerdict;});
+        return reviewed?reviewed.review.qualityVerdict:null;
+    }
+    function qualityReviewsCurrentSource(qa,source) {
+        var version=resultVersion(source),qaVersion=resultVersion(qa);
+        if(qa.reviewOfVersion!==undefined)return qa.reviewOfVersion===version;
+        return (qa.qualityHistory||[]).some(function(h){return h.sourceVersion===version&&(h.resultVersion===undefined||h.resultVersion===qaVersion);})||
+            (qa.reviewHistory||[]).some(function(h){return h.review&&h.review.version===qaVersion&&h.review.sourceVersion===version;});
+    }
+    function completeTeamReview(s,p,at) {
+        var source=get(s,'tasks',p.sourceId),qa=get(s,'tasks',p.qaId),eligibility=completedReviewTargets(s,source,qa);
+        if(resultVersion(source)!==p.expectedSourceVersion||resultVersion(qa)!==p.expectedQaVersion)fail('The source or Quality result version changed. Reopen the exact records before recording the review.');
+        if(eligibility.needsQaResult!==!!p.qaResult)fail(eligibility.needsQaResult?'Supply the actual completed Quality result.':'The submitted Quality result is immutable here; use the existing correction controls.');
+        if(eligibility.reuseQa&&p.qaReview)fail('Reuse this eligible accepted Quality finding without another acceptance.');
+        if(!eligibility.reuseQa&&!p.qaReview)fail('Record the coordinator acceptance of the Quality finding.');
+        var priorVerdict=currentQualityVerdict(qa,source);
+        if(priorVerdict&&priorVerdict!==p.attribution.verdict)fail('The existing or historical Quality verdict conflicts. Use the explicit correction workflow.');
+        var original=eligibility.needsQaResult?null:(qa.qualityHistory||[]).slice().reverse().find(function(h){return h.resultVersion===resultVersion(qa)&&h.sourceVersion===resultVersion(source)&&h.reviewer&&h.reviewedAt&&h.independent===true;});
+        if(original&&['reviewer','reviewedAt','evidence','verdict'].some(function(k){return original[k]!==p.attribution[k];}))fail('The recorded original Quality attribution differs. Resolve it through the existing controls.');
+        if(eligibility.needsQaResult)submitResult(s,qa,{result:p.qaResult.result,sources:p.qaResult.sources,qualityVerdict:p.qaResult.verdict,confirmCurrentSource:true},at);
+        if(!eligibility.reuseQa){
+            if(!original||!qa.qualityVerdict||qa.reviewOfVersion===undefined)attributeQuality(s,qa,{verdict:p.attribution.verdict,evidence:p.attribution.evidence,recordedBy:p.attribution.recordedBy,confirmCurrentSource:true,sourceTaskId:source.id},at,{reviewer:p.attribution.reviewer,reviewedAt:p.attribution.reviewedAt,independent:true,resultVersion:resultVersion(qa),closeoutId:p.closeoutId});
+            decideResult(s,qa,p.qaReview,true,at,{closeoutId:p.closeoutId});
+        }
+        if(p.sourceDecision.decision==='accept'&&s.tasks.some(function(q){return q.parentTaskId===source.id&&q.role==='review'&&taskKind(q)==='work'&&q.status!=='cancelled'&&qualityReviewsCurrentSource(q,source)&&['revise','blocked'].includes(currentQualityVerdict(q,source));}))fail('Unresolved adverse Quality evidence prevents source acceptance. Record supported corrections instead.');
+        var receipt={sourceId:source.id,qaId:qa.id,sourceVersion:p.expectedSourceVersion,qaVersion:p.expectedQaVersion,qaResultVersion:resultVersion(qa),decision:p.sourceDecision.decision,request:clone(p)};
+        decideResult(s,source,p.sourceDecision,p.sourceDecision.decision==='accept',at,{closeoutId:p.closeoutId,completedReview:receipt});
+    }
     function valid(s) {
         if (!s || s.schema !== 1 || !Number.isSafeInteger(s.revision) || s.revision < 0 || typeof s.paused !== 'boolean') fail('This control-center record needs recovery. Export the original before making changes.');
         amount(s.goalCents);
@@ -128,13 +248,13 @@
             if(t.resultVersion!==undefined&&(!Number.isSafeInteger(t.resultVersion)||t.resultVersion<0))fail('Invalid result version.');
             if(t.reviewOfVersion!==undefined&&(!Number.isSafeInteger(t.reviewOfVersion)||t.reviewOfVersion<0||t.role!=='review'||!t.parentTaskId))fail('Invalid review source version.');
             if(t.qualityVerdict!==undefined&&(t.role!=='review'||!['pass','revise','blocked'].includes(t.qualityVerdict)))fail('Invalid Quality verdict.');
-            if(t.qualityHistory!==undefined){if(!Array.isArray(t.qualityHistory)||t.qualityHistory.length>20)fail('Invalid Quality attribution history.');t.qualityHistory.forEach(function(r){str(r.evidence,2000,'verdict evidence',true);str(r.recordedBy,180,'verdict attribution',true);if(!['pass','revise','blocked'].includes(r.verdict)||!Number.isFinite(Date.parse(r.at)))fail('Invalid Quality attribution.');});}
+            if(t.qualityHistory!==undefined){if(!Array.isArray(t.qualityHistory)||t.qualityHistory.length>20)fail('Invalid Quality attribution history.');t.qualityHistory.forEach(function(r){str(r.evidence,2000,'verdict evidence',true);str(r.recordedBy,180,'verdict attribution',true);if(!['pass','revise','blocked'].includes(r.verdict)||!Number.isFinite(Date.parse(r.at)))fail('Invalid Quality attribution.');if(r.closeoutId){id(r.closeoutId);reviewAttribution(r,r.at);if(!Number.isSafeInteger(r.resultVersion)||r.resultVersion<0)fail('Invalid attributed Quality result version.');}});}
             if(t.blockerKind!==undefined&&!['execution','correction','unknown'].includes(t.blockerKind))fail('Invalid blocker category.');
             if(t.parentTaskId){id(t.parentTaskId);if(t.parentTaskId===t.id||!s.tasks.some(function(x){return x.id===t.parentTaskId;}))fail('The source task is missing.');}
             if(t.leadId){id(t.leadId);if(!leads.some(function(l){return l.id===t.leadId;}))fail('The linked lead is missing.');}
             if(t.reviewHistory!==undefined){
                 if(!Array.isArray(t.reviewHistory)||t.reviewHistory.length>20)fail('Export review history before adding further review rounds.');
-                t.reviewHistory.forEach(function(h){str(h.result,18000,'reviewed result',true);sources(h.sources);str(h.note,3000,'historical review note',true);if(h.review!==undefined)reviewValid(h.review);if(!['accept','revise'].includes(h.decision)||!Number.isFinite(Date.parse(h.at)))fail('Invalid review history.');});
+                t.reviewHistory.forEach(function(h){str(h.result,18000,'reviewed result',true);sources(h.sources);str(h.note,3000,'historical review note',true);if(h.review!==undefined)reviewValid(h.review);if(!['accept','revise'].includes(h.decision)||!Number.isFinite(Date.parse(h.at)))fail('Invalid review history.');if(h.closeoutId)id(h.closeoutId);if(h.completedReview){var receipt=h.completedReview,request=completedReviewRequest(receipt.request,h.at);if(h.closeoutId!==request.closeoutId||receipt.sourceId!==t.id||receipt.sourceId!==request.sourceId||receipt.qaId!==request.qaId||receipt.sourceVersion!==request.expectedSourceVersion||receipt.qaVersion!==request.expectedQaVersion||receipt.decision!==request.sourceDecision.decision||receipt.decision!==h.decision||!h.review||h.review.version!==receipt.sourceVersion||h.review.evidenceTaskId!==receipt.qaId||receipt.qaResultVersion!==receipt.qaVersion+(request.qaResult?1:0))fail('Invalid completed team review receipt.');}});
             }
             if(t.due) date(t.due); if(t.dealId && !s.deals.some(function(d){return d.id===t.dealId;})) fail('The linked deal is missing.');
         });
@@ -199,35 +319,22 @@
             if(!actionable(t)||t.routing&&t.routing.reviewOwner==='owner')fail('This item is not available for routine execution.');
             t.status='working';t.startedAt=a.at;t.updatedAt=a.at;message='Work reported in progress: '+t.title;break;
         case 'task.result':
-            t=get(s,'tasks',p.id);if(!['ready','working','blocked'].includes(t.status))fail('This task cannot receive a result in its current state.');
-            t.result=str(p.result,18000,'result',true);t.sources=sources(p.sources||[]);t.resultVersion=resultVersion(t)+1;
-            delete t.qualityVerdict;
-            if(p.qualityVerdict){if(t.role!=='review'||!['pass','revise','blocked'].includes(p.qualityVerdict))fail('Choose the actual Quality verdict.');t.qualityVerdict=p.qualityVerdict;}
-            if(t.role==='review'&&t.parentTaskId&&p.confirmCurrentSource===true){var currentSource=get(s,'tasks',t.parentTaskId);if(!currentSource.result)fail('The source has no submitted result.');t.reviewOfVersion=resultVersion(currentSource);}
-            t.status='review';t.blocker='';t.reviewNote='';delete t.blockerKind;t.updatedAt=a.at;message='Result submitted for review: '+t.title;break;
+            t=get(s,'tasks',p.id);submitResult(s,t,p,a.at);message='Result submitted for review: '+t.title;break;
         case 'task.quality-verdict':
-            t=get(s,'tasks',p.id);if(t.role!=='review'||!['review','done'].includes(t.status)||!t.result)fail('Choose a submitted or accepted Quality result.');
-            if(!['pass','revise','blocked'].includes(p.verdict)||p.confirmCurrentSource!==true)fail('Confirm the actual verdict and reviewed source version.');
-            str(p.evidence,2000,'verdict evidence',true);str(p.recordedBy,180,'verdict recorded by',true);t.qualityVerdict=p.verdict;
-            if(p.sourceTaskId){var reviewed=get(s,'tasks',p.sourceTaskId);if(reviewed.id===t.id||reviewed.role==='review'||!reviewed.result||t.parentTaskId&&t.parentTaskId!==reviewed.id||t.leadId&&reviewed.leadId&&t.leadId!==reviewed.leadId)fail('Choose this Quality result’s exact specialist source.');t.parentTaskId=reviewed.id;if(!t.leadId&&reviewed.leadId)t.leadId=reviewed.leadId;}
-            if(t.parentTaskId)t.reviewOfVersion=resultVersion(get(s,'tasks',t.parentTaskId));
-            if(!t.qualityHistory)t.qualityHistory=[];t.qualityHistory.push({evidence:p.evidence,recordedBy:p.recordedBy,at:a.at,verdict:p.verdict,sourceTaskId:t.parentTaskId||'',sourceVersion:t.reviewOfVersion??null});t.updatedAt=a.at;message='Quality verdict attributed: '+t.title;break;
+            t=get(s,'tasks',p.id);attributeQuality(s,t,p,a.at);message='Quality verdict attributed: '+t.title;break;
         case 'task.block':
             t=get(s,'tasks',p.id);if(['done','cancelled'].includes(t.status))fail('This task is closed.');
             t.status='blocked';t.blocker=str(p.reason,2000,'blocker',true);t.blockerKind=p.blockerKind||'unknown';t.updatedAt=a.at;message='Task blocked: '+t.title;break;
         case 'task.accept':
         case 'task.revise':
-            t=get(s,'tasks',p.id);if(t.status!=='review'&&!(a.type==='task.accept'&&t.status==='done'&&t.role==='review'&&p.review))fail('There is no result awaiting review.');
-            if(taskKind(t)!=='work')fail('Reference and superseded records do not need result acceptance.');
-            if(t.routing&&t.routing.reviewOwner==='owner'&&!p.review)fail('Record an attributed owner decision for this item.');
-            t.reviewNote=str(p.note,3000,'review decision',true);
-            var review=p.review?recordedReview(s,t,p,a.type==='task.accept'):null;
-            if(!t.reviewHistory)t.reviewHistory=[];
-            t.reviewHistory.push({at:a.at,decision:a.type==='task.accept'?'accept':'revise',note:t.reviewNote,result:t.result,sources:clone(t.sources)});
-            if(review)t.reviewHistory[t.reviewHistory.length-1].review=review;
-            t.status=a.type==='task.accept'?'done':'blocked';t.blocker=a.type==='task.revise'?t.reviewNote:'';t.updatedAt=a.at;
-            if(a.type==='task.revise')t.blockerKind='correction';else delete t.blockerKind;
+            t=get(s,'tasks',p.id);decideResult(s,t,p,a.type==='task.accept',a.at);
             message=(t.status==='done'?'Result accepted: ':'Revision requested: ')+t.title;break;
+        case 'task.completed-review':
+            id(a.id);p=completedReviewRequest(p,a.at);
+            var priorCloseout=completedReviewReceipt(s,p.closeoutId);
+            if(priorCloseout){if(!sameValue(priorCloseout.request,p))fail('This closeout ID already records a different completed review. Reopen the saved records.');return clone(before);}
+            if(s.tasks.some(function(q){return (q.reviewHistory||[]).some(function(h){return h.closeoutId===p.closeoutId;})||(q.qualityHistory||[]).some(function(h){return h.closeoutId===p.closeoutId;});}))fail('This closeout ID already exists in review history. Reconcile the original records.');
+            completeTeamReview(s,p,a.at);message='Completed team review recorded: '+p.sourceId+' · Quality '+p.qaId+' · '+p.sourceDecision.decision;break;
         case 'task.cancel':
             t=get(s,'tasks',p.id);if(['done','cancelled'].includes(t.status))fail('This task is already closed.');t.status='cancelled';t.updatedAt=a.at;message='Task cancelled; stop must be relayed to Grok: '+t.title;break;
         case 'deal.save':
@@ -292,5 +399,5 @@
     function kickoff(page) {
         return '# Create the Proton Revenue Desk\n\nCreate six dedicated Proton bots with the profiles below and add them to a Proton Revenue Desk group. Before creating anything, verify that this is a Grok/Cursor account dedicated to Proton, separate from the account used for Stoneport. Separate bot names or group chats on one account do not isolate its cloud computer, files, browser sessions or app connections. If the account is shared with Stoneport or its identity is uncertain, STOP and request the separate Proton login. Never create, message or configure Proton bots in the Stoneport account. Within the verified Proton account, reuse matching Proton profiles and add only missing roles.\n\n'+COMMON+'\n\nLead generation has first priority. Spend the initial sprint researching prospects and testing two offers: a $500 Quote & Cost Review for miners and a $1,500 Supplier Prospect Research pilot for mining/energy vendors. Prices are hypotheses. Track actual replies, meetings and paid work; account counts are not demand. Keep broader sourcing and site briefs as follow-on services.\n\n'+ROLES.map(function(r){return '## Proton '+r.name+'\n'+r.prompt;}).join('\n\n')+'\n\nControl center: '+page+'\nThe control center is the task, lead and result register. First verify it is reachable, that the owner has authorized the account access, and that you see the correct Proton workspace. A localhost address is not reachable from your cloud computer. Do not assume a pasted URL establishes a connection.\n\nFirst return the six bot names and group confirmation. Then, when cloud access is available, complete a harmless task round trip: find a ready task, claim it, submit a source-linked result, and leave it for owner review. Do not begin recurring execution until this round trip is verified. Routines must honor queue pauses, claim only ready tasks and recheck the task before taking a consequential action. To stop active work, the owner must also send Stop now in Grok.\n';
     }
-    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence,reviewRole:reviewRole,outreachForLead:outreachForLead};
+    return {ROLES:ROLES,OFFERS:OFFERS,LEAD_STAGES:LEAD_STAGES,CHANNELS:CHANNELS,STATUS:STATUS,STAGES:STAGES,KINDS:KINDS,COMMON:COMMON,initial:initial,valid:valid,reduce:reduce,metrics:metrics,leadMetrics:leadMetrics,packet:packet,kickoff:kickoff,url:url,taskKind:taskKind,actionable:actionable,resultVersion:resultVersion,reviewEvidence:reviewEvidence,reviewRole:reviewRole,completedReviewEligibility:completedReviewEligibility,completedReviewReceipt:completedReviewReceipt,outreachForLead:outreachForLead};
 }));
