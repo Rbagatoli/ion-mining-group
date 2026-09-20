@@ -41,6 +41,12 @@ const instrument=`
       }finally{h.settled++;}
     };
     h.emit=reason=>h.listeners.forEach(fn=>fn(reason));
+    h.cloud=({pending=false,cached=false}={})=>{h.statusOverride={uid:'synthetic_cloud_account',epoch:1,agent:{uid:'synthetic_cloud_account',mode:cached?'offline':'cloud',hasPendingWrites:pending,fromCache:cached,serverConfirmed:!pending&&!cached}};};
+    h.receipt=()=>{
+      const call=h.calls[h.calls.length-1];
+      h.heldState=AgentControlModel.reduce(read(),{type:call.type,payload:call.payload,revision:call.revision,id:'synthetic_optimistic_receipt',at:new Date().toISOString()});
+      return JSON.parse(JSON.stringify(h.heldState));
+    };
     return d;
   };
 })();`;
@@ -101,6 +107,49 @@ async function draft(){return page.locator('#editForm').evaluate(el=>Object.from
     await page.getByRole('link',{name:'Open exact Quality assignment →',exact:true}).click();await page.reload();assert.match(await page.locator('#sheetBody').innerText(),/Actual synthetic independent review: pass/);
     assert.deepEqual(await store(),after);assert.equal(await page.evaluate(()=>localStorage.getItem('syntheticUntouched')),'Keep exactly');
   });
+  await check('optimistic cloud receipt cannot report saved while dispatch is unresolved or writes remain pending',async()=>{
+    const before=fixture();await seed(before);await page.evaluate(()=>{__reviewHarness.cloud();__reviewHarness.gate=true;});await open();await fill();const fields=await draft();
+    await page.getByRole('button',{name:'Save completed team review',exact:true}).click();
+    await page.waitForFunction(()=>__reviewHarness.calls.length===1);
+    await page.evaluate(()=>{__reviewHarness.receipt();__reviewHarness.cloud({pending:true});__reviewHarness.emit('agents');});
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review','An optimistic matching receipt must not claim a cloud save before dispatch settles');
+    assert.deepEqual(await draft(),fields);assert.deepEqual(await store(),before);assert.equal(await page.evaluate(()=>__reviewHarness.settled),0);
+    await page.getByRole('button',{name:'Check saved receipt',exact:true}).click();assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review');
+    await page.evaluate(()=>{__reviewHarness.cloud();__reviewHarness.emit('agents');});
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review','Even a confirmed listener receipt must wait for this dispatch to settle');
+    await page.evaluate(()=>__reviewHarness.cloud({pending:true}));
+    await page.evaluate(()=>__reviewHarness.release());await page.waitForFunction(()=>__reviewHarness.settled===1);
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review','Settled dispatch alone does not confirm a pending listener receipt');
+    await page.evaluate(()=>{__reviewHarness.cloud();__reviewHarness.emit('agents');});await saved();
+    assert.match(await page.locator('#sheetBody').innerText(),/Saved in the connected account/);assert.equal(await page.evaluate(()=>__reviewHarness.calls.length),1);
+  });
+  await check('rejected cloud dispatch retains its draft and needs an exact server-confirmed receipt to recover',async()=>{
+    const before=fixture();await seed(before);await page.evaluate(()=>{__reviewHarness.cloud();__reviewHarness.gate=true;__reviewHarness.rejectBefore=true;});await open();await fill();const fields=await draft();
+    await page.getByRole('button',{name:'Save completed team review',exact:true}).click();await page.waitForFunction(()=>__reviewHarness.calls.length===1);
+    const exact=await page.evaluate(()=>{const exact=__reviewHarness.receipt();__reviewHarness.cloud({pending:true});__reviewHarness.emit('agents');return exact;});
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review');
+    await page.evaluate(()=>__reviewHarness.release());await page.waitForFunction(()=>__reviewHarness.settled===1);
+    await page.locator('#sheetError').filter({hasText:/Synthetic old request rejected/}).waitFor();assert.deepEqual(await draft(),fields);assert.deepEqual(await store(),before);
+    await page.getByRole('button',{name:'Check saved receipt',exact:true}).click();assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review');
+    await page.evaluate(()=>{__reviewHarness.cloud({cached:true});__reviewHarness.emit('agents');});
+    await page.getByRole('button',{name:'Check saved receipt',exact:true}).click();assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review','Cached evidence is not server confirmation');
+    await page.evaluate(()=>{
+      const receipt=__reviewHarness.heldState.tasks[0].reviewHistory[0].completedReview;
+      receipt.request.attribution.evidence='Different synthetic request on the same receipt';__reviewHarness.cloud();__reviewHarness.emit('agents');
+    });
+    await page.locator('#sheetError').filter({hasText:/different request uses this receipt ID/}).waitFor();assert.deepEqual(await draft(),fields);
+    await page.evaluate(state=>{__reviewHarness.heldState=state;__reviewHarness.emit('agents');},exact);await saved();
+    assert.match(await page.locator('#sheetBody').innerText(),/Saved in the connected account/);assert.equal(await page.evaluate(()=>__reviewHarness.calls.length),1);assert.deepEqual(await store(),before);
+  });
+  await check('an exact server receipt cannot complete a pending review after its account changes',async()=>{
+    const before=fixture();await seed(before);await page.evaluate(()=>{__reviewHarness.cloud();__reviewHarness.gate=true;__reviewHarness.rejectBefore=true;});await open();await fill();const fields=await draft();
+    await page.getByRole('button',{name:'Save completed team review',exact:true}).click();await page.waitForFunction(()=>__reviewHarness.calls.length===1);
+    await page.evaluate(()=>{__reviewHarness.receipt();__reviewHarness.cloud();__reviewHarness.statusOverride.uid='different_synthetic_cloud_account';__reviewHarness.statusOverride.epoch=2;__reviewHarness.emit('account');__reviewHarness.emit('agents');});
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review');
+    assert.deepEqual(JSON.parse(await page.getByLabel('Retained original-account review draft').inputValue()).fields,fields);
+    await page.evaluate(()=>__reviewHarness.release());await page.waitForFunction(()=>__reviewHarness.settled===1);
+    assert.equal(await page.locator('#sheetTitle').innerText(),'Record completed team review');assert.deepEqual(await store(),before);
+  });
   await check('accepted QA is reused unchanged and adverse findings require source correction',async()=>{
     const before=fixture('done');await seed(before);await open();assert.equal(await page.locator('#f_qaResult,#f_qaNote').count(),0);await fill({reuse:true});
     await page.getByRole('button',{name:'Save completed team review',exact:true}).click();await saved();assert.deepEqual((await store()).tasks[1],before.tasks[1]);
@@ -140,7 +189,7 @@ async function draft(){return page.locator('#editForm').evaluate(el=>Object.from
       const before=fixture();await seed(before);await open();await fill();await page.evaluate(fail=>{__reviewHarness.gate=true;__reviewHarness.rejectBefore=fail;},failure);
       await page.getByRole('button',{name:'Save completed team review',exact:true}).click();await page.waitForFunction(()=>__reviewHarness.calls.length===1);
       await page.getByRole('button',{name:'Close panel',exact:true}).click();
-      if(failure)await page.evaluate(()=>{__reviewHarness.statusOverride={uid:'synthetic_new_account',epoch:1};__reviewHarness.emit('account');});
+      if(failure)await page.evaluate(()=>{__reviewHarness.statusOverride={uid:'synthetic_new_account',epoch:1,agent:{uid:'synthetic_new_account',mode:'cloud',serverConfirmed:true}};__reviewHarness.emit('account');});
       await page.goto(origin+'/crm/#team/task/unrelated');await page.getByRole('heading',{name:'Untouched synthetic supplier task',exact:true}).waitFor();
       await page.evaluate(()=>__reviewHarness.release());await page.waitForFunction(()=>__reviewHarness.settled===1);
       await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));

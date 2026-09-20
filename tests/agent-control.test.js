@@ -128,11 +128,11 @@ test('local persistence survives reload and detects cross-tab stale writes',asyn
 });
 test('corrupt local storage is not silently replaced',async()=>{const data=storage();data.setItem('protonAgentControlLocal_v1','{broken');const h=storeHarness({storage:data});assert.equal(h.store.snapshot().mode,'error');await assert.rejects(h.store.dispatch(action(M.initial(),'pause',{})),/recover/);assert.equal(data.getItem('protonAgentControlLocal_v1'),'{broken');});
 function cloud(){
-    const docs=new Map(),callbacks=new Map(),writes=[];
-    function ref(uid){return{uid,onSnapshot(opts,fn){callbacks.set(uid,fn);fn({exists:docs.has(uid),data:()=>docs.get(uid),metadata:{fromCache:false}});return()=>{};}};}
+    const docs=new Map(),callbacks=new Map(),failures=new Map(),writes=[];
+    function ref(uid){return{uid,onSnapshot(opts,fn,fail){callbacks.set(uid,fn);failures.set(uid,fail);fn({exists:docs.has(uid),data:()=>docs.get(uid),metadata:{fromCache:false,hasPendingWrites:false}});return()=>{};}};}
     const db={collection(n){assert.equal(n,'users');return{doc:uid=>({collection:k=>{assert.equal(k,'data');return{doc:key=>{assert.equal(key,'agentControl');return ref(uid);}};}})};},
-      async runTransaction(fn){await fn({get:async r=>({exists:docs.has(r.uid),data:()=>docs.get(r.uid)}),set(r,v){docs.set(r.uid,v);writes.push(r.uid);callbacks.get(r.uid)({exists:true,data:()=>v,metadata:{fromCache:false}});}});}};
-    return{db,docs,callbacks,writes};
+      async runTransaction(fn){await fn({get:async r=>({exists:docs.has(r.uid),data:()=>docs.get(r.uid)}),set(r,v){docs.set(r.uid,v);writes.push(r.uid);callbacks.get(r.uid)({exists:true,data:()=>v,metadata:{fromCache:false,hasPendingWrites:false}});}});}};
+    return{db,docs,callbacks,failures,writes};
 }
 test('cloud transactions use the existing owner path and never upload anonymous work',async()=>{
     const c=cloud(),data=storage();data.setItem('protonAgentControlLocal_v1',JSON.stringify(add()));
@@ -149,4 +149,22 @@ test('cloud cached/offline snapshots never permit claims',async()=>{
     const c=cloud(),h=storeHarness({db:c.db}).store;h.setUser({uid:'a'});
     c.callbacks.get('a')({exists:false,metadata:{fromCache:true}});assert.equal(h.snapshot().mode,'offline');
     await assert.rejects(h.dispatch(action(h.snapshot().state,'pause',{})),/connection/);
+});
+
+test('cloud persistence confirmation follows current snapshot metadata and resets on errors and account changes',()=>{
+    const c=cloud(),h=storeHarness({db:c.db}).store,views=[];h.subscribe(view=>views.push(view));
+    assert.equal(h.snapshot().serverConfirmed,false);h.setUser({uid:'a'});
+    const emit=metadata=>c.callbacks.get('a')({exists:false,metadata});
+    emit({fromCache:false,hasPendingWrites:false});assert.equal(h.snapshot().serverConfirmed,true);assert.equal(views.at(-1).serverConfirmed,true);
+    for(const metadata of [{fromCache:false,hasPendingWrites:true},{fromCache:true,hasPendingWrites:false},{fromCache:false},undefined]){
+      emit(metadata);assert.equal(h.snapshot().serverConfirmed,false);assert.equal(views.at(-1).serverConfirmed,false);
+    }
+    emit({fromCache:false,hasPendingWrites:false});
+    c.callbacks.get('a')({exists:true,data:()=>({data:{broken:true}}),metadata:{fromCache:false,hasPendingWrites:false}});
+    assert.equal(h.snapshot().mode,'error');assert.equal(h.snapshot().serverConfirmed,false);
+    emit({fromCache:false,hasPendingWrites:false});c.failures.get('a')({code:'permission-denied'});assert.equal(h.snapshot().serverConfirmed,false);assert.equal(h.snapshot().mode,'error');
+    emit({fromCache:false,hasPendingWrites:false});const firstView=views.length;h.setUser({uid:'b'});assert.equal(views[firstView].serverConfirmed,false);assert.equal(views[firstView].mode,'connecting');
+    c.callbacks.get('b')({exists:false,metadata:{fromCache:false,hasPendingWrites:true}});
+    emit({fromCache:false,hasPendingWrites:false});assert.equal(h.snapshot().uid,'b');assert.equal(h.snapshot().serverConfirmed,false);
+    h.setUser(null);assert.equal(h.snapshot().mode,'local');assert.equal(h.snapshot().serverConfirmed,false);
 });

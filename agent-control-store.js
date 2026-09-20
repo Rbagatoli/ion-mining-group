@@ -8,20 +8,23 @@
     function create(options) {
         options=options||{};
         var storage=options.storage||root.localStorage, db=options.db||null, auth=options.auth||null;
-        var state=Model.initial(), mode='local', error='', uid=null, epoch=0, stop=null, listeners=[],remoteRaw=null;
-        function emit(){listeners.forEach(function(fn){fn({state:state,mode:mode,error:error,uid:uid});});}
+        var state=Model.initial(), mode='local', error='', uid=null, epoch=0, stop=null, listeners=[],remoteRaw=null,serverConfirmed=false;
+        function snapshot(){return{state:state,mode:mode,error:error,uid:uid,serverConfirmed:serverConfirmed};}
+        function emit(){listeners.forEach(function(fn){fn(snapshot());});}
         function localRead(){var raw=storage.getItem(LOCAL);return raw?Model.valid(JSON.parse(raw)):Model.initial();}
-        function local(){try{state=localRead();mode='local';error='';}catch(e){mode='error';error='Local data could not be read. Export the raw backup before recovery.';}emit();}
+        function local(){serverConfirmed=false;try{state=localRead();mode='local';error='';}catch(e){mode='error';error='Local data could not be read. Export the raw backup before recovery.';}emit();}
         function setUser(user){
-            epoch++; if(stop)stop();stop=null;uid=user?user.uid:null;state=Model.initial();error='';remoteRaw=null;
+            epoch++; if(stop)stop();stop=null;uid=user?user.uid:null;state=Model.initial();error='';remoteRaw=null;serverConfirmed=false;
             if(!uid||!db){local();return;}
             mode='connecting';emit();var generation=epoch;
             var ref=db.collection('users').doc(uid).collection('data').doc('agentControl');
             stop=ref.onSnapshot({includeMetadataChanges:true},function(snap){
                 if(generation!==epoch)return;
-                try{var data=snap.exists?snap.data().data:Model.initial();remoteRaw=JSON.stringify(data);state=Model.valid(data);error='';mode=snap.metadata&&snap.metadata.fromCache?'offline':'cloud';}
+                // Connection state alone cannot prove the current document has committed.
+                serverConfirmed=false;
+                try{var data=snap.exists?snap.data().data:Model.initial();remoteRaw=JSON.stringify(data);state=Model.valid(data);error='';mode=snap.metadata&&snap.metadata.fromCache?'offline':'cloud';serverConfirmed=!!snap.metadata&&snap.metadata.fromCache===false&&snap.metadata.hasPendingWrites===false;}
                 catch(e){mode='error';error=e.message;}emit();
-            },function(e){if(generation!==epoch)return;mode='error';error='Cloud unavailable: '+(e.code||e.message)+'. Your local register has not been uploaded.';emit();});
+            },function(e){if(generation!==epoch)return;serverConfirmed=false;mode='error';error='Cloud unavailable: '+(e.code||e.message)+'. Your local register has not been uploaded.';emit();});
         }
         async function dispatch(action){
             if(mode==='error'||mode==='connecting'||mode==='offline')throw new Error('Wait for a confirmed cloud connection or recover the current register before changing it.');
@@ -50,8 +53,8 @@
         if(root.addEventListener)root.addEventListener('storage',storageListener);
         local();
         if(auth)auth.onAuthStateChanged(setUser);
-        return {subscribe:function(fn){listeners.push(fn);fn({state:state,mode:mode,error:error,uid:uid});},dispatch:dispatch,
-            snapshot:function(){return{state:state,mode:mode,error:error,uid:uid};},raw:function(){return uid?(remoteRaw||JSON.stringify(state)):storage.getItem(LOCAL)||JSON.stringify(state);},
+        return {subscribe:function(fn){listeners.push(fn);fn(snapshot());},dispatch:dispatch,
+            snapshot:snapshot,raw:function(){return uid?(remoteRaw||JSON.stringify(state)):storage.getItem(LOCAL)||JSON.stringify(state);},
             setUser:setUser,destroy:function(){epoch++;if(stop)stop();listeners=[];if(root.removeEventListener)root.removeEventListener('storage',storageListener);}};
     }
     root.AgentControlStore={create:create};

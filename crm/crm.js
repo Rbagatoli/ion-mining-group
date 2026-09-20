@@ -441,7 +441,7 @@
     const contact='<dl class="fact-list">'+fact('Company website',l.website)+fact('Buyer / seller role',l.buyer)+fact('Contact route',l.contact)+fact('Evidence checked',l.checked)+fact('Last contact',l.lastTouch)+'</dl>';
     const evidence='<p class="group-label">Reason to buy this service</p><p class="note-text">'+esc(l.serviceFit||'Not established · keep researching the fit.')+'</p><p class="group-label">Buying signal</p><p class="note-text">'+esc(l.signal||'Not researched yet.')+'</p><p class="quiet-note">'+external(l.source,'View signal source')+'</p>';
     const notes='<p class="group-label">Last outcome</p><p class="note-text">'+esc(l.lastNote||'No contact or outcome recorded.')+'</p><p class="group-label">Lead notes</p><p class="note-text">'+esc(l.notes||'No additional notes.')+'</p>';
-    return '<h3 class="visually-hidden">Lead details for '+esc(l.company)+'</h3>'+F.detail(l,agent())+'<div class="next-action"><small>Next action'+(l.due?' · Saved due date '+esc(l.due):'')+'</small><p>'+esc(followup)+'</p></div>'+(l.offer==='sourcing'?leadSection(l,'sourcing','ASIC sourcing & quote history',sourcingPanel(l)):'')+leadSection(l,'outreach','Contact routes & permissions',outreachRoutesPanel(l))+leadSection(l,'contact-plan','Next contact · advisory',outreachPlanPanel(l))+leadSection(l,'touches','Shared touch history',outreachHistoryPanel(l))+leadSection(l,'contact','Company & original contact',contact)+leadSection(l,'evidence','Fit & source evidence',evidence)+leadSection(l,'notes','Notes & outcomes',notes)+'<div class="actions" style="margin-top:20px">'+button('Update lead','edit-lead',id,true)+(!suppressed&&!['dnc','disqualified'].includes(l.stage)?button('Assign bot work','lead-work',id):'')+(!suppressed&&['qualified','contacted','replied','meeting'].includes(l.stage)?button('Draft outreach','lead-task',id):'')+(['replied','meeting'].includes(l.stage)?button('Create service deal','lead-deal',id):'')+'</div><p class="quiet-note">Drafting outreach creates a Grok task. Qualification is researched fit; buying intent is still confirmed in conversation.</p>';
+    return '<h3 class="visually-hidden">Lead details for '+esc(l.company)+'</h3><p class="quiet-note"><a class="text-button" href="'+esc(href('lead',id))+'">Open lead link ↗</a></p>'+F.detail(l,agent())+'<div class="next-action"><small>Next action'+(l.due?' · Saved due date '+esc(l.due):'')+'</small><p>'+esc(followup)+'</p></div>'+(l.offer==='sourcing'?leadSection(l,'sourcing','ASIC sourcing & quote history',sourcingPanel(l)):'')+leadSection(l,'outreach','Contact routes & permissions',outreachRoutesPanel(l))+leadSection(l,'contact-plan','Next contact · advisory',outreachPlanPanel(l))+leadSection(l,'touches','Shared touch history',outreachHistoryPanel(l))+leadSection(l,'contact','Company & original contact',contact)+leadSection(l,'evidence','Fit & source evidence',evidence)+leadSection(l,'notes','Notes & outcomes',notes)+'<div class="actions" style="margin-top:20px">'+button('Update lead','edit-lead',id,true)+(!suppressed&&!['dnc','disqualified'].includes(l.stage)?button('Assign bot work','lead-work',id):'')+(!suppressed&&['qualified','contacted','replied','meeting'].includes(l.stage)?button('Draft outreach','lead-task',id):'')+(['replied','meeting'].includes(l.stage)?button('Create service deal','lead-deal',id):'')+'</div><p class="quiet-note">Drafting outreach creates a Grok task. Qualification is researched fit; buying intent is still confirmed in conversation.</p>';
   }
   function leadCard(l){return F.card(l,agent(),{expanded:expandedLeads.has(l.id),content:expandedLeads.has(l.id)?leadInfo(l):''});}
   function openLead(id){
@@ -535,18 +535,23 @@
     $('editForm').querySelector('[type=submit]').disabled=true;$('checkCompletedReceipt').disabled=true;$('sheetBack').hidden=true;modalBack=null;
   }
   function reconcileCompletedReview(session){
-    if(completedReviewSession!==session||!session.pending||!completedReviewAccountMatches(session))return false;
+    if(completedReviewSession!==session||!session.pending||session.saving||!completedReviewAccountMatches(session))return false;
+    const store=D.status().agent;
+    // A listener may show a local write before the transaction settles, or retain
+    // it after rejection. Only a confirmed snapshot can reconcile a cloud receipt.
+    const cloudSaved=!!session.uid&&store.uid===session.uid&&store.mode==='cloud'&&store.serverConfirmed===true;
+    if(!cloudSaved&&(session.uid||store.uid||store.mode!=='local'))return false;
     const receipt=A.completedReviewReceipt(agent(),session.closeoutId);if(!receipt)return false;
     if(!sameCompletedRequest(receipt.request,session.pending)){error(Error('A different request uses this receipt ID. Your draft is retained; reopen the exact records before making changes.'));return false;}
     session.saved=true;
-    modal('Completed team review saved','<div role="status"><h3>'+esc(receipt.decision==='accept'?'Source accepted':'Source returned for correction')+'</h3><p>The Quality finding and source decision were recorded together.</p><p class="quiet-note">'+esc(D.status().agent.mode==='cloud'?'Saved in the connected account.':'Saved on this device.')+' '+esc(new Date(receipt.at).toLocaleString())+'<br>Receipt: '+esc(session.closeoutId)+'</p></div>'+completedReviewProof(receipt)+'<div class="actions">'+button('Open source assignment','open-task',receipt.sourceId,true)+button('Open Quality assignment','open-task',receipt.qaId)+'</div>',()=>openTask(receipt.sourceId));
+    modal('Completed team review saved','<div role="status"><h3>'+esc(receipt.decision==='accept'?'Source accepted':'Source returned for correction')+'</h3><p>The Quality finding and source decision were recorded together.</p><p class="quiet-note">'+esc(cloudSaved?'Saved in the connected account.':'Saved on this device.')+' '+esc(new Date(receipt.at).toLocaleString())+'<br>Receipt: '+esc(session.closeoutId)+'</p></div>'+completedReviewProof(receipt)+'<div class="actions">'+button('Open source assignment','open-task',receipt.sourceId,true)+button('Open Quality assignment','open-task',receipt.qaId)+'</div>',()=>openTask(receipt.sourceId));
     return true;
   }
   function completedReviewForm(id){
     const state=JSON.parse(JSON.stringify(agent())),source=state.tasks.find(t=>t.id===id),status=D.status();
     const linked=state.tasks.filter(q=>q.parentTaskId===id&&q.role==='review'),eligible=linked.filter(q=>A.completedReviewEligibility(state,source,q).eligible);
     if(!eligible.length)throw Error('No existing linked Quality assignment is eligible. Use the original result, review or correction controls.');
-    const session={state,source,uid:status.uid,epoch:status.epoch,closeoutId:uid('closeout'),pending:null,saved:false,accountChanged:false};
+    const session={state,source,uid:status.uid,epoch:status.epoch,closeoutId:uid('closeout'),pending:null,saving:false,saved:false,accountChanged:false};
     const preview=t=>'<p class="quiet-note">'+esc(t.id)+' · '+esc(A.STATUS[t.status])+' · result version '+A.resultVersion(t)+'</p><p class="note-text">'+esc(t.result||'No result recorded. Supply the actual independently completed Quality result below.')+'</p>'+t.sources.map(u=>external(u)).join('<br>');
     const choices=Object.assign({'':'Choose the exact existing Quality assignment'},Object.fromEntries(eligible.map(q=>[q.id,q.title+' · '+q.id+' · result '+A.resultVersion(q)])));
     const excluded=linked.filter(q=>!eligible.includes(q));
@@ -566,22 +571,24 @@
       const previewState=A.reduce(state,{type:'task.completed-review',payload,revision:state.revision,id:uid('preview'),at:new Date().toISOString()});
       const request=A.completedReviewReceipt(previewState,session.closeoutId).request;
       if(session.pending&&!sameCompletedRequest(session.pending,request))throw Error('A save was already attempted for this receipt. Check its saved result before changing the request. Your edited draft remains here.');
-      session.pending=request;
+      session.pending=request;session.saving=true;
       try{await D.dispatch('task.completed-review',request,state.revision);}catch(e){
+        session.saving=false;
         if(completedReviewSession!==session)return;
         if(session.saved||reconcileCompletedReview(session))return;
         if(!completedReviewAccountMatches(session))freezeCompletedReviewAccount(session);
         throw Error((e.message||String(e))+' Your draft and original versions are retained. Check saved receipt before retrying; reopening is required if the records changed.');
       }
+      session.saving=false;
       if(completedReviewSession!==session)return;
       if(session.saved||reconcileCompletedReview(session))return;
       if(!completedReviewAccountMatches(session)){freezeCompletedReviewAccount(session);return;}
-      $('completedReviewNotice').textContent='Save returned; waiting for the exact saved receipt. Check saved receipt before retrying. This form retains its original versions.';
+      $('completedReviewNotice').textContent='Save returned; waiting for confirmation of the exact saved receipt. Check saved receipt before retrying. This form retains its original versions.';
     },()=>openTask(id));
     completedReviewSession=session;$('f_qaId').required=true;
     $('checkCompletedReceipt').addEventListener('click',()=>{
       if(!completedReviewAccountMatches(session)){freezeCompletedReviewAccount(session);return;}
-      if(!reconcileCompletedReview(session))$('completedReviewNotice').textContent=session.pending?'No matching saved receipt is visible in the current register yet. Keep this draft; retry uses the same receipt and original versions.':'No save has been attempted from this form.';
+      if(!reconcileCompletedReview(session))$('completedReviewNotice').textContent=session.saving?'Save is still in progress. Keep this draft while confirmation is pending.':session.pending?'No matching confirmed receipt is visible in the current register yet. Keep this draft; retry uses the same receipt and original versions.':'No save has been attempted from this form.';
     });
     $('f_qaId').addEventListener('change',()=>{
       const qa=state.tasks.find(q=>q.id===$('f_qaId').value);if(!qa){$('completedReviewFields').innerHTML='';return;}

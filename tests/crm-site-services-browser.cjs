@@ -56,6 +56,22 @@ let origin;
   for(const item of saved){assert.match(await page.locator('.wf-lead-card[data-lead-id="'+item.id+'"]').innerText(),new RegExp(item.label));const lead=(await state()).leads.find(l=>l.id===item.id);assert.equal(lead.offer,item.offer);assert.equal(lead.stage,'discovered');assert.equal(lead.lastTouch,'');}
   const actual=await state();assert.deepEqual(actual.tasks,initial.tasks);assert.deepEqual(actual.entries,initial.entries);
  });
+ await check('Expanded leads expose a stable Open lead link that survives reload without a popup or record changes',async()=>{
+  const before=await state();
+  for(const item of saved){
+   const card=page.locator('.wf-lead-card[data-lead-id="'+item.id+'"]');
+   await card.locator(':scope > summary').click();await card.locator('.wf-detail').waitFor();
+   const link=card.getByRole('link',{name:'Open lead link ↗',exact:true}),target='#pipeline/lead/'+encodeURIComponent(item.id);
+   assert.equal(await link.getAttribute('href'),target);await link.click();
+   await page.waitForURL(url=>url.hash===target);await card.locator('.wf-detail').waitFor();
+   assert.equal(await card.evaluate(el=>el.open),true);assert.equal(await page.locator('dialog[open]').count(),0);
+   await page.reload();await card.locator('.wf-detail').waitFor();
+   assert.equal(await card.evaluate(el=>el.open),true);assert.equal(await page.locator('dialog[open]').count(),0);
+   assert.equal(await card.getByRole('link',{name:'Open lead link ↗',exact:true}).getAttribute('href'),target);
+   assert.match(await card.innerText(),new RegExp(item.company));
+  }
+  assert.deepEqual(await state(),before,'Opening or sharing a lead must not rewrite its record or create work');
+ });
  await check('Editing historical research and sourcing leads retains their historical IDs',async()=>{
   for(const offer of ['research','sourcing']){
    await openLead('legacy_'+offer);await page.locator('.wf-lead-card[data-lead-id="legacy_'+offer+'"]').getByRole('button',{name:'Update lead',exact:true}).click();

@@ -20,9 +20,9 @@ function reviewFixture(){
 // This is an entrypoint/lifecycle test, not a browser-layout test. The DOM stub only
 // supplies the dialog, form, and event contracts used by the unchanged CRM script.
 // All account/store transitions execute the actual adapters; no network exists.
-function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdTransactions=false}={}){
+function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdTransactions=false,holdSettlement=false}={}){
   const elements=new Map(),documentEvents=new Map(),windowEvents=new Map(),queue=[],snapshots=new Map(),writes=[];
-  const storage=new Map([[LOCAL,JSON.stringify(local)]]);let authCallback,authError,currentUser=null,releaseRead,transactionReads=0;
+  const storage=new Map([[LOCAL,JSON.stringify(local)]]);let authCallback,authError,currentUser=null,releaseRead,settleTransaction,transactionReads=0;
   const decode=s=>s.replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
   function element(id){
     if(elements.has(id))return elements.get(id);
@@ -58,6 +58,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
     async runTransaction(fn){
       if(!holdTransactions)throw Error('This test must not attempt account writes.');
       await fn({get(){transactionReads++;return new Promise(resolve=>{releaseRead=state=>resolve({exists:true,data:()=>({data:state})});});},set(ref,value){writes.push({uid:ref.uid,value});}});
+      if(holdSettlement)await new Promise((resolve,reject)=>{settleTransaction=error=>error?reject(error):resolve();});
     }};
   const box={console,URL,TextEncoder,Date:TestDate,Map,Set,crypto:require('node:crypto').webcrypto,navigator:{},document,location,HTMLElement:class {},
     fetch:async()=>{throw Error('Unexpected network request from the task-route harness.');},
@@ -81,10 +82,10 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   run('crm/crm.js');
   function flush(){for(let limit=0;queue.length;limit++){assert(limit<100,'event queue did not settle');queue.shift()();}}
   const h={el:element,location,writes,data,storage,flush,title:()=>element('sheetTitle').textContent,body:()=>element('sheetBody').innerHTML,isOpen:()=>element('sheet').open,
-    transactionReads:()=>transactionReads,releaseRead:state=>releaseRead(state),
+    transactionReads:()=>transactionReads,releaseRead:state=>releaseRead(state),settleTransaction:error=>settleTransaction(error),
     auth(uid){currentUser=uid?{uid,email:uid+'@example.test'}:null;authCallback(currentUser);flush();},
     authFail(){authError(Error('Synthetic authentication failed.'));flush();},
-    snapshot(uid,state=A.initial(),{cache=false,exists=true}={}){snapshots.get(uid).ok({exists,data:()=>({data:state}),metadata:{fromCache:cache}});flush();},
+    snapshot(uid,state=A.initial(),{cache=false,exists=true,pending=false}={}){snapshots.get(uid).ok({exists,data:()=>({data:state}),metadata:{fromCache:cache,hasPendingWrites:pending}});flush();},
     storeFail(uid){snapshots.get(uid).error({code:'permission-denied'});flush();},
     go(value){location.hash=value;flush();},
     close(){element('sheetClose').onclick();flush();},
@@ -189,4 +190,31 @@ test('a pending completed-review save retains original fields, versions and rece
   h.snapshot('owner_b',fixture('Other owner same ID'));h.snapshot('owner_a',state);h.releaseRead(state);await submitted;h.flush();
   assert.equal(h.isOpen(),true);assert.equal(h.title(),'Record completed team review');assert.equal(h.el('submitButton').disabled,true);assert.equal(h.el('checkCompletedReceipt').disabled,true);assert.equal(h.el('f_retainedDraft').value,frozen);assert.equal(h.writes.length,0);assert.equal(h.data.status().uid,'owner_b');
   await h.el('checkCompletedReceipt').emit('click');assert.equal(h.el('f_retainedDraft').value,frozen);assert.equal(h.title(),'Record completed team review');assert.equal(h.writes.length,0);
+});
+
+for(const outcome of ['confirm-before-settlement','resolve-before-confirmation','reject-before-confirmation'])test('completed review only confirms persisted receipt after transaction settlement: '+outcome,async()=>{
+  const state=reviewFixture(),h=harness({holdTransactions:true,holdSettlement:true});h.auth('owner_a');h.snapshot('owner_a',state);await h.click('task-completed-review','source');
+  h.el('f_qaId').value='qa';await h.el('f_qaId').emit('change');
+  const fields={qaId:'qa',qaResult:'Actual synthetic independent finding.',qaSources:'https://example.test/qa',originalReviewer:'Independent synthetic reviewer',reviewedAt:'2026-09-20T07:45:00Z',originalEvidence:'Synthetic original artifact',verdict:'pass',independent:'on',confirmCurrentSource:'on',recordedBy:'Synthetic Revenue',decision:'accept'};
+  for(const prefix of ['qa','source'])Object.assign(fields,{[prefix+'Basis']:'Synthetic independently checked basis.',[prefix+'Evidence']:'pass',[prefix+'Arithmetic']:'na',[prefix+'Fit']:'pass',[prefix+'Note']:'Synthetic decision notes.'});
+  for(const [name,value] of Object.entries(fields)){const el=h.el('f_'+name);el.name=name;el.value=value;el.tagName='INPUT';}
+  const submitted=h.el('editForm').emit('submit');await Promise.resolve();h.releaseRead(state);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.writes.length,1);const receiptState=h.writes[0].value.data;
+  h.snapshot('owner_a',receiptState,{pending:true});
+  assert.equal(h.title(),'Record completed team review');assert.equal(h.data.status().agent.serverConfirmed,false);
+  await h.el('checkCompletedReceipt').emit('click');assert.match(h.el('completedReviewNotice').textContent,/still in progress/);
+  if(outcome==='confirm-before-settlement'){
+    h.snapshot('owner_a',receiptState);assert.equal(h.title(),'Record completed team review');
+    h.settleTransaction();await submitted;h.flush();
+  }else{
+    h.settleTransaction(outcome==='reject-before-confirmation'?Error('Synthetic transaction rejected'):null);await submitted;h.flush();
+    assert.equal(h.title(),'Record completed team review');
+    if(outcome==='reject-before-confirmation')assert.match(h.el('sheetError').textContent,/Synthetic transaction rejected/);
+    await h.el('checkCompletedReceipt').emit('click');assert.equal(h.title(),'Record completed team review');
+    for(const [name,value] of Object.entries(fields))assert.equal(h.el('f_'+name).value,value,name+' retained');
+    h.snapshot('owner_a',receiptState,{cache:true});assert.equal(h.title(),'Record completed team review');
+    h.snapshot('owner_a',receiptState);
+  }
+  assert.equal(h.title(),'Completed team review saved');assert.match(h.body(),/Saved in the connected account/);assert.equal(h.transactionReads(),1);
+  assert.equal(h.writes.length,1);assert.equal(h.writes[0].uid,'owner_a');
 });
