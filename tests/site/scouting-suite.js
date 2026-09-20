@@ -118,8 +118,8 @@ check('public packet contains no private account, payment, agent-instruction or 
 check('unified workspace loads visual dependencies in order and exposes honest preview/draft boundaries', () => {
   const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g), m => m[1].split('?')[0]);
   const styles = Array.from(html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g), m => m[1].split('?')[0]);
-  assert.deepEqual(scripts, ['./sample-data.js', './visual-data.js', './site-visuals.js', './scouting.js']);
-  assert.deepEqual(styles, ['./scouting.css']);
+  assert.deepEqual(scripts, ['./sample-data.js', './visual-data.js', './site-visuals.js', './energy-access-data.js', './site-access.js', './scouting.js']);
+  assert.deepEqual(styles, ['./scouting.css', './site-access.css']);
   assert.doesNotMatch(html, /<iframe\b|<form\b[^>]*\baction=|<script\b[^>]*>(?!\s*<\/script>)[\s\S]+?<\/script>/i);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
   assert.match(html, /Workspace preview/); assert.match(html, /unsent draft/);
@@ -279,6 +279,7 @@ check('actual site route omits Alpha from the locator and uses its official addr
     assert(url, 'Selected Alpha profile needs an official-address map');
     assert.match(new URL(url[1].replace(/&amp;/g, '&')).searchParams.get('query'), /2350.*Marriottsville/i);
     assert.doesNotMatch(detail, /39\.30578|-76\.8988/);
+    h.listeners.click({ target: { closest(selector) { return selector === '[data-tab]' ? { dataset: { tab: 'visuals' } } : null; } } });
     assert.match(h.element('detailBody').innerHTML, visuals ? /catalog coordinate was rejected/ : /Visual supplement unavailable/);
     assert.equal(h.stored.get(h.sentinel), 'must remain untouched');
   }
@@ -289,10 +290,10 @@ check('nested workspace assets participate in cache stamping and are mandatory p
   assert(area, 'The nested scouting directory needs its own stamp area');
   assert.equal(area.dir, 'portal/scouting');
   assert.deepEqual(stamping.pagesOf(area.dir), ['index.html']);
-  assert.deepEqual(stamping.expected(area).assets, ['./sample-data.js', './scouting.css', './scouting.js', './site-visuals.js', './visual-data.js']);
+  assert.deepEqual(stamping.expected(area).assets, ['./energy-access-data.js', './sample-data.js', './scouting.css', './scouting.js', './site-access.css', './site-access.js', './site-visuals.js', './visual-data.js']);
   const build = fs.readFileSync(path.join(ROOT, 'tools/build-pages.js'), 'utf8');
   const required = build.match(/const MUST_EXIST\s*=\s*\[([\s\S]*?)\];/);
   assert(required, 'Published output contract missing');
-  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js', 'visual-data.js', 'site-visuals.js']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
+  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js', 'visual-data.js', 'site-visuals.js', 'energy-access-data.js', 'site-access.css', 'site-access.js']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
 });
 console.log('\n' + checks + ' scouting contract checks passed.');
