@@ -62,7 +62,7 @@ check('known catalog points align with the sourced states and all polygons rende
     const p = byId[id]; assert(inState([p.lng,p.lat],h.geo.states.find(s=>s.id===state)), id + ' must fall in ' + state);
   }
   const markup = h.api.render(profiles, 'SIM-952');
-  const paths = Array.from(markup.matchAll(/<path class="sl-state [^"]+" d="([^"]+)"/g), m=>m[1]);
+  const paths = Array.from(markup.matchAll(/<path class="sl-state [^"]+"[^>]*\bd="([^"]+)"/g), m=>m[1]);
   assert.equal(paths.length,h.geo.states.length);
   for (const d of paths) { assert.match(d,/^M/); assert.match(d,/Z$/); assert.doesNotMatch(d,/NaN|Infinity|undefined/); }
   assert.match(markup,/fill-rule="evenodd"/);

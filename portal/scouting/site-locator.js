@@ -31,7 +31,11 @@
     const width = expanded ? (window.innerWidth < 700 ? 480 : 1000) : 400, height = expanded ? (window.innerWidth < 700 ? 460 : 660) : 330;
     const { point, scale } = projection(width, height, expanded), geo = geography();
     const xy = (lng, lat) => point(lng, lat).map(n => n.toFixed(2)).join(',');
-    const states = arr(geo.states).map(s => `<path class="sl-state sl-state-${esc(s.id)}" d="${arr(s.coordinates).map(poly => arr(poly).map(ring => arr(ring).map(([lng, lat], i) => `${i ? 'L' : 'M'}${xy(lng, lat)}`).join('') + 'Z').join('')).join('')}" fill-rule="evenodd"/>`).join('');
+    const finish = expanded ? 'expanded' : 'compact';
+    // One shared light across the land, matching the platinum globe palette.
+    // These gradients are a decorative material finish, not terrain or site data.
+    const material = `<defs><linearGradient id="sl-platinum-${finish}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${width}" y2="${height}"><stop offset="0" stop-color="#777e82"/><stop offset=".28" stop-color="#dedfdb"/><stop offset=".46" stop-color="#c4c7c6"/><stop offset=".68" stop-color="#a2a7a8"/><stop offset=".87" stop-color="#c3c6c6"/><stop offset="1" stop-color="#777f85"/></linearGradient><radialGradient id="sl-graphite-${finish}" gradientUnits="userSpaceOnUse" cx="${width * .27}" cy="${height * .16}" r="${width * .95}"><stop offset="0" stop-color="#343a40"/><stop offset=".5" stop-color="#191e24"/><stop offset="1" stop-color="#080d12"/></radialGradient></defs>`;
+    const states = arr(geo.states).map(s => `<path class="sl-state sl-state-${esc(s.id)}" fill="url(#sl-platinum-${finish})" d="${arr(s.coordinates).map(poly => arr(poly).map(ring => arr(ring).map(([lng, lat], i) => `${i ? 'L' : 'M'}${xy(lng, lat)}`).join('') + 'Z').join('')).join('')}" fill-rule="evenodd"/>`).join('');
     const visible = ([x, y], margin = 12) => x > margin && x < width - margin && y > margin && y < height - margin;
     const occupied = list.filter(canPlot).map(p => { const [x, y] = point(p.lng, p.lat); return { x: x - 23, y: y - 23, w: 46, h: 46 }; });
     function placeLabel(x, y, text, font, preferredLeft) {
@@ -61,7 +65,7 @@
     }).join('');
     const points = list.filter(canPlot).map(p => { const [x, y] = point(p.lng, p.lat), active = p.id === selected; return `<a href="#sites" data-locator-select="${esc(p.id)}" aria-label="Select ${esc(p.name)}, ${esc(p.location)}" class="sl-pin${active ? ' selected' : ''}"><title>${esc(p.name)} · ${esc(p.location)}</title><circle class="sl-hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="23"/><circle class="sl-halo" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="19"/><circle class="sl-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="12"/><text x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}">${number(p, list)}</text></a>`; }).join('');
     const miles = expanded && zoom > 2 ? 20 : 50, bar = miles / (69.172 * Math.cos(40.5 * rad)) * scale;
-    return `<svg class="sl-map" viewBox="0 0 ${width} ${height}" role="group" aria-label="Site locator: Mid-Atlantic United States, with state boundaries and reference cities"${expanded ? ' tabindex="0" aria-describedby="sl-map-help"' : ''}><rect class="sl-water" width="${width}" height="${height}"/>${states}${stateLabels}${cities}${points}<g class="sl-compass" transform="translate(${width - 24} 22)"><text text-anchor="middle" y="0">N</text><path d="M0 9V30 M-4 15L0 9 4 15"/></g><g class="sl-scale" transform="translate(20 ${height - 23})"><path d="M0 -5V0H${bar.toFixed(1)}V-5"/><text y="15">${miles} mi · approximate</text></g></svg>`;
+    return `<svg class="sl-map" viewBox="0 0 ${width} ${height}" role="group" aria-label="Site locator: Mid-Atlantic United States, with state boundaries and reference cities"${expanded ? ' tabindex="0" aria-describedby="sl-map-help"' : ''}>${material}<rect class="sl-water" fill="url(#sl-graphite-${finish})" width="${width}" height="${height}"/>${states}${stateLabels}${cities}${points}<g class="sl-compass" transform="translate(${width - 24} 22)"><text text-anchor="middle" y="0">N</text><path d="M0 9V30 M-4 15L0 9 4 15"/></g><g class="sl-scale" transform="translate(20 ${height - 23})"><path d="M0 -5V0H${bar.toFixed(1)}V-5"/><text y="15">${miles} mi · approximate</text></g></svg>`;
   }
   function mapUrl(p) {
     if (window.ProtonSiteVisuals) return window.ProtonSiteVisuals.mapUrl(p);
