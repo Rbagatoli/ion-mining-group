@@ -411,6 +411,9 @@ function loadGenerators(zipPath) {
 
 function classifyTechnology(technology, fuel, primeMover) {
     var t = String(technology || '').toLowerCase(), f = String(fuel || '').toUpperCase();
+    // EIA's solar-thermal labels describe generation, including plants with integral heat
+    // storage. Separate battery/storage generator rows still retain their own classification.
+    if (/^solar thermal (with|without) energy storage$/.test(t)) return 'solar';
     if (/pumped storage|batter|flywheel|compressed air|energy storage/.test(t) || /^(BA|PS|FW|CE)$/.test(String(primeMover || ''))) return 'storage';
     if (/nuclear/.test(t) || f === 'NUC') return 'nuclear';
     if (/tidal|wave|ocean/.test(t) || /^(TID|WAV)$/.test(f)) return 'marine';

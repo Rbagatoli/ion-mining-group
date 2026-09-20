@@ -36,6 +36,13 @@ assert.equal(B.classifyTechnology('Hydroelectric Pumped Storage', 'WAT', 'PS'), 
 assert.equal(B.classifyTechnology('Conventional Hydroelectric', 'WAT', 'HY'), 'hydro');
 assert.equal(B.classifyTechnology('All Other', 'WH', 'ST'), 'recovered_energy');
 assert.equal(B.classifyTechnology('Unrecognized', '???', ''), 'unknown');
+for (const label of ['Solar Thermal with Energy Storage', 'Solar Thermal without Energy Storage']) {
+  assert.equal(B.classifyTechnology(label, 'SUN', 'ST'), 'solar');
+  const battery = row('battery', 20, 'OP', 'Batteries', 'MWH'); battery[4] = 'BA';
+  const paired = B.aggregateGenerators({ sheet: name => name === 'Operable' ? [hdr, row('solar', 100, 'OP', label, 'SUN'), battery] : [] });
+  assert.deepEqual(paired[10].energy, { solar: 100, storage: 20 });
+  assert.equal(paired[10].mw, 120);
+}
 
 const ownerHeader = ['Plant Code', 'Generator ID', 'Owner Name', 'Owner Street Address', 'Owner City',
   'Owner State', 'Owner Zip', 'Ownership ID', 'Percent Owned'];
@@ -56,6 +63,17 @@ assert.equal(Object.keys(A.counts.byState).length, 51);
 assert.equal(A.counts.above50Mw, 3753);
 assert.equal(A.counts.byEnergyTechnology.nuclear, 56);
 assert.equal(A.counts.byEnergyTechnology.hydro, 1393);
+assert.equal(A.counts.byEnergyTechnology.solar, 7180);
+assert.equal(A.counts.byEnergyTechnology.storage, 600);
+const thermal = A.facilities.filter(f => /^Solar Thermal (with|without) Energy Storage$/.test(f.technology));
+assert.equal(thermal.length, 8);
+for (const plant of thermal) {
+  assert.equal(plant.energyTechnology, 'solar');
+  assert(plant.energyTechnologies.includes('solar'));
+  assert(!plant.energyTechnologies.includes('storage'));
+  assert.equal(plant.availableMiningMw, null);
+  assert.equal(plant.availabilityStatus, 'unverified');
+}
 assert.equal(A.counts.facilitiesWithoutGeneration, 218);
 assert.equal(A.counts.droppedNoGeneration, 0);
 assert.equal(A.counts.droppedTooBig, 0);

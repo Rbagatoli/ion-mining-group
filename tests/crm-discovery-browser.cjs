@@ -14,7 +14,7 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
  const input=async(id,value)=>{await page.locator('#'+id).fill(value);await page.locator('#'+id).dispatchEvent('change');await settled();};
  const select=async(id,value)=>{await page.locator('#'+id).selectOption(value);await settled();};
  const click=async action=>page.locator('[data-discovery-action="'+action+'"]').first().click();
- await page.goto(origin+'/crm/#discover');await settled();
+ await page.goto(origin+'/crm/#discover');await settled();await select('discoverySupplyScope','all');
  await check('real platinum globe, local assets and filtered catalog markers',async()=>{await page.waitForFunction(()=>document.querySelector('#discoveryGlobe')?.dataset.globeReady==='true');assert(Number(await page.locator('#discoveryGlobe').getAttribute('data-prospect-markers'))>1000);assert.equal(await page.locator('#discoveryGlobe canvas').count(),1);await page.screenshot({path:path.join(out,'discover-desktop.png'),fullPage:true});});
  await check('location aliases, native suggestions and stable canvas through search',async()=>{
   await page.locator('#discoveryGlobe canvas').evaluate(e=>e.dataset.original='yes');await input('discoveryLocation','Texas');const count=await page.locator('#discoveryList .row').count();assert(count>0);assert((await page.locator('#discoveryList .row .sub').allTextContents()).every(t=>t.includes('Texas')));assert((await page.locator('#discoveryPlaces option').allTextContents()).length>0);await input('discoveryLocation','TX');assert.equal(await page.locator('#discoveryList .row').count(),count);assert.equal(await page.locator('#discoveryGlobe canvas').getAttribute('data-original'),'yes');
@@ -40,7 +40,7 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
   await select('discoverySort','capital');const cash=(await page.locator('#discoveryList .row-end>span:first-child').allTextContents()).map(v=>Number(v.replace(/[^\d.]/g,'')));assert(cash.every((v,i)=>v<=5000000&&(!i||v>=cash[i-1])));assert(Number(await page.locator('#discoveryGlobe').getAttribute('data-prospect-markers'))>=rows.length);
  });
  await check('invalid ranges and no matches have a visible recovery action',async()=>{
-  await page.locator('#discoveryMinMw').fill('30');await page.locator('#discoveryMinMw').dispatchEvent('change');await page.locator('#discoveryError').waitFor({state:'visible'});assert.match(await page.locator('#discoveryError').innerText(),/Minimum capacity/);await input('discoveryMinMw','0.25');await input('discoverySearch','NoSuchSite999ZZZ');assert.equal(await page.locator('#discoveryList .row').count(),0);assert.equal(await page.locator('#discoveryGlobe').getAttribute('data-prospect-markers'),'0');await click('clear-all');await settled();assert.equal(await page.locator('#discoveryKind').inputValue(),'all');
+  await page.locator('#discoveryMinMw').fill('30');await page.locator('#discoveryMinMw').dispatchEvent('change');await page.locator('#discoveryError').waitFor({state:'visible'});assert.match(await page.locator('#discoveryError').innerText(),/Minimum capacity/);await input('discoveryMinMw','0.25');await input('discoverySearch','NoSuchSite999ZZZ');assert.equal(await page.locator('#discoveryList .row').count(),0);assert.equal(await page.locator('#discoveryGlobe').getAttribute('data-prospect-markers'),'0');await click('clear-all');await settled();await select('discoverySupplyScope','all');assert.equal(await page.locator('#discoveryKind').inputValue(),'all');
  });
  await check('globe and list open inline details while all three panels remain visible',async()=>{
   await select('discoveryKind','landfill_gas');const c=await page.evaluate(()=>ProspectStore.all().find(c=>c.energyType==='landfill_gas'&&c.sourceDetail?.state==='TX'&&Number.isFinite(c.lat)&&c.name.length>10));await input('discoverySearch',c.name);await click('fit');
@@ -52,7 +52,7 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
  });
  await check('capital shows consistent MW, conditional savings and dated equipment without changing records',async()=>{
   const before=await page.evaluate(()=>localStorage.getItem('protonMiningSites'));
-  await click('clear-all');await settled();await input('discoverySearch','Pennsauken');await input('discoveryMinMw','.498');await input('discoveryMaxMw','.498');
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await input('discoverySearch','Pennsauken');await input('discoveryMinMw','.498');await input('discoveryMaxMw','.498');
   assert.equal(await page.locator('#discoveryList .row').count(),1);assert.match(await page.locator('#discoveryList').innerText(),/0.498 MW plan/);
   await page.locator('#discoveryList .row').first().click();await page.getByRole('button',{name:'Capital',exact:true}).click();
   const estimates=await page.locator('.crm-capital .sheet-stat strong').allTextContents();assert(Number(estimates[0].replace(/\D/g,''))>Number(estimates[1].replace(/\D/g,'')));
@@ -61,12 +61,12 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
   await page.screenshot({path:path.join(out,'capital-audit-desktop.png')});await page.setViewportSize({width:390,height:900});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert(await page.locator('.crm-capital').evaluate(e=>e.scrollWidth<=e.clientWidth+1));await page.screenshot({path:path.join(out,'capital-audit-mobile.png'),fullPage:true});
   await page.setViewportSize({width:1440,height:1000});await click('collapse-detail');
-  await click('clear-all');await settled();await select('discoveryInfrastructure','reported');assert(await page.locator('#discoveryList .row').count()>0);await select('discoveryInfrastructure','reuse');assert.equal(await page.locator('#discoveryList .row').count(),0,'public reports alone cannot satisfy documented reuse');await select('discoveryInfrastructure','');
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryInfrastructure','reported');assert(await page.locator('#discoveryList .row').count()>0);await select('discoveryInfrastructure','reuse');assert.equal(await page.locator('#discoveryList .row').count(),0,'public reports alone cannot satisfy documented reuse');await select('discoveryInfrastructure','');
   assert.equal(await page.evaluate(()=>localStorage.getItem('protonMiningSites')),before);await select('discoveryKind','landfill_gas');
  });
  await check('Contacts & terms exposes the full site research inline and fits on a phone',async()=>{
   const before=await page.evaluate(()=>localStorage.getItem('protonMiningSites'));
-  await click('clear-all');await settled();await select('discoveryKind','landfill_gas');await input('discoverySearch','North Dade Landfill');await page.locator('#discoveryList .row').first().click();await page.getByRole('button',{name:'Contacts & terms',exact:true}).click();
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryKind','landfill_gas');await input('discoverySearch','North Dade Landfill');await page.locator('#discoveryList .row').first().click();await page.getByRole('button',{name:'Contacts & terms',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#sitePeople')?.textContent.includes('Saba Musleh')&&!document.querySelector('#sitePeople')?.textContent.includes('Checking published contacts'));
   assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);assert(await page.locator('#sitePeople .crm-person').count()>5);assert(await page.locator('#sitePeople a[href^="mailto:"]').count()>0);assert(await page.locator('#sitePeople a[href^="tel:"]').count()>0);assert.match(await page.locator('#sitePeople').innerText(),/Suggested first contact/i);
   assert.equal(await page.evaluate(()=>localStorage.getItem('protonMiningSites')),before,'viewing public contacts must not save or modify a prospect');
@@ -76,21 +76,21 @@ async function check(name,fn){await fn();checks.push({name,pass:true});console.l
   await page.setViewportSize({width:1440,height:1000});await click('collapse-detail');
  });
  await check('MW sliders support precise inputs, an unbounded upper end and recoverable overlapping handles',async()=>{
-  await click('clear-all');await settled();await select('discoveryKind','grid_facility');await input('discoveryMinMw','1');await input('discoveryMaxMw','1');const ids=await page.locator('#discoveryList .row').evaluateAll(es=>es.map(e=>e.dataset.id));assert(ids.length>0);assert(await page.evaluate(ids=>ids.every(id=>ProspectStore.get(id).powerPotentialKw===1000),ids));
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryKind','grid_facility');await input('discoveryMinMw','1');await input('discoveryMaxMw','1');const ids=await page.locator('#discoveryList .row').evaluateAll(es=>es.map(e=>e.dataset.id));assert(ids.length>0);assert(await page.evaluate(ids=>ids.every(id=>ProspectStore.get(id).powerPotentialKw===1000),ids));
   await page.locator('#discoveryMaxRange').focus();await page.keyboard.press('End');await settled();assert.equal(await page.locator('#discoveryMaxMw').inputValue(),'');assert(await page.evaluate(()=>ProspectStore.all().some(c=>c.energyType==='grid_facility'&&c.powerPotentialKw>5000)));
   await input('discoveryMaxMw','8.125');assert(Number(await page.locator('#discoveryMaxRange').getAttribute('max'))>8.125);assert.equal(await page.locator('#discoveryMaxMw').inputValue(),'8.125');
   await page.locator('#discoveryMaxRange').focus();await page.keyboard.press('Home');await settled();assert.equal(await page.locator('#discoveryMaxMw').inputValue(),'0');assert.equal(await page.locator('#discoveryMinMw').inputValue(),'');await page.keyboard.press('ArrowRight');await settled();assert.equal(await page.locator('#discoveryMaxMw').inputValue(),'0.025');
-  await click('clear-all');await settled();await select('discoveryKind','landfill_gas');
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryKind','landfill_gas');
   await page.locator('#discoveryRange').scrollIntoViewIfNeeded();const slider=await page.locator('#discoveryRange').boundingBox();await page.mouse.move(slider.x+slider.width-10,slider.y+13);await page.mouse.down();await page.mouse.move(slider.x+10+(slider.width-20)*.4,slider.y+13,{steps:12});await page.mouse.up();await settled();assert(Math.abs(Number(await page.locator('#discoveryMaxMw').inputValue())-2)<.051,'maximum thumb must drag to 2 MW');
   await page.mouse.move(slider.x+10,slider.y+13);await page.mouse.down();await page.mouse.move(slider.x+10+(slider.width-20)*.2,slider.y+13,{steps:12});await page.mouse.up();await settled();assert(Math.abs(Number(await page.locator('#discoveryMinMw').inputValue())-1)<.051,'minimum thumb must drag to 1 MW');
-  await click('clear-all');await settled();await select('discoveryKind','landfill_gas');
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryKind','landfill_gas');
   await page.locator('#discoveryList .row').first().click();await page.getByRole('button',{name:'Capital',exact:true}).click();await page.screenshot({path:path.join(out,'discover-workspace-capital.png')});await click('collapse-detail');
  });
  await check('rotation gestures do not open a site and keyboard zoom works',async()=>{
   const b=await page.locator('#discoveryGlobe').boundingBox();await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+80,b.y+b.height/2+20,{steps:10});await page.mouse.up();assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);await page.locator('#discoveryGlobe canvas').focus();await page.keyboard.press('Home');await page.keyboard.press('ArrowRight');await page.keyboard.press('+');assert.equal(await page.locator('#sheet').evaluate(e=>e.open),false);
  });
  await check('phone and tablet layouts switch between sites and globe without overflow',async()=>{
-  await click('clear-all');await settled();await select('discoveryKind','landfill_gas');
+  await click('clear-all');await settled();await select('discoverySupplyScope','all');await select('discoveryKind','landfill_gas');
   for(const width of [1000,800,390,320]){await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow '+width);await click('view-globe');await page.locator('#discoveryGlobe canvas').waitFor({state:'visible'});const box=await page.locator('#discoveryGlobe canvas').boundingBox();assert(box.width<=width&&box.height>250);if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-globe.png'),fullPage:true});await click('view-sites');assert(await page.locator('#discoveryList').isVisible());if(width===390)await page.screenshot({path:path.join(out,'discover-mobile-sites.png'),fullPage:true});}
  });
  await check('navigation cleans up canvases and preserves search controls',async()=>{

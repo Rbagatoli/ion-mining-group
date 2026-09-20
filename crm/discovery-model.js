@@ -13,6 +13,33 @@
   function coordinates(c){return Number.isFinite(c.lat)&&Math.abs(c.lat)<=90&&Number.isFinite(c.lng)&&Math.abs(c.lng)<=180;}
   function numeric(value){if(value==null||String(value).trim()==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:NaN;}
   const sourceColors={landfill_gas:'#64d98b',flare_gas:'#ffad55',grid_facility:'#78b9ff',unknown:'#cbcac7'};
+  const supplyScopes={supply:'Energy supply prospects',producers:'Operating power producers',resources:'Fuel / development opportunities',onsite:'On-site generation',storage:'Storage',all:'All energy research'};
+  function energyRole(c){
+    const s=c.sourceDetail||{},role=(id,label,reason)=>({id,label,reason});
+    // A resource location is not yet a confirmed electricity supplier. Preserve it in its
+    // research lane, including landfill projects whose gas or generation needs separate review.
+    if(c.energyType==='landfill_gas'||c.energyType==='flare_gas'||/^(lmop-landfill|eccc-landfill-ca|flare-viirs)$/.test(c.source||'')){
+      if(typeof c.powerPotentialKw==='number'&&(!Number.isFinite(c.powerPotentialKw)||c.powerPotentialKw<=0))return role('unconfirmed','Energy potential unconfirmed','No positive energy potential is established in this record; verify the resource before treating it as a supply prospect.');
+      return role('resources','Fuel / development opportunity','Fuel or project evidence; electricity supply and access require confirmation.');
+    }
+    if(c.energyType!=='grid_facility'&&c.source!=='eia-facility')return role('unconfirmed','Energy role unconfirmed','The source does not establish a power producer, on-site generator or storage asset.');
+    const sector=String(s.sector||'').trim(),tech=s.technologyCapacityMw,status=s.statusCapacityMw;
+    const validMap=o=>o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).length&&Object.values(o).every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0);
+    const storageType=t=>/^(Batteries|Flywheels|Hydroelectric Pumped Storage|Natural Gas with Compressed Air Storage|Compressed Air Energy Storage)$/i.test(t);
+    const generationType=t=>/^(Conventional Hydroelectric|Coal Integrated Gasification Combined Cycle|Conventional Steam Coal|Geothermal|Landfill Gas|Municipal Solid Waste|Natural Gas Fired Combined Cycle|Natural Gas Fired Combustion Turbine|Natural Gas Internal Combustion Engine|Natural Gas Steam Turbine|Nuclear|Offshore Wind Turbine|Onshore Wind Turbine|Other Gases|Other Natural Gas|Other Waste Biomass|Petroleum Coke|Petroleum Liquids|Solar Photovoltaic|Solar Thermal with Energy Storage|Solar Thermal without Energy Storage|Wood\/Wood Waste Biomass)$/i.test(t);
+    const techRows=validMap(tech)?Object.entries(tech):[],techMw=techRows.reduce((n,[,mw])=>n+mw,0),generationMw=techRows.reduce((n,[t,mw])=>n+(generationType(t)?mw:0),0);
+    if(techMw>0&&techRows.every(([t,mw])=>mw===0||storageType(t)))return role('storage','Energy storage','Storage equipment is reported; charging supply, discharge duration and available capacity need confirmation.');
+    if(/^(Commercial|Industrial) (Non-CHP|CHP)$/.test(sector))return role('onsite','On-site generation','Commercial or industrial generation may serve the site itself; export capability and surplus are not established.');
+    if(!validMap(status))return role('unconfirmed','Operating status unconfirmed','Generator status capacity is missing or incomplete.');
+    const statusMw=Object.values(status).reduce((n,mw)=>n+mw,0),op=status.OP||0;
+    if(statusMw>0&&op===0)return role('inactive','Standby / offline power site','No generator capacity is reported in commercial operation.');
+    if(!/^(Electric Utility|IPP Non-CHP|IPP CHP)$/.test(sector))return role('unconfirmed','Producer role unconfirmed','A utility or independent power producer sector is not established.');
+    // Status and technology are separate plant-level totals, not a generator-level join.
+    // Only the guaranteed overlap can establish operating generation: OP minus every
+    // storage/unknown MW. Otherwise an operating battery could mask an offline generator.
+    if(!(techMw>0)||Math.abs(techMw-statusMw)>.01||op-(techMw-generationMw)<=.001)return role('unconfirmed','Operating generation unconfirmed','The reported status and technology totals do not establish operating generation.');
+    return role('producers','Operating power producer','Utility or independent producer with reported operating generation; customer allocation and terms remain unconfirmed.');
+  }
   function mw(kw){return Number.isFinite(kw)?(kw/1000).toLocaleString(undefined,{maximumFractionDigits:3})+' MW':'MW unknown';}
   function sliderBounds(f){const low=numeric(f.minMw),high=numeric(f.maxMw),largest=Math.max(Number.isFinite(low)?low:0,Number.isFinite(high)?high:0),ceiling=Math.max(5,Math.ceil((largest+.025)/5)*5);return {low:Number.isFinite(low)?low:0,high:Number.isFinite(high)?high:ceiling,ceiling};}
   function moveSlider(f,which,value,ceiling){
@@ -23,9 +50,13 @@
   }
   function validate(f){for(const k of ['cash','minMw','maxMw'])if(Number.isNaN(numeric(f[k])))return 'Use a positive number or leave the field empty.';if(numeric(f.minMw)!==null&&numeric(f.maxMw)!==null&&Number(f.minMw)>Number(f.maxMw))return 'Minimum capacity must be no larger than maximum capacity.';return '';}
   function matchCandidate(c,f,saved){
+    if(f.supplyScope&&f.supplyScope!=='all'){
+      const role=energyRole(c).id;
+      if(f.supplyScope==='supply'?!['producers','resources'].includes(role):role!==f.supplyScope)return false;
+    }
     if(f.kind!=='all'&&f.kind!==c.energyType&&!(c.energyTypes||c.energyTechnologies||[]).includes(f.kind)||f.country&&f.country!==c.iso3)return false;
     if(!matches(searchable(c),f.query)||!matches(placeSearch(c),f.location))return false;
-    if(f.generation&&!(Number.isFinite(c.existingGenerationKw)&&c.existingGenerationKw>0))return false;
+    if(f.generation&&(energyRole(c).id==='storage'||!(Number.isFinite(c.existingGenerationKw)&&c.existingGenerationKw>0)))return false;
     if(f.tracking==='saved'&&!saved||f.tracking==='new'&&saved)return false;
     return true;
   }
@@ -33,5 +64,5 @@
   function matchInfrastructure(row,f){return !f.infrastructure||f.infrastructure==='reported'&&row.infrastructureReported||f.infrastructure==='reuse'&&row.reuseDocumented;}
   function matchCash(row,f){const n=numeric(f.cash);return n===null||Number.isFinite(row.cash)&&row.cash<=n;}
   function suggestions(candidates,country){const found=new Set();candidates.forEach(c=>{if(country&&country!==c.iso3)return;const s=c.sourceDetail||{},raw=s.state||s.province||s.region||'',region=(regions[c.iso3]||{})[raw]||raw;if(region)found.add(region);if(s.city)found.add([s.city,region].filter(Boolean).join(', '));});return [...found].sort((a,b)=>a.localeCompare(b));}
-  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCapacity,matchInfrastructure,matchCash,suggestions,sourceColors,mw,sliderBounds,moveSlider};
+  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCapacity,matchInfrastructure,matchCash,suggestions,sourceColors,supplyScopes,energyRole,mw,sliderBounds,moveSlider};
 }));
