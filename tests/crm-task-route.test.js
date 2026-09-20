@@ -60,6 +60,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
       await fn({get(){transactionReads++;return new Promise(resolve=>{releaseRead=state=>resolve({exists:true,data:()=>({data:state})});});},set(ref,value){writes.push({uid:ref.uid,value});}});
     }};
   const box={console,URL,TextEncoder,Date:TestDate,Map,Set,crypto:require('node:crypto').webcrypto,navigator:{},document,location,HTMLElement:class {},
+    fetch:async()=>{throw Error('Unexpected network request from the task-route harness.');},
     requestAnimationFrame:fn=>queue.push(fn),setTimeout:()=>1,clearTimeout(){},
     localStorage:{getItem:key=>storage.has(key)?storage.get(key):null,setItem:(key,value)=>storage.set(key,String(value))},
     addEventListener(name,fn){if(!windowEvents.has(name))windowEvents.set(name,[]);windowEvents.get(name).push(fn);},removeEventListener(){},
@@ -74,6 +75,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   if(firebase)box.firebase={firestore:()=>db,auth:()=>({onAuthStateChanged(fn,error){authCallback=fn;authError=error;}})};
   box.window=box;vm.createContext(box);
   const run=file=>vm.runInContext(fs.readFileSync(path.join(ROOT,file),'utf8'),box,{filename:file});
+  run('site/intake-config.js');run('crm/sourcing-model.js');run('crm/intake-inbox.js');
   run('agent-control-store.js');run('crm/crm-data.js');
   let data;const create=box.ProtonCrmData.create;box.ProtonCrmData.create=()=>{data=create();return data;};
   run('crm/crm.js');
