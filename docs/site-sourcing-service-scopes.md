@@ -1,5 +1,13 @@
 # Energy-site service scopes
 
+## CRM lead and deal services
+
+Use `custom_search` / **Custom Site Search** and `site_review` / **Existing Site Review** in the existing lead and service-deal register. The public intake service IDs match these offers. `site_submission` is a supply enquiry, not an additional paid service. Historical `research`, `sourcing`, `brief`, `quote_review`, `retainer` and `managed_energy_hosting` records retain their original IDs and meanings; no automatic remapping occurs.
+
+To save a visible lead: **Pipeline → Add new → Revenue lead → Service → Save lead**. This uses the existing `lead.save` transaction in the signed-in account's Agent Control register and does not require the private intake Worker. Save incomplete fit as Discovered; qualified/contacted stages retain their evidence requirements. An accepted but unsent draft does not establish contact.
+
+Saved records appear under Pipeline → Leads and at `#pipeline/lead/<id>`. Use Update lead to edit the same identity. A lead with an actual reply or booked meeting can use Create service deal; its selected service carries through, and the proposed fee starts blank for site search/review until explicitly scoped. New deals are also available at **Team → Revenue → Add deal**. A proposed fee remains separate from collected revenue. Research assignments retain the selected service ID and label; no native bot is invoked by saving a lead or draft.
+
 These are scope templates, not accepted contracts or public fixed-price packages. Confirm the customer, geography, exact brief version, deliverables, completion date, effort cap, fee/payment basis, revision allowance, no-match outcome and exclusions before starting.
 
 ## Custom Site Search

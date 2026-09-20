@@ -5,6 +5,11 @@ test('unified pipeline preserves every original stage and uses typed identities'
  const rows=M.pipeline([{id:'same',name:'Site',stage:'diligence',updated:'2026-09-17'}],[{id:'same',company:'Buyer',stage:'dnc',updatedAt:'2026-09-16'}],[{id:'same',name:'Work',stage:'delivery'}]);
  assert.equal(rows.length,3);assert.deepEqual(rows.map(r=>r.stage),['diligence','dnc','delivery']);assert.deepEqual(rows.map(r=>r.group),['agreement','closed','agreement']);assert.equal(M.group('site','custom_stage'),'research');
 });
+test('pipeline exposes current service labels for lead search and deals without rewriting records',()=>{
+ const leads=[{id:'search',company:'Example',offer:'custom_search',buyer:'Operations',stage:'discovered'}],deals=[{id:'review',name:'Review example',offer:'site_review',stage:'proposed'},{id:'legacy',name:'Historical research',offer:'research',stage:'delivery'}];
+ const before=JSON.stringify({leads,deals}),rows=M.pipeline([],leads,deals);
+ assert.equal(rows.find(r=>r.id==='search').subtitle,'Custom Site Search · Operations');assert.equal(rows.find(r=>r.id==='review').subtitle,'Existing Site Review');assert.equal(rows.find(r=>r.id==='legacy').subtitle,'Supplier Prospect Research');assert.equal(JSON.stringify({leads,deals}),before);
+});
 test('today excludes suppressed and future leads and completed tasks, and includes orphan reminders',()=>{
  const list=M.today({sites:[],leads:[{id:'suppressed',stage:'dnc',due:'2026-01-01'},{id:'future',stage:'qualified',due:'2026-09-19'},{id:'due',company:'Buyer',stage:'qualified',due:'2026-09-16'}],tasks:[{id:'done',status:'done',due:'2026-01-01'},{id:'review',status:'review'}],followups:[{id:'orphan',prospect_id:'lost',description:'Check the link',status:'pending',due_date:'2026-09-17'},{id:'finished',status:'done',due_date:'2026-09-15'}],date:'2026-09-17'});
  assert.deepEqual(list.map(r=>r.id),['due','review','orphan']);assert.equal(list[2].context,'Unlinked reminder');

@@ -37,6 +37,26 @@ test('new offer hypotheses are supported without inventing revenue or bots',()=>
     for(const offer of ['quote_review','research']){let s=apply(M.initial(),'deal.save',{id:'new_offer',name:'Synthetic buyer',offer,stage:'proposed',feeCents:50000,contact:'',notes:''});assert.equal(M.metrics(s,'2026-09').contribution,0);}
     assert.equal(M.ROLES.length,6);assert.match(M.kickoff('http://localhost'),/Create six/);assert.match(M.kickoff('http://localhost'),/Prices are hypotheses/);
 });
+test('site-search and review leads/deals preserve legacy service identity and researched-only stages',()=>{
+    let s=apply(M.initial(),'lead.save',lead({offer:'research'}));
+    s=apply(s,'deal.save',{id:'old_deal',name:'Historical desk',offer:'sourcing',stage:'proposed',feeCents:150000,contact:'',notes:'Original scope'});
+    const oldLead=JSON.parse(JSON.stringify(s.leads[0])),oldDeal=JSON.parse(JSON.stringify(s.deals[0]));
+    for(const offer of ['custom_search','site_review']){
+        s=apply(s,'lead.save',qualified({id:'lead_'+offer,offer,serviceFit:'Needs an evidenced energy site assessment.'}));
+        assert.throws(()=>apply(s,'lead.save',qualified({id:'lead_'+offer,offer,stage:'contacted'})),/actual contact/);
+        s=apply(s,'deal.save',{id:'deal_'+offer,name:offer,offer,stage:'proposed',feeCents:73500,contact:'',notes:'Individually scoped example'});
+    }
+    assert.deepEqual(s.leads[0],oldLead);assert.deepEqual(s.deals[0],oldDeal);assert.equal(s.tasks.length,0);assert.equal(s.entries.length,0);assert.equal(M.metrics(s,'2026-09').contribution,0);
+    assert(s.leads.slice(1).every(l=>l.stage==='qualified'&&!l.lastTouch));
+    assert.throws(()=>apply(s,'lead.save',lead({id:'submission',offer:'site_submission'})),/valid lead stage, service/);
+});
+test('current site services retain per-service deduplication and cross-service contact suppression',()=>{
+    let s=apply(M.initial(),'lead.save',qualified({offer:'custom_search'}));
+    assert.throws(()=>apply(s,'lead.save',qualified({id:'duplicate',offer:'custom_search',website:'https://www.example.test/sites'})),/already has a lead/);
+    s=apply(s,'lead.save',qualified({id:'review_lead',offer:'site_review'}));
+    s=apply(s,'lead.save',qualified({offer:'custom_search',stage:'dnc',notes:'Synthetic refusal'}));
+    assert(s.leads.every(l=>l.stage==='dnc'));assert.throws(()=>apply(s,'lead.save',qualified({id:'new_review',offer:'site_review'})),/do not contact/);
+});
 test('native setup requires a separate Proton account before creating bots',()=>{
     const text=M.kickoff('https://protonminingco.com/app/agent-control.html');
     assert.match(text,/Before creating anything/);assert.match(text,/separate from the account used for Stoneport/);assert.match(text,/Never create, message or configure Proton bots in the Stoneport account/);assert.match(text,/## Proton Lead Intelligence/);

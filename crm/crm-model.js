@@ -9,8 +9,8 @@
   }
   function pipeline(sites,leads,deals){return [
     ...sites.map(s=>({id:s.id,kind:'site',name:s.name,stage:s.stage,group:group('site',s.stage),subtitle:(s.custom_fields?.managedHosting?'Managed Energy Hosting · ':'')+(s.operator||s.energy_type||'Energy site'),updated:s.updated||s.created||''})),
-    ...leads.map(l=>({id:l.id,kind:'lead',name:l.company,stage:l.stage,group:group('lead',l.stage),subtitle:l.buyer||l.contact||'Revenue lead',updated:l.updatedAt||''})),
-    ...deals.map(d=>({id:d.id,kind:'deal',name:d.name,stage:d.stage,group:group('deal',d.stage),subtitle:d.offer,updated:d.updatedAt||''}))
+    ...leads.map(l=>({id:l.id,kind:'lead',name:l.company,stage:l.stage,group:group('lead',l.stage),subtitle:[A.OFFERS[l.offer],l.buyer||l.contact].filter(Boolean).join(' · ')||'Revenue lead',updated:l.updatedAt||''})),
+    ...deals.map(d=>({id:d.id,kind:'deal',name:d.name,stage:d.stage,group:group('deal',d.stage),subtitle:A.OFFERS[d.offer]||d.offer||'Service opportunity',updated:d.updatedAt||''}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated)||a.name.localeCompare(b.name)||String(a.id).localeCompare(String(b.id)));}
   function today({sites,leads,tasks,followups,date,state}){
     const siteMap=new Map(sites.map(s=>[String(s.id),s])),actions=[];
