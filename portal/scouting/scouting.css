@@ -213,3 +213,94 @@ dialog{background:var(--panel);border-color:var(--line-strong);border-radius:20p
 .sv-note-form .field textarea{min-height:110px}
 @media(max-width:560px){.sv-note-form{grid-template-columns:1fr;gap:13px}.sv-note-form .sv-note-status{margin:0}.sv-caption>div:last-child{text-align:left;margin-top:7px}.sv-heading>div>.sv-kicker{font-size:9px}}
 @media print{.sv-internal,.sv-photo-preview,.sv-note-form,.sv-note-section .text-button,.sv-heading>button{display:none!important}.site-detail{break-inside:auto}.sv-caption>div:last-child{text-align:left}.sv-photo-card .sv-link[href]::after{content:" (" attr(href) ")";font-size:8pt;overflow-wrap:anywhere}}
+
+/* Mobile workspace density; research and every review action remain available. */
+@media screen and (max-width:700px){
+ body{line-height:1.5}
+ .portal-header{padding-block:12px;gap:12px}
+ .workspace-nav>a{padding-block:9px;min-height:44px}
+ .topbar{min-height:40px;padding:8px 0 4px}
+ .preview-banner{padding:6px 0 9px;line-height:1.5}
+ main{padding:16px 0;min-height:0}
+ .page-heading{margin-bottom:14px;gap:12px}
+ .page-heading h1{margin-bottom:8px}
+ .page-heading .eyebrow,.eyebrow{margin-bottom:6px}
+ .page-heading>.button,.page-heading>.actions{margin-top:10px}
+ .button,.button.small{min-height:44px;padding-block:8px}
+ .icon-button{min-height:44px;min-width:44px}
+ .actions{gap:8px}
+ .metrics{gap:8px;margin-bottom:12px}
+ .metric{padding:10px 12px}
+ .metric label,.metric .label{margin-bottom:4px}
+ .metric strong{font-size:25px}
+ .metric p{margin-top:5px}
+ .panel,.site-detail{padding:14px}
+ .overview-grid,.overview-bottom,.updates-grid,.brief-layout,.site-workspace{gap:12px}
+ .overview-bottom{margin-top:12px}
+ .section-heading{gap:10px;margin-bottom:12px}
+ .report-hero{padding-bottom:12px;margin-bottom:8px;gap:12px}
+ .report-hero h3{margin:5px 0 8px}
+ .report-hero p{margin-bottom:8px}
+ .site-mini{padding:9px 0;gap:7px}
+ .card-footer{margin-top:12px;gap:10px}
+ .step-list li{padding:10px 0;gap:9px}
+ .step-list p{margin-top:3px}
+ .callout{margin:12px 0;padding:8px 12px}
+ .form-section+.form-section{margin-top:16px;padding-top:16px}
+ .form-section h2{margin-bottom:12px}
+ .form-grid{gap:12px}
+ .field label{margin-bottom:5px}
+ .field input,.field select,.field textarea,.search input,.search select{min-height:44px;padding-block:9px;font-size:16px}
+ .field textarea{min-height:80px}
+ .form-foot{margin-top:16px;padding-top:12px}
+ .form-foot p{margin-top:8px}
+ .scope-list li{margin-block:6px}
+ .brief-summary{gap:6px;margin-top:12px}
+ .search{gap:8px;margin-bottom:10px}
+ .search .check{min-height:44px;padding-block:6px}
+ .result-bar{margin:10px 0;gap:8px}
+ .site-list{gap:8px}
+ .site-card{padding:10px}
+ .site-open h3{margin:7px 0 4px}
+ .site-card .bottom-row{padding-top:7px;margin-top:8px}
+ .detail-heading{gap:10px}
+ .detail-heading h2{margin:8px 0 6px}
+ .detail-stats{gap:8px;margin:14px 0}
+ .detail-stats label{margin-bottom:4px}
+ .tabbar{margin-bottom:12px;gap:16px}
+ .tabbar button{padding-block:10px;min-height:44px}
+ .detail-body h3{margin:16px 0 8px}
+ .detail-body p{margin-bottom:10px}
+ .detail-body .intro{line-height:1.5}
+ .evidence-row,.source-card{padding-block:9px}
+ .note-list li,.question-list li{margin-block:6px}
+ .capital-rows dt,.capital-rows dd{padding-block:8px}
+ .detail-body details{margin:10px 0;padding:9px 11px}
+ .detail-body summary{min-height:44px;align-content:center}
+ .detail-actions{gap:8px;padding-top:12px;margin-top:14px}
+ .timeline-item{padding-bottom:18px;padding-left:18px}
+ .timeline-item h3{margin:5px 0}
+ .workspace-footer{margin-top:4px;padding:10px 0 16px}
+ .sv-heading{margin-bottom:10px;gap:10px}
+ .sv-toolbar{margin-bottom:10px;gap:6px}
+ .sv-caption{padding-block:8px;line-height:1.5}
+ .sv-meta{margin:8px 0 10px}
+ .sv-meta>div{padding-block:8px}
+ .sv-warning{padding:10px 12px;margin:10px 0;line-height:1.5}
+ .sv-section{margin-top:16px}
+ .sv-section h3{margin:12px 0 8px}
+ .sv-photo-grid{gap:10px}
+ .sv-photo-card{padding:12px}
+ .sv-photo-card h4{margin-bottom:7px}
+ .sv-photo-card p,.sv-list,.sv-empty{line-height:1.5}
+ .sv-photo-card p{margin-bottom:8px}
+ .sv-photo-preview{margin-top:10px}
+ .sv-photo-preview figcaption,.sv-photo-note{margin-top:7px;line-height:1.5}
+ .sv-empty{padding:14px}
+ .detail-body .sv-concept{margin-top:14px;padding:10px 12px}
+ .sv-note-form{gap:10px;margin-top:12px}
+ .sv-note-form .field textarea{min-height:88px}
+ .sv-notes{gap:8px}
+ .sv-review-note{padding:10px 12px}
+ .sv-review-note p{margin-top:6px}
+}

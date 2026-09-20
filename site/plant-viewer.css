@@ -81,3 +81,13 @@
     .plant-hint { margin-bottom: 2px; }
     .plant-note { padding: 0 12px 12px; font-size: 11px; }
 }
+
+@media (max-width: 700px) {
+    .plant-stage { height: clamp(220px,56vw,310px); }
+    .plant-caption { top: 10px; left: 12px; right: 12px; }
+    .plant-toolbar { gap: 4px; padding: 4px 10px 8px; }
+    .plant-hint { margin-bottom: 0; line-height: 1.5; }
+    .plant-toolbar button, .plant-toolbar [data-plant="inspect"], .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] { min-height: 44px; min-width: 44px; padding: 8px 9px; }
+    .plant-callouts { gap: 5px; padding-bottom: 8px; }
+    .plant-note { padding-bottom: 8px; line-height: 1.5; }
+}

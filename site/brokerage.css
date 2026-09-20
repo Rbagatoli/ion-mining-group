@@ -269,3 +269,56 @@
   .br-catalog-specs dd { font-size: 22px; }
   .br-catalog-nav-head { gap: 9px; }
 }
+
+/* Mobile density: keep every spec and action, trim the space around them. */
+@media (max-width: 700px) {
+  .br-hero { padding: 30px 0 24px; }
+  .br-hero-grid, .br-split, .br-paths { gap: 22px; }
+  .br-eyebrow { margin-bottom: 12px; }
+  .br-title { margin-bottom: 14px; }
+  .br-intro { margin-bottom: 16px; line-height: 1.55; }
+  .br-actions { gap: 8px; }
+  .br-note { margin-top: 10px; line-height: 1.5; }
+  .br-section { padding: 30px 0; }
+  .br-section-head { margin-bottom: 18px; }
+  .br-section-head > p { margin-top: 10px; line-height: 1.5; }
+  .br-strip p, .br-strip p:first-child { padding: 10px 0; }
+  .br-path { padding-top: 16px; }
+  .br-path-steps { gap: 12px; margin: 14px 0 18px; }
+  .br-path > p:not(.br-eyebrow), .br-copy, .br-example > p, .br-buyer-terms p { line-height: 1.55; }
+  .br-example { margin-top: 22px; padding-top: 18px; gap: 12px; }
+  .br-split h2 { margin-bottom: 14px; }
+  .br-fee-card { padding: 16px; }
+  .br-fee-lines { margin-top: 12px; }
+  .br-fee-lines div { padding: 9px 0; }
+  .br-fee-lines .br-net { margin-top: 4px; padding-top: 12px; }
+  .br-checklist { margin-top: 16px; }
+  .br-checklist li { padding-block: 10px; }
+  .br-ready { padding: 14px; margin-bottom: 18px; }
+  .br-mode { margin-bottom: 16px; }
+  .br-fields { gap: 12px; }
+  .br-field label { margin-bottom: 6px; }
+  .br-field input, .br-field select, .br-field textarea { min-height: 44px; padding: 8px 10px; font-size: 16px; line-height: 1.5; }
+  .br-field textarea { min-height: 80px; }
+  .br-form .br-actions { margin-top: 16px; }
+  .br-faq { margin-top: 18px; }
+  .br-faq details { padding: 4px 0; }
+  .br-faq summary { min-height: 44px; padding-block: 11px; font-size: 15px; }
+  .br-faq p { margin-top: 8px; margin-bottom: 12px; line-height: 1.55; }
+  .br-catalog { padding-bottom: 24px !important; }
+  .br-catalog-heading { padding-top: 14px; margin-bottom: 12px; gap: 12px; }
+  .br-catalog-heading .br-eyebrow { margin-bottom: 5px; }
+  .br-catalog-search input, .br-catalog-filter select { font-size: 16px; }
+  .br-catalog-info { padding-top: 12px; }
+  .br-catalog-maker { margin-bottom: 7px; }
+  .br-catalog-subtitle { margin-top: 6px; line-height: 1.5; }
+  .br-catalog-variants { margin: 10px 0 12px; padding-bottom: 5px; }
+  .br-catalog-specs { margin-bottom: 12px; padding-bottom: 12px; gap: 8px; }
+  .br-catalog-specs dt { margin-bottom: 4px; }
+  .br-catalog-economics { gap: 12px; margin-bottom: 12px; }
+  .br-catalog-label { margin-bottom: 4px; }
+  .br-catalog-fine { line-height: 1.5; }
+  .br-catalog-sources { margin-top: 6px; }
+  .br-catalog-footnote { margin-top: 10px; line-height: 1.5; }
+  .br-catalog-empty { padding: 36px 12px; }
+}

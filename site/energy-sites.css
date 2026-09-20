@@ -122,3 +122,70 @@
 }
 .sites-entry-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.sites-entry-grid article{border:1px solid var(--line-mid);padding:25px;background:linear-gradient(145deg,#26282a80,#11131488);display:flex;flex-direction:column}.sites-entry-grid h3{font:500 24px/1.25 var(--sans);margin:18px 0 12px}.sites-entry-grid p,.sites-entry-grid li{font:14px/1.65 var(--sans);color:var(--plat-300)}.sites-entry-grid ul{padding-left:19px;margin:16px 0 22px}.sites-entry-grid .btn{margin-top:auto;justify-content:space-between;font-size:12px}.sites-form [hidden]{display:none!important}.sites-form select{color-scheme:dark}.sites-form #ss-power-unit,.sites-form #ss-cost-basis{margin-top:8px}.intake-consent{display:flex;align-items:flex-start;gap:10px;font:13px/1.7 var(--sans);color:var(--plat-300);margin:20px 0}.sites-form .intake-consent input{width:17px;min-width:17px;height:17px;margin:4px 0 0;accent-color:var(--btc-300)}.intake-trap{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}.intake-error{color:#ffd19b!important}.intake-recovery{display:flex;gap:12px;flex-wrap:wrap}.intake-recovery:empty{display:none}#intakeStatus{padding:14px 0;border-block:1px solid var(--line-mid);overflow-wrap:anywhere;font-size:13px}.sites-form button:disabled{opacity:.5;cursor:not-allowed}.sites-form button[data-intake-email]{font-size:12px}
 @media(max-width:900px){.sites-entry-grid{grid-template-columns:1fr;gap:12px}.sites-entry-grid article{padding:22px}.sites-entry-grid h3{font-size:23px;margin:12px 0}.sites-entry-grid ul{margin:10px 0 18px}.sites-entry-grid .btn{align-self:flex-start}.intake-consent{font-size:12px}}
+
+.sites-form-disclosure > .mobile-details-body { display: grid; gap: 20px; }
+
+/* Phone density: preserve the full brief, evidence and form fields while
+   removing the desktop-sized space around them. */
+@media (max-width: 640px) {
+  .sites-page .sites-hero { padding-bottom: 22px; }
+  .sites-page .sites-section { padding-block: 24px; }
+  .sites-page .sites-section.sites-collapsible { padding-block: 8px; }
+  .sites-page .sites-workspace-section { padding-top: 6px; }
+  .sites-page .sec-head { margin-bottom: 16px; }
+  .sites-hero-grid, .sites-search-grid, .sites-request-grid { gap: 18px; }
+  .sites-workspace-head .lede { margin-top: 9px; line-height: 1.5; }
+  .sites-source-jump { margin-top: 10px; line-height: 1.6; }
+  .sites-demo-note { margin-top: 9px; line-height: 1.5; }
+  .sites-brief { padding: 14px; }
+  .sites-brief h2 { margin-block: 10px; }
+  .sites-brief-rows > div { padding-block: 9px; }
+  .sites-brief-rows dd { margin-top: 3px; }
+  .sites-brief-note { margin-top: 7px; }
+  .sites-route-grid article { padding: 14px 12px; }
+  .sites-route-grid h3 { margin: 10px 0 6px; }
+  .sites-route-grid p { line-height: 1.55; }
+  .sites-scope-note { margin-top: 14px; }
+  .sites-scope-note p, .sites-method p { margin-block: 6px; line-height: 1.55; }
+  .sites-method summary { min-height: 44px; padding-block: 12px; }
+  .sites-deliverables article { padding-block: 12px; }
+  .sites-page .sites-deliverables h3 { margin: 7px 0 6px; }
+  .sites-deliverables p, .sites-process p, .sites-capital-note p, .sites-evidence p { line-height: 1.55; }
+  .sites-capital-note { padding: 14px; gap: 10px; margin-top: 10px; }
+  .sites-capital-note h3 { margin-bottom: 5px; }
+  .sites-sources li { padding-block: 11px; }
+  .sites-sources span { margin-top: 3px; line-height: 1.5; }
+  .sites-coverage-note { margin-top: 14px; }
+  .sites-process { gap: 12px; }
+  .sites-process li { padding-top: 12px; padding-left: 29px; }
+  .sites-process li > span { top: 13px; }
+  .sites-page .sites-process h3 { margin-bottom: 5px; }
+  .sites-evidence { margin-top: 18px; padding-top: 14px; }
+  .sites-entry-grid { gap: 8px; }
+  .sites-entry-grid article { padding: 15px; }
+  .sites-entry-grid h3 { font-size: 21px; margin: 7px 0; }
+  .sites-entry-grid p, .sites-entry-grid li { font-size: 13px; line-height: 1.5; }
+  .sites-entry-grid p { margin-block: 0; }
+  .sites-entry-grid ul { margin: 8px 0 12px; }
+  .sites-direct, .sites-other-route { margin-top: 14px; }
+  .sites-form { padding: 14px; gap: 14px; }
+  .sites-form .form-row { gap: 12px; }
+  .sites-form .field small { margin-top: 4px; }
+  .sites-form-disclosure > .mobile-details-body { gap: 12px; padding-block: 6px 12px; }
+  .sites-form input, .sites-form select, .sites-form textarea { font-size: 16px; }
+  .sites-form textarea { min-height: 88px; }
+  .sites-source-fields legend { margin-bottom: 8px; }
+  .sites-source-checks { gap: 5px; }
+  .sites-source-checks label { min-height: 44px; padding: 7px; gap: 7px; }
+  .sites-source-fields > p { margin-top: 7px; }
+  .sites-energy-choices { padding-block: 12px; }
+  .sites-energy-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 2px 10px; }
+  .sites-energy-grid .field label { min-height: 44px; gap: 7px; }
+  .sites-form-options summary { min-height: 44px; padding-block: 11px; }
+  .sites-form-options-body { gap: 14px; padding-block: 4px 14px; }
+  .sites-form .intake-consent { margin-block: 12px; line-height: 1.5; }
+  .sites-faq-list summary { min-height: 44px; padding-block: 12px; }
+  .sites-faq-list p { margin-bottom: 14px; line-height: 1.55; }
+  .sites-preview-fallback { padding: 18px; }
+  .sites-preview-fallback p { margin-block: 10px; }
+}

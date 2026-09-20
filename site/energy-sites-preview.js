@@ -91,7 +91,14 @@
     if (add) {
       const s = sources.find(s => s.id === add.dataset.previewAdd);
       const field = [...document.querySelectorAll('#siteSearchForm [name="energy_sources"]')].find(f => f.value === s.label);
-      if (field) { field.checked = true; field.dispatchEvent(new Event('change', { bubbles: true })); document.querySelector('#ss-name')?.focus({ preventScroll: true }); }
+      if (field) {
+        field.checked = true;
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        // Show the selected preference when the phone form has it folded away.
+        const disclosure = field.closest('details[data-mobile-details]');
+        if (disclosure) disclosure.open = true;
+        document.querySelector('#ss-name')?.focus({ preventScroll: true });
+      }
     }
     const site = e.target.closest('[data-preview-site]'); if (site) { selected = site.dataset.previewSite; render(); }
     const tab = e.target.closest('[data-preview-tab]'); if (tab) setTab(tab.dataset.previewTab);

@@ -4876,3 +4876,111 @@ body {
 @media (max-width: 640px) {
     .vgap.vgap { margin-top: calc(var(--vg, 24px) * .45); }
 }
+
+/* Phone density: reduce layout chrome, retain readable copy and full controls. */
+@media (max-width: 640px) {
+    .hero { padding-block: 16px; }
+    .band { padding-block: 16px; }
+    .band--tight { padding: 0 0 16px; }
+    .mobile-fold-section { padding-block: 0; }
+    .band .sec-head { margin-bottom: 10px; }
+    .hero .lede, .band .sec-head .lede, .lede--gap, .lede + .lede { margin-top: 8px; }
+    .hero .btn-row { margin-top: 12px; }
+    .hero-note { margin-top: 12px; padding-top: 8px; }
+    .hero-alt { margin-top: 8px; }
+    .vgap.vgap { margin-top: calc(var(--vg, 24px) * .32); }
+    .grid--split, .grid:not(.grid--matrix):not(.grid--split) { gap: 12px; }
+    /* The contact hero has an authored desktop column gap. */
+    #form.hero > .wrap > .grid { row-gap: 14px !important; }
+    .cta-band { padding: 20px 14px; }
+    .track { padding: 14px; }
+    .track h3 { margin-bottom: 8px; }
+    .track p, .step p { line-height: 1.5; }
+    .track .mobile-details { margin-block: 8px; }
+    .step { grid-template-columns: 24px minmax(0,1fr); padding-block: 12px; gap: 10px; }
+    .step h3 { margin-bottom: 4px; }
+    .step-num { padding-top: 2px; }
+    .checks li { padding-block: 7px; line-height: 1.5; }
+    .checks li::before { top: 13px; }
+    .spec-row { padding: 8px 12px; }
+    .spec-val { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+    .spec-val small { margin-top: 3px; line-height: 1.5; }
+    .faq summary { min-height: 44px; padding-block: 11px; }
+    .faq details p { padding-bottom: 12px; }
+
+    .form, .form-row { gap: 12px; }
+    .form { padding: 12px; }
+    .field { gap: 5px; min-width: 0; }
+    .field input:not([type=checkbox]):not([type=radio]):not([type=range]),
+    .field select { min-height: 44px; padding-block: 9px; }
+    .field textarea { min-height: 80px; padding: 10px 12px; }
+    .form-note { line-height: 1.5; }
+    .mobile-details { margin-block: 8px; }
+    .mobile-details > summary { min-height: 44px; padding-block: 9px; gap: 8px; }
+    .mobile-section-details, .mobile-input-details, .mobile-footer-details { margin-block: 0; }
+    .mobile-section-details > summary, .mobile-input-details > summary { min-height: 48px; padding-block: 9px; gap: 2px 10px; }
+    .mobile-section-details > .mobile-details-body { padding: 10px 0 12px; }
+    .mobile-input-details > .mobile-details-body { padding-block: 10px; gap: 10px; }
+    .mobile-details-body { padding-bottom: 10px; }
+
+    .calc-inputs, .calc-results, .calc-note, .calc-note-cols, .calc-panels { gap: 12px; }
+    .calc-inputs { padding-top: 10px; }
+    .calc-group, .calc-group--adv { gap: 10px; }
+    .calc-tile { padding: 11px 12px; gap: 5px; }
+    .calc-chart-wrap { padding: 12px; gap: 9px; }
+    .calc-panel { padding: 11px 12px; gap: 8px; }
+    .calc-panel dl { gap: 5px; }
+    .calc-models { margin-top: 16px; padding-top: 16px; }
+    .calc-models-lede { margin-bottom: 10px; }
+    .calc-table-wrap summary { min-height: 44px; padding: 10px 12px; }
+    .calc-derived { padding: 12px; gap: 8px; }
+    .calc-hint { line-height: 1.5; }
+    .calc-adv-toggle { min-height: 44px; }
+    .cm { padding: 12px; }
+    .ck-table tr { padding-block: 12px; gap: 8px 12px; }
+    .ck-empty, .pay, .ord-flow { gap: 12px; }
+    .pay-rail { padding: 12px; gap: 10px; }
+    .pay-done { padding: 16px; }
+    .ord-step { padding-bottom: 12px; }
+
+    /* Keep every prepaid term and its full cost visible in compact rows. */
+    .pp-sec { padding: 12px; margin-bottom: 12px; }
+    .pp-sec-head { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .pp-clear { min-height: 44px; }
+    .pp-sec .pp-grid { gap: 8px; }
+    button.pp-tier--pick { display: grid; grid-template-columns: minmax(64px,.32fr) minmax(0,1fr); }
+    button.pp-tier--pick .pp-head { grid-column: 1; grid-row: 1; display: grid; place-items: center; padding: 10px 7px; border-bottom: 0; white-space: normal; }
+    button.pp-tier--pick .pp-body { grid-column: 2; grid-row: 1 / 3; padding: 10px; border-left: 1px solid var(--line); min-width: 0; }
+    button.pp-tier--pick .pp-pct { text-align: left; font-size: 10px; letter-spacing: .04em; }
+    button.pp-tier--pick .pp-rate { text-align: left; margin-top: 5px; font-size: 20px; line-height: 1.25; }
+    button.pp-tier--pick .pp-from { text-align: left; margin-top: 3px; }
+    button.pp-tier--pick .pp-total { margin-top: 6px; padding-top: 6px; }
+    button.pp-tier--pick .pp-pick { grid-column: 1; grid-row: 2; margin: 0; padding: 8px 6px; min-height: 44px; display: grid; place-items: center; font-size: 10px; letter-spacing: .02em; }
+    .pp-note { margin-top: 8px; }
+    .fac-chosen { padding: 12px; margin-bottom: 12px; }
+    .fac-chosen-head { margin-bottom: 8px; }
+    .fac-note { margin-top: 14px; }
+    .fac .fac-go { margin-top: 10px; }
+
+    .footer { padding: 16px 0 12px; }
+    .footer-top { padding-bottom: 12px; }
+    .footer-top > :first-child { margin-bottom: 8px; }
+    .footer-bottom { margin-top: 8px; padding-top: 8px; gap: 6px; }
+    .bl-grid { margin-top: 16px; }
+    .bc { padding: 12px; gap: 6px; }
+    .bl-foot, .bp-rel { margin-top: 20px; padding-top: 14px; }
+    .bp { padding-block: 16px 24px; }
+    .bp .lede { margin-bottom: 14px; }
+    .bp-meta { margin-bottom: 12px; }
+    .bp-tags { margin-bottom: 14px; }
+    .bp-body > * + *, .wm-body > * + * { margin-top: 12px; }
+    .bp-body p { margin-block: 10px; }
+    .bp-body h2, .wm-body h2 { margin-top: 22px; }
+    .bp-body h3, .wm-body h3, .wm-body .mobile-details-body > h3 { margin-top: 18px; }
+    .bp-body ul, .bp-body ol, .wm-body ul { gap: 6px; }
+    .bp-next-links, .wm-next-links { gap: 8px; }
+    .wm-tldr-cell, .wm-vs-col, .wm-gate { padding: 12px; gap: 7px; }
+    .wm-vs-col h3 { margin-bottom: 8px; }
+    .wm-warn, .wm-note { padding: 12px; }
+    .wm-next { margin-top: 20px; padding-top: 14px; }
+}

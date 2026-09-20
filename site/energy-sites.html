@@ -13,11 +13,11 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=69bfb953">
+<link rel="stylesheet" href="./styles.css?v=bac71cd9">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./energy-sites.css?v=69bfb953">
-<link rel="stylesheet" href="../portal/scouting/site-locator.css?v=69bfb953">
-<link rel="stylesheet" href="./energy-sites-preview.css?v=69bfb953">
+<link rel="stylesheet" href="./energy-sites.css?v=bac71cd9">
+<link rel="stylesheet" href="../portal/scouting/site-locator.css?v=bac71cd9">
+<link rel="stylesheet" href="./energy-sites-preview.css?v=bac71cd9">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/energy.png">
 <meta property="og:image:width" content="1200">
@@ -198,12 +198,17 @@
       <div class="form-row"><div class="field"><label for="ss-company">Company <span>(optional)</span></label><input id="ss-company" name="company" type="text" autocomplete="organization" maxlength="120"></div><div class="field"><label for="ss-role">I am looking as</label><select id="ss-role" name="role"><option>Mining operator</option><option>Hosting company</option><option>Independent miner</option><option>Developer or investor</option></select></div></div>
       <div class="form-row"><div class="field"><label for="ss-region">U.S. location or search region</label><input id="ss-region" name="region" type="text" required maxlength="140" placeholder="States, region, or flexible nationwide"></div><div class="field"><label for="ss-power">Usable power</label><input id="ss-power" name="power_value" type="number" min="0.001" step="any" inputmode="decimal" placeholder="e.g. 160"><select id="ss-power-unit" name="power_unit" aria-label="Power unit"><option value="kW">kW</option><option value="MW">MW</option></select><small>Unknown? Leave blank. Power for your load, after site needs and other commitments. 1 MW = 1,000 kW.</small></div></div>
 <div class="form-row"><div class="field"><label for="ss-transaction">Transaction preference</label><select id="ss-transaction" name="transaction"><option value="unknown">Not decided / unknown</option><option value="buy">Buy / sell a site</option><option value="lease">Lease a site</option><option value="power_purchase">Energy supply agreement</option><option value="hosting">Hosting arrangement</option><option value="referral">Referral / introduction</option><option value="partnership">Development partnership</option></select></div><div class="field"><label for="ss-phone">Phone <span>(optional)</span></label><input id="ss-phone" name="phone" type="tel" autocomplete="tel" maxlength="80"></div></div>
+<details class="mobile-details mobile-input-details sites-form-disclosure" data-mobile-details open><summary><span>Site budget</span><small>Optional · infrastructure and connection funding</small></summary><div class="mobile-details-body">
 <div class="form-row"><div class="field"><label for="ss-budget">Upfront site budget <span>(optional)</span></label><input id="ss-budget" name="upfront_budget" type="number" min="0" step="any" inputmode="decimal" placeholder="Unknown until scoped"><small>Land, infrastructure and connection work; excluding miners.</small></div><div class="field"><label for="ss-currency">Budget currency</label><select id="ss-currency" name="budget_currency"><option value="unknown">Not specified</option><option value="USD">USD</option><option value="CAD">CAD</option></select></div></div>
+</div></details>
 <div class="field" data-intake-services="site_review site_submission"><label for="ss-site">The site or opportunity</label><textarea id="ss-site" name="site_details" maxlength="2500" placeholder="Site name, U.S. address or listing link, what is offered and the original source. Please do not include passwords or confidential documents."></textarea><small>We investigate this supplied site for a review. Submissions are private enquiries, not public listings.</small></div>
 <div data-intake-services="site_submission"><div class="field"><label for="ss-authority">Your relationship to the site</label><select id="ss-authority" name="authority"><option value="unknown">Not established</option><option value="owner">Owner / operator</option><option value="authorized_agent">Authorized representative</option><option value="referrer">Referrer / introducer</option></select></div><div class="field"><label for="ss-introduction">Authority, contact route &amp; introduction terms</label><textarea id="ss-introduction" name="introduction_terms" maxlength="1800" placeholder="Who controls the site or power? How can we reach them? Note any sharing limits or introduction terms; leave unknowns explicit."></textarea></div></div>
+<details class="mobile-details mobile-input-details sites-form-disclosure" data-mobile-details open><summary><span>Timing &amp; opportunities already reviewed</span><small>Optional · help us focus the search</small></summary><div class="mobile-details-body">
 <div class="field" data-intake-services="custom_search"><label for="ss-known">Known or rejected opportunities to exclude</label><textarea id="ss-known" name="existing_opportunities" maxlength="2500" placeholder="Names, locations or links, and why they were ruled out. Leave blank if none."></textarea></div>
 <div class="form-row"><div class="field"><label for="ss-source">How did you find us or this site?</label><input id="ss-source" name="acquisition_source" maxlength="300" placeholder="Referral, search, broker, owner, event…"></div><div class="field"><label for="ss-timing">Target start</label><select id="ss-timing" name="timeline"><option value="unknown">Flexible / unknown</option><option>Within 3 months</option><option>3–6 months</option><option>6–12 months</option><option>More than 12 months</option></select></div></div>
+</div></details>
 <p class="form-note">Current public sourcing and review enquiries cover U.S. sites. Currency choice does not change geographic coverage.</p>
+      <details class="mobile-details mobile-input-details sites-form-disclosure" data-mobile-details open><summary><span>Energy source preferences</span><small>Optional · any source unless you choose otherwise</small></summary><div class="mobile-details-body">
       <fieldset class="sites-energy-choices" data-energy-source-options aria-describedby="ss-energy-help"><legend>Energy sources to consider</legend><p id="ss-energy-help">Any energy source by default. Select sources only if you want to limit the search.</p><div class="sites-energy-grid">
         <div class="field"><label for="ss-source-landfill"><input id="ss-source-landfill" name="energy_sources" type="checkbox" value="Landfill gas"> Landfill gas</label></div>
         <div class="field"><label for="ss-source-flare"><input id="ss-source-flare" name="energy_sources" type="checkbox" value="Flare gas"> Flare gas</label></div>
@@ -222,6 +227,7 @@
         <div class="field"><label for="ss-source-industrial"><input id="ss-source-industrial" name="energy_sources" type="checkbox" value="Industrial surplus"> Industrial surplus</label></div>
         <div class="field"><label for="ss-source-grid"><input id="ss-source-grid" name="energy_sources" type="checkbox" value="Grid supply"> Grid supply</label></div>
       </div></fieldset>
+      </div></details>
       <details class="sites-form-options"><summary>Budget, timing &amp; preferences <span>Optional</span></summary><div class="sites-form-options-body">
         <div class="form-row"><div class="field"><label for="ss-rate">All-in delivered energy target (US ¢/kWh)</label><input id="ss-rate" name="power_cost_cents" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 5.5"><select id="ss-cost-basis" name="cost_basis" aria-label="Energy cost basis"><option value="delivered">All-in delivered electricity</option><option value="energy_only">Energy only; delivery still unknown</option><option value="unknown">Basis not established</option></select><small>Describe delivery, demand charges, fees and taxes where applicable. Excludes hosting services, miners and construction.</small></div></div>
         <div class="form-row"><div class="field"><label for="ss-operating">Operating flexibility</label><select id="ss-operating" name="operating_flexibility"><option value="Not specified">Not specified yet</option><option>Mostly continuous power required</option><option>Interruptible operation acceptable</option><option>Seasonal operation acceptable</option><option>Interruptible and seasonal operation acceptable</option></select></div><div class="field"><label for="ss-uptime">Minimum power availability (%)</label><input id="ss-uptime" name="minimum_availability_pct" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="e.g. 95"><small>Share shutdown limits and seasonal needs in your requirements.</small></div></div>
@@ -325,16 +331,16 @@
     </div>
   </div>
 </footer>
-<script src="./intake-config.js?v=69bfb953"></script>
-<script src="./site-intake.js?v=69bfb953" defer></script>
-<script src="./site.js?v=69bfb953"></script>
-<script src="./hero-anim.js?v=69bfb953"></script>
-<script src="./cart.js?v=69bfb953"></script>
-<script src="../portal/scouting/sample-data.js?v=69bfb953"></script>
-<script src="../portal/scouting/energy-access-data.js?v=69bfb953"></script>
-<script src="../portal/scouting/locator-geography.js?v=69bfb953"></script>
-<script src="../portal/scouting/site-locator.js?v=69bfb953"></script>
-<script src="./energy-partners.js?v=69bfb953"></script>
-<script src="./energy-sites-preview.js?v=69bfb953"></script>
+<script src="./intake-config.js?v=bac71cd9"></script>
+<script src="./site-intake.js?v=bac71cd9" defer></script>
+<script src="./site.js?v=bac71cd9"></script>
+<script src="./hero-anim.js?v=bac71cd9"></script>
+<script src="./cart.js?v=bac71cd9"></script>
+<script src="../portal/scouting/sample-data.js?v=bac71cd9"></script>
+<script src="../portal/scouting/energy-access-data.js?v=bac71cd9"></script>
+<script src="../portal/scouting/locator-geography.js?v=bac71cd9"></script>
+<script src="../portal/scouting/site-locator.js?v=bac71cd9"></script>
+<script src="./energy-partners.js?v=bac71cd9"></script>
+<script src="./energy-sites-preview.js?v=bac71cd9"></script>
 </body>
 </html>

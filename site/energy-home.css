@@ -34,3 +34,18 @@
   .home-sourcing-top { flex-wrap: wrap; gap: 5px; }
   .home-sourcing-checks dd { font-size: 11px; }
 }
+
+@media (max-width: 640px) {
+  .home-sourcing { padding-block: 24px; }
+  .home-sourcing-grid { gap: 16px; }
+  .home-sourcing-copy .lede { margin-top: 9px; line-height: 1.55; }
+  .home-sourcing-copy .btn-row { margin-top: 14px; gap: 10px; }
+  .home-sourcing-preview { padding: 14px; }
+  .home-sourcing-top { gap: 8px; }
+  .home-sourcing-preview h3 { font-size: 21px; margin-block: 11px; }
+  .home-energy-types { gap: 5px; }
+  .home-energy-types li { padding: 5px 7px; }
+  .home-sourcing-checks { margin-top: 12px; }
+  .home-sourcing-checks > div { padding-block: 7px; gap: 3px 12px; }
+  .home-sourcing-note { margin-top: 9px; line-height: 1.5; }
+}

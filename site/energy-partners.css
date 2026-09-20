@@ -9,3 +9,35 @@
 @media(max-width:900px){.partner-explorer-foot{flex-direction:column;align-items:stretch;gap:15px}.partner-explorer-foot .btn{width:100%;justify-content:space-between}}
 @media(max-width:760px){.partner-explorer-head{padding:20px;gap:18px;align-items:start;flex-direction:column}.partner-select{width:100%;min-width:0}.partner-quick{padding:16px 20px 0;gap:6px}.partner-quick button{font-size:11px;padding:8px 11px;min-height:44px}.partner-route{padding:22px 18px;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr);gap:8px;min-height:175px}.partner-route-source svg{width:64px;height:64px}.partner-route-source>span,.partner-route-step strong{font-size:11px}.partner-route-step small{font-size:9px}.partner-step-symbol{width:47px;height:47px;margin-bottom:14px;font-size:29px}.partner-insight{grid-template-columns:1fr;gap:24px;padding:22px}.partner-insight h3{font-size:23px}.partner-explorer-foot{padding:18px 22px;flex-direction:column;align-items:stretch;gap:15px}.partner-explorer-foot .btn{width:100%;justify-content:space-between}.partner-source-overview{gap:6px;margin-top:20px}.partner-source-overview span{font-size:10px;padding:7px 9px}}
 @media(max-width:420px){.partner-route{grid-template-columns:minmax(0,1fr) 10px minmax(0,1fr) 10px minmax(0,1fr);gap:5px;padding:20px 12px}.partner-route-step small{display:none}.partner-insight{padding:19px}.partner-quick{padding-inline:16px}.partner-owner-form input,.partner-owner-form select,.partner-owner-form textarea,.partner-select select{font-size:16px}}
+
+@media (max-width: 640px) {
+  .energy-partners-page .partner-hero-note { margin-top: 10px; line-height: 1.55; }
+  .partner-source-overview { margin-top: 12px; gap: 5px; }
+  .partner-source-overview span { padding: 5px 7px; }
+  .partner-explorer-head { padding: 14px; gap: 12px; }
+  .partner-explorer-head .eyebrow { margin-bottom: 5px; }
+  .partner-explorer-head p { line-height: 1.5; }
+  .partner-select select { min-height: 44px; padding: 9px 10px; font-size: 16px; }
+  /* All sources remain available through the labeled native select above. */
+  .partner-quick { display: none; }
+  .partner-route { min-height: 0; padding: 14px 12px; gap: 5px; }
+  .partner-route-source svg { width: 48px; height: 48px; margin-bottom: 5px; }
+  .partner-step-symbol { width: 40px; height: 40px; font-size: 25px; margin-bottom: 8px; }
+  .partner-insight { padding: 14px; gap: 15px; }
+  .partner-insight h3 { font-size: 21px; margin: 9px 0 8px; }
+  .partner-insight p { line-height: 1.55; }
+  .partner-insight h4 { margin-bottom: 9px; }
+  .partner-insight li { padding: 8px 0 8px 14px; line-height: 1.55; }
+  .partner-reuse { margin-top: 12px; padding-top: 11px; }
+  .partner-reuse strong { margin-bottom: 5px; }
+  .partner-explorer-foot { padding: 12px 14px; gap: 10px; }
+  .partner-explorer-foot p { line-height: 1.5; }
+  .partner-connection-note { margin-top: 9px; line-height: 1.5; }
+  .partner-owner-form { gap: 14px; }
+  .partner-owner-form .form-row { gap: 12px; }
+  .partner-owner-form input, .partner-owner-form select, .partner-owner-form textarea { font-size: 16px; }
+  .partner-owner-form textarea { min-height: 88px; }
+  .energy-partners-page .partner-owner-form .field small { margin-top: 4px; }
+  .partner-form-more summary { padding-block: 11px; min-height: 44px; }
+  .partner-form-more > div { gap: 14px; padding-block: 4px 14px; }
+}

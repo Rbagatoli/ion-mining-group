@@ -9,3 +9,34 @@
 .ea-owner-dialog p{font-size:12px}.ea-owner-dialog textarea{width:100%;min-height:230px;background:var(--bg,#151515);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:12px;font-family:inherit;font-size:12px;line-height:1.6;resize:vertical}.ea-owner-dialog .actions{margin-top:15px}.ea-owner-dialog .ea-draft-status{font-size:11px;color:var(--orange);min-height:20px;margin-top:10px}.ea-owner-dialog [hidden]{display:none!important}
 @media(max-width:700px){.ea-summary{padding:13px;gap:10px}.ea-summary strong{font-size:12px}.ea-summary small{font-size:9px}.ea-summary .text-button{font-size:11px}.ea-verdict{padding:15px}.detail-body .ea-verdict h3{font-size:17px}.ea-contact{padding:14px}.ea-contact-top{flex-wrap:wrap;gap:8px}.ea-contact-top>.tag{margin-left:22px;max-width:none}.ea-contact-links{display:grid;gap:10px}.ea-contact-links>a{font-size:13px}.ea-owner-dialog textarea{font-size:16px}.ea-gates summary strong{font-size:11px}.ea-open{font-size:8px}}
 .ea-assessment{display:grid;gap:10px}.ea-assessment article{padding:15px 17px;background:var(--surface-soft,#242723);border:1px solid var(--line);border-radius:10px}.ea-assessment .ea-label{font-size:9px;text-transform:uppercase}.ea-assessment h4{font-size:14px;font-weight:550;margin:7px 0}.ea-assessment p{font-size:12px;color:var(--muted);margin:0}.ea-additional-source{margin-top:10px}
+
+@media screen and (max-width:700px){
+ .ea-summary{padding:10px 12px;margin-bottom:12px;gap:8px}
+ .ea-summary .text-button{min-height:44px}
+ .ea-verdict{padding:12px}
+ .detail-body .ea-verdict h3{margin:8px 0;line-height:1.3}
+ .ea-verdict p{margin-bottom:9px}
+ .ea-boundary{padding-top:9px}
+ .ea-stage{margin:12px 0 16px;gap:7px}
+ .ea-signals{gap:7px}
+ .ea-signal{padding:7px 0 11px}
+ .ea-signal h4{margin:7px 0 5px}
+ .ea-signal p{margin-bottom:7px;line-height:1.5}
+ .ea-gates{gap:7px}
+ .detail-body .ea-gates details{padding:6px 11px}
+ .ea-gates summary{min-height:44px;gap:8px}
+ .ea-gates details p{margin-top:8px;line-height:1.5}
+ .detail-body .ea-method{margin-top:14px}
+ .ea-method p{margin:8px 0}
+ .ea-contact{padding:11px 12px;margin:10px 0}
+ .ea-contact-links{gap:5px 12px;padding-top:8px;margin-top:8px}
+ .ea-contact-links>a{display:flex;align-items:center;min-height:44px}
+ .ea-ask{margin:8px 0 6px;line-height:1.5}
+ .detail-body .ea-contact-source{padding:2px 0;margin:8px 0 5px}
+ .ea-contact-source summary,.ea-contact>.text-button{min-height:44px}
+ .ea-contact-source p{margin:7px 0}
+ .ea-assessment{gap:8px}
+ .ea-assessment article{padding:11px 12px}
+ .ea-assessment h4{margin:5px 0}
+ .ea-assessment p{line-height:1.5}
+}

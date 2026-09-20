@@ -32,3 +32,27 @@ body.sl-map-open{overflow:hidden}
 @media(max-width:760px){.sl-widget{display:block}.sl-widget .sl-map{max-height:255px}.sl-widget-head{padding:12px 14px}.sl-widget-head strong{font-size:13px}.sl-expand{min-height:44px;padding:8px 13px;font-size:12px}.sl-widget-bottom{padding:10px 14px}.sl-widget-bottom>strong{font-size:12px}.sl-widget-bottom p{font-size:11px}.sl-dialog{width:calc(100vw - 16px);max-height:96vh;max-height:96dvh;border-radius:16px}.sl-dialog-head{padding:14px 16px}.sl-dialog-head h2{font-size:21px}.sl-dialog-head h2>span{display:block;margin:5px 0 0;font-size:10px}.sl-layout{grid-template-columns:1fr}.sl-map-stage .sl-map{height:44vh;height:44dvh;min-height:270px;max-height:420px}.sl-map-controls{top:9px;left:9px}.sl-map-controls button{min-width:44px;height:44px}.sl-map-sidebar{border-left:0;border-top:1px solid var(--line);padding:14px}.sl-site-choices{grid-template-columns:1fr 1fr}.sl-choice{padding:10px 8px;gap:7px}.sl-choice strong{font-size:11px}.sl-choice small{font-size:10px}.sl-selected-site{margin-top:14px;padding-top:14px}.sl-selected-site .button{width:auto;min-width:180px}.sl-external{text-align:left;display:inline-block;margin-left:12px}.sl-dialog-foot{padding:12px 15px}.sl-widget-bottom details{display:inline-block;margin-left:10px}}
 @media(max-width:380px){.sl-site-choices{grid-template-columns:1fr}.sl-map-controls [data-locator-reset]{padding:0 8px}.sl-external{margin-left:0;display:block}.sl-widget .sl-map{max-height:240px}}
 @media print{.sl-widget,.sl-dialog{display:none!important}}
+
+@media screen and (max-width:700px){
+ .sl-widget{margin-bottom:10px}
+ .sl-widget-head{padding:8px 12px;gap:7px}
+ .sl-widget .sl-map{max-height:225px}
+ .sl-expand{min-height:44px;padding:7px 10px}
+ .sl-widget-bottom{padding:8px 12px}
+ .sl-widget-bottom p{margin:4px 0;line-height:1.5}
+ .sl-mini-controls{margin-top:0;gap:8px}
+ .sl-mini-controls .text-button{min-height:44px}
+ .sl-dialog-head{padding:10px 12px;gap:10px}
+ .sl-dialog-head h2{margin-top:3px}
+ .sl-map-area #sl-map-help{padding:7px 12px;line-height:1.5}
+ .sl-map-sidebar{padding:10px 12px}
+ .sl-site-choices{gap:6px}
+ .sl-choice{min-height:44px;padding:8px;gap:6px}
+ .sl-selected-site{margin-top:10px;padding-top:10px}
+ .sl-selected-site h3{margin:6px 0}
+ .sl-selected-site p{margin:5px 0}
+ .sl-selected-site .sl-reference{line-height:1.5}
+ .sl-selected-site .button{min-height:44px;margin-top:8px}
+ .sl-external{min-height:44px;align-content:center;margin-top:6px}
+ .sl-dialog-foot{padding:8px 12px;line-height:1.5}
+}

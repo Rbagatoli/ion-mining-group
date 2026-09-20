@@ -18,3 +18,51 @@
 .ep-source-route{padding:23px 17px;margin-top:18px;border:1px solid #aeb3b72b;border-radius:12px;background:radial-gradient(ellipse at 20% 0%,#b8bec523,transparent 70%),#11161b}.ep-source-route>div{display:grid;justify-items:center;gap:8px;margin-top:17px}.ep-source-route strong{font:500 14px/1.5 var(--sans);color:#e4e7e8;text-align:center}.ep-source-route strong:last-child{color:#ffc67e}.ep-source-route>div>span{color:#c1965d;font-size:20px}.ep-source-note{font:11px/1.7 var(--sans);color:#aeb4ba;margin:16px 4px 0}.ep-source-checks{list-style:none;margin:0;padding:0}.ep-source-checks li{display:flex;gap:15px;padding:15px 0;border-bottom:1px solid #ffffff1c;color:#d0d3d5;font:13px/1.65 var(--sans)}.ep-source-checks li span{color:#ffb347;font:11px/1.95 var(--mono)}.ep-contact-path{display:grid;gap:12px}.ep-contact-path article{display:flex;gap:14px;padding:16px;border:1px solid #ffffff20;border-radius:9px}.ep-contact-path article>span{color:#ffb347;font:12px/1.8 var(--mono)}.ep-contact-path strong{font:500 13px/1.65 var(--sans);color:#e4e7e8}.ep-contact-path p{font:12px/1.65 var(--sans);color:#b4bbc0;margin:5px 0 0}.ep-source-explorer,.ep-research{min-width:0}
 @media(max-width:760px){.ep-discover{display:block}.ep-research{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.ep-source-explorer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px}.ep-source-select{grid-column:1/-1}.ep-source-route{margin:0;align-self:start;padding:17px 12px}.ep-source-note{grid-column:1/-1;margin-bottom:0}.ep-modes{padding:10px 14px}.ep-modes button{padding:10px 12px;font-size:11px}}
 @media(max-width:520px){.ep-research{grid-template-columns:1fr}.ep-source-explorer{display:block}.ep-source-route{display:none}.ep-source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ep-source-grid button{font-size:11px;min-height:42px}.ep-source-select select{font-size:16px}.ep-modes{gap:4px}.ep-modes button{flex:1;padding:9px 7px}.ep-source-note{font-size:10px}.ep-source-checks li{font-size:12px}}
+
+/* The native source chooser retains all sixteen routes on a phone; the quick
+   buttons repeat that chooser and need not push the actual report downward. */
+@media (max-width: 640px) {
+  .ep-toolbar { padding: 11px 12px; }
+  .ep-logo { width: 25px; height: 25px; }
+  .ep-toolbar > div { gap: 8px; }
+  .ep-modes { padding: 6px 10px; gap: 4px; }
+  .ep-modes button { flex: 1; min-height: 44px; padding: 7px 6px; }
+  .ep-brief { padding: 9px 12px; gap: 5px 10px; }
+  .ep-discover { padding: 12px; }
+  .ep-source-explorer { grid-template-columns: minmax(0,1fr); }
+  .ep-source-grid { display: none; }
+  .ep-source-select select { min-height: 44px; font-size: 16px; margin: 5px 0 0; padding: 9px 10px; }
+  .ep-source-route { margin-top: 10px; padding: 12px; }
+  .ep-source-route > div { margin-top: 8px; gap: 4px; }
+  .ep-source-note { margin: 9px 0 0; line-height: 1.5; }
+  .ep-detail { padding: 14px 12px; }
+  .ep-detail-heading h3 { margin: 6px 0 8px; font-size: 23px; }
+  .ep-badge { padding: 4px 7px; }
+  .ep-tabs { margin-top: 12px; gap: 12px; }
+  .ep-tabs button { min-height: 44px; padding-block: 9px; }
+  .ep-panel { min-height: 0; padding-top: 13px; }
+  .ep-panel-intro h4 { margin: 5px 0 12px; font-size: 21px; }
+  .ep-panel-intro p { margin-top: -4px; }
+  .ep-panel-intro p, .ep-copy { margin-bottom: 10px; line-height: 1.55; }
+  .ep-copy { margin-top: 10px; }
+  .ep-energy-metrics, .ep-capital { padding-block: 12px; gap: 10px; }
+  .ep-energy-metrics small, .ep-capital small { margin-bottom: 6px; }
+  .ep-energy-metrics span { margin-top: 6px; }
+  .ep-evidence { margin-bottom: 12px; }
+  .ep-evidence p { margin-block: 9px; line-height: 1.55; }
+  .ep-source-checks li { padding-block: 9px; gap: 10px; line-height: 1.5; }
+  .ep-next { margin-block: 11px; padding: 10px 12px; }
+  .ep-next p { margin-top: 4px; line-height: 1.5; }
+  .ep-workspace-link { margin-top: 12px; padding-top: 10px; min-height: 44px; }
+  .ep-footer { padding: 9px 12px; }
+  .ep-site-list { gap: 5px; }
+  .ep-site-list button { padding: 8px 10px; min-height: 52px; }
+  .energy-preview .sl-widget .sl-map { max-height: 190px; }
+  .energy-preview .sl-widget-bottom { padding: 8px 10px; }
+  .ep-contacts, .ep-contact-path { gap: 8px; }
+  .ep-contacts article, .ep-contact-path article { padding: 10px; }
+  .ep-contact-path article { gap: 10px; }
+  .ep-contact-path p { line-height: 1.5; margin-top: 3px; }
+  .ep-contacts article > span { margin-block: 4px 6px; }
+  .ep-contacts small { margin-block: 7px 4px; line-height: 1.5; }
+}

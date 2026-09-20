@@ -156,3 +156,41 @@
     .mb-disclaimer { font-size: 12px; line-height: 1.55; }
     .mb-next { gap: 12px; padding-block: 16px; }
 }
+
+/* Keep the full estimate available without oversized mobile cards. */
+@media (max-width: 700px) {
+    .mb-site-switch { margin: 10px 0 12px; }
+    .mb-site-switch .mb-site-action { min-height: 48px; padding: 8px 10px; }
+    .mb-site-action small { margin-top: 2px; }
+    .mb-details { margin-top: 12px; }
+    .mb-topline, .mb-context-note { padding: 10px 12px; }
+    .mb-context-note { line-height: 1.5; }
+    .mb-form { padding: 12px; }
+    .mb-form-heading { margin: 0 0 10px; gap: 8px; }
+    .mb-form-section + .mb-form-section { margin-top: 6px; padding-top: 14px; }
+    .mb-field { gap: 5px; margin-bottom: 9px; }
+    .mb-field input, .mb-field select { min-height: 44px; padding-block: 8px; font-size: 16px; }
+    .mb-pair { column-gap: 8px; }
+    .mb-range-labels { margin-bottom: 12px; }
+    .mb-help { margin-bottom: 10px; line-height: 1.5; }
+    .mb-assumptions { margin: 12px 0 8px; }
+    .mb-assumptions summary { min-height: 44px; padding-block: 12px; }
+    .mb-form-footer { gap: 4px 12px; }
+    .mb-text-button, .mb-jump { display: inline-flex; align-items: center; min-height: 44px; }
+    .mb-site-stats { padding: 12px; gap: 10px 12px; }
+    .mb-site-stats small, .mb-btc-secondary small { margin-top: 3px; }
+    .mb-sizing-note { margin: 0 12px 12px; line-height: 1.5; }
+    .mb-production { margin: 0 12px 14px; padding-top: 12px; gap: 10px 12px; }
+    .mb-btc-lead > div { margin: 6px 0; }
+    .mb-btc-secondary { gap: 10px; }
+    .mb-chart-heading { margin-top: 4px; }
+    .mb-chart { height: 64px; }
+    .mb-economics > div { padding: 10px 12px; }
+    .mb-economics strong { margin-top: 4px; }
+    .mb-foot { padding: 12px; }
+    .mb-market { gap: 4px; }
+    .mb-assumption-note { margin: 8px 0 12px; line-height: 1.5; }
+    .mb-next { padding-block: 12px; gap: 8px; }
+    .mb-next small { margin-top: 4px; }
+    .mb-estimate-note { margin: 6px 0; }
+}
