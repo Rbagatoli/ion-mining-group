@@ -20,6 +20,7 @@
     ['industrial_surplus','Industrial surplus','industrial'],['grid_supply','Grid supply','grid']
   ].map(([id,label,group])=>({id,label,...groups[group],icon:({solar:'solar',marine:'marine',geothermal:'geothermal'})[id] || groups[group].icon}));
   if (typeof module !== 'undefined' && module.exports) module.exports = { sources };
+  if (typeof window !== 'undefined') window.ProtonEnergySourceGuide = { sources };
   if (typeof document === 'undefined') return;
   const root = document.getElementById('partnerExplorer'), select = document.getElementById('partnerSource'), field = document.getElementById('s-type');
   if (!root || !select || !field) return;
