@@ -47,7 +47,7 @@ const PAGES = {
     target: '../hosting.html',
     sectionId: 'inside-container',
     marker: 'INSIDE A HOSTED CONTAINER',
-    insertBefore: '<!-- ===== TERMS ===== -->',
+    insertBefore: '<!-- ===== HOSTING OPTIONS ===== -->',
     eyebrow: 'Inside the container',
     heading: 'Where your machines actually sit.',
     lede: 'The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.',
@@ -616,13 +616,13 @@ function build(key) {
     </div>${builder}` : comparison;
 
   const section = `<!-- ===== ${cfg.marker} ===== -->
-<section class="band${key === 'hosting' ? ' mobile-fold-section' : ''}" id="${cfg.sectionId}">
-  <div class="wrap">${key === 'hosting' ? '<details class="mobile-details mobile-section-details" data-mobile-details open><summary><span>Inside a hosting container</span><small>Explore the cooling loop, racks and equipment.</small></summary><div class="mobile-details-body">' : ''}
+<section class="band${key === 'hosting' ? ' hosting-rendering' : ''}" id="${cfg.sectionId}">
+  <div class="wrap">
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
       <h2 class="h-section">${esc(cfg.heading)}</h2>
       <p class="lede" data-mobile-copy="${esc(cfg.mobileLede || cfg.lede)}">${esc(cfg.lede)}</p>
-    </div>${toggle}${content}${key === 'hosting' ? '</div></details>' : ''}
+    </div>${toggle}${content}
   </div>
 </section>
 <!-- ===== /${cfg.marker} ===== -->

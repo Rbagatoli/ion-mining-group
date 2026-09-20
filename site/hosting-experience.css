@@ -93,8 +93,27 @@
  .hx-globe-panel .hx-toolbar p { display: none; }
 }
 
+/* The container stays visible directly after the picker. Supporting hosting
+   information uses native disclosures at every viewport size. */
+#facilities { padding-bottom: 20px; }
+#inside-container.hosting-rendering { padding-top: 20px; }
+.hosting-fold-section { padding-block: 0; }
+.hosting-details { margin: 0; border-top: 1px solid var(--line-mid); border-bottom: 1px solid var(--line); }
+.hosting-details > summary { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 3px 16px; min-height: 52px; padding: 14px 0; list-style: none; cursor: pointer; color: var(--plat-200); font: 500 15px/1.45 var(--sans); }
+.hosting-details > summary::-webkit-details-marker { display: none; }
+.hosting-details > summary > span { grid-column: 1; grid-row: 1; font-weight: 600; }
+.hosting-details > summary > small { grid-column: 1; grid-row: 2; color: var(--plat-400); font-size: 12px; }
+.hosting-details > summary::after { content: '+'; grid-column: 2; grid-row: 1 / span 2; color: var(--btc-300); font: 20px/1 var(--mono); }
+.hosting-details[open] > summary::after { content: '−'; }
+.hosting-details > summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+.hosting-details > .mobile-details-body { padding: 16px 0 20px; }
+.hosting-details > .mobile-details-body > :first-child { margin-top: 0; }
+.hosting-details > .mobile-details-body > :last-child { margin-bottom: 0; }
+
 /* Retain the interactive globe, region choices, rates and availability. */
 @media (max-width: 700px) {
+ .hosting-details > summary { min-height: 48px; padding-block: 9px; gap: 2px 10px; font-size: 14px; }
+ .hosting-details > .mobile-details-body { padding: 10px 0 12px; }
  .hx-experience, .hx-panel { margin-bottom: 14px; }
  .hx-heading { padding: 12px; }
  .hx-stage { height: clamp(250px,64vw,340px); }
