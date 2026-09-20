@@ -8,6 +8,7 @@
   const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * rad / 2)) / rad;
   const bounds = [-78.4, 38.4, -73.4, 42.55];
   let getState, selectSite, ids = [], dialog, returnFocus, zoom = 1, pan = { x: 0, y: 0 }, drag, frame, ignoreClick = false;
+  let compactZoom = 1, compactPan = { x: 0, y: 0 }, wheelFrame;
   const geography = () => window.ProtonLocatorGeography || { states: [], cities: [], sources: [] };
   function canPlot(p) { return p.id !== 'SIM-734' && Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) < 85 && Math.abs(p.lng) <= 180 && (!window.ProtonSiteVisuals || window.ProtonSiteVisuals.canPlot(p)); }
   function number(p, list) { const i = ids.indexOf(p.id); return (i < 0 ? list.indexOf(p) : i) + 1; }
@@ -24,8 +25,8 @@
   }
   function projection(width, height, expanded) {
     const cx = (bounds[0] + bounds[2]) / 2, cy = (merc(bounds[1]) + merc(bounds[3])) / 2;
-    const scale = Math.min((width - 42) / (bounds[2] - bounds[0]), (height - 44) / (merc(bounds[3]) - merc(bounds[1]))) * (expanded ? zoom : 1);
-    return { scale, point(lng, lat) { return [width / 2 + (lng - cx) * scale + (expanded ? pan.x : 0), height / 2 - (merc(lat) - cy) * scale + (expanded ? pan.y : 0)]; } };
+    const scale = Math.min((width - 42) / (bounds[2] - bounds[0]), (height - 44) / (merc(bounds[3]) - merc(bounds[1]))) * (expanded ? zoom : compactZoom), offset = expanded ? pan : compactPan;
+    return { scale, point(lng, lat) { return [width / 2 + (lng - cx) * scale + offset.x, height / 2 - (merc(lat) - cy) * scale + offset.y]; } };
   }
   function svg(list, selected, expanded) {
     const width = expanded ? (window.innerWidth < 700 ? 480 : 1000) : 400, height = expanded ? (window.innerWidth < 700 ? 460 : 660) : 330;
@@ -64,7 +65,7 @@
       return `<text class="sl-state-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}"><title>${esc(s.name)}</title>${esc(label)}</text>`;
     }).join('');
     const points = list.filter(canPlot).map(p => { const [x, y] = point(p.lng, p.lat), active = p.id === selected; return `<a href="#sites" data-locator-select="${esc(p.id)}" aria-label="Select ${esc(p.name)}, ${esc(p.location)}" class="sl-pin${active ? ' selected' : ''}"><title>${esc(p.name)} · ${esc(p.location)}</title><circle class="sl-hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="23"/><circle class="sl-halo" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="19"/><circle class="sl-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="12"/><text x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}">${number(p, list)}</text></a>`; }).join('');
-    const miles = expanded && zoom > 2 ? 20 : 50, bar = miles / (69.172 * Math.cos(40.5 * rad)) * scale;
+    const miles = (expanded ? zoom : compactZoom) > 2 ? 20 : 50, bar = miles / (69.172 * Math.cos(40.5 * rad)) * scale;
     return `<svg class="sl-map" viewBox="0 0 ${width} ${height}" role="group" aria-label="Site locator: Mid-Atlantic United States, with state boundaries and reference cities"${expanded ? ' tabindex="0" aria-describedby="sl-map-help"' : ''}>${material}<rect class="sl-water" fill="url(#sl-graphite-${finish})" width="${width}" height="${height}"/>${states}${stateLabels}${cities}${points}<g class="sl-compass" transform="translate(${width - 24} 22)"><text text-anchor="middle" y="0">N</text><path d="M0 9V30 M-4 15L0 9 4 15"/></g><g class="sl-scale" transform="translate(20 ${height - 23})"><path d="M0 -5V0H${bar.toFixed(1)}V-5"/><text y="15">${miles} mi · approximate</text></g></svg>`;
   }
   function mapUrl(p) {
@@ -75,7 +76,7 @@
   function caption(list) { return `Approximate catalog points · not property boundaries.${list.some(p => p.id === 'SIM-734') ? ' Alpha Ridge omitted: catalog location rejected during image review.' : ''}`; }
   function render(list, selected) {
     const p = list.find(p => p.id === selected), ready = arr(geography().states).length;
-    return `<section class="sl-widget" aria-label="Site locator"><div class="sl-widget-head"><div><strong>Site locator</strong><small>Mid-Atlantic · United States</small></div><button type="button" class="sl-expand" data-locator-expand aria-haspopup="dialog" aria-controls="siteLocatorDialog" aria-label="Expand site locator"><span aria-hidden="true">⛶</span> Expand</button></div>${ready ? svg(list, selected, false) : '<p class="sl-unavailable">Regional map unavailable. Site locations and address links remain below.</p>'}<div class="sl-widget-bottom">${p ? `<strong><span class="sl-number">${number(p, list)}</span> ${esc(p.location)}</strong><p>${esc(reference(p))}</p>` : ''}<small>${count(list)}</small><details><summary>Map accuracy</summary><p>${esc(caption(list))}</p></details></div></section>`;
+    return `<section class="sl-widget" aria-label="Site locator"><div class="sl-widget-head"><div><strong>Site locator</strong><small>Mid-Atlantic · United States</small></div><button type="button" class="sl-expand" data-locator-expand aria-haspopup="dialog" aria-controls="siteLocatorDialog" aria-label="Expand site locator"><span aria-hidden="true">⛶</span> Expand</button></div>${ready ? svg(list, selected, false) : '<p class="sl-unavailable">Regional map unavailable. Site locations and address links remain below.</p>'}<div class="sl-widget-bottom">${p ? `<strong><span class="sl-number">${number(p, list)}</span> ${esc(p.location)}</strong><p>${esc(reference(p))}</p>` : ''}<small>${count(list)}</small><div class="sl-mini-controls"><small>Scroll to zoom</small><button type="button" class="text-button" data-locator-compact-reset${compactZoom === 1 ? ' hidden' : ''}>Reset view</button></div><details><summary>Map accuracy</summary><p>${esc(caption(list))}</p></details></div></section>`;
   }
   function refreshMap() {
     if (!dialog?.open) return;
@@ -99,16 +100,37 @@
     if (review) { document.getElementById('siteDetail')?.focus({ preventScroll: true }); document.getElementById('siteDetail')?.scrollIntoView({ block: 'start', behavior: 'auto' }); }
     else (document.querySelector('[data-locator-expand]') || returnFocus)?.focus({ preventScroll: true });
   }
-  function changeZoom(next) { zoom = Math.max(1, Math.min(6, next)); if (zoom === 1) pan = { x: 0, y: 0 }; refreshMap(); }
+  function refreshCompact() {
+    const map = document.querySelector('#locator .sl-map'); if (!map) return;
+    const state = getState(); map.outerHTML = svg(state.sites, state.selected, false);
+    const reset = document.querySelector('[data-locator-compact-reset]'); if (reset) reset.hidden = compactZoom === 1;
+  }
+  function changeZoom(next, anchor = { x: 0, y: 0 }, expanded = true, paint = true) {
+    const previous = expanded ? zoom : compactZoom, offset = expanded ? pan : compactPan, value = Math.max(1, Math.min(6, next)), ratio = value / previous;
+    const position = value === 1 ? { x: 0, y: 0 } : { x: anchor.x - (anchor.x - offset.x) * ratio, y: anchor.y - (anchor.y - offset.y) * ratio };
+    if (expanded) { zoom = value; pan = position; } else { compactZoom = value; compactPan = position; }
+    if (paint) { if (expanded) refreshMap(); else refreshCompact(); }
+  }
+  function wheelZoom(event) {
+    const map = event.target.closest?.('svg.sl-map'); if (!map || !event.deltaY || !Number.isFinite(event.deltaY)) return;
+    const matrix = map.getScreenCTM(); if (!matrix) return;
+    const expanded = !!map.closest('.sl-map-stage'), point = map.createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
+    const cursor = point.matrixTransform(matrix.inverse()), box = map.viewBox.baseVal;
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? map.getBoundingClientRect().height : 1);
+    event.preventDefault();
+    changeZoom((expanded ? zoom : compactZoom) * Math.exp(-Math.max(-160, Math.min(160, delta)) * .0025), { x: cursor.x - box.width / 2, y: cursor.y - box.height / 2 }, expanded, false);
+    if (!wheelFrame) wheelFrame = requestAnimationFrame(() => { wheelFrame = null; refreshCompact(); refreshMap(); });
+  }
   function open(button) {
     returnFocus = button; zoom = 1; pan = { x: 0, y: 0 };
     if (!dialog) {
       dialog = document.createElement('dialog'); dialog.id = 'siteLocatorDialog'; dialog.className = 'sl-dialog'; dialog.setAttribute('aria-labelledby', 'sl-title');
-      dialog.innerHTML = `<header class="sl-dialog-head"><div><span class="sl-eyebrow">MID-ATLANTIC · UNITED STATES</span><h2 id="sl-title">Site locator <span id="sl-count"></span></h2></div><button type="button" class="icon-button" data-locator-close aria-label="Close expanded site locator">×</button></header><div class="sl-layout"><div class="sl-map-area"><div class="sl-map-controls" aria-label="Map controls"><button type="button" data-locator-zoom="in" aria-label="Zoom in">+</button><button type="button" data-locator-zoom="out" aria-label="Zoom out">−</button><button type="button" data-locator-reset>Reset view</button></div><div class="sl-map-stage"></div><p id="sl-map-help">Drag to pan · use + / − to zoom · arrow keys move the map</p></div><aside class="sl-map-sidebar"><div class="sl-site-choices" aria-label="Sites on the map"></div><div class="sl-selected-site" aria-live="polite"></div></aside></div><footer class="sl-dialog-foot"><p class="sl-accuracy"></p><span>U.S. Census Bureau: <a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" target="_blank" rel="noopener noreferrer">State boundaries ↗</a> · <a href="https://tigerweb.geo.census.gov/tigerweb/" target="_blank" rel="noopener noreferrer">City reference points ↗</a></span></footer>`;
+      dialog.innerHTML = `<header class="sl-dialog-head"><div><span class="sl-eyebrow">MID-ATLANTIC · UNITED STATES</span><h2 id="sl-title">Site locator <span id="sl-count"></span></h2></div><button type="button" class="icon-button" data-locator-close aria-label="Close expanded site locator">×</button></header><div class="sl-layout"><div class="sl-map-area"><div class="sl-map-controls" aria-label="Map controls"><button type="button" data-locator-zoom="in" aria-label="Zoom in">+</button><button type="button" data-locator-zoom="out" aria-label="Zoom out">−</button><button type="button" data-locator-reset>Reset view</button></div><div class="sl-map-stage"></div><p id="sl-map-help">Drag to pan · scroll to zoom · arrow keys move the map</p></div><aside class="sl-map-sidebar"><div class="sl-site-choices" aria-label="Sites on the map"></div><div class="sl-selected-site" aria-live="polite"></div></aside></div><footer class="sl-dialog-foot"><p class="sl-accuracy"></p><span>U.S. Census Bureau: <a href="https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html" target="_blank" rel="noopener noreferrer">State boundaries ↗</a> · <a href="https://tigerweb.geo.census.gov/tigerweb/" target="_blank" rel="noopener noreferrer">City reference points ↗</a></span></footer>`;
       document.body.appendChild(dialog);
       dialog.addEventListener('cancel', e => { e.preventDefault(); close(false); });
       dialog.addEventListener('click', e => { if (e.target === dialog) { const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close(false); } });
       const stage = dialog.querySelector('.sl-map-stage');
+      stage.addEventListener('wheel', wheelZoom, { passive: false });
       stage.addEventListener('pointerdown', e => {
         if (e.button !== 0 || e.target.closest('[data-locator-select]')) return;
         const el = stage.querySelector('svg'); if (!el) return;
@@ -140,6 +162,7 @@
   }
   function bind(root, state, select, profiles) {
     getState = state; selectSite = select; ids = profiles.map(p => p.id);
+    root.addEventListener('wheel', wheelZoom, { passive: false });
     document.addEventListener('click', event => {
       const expand = event.target.closest('[data-locator-expand]'); if (expand) { open(expand); return; }
       const pin = event.target.closest('[data-locator-select]');
@@ -148,6 +171,7 @@
       const review = event.target.closest('[data-locator-review]'); if (review) { close(true); return; }
       const z = event.target.closest('[data-locator-zoom]'); if (z) { changeZoom(zoom * (z.dataset.locatorZoom === 'in' ? 1.4 : 1 / 1.4)); return; }
       if (event.target.closest('[data-locator-reset]')) { pan = { x: 0, y: 0 }; changeZoom(1); }
+      if (event.target.closest('[data-locator-compact-reset]')) changeZoom(1, undefined, false);
     });
   }
   window.ProtonSiteLocator = Object.freeze({ render, bind, canPlot, reference });

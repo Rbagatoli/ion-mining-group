@@ -13,6 +13,7 @@
 .sl-compass text{fill:#f0f0ec;font-size:11px;font-weight:650;paint-order:stroke;stroke:#141b21;stroke-width:3px}.sl-compass path,.sl-scale path{fill:none;stroke:#e5e6e2;stroke-width:1.4;filter:drop-shadow(0 1px 1px #000)}.sl-scale text{fill:#e5e6e2;font-size:10px;paint-order:stroke;stroke:#10161c;stroke-width:3px}
 .sl-widget-bottom{padding:12px 14px;border-top:1px solid var(--line)}.sl-widget-bottom>strong{display:flex;align-items:center;gap:7px;font-size:11px}.sl-widget-bottom p{font-size:10px;line-height:1.65;margin:6px 0;color:var(--muted)}.sl-widget-bottom>small,.sl-widget-bottom summary{font-size:9px;color:var(--muted)}.sl-widget-bottom details{margin-top:6px}.sl-widget-bottom summary{cursor:pointer}
 .sl-number{display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;background:#f7931a;color:#191c1c;font-size:10px;font-weight:750;flex-shrink:0}.sl-number.pending{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
+.sl-mini-controls{display:flex;align-items:center;justify-content:space-between;min-height:24px;margin-top:3px}.sl-mini-controls small,.sl-mini-controls .text-button{font-size:10px;color:var(--muted)}.sl-mini-controls .text-button{padding:2px 0;color:var(--orange)}
 .sl-unavailable{font-size:12px;color:var(--muted);padding:20px}
 body.sl-map-open{overflow:hidden}
 .sl-dialog{width:calc(100vw - 40px);max-width:1320px;max-height:94vh;max-height:94dvh;padding:0;overflow:auto;border-radius:20px}
