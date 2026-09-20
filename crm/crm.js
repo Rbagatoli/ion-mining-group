@@ -9,7 +9,7 @@
   const kinds={site:'Energy site',lead:'Revenue lead',deal:'Service deal'},energy={landfill_gas:'Landfill gas',flare_gas:'Flare gas',grid_facility:'Power facility',unknown:'Other energy'};
   let current='control',selection=null,siteTab='overview',pipelineKind='all',pipelineGroup='all',pipelineSearch='',pipelineLimit=60,pipelineWorkflow='all',teamTab='workflow',taskFilter='open',taskRole='',month=day().slice(0,7),peopleSearch='',modalForm=false,modalBack=null,focusBefore=null,busy=false,noticeTimer,renderQueued=false;
   const sheet=$('sheet'),expandedLeads=new Set(),expandedLeadSections=new Set(),outreachPlans=new Map();
-  let completedReviewSession=null;
+  let completedReviewSession=null,taskRequest=null;
   const sidebarKey='protonCrmSidebarCollapsed_v1';
   function setSidebarCollapsed(collapsed){
     document.body.classList.toggle('sidebar-collapsed',collapsed);
@@ -33,14 +33,15 @@
   function row({name,sub,end='',badge='',action,id='',glyph='site',url}){const attrs=url?'href="'+esc(url)+'"':'type="button" data-action="'+action+'" data-id="'+esc(id)+'"',el=url?'a':'button';return '<'+el+' class="row" '+attrs+'><span class="avatar">'+icon(glyph)+'</span><span class="row-copy"><strong>'+esc(name)+'</strong><span class="sub">'+esc(sub)+'</span></span><span class="row-end">'+(end?'<span>'+esc(end)+'</span>':'')+badge+'</span><span class="chevron" aria-hidden="true">›</span></'+el+'>';}
   function note(message){$('notice').textContent=message;$('notice').hidden=false;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').hidden=true,7000);}
   function error(e){const target=sheet.open?$('sheetError'):$('notice');target.textContent=e.message||String(e);target.hidden=false;}
-  function modal(title,html,back,form=false){
+  function modal(title,html,back,form=false,taskView=false){
+    if(!taskView)taskRequest=null;
     completedReviewSession=null;
     if(!sheet.open)focusBefore=document.activeElement;
     $('sheetTitle').textContent=title;$('sheetBody').innerHTML=html;$('sheetError').hidden=true;modalBack=back||null;modalForm=form;
     $('sheetBack').hidden=!back;if(!sheet.open)sheet.showModal();sheet.scrollTop=0;
     const first=$('sheetBody').querySelector(form?'input:not([type=hidden]),select,textarea':'[autofocus]');if(first)first.focus();else $('sheetClose').focus();
   }
-  function close(){completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
+  function close(){taskRequest=null;completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
   function nav(){
     const labels={control:'Control Center',today:'Today',pipeline:'Pipeline',discover:'Discover',team:'Team'};
     $('navigation').innerHTML=Object.keys(labels).map(name=>'<a class="nav-item" href="#'+name+'" aria-label="'+labels[name]+'" title="'+labels[name]+'"'+(current===name?' aria-current="page"':'')+'>'+icon(name)+'<span>'+labels[name]+'</span></a>').join('');
@@ -105,6 +106,7 @@
   function options(map,selected){return Object.entries(map).map(([v,l])=>'<option value="'+esc(v)+'"'+(String(selected)===v?' selected':'')+'>'+esc(l)+'</option>').join('');}
   // Detail panels and write forms are defined below; each form captures its original revision.
   function route(){
+    taskRequest=null;completedReviewSession=null;
     const parts=location.hash.replace(/^#/,'').split('/');current=['control','today','pipeline','discover','team','people','settings'].includes(parts[0])?parts[0]:'control';
     try{selection=parts.length>=3?{kind:parts[1],id:decodeURIComponent(parts.slice(2).join('/'))}:null;}catch(_){selection=null;}
     if(sheet.open)sheet.close();modalForm=false;siteTab='overview';render();
@@ -113,7 +115,17 @@
   window.addEventListener('hashchange',route);
   $('sheetClose').onclick=close;$('sheetBack').onclick=()=>modalBack&&modalBack();
   sheet.addEventListener('cancel',e=>{e.preventDefault();close();});
-  D.subscribe(reason=>{if(reason==='account'){expandedLeads.clear();expandedLeadSections.clear();if(selection?.kind==='lead')expandedLeads.add(selection.id);discovery.collapseDetail(false);}if(reason==='account'&&sheet.open){if(completedReviewSession)freezeCompletedReviewAccount();else{sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}}if(reason!=='catalog')queueRender();if(reason==='remote'&&sheet.open)note('Updated records arrived. Reopen this panel to see the latest version.');if(reason==='agents'&&completedReviewSession?.pending)reconcileCompletedReview(completedReviewSession);else if(reason==='agents'&&sheet.open&&!modalForm&&selection){if(selection.kind==='task')openTask(selection.id);if(selection.kind==='lead')openLead(selection.id);}});
+  D.subscribe(reason=>{
+    if(reason==='account'){
+      expandedLeads.clear();expandedLeadSections.clear();if(selection?.kind==='lead')expandedLeads.add(selection.id);discovery.collapseDetail(false);
+      if(sheet.open){if(completedReviewSession)freezeCompletedReviewAccount();else if(!taskRequest){sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}}
+    }
+    if(reason!=='catalog')queueRender();
+    if(reason==='remote'&&sheet.open)note('Updated records arrived. Reopen this panel to see the latest version.');
+    if(reason==='agents'&&completedReviewSession?.pending)reconcileCompletedReview(completedReviewSession);
+    else if((reason==='agents'||reason==='account')&&taskRequest)reconcileTaskRequest();
+    else if(reason==='agents'&&sheet.open&&!modalForm&&selection?.kind==='lead')openLead(selection.id);
+  });
   // Event handlers are attached after the form and detail definitions.
   let activeSite=null,activeCandidate=null,detailRequest=0;
   const fact=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value==null||value===''?'Not recorded':value)+'</dd></div>';
@@ -442,7 +454,37 @@
   }
   let taskRevision=0;
   function openTask(id){
-    const t=agent().tasks.find(x=>x.id===id);if(!t){modal('Task unavailable','<p>This task is no longer in the register.</p>');return;}
+    const status=D.status();
+    selection={kind:'task',id};
+    taskRequest={id,account:status.ready?{uid:status.uid,epoch:status.epoch}:null};
+    reconcileTaskRequest();
+  }
+  function reconcileTaskRequest(){
+    const request=taskRequest;if(!request)return;
+    const status=D.status();
+    // Startup intent may wait for its first account; resolved intent never follows an account switch.
+    if(request.account&&(request.account.uid!==status.uid||request.account.epoch!==status.epoch)){
+      taskRequest=null;selection=null;sheet.close();modalForm=false;modalBack=null;
+      note('Account changed. Reopen the task link in the intended account.');return;
+    }
+    if(!request.account&&status.ready)request.account={uid:status.uid,epoch:status.epoch};
+    const view=(title,html)=>modal(title,html,null,false,true);
+    if(!status.ready){view('Opening task','<p role="status">Opening your account…</p>');return;}
+    if(status.error){view('Task connection needs attention','<p role="status">'+esc(status.error)+'</p><p>Task availability has not been confirmed.</p>');return;}
+    const connection=status.agent;
+    if(connection.uid!==status.uid||connection.mode==='connecting'){
+      view('Opening task','<p role="status">Loading the task register for your account…</p>');return;
+    }
+    // Cache-only and failed reads cannot establish that a task is absent.
+    if(!(status.uid?connection.mode==='cloud':connection.mode==='local')){
+      view('Task connection needs attention','<p role="status">'+esc(connection.error||'Waiting for a confirmed connection to the task register.')+'</p><p>This task will open when the connection is confirmed. Its availability has not been confirmed yet.</p>');return;
+    }
+    const id=request.id,t=agent().tasks.find(x=>x.id===id);
+    if(!t){view('Task unavailable','<p>This task was not found in '+(status.uid?'the current account’s register. Check that you opened the link in the intended account.':'this device’s local register. Sign in to the intended account, then reopen the task link.')+'</p>'+button('Check account','account'));return;}
+    renderTask(t);
+  }
+  function renderTask(t){
+    const id=t.id;
     taskRevision=agent().revision;let actions='';
     if(A.actionable(t)&&t.routing?.reviewOwner!=='owner'&&['draft','blocked'].includes(t.status))actions+=button('Ready for handoff','task-ready',id,true);
     if(A.taskKind(t)==='work'&&['ready','working','blocked','review'].includes(t.status))actions+=button('Copy handoff packet','task-packet',id);
@@ -455,7 +497,7 @@
     const qualityLinks=linked.map(x=>'<a class="text-button" href="'+href('task',x.id)+'">Quality Review · '+esc(A.STATUS[x.status])+' →</a>').join('');
     const history=(t.reviewHistory||[]).map((h,i)=>'<article class="contact-card"><h3>Review '+(i+1)+' · '+esc(h.decision==='accept'?'Accepted':'Revision requested')+'</h3><p>'+esc(new Date(h.at).toLocaleString())+'</p><p class="note-text">'+esc(h.note)+'</p>'+(h.review?'<p class="quiet-note">Recorded by '+esc(h.review.reviewer)+' · '+esc(h.review.actor)+' · result version '+h.review.version+'<br>'+esc(h.review.basis)+'</p>':'<p class="quiet-note">Legacy review · attribution not recorded.</p>')+(h.closeoutId?'<p class="quiet-note">Completed review receipt: '+esc(h.closeoutId)+'</p>':'')+(h.completedReview?completedReviewProof(h.completedReview):'')+'<details><summary>Result reviewed in this round</summary><p class="note-text">'+esc(h.result)+'</p>'+h.sources.map(u=>external(u)).join('<br>')+'</details></article>').join('');
     if(A.actionable(t))actions+=textButton('Record blocker','task-block',id)+textButton('Cancel task','task-cancel',id);
-    modal('Team assignment','<div class="sheet-intro">'+tag(F.taskMeaning(t,agent()).label,t.status==='review')+'<h3>'+esc(t.title)+'</h3><p>'+esc(role(t.role).botName)+' · '+(t.due?'Due '+esc(t.due):'No due date')+'</p></div>'+F.taskContext(t,agent())+reviewAttribution(t)+(S.stepOf(t)?'<div class="next-action"><small>Procurement evidence · separate from task approval</small><p>'+esc(S.recordState(t).label)+'</p><p class="quiet-note">A reported quote is not confirmed stock. A reviewed result is not an accepted order. Use a new linked task for each revised offer.</p></div>':'')+'<details class="wf-brief" open><summary>Assignment brief</summary><p class="note-text">'+esc(t.brief)+'</p></details>'+(t.blocker?'<div class="next-action"><small>'+esc(A.taskKind(t)==='work'?'Recorded blocker':'Historical blocker')+'</small><p>'+esc(t.blocker)+'</p></div>':'')+(t.result?'<p class="group-label">Reported result</p><p class="note-text">'+esc(t.result)+'</p><p class="quiet-note">'+t.sources.map(u=>external(u)).join('<br>')+'</p>':'')+(t.reviewNote?'<p class="group-label">Review decision</p><p class="note-text">'+esc(t.reviewNote)+'</p>':'')+(t.parentTaskId?'<p><a class="text-button" href="'+href('task',t.parentTaskId)+'">Open source assignment →</a></p>':'')+(qualityLinks?'<div class="actions">'+qualityLinks+'</div>':'')+(history?'<details class="review-history"><summary>Review history · '+t.reviewHistory.length+' rounds</summary>'+history+'</details>':'')+'<div class="actions" style="margin-top:24px">'+actions+'</div><p class="quiet-note">'+(t.handoffAt?'Handoff recorded '+esc(new Date(t.handoffAt).toLocaleString())+'. ':'')+'The CRM records task progress; it does not independently verify that a bot is running.</p>');
+    modal('Team assignment','<div class="sheet-intro">'+tag(F.taskMeaning(t,agent()).label,t.status==='review')+'<h3>'+esc(t.title)+'</h3><p>'+esc(role(t.role).botName)+' · '+(t.due?'Due '+esc(t.due):'No due date')+'</p></div>'+F.taskContext(t,agent())+reviewAttribution(t)+(S.stepOf(t)?'<div class="next-action"><small>Procurement evidence · separate from task approval</small><p>'+esc(S.recordState(t).label)+'</p><p class="quiet-note">A reported quote is not confirmed stock. A reviewed result is not an accepted order. Use a new linked task for each revised offer.</p></div>':'')+'<details class="wf-brief" open><summary>Assignment brief</summary><p class="note-text">'+esc(t.brief)+'</p></details>'+(t.blocker?'<div class="next-action"><small>'+esc(A.taskKind(t)==='work'?'Recorded blocker':'Historical blocker')+'</small><p>'+esc(t.blocker)+'</p></div>':'')+(t.result?'<p class="group-label">Reported result</p><p class="note-text">'+esc(t.result)+'</p><p class="quiet-note">'+t.sources.map(u=>external(u)).join('<br>')+'</p>':'')+(t.reviewNote?'<p class="group-label">Review decision</p><p class="note-text">'+esc(t.reviewNote)+'</p>':'')+(t.parentTaskId?'<p><a class="text-button" href="'+href('task',t.parentTaskId)+'">Open source assignment →</a></p>':'')+(qualityLinks?'<div class="actions">'+qualityLinks+'</div>':'')+(history?'<details class="review-history"><summary>Review history · '+t.reviewHistory.length+' rounds</summary>'+history+'</details>':'')+'<div class="actions" style="margin-top:24px">'+actions+'</div><p class="quiet-note">'+(t.handoffAt?'Handoff recorded '+esc(new Date(t.handoffAt).toLocaleString())+'. ':'')+'The CRM records task progress; it does not independently verify that a bot is running.</p>',null,false,true);
   }
   function taskActionForm(id,type){
     const rev=taskRevision,back=()=>openTask(id),task=agent().tasks.find(t=>t.id===id);let fields,title,label;
@@ -620,7 +662,7 @@
     if(action==='new-contact')return contactForm();if(action==='edit-contact')return contactForm(id);if(action==='site-contact')return contactForm(null,id);
     if(action==='new-lead')return leadForm();if(action==='edit-lead')return leadForm(id);if(action==='open-lead'){if(location.hash===href('lead',id))openLead(id);else location.hash=href('lead',id);return;}
     if(action==='lead-task')return leadTask(id);if(action==='lead-deal'){const l=agent().leads.find(x=>x.id===id);return dealForm(null,{name:l.company,offer:l.offer,contact:l.contact,feeCents:l.offer==='managed_energy_hosting'?null:l.offer==='quote_review'?50000:150000,notes:'Lead '+l.id+'\n'+l.lastNote});}
-    if(action==='new-task')return taskForm();if(action==='workflow')return workflow(id);if(action==='research-site')return researchSite();if(action==='open-task'){location.hash=href('task',id);if(sheet.open)openTask(id);return;}
+    if(action==='new-task')return taskForm();if(action==='workflow')return workflow(id);if(action==='research-site')return researchSite();if(action==='open-task'){const hash=href('task',id);if(location.hash===hash)route();else location.hash=hash;return;}
     if(action==='team-tab'){teamTab=id;return render();}if(action==='role'){const r=role(id);modal(r.botName,'<p class="note-text">'+esc(r.instructions)+'</p><div class="actions" style="margin-top:20px">'+button('Assign a task','role-task',id,true)+button('View assignments','role-filter',id)+'</div><p class="quiet-note">Use this exact name in Proton Revenue Desk. These instructions and task counts are not live bot telemetry.</p>');return;}
     if(action==='role-task')return taskForm({role:id});if(action==='role-filter'){taskRole=id;teamTab='tasks';close();render();return;}
     if(['task-result','task-review','task-block'].includes(action))return taskActionForm(id,action.slice(5));
@@ -645,7 +687,16 @@
       const card=el.closest('.wf-lead-card');if(card){const key=card.dataset.leadId+'/'+el.dataset.leadSection;if(el.open)expandedLeadSections.add(key);else expandedLeadSections.delete(key);}
     }
   },true);
-  document.addEventListener('click',async event=>{const target=event.target.closest('[data-action]');if(!target||busy)return;event.preventDefault();try{await act(target.dataset.action,target.dataset.id);}catch(e){error(e);}});
+  document.addEventListener('click',async event=>{
+    if(busy)return;
+    const target=event.target.closest('[data-action]');
+    if(!target){
+      const link=event.target.closest('a[href]');
+      if(link&&!event.defaultPrevented&&!event.button&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey&&link.getAttribute('href')===location.hash&&/^#team\/task\//.test(location.hash)){event.preventDefault();route();}
+      return;
+    }
+    event.preventDefault();try{await act(target.dataset.action,target.dataset.id);}catch(e){error(e);}
+  });
   let searchTimer;
   document.addEventListener('input',event=>{
     const el=event.target;
