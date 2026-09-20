@@ -37,6 +37,36 @@ test('MW slider pushes crossing handles, keeps its upper end unbounded and suppo
 });
 
 const powerPlant=(detail={})=>({id:'eia_fixture',name:'Power source',energyType:'grid_facility',iso3:'USA',existingGenerationKw:10000,availableMiningMw:null,availabilityStatus:'unverified',sourceDetail:{sector:'IPP Non-CHP',statusCapacityMw:{OP:10},technologyCapacityMw:{'Natural Gas Fired Combustion Turbine':10},...detail}});
+test('specialty is the default source preset and broad or explicit sources replace it',()=>{
+ const defaults=S.defaultFilters(),flare={...site,id:'flare-fixture',energyType:'flare_gas'},landfillPower={...powerPlant({technologyCapacityMw:{'Landfill Gas':10}}),id:'landfill-power',energyTypes:['landfill_gas']},hydro={...powerPlant({technologyCapacityMw:{'Conventional Hydroelectric':10}}),id:'hydro-fixture',energyTypes:['hydro']},nuclear={...powerPlant({technologyCapacityMw:{Nuclear:10}}),id:'nuclear-fixture',energyTypes:['nuclear']};
+ const rows=[site,flare,landfillPower,hydro,nuclear],before=JSON.stringify(rows);
+ assert.equal(defaults.kind,'specialty');assert.equal(defaults.supplyScope,'supply');assert.equal(defaults.country,'USA');
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,defaults,null)),[site,flare,landfillPower]);
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,{...defaults,kind:'all'},null)),rows);
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,{...defaults,kind:'hydro'},null)),[hydro]);
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,{...defaults,kind:'nuclear'},null)),[nuclear]);
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,{...defaults,supplyScope:'producers'},null)),[landfillPower]);
+ assert.deepEqual(rows.filter(c=>S.matchCandidate(c,{...defaults,supplyScope:'resources'},null)),[site,flare]);
+ assert.equal(JSON.stringify(rows),before,'changing research scope does not modify catalog records');
+});
+test('a new or edited client brief opens all sources and preserves hard exclusions and unknowns',()=>{
+ const E=require('../crm/energy-scouting'),brief=E.normalizeBrief({minMw:1,energySources:['hydro'],excludedSources:['landfill_gas','flare_gas'],supply:'electricity',operation:'continuous',connectionReadiness:'existing'}),defaults=S.defaultFilters();
+ const next=S.filtersForBrief({...defaults,query:'River',kind:'specialty'},brief);
+ assert.equal(next.kind,'all');assert.equal(next.query,'River');assert.equal(next.supplyScope,'supply');assert.equal(defaults.kind,'specialty');
+ assert.equal(S.filtersForBrief({...defaults,kind:'landfill_gas'},brief).kind,'all','an earlier explicit source does not silently constrain a new brief');
+ const hydro={...powerPlant({technologyCapacityMw:{'Conventional Hydroelectric':10}}),name:'River plant',energyTechnologies:['hydro'],sourceSnapshot:{sourceUrl:'https://example.test/inventory',reportingPeriod:'2026-09-01'}};
+ assert(S.matchCandidate(hydro,next,null),'hydro remains discoverable after a specialty default');
+ const assessment=E.assess(hydro,null,brief);assert.equal(assessment.status,'needs_confirmation');assert.equal(assessment.candidate.availableMw,null);assert.equal(assessment.candidate.deliveredCentsKwh,null);assert.equal(assessment.candidate.capitalUsd,null);
+ assert.equal(E.assess(site,null,brief).status,'excluded');assert.equal(E.assess({...site,energyType:'flare_gas'},null,brief).status,'excluded');
+ assert.equal(S.filtersForBrief(next,null).kind,'all','clearing a brief preserves the visible source selection');
+});
+test('Discover renders the specialty default and reflects a client brief in its single source control',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),E=require('../crm/energy-scouting'),context={window:{},document:{currentScript:{src:'https://example.test/crm/discovery.js'}},URL,ProtonDiscoveryModel:S,ProtonCrmEnergyScouting:E};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../crm/discovery'),'utf8'),context);
+ const workspace=context.window.ProtonCrmDiscovery.create({data:{},model:{},esc:s=>String(s??''),options:(map,value)=>Object.entries(map).map(([id,label])=>'<option value="'+id+'"'+(value===id?' selected':'')+'>'+label+'</option>').join('')});
+ assert.match(workspace.html(),/value="specialty" selected/);assert.match(workspace.html(),/Source \/ research focus/);assert.match(workspace.html(),/All energy sources/);
+ workspace.setBrief(E.normalizeBrief({minMw:1,energySources:['nuclear']}));assert.match(workspace.html(),/value="all" selected/);assert.doesNotMatch(workspace.html(),/value="specialty" selected/);
+});
 test('producer scope separates electricity producers, captive generation, storage and fuel opportunities',()=>{
  const producer=powerPlant(),hospital=powerPlant({sector:'Commercial CHP'}),industry=powerPlant({sector:'Industrial Non-CHP'}),battery=powerPlant({technologyCapacityMw:{Batteries:10}}),standby=powerPlant({statusCapacityMw:{SB:10}});
  assert.equal(S.energyRole(producer).id,'producers');assert.equal(S.energyRole(hospital).id,'onsite');assert.equal(S.energyRole(industry).id,'onsite');assert.equal(S.energyRole(battery).id,'storage');assert.equal(S.energyRole(standby).id,'inactive');

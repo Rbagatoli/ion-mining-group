@@ -13,7 +13,7 @@ const server=createServer();let browser;
  const fill=(name,value)=>page.getByLabel(name,{exact:true}).fill(value);
  const select=(name,value)=>page.getByLabel(name,{exact:true}).selectOption(value);
  const settled=()=>page.waitForFunction(()=>document.querySelector('#discoveryList')?.getAttribute('aria-busy')==='false'&&document.querySelector('#discoveryCount')?.textContent.includes('in catalog'),{},{timeout:90000});
- await page.goto(origin+'/crm/#discover');await settled();assert.equal(await page.locator('#discoveryKind').inputValue(),'all');assert.equal(await page.locator('#discoveryCountry').inputValue(),'USA');
+ await page.goto(origin+'/crm/#discover');await settled();assert.equal(await page.locator('#discoveryKind').inputValue(),'specialty');assert.equal(await page.locator('#discoveryCountry').inputValue(),'USA');
  for(const value of ['hydro','nuclear','storage','marine'])assert.equal(await page.locator('#discoveryKind option[value="'+value+'"]').count(),1);
  await click('Client search brief');await fill('Client or internal sample','Synthetic client A');await fill('Brief reference and version','A-v1');await fill('Included state codes · blank is nationwide','PA, NY');
  await select('Allowed sources · none selected means any',['hydro','nuclear']);await fill('Minimum client load · MW','1');await fill('Preferred maximum allocation · MW','2');await fill('Delivered price ceiling · USD cents/kWh','7');await fill('Energy-only price ceiling · USD cents/kWh','4');await fill('Maximum client site capital · USD','250000');await select('Required supply','electricity');await select('Operating profile','continuous');await select('Connection readiness','any');await fill('Minimum term · months','12');await click('Apply client brief');await settled();

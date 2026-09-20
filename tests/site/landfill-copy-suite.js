@@ -1,4 +1,4 @@
-/* Nationwide sourcing and accurate project-specific fuel descriptions.
+/* Focused gas sourcing with broad research coverage and accurate fuel descriptions.
 
    The company-wide footer and Organization metadata must reflect broad energy
    sourcing. The Energy Partners explorer and enquiry accept the complete source
@@ -57,8 +57,9 @@ const structuredData = [...index.matchAll(/<script type="application\/ld\+json">
     .map(m => JSON.parse(m[1]));
 const organization = structuredData.find(item => item['@type'] === 'Organization');
 ok(organization && organization.description.startsWith(expectedFooter) &&
-   /hydro, nuclear/.test(organization.description) && /Owner confirmation/.test(organization.description),
-   'generated Organization metadata includes broad research scope and unconfirmed supply');
+   /specialize in landfill and stranded gas/.test(organization.description) &&
+   /other sources are researched selectively/.test(organization.description) && /Owner confirmation/.test(organization.description),
+   'generated Organization metadata includes the gas specialty, selective wider scope and unconfirmed supply');
 ['flared gas, landfill gas', 'flared gas, landfill'].forEach(bad2 => {
     ok(index.indexOf(bad2) < 0, 'the home page does not lead with flare ("' + bad2 + '")');
 });
@@ -78,6 +79,8 @@ const requiredSources = ['hydro', 'nuclear', 'wind', 'solar', 'geothermal', 'nat
     'recovered_energy', 'coal', 'oil', 'industrial_surplus', 'grid_supply'];
 ok(sources.length === requiredSources.length && requiredSources.every(id => sources.some(source => source.id === id)),
    'the owner explorer supports all sixteen energy source types');
+ok(sources[0].id === 'landfill_gas' && sources[1].id === 'flare_gas',
+   'the source guide leads with landfill and flare while retaining every source');
 function selectMarkup(id) {
     const match = energy.match(new RegExp('<select\\b([^>]*\\bid="' + id + '"[^>]*)>([\\s\\S]*?)<\\/select>'));
     return match ? { attributes: match[1], options: [...match[2].matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)].map(option => ({
@@ -86,6 +89,10 @@ function selectMarkup(id) {
 }
 const explorer = selectMarkup('partnerSource');
 const intake = selectMarkup('s-type');
+ok(explorer.options[0]?.value === 'landfill_gas' &&
+   /data-partner-source="landfill_gas" aria-pressed="true"/.test(energy) &&
+   /id="partnerSourceTitle">Landfill gas,/.test(energy),
+   'the initial owner selector, quick button and guidance agree on the landfill specialty');
 for (const [label, select] of [['explorer', explorer], ['enquiry form', intake]]) {
     ok(requiredSources.every(id => select.options.filter(option => option.value === id).length === 1) &&
        sources.every(source => select.options.some(option => option.value === source.id && option.label === source.label)),
@@ -149,12 +156,12 @@ UPSTREAM.forEach(t => {
     ok(!re.test(narrative), 'no "' + t + '" outside the flared-gas card and drawing');
 });
 
-/* The main owner invitation must describe the broader service before the
-   project-specific illustrations appear. */
+/* The owner invitation identifies the specialty without removing wider routes. */
 const lede = (energy.match(/<p class="lede"(?:\s[^>]*)?>([^<]+)/) || [])[1] || '';
-ok(['hydro', 'nuclear', 'renewables', 'gas', 'industrial surplus', 'grid-connected'].every(term => lede.toLowerCase().includes(term)) &&
+ok(/initial focus is landfill and stranded gas/.test(lede) &&
+   /Hydro, existing powered sites and other sources are considered selectively/.test(lede) &&
    /usable supply/.test(lede) && /existing infrastructure/.test(lede),
-   'the owner lede includes non-gas sources, usable supply and existing infrastructure');
+   'the owner lede leads with gas, retains selective wider sourcing and checks usable infrastructure');
 
 /* ---------- 3. The landfill drawings describe a landfill ---------- */
 

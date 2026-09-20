@@ -1,8 +1,22 @@
 # Energy site sourcing
 
-Service scope updated: **2026-09-19**. This date does not refresh the underlying source records.
+Service scope updated: **2026-09-20**. This date does not refresh the underlying source records.
 
 `site/energy-sites.html` describes nationwide United States energy-opportunity sourcing for mining companies, hosting operators and independent miners seeking supply for their own operations. It is separate from Proton hosting and from the energy-partnership route for people who already control a site. The service is a scoped search and researched shortlist; it does not advertise an owned inventory of available sites or guarantee a transaction, the cheapest energy, a power price, energization date or build cost. Nationwide scope is not a claim that every U.S. energy opportunity is known.
+
+## Research focus and catalog coverage
+
+Positioning: **Low-cost energy sourcing for Bitcoin mining, specializing in landfill and stranded gas.** The broad nationwide catalog remains searchable. It is a source of research leads, not an active work queue or a list of available offers.
+
+- Primary specialty: landfill/flare sites with measured resource, usable equipment or a realistic funding path, an appropriate decision-maker/contact route and a plausible commercial opening. Verify missing evidence in a bounded step rather than assume readiness.
+- Selective research: operating hydro and existing energized sites that fit a client brief.
+- Research when justified: nuclear, large conventional plants, wind, solar and other sources for an explicit client requirement or a documented opportunity. Do not discard a strong client fit solely because its source is outside the specialty.
+
+CRM Discover defaults to the landfill/stranded-gas specialty. All sources and individual sources remain visible choices. Applying a client brief switches to broad source coverage so allowed sources and exclusions control the search. Existing energy-site role filters still apply and remain visible. No records are deleted, assigned to agents or qualified merely by appearing in this view or being saved.
+
+Revenue should justify each bounded research assignment with the exact client brief or labeled internal sample, a dated source signal, fit hypothesis, unknowns and one next check. The site research action collects a brief before preparing a draft. Quality independently reviews the selection rationale and delivered-cost comparison. Public findings do not establish owner willingness or available MW. Proton's paid research role is separate from funding the client's construction; record who would fund every unresolved capital item.
+
+The source ranking is a working research strategy, not a measured closing probability. Reassess it using qualified opportunities, client purchases and delivery effort. Existing client preferences, saved evidence and historical tasks remain unchanged.
 
 ## Scope and deliverables
 

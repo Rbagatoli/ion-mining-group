@@ -16,12 +16,15 @@ const server=createServer();let browser;
  const search=async value=>{await page.locator('#discoverySearch').fill(value);await page.locator('#discoverySearch').dispatchEvent('change');await settled();};
  await page.goto(origin+'/crm/#discover');await settled();
  assert.equal(await page.locator('#discoverySupplyScope').inputValue(),'supply');
+ assert.equal(await page.locator('#discoveryKind').inputValue(),'specialty');
  assert.equal(await page.getByRole('heading',{name:'Find energy supply sites.',exact:true}).count(),1);
  const initial=await page.locator('.discover-site').evaluateAll(rows=>rows.map(row=>row.dataset.id));assert(initial.length>0);
  assert(await page.evaluate(ids=>ids.every(id=>['producers','resources'].includes(ProtonDiscoveryModel.energyRole(ProspectStore.get(id)).id)),initial));
+ assert(await page.evaluate(ids=>ids.every(id=>{const c=ProspectStore.get(id),match=ProtonCrmEnergyScouting.candidate(c,null);return [c.energyType,...match.energyTypes].some(type=>['landfill_gas','flare_gas'].includes(type));}),initial));
+ assert.match(await page.locator('#discoveryFocusNote').innerText(),/does not qualify it or assign agent work/);
  assert.match(await page.locator('#discoverySupplyNote').innerText(),/Available client energy.*confirmation/);
- for(const source of ['landfill_gas','flare_gas','hydro','nuclear','coal','natural_gas','solar','wind']){await page.getByLabel('Source',{exact:true}).selectOption(source);await settled();assert(await page.locator('.discover-site').count()>0,'energy type accessible in default supply view: '+source);}
- await page.getByLabel('Source',{exact:true}).selectOption('all');await settled();
+ for(const source of ['landfill_gas','flare_gas','hydro','nuclear','coal','natural_gas','solar','wind']){await page.getByLabel('Source / research focus',{exact:true}).selectOption(source);await settled();assert(await page.locator('.discover-site').count()>0,'energy type accessible in default supply view: '+source);}
+ await page.getByLabel('Source / research focus',{exact:true}).selectOption('all');await settled();
  const hospital=await page.evaluate(()=>ProspectStore.all().find(c=>/Kaweah Delta/i.test(c.name))?.name);assert(hospital,'real on-site generation fixture');
  await search(hospital);assert.equal(await page.locator('.discover-site').count(),0);
  await scope('onsite');assert(await page.locator('.discover-site').count()>0);assert.match(await page.locator('#discoveryList').innerText(),/On-site generation/);
@@ -37,7 +40,7 @@ const server=createServer();let browser;
  const inactive=await page.evaluate(()=>ProspectStore.all().find(c=>c.energyType==='grid_facility'&&c.sourceDetail?.statusCapacityMw&&!(Number(c.sourceDetail.statusCapacityMw.OP)>0))?.name);assert(inactive);
  await search(inactive);assert(await page.locator('.discover-site').count()>0);
  await page.goto(origin+'/crm/#today');await page.goto(origin+'/crm/#discover');await settled();assert.equal(await page.locator('#discoverySupplyScope').inputValue(),'all');
- await page.locator('[data-discovery-action="clear-all"]').first().click();await settled();assert.equal(await page.locator('#discoverySupplyScope').inputValue(),'supply');
+ await page.locator('[data-discovery-action="clear-all"]').first().click();await settled();assert.equal(await page.locator('#discoverySupplyScope').inputValue(),'supply');assert.equal(await page.locator('#discoveryKind').inputValue(),'specialty');
  for(const width of [1440,390,320]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'page overflow '+width);assert(await page.locator('.discover-supply').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'role control overflow '+width);}
  assert.deepEqual(errors,[]);console.log('PASS producer and fuel default across energy types, self-generation separation, storage/fuel/all research access, navigation/reset and mobile layout; no page errors.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{await browser?.close();server.close();});

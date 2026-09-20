@@ -182,8 +182,8 @@ const LD = {
   name: 'Proton Mining',
   url: BASE + '/',
   logo: BASE + '/favicon.svg',
-  description: FOOTER_BLURB + ' We research potential United States power opportunities ' +
-               'across energy sources, including hydro, nuclear, renewables, gas and grid supply. ' +
+  description: FOOTER_BLURB + ' We specialize in landfill and stranded gas sourcing for Bitcoin mining across the United States. ' +
+               'Hydro, existing powered sites and other sources are researched selectively around a client brief. ' +
                'Owner confirmation is required for available power and commercial terms.',
   email: 'hello@protonminingco.com',
 };

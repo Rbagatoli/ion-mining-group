@@ -13,11 +13,11 @@
     grid: { icon:'grid', route:'Delivered electricity', intro:'Assess the full cost and conditions of serving a new mining load.', checks:['Utility or supplier confirmation of service capacity','Energy, demand, connection and other applicable charges','Studies, upgrades, curtailment terms and energization timing'], assets:'An existing grid connection is a lead, not a capacity reservation. Confirm the approved load, upgrade scope and responsibility for the bill.' }
   };
   const sources = [
-    ['hydro','Hydro','hydro'],['nuclear','Nuclear','nuclear'],['wind','Wind','renewable'],['solar','Solar','renewable'],
-    ['geothermal','Geothermal','geothermal'],['natural_gas','Natural gas generation','thermal'],['landfill_gas','Landfill gas','fuel'],['flare_gas','Flare gas','fuel'],
+    ['landfill_gas','Landfill gas','fuel'],['flare_gas','Flare gas','fuel'],['hydro','Hydro','hydro'],['grid_supply','Grid supply','grid'],
+    ['nuclear','Nuclear','nuclear'],['wind','Wind','renewable'],['solar','Solar','renewable'],['geothermal','Geothermal','geothermal'],['natural_gas','Natural gas generation','thermal'],
     ['biomass_biogas','Biomass / biogas','fuel'],['waste_to_energy','Waste-to-energy','recovered'],['marine','Marine / tidal / wave','renewable'],
     ['recovered_energy','Recovered energy / waste heat','recovered'],['coal','Coal generation','thermal'],['oil','Oil generation','thermal'],
-    ['industrial_surplus','Industrial surplus','industrial'],['grid_supply','Grid supply','grid']
+    ['industrial_surplus','Industrial surplus','industrial']
   ].map(([id,label,group])=>({id,label,...groups[group],icon:({solar:'solar',marine:'marine',geothermal:'geothermal'})[id] || groups[group].icon}));
   if (typeof module !== 'undefined' && module.exports) module.exports = { sources };
   if (typeof window !== 'undefined') window.ProtonEnergySourceGuide = { sources };
@@ -40,6 +40,7 @@
   };
   function paint() {
     const source = sources.find(s=>s.id===select.value) || sources[0];
+    select.value = source.id;
     root.querySelectorAll('[data-partner-source]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.partnerSource===source.id)));
     root.querySelector('#partnerRoute').innerHTML = `<div class="partner-route-source"><svg viewBox="0 0 100 100" aria-hidden="true">${icons[source.icon]}</svg><span>${esc(source.label)}</span></div><span class="partner-flow" aria-hidden="true"></span><div class="partner-route-step"><span class="partner-step-symbol" aria-hidden="true">↯</span><strong>${source.route.includes('conversion') || source.route.includes('Conversion') ? 'Conversion & connection' : 'Agreed connection'}</strong><small>Metering · protection · distribution</small></div><span class="partner-flow" aria-hidden="true"></span><div class="partner-route-step"><span class="partner-step-symbol partner-bitcoin" aria-hidden="true">₿</span><strong>Flexible mining load</strong><small>Size and operating hours agreed</small></div>`;
     root.querySelector('#partnerSourceTitle').textContent = source.label + ', with a route to demand.';

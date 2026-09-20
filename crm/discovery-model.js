@@ -14,6 +14,11 @@
   function numeric(value){if(value==null||String(value).trim()==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:NaN;}
   const sourceColors={landfill_gas:'#64d98b',flare_gas:'#ffad55',grid_facility:'#78b9ff',unknown:'#cbcac7'};
   const supplyScopes={supply:'Energy supply prospects',producers:'Operating power producers',resources:'Fuel / development opportunities',onsite:'On-site generation',storage:'Storage',all:'All energy research'};
+  const specialtySources=['landfill_gas','flare_gas'];
+  const defaultFilters=()=>({query:'',location:'',kind:'specialty',supplyScope:'supply',country:'USA',sort:'priority',cash:'',minMw:'',maxMw:'',generation:false,tracking:'',infrastructure:''});
+  // A brief starts with every source it permits. The operator can then visibly refine
+  // the Source control; the specialty preset must never silently narrow a new brief.
+  const filtersForBrief=(filters,brief)=>brief?{...filters,kind:'all'}:{...filters};
   function energyRole(c){
     const s=c.sourceDetail||{},role=(id,label,reason)=>({id,label,reason});
     // A resource location is not yet a confirmed electricity supplier. Preserve it in its
@@ -54,7 +59,9 @@
       const role=energyRole(c).id;
       if(f.supplyScope==='supply'?!['producers','resources'].includes(role):role!==f.supplyScope)return false;
     }
-    if(f.kind!=='all'&&f.kind!==c.energyType&&!(c.energyTypes||c.energyTechnologies||[]).includes(f.kind)||f.country&&f.country!==c.iso3)return false;
+    const kinds=[c.energyType,...(c.energyTypes||c.energyTechnologies||[])];
+    if(f.kind==='specialty'?!kinds.some(kind=>specialtySources.includes(kind)):f.kind&&f.kind!=='all'&&!kinds.includes(f.kind))return false;
+    if(f.country&&f.country!==c.iso3)return false;
     if(!matches(searchable(c),f.query)||!matches(placeSearch(c),f.location))return false;
     if(f.generation&&(energyRole(c).id==='storage'||!(Number.isFinite(c.existingGenerationKw)&&c.existingGenerationKw>0)))return false;
     if(f.tracking==='saved'&&!saved||f.tracking==='new'&&saved)return false;
@@ -64,5 +71,5 @@
   function matchInfrastructure(row,f){return !f.infrastructure||f.infrastructure==='reported'&&row.infrastructureReported||f.infrastructure==='reuse'&&row.reuseDocumented;}
   function matchCash(row,f){const n=numeric(f.cash);return n===null||Number.isFinite(row.cash)&&row.cash<=n;}
   function suggestions(candidates,country){const found=new Set();candidates.forEach(c=>{if(country&&country!==c.iso3)return;const s=c.sourceDetail||{},raw=s.state||s.province||s.region||'',region=(regions[c.iso3]||{})[raw]||raw;if(region)found.add(region);if(s.city)found.add([s.city,region].filter(Boolean).join(', '));});return [...found].sort((a,b)=>a.localeCompare(b));}
-  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCapacity,matchInfrastructure,matchCash,suggestions,sourceColors,supplyScopes,energyRole,mw,sliderBounds,moveSlider};
+  return {normalize,matches,countryName,location,searchable,coordinates,numeric,validate,matchCandidate,matchCapacity,matchInfrastructure,matchCash,suggestions,sourceColors,supplyScopes,specialtySources,defaultFilters,filtersForBrief,energyRole,mw,sliderBounds,moveSlider};
 }));

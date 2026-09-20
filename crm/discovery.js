@@ -2,9 +2,9 @@
 (function(root){
   'use strict';
   const S=ProtonDiscoveryModel,E=ProtonCrmEnergyScouting,scriptBase=new URL('.',document.currentScript.src);
-  const energy={all:'All energy sources',grid_facility:'Power generation & storage',...Object.fromEntries(E.matching.sourceTypes.map(s=>[s.id,s.label]))};
+  const energy={specialty:'Specialty · landfill & stranded gas',all:'All energy sources',grid_facility:'Power generation & storage',...Object.fromEntries(E.matching.sourceTypes.map(s=>[s.id,s.label]))};
   const scopeNotes={supply:'Operating power plants across energy types, plus landfill and flare fuel prospects. On-site, backup-only, offline and storage-only records stay outside this view. Available client energy and willingness to supply still need confirmation.',producers:'Utility and independent power plants with reported operating generation. Available client power and willingness to supply still need confirmation.',resources:'Fuel and development prospects need a verified route to usable electricity. They are not ready power offers.',onsite:'Generation at commercial or industrial sites. Export rights, surplus and willingness to supply are unconfirmed.',storage:'Storage shifts energy; confirm charging supply, usable duration and discharge terms.',all:'All energy research includes self-generation, storage, standby plants and fuel prospects. Inclusion does not establish available supply.'};
-  const defaults=()=>({query:'',location:'',kind:'all',supplyScope:'supply',country:'USA',sort:'priority',cash:'',minMw:'',maxMw:'',generation:false,tracking:'',infrastructure:''});
+  const defaults=S.defaultFilters;
   function create({data:D,model:M,esc,options,row,tag,empty,onSelect,onRestore,onBrief}){
     let clientBrief=null,showExcluded=false,allResults=[];
     let f=defaults(),host=null,globe=null,globeView=null,run=0,mountId=0,limit=40,results=[],catalog=[],selected='',mode='sites',advanced=false,timer,aborter,detailOpen=false,detailHtml='',detailLabel='',detailRecord='',detailSection='',detailScroll=0,restorePending=false,rangeCeiling=5;
@@ -14,14 +14,15 @@
     const select=(id,map,value)=>'<select id="'+id+'">'+options(map,value)+'</select>';
     function capacity(){const b=S.sliderBounds(f);rangeCeiling=b.ceiling;return '<section class="discover-capacity" aria-label="Filter by planned megawatts"><div class="discover-capacity-head"><strong>Mine size to price</strong><span id="discoveryMwLabel"></span></div><div class="discover-capacity-controls"><div class="discover-range-wrap"><div class="discover-range" id="discoveryRange"><span class="discover-range-track"></span><span class="discover-range-fill" id="discoveryRangeFill"></span><input id="discoveryMinRange" type="range" min="0" max="'+b.ceiling+'" step="0.025" value="'+b.low+'" aria-label="Minimum planned mine size in MW"><input id="discoveryMaxRange" type="range" min="0" max="'+b.ceiling+'" step="0.025" value="'+b.high+'" aria-label="Maximum planned mine size in MW"></div><div class="discover-range-ends"><span>0 MW</span><span id="discoveryRangeEnd">'+b.ceiling+' MW+</span></div></div>'+field('Min MW','discoveryMinMw',input('discoveryMinMw','Any',f.minMw,'type="number" min="0" step="any" inputmode="decimal"'))+field('Max MW','discoveryMaxMw',input('discoveryMaxMw','No limit',f.maxMw,'type="number" min="0" step="any" inputmode="decimal"'))+'</div></section>';}
     function html(){return '<section id="discoverWorkspace" class="discover-workspace" data-view="'+mode+'" data-expanded="'+detailOpen+'">'+
-      '<header class="page-heading discover-heading"><div><p class="eyebrow">DISCOVER</p><h1>Find energy supply sites.</h1><p>Explore power plants, landfill gas and flare energy against the client’s needs.</p></div>'+action('Client search brief','client-brief','class="button"')+'</header><div id="discoveryBrief"></div>'+
+      '<header class="page-heading discover-heading"><div><p class="eyebrow">DISCOVER</p><h1>Find energy supply sites.</h1><p>Start with landfill and stranded gas. Expand the search when a client’s needs or site evidence support it.</p></div>'+action('Client search brief','client-brief','class="button"')+'</header><div id="discoveryBrief"></div>'+
       '<div class="discover-search-panel"><div class="discover-searches">'+
       field('Site or operator','discoverySearch',input('discoverySearch','Search names, companies or source IDs',f.query,'type="search" autocomplete="off"'))+
       field('Location','discoveryLocation',input('discoveryLocation','City, county, state or province',f.location,'type="search" list="discoveryPlaces" autocomplete="off"'))+'</div><datalist id="discoveryPlaces"></datalist>'+
-      '<div class="discover-controls">'+field('Source','discoveryKind',select('discoveryKind',energy,f.kind))+field('Country','discoveryCountry',select('discoveryCountry',{'':'All countries',USA:'United States',CAN:'Canada'},f.country))+
+      '<div class="discover-controls">'+field('Source / research focus','discoveryKind',select('discoveryKind',energy,f.kind))+field('Country','discoveryCountry',select('discoveryCountry',{'':'All countries',USA:'United States',CAN:'Canada'},f.country))+
       '<div class="discover-shortcuts">'+action('Generation reported','generation','class="discover-chip" aria-pressed="'+f.generation+'" title="Source reports installed generation; condition and available power still need confirmation"')+
       action('More filters <span id="discoveryFilterCount"></span>','filters','class="discover-chip" aria-expanded="'+advanced+'" aria-controls="discoveryAdvanced"')+'</div></div>'+capacity()+
       '<div class="discover-supply">'+field('Energy site role','discoverySupplyScope',select('discoverySupplyScope',S.supplyScopes,f.supplyScope))+'<p id="discoverySupplyNote"></p></div>'+
+      '<p id="discoveryFocusNote" class="discover-focus-note"></p>'+
       '<div id="discoveryAdvanced" class="discover-advanced"'+(advanced?'':' hidden')+'>'+field('Max remaining cost · USD','discoveryCash',input('discoveryCash','No limit',f.cash,'type="number" min="0" step="any" inputmode="decimal"'))+
       field('Infrastructure','discoveryInfrastructure',select('discoveryInfrastructure',{'':'Any infrastructure',reported:'Equipment reported',reuse:'Reuse documented'},f.infrastructure))+
       field('Pipeline','discoveryTracking',select('discoveryTracking',{'':'All sites',new:'Not yet saved',saved:'Saved to pipeline'},f.tracking))+
@@ -35,7 +36,8 @@
     function filters(){
       if(!host)return;const chips=[];
       el('discoverySupplyNote').textContent=scopeNotes[f.supplyScope];
-      el('discoveryBrief').innerHTML=clientBrief?'<div class="banner"><strong>'+esc(clientBrief.client||'Internal sample')+'</strong> · '+esc(clientBrief.minMw)+' MW minimum client allocation · '+esc(E.costBases[clientBrief.costBasis])+'<p>Fit covers the selected Energy site role and filters. Choose All energy research to include every role. Public capacity alone stays unresolved. This search brief is temporary until saved with site evidence or a research assignment.</p>'+action('Edit brief','client-brief','class="text-button"')+' '+action('Clear client brief','clear-brief','class="text-button"')+'</div>':'';
+      el('discoveryFocusNote').textContent=(f.kind==='specialty'?'Specialty view: landfill gas resources and generation, plus flare / stranded gas prospects. Choose All energy sources or an individual source to expand. ':'Broader research: pursue sources that fit a client or have specific evidence worth investigating. ')+'Catalog inclusion or saving a site does not qualify it or assign agent work.';
+      el('discoveryBrief').innerHTML=clientBrief?'<div class="banner"><strong>'+esc(clientBrief.client||'Internal sample')+'</strong> · '+esc(clientBrief.minMw)+' MW minimum client allocation · '+esc(E.costBases[clientBrief.costBasis])+'<p>Applying a brief opens all energy sources; its allowed sources and exclusions guide fit. The Source control can refine this view. Fit covers the selected Energy site role and filters. Choose All energy research to include every role. Public capacity alone stays unresolved. This search brief is temporary until saved with site evidence or a research assignment.</p>'+action('Edit brief','client-brief','class="text-button"')+' '+action('Clear client brief','clear-brief','class="text-button"')+'</div>':'';
       host.querySelector('.discover-capacity').hidden=!!clientBrief;el('discoverySort').disabled=!!clientBrief;el('discoveryResultBasis').innerHTML=clientBrief?'Owner-evidenced<br>terms':'Remaining<br>estimate';
       el('discoveryBasisNote').textContent=clientBrief?'Client fit uses the brief’s geography, source exclusions and dated owner evidence for offered allocation, price and client capital. Missing facts stay unknown. Comparable prices rank only after hard-fit checks; source-level mine planning is separate.':'MW filters and prices use the same planned mine size. This is not allocated power. Open Capital for reported equipment, possible reuse savings and unpriced work.';
       if(f.query)chips.push(['query','Search: '+f.query]);if(f.location)chips.push(['location',f.location]);if(f.kind!=='all')chips.push(['kind',energy[f.kind]]);if(f.country)chips.push(['country',S.countryName(f.country)]);
@@ -125,13 +127,13 @@
         if(id==='more'){limit+=40;draw();return;}if(id==='fit'){globe?.fit();return;}if(id==='zoom-in'){globe?.zoom(.84);return;}if(id==='zoom-out'){globe?.zoom(1.19);return;}if(id==='reset-globe'){globe?.reset();return;}
         if(id==='retry-globe'){globe?.dispose();globe=null;loadGlobe();return;}
         if(id.startsWith('view-')){mode=id.slice(5);viewMode();return;}
-        if(id==='generation')f.generation=!f.generation;else if(id==='clear-all'){f={...defaults(),kind:'all'};}else if(id.startsWith('clear-')){const key=id.slice(6);f[key]=key==='kind'?'all':key==='generation'?false:'';}
+        if(id==='generation')f.generation=!f.generation;else if(id==='clear-all'){f=S.filtersForBrief(defaults(),clientBrief);}else if(id.startsWith('clear-')){const key=id.slice(6);f[key]=key==='kind'?'all':key==='generation'?false:'';}
         limit=40;syncControls();clearTimeout(timer);search();
       },{signal});
       window.addEventListener('resize',viewMode,{signal});restorePending=detailOpen;el('discoveryDetailBody').scrollTop=detailScroll;filters();search();loadGlobe();
     }
     function unmount(){run++;mountId++;if(host)detailScroll=el('discoveryDetailBody').scrollTop;clearTimeout(timer);aborter?.abort();if(globe){globeView=globe.view();globe.dispose();globe=null;}host=null;}
-    return {html,mount,unmount,showDetail,collapseDetail,selectedId:()=>detailOpen?selected:'',cashLimit:()=>S.validate(f)?null:S.numeric(f.cash),brief:()=>clientBrief,setBrief:value=>{clientBrief=value;showExcluded=false;if(host)search();}};
+    return {html,mount,unmount,showDetail,collapseDetail,selectedId:()=>detailOpen?selected:'',cashLimit:()=>S.validate(f)?null:S.numeric(f.cash),brief:()=>clientBrief,setBrief:value=>{clientBrief=value;f=S.filtersForBrief(f,value);showExcluded=false;if(host){syncControls();search();}}};
   }
   root.ProtonCrmDiscovery={create};
 }(window));

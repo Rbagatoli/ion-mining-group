@@ -63,12 +63,15 @@ async function storageSnapshot() {
   const beforeStorage = await storageSnapshot();
   const beforeResearch = await page.evaluate(() => JSON.stringify({ sample: window.ProtonScoutingSample, access: window.ProtonEnergyAccessData }));
 
-  await check('Source exploration is the default and exposes all 16 source choices without invented listings', async () => {
+  await check('Source exploration leads with the gas specialty and exposes all 16 source choices without invented listings', async () => {
     assert.equal(await page.locator('[data-preview-mode="sources"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('[data-preview-mode="research"]').getAttribute('aria-pressed'), 'false');
     const values = await page.locator('#ep-source option').evaluateAll(options => options.map(o => o.value));
     assert.deepEqual(values.sort(), sources.map(s => s.id).sort());
-    assert.notEqual(await page.locator('#ep-source').inputValue(), 'landfill_gas');
+    assert.equal(await page.locator('#ep-source').inputValue(), 'landfill_gas');
+    assert.equal(await page.locator('[data-preview-source="landfill_gas"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-preview-source="flare_gas"]').count(), 1);
+    assert.match(await page.locator('.ep-detail-heading').innerText(), /Our sourcing specialty/);
     assert.equal(await page.locator('[data-preview-site]:visible').count(), 0);
     assert.equal(await page.locator('#locator .sl-pin:visible').count(), 0);
     assert.match(await page.locator('#energyWorkspacePreview').innerText(), /research|qualification|search/i);

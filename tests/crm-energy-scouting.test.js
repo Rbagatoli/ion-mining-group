@@ -47,3 +47,20 @@ test('energy research and its linked Quality task preserve sole writer and no-se
 test('unprovided operating requirements are visible unknowns rather than confirmed flexibility',()=>{
  const b=E.normalizeBrief({minMw:1});assert.deepEqual(b.unknownCriteria,['supply','operation','connectionReadiness']);assert.match(E.briefText(b),/Supply: Unknown; confirm with client/);
 });
+
+test('long valid client criteria fit the saved assignment limit without losing exact requirements',()=>{
+ const states='AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
+ const b=E.normalizeBrief({...brief,client:'c'.repeat(180),reference:'r'.repeat(180),notes:'n'.repeat(1500),additionalRequirements:'a'.repeat(1500),knownSiteExclusions:['s'.repeat(2000)],states,energySources:E.matching.sourceTypes.map(s=>s.id)});
+ const draft=E.assignment({brief:b,candidate:record});
+ assert(draft.brief.length<=9000,'Research instructions must leave room for the client brief');
+ for(const value of [b.notes,b.additionalRequirements,b.knownSiteExclusions[0]])assert(draft.brief.includes(value));
+ const state=A.initial();
+ assert.doesNotThrow(()=>A.reduce(state,{id:'energy-long-event',at:now,revision:state.revision,type:'task.add',payload:{...draft,id:'energy-long-brief'}}));
+});
+
+test('site assignments retain original source URLs and reporting periods, including resolved dataset fallbacks',()=>{
+ const draft=E.assignment({brief,candidate:record});
+ assert.match(draft.brief,/https:\/\/example\.test\/eia/);assert.match(draft.brief,/Source reporting period: 2026-07-01/);
+ const fallback=E.assignment({brief,candidate:{id:'fallback',name:'Sample'},source:{url:'https://example.test/dataset',reportingPeriod:'2024-09-04'}});
+ assert.match(fallback.brief,/https:\/\/example\.test\/dataset/);assert.match(fallback.brief,/Source reporting period: 2024-09-04/);
+});

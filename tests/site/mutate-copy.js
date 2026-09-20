@@ -51,13 +51,13 @@ const MUTATIONS = [
 
     { file: S + 'energy.html',
       why: '"wellhead" reinstated in the page lede',
-      from: 'Hydro, nuclear, renewables, gas, industrial surplus and grid-connected sites can all be considered.',
-      to:   'Hydro, nuclear, renewables, gas at the wellhead, industrial surplus and grid-connected sites can all be considered.' },
+      from: 'Our initial focus is landfill and stranded gas, including flare sites.',
+      to:   'Our initial focus is landfill and stranded gas at the wellhead, including flare sites.' },
 
     { file: S + 'energy.html',
-      why: 'the owner hero invitation narrows to landfill and flare',
-      from: 'Hydro, nuclear, renewables, gas, industrial surplus and grid-connected sites can all be considered.',
-      to:   'Landfill gas and flare gas sites can be considered.' },
+      why: 'the owner hero invitation removes selective wider sourcing',
+      from: 'Hydro, existing powered sites and other sources are considered selectively around client needs.',
+      to:   'We only consider landfill gas and flare gas sites.' },
 
     { file: S + 'energy.html',
       why: 'the enquiry loses nuclear while the explorer still offers it',
