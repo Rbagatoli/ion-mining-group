@@ -12,9 +12,9 @@
   const defaults = { company: '', role: 'Hosting company', region: 'New Jersey, Pennsylvania, Delaware, Maryland', minMw: '0.5', maxMw: '2', budget: '', rate: '', infrastructure: 'Existing generation preferred', timing: 'Flexible', known: '', notes: '' };
   const feedbackOptions = ['', 'Interested', 'Already known', 'Not a fit'];
   const routes = { overview: 'Overview', brief: 'My brief', sites: 'Sites', updates: 'Updates' };
-  const tabs = { infrastructure: 'Infrastructure & capital', contact: 'Contacts & terms', evidence: 'Sources & evidence' };
+  const tabs = { visuals: 'Site visuals', infrastructure: 'Infrastructure & capital', contact: 'Contacts & terms', evidence: 'Sources & evidence' };
   let state = { brief: { ...defaults }, feedback: {}, note: '', savedAt: null }, persistent = true;
-  let selected = profiles[0].id, activeTab = 'infrastructure', compared = [], showCompare = false;
+  let selected = profiles[0].id, activeTab = 'visuals', compared = [], showCompare = false;
   let query = '', status = 'all', confirmedOnly = false, hideDismissed = false, noticeTimer;
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const safeUrl = value => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) ? u.href : '#'; } catch (_) { return '#'; } };
@@ -86,8 +86,8 @@
     const x = lng => 40 + (lng + 77.4) / 3.0 * 245;
     const y = lat => 20 + (42.1 - lat) / 3.4 * 145;
     let grid = ''; for (let i = 0; i < 5; i++) { grid += `<path d="M${40 + i * 61} 15V172 M35 ${20 + i * 36}H292" stroke="#83916f" stroke-opacity=".17" stroke-width=".7"/>`; }
-    const points = list.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)).map(p => `<a href="#sites" data-open="${p.id}" aria-label="Open ${esc(p.name)}"><title>${esc(p.name)} · ${esc(p.location)}</title><circle class="${p.id === selected ? 'point-active' : 'point'}" cx="${x(p.lng).toFixed(1)}" cy="${y(p.lat).toFixed(1)}" r="${p.id === selected ? 7 : 4}"/><text x="${(x(p.lng) + 10).toFixed(1)}" y="${(y(p.lat) - 8).toFixed(1)}">${esc(p.name.split(' ')[0])}</text></a>`).join('');
-    return `<div class="map-panel"><div class="map-foot"><strong>Site locator</strong><span>N ↑</span></div><svg viewBox="0 0 330 190" aria-label="Coordinates of the visible researched sites">${grid}<text x="3" y="23">42°N</text><text x="3" y="166">39°N</text><text x="35" y="185">77°W</text><text x="270" y="185">74°W</text>${points}</svg><p>Approximate catalog coordinates · not a property survey</p></div>`;
+    const points = list.filter(p => p.id !== 'SIM-734' && Number.isFinite(p.lat) && Number.isFinite(p.lng) && (!window.ProtonSiteVisuals || window.ProtonSiteVisuals.canPlot(p))).map(p => `<a href="#sites" data-open="${p.id}" aria-label="Open ${esc(p.name)}"><title>${esc(p.name)} · ${esc(p.location)}</title><circle class="${p.id === selected ? 'point-active' : 'point'}" cx="${x(p.lng).toFixed(1)}" cy="${y(p.lat).toFixed(1)}" r="${p.id === selected ? 7 : 4}"/><text x="${(x(p.lng) + 10).toFixed(1)}" y="${(y(p.lat) - 8).toFixed(1)}">${esc(p.name.split(' ')[0])}</text></a>`).join('');
+    return `<div class="map-panel"><div class="map-foot"><strong>Site locator</strong><span>N ↑</span></div><svg viewBox="0 0 330 190" aria-label="Approximate catalog coordinates, with rejected locations omitted">${grid}<text x="3" y="23">42°N</text><text x="3" y="166">39°N</text><text x="35" y="185">77°W</text><text x="270" y="185">74°W</text>${points}</svg><p>Approximate catalog coordinates · not a property survey${list.some(p => p.id === 'SIM-734') ? '<br>Alpha Ridge omitted: catalog location rejected during image review.' : ''}</p></div>`;
   }
   function renderResults() {
     const list = filtered();
@@ -102,10 +102,13 @@
   function renderDetail() {
     const root = document.getElementById('siteDetail'), p = profiles.find(p => p.id === selected);
     if (!p) { root.innerHTML = '<div class="empty"><h2>No site selected</h2><p>Adjust the filters to return to the sample research.</p></div>'; return; }
-    const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(Number.isFinite(p.lat) && Number.isFinite(p.lng) ? p.lat + ',' + p.lng : p.name + ', ' + p.location)}`;
+    const maps = window.ProtonSiteVisuals?.mapUrl(p) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.id === 'SIM-734' ? '2350 Marriottsville Road, Marriottsville, MD 21104' : Number.isFinite(p.lat) && Number.isFinite(p.lng) ? p.lat + ',' + p.lng : p.name + ', ' + p.location)}`;
     root.innerHTML = `<div class="detail-heading"><div>${tag(p)}<h2>${esc(p.name)}</h2><p>${esc(p.location)} · Research checked Sep 19, 2026</p></div><a class="icon-button" style="display:grid;place-items:center" href="${esc(maps)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(p.name)} in Google Maps">↗</a></div><div class="detail-stats"><div><label>Available to you</label><strong>Unconfirmed</strong><small>Owner allocation needed</small></div><div><label>Delivered energy</label><strong>Not quoted</strong><small>All-in rate needed</small></div><div><label>Remaining capital</label><strong>Not priced</strong><small>Itemized scope needed</small></div></div><div class="tabbar" aria-label="Site information">${Object.entries(tabs).map(([id, label]) => `<button data-tab="${id}" aria-pressed="${activeTab === id}">${label}</button>`).join('')}</div><div class="detail-body" id="detailBody"></div><div class="detail-actions"><label for="siteFeedback">Your view</label><select id="siteFeedback" data-feedback="${p.id}">${feedbackOptions.map(v => `<option value="${v}"${state.feedback[p.id] === v ? ' selected' : ''}>${v || 'Not reviewed'}</option>`).join('')}</select><button class="button primary small" data-action="ask-site" data-site="${p.id}">Prepare questions ↗</button></div><p class="small muted" style="margin:10px 0 0">Feedback is saved on this device. It is not sent to Proton.</p>`;
     const body = document.getElementById('detailBody');
-    if (activeTab === 'infrastructure') {
+    if (activeTab === 'visuals') {
+      body.innerHTML = window.ProtonSiteVisuals ? window.ProtonSiteVisuals.render(p) : '<div class="callout"><strong>Visual supplement unavailable.</strong><br>The site research remains available in the other tabs. Reload to try the visual supplement again.</div>';
+      window.ProtonSiteVisuals?.bind(body, p);
+    } else if (activeTab === 'infrastructure') {
       const infrastructure = p.facts.filter(f => /infrastructure|finding|rating/i.test(f.label));
       const infrastructurePreview = evidenceRows(p, infrastructure.filter(f => !/finding/i.test(f.label))) + `<details><summary>Project history &amp; equipment records</summary>${evidenceRows(p, infrastructure.filter(f => /finding/i.test(f.label)))}</details>`;
       body.innerHTML = `<p class="intro">${esc(p.recommendation)}</p><h3>What the records show</h3>${infrastructurePreview}<div class="callout"><strong>Reported does not mean reusable.</strong><br>Historical infrastructure needs a current condition check, use rights and capacity verification before any cost credit.</div><h3>What would you still need to fund?</h3><dl class="capital-rows"><dt>New-build benchmark</dt><dd>Not modeled</dd><dt>Verified reusable infrastructure credit</dt><dd>Not established</dd><dt>Repairs, electrical connection &amp; site work</dt><dd>Needs scope</dd><dt>Mining equipment &amp; cooling</dt><dd>Needs selection</dd><dt>Deposits, approvals &amp; contingency</dt><dd>Not quoted</dd><dt class="total">Remaining site capital</dt><dd class="total">Not priced</dd></dl><p class="small muted">${esc(p.capitalSummary)} No dollar savings are assumed.</p><h3>What could change the decision</h3><ul class="note-list">${p.concerns.map(c => `<li>${esc(c)}</li>`).join('')}</ul><div class="callout"><strong>Next step</strong><br>${esc(p.nextStep)}</div>`;
@@ -187,7 +190,8 @@
   document.getElementById('resetPreview').addEventListener('click', () => {
     if (!window.confirm('Clear only this energy-search preview’s saved brief and feedback?')) return;
     try { localStorage.removeItem(KEY); } catch (_) { /* Other applications remain untouched. */ }
-    state = { brief: { ...defaults }, feedback: {}, note: '', savedAt: null }; compared = []; showCompare = false; query = ''; status = 'all'; confirmedOnly = false; hideDismissed = false; selected = profiles[0].id; activeTab = 'infrastructure';
+    state = { brief: { ...defaults }, feedback: {}, note: '', savedAt: null }; compared = []; showCompare = false; query = ''; status = 'all'; confirmedOnly = false; hideDismissed = false; selected = profiles[0].id; activeTab = 'visuals';
+    window.ProtonSiteVisuals?.reset();
     document.getElementById('saveState').textContent = 'Drafts stay in this browser'; render(); notify('Preview reset. Other Proton data was not changed.');
   });
   window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });

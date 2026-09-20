@@ -241,12 +241,12 @@ body.pt-app .pt-partial strong { color: var(--btc-on-wash); }
     margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);
     text-align: center;
 }
-.pt-demoentry button {
+.pt-demoentry button, .pt-demoentry .pt-preview-link {
     background: none; border: 1px solid var(--line-mid); color: var(--plat-300);
     font: inherit; font-size: 11.5px; padding: 8px 14px; cursor: pointer;
-    border-radius: var(--radius);
+    border-radius: var(--radius); display: inline-block; text-decoration: none; margin: 3px 1px;
 }
-.pt-demoentry button:hover { border-color: var(--line-btc); color: var(--btc-300); }
+.pt-demoentry button:hover, .pt-demoentry .pt-preview-link:hover { border-color: var(--line-btc); color: var(--btc-300); }
 .pt-demoentry p { font-size: 10.5px; color: var(--plat-600); margin: 9px 0 0; line-height: 1.5; }
 
 /* ---- status line ---- */
@@ -1006,3 +1006,146 @@ body.pt-app .fc-range.is-on {
 /* The same meaning the card borders carry, at row scale. */
 .pt-row--stale   td:first-child { box-shadow: inset 2px 0 0 var(--btc-300); padding-left: 8px; }
 .pt-row--offline td:first-child { box-shadow: inset 2px 0 0 var(--neg); padding-left: 8px; }
+
+/* Shared client workspace finish. Keep the document palette above for print;
+   the screen palette matches the energy scouting portal. These local tokens
+   leave the operator app and the shared brand token file unchanged. */
+@media screen {
+    :root, :root:has(body.pt-app) { color-scheme: dark; }
+
+    body, body.pt-app {
+        --black: #11191c;
+        --surface: #192226;
+        --surface-2: #202b30;
+        --text: #efeeec;
+        --plat-100: #efeeec;
+        --plat-200: #e5e4e2;
+        --plat-300: #cbcac7;
+        --plat-400: #a9b2b5;
+        --plat-500: #a3adb1;
+        --plat-600: #99a4a8;
+        --line: rgba(229, 228, 226, .15);
+        --line-mid: rgba(229, 228, 226, .28);
+        --btc-300: #f7931a;
+        --btc-on-wash: #ffb347;
+        --line-btc: rgba(247, 147, 26, .62);
+        --btc-wash: rgba(247, 147, 26, .09);
+        --neg: #ecada3;
+        --neg-line: rgba(236, 173, 163, .55);
+        --pos: #86d6a8;
+        --radius: 12px;
+        --radius-lg: 20px;
+        --radius-pill: 999px;
+        --sans: Inter, "Segoe UI", Arial, sans-serif;
+        --sheen-panel: linear-gradient(163deg, rgba(229, 228, 226, .035), transparent 62%);
+        background: var(--black);
+        color: var(--text);
+        color-scheme: dark;
+        font-family: var(--sans);
+        font-size: 14px;
+    }
+
+    .pt-wrap { max-width: 960px; padding-top: 28px; }
+    .pt-head, body.pt-app .pt-head { border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+    .pt-brand svg { width: 28px; height: 28px; }
+    .pt-wordmark { font-weight: 600; letter-spacing: .16em; }
+    h1 { font-size: 32px; font-weight: 650; letter-spacing: -.025em; line-height: 1.2; }
+    h1::before { width: 20px; background: var(--metal-btc); }
+    h1, .pt-wordmark, .pt-stmt-money, body.pt-app .pt-metric-value {
+        color: var(--plat-200);
+        background-image: var(--metal-plat-soft);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    body.pt-app .pt-metric--draw .pt-metric-value {
+        color: var(--btc-300);
+        background-image: var(--metal-btc-lit);
+    }
+    .pt-metric-value .pt-unit, .pt-metric-value .pt-absent {
+        -webkit-text-fill-color: var(--plat-500);
+    }
+    .pt-sub { line-height: 1.7; }
+
+    .pt-card, body.pt-app .pt-card,
+    body.pt-app .pt-metric, body.pt-app .pt-rig, body.pt-app .fc-stat {
+        background: var(--sheen-panel), var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: inset 0 1px rgba(229, 228, 226, .025);
+    }
+    .pt-card { padding: 24px; }
+    body.pt-app .pt-metric { padding: 17px 19px; }
+    body.pt-app .pt-rig { padding: 18px; }
+    body.pt-app .fc-stat { border-radius: 14px; padding: 14px 16px; }
+    body.pt-app .pt-card.pt-clickable:hover {
+        background: var(--sheen-panel), var(--surface-2);
+        border-color: var(--line-mid);
+    }
+    body.pt-app .pt-rig--stale { border-color: var(--line-btc); }
+    body.pt-app .pt-rig--offline { border-color: var(--neg-line); }
+    body.pt-app .pt-card:has(.pt-total) {
+        border-left: 3px solid var(--btc-300);
+        border-top-left-radius: 20px;
+        border-bottom-left-radius: 20px;
+    }
+    body.pt-app .pt-section-label {
+        color: var(--plat-200); font-size: 13px; font-weight: 600;
+        letter-spacing: 0; text-transform: none; margin-bottom: 12px;
+    }
+    body.pt-app .pt-metric-label { font-size: 12px; color: var(--plat-400); }
+    .fc-stat-l, .pt-table th { text-transform: none; letter-spacing: 0; font-size: 11px; }
+    .pt-rig-site { letter-spacing: .02em; }
+    .pt-dot { border-radius: 50%; }
+
+    .pt-site, .fc-range, .fc-toggle, .pt-fleet-toggle {
+        border-radius: 999px; padding: 8px 13px; min-height: 34px;
+    }
+    .pt-site { border-radius: 12px; padding: 10px 14px; }
+    body.pt-app .pt-site.is-on,
+    body.pt-app .fc-range.is-on,
+    .pt-btn, .pt-pill--part, body.pt-app .pt-pill--part {
+        background: var(--btc-300) var(--metal-btc-btn);
+        border-color: var(--line-btc-lit);
+        color: #000;
+        box-shadow: inset 0 1px rgba(255, 255, 255, .22);
+    }
+    .pt-btn { border-radius: 999px; padding: 11px 18px; font-weight: 650; }
+    .pt-btn:hover { background: var(--btc-300) var(--metal-btc-btn); color: #000; filter: brightness(1.06); }
+    .pt-btn[disabled]:hover { filter: none; }
+    .pt-field label { font-size: 12px; text-transform: none; letter-spacing: 0; }
+    .pt-field input, .pt-filter { border-radius: 10px; background: var(--surface); padding: 11px 12px; }
+    .pt-demoentry button, .pt-demoentry .pt-preview-link {
+        border-radius: 999px; padding: 10px 15px;
+        background: var(--sheen-panel), var(--surface); color: var(--plat-200);
+    }
+    .pt-partial, .pt-status { border-radius: 12px; }
+    .pt-pill { border-radius: 999px; }
+    .pt-demobar, body.pt-app .pt-demobar { background: var(--metal-btc-btn); color: #000; }
+    .pt-demobar button { color: #000; border-radius: 999px; }
+
+    /* The chart keeps its data gaps and status colours visible on charcoal. */
+    body.pt-app .fc-area { fill: rgba(229, 228, 226, .07); }
+    body.pt-app .fc-area--accent { fill: rgba(247, 147, 26, .12); }
+    body.pt-app .fc-hole { fill: rgba(229, 228, 226, .10); }
+
+    button:focus-visible, a:focus-visible, input:focus-visible, .fc-svg:focus-visible {
+        outline: 2px solid var(--btc-300); outline-offset: 3px;
+    }
+}
+
+@media screen and (max-width: 560px) {
+    .pt-wrap { padding: 20px 14px 40px; }
+    .pt-head { gap: 12px; }
+    .pt-wordmark { font-size: 11px; letter-spacing: .12em; }
+    h1 { font-size: 28px; }
+    .pt-card { padding: 18px; }
+    body.pt-app .pt-card, body.pt-app .pt-rig { border-radius: 18px; }
+    body.pt-app .pt-metric { padding: 15px 16px; border-radius: 16px; }
+    .pt-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    body.pt-app .pt-metric-value { font-size: 28px; overflow-wrap: anywhere; }
+    .pt-stmt { gap: 12px; }
+    .pt-stmt-money { font-size: 22px; }
+    .pt-stmt-period { font-size: 15px; }
+    .pt-auth { margin: 36px auto; }
+}

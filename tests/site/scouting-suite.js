@@ -9,9 +9,13 @@ const ROOT = path.join(__dirname, '../..');
 const DIR = path.join(ROOT, 'portal/scouting');
 const read = file => fs.readFileSync(path.join(DIR, file), 'utf8');
 const html = read('index.html'), source = read('scouting.js'), sample = read('sample-data.js');
-const context = { window: {} };
+const visualSource = read('site-visuals.js'), visualSample = read('visual-data.js'), styles = read('scouting.css');
+const context = { window: {}, URL };
 vm.runInNewContext(sample, context, { timeout: 1000 });
+vm.runInNewContext(visualSample, context, { timeout: 1000 });
+vm.runInNewContext(visualSource, context, { timeout: 1000 });
 const data = context.window.ProtonScoutingSample;
+const visualData = context.window.PROTON_VISUAL_DATA, visualUI = context.window.ProtonSiteVisuals;
 const profiles = [...data.profiles, ...data.exclusions.map(x => x.profile)];
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('  ok    ' + name); }
@@ -111,10 +115,10 @@ check('public packet contains no private account, payment, agent-instruction or 
   assert.doesNotMatch(sample, /(?:C:\\Users\\|C:\/Users\/|Bearer\s+[A-Za-z0-9]|sk_live_|sk_test_|AIza[0-9A-Za-z_-]{20})/);
   assert.doesNotMatch(JSON.stringify(data), /\$1,000|1000\/month/);
 });
-check('workspace loads only its three local assets and exposes honest preview/draft boundaries', () => {
+check('unified workspace loads visual dependencies in order and exposes honest preview/draft boundaries', () => {
   const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g), m => m[1].split('?')[0]);
   const styles = Array.from(html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g), m => m[1].split('?')[0]);
-  assert.deepEqual(scripts, ['./sample-data.js', './scouting.js']);
+  assert.deepEqual(scripts, ['./sample-data.js', './visual-data.js', './site-visuals.js', './scouting.js']);
   assert.deepEqual(styles, ['./scouting.css']);
   assert.doesNotMatch(html, /<iframe\b|<form\b[^>]*\baction=|<script\b[^>]*>(?!\s*<\/script>)[\s\S]+?<\/script>/i);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
@@ -123,6 +127,84 @@ check('workspace loads only its three local assets and exposes honest preview/dr
   assert.match(source, /Changing your brief requires new research/);
   assert.match(source, /No subscription, payment or recurring research is active/);
   assert.match(source, /Reported does not mean reusable/);
+  assert.match(source, /visuals: 'Site visuals'/);
+  assert.doesNotMatch(source, /<iframe\b/);
+});
+check('all four visual records join the same research profiles without changing their dispositions', () => {
+  assert.equal(visualData.researchVersion, data.version);
+  assert.equal(visualData.preparedDate, data.researchDate);
+  assert.equal(new Set(visualData.sites.map(p => p.id)).size, 4);
+  assert.deepEqual(Array.from(visualData.sites, p => p.id).sort(), profiles.map(p => p.id).sort());
+  for (const p of profiles) {
+    const visual = visualData.sites.find(v => v.id === p.id);
+    assert.equal(visual.profileId, p.id); assert.equal(visual.status, p.status);
+    assert.equal(visual.aerial.profileId, p.id);
+    assert.equal(visual.aerial.profileVersion, visual.profileVersion);
+    assert.equal(visual.aerial.captionRecord.parentAssetVersion, visual.aerial.assetVersion);
+    for (const photo of visual.photos) { assert.equal(photo.profileId, p.id); assert.equal(photo.profileVersion, visual.profileVersion); }
+    const markup = visualUI.render(p);
+    assert.match(markup, /VISUAL SITE BRIEF/); assert.match(markup, /measured inputs needed/);
+    assert.match(markup, /Notes stay in this page session and are not sent/);
+    assert.doesNotMatch(markup, /<iframe\b/);
+  }
+});
+check('historical aerials preserve acquisition evidence while the rejected Alpha location stays withheld', () => {
+  for (const p of profiles) {
+    const visual = visualData.sites.find(v => v.id === p.id), markup = visualUI.render(p);
+    const images = Array.from(markup.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g), m => m[1]);
+    if (p.id === 'SIM-734') {
+      assert.equal(visualUI.canPlot(p), false); assert.equal(visual.coordinates.displayAllowed, false);
+      assert.equal(visual.aerial.buyerDisplayAllowed, false); assert.equal(visual.aerial.imageUrl, null);
+      assert.equal(images.length, 0); assert.doesNotMatch(markup, /class="sv-map-marker"/);
+      assert.match(markup, /catalog coordinate was rejected/); assert.match(markup, /Rejected image record/);
+      const map = new URL(visualUI.mapUrl(p));
+      assert.match(map.searchParams.get('query'), /2350.*Marriottsville/i);
+      assert.doesNotMatch(map.searchParams.get('query'), /39\.30578|-76\.8988/);
+    } else {
+      assert.equal(visualUI.canPlot(p), true); assert.equal(images.length, 1, p.id);
+      assert.equal(new URL(images[0]).hostname, 'imagery.nationalmap.gov');
+      assert.match(markup, new RegExp('Acquired ' + visual.aerial.captureDate));
+      assert(markup.includes(visual.aerial.metadataUrl.replace(/&/g, '&amp;')), p.id + ' acquisition source');
+      assert.match(markup, /not an equipment location or usable pad/);
+    }
+  }
+});
+check('publisher photographs stay opt-in source previews and cannot enter the printed client brief', () => {
+  assert.equal(visualData.sites.reduce((count, p) => count + p.photos.length, 0), 3);
+  for (const p of profiles) {
+    const visual = visualData.sites.find(v => v.id === p.id), markup = visualUI.render(p);
+    for (const photo of visual.photos) {
+      assert.equal(photo.rightsStatus, 'source_link_only');
+      assert(!markup.includes('src="' + photo.imageUrl + '"'), p.id + ' should not load a publisher image by default');
+      assert(markup.includes(photo.sourceUrl.replace(/&/g, '&amp;')), p.id + ' publisher source link');
+    }
+    if (visual.photos.length) {
+      assert.match(markup, /Internal source preview/); assert.match(markup, /Preview published photo/);
+      assert.match(markup, /Photo captured/); assert.match(markup, /Source published/);
+      assert.match(markup, /Publication and review dates do not establish when the photo was taken/);
+      assert.match(markup, /photographs are excluded from print/);
+    }
+  }
+  assert.match(styles, /@media print\s*\{[^}]*\.sv-internal[^}]*\.sv-photo-preview[^}]*display:none!important/);
+});
+check('visual module has no application network, authentication, storage or automatic message coupling', () => {
+  assert.doesNotMatch(visualSource, /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts)\s*\(/);
+  assert.doesNotMatch(visualSource, /\b(?:firebase|Firestore|Auth|ProtonSync|CRMStore|Stripe)\s*[.(]/);
+  assert.doesNotMatch(visualSource, /\b(?:localStorage|sessionStorage|indexedDB|caches)\b|document\.cookie|\b(?:import|require)\s*\(/);
+  assert.doesNotMatch(visualSource, /(?:mailto:|\/api\/|\.submit\s*\()/);
+  assert.match(visualSource, /allowed\.includes\(parsed\.hostname\)/);
+});
+check('login has one unified client workspace entry and the legacy visuals route redirects into it', () => {
+  const login = fs.readFileSync(path.join(ROOT, 'portal/index.html'), 'utf8');
+  const legacy = fs.readFileSync(path.join(ROOT, 'portal/energy-scouting/index.html'), 'utf8');
+  const workspaceEntries = Array.from(login.matchAll(/<a\b[^>]*href="([^\"]*(?:scouting|site-sourc)[^\"]*)"[^>]*>/g), m => m[1]);
+  assert.deepEqual(workspaceEntries, ['./scouting/']);
+  assert.equal((login.match(/id="ptDemoScouting"/g) || []).length, 1);
+  assert.doesNotMatch(login, /href="[^\"]*energy-scouting\//);
+  assert.match(login, /search brief, site research and visual evidence/);
+  assert.match(legacy, /http-equiv="refresh" content="0;url=\.\.\/scouting\/#sites"/);
+  assert.match(legacy, /href="\.\.\/scouting\/#sites"/);
+  assert.doesNotMatch(legacy, /<script\b|<iframe\b|visual-brief\.js/);
 });
 check('runtime has no CRM sync, auth, network, payment or shared-storage coupling', () => {
   assert.doesNotMatch(source, /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts)\s*\(/);
@@ -135,7 +217,7 @@ check('runtime has no CRM sync, auth, network, payment or shared-storage couplin
 
 // Execute the actual startup and reset handlers against a small DOM. Storage
 // includes unrelated account data so a broad read, overwrite or clear fails.
-function boot(saved, storageBlocked = false) {
+function boot(saved, storageBlocked = false, options = {}) {
   const key = 'proton:scouting:preview:v1', sentinel = 'operator:private:test';
   const stored = new Map([[sentinel, 'must remain untouched']]);
   if (saved !== undefined) stored.set(key, JSON.stringify(saved));
@@ -143,7 +225,7 @@ function boot(saved, storageBlocked = false) {
   const element = id => {
     if (!elements.has(id)) elements.set(id, { innerHTML: '', textContent: '', value: '', dataset: {},
       classList: { add() {}, remove() {} }, addEventListener(type, fn) { this[type] = fn; },
-      focus() {}, select() {}, showModal() {}, scrollIntoView() {} });
+      focus() {}, select() {}, showModal() {}, scrollIntoView() {}, querySelectorAll() { return []; }, querySelector() { return null; } });
     return elements.get(id);
   };
   const storage = {};
@@ -156,7 +238,11 @@ function boot(saved, storageBlocked = false) {
   const document = { getElementById: element, querySelector: element, querySelectorAll: () => [],
     addEventListener(type, fn) { listeners[type] = fn; } };
   const window = { ProtonScoutingSample: data, confirm: () => true, addEventListener() {}, scrollTo() {} };
-  vm.runInNewContext(source, { window, document, localStorage: storage, location: { hash: '#overview' },
+  if (options.visuals) {
+    window.PROTON_VISUAL_DATA = visualData;
+    vm.runInNewContext(visualSource, { window, URL }, { timeout: 1000 });
+  }
+  vm.runInNewContext(source, { window, document, localStorage: storage, location: { hash: options.hash || '#overview' },
     URL, Intl, setTimeout: () => 1, clearTimeout() {}, innerWidth: 1440 }, { timeout: 1000 });
   return { stored, touched, element, listeners, key, sentinel };
 }
@@ -181,16 +267,32 @@ check('blocked storage still opens the read-only preview and explains its memory
   assert.match(h.element('saveState').textContent, /Storage unavailable/);
   assert.equal(h.stored.get(h.sentinel), 'must remain untouched');
 });
+check('actual site route omits Alpha from the locator and uses its official address even without the visual module', () => {
+  for (const visuals of [false, true]) {
+    const h = boot(undefined, false, { hash: '#sites', visuals });
+    assert.match(h.element('locator').innerHTML, /Alpha Ridge omitted/);
+    assert.doesNotMatch(h.element('locator').innerHTML, /data-open="SIM-734"/);
+    assert.match(h.element('siteList').innerHTML, /data-open="SIM-734"/);
+    h.listeners.click({ preventDefault() {}, target: { closest(selector) { return selector === '[data-open]' ? { dataset: { open: 'SIM-734' } } : null; } } });
+    const detail = h.element('siteDetail').innerHTML;
+    const url = detail.match(/href="([^\"]+)"[^>]*target="_blank"/);
+    assert(url, 'Selected Alpha profile needs an official-address map');
+    assert.match(new URL(url[1].replace(/&amp;/g, '&')).searchParams.get('query'), /2350.*Marriottsville/i);
+    assert.doesNotMatch(detail, /39\.30578|-76\.8988/);
+    assert.match(h.element('detailBody').innerHTML, visuals ? /catalog coordinate was rejected/ : /Visual supplement unavailable/);
+    assert.equal(h.stored.get(h.sentinel), 'must remain untouched');
+  }
+});
 check('nested workspace assets participate in cache stamping and are mandatory publish outputs', () => {
   const stamping = require(path.join(ROOT, 'tools/build-asset-stamp.js'));
   const area = stamping.AREAS.find(a => a.name === 'scouting');
   assert(area, 'The nested scouting directory needs its own stamp area');
   assert.equal(area.dir, 'portal/scouting');
   assert.deepEqual(stamping.pagesOf(area.dir), ['index.html']);
-  assert.deepEqual(stamping.expected(area).assets, ['./sample-data.js', './scouting.css', './scouting.js']);
+  assert.deepEqual(stamping.expected(area).assets, ['./sample-data.js', './scouting.css', './scouting.js', './site-visuals.js', './visual-data.js']);
   const build = fs.readFileSync(path.join(ROOT, 'tools/build-pages.js'), 'utf8');
   const required = build.match(/const MUST_EXIST\s*=\s*\[([\s\S]*?)\];/);
   assert(required, 'Published output contract missing');
-  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
+  for (const file of ['index.html', 'sample-data.js', 'scouting.css', 'scouting.js', 'visual-data.js', 'site-visuals.js']) assert(required[1].includes("'portal/scouting/" + file + "'"), file + ' must be verified in the output');
 });
 console.log('\n' + checks + ' scouting contract checks passed.');

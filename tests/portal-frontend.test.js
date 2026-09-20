@@ -496,7 +496,7 @@ console.log('\n=== it is the hero rise, and only the rise ===');
        If a third value ever appears, or these two converge, it should be because
        somebody decided to — not because a constant got copied across. */
     ok('the site burns its source line on the bottom edge',
-       /sourceY = h - 2;/.test(heroCode));
+       /sourceY = (?:isPage \? h \+ 12 : )?h - 2;/.test(heroCode));
     ok('and the portal puts its emitters below the fold',
        /sourceY = h \+ 12;/.test(gasCode));
 
