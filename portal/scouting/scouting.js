@@ -90,6 +90,7 @@
     renderResults();
   }
   function locator(list) {
+    if (window.ProtonSiteLocator) return window.ProtonSiteLocator.render(list, selected);
     // Coordinates only: intentionally not a parcel boundary, engineering plan or aerial.
     const x = lng => 40 + (lng + 77.4) / 3.0 * 245;
     const y = lat => 20 + (42.1 - lat) / 3.4 * 145;
@@ -209,6 +210,7 @@
   window.addEventListener('hashchange', () => { render(); main.focus({ preventScroll: true }); window.scrollTo(0, 0); });
   document.querySelector('.pixel-field').innerHTML = Array.from({ length: 23 }, (_, i) => `<i style="left:${(i * 43) % 100}%;animation-delay:-${i * 1.7}s;animation-duration:${20 + i % 8 * 3}s;--rest:${i * 17 % 100}%"></i>`).join('');
   window.ProtonSiteAccess?.bind(main, profiles, () => state.brief);
+  window.ProtonSiteLocator?.bind(main, () => ({ sites: filtered(), selected }), id => { selected = id; renderResults(); }, profiles);
   load(); if (!persistent) document.getElementById('saveState').textContent = 'Storage unavailable · changes last until this page closes'; else if (state.savedAt || Object.keys(state.feedback).length) document.getElementById('saveState').textContent = 'Draft saved in this browser · not sent';
   render();
 })();

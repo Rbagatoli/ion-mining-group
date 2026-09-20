@@ -139,6 +139,7 @@ const MUST_EXIST = [
     'portal/scouting/visual-data.js', 'portal/scouting/site-visuals.js',
     'portal/scouting/site-access.js', 'portal/scouting/site-access.css', 'portal/scouting/energy-access-data.js',
     'portal/scouting/energy-preferences.js', 'portal/scouting/site-diligence.js', 'portal/scouting/site-diligence.css',
+    'portal/scouting/locator-geography.js', 'portal/scouting/site-locator.js', 'portal/scouting/site-locator.css',
     /* The portal's two parent-directory dependencies. Without them the portal renders as a
        black page with a wordmark and no sign-in form. */
     'tokens.css', 'firebase-config.js',
