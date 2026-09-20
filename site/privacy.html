@@ -7,9 +7,8 @@
 <meta name="description" content="What this website collects, which is almost nothing, and the two outside services one page on it calls.">
 <link rel="canonical" href="https://protonminingco.com/privacy.html">
 <meta name="theme-color" content="#000000">
-<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=ad97697a">
+<link rel="stylesheet" href="./styles.css?v=15d08313">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 </head>
 <body>
@@ -100,7 +99,7 @@
     <div class="calc-note">
       <div class="calc-note-cols">
         <div>
-          <h4>No accounts, no cookies</h4>
+          <h4>Public pages and browser storage</h4>
           <p>The public service pages require no account and use no advertising trackers. Calculator, order and display preferences may be stored in your browser. Private intake stores only a retry key, a one-way brief fingerprint and a receipt reference in session storage; it does not save your enquiry text or contact details there. The client portal and CRM have separate sign-in.</p>
         </div>
         <div>
@@ -109,18 +108,18 @@
         </div>
         <div>
           <h4>Hosting</h4>
-          <p>Served as static files by GitHub Pages, which keeps its own server logs including visitor IP addresses. We do not have access to them and do not receive a copy.</p>
+          <p>The public website is served by GitHub Pages. Requests reach GitHub infrastructure, including your IP address; its processing is covered by the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a>.</p>
         </div>
       </div>
 
       <h2 class="h-section vgap" style="--vg:44px">The outside services.</h2>
-      <p class="lede">Some of these your browser contacts <em>directly</em>, which means <strong>your IP address reaches them</strong>. Others we contact on your behalf from our own server, so they never see your browser at all. The difference matters, so it is stated for each one.</p>
+      <p class="lede">Some of these your browser contacts <em>directly</em>, which means <strong>your IP address reaches them</strong>. Others receive requests from the order service. Which services are used depends on the page and the actions you choose.</p>
 
       <h3 class="pay-rail-title vgap" style="--vg:30px">Your browser contacts these directly</h3>
       <div class="calc-note-cols vgap" style="--vg:26px">
         <div>
           <h4>Coinbase</h4>
-          <p>The current bitcoin price, from their public price endpoint, on the <a href="./calculator.html">calculator</a>, the <a href="./hardware.html">hardware catalogue</a>, and when you open <a href="./index.html#inside">Build your mine</a>. No key, no account, no payload &mdash; a bare read. The builder sends none of your configuration inputs to these services.</p>
+          <p>The current bitcoin price, from their public price endpoint, on the <a href="./calculator.html">calculator</a>, the <a href="./hardware.html">hardware catalogue</a>, and when you open <a href="./energy.html#the-pad">Build your mine</a>. These requests do not send your calculator or builder inputs.</p>
         </div>
         <div>
           <h4>Blockchain.info</h4>
@@ -132,20 +131,20 @@
         </div>
         <div>
           <h4>Stripe</h4>
-          <p>Only if you choose to pay by card. You are sent to a page Stripe hosts, and <strong>your card details go to Stripe, never to us</strong> &mdash; we never see or store a card number. They tell us afterwards whether the payment succeeded, and nothing more.</p>
+          <p>Only if you choose to pay by card through an enabled checkout. Stripe hosts the payment page and receives your card details. Proton receives payment status and transaction details needed to reconcile the order; our checkout does not collect your card number.</p>
         </div>
 
       <h3 class="pay-rail-title vgap" style="--vg:34px">We contact these for you</h3>
-      <p class="form-note">Your browser never talks to these, so they do not see your IP address or anything about your visit.</p>
+      <p class="form-note">The order service requests the invoice. The payment provider also processes information associated with the payment you make.</p>
       <div class="calc-note-cols vgap" style="--vg:20px">
         <div>
           <h4>Strike</h4>
-          <p>Raises the bitcoin invoice when you choose to pay that way. Our server asks for it and passes you the address; Strike sees the payment, not you.</p>
+          <p>Creates the bitcoin invoice when that payment option is enabled. The order service requests it and returns the payment instructions to your browser. Strike processes the invoice and resulting payment.</p>
         </div>
       </div>
         <div>
           <h4>If you would rather not</h4>
-          <p>Block scripts for those pages, or use them with JavaScript disabled. Both fall back to the figures they shipped with, dated on the page, and everything else still works.</p>
+          <p>You can read the public pages with JavaScript disabled and email <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a> directly. Interactive calculations, model browsing and form-generated email drafts need JavaScript. When market-data requests fail, the calculator labels its dated fallback inputs.</p>
         </div>
       </div>
 
@@ -206,6 +205,7 @@
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
+        <a href="./site-screening-checklist.html">Site screening checklist</a>
         <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>
 
 </div></details></div>
@@ -224,8 +224,8 @@
   </div>
 </footer>
 
-<script src="./site.js?v=ad97697a"></script>
-<script src="./hero-anim.js?v=ad97697a"></script>
-<script src="./cart.js?v=ad97697a"></script>
+<script src="./site.js?v=15d08313"></script>
+<script src="./hero-anim.js?v=15d08313"></script>
+<script src="./cart.js?v=15d08313"></script>
 </body>
 </html>

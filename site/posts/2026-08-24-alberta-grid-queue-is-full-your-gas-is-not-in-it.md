@@ -8,6 +8,12 @@ status:   published
 sources:  https://www.aeso.ca/aeso/newsroom/aeso-announces-interim-approach-to-large-load-connections/, https://www.aeso.ca/grid/connecting-to-the-grid/large-load-projects/, https://aesoengage.aeso.ca/pre-engagement-phase-ii-large-load-integration, https://www.osler.com/en/insights/updates/albertas-data-centre-regulations-guidance-on-power-generation-for-large-load-facilities/, https://www.bennettjones.com/Insights/Blogs/Albertas-BYOG-Framework, https://static.aer.ca/prd/documents/directives/Directive060.pdf
 ---
 
+**Correction — 20 September 2026:** An earlier version omitted the minus sign from the
+conservation NPV threshold. [AER Directive 060](https://static.aer.ca/prd/documents/directives/Directive060.pdf),
+sections 4.1(1)(a) and 4.6.1(13), use **greater than minus Cdn$55,000**. The references below
+have been corrected. The grid and intake discussion retains its 24 August 2026 observation
+date; check the current requirements before relying on it.
+
 Almost everything written about connecting a large load to Alberta's grid is written for someone
 building a data centre. Queue position, transmission service, how many megawatts the system can
 carry before it stops being reliable. If what you own is solution gas being flared or vented at a
@@ -113,8 +119,10 @@ The current edition of
 effective 27 March 2026**, replacing the 19 June 2025 edition. If you are flaring or venting at
 scale, its arithmetic is already sitting in your files:
 
-1. Section 4.1 requires conservation where combined flare and vent gas exceeds **900 m3/day per
-   site** and the decision tree and economic evaluation return an NPV greater than **Cdn$55,000**.
+1. Section 4.1(1)(a) requires conservation where combined flare and vent gas exceeds **900 m3/day
+   per site** and the decision tree and economic evaluation return an NPV greater than
+   **minus Cdn$55,000**. This is one conservation criterion; other duties can apply regardless
+   of that economic result.
 2. Section 4.6 requires you to **update the conservation economics every 12 months** for any
    non-conserving site over 900 m3/day, keep it on file, and produce it to the AER within five
    working days of a request.
@@ -138,9 +146,9 @@ is uneconomic to do anything with.
 
 Four honest qualifications.
 
-- **Volume and duration still decide everything.** Directive 060's 900 m3/day and Cdn$55,000 are
-  the thresholds at which the regulator starts caring. They are nowhere near the thresholds at
-  which a load pays for itself. Declining solution gas on a battery with three years left is a
+- **Volume and duration still matter.** Directive 060's 900 m3/day and **minus Cdn$55,000** are
+  part of one regulatory conservation criterion, not a mining-feasibility test. Conservation
+  duties can also apply outside that criterion. Declining solution gas on a battery with three years left is a
   different asset from a gathering-constrained development with a decade of it.
 - **The approval attaches to the power plant, not to the gas.** Somebody has to hold it. If a third
   party owns the load and you own the gas, who owns the generation and whose name is on the AUC

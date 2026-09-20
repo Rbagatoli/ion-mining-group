@@ -88,7 +88,7 @@ CARDS.forEach(function (name) {
 
 /* ---- every page points at one ---- */
 
-var PAGES = ['index.html', 'energy.html', 'energy-sites.html', 'hosting.html', 'calculator.html', 'contact.html'];
+var PAGES = ['index.html', 'energy.html', 'energy-sites.html', 'site-screening-checklist.html', 'hosting.html', 'calculator.html', 'contact.html'];
 PAGES.forEach(function (p) {
     var h = fs.readFileSync(S + p, 'utf8');
     var i = h.indexOf('property="og:image" content="');

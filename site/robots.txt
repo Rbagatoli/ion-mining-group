@@ -9,6 +9,4 @@ Disallow: /app/
 # Crawlable on purpose — see above.
 Allow: /portal/
 
-# Sitemap withheld: the site is live but not finished, and every page currently
-# carries noindex. See site/tools/launch.js. Crawling stays allowed so that tag
-# can actually be read.
+Sitemap: https://protonminingco.com/sitemap.xml

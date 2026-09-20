@@ -1,35 +1,54 @@
-/* One flag: is the site finished enough to be indexed?
+/* Search readiness is granted per audited page, never for the whole site.
  *
- * The site is LIVE at protonminingco.com and it is not finished. 114 [PLACEHOLDER] spans still
- * render as orange brackets across 17 pages — 35 on hosting, 29 on energy, 12 on the home page.
+ * Being publicly reachable is separate from being ready for search. Add a page
+ * or post here only after reviewing its claims, contact routes and sources.
+ * Unknown pages and newly published posts remain noindex until that review.
+ * Run build-nav.js, build-blog.js and build-seo.js after changing this policy.
  *
- * Those two facts are not in conflict, they are just usually confused. Being reachable and
- * being indexed are separate things, and separating them is worth doing here: Google evaluates
- * what it crawls, and a first impression of an unfinished site is one you then have to
- * overwrite. Re-crawling and re-evaluation is slower than getting it right once, so indexing
- * the placeholder version would spend the head start the domain was registered to gain.
- *
- * WHILE THIS IS FALSE:
- *   - every page carries <meta name="robots" content="noindex, nofollow">
- *   - robots.txt still allows crawling, because a page that is never fetched is a page whose
- *     noindex is never read. Blocking the crawl would be the wrong tool: it hides the page
- *     without de-indexing it, which is the opposite of what is wanted
- *   - sitemap.xml is still generated and kept current, but robots.txt does not name it.
- *     Advertising a list of pages you have asked not to be indexed is the contradiction this
- *     codebase already refuses for 404.html and for draft posts
- *
- * TO LAUNCH FOR REAL: set INDEXABLE to true, run the generators, commit. Then submit the
- * sitemap in Search Console. That is the whole flip — the noindex tags disappear from every
- * page, robots.txt names the sitemap again, and the tests change what they assert with it.
- *
- * DO NOT flip it until `grep -c 'class="ph"' site/*.html` is zero on every page a visitor can
- * reach. That is the actual launch gate, and it is a content gate rather than a technical one.
+ * robots.txt permits crawling so search engines can read the noindex tags.
+ * The sitemap advertises only approved canonical pages and approved posts
+ * whose front matter still says published. Drafts remain excluded.
  */
-module.exports = {
-    INDEXABLE: false,
+const READY_PAGES = Object.freeze([
+    'index.html',
+    'energy-sites.html',
+    'site-screening-checklist.html',
+    'blog.html',
+    'calculator.html',
+    'contact.html',
+    'privacy.html',
+]);
 
-    /* The tag written into every page while the hold is on. nofollow as well as noindex: the
-       internal link graph is real and there is no reason to have it crawled and weighted
-       against a version of the site that is going to change. */
+const READY_POSTS = Object.freeze([
+    'energy-hashprice-what-a-megawatt-hour-of-mining-earns',
+    'cheap-mining-power-quote',
+    'three-questions-before-you-buy-a-miner',
+]);
+
+/* These are purchase/session flows, an error route and a retired redirect,
+ * not search landing pages. Directory routes (app, CRM, portal and demos) and
+ * URL/query variants are also excluded by the exact root-filename check. */
+const ALWAYS_NOINDEX = Object.freeze([
+    'cart.html', 'pay.html', 'order.html', '404.html', 'brokerage.html',
+    'app.html', 'crm.html', 'portal.html', 'operator.html', 'demo.html',
+]);
+
+function isPublicFilename(file) {
+    return typeof file === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*\.html$/.test(file)
+        && !ALWAYS_NOINDEX.includes(file);
+}
+
+function isIndexablePage(file) {
+    return isPublicFilename(file) && READY_PAGES.includes(file);
+}
+
+function isIndexablePost(meta) {
+    return !!meta && meta.status === 'published'
+        && typeof meta.slug === 'string' && isPublicFilename(meta.slug + '.html')
+        && READY_POSTS.includes(meta.slug);
+}
+
+module.exports = {
+    READY_PAGES, READY_POSTS, ALWAYS_NOINDEX, isIndexablePage, isIndexablePost,
     HOLD_TAG: '<meta name="robots" content="noindex, nofollow">',
 };

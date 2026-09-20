@@ -10,8 +10,8 @@
  *      paste something back, and "it came from a news site" is not a safety property.
  *   2. Validation must refuse rather than repair. A post with a rolled date or a slug that
  *      collides with hosting.html is a mistake, and quietly fixing it hides the mistake.
- *   3. The draft gate protects publication. It is the one thing standing between a generated
- *      file and an indexed page, so it gets the same treatment the payment guards get.
+ *   3. Publication and reviewed readiness are separate gates. Neither a draft nor an unaudited
+ *      published post may gain indexing or promotion on a reviewed page.
  */
 
 const REPO_ROOT = new URL('../../', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -23,6 +23,7 @@ import { execFileSync } from 'child_process';
 const { createRequire } = await import('module');
 const require = createRequire(import.meta.url);
 const B = require(path.join(REPO_ROOT, 'site', 'tools', 'build-blog.js'));
+const LAUNCH = require(path.join(REPO_ROOT, 'site', 'tools', 'launch.js'));
 
 const SITE = path.join(REPO_ROOT, 'site');
 const POSTS = path.join(SITE, 'posts');
@@ -201,6 +202,42 @@ console.log('\n=== reading time and dates ===');
     eq(B.readingMinutes('short'), 1, 'and nothing is ever a zero minute read');
 }
 
+console.log('\n=== promotional excerpts require reviewed publication ===');
+{
+    const slug = LAUNCH.READY_POSTS[0];
+    ok(!!slug, 'a reviewed post is available to exercise the promotion gate');
+    function fixture(slug, status, title, date = '2099-01-01') {
+        return { meta: {
+            slug, status, title, date, href: './' + slug + '.html',
+            summary: title + ' summary.', tags: ['fixture-shared'],
+        }, body: 'Fixture body.' };
+    }
+    const ready = fixture(slug, 'published', 'Reviewed fixture', '2026-01-01');
+    const draft = fixture(slug, 'draft', 'Reviewed slug still in draft');
+    const held = Array.from({ length: 5 }, (_, i) =>
+        fixture('unaudited-promotion-fixture-' + i, 'published', 'Held fixture ' + i));
+    // Newer held entries would take every limited rail slot if filtering came after slicing.
+    const candidates = [...held, draft, ready];
+    const index = B.indexCards(candidates);
+    const rail = B.railItems(candidates);
+    ok(index.includes(ready.meta.summary), 'the index includes a reviewed published excerpt');
+    ok(rail.includes(ready.meta.title), 'the rail filters held posts before limiting its slots');
+    [...held, draft].forEach(p => {
+        ok(!index.includes(p.meta.title) && !index.includes(p.meta.summary),
+           p.meta.title + ' cannot leak into the blog index');
+        ok(!rail.includes(p.meta.title), p.meta.title + ' cannot leak into the notes rail');
+    });
+    const source = fixture('current-promotion-fixture', 'published', 'Current fixture');
+    eq(B.relatedTo(source, candidates).map(p => p.meta.title).join('|'), ready.meta.title,
+       'newer matching held posts and an approved draft cannot displace a reviewed recommendation');
+    eq(B.relatedTo(ready, [ready]).length, 0, 'a reviewed recommendation still excludes itself');
+    eq(B.relatedTo({ meta: { slug: 'unrelated', tags: ['other-topic'] } }, [ready]).length, 0,
+       'review alone does not make an unrelated article a recommendation');
+    ok(!B.indexCards([...held, draft]).includes('class="bc"') &&
+       !B.railItems([...held, draft]).includes('wm-rail-item'),
+       'an all-held collection renders no promotional cards or rail links');
+}
+
 console.log('\n=== the draft gate ===');
 {
     /* The integration test. A temp post is written, the generator run for real, and every path
@@ -218,7 +255,8 @@ console.log('\n=== the draft gate ===');
     function write(status) {
         fs.writeFileSync(FILE, ['---', 'title: Suite fixture', 'slug: ' + SLUG,
             'date: 2099-01-01', 'summary: A fixture the blog suite writes and removes.',
-            'status: ' + status, '---', '', 'Body.'].join('\n'));
+            'status: ' + status, 'tags: economics, hardware, energy-owner, energy-sourcing',
+            '---', '', 'Body.'].join('\n'));
         build();
     }
     function read(f) { return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : ''; }
@@ -242,23 +280,20 @@ console.log('\n=== the draft gate ===');
 
         write('published');
         const pPage = read(PAGE);
-        /* While the launch hold is on, EVERY page is noindex including published posts, so the
-           draft gate cannot be observed through that tag. What still distinguishes them is the
-           banner, the index and the sitemap, all checked below. */
-        const LAUNCH = require(path.join(SITE, 'tools', 'launch.js'));
-        if (LAUNCH.INDEXABLE) {
-            ok(!/content="noindex/.test(pPage), 'published, it no longer refuses indexing');
-        } else {
-            ok(/content="noindex/.test(pPage),
-               'published, it still carries the site-wide launch noindex');
-        }
+        /* Publishing makes a post readable; it does not record a content audit. */
+        ok(/content="noindex/.test(pPage), 'an unaudited published post still refuses indexing');
         ok(pPage.indexOf('bp-draft') < 0, 'and the draft banner is gone');
-        ok(read(path.join(SITE, 'blog.html')).indexOf(SLUG) >= 0,
-           'it appears in the blog index');
-        ok(read(path.join(SITE, 'sitemap.xml')).indexOf(BASE + '/' + SLUG + '.html') >= 0,
-           'and in the sitemap, at the generator origin');
-        ok(/content="noindex/.test(read(path.join(SITE, SLUG + '.html'))) === !LAUNCH.INDEXABLE,
-           'and its indexability follows the launch flag, not the draft flag');
+        ok(pPage.includes('Body.'), 'the held published article remains readable at its URL');
+        ok(read(path.join(SITE, 'blog.html')).indexOf(SLUG) < 0,
+           'publication alone does not promote its unreviewed excerpt on the blog index');
+        ok(read(path.join(SITE, 'why-mining.html')).indexOf(SLUG) < 0,
+           'or on the notes rail');
+        B.readPosts().filter(p => p.meta.slug !== SLUG).forEach(p => {
+            ok(read(path.join(SITE, p.meta.slug + '.html')).indexOf(SLUG) < 0,
+               'the held fixture is not recommended by ' + p.meta.slug);
+        });
+        ok(read(path.join(SITE, 'sitemap.xml')).indexOf(BASE + '/' + SLUG + '.html') < 0,
+           'but is not advertised in the sitemap before its content audit');
 
         /* GENERATED PAGES CARRY THE SAME HEAD AS HAND-WRITTEN ONES. seo-suite.js only walks the
            pages named as literals in build-nav.js, so without this a post could ship with no
@@ -374,16 +409,14 @@ console.log('=== the post command ===');
         ok(pub.ok, 'with a real summary it publishes', pub.out.trim());
         const page = path.join(SITE, SLUG + '.html');
         ok(fs.existsSync(page), 'the page exists');
-        ok(fs.readFileSync(path.join(SITE, 'blog.html'), 'utf8').indexOf(SLUG) >= 0,
-           'and it is on the index');
-        ok(fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8').indexOf(SLUG) >= 0,
-           'and in the sitemap');
-        /* Indexability follows the launch flag here too, not the publish state. While the
-           hold is on, publishing moves a post into the index and the sitemap but every page on
-           the site still carries noindex — the two gates are independent and both real. */
-        const LAUNCH2 = require(path.join(SITE, 'tools', 'launch.js'));
-        eq(/content="noindex/.test(fs.readFileSync(page, 'utf8')), !LAUNCH2.INDEXABLE,
-           'and its indexability follows the launch flag');
+        ok(fs.readFileSync(path.join(SITE, 'blog.html'), 'utf8').indexOf(SLUG) < 0,
+           'but publishing alone cannot promote its excerpt on the blog index');
+        ok(fs.readFileSync(path.join(SITE, 'why-mining.html'), 'utf8').indexOf(SLUG) < 0,
+           'or promote its title on the notes rail');
+        ok(fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8').indexOf(SLUG) < 0,
+           'but publishing alone cannot add an unaudited post to the sitemap');
+        ok(/content="noindex/.test(fs.readFileSync(page, 'utf8')),
+           'and the unaudited post still asks not to be indexed');
 
         /* PUBLISHING REBUILDS EVERYTHING, INCLUDING THE STAMP. A command that writes a page
            and leaves the cache-busting hash stale ships a page that loads yesterday's CSS. */
@@ -535,17 +568,16 @@ console.log('=== the hub links back to the posts ===');
     const rail = hub.slice(hub.indexOf('notesrail:begin'), hub.indexOf('notesrail:end'));
     ok(rail.length > 0, 'the rail exists on the hub page');
 
-    const live = B.readPosts().filter(p => p.meta.status === 'published');
+    const posts = B.readPosts();
+    const live = posts.filter(p => LAUNCH.isIndexablePost(p.meta));
     live.slice(0, 4).forEach(p => {
         ok(rail.indexOf(p.meta.href) >= 0, 'the rail links ' + p.meta.slug);
     });
     ok(rail.indexOf('./blog.html') >= 0, 'and the index');
 
-    /* Drafts are kept out of it too — asserted in the draft-gate test above, which creates
-       one rather than hoping one exists. */
-    ok(/railItems\(live\)/.test(
-        fs.readFileSync(path.join(SITE, 'tools', 'build-blog.js'), 'utf8')),
-       'the rail is built from published posts, not all of them');
+    posts.filter(p => !LAUNCH.isIndexablePost(p.meta)).forEach(p => {
+        ok(rail.indexOf(p.meta.href) < 0, 'the rail excludes held post ' + p.meta.slug);
+    });
 
     /* GENERATED, so it cannot list a post that was deleted or miss one that was added. */
     const gen = fs.readFileSync(path.join(SITE, 'tools', 'build-blog.js'), 'utf8');
@@ -609,22 +641,23 @@ console.log('\n=== posts link each other ===');
                'an energy post and a buy-side post were linked to each other');
         });
     });
-    ok(/status === 'published'/.test(gen.slice(gen.indexOf('function relatedTo'),
-                                               gen.indexOf('function relatedTo') + 700)),
-       'and never links a draft');
-
-    const live = B.readPosts().filter(p => p.meta.status === 'published');
-    if (live.length >= 2) {
-        live.forEach(p => {
-            const page = fs.readFileSync(path.join(SITE, p.meta.slug + '.html'), 'utf8');
-            ok(page.indexOf('bp-rel') >= 0, p.meta.slug + ' has a read-next block');
-            ok(page.indexOf(p.meta.href) < 0 ||
-               page.slice(page.indexOf('bp-rel')).indexOf(p.meta.href) < 0,
-               'and it does not link back to itself');
+    const posts = B.readPosts();
+    const live = posts.filter(p => LAUNCH.isIndexablePost(p.meta));
+    posts.forEach(p => {
+        const page = fs.readFileSync(path.join(SITE, p.meta.slug + '.html'), 'utf8');
+        const block = /<nav class="bp-rel"[\s\S]*?<\/nav>/.exec(page);
+        const related = block ? block[0] : '';
+        const eligible = live.filter(o => o.meta.slug !== p.meta.slug &&
+            o.meta.tags.some(t => p.meta.tags.includes(t)));
+        ok(!!block === (eligible.length > 0), p.meta.slug + ' only recommends reviewed related posts');
+        posts.filter(o => !LAUNCH.isIndexablePost(o.meta) || o.meta.slug === p.meta.slug).forEach(o => {
+            ok(!related.includes(o.meta.href), p.meta.slug.slice(0, 26) +
+               ' excludes held/self recommendation ' + o.meta.slug);
         });
-    } else {
-        ok(true, 'only one published post, so nothing to relate it to');
-    }
+        eligible.slice(0, 1).forEach(() => {
+            ok(live.some(o => related.includes(o.meta.href)), 'its recommendation links an approved article');
+        });
+    });
 
     /* THE SCHEMA CARRIES WHAT A SEARCH ENGINE CAN USE, and nothing it cannot verify. */
     if (live.length) {

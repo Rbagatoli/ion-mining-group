@@ -15,12 +15,12 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Every day, energy gets thrown away because there is no economic way to move it to a buyer. Gas gets flared at the wellhead. Landfill methane gets vented. Wind and solar get curtailed when the grid cannot take them. That energy has no price because it has no customer."
+      "html": "Some gas and power sites have limited routes to market. A local mining load may be worth investigating, but the delivered cost, operating hours, permits and existing energy commitments determine whether a project can work."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Bitcoin mining is the one industrial load that can show up wherever the energy already is, buy every kilowatt-hour at a price that works, and switch off the moment somebody needs it more."
+      "html": "Our starting point is a researched shortlist: the energy source, evidence of usable infrastructure, remaining work and people who can confirm access."
     },
     {
       "file": "site/index.html",
@@ -30,17 +30,17 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Flare gas, landfill gas, curtailed renewables, and behind-the-meter surplus. Real energy, priced at or below zero because nothing is there to consume it."
+      "html": "Fuel price is only one input. Delivery, generation, maintenance and the hours you can actually operate change what a kilowatt-hour costs."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "We bring generation, containers, and machines to the energy, instead of waiting years for transmission to bring the energy to a market."
+      "html": "Collection systems, engines and electrical equipment can reduce a build scope only when their condition, capacity and right to use are confirmed."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Mining is fully interruptible. We curtail in seconds when the grid calls, when prices spike, or when a host needs the power back &mdash; no process to restart, nothing spoiled."
+      "html": "A flexible operating schedule may help a project fit the site. Curtailment limits, restart procedures and lost production need to be included in the plan."
     },
     {
       "file": "site/index.html",
@@ -50,42 +50,42 @@
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Buy and host miners with Proton, ask us to find a potential site for your own operation, or explore a partnership around your energy."
+      "html": "Ask us to research a potential site for your operation, discuss your hosting requirements, or explore a partnership around your energy."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "You own the machines. We provide the power, the racks, the cooling, the network, and the hands &mdash; and you keep every satoshi they earn."
+      "html": "Explore the equipment and proposed hosting setup, then request current availability and a site-specific offer. A rendering or indicative estimate is not a capacity reservation."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "You have gas you are flaring, methane you are venting, or power you cannot sell. We finance, build, and run the load that buys it &mdash; on your land, on your terms."
+      "html": "Have gas or power that may suit a mining project? Share the resource, infrastructure and rights you control. We can discuss a development approach; financing and construction are separate commitments."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "We screen candidate sites against our own database of flare volumes, landfill gas capture, industrial facilities, and environmental permit records before anyone drives out to look at one. Power availability, gas duration, land control, interconnect distance, and jurisdiction all get scored up front &mdash; so the sites that reach diligence are the ones that can actually be built."
+      "html": "Screen public facility, energy and permit records against your brief. Record dated evidence, uncertainties and relevant contacts. A promising record identifies a question to investigate; it does not establish available power."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Metered gas composition and volume over time, or a real load study behind the meter. We model each site across a full range of hashprice and energy-cost scenarios, not a single optimistic case. If a site only works at one bitcoin price, we do not build it."
+      "html": "The owner or rights holder must confirm interest, net supply and existing commitments. Technical diligence then checks equipment condition, gas or electrical measurements, access and permitting requirements."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Generation, switchgear, transformers, containers, and network go in as one package. Pads, permits, and interconnection are handled before hardware ships. Machines are racked, mapped, and pointed at your pool before a site is called live."
+      "html": "Separate reusable infrastructure from new work, and quoted costs from allowances or unknowns. Compare capital, delivered energy and operating costs across different production scenarios."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "Monitored around the clock from our own operations software &mdash; per-machine hashrate, temperature, power draw, and payouts, reconciled daily. Curtailment is automated against price and grid signals. You get the same numbers we do, every month, in a statement you can audit."
+      "html": "Before proceeding, put funding, construction responsibilities, supply terms, approvals and operating arrangements in writing. The research service does not reserve a site or guarantee that a mine can be built."
     },
     {
       "file": "site/index.html",
       "tag": "p",
-      "html": "For Proton-hosted projects, we source the energy, coordinate the build and operate the fleet. For your own mining or hosting operation, our separate sourcing service researches energy opportunities nationwide against your supply, operating and capital requirements."
+      "html": "Our sourcing service brings the energy picture, documented infrastructure, remaining capital scope and people to contact into one research workspace. Use it to decide which conversations and diligence steps deserve your time."
     },
     {
       "file": "site/index.html",
@@ -95,17 +95,17 @@
     {
       "file": "site/index.html",
       "tag": "li",
-      "html": "<strong>One counterparty, whole stack.</strong> Power procurement, construction, machine deployment, and daily operations sit with one team. Nobody gets handed off when something breaks."
+      "html": "<strong>Capital before commitment.</strong> Separate documented equipment, potential reuse and the work still to fund. An unpriced item remains an open cost."
     },
     {
       "file": "site/index.html",
       "tag": "li",
-      "html": "<strong>Reporting you can check.</strong> Per-machine telemetry, pool payouts, and energy invoices reconciled monthly. If our statement and your pool dashboard disagree, we go find out why."
+      "html": "<strong>Evidence you can check.</strong> Dated sources and visible gaps help distinguish what is documented from what needs owner or technical confirmation."
     },
     {
       "file": "site/index.html",
       "tag": "li",
-      "html": "<strong>Curtailment is a feature.</strong> Our load is designed to disappear on command &mdash; which is exactly what makes us a welcome neighbour on a constrained grid or an active wellsite."
+      "html": "<strong>Access is a separate question.</strong> A site can have equipment and still have no power to offer. Identify who controls the energy, land and commercial decision."
     },
     {
       "file": "site/index.html",
@@ -365,12 +365,12 @@
     {
       "file": "site/contact.html",
       "tag": "p",
-      "html": "What is included, what it costs, what we need from you, and how long onboarding takes &mdash; written out in full, with the questions people ask before signing."
+      "html": "Explore the proposed setup and questions to discuss. Request current availability, a site-specific price and written terms before ordering."
     },
     {
       "file": "site/contact.html",
       "tag": "p",
-      "html": "Screening criteria, the three deal structures, and a short submission form. We answer every submission with a yes, a no, or exactly what would change our mind."
+      "html": "Review screening criteria and possible deal structures, then share your site and the energy you control. Any development or funding commitment requires a separate agreement."
     },
     {
       "file": "site/hardware.html",
@@ -445,7 +445,7 @@
     {
       "file": "site/calculator.html",
       "tag": "p",
-      "html": "The single input with the most leverage is your power cost. That is the number we exist to change, by building on energy that is currently being flared, vented, or curtailed. Put a real quote in and see what it does."
+      "html": "Our site-sourcing service helps you investigate potential energy options and the work still needed. Use a confirmed delivered-power quote in your scenario, and budget generation, hosting and remaining capital separately wherever the model excludes them."
     },
     {
       "file": "site/calculator.html",
@@ -460,12 +460,12 @@
     {
       "file": "site/calculator.html",
       "tag": "p",
-      "html": "The comparison nobody runs. It plots what a fleet does against putting the same\n            money into bitcoin on day one and holding it, and tells you which period the two\n            cross over in — if they do. Both sides are figured after tax, which matters,\n            because mined coins are income when they are mined and held coins are not."
+      "html": "Compare a fleet with buying bitcoin on day one under the inputs you choose. The chart shows whether the modeled values cross. Tax adjustments are optional and apply only when enabled; the model does not determine your legal tax treatment."
     },
     {
       "file": "site/calculator.html",
       "tag": "p",
-      "html": "Your share of the network shrinks every time somebody else plugs in, whether or not\n            you do anything. Most models leave this at zero, which quietly assumes the network\n            stops growing. Set it to what you actually believe, including negative — network\n            difficulty fell about 15% over the first eight months of 2026."
+      "html": "Change the difficulty path to test how the same hardware could produce different amounts of bitcoin. Positive, zero and negative paths are scenarios you select, not forecasts."
     },
     {
       "file": "site/calculator.html",
@@ -480,7 +480,7 @@
     {
       "file": "site/calculator.html",
       "tag": "p",
-      "html": "Mining income and capital gains are different taxes at different rates on different\n            events. They are modelled as two figures rather than one blended number, because the\n            comparison against simply holding bitcoin is meaningless if only one side is taxed."
+      "html": "When enabled, the model applies separate income and capital-gains inputs to its mining and direct-buying scenarios. Confirm the relevant treatment with a tax adviser; your circumstances may differ from these simplified assumptions."
     },
     {
       "file": "site/calculator.html",
@@ -612,5 +612,6 @@
       "tag": "p",
       "html": "News moves. The case for owning machines rather than coins does not, so it lives on\n          its own page rather than scrolling away down this one."
     }
-  ]
+  ],
+  "contentReview": "2026-09-20: approved factual/readiness corrections to home, contact and calculator apply to desktop and mobile. Original layout-preservation coverage and unrelated copy remain."
 }

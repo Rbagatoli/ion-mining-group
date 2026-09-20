@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What a cheap mining power quote leaves out — Proton Mining</title>
+<meta name="description" content="Compare mining power quotes using usable capacity, operating costs, infrastructure funding and delivered energy. A worked example shows the difference.">
+<link rel="canonical" href="https://protonminingco.com/cheap-mining-power-quote.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="What a cheap mining power quote leaves out">
+<meta property="og:description" content="Compare mining power quotes using usable capacity, operating costs, infrastructure funding and delivered energy. A worked example shows the difference.">
+<meta property="og:url" content="https://protonminingco.com/cheap-mining-power-quote.html">
+<meta property="og:image" content="https://protonminingco.com/og/home.png">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=15d08313">
+<!-- .reveal is opacity:0 until site.js adds .in, so without this the post is a blank page
+     between a nav and a footer. build-nav.js does the same for the hand-authored pages; a
+     generated page is not in its registry, so it is done here too. -->
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "What a cheap mining power quote leaves out",
+  "description": "Compare mining power quotes using usable capacity, operating costs, infrastructure funding and delivered energy. A worked example shows the difference.",
+  "datePublished": "2026-09-20",
+  "dateModified": "2026-09-20",
+  "url": "https://protonminingco.com/cheap-mining-power-quote.html",
+  "wordCount": 941,
+  "inLanguage": "en",
+  "image": "https://protonminingco.com/og/home.png",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Proton Mining",
+    "url": "https://protonminingco.com/"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://protonminingco.com/cheap-mining-power-quote.html"
+  },
+  "keywords": "energy-sourcing, economics",
+  "articleSection": "energy-sourcing"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://protonminingco.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": "https://protonminingco.com/blog.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "What a cheap mining power quote leaves out",
+      "item": "https://protonminingco.com/cheap-mining-power-quote.html"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Lead with the site search; keep the separate owner and hosting routes close. -->
+      <a href="./energy-sites.html">Find a site</a>
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./energy-sites.html">Find a site</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <article class="bp reveal">
+    <div class="wrap wrap--narrow">
+      <div class="bp-meta">
+        <a class="bp-back" href="./blog.html">All posts</a>
+        <span class="bp-date">20 September 2026</span>
+        <span class="bp-read">5 min read</span>
+      </div>
+      <h1>What a cheap mining power quote leaves out</h1>
+      <p class="lede">Compare mining power quotes using usable capacity, operating costs, infrastructure funding and delivered energy. A worked example shows the difference.</p>
+        <div class="bp-tags"><span class="bp-tag">energy-sourcing</span><span class="bp-tag">economics</span></div>
+      <div class="bp-reading-controls"><button type="button" data-article-expand aria-expanded="false">Read full article</button></div>
+      <div class="bp-body">
+        <p>A low mining power quote is a useful starting point. To compare it with another site, you need to know what the number buys, where electricity is measured, and which bills sit outside it.</p>
+        <p>That matters whether you are finding your first location or moving an existing fleet. A site with an attractive energy price can still require construction, uncertain operating hours or costs that the buyer must carry separately. A more complete quote may look higher because it includes those items.</p>
+        <p>Before ranking sites by cents per kilowatt-hour, put them on the same basis: electricity delivered at a named meter, over a stated period, with each cost and responsibility identified. Here is how we would screen the offer.</p>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Start with the product and the meter</h2></summary><div class="mobile-details-body">
+        <p>Establish whether the seller is offering gas, generated electricity, a powered pad or hosting. Those require different comparisons.</p>
+        <p>A gas price in dollars per million Btu is a fuel price. Converting it into an electricity cost requires the generator's fuel consumption per unit of electricity, called its heat rate. EIA defines heat rate in Btu per net kilowatt-hour generated. Fuel cost alone still leaves generation equipment and other costs to account for. <a href="https://www.eia.gov/tools/faqs/faq.php?id=107&amp;t=3" rel="noopener nofollow" target="_blank">EIA: power plant efficiency</a></p>
+        <p>For an electricity offer, ask where the meter sits and whether losses, cooling and other site loads fall before or after it. Record additional delivery, demand, minimum-payment or hosting charges if they apply. Have the seller confirm what is included; avoid adding the same expense twice.</p>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Ask how much power you can actually use</h2></summary><div class="mobile-details-body">
+        <p>A facility's published capacity is a research lead. It does not establish what a new mining customer can obtain.</p>
+        <p>EIA distinguishes the manufacturer's nameplate rating from tested seasonal capacity. It also distinguishes gross generation from net generation, which subtracts electricity used to operate the plant. <a href="https://www.eia.gov/tools/faqs/faq.php?id=101&amp;t=3" rel="noopener nofollow" target="_blank">EIA: capacity and generation</a></p>
+        <p>The commercial follow-up is specific: how many megawatts could be allocated to your project, at which connection point, from what date, and subject to which existing commitments? Request the equipment rating and recent operating records. Keep the offered allocation separate from the plant's total size.</p>
+        <p>Treat unanswered items as unknown. A database entry cannot confirm spare capacity, an owner's willingness to sell or permission to connect a mining load.</p>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Find the infrastructure and maintenance bill</h2></summary><div class="mobile-details-body">
+        <p>For landfill gas, treatment is part of the system. EPA describes moisture and contaminant removal before energy conversion; treatment requirements depend on the end use. Contaminants such as siloxanes can affect equipment performance and maintenance. That makes current gas analysis and equipment requirements useful screening documents. <a href="https://www.epa.gov/system/files/documents/2024-01/pdh_chapter3.pdf" rel="noopener nofollow" target="_blank">EPA: project technology options, sections 3.1–3.2</a></p>
+        <p>Ask who owns, funds and maintains each major item: gas treatment, generators, switchgear, transformers, the pad, containers and networking. Identify what exists, what needs repair and what must be built. Photographs help document visible equipment; they do not establish its condition or capacity.</p>
+        <p>Owner-funded construction can reduce your upfront cash requirement. Check how the agreement recovers that investment through rates, lease payments or other obligations. Separately budget your share of maintenance, consumables and major repairs. EPA's project cost model separates installed capital from annual operating costs; its default estimates are based on typical designs, rather than a quote for a particular property. <a href="https://www.epa.gov/lmop/lfgcost-web-landfill-gas-energy-cost-model" rel="noopener nofollow" target="_blank">EPA: LFGcost-Web</a></p>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Run the arithmetic at more than one operating level</h2></summary><div class="mobile-details-body">
+        <p><strong>Illustration only: every number below is invented. This is not an available offer, market benchmark or customer result.</strong></p>
+        <p>Assume a 30-day month and a total site draw of 1,000 kW at the billing meter while running, with zero draw while stopped. Assume electricity costs $0.020/kWh, additional buyer-paid maintenance is budgeted at $0.008/kWh, and fixed site and infrastructure lease payments total $6,000 per month. These items do not overlap. The electricity price is already for electricity at the meter; it is not a fuel price.</p>
+        <p>At 90% operating hours:</p>
+        <ul>
+          <li>Energy: 1,000 kW × 720 hours × 0.90 = <strong>648,000 kWh</strong>.</li>
+          <li>Electricity: 648,000 × $0.020 = <strong>$12,960</strong>.</li>
+          <li>Additional maintenance budget: 648,000 × $0.008 = <strong>$5,184</strong>.</li>
+          <li>Listed monthly costs: $12,960 + $5,184 + $6,000 = <strong>$24,144</strong>.</li>
+          <li>Listed cost per metered kWh: $24,144 ÷ 648,000 = <strong>3.73¢</strong> rounded.</li>
+        </ul>
+        <p>At 60% operating hours, consumption falls to 432,000 kWh. The same formula gives ($12,096 + $6,000) ÷ 432,000 = <strong>4.19¢/kWh</strong>. Fixed payments now spread across fewer units of electricity.</p>
+        <p>This simplified subtotal excludes mining hardware, staffing, insurance, taxes, financing and any unlisted construction or operating expense. It does not calculate mining revenue, profitability or a complete hosting price. It assumes the variable maintenance budget scales exactly with consumption; actual maintenance contracts may differ.</p>
+        <p>For a real offer, request outage and curtailment records, expected notice periods and the payment rules while stopped. Test lower operating hours and higher repair costs before committing capital. Annual generation totals alone cannot describe the timing of interruptions your fleet would experience.</p>
+        <p>Use the <a href="./site-screening-checklist.html">free printable site-screening checklist</a> to record the evidence and unanswered questions for each location.</p>
+        </div></details>
+        <details class="mobile-details mobile-details--article" data-mobile-details open><summary><h2>Turn missing answers into a research brief</h2></summary><div class="mobile-details-body">
+        <p>A useful shortlist shows the evidence, its date, the unresolved questions and the next check. It should help you decide where further diligence is justified.</p>
+        <p>Proton's paid <strong>Custom Site Search</strong> and <strong>Existing Site Review</strong> organize that early research around your U.S. location, load, budget and operating requirements. Our initial focus is landfill and stranded gas, with other sources considered for the client's brief. Research does not certify engineering feasibility or secure energy rights.</p>
+        <p><a href="https://protonminingco.com/energy-sites.html#request" rel="noopener nofollow" target="_blank">Find a site or request a review</a>. You can also explore mining assumptions in the <a href="https://protonminingco.com/calculator.html" rel="noopener nofollow" target="_blank">calculator</a>, keeping site expenses outside its model in your separate project budget.</p>
+        <p><em>Sources checked September 20, 2026. The worked example is Proton's own hypothetical arithmetic.</em></p></div></details>
+
+      </div>
+      <div class="bp-sources">
+        <h2>Sources</h2>
+        <ol>
+          <li><a href="https://www.eia.gov/tools/faqs/faq.php?id=107&amp;t=3" rel="noopener nofollow" target="_blank">https://www.eia.gov/tools/faqs/faq.php?id=107&amp;t=3</a></li>
+          <li><a href="https://www.eia.gov/tools/faqs/faq.php?id=101&amp;t=3" rel="noopener nofollow" target="_blank">https://www.eia.gov/tools/faqs/faq.php?id=101&amp;t=3</a></li>
+          <li><a href="https://www.epa.gov/system/files/documents/2024-01/pdh_chapter3.pdf" rel="noopener nofollow" target="_blank">https://www.epa.gov/system/files/documents/2024-01/pdh_chapter3.pdf</a></li>
+          <li><a href="https://www.epa.gov/lmop/lfgcost-web-landfill-gas-energy-cost-model" rel="noopener nofollow" target="_blank">https://www.epa.gov/lmop/lfgcost-web-landfill-gas-energy-cost-model</a></li>
+        </ol>
+      </div>
+      <nav class="bp-rel" aria-label="Related notes">
+        <div class="bp-rel-head">Read next</div>
+        <a class="bp-rel-item" href="./energy-hashprice-what-a-megawatt-hour-of-mining-earns.html"><span class="bp-rel-title">Energy hashprice: what a megawatt-hour of mining earns</span><span class="bp-rel-sum">Energy hashprice puts gross mining revenue beside your electricity bill. August 2026 examples show why efficiency matters before other costs.</span></a>
+        <a class="bp-rel-item" href="./three-questions-before-you-buy-a-miner.html"><span class="bp-rel-title">Three questions before you buy a miner</span><span class="bp-rel-sum">Before buying a miner, compare all-in power costs, changing network difficulty and equipment life against the cost of buying bitcoin directly.</span></a>
+      </nav>
+      <div class="bp-next">
+        <h2 data-mobile-copy="Mining or buying bitcoin?">Working out whether machines beat buying the coin?</h2>
+        <p data-mobile-copy="Compare both using your power cost, budget and market assumptions.">The comparison depends entirely on your assumptions, so we do not print one number
+           and call it the answer. Put yours in and see where the crossover lands.</p>
+        <div class="bp-next-links">
+          <a class="btn btn--primary" href="./calculator.html">Run your own numbers</a>
+          <a class="btn btn--ghost" href="./why-mining.html">Why own machines</a>
+        </div>
+      </div>
+    </div>
+  </article>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining, hosting and nationwide energy site sourcing.</p>
+      </div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
+        <h4>Services</h4>
+        <a href="./energy-sites.html">Energy site sourcing</a>
+        <a href="./hardware.html#miners">Mining hardware</a>
+        <a href="./hosting.html">Hosting</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
+        <a href="./index.html#operate">Site development</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="./site-screening-checklist.html">Site screening checklist</a>
+        <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+
+</div></details></div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div><a href="./contact.html">Company &amp; enquiries</a></div>
+    </div>
+  </div>
+</footer>
+
+<script src="./site.js?v=15d08313"></script>
+<script src="./hero-anim.js?v=15d08313"></script>
+<script src="./cart.js?v=15d08313"></script>
+</body>
+</html>

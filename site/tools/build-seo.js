@@ -16,26 +16,22 @@ const fs = require('fs');
 const writeGenerated = require('../../tools/write-generated.cjs');
 const path = require('path');
 const { FOOTER_BLURB } = require('./build-nav.js');
+const LAUNCH = require('./launch.js');
 
 const SITE = path.join(__dirname, '..');
 const BASE = 'https://protonminingco.com';
 
-/* Which pages belong in the sitemap, and how much of the site each one is.
-   404.html is deliberately absent: it carries <meta name="robots" content
-   ="noindex">, and listing a page you have asked not to be indexed is a
-   contradiction. The keys are checked against build-nav.js's PAGES by
-   calc-suite.js so a new page cannot be added to one and forgotten in the
-   other. */
+/* Metadata for public landing pages. Readiness in launch.js determines which
+   are actually advertised; inclusion here alone does not lift a noindex.
+   Purchase flows, error pages and retired redirects do not belong here. */
 const PAGES = {
   'index.html':      { priority: '1.0', changefreq: 'monthly' },
   'energy.html':     { priority: '0.9', changefreq: 'monthly' },
   'energy-sites.html': { priority: '0.9', changefreq: 'monthly' },
+  'site-screening-checklist.html': { priority: '0.7', changefreq: 'yearly' },
   'hosting.html':    { priority: '0.9', changefreq: 'monthly' },
   'calculator.html': { priority: '0.8', changefreq: 'monthly' },
   'hardware.html':   { priority: '0.8', changefreq: 'monthly' },
-  /* Low: a step inside a purchase, not a page anyone should land on cold.
-     Listed rather than excluded so it is not treated as an orphan. */
-  'cart.html':       { priority: '0.2', changefreq: 'monthly' },
   /* The evergreen page is the one meant to rank for a question somebody types into a search
      box, so it is weighted with the two audience pages rather than below them. The index
      changes whenever a post lands; the posts themselves do not change once written. */
@@ -53,12 +49,9 @@ function urlFor(file) {
 
 /* ---------- blog posts ----------
 
-   READ FROM site/posts/, not listed in PAGES above. Posts arrive faster than anybody remembers
-   to edit a registry, and a post that is live but absent from the sitemap is a page nobody
-   finds — which is the entire point of writing it.
-
-   PUBLISHED ONLY. A draft carries noindex, and advertising a page you have asked not to be
-   indexed is the same contradiction 404.html is kept out of the sitemap for.
+   READ FROM site/posts/, not listed in PAGES above. A post is advertised only
+   when it is both published and audited in launch.js. A new published post is
+   still readable at its URL, but is not automatically approved for search.
 
    build-blog.js is required rather than reimplemented, so there is one front-matter parser and
    one definition of what "published" means. It exports without generating anything. */
@@ -71,7 +64,7 @@ function postUrls() {
     process.exit(1);
   }
   return posts
-    .filter((p) => p.meta.status === 'published')
+    .filter((p) => LAUNCH.isIndexablePost(p.meta))
     .map((p) => ({
       loc: BASE + '/' + p.meta.slug + '.html',
       /* The post's own date, not the file's mtime. Regenerating a page does not revise what it
@@ -92,7 +85,8 @@ function postUrls() {
    of prospecting data it loads at that path. /portal/ is deliberately NOT disallowed: both its
    pages already carry noindex, the marketing nav links it from every page, and a page that is
    never fetched is a page whose noindex is never read. */
-const { INDEXABLE } = require('./launch.js');
+const sitemapPages = Object.keys(PAGES).filter(LAUNCH.isIndexablePage);
+const sitemapPosts = postUrls();
 
 const robots = [
   '# ' + BASE,
@@ -106,15 +100,11 @@ const robots = [
   '# Crawlable on purpose — see above.',
   'Allow: /portal/',
   '',
-  /* THE SITEMAP IS NAMED ONLY WHEN THE SITE IS INDEXABLE. While the launch hold is on, every
-     page carries noindex, and advertising a list of pages you have asked not to be indexed is
-     the same contradiction 404.html and draft posts are kept out of the sitemap for. The file
-     is still generated and stays current; it is simply not pointed at yet. */
-  ...(INDEXABLE
+  /* An advertised sitemap contains only ready URLs, never held pages. */
+  ...(sitemapPages.length || sitemapPosts.length
       ? ['Sitemap: ' + BASE + '/sitemap.xml']
-      : ['# Sitemap withheld: the site is live but not finished, and every page currently',
-         '# carries noindex. See site/tools/launch.js. Crawling stays allowed so that tag',
-         '# can actually be read.']),
+      : ['# Sitemap withheld: no pages have passed the readiness review in site/tools/launch.js.',
+         '# Crawling stays allowed so noindex tags can be read.']),
   '',
 ].join('\n');
 
@@ -148,14 +138,14 @@ const robots = [
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  ...Object.keys(PAGES).map(f => [
+  ...sitemapPages.map(f => [
     '  <url>',
     '    <loc>' + urlFor(f) + '</loc>',
     '    <changefreq>' + PAGES[f].changefreq + '</changefreq>',
     '    <priority>' + PAGES[f].priority + '</priority>',
     '  </url>',
   ].join('\n')),
-  ...postUrls().map(u => [
+  ...sitemapPosts.map(u => [
     '  <url>',
     '    <loc>' + u.loc + '</loc>',
     '    <lastmod>' + u.lastmod + '</lastmod>',
@@ -211,12 +201,17 @@ function injectLd(html, file) {
 
 /* ---------- write ---------- */
 
+/* Tests and other tools can inspect the output without rewriting the site. */
+module.exports = { PAGES, BASE, urlFor, postUrls, robots, sitemap };
+if (require.main !== module) return;
+
 writeGenerated(path.join(SITE, 'robots.txt'), robots);
-console.log('robots.txt: ' + Object.keys(PAGES).length + ' pages allowed, sitemap pointed at ' + BASE);
+console.log('robots.txt: crawling allowed; ' + (sitemapPages.length || sitemapPosts.length
+  ? 'ready-page sitemap advertised' : 'sitemap withheld until readiness review'));
 
 writeGenerated(path.join(SITE, 'sitemap.xml'), sitemap);
-console.log('sitemap.xml: ' + Object.keys(PAGES).length + ' pages + ' +
-            postUrls().length + ' published post(s)');
+console.log('sitemap.xml: ' + sitemapPages.length + ' ready pages + ' +
+            sitemapPosts.length + ' audited published post(s)');
 
 const homePath = path.join(SITE, 'index.html');
 const before = fs.readFileSync(homePath, 'utf8');

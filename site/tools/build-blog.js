@@ -345,7 +345,10 @@ function readingMinutes(body) {
     return Math.max(1, Math.round(words / 200));
 }
 
-module.exports = { parseFrontMatter, markdown, inline, esc, readPosts, longDate, readingMinutes };
+module.exports = {
+    parseFrontMatter, markdown, inline, esc, readPosts, longDate, readingMinutes,
+    relatedTo, indexCards, railItems,
+};
 
 if (require.main !== module) return;
 
@@ -356,12 +359,12 @@ if (require.main !== module) return;
  * and a crawler reads the same signal: links between posts on a subject say those posts are
  * about that subject.
  *
- * Drafts are never linked. Linking one would put an unpublished URL in front of a reader, and
- * a noindex page in front of a crawler that was told to follow it. */
+ * Only audited, published posts are recommended. A noindex on a held post would not prevent
+ * its unreviewed title and summary being indexed when repeated on an approved page. */
 function relatedTo(post, all) {
     const mine = post.meta.tags;
     return all
-        .filter((p) => p.meta.slug !== post.meta.slug && p.meta.status === 'published')
+        .filter((p) => p.meta.slug !== post.meta.slug && LAUNCH.isIndexablePost(p.meta))
         .map((p) => ({
             post: p,
             shared: p.meta.tags.filter((t) => mine.indexOf(t) >= 0).length
@@ -458,10 +461,9 @@ function postPage(post, stamp, all) {
     /* A draft is noindex AND says so on the page. Two mechanisms because they fail differently:
        the meta tag is for a crawler that finds the file, the banner is for the person who was
        sent the link and would otherwise have no way to know it is not live. */
-    /* A post is noindexed when it is a draft, and ALSO while the whole site is on the
-       launch hold. Two independent reasons, one tag, and it must not be emitted twice. */
-    const draftMeta = (m.status === 'draft' || !LAUNCH.INDEXABLE)
-        ? '<meta name="robots" content="noindex, nofollow">\n' : '';
+    /* Publication and search readiness are separate gates. An unaudited
+       published post remains readable without being advertised for indexing. */
+    const draftMeta = !LAUNCH.isIndexablePost(m) ? LAUNCH.HOLD_TAG + '\n' : '';
     const draftBanner = m.status === 'draft'
         ? '      <div class="bp-draft"><strong>Draft.</strong> This post is not published: it is ' +
           'absent from the blog index and the sitemap, and asks not to be indexed. Set ' +
@@ -564,10 +566,11 @@ function footerFor() {
 }
 
 function indexCards(posts) {
-    if (!posts.length) {
+    const ready = posts.filter((p) => LAUNCH.isIndexablePost(p.meta));
+    if (!ready.length) {
         return '      <p class="calc-hint">No posts yet.</p>';
     }
-    return posts.map((p) => {
+    return ready.map((p) => {
         const m = p.meta;
         return [
             '      <a class="bc" href="' + m.href + '">',
@@ -591,10 +594,11 @@ function indexCards(posts) {
 /* The rail's contents. Titles and dates only — a summary in a 240px gutter is a wall, and
    the card on blog.html is where a summary belongs. */
 function railItems(posts) {
-    if (!posts.length) {
+    const ready = posts.filter((p) => LAUNCH.isIndexablePost(p.meta));
+    if (!ready.length) {
         return '        <p class="wm-rail-empty">No notes yet.</p>';
     }
-    return posts.slice(0, RAIL_MAX).map((p) => {
+    return ready.slice(0, RAIL_MAX).map((p) => {
         const m = p.meta;
         return [
             '        <a class="wm-rail-item" href="' + m.href + '">',
@@ -664,8 +668,8 @@ if (fs.existsSync(INDEX_PAGE)) {
         console.error('blog.html: blog markers missing or out of order');
         process.exit(1);
     }
-    /* ONLY PUBLISHED POSTS. A draft renders to its own page so it can be read and sent, and is
-       absent from every path that leads to it. */
+    /* The renderer applies the additional readiness gate. Held and draft articles keep their
+       own readable URLs without promoting their unreviewed excerpts on the index. */
     const next = html.slice(0, a) + BEGIN + '\n' + indexCards(live) + '\n    ' +
                  html.slice(b);
     if (next !== html) { writeGenerated(INDEX_PAGE, next); wrote++; }

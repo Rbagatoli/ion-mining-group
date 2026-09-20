@@ -41,7 +41,10 @@ if (result) {
     ok(files > 50, 'the tree assembles', files + ' files');
     ok(result.problems.length === 0, 'and every assertion about its shape holds',
        result.problems.slice(0, 4).join(' | '));
-    ok(result.locs >= 10, 'the sitemap lists the pages', result.locs + ' urls');
+    const seo = require(path.join(ROOT, 'site', 'tools', 'build-seo.js'));
+    const readyCount = (seo.sitemap.match(/<loc>/g) || []).length;
+    ok(result.locs === readyCount && readyCount > 0,
+       'the sitemap lists only the ready pages and audited published posts', result.locs + ' urls');
 
     /* Spelled out here as well as inside build-pages.js, because these are the specific
        outcomes somebody would look for when this fails. */
@@ -88,10 +91,7 @@ if (result) {
         const r = fs.readFileSync(path.join(P.OUT, 'robots.txt'), 'utf8');
         ok(/^Allow: \/$/m.test(r), 'the live robots.txt allows the marketing site');
         ok(/Disallow: \/app\//.test(r), 'and disallows the operator app');
-        const LAUNCH = require(path.join(ROOT, 'site', 'tools', 'launch.js'));
-        ok(/Sitemap:/.test(r) === LAUNCH.INDEXABLE,
-           LAUNCH.INDEXABLE ? 'and names the sitemap'
-                            : 'and withholds the sitemap while the launch hold is on');
+        ok(r === seo.robots, 'and advertises the readiness-filtered sitemap');
         ok(!/^Disallow: \/$/m.test(r),
            'and is NOT the repo-root one that blocks everything',
            'the pre-launch robots.txt shipped as the live one');

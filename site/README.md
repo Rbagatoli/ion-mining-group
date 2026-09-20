@@ -4,7 +4,7 @@
 
 `energy-sites.html` presents a 16-source explorer plus three request routes: find a site, review an existing opportunity, and submit/referral. The researched landfill shortlist is explicitly a sample, not the complete source range or a list of available offers. Power retains kW/MW, capital retains its currency, and energy ceilings retain their cost basis.
 
-`site-intake.js` supports validated private receipts and safe retries; `intake-config.js` keeps its endpoint empty until production storage and owner access are verified. An unconfigured form exposes the direct energy email fallback without claiming receipt. Other mailto forms are unchanged. No backend code, private inbox data or synthetic test records are copied into the public tree. See `../worker-intake/README.md` and `../docs/energy-site-sourcing.md` for current scope and deployment status.
+`site-intake.js` supports validated private receipts and safe retries; `intake-config.js` keeps its endpoint empty until production storage and owner access are verified. An unconfigured form exposes the direct energy email fallback without claiming receipt. General contact forms use the same complete-draft helper. No backend code, private inbox data or synthetic test records are copied into the public tree. See `../worker-intake/README.md` and `../docs/energy-site-sourcing.md` for current scope and deployment status.
 
 Public corporate footer placeholders have been removed. Proton Mining and the existing contact routes remain; no registered legal entity or business address has been invented. Historic renderer notes later in this document are not authority to republish unresolved corporate placeholders.
 
@@ -287,38 +287,46 @@ owner confirms a change; do not invent separate departmental inboxes.
 
 ## Forms
 
-GitHub Pages is static, so there is no endpoint to POST to. Both forms compose a pre-filled
-`mailto:` draft instead — the visitor still has to press send in their own mail client,
-and the plain address is printed beside every form as a fallback.
+The public website opens user-reviewed email drafts to sales@protonminingco.com.
+Required fields and consent are checked before preparing an Energy Sites enquiry.
+Long drafts expose the complete text for explicit copy/paste instead of silently
+truncating a mailto URL. Opening a draft does not establish sending or receipt.
+Campaign source, medium and name parameters may accompany the visible email draft;
+no new analytics service or customer-record store is introduced.
 
-To take real submissions, add a Cloudflare Worker (this repo already has several under
-[`worker/`](../worker/)) that accepts a JSON POST and forwards to email or a CRM, then
-replace the `mailto:` branch in the form handler in [`site.js`](./site.js) with a `fetch`
-to it. Keep the mailto path as the no-JS fallback.
+Private intake remains disabled in intake-config.js. Its submit button is revealed
+only after the configured endpoint reports ready. Enabling it is a separate backend
+release requiring intended Proton resources, verified access and schema compatibility;
+do not invent a production endpoint or change the recipient as part of a content release.
 
-## Deployment
+## Deployment and selective search readiness
 
-The repo publishes to GitHub Pages from the root, so this would land at
-`https://<user>.github.io/proton-mining/site/` — except that it does not, yet.
+The GitHub Actions Pages workflow builds an explicit public tree with
+`node tools/build-pages.js`: marketing pages from site/ at the origin root,
+the operator app at /app/, CRM at /crm/ and the client portal at /portal/.
+Do not remove repository exclusions or publish the repository root verbatim.
+Backend source, internal operations documents and private records do not belong in that tree.
 
-**[`_config.yml`](../_config.yml) excludes `site/` from the build**, deliberately, until the
-placeholders are filled and the canonicals point somewhere real. Publishing is deleting the
-`- site/` line. Everything below describes the state after that.
+The live canonical origin is https://protonminingco.com. Search readiness is an
+explicit page/slug allowlist in site/tools/launch.js, shared by build-nav.js,
+build-blog.js and build-seo.js. A new page or published article is not automatically
+approved for indexing. The sitemap advertises only audited, ready pages. Unknown,
+unfinished, private/account, checkout, error and redirect pages remain excluded.
+Crawling public held pages stays permitted so their noindex directives can be read;
+noindex is not a privacy or access-control mechanism.
 
-**The `<link rel="canonical">` and `og:url` tags on all five pages point at
-`https://protonminingco.com/`.** That is correct once the custom domain is attached and
-serving this directory, and wrong until then — pointing search engines at a URL that does
-not serve the page. Either attach the domain before announcing the site, or update those
-tags to the github.io path in the meantime.
+The 20 September 2026 content release removes unverifiable homepage metrics and
+contact promises, clarifies illustrative layouts and optional calculator tax inputs,
+and adds the power-quote article and printable site-screening checklist. Hosting,
+Hardware, Energy Partners, Why Mining and four legacy articles remain held pending
+further evidence/copy review. No confirmed operating site, capacity, available rate,
+uptime guarantee or funding commitment is established by this release.
 
-Two options for the custom domain:
-
-1. **Subdirectory** — point `protonminingco.com` at the Pages site and link `/site/`.
-   Simple, but the app is then the thing at the apex, which is backwards for a public site.
-2. **Marketing site at the apex** (recommended once the copy is final) — move these files
-   to the repo root and relocate the app to `/app/`. That touches the nav links in
-   `shared.js`, `manifest.json`'s `start_url`, and the cache paths in `sw.js`, so it is a
-   real change rather than a move. Ask before doing it.
+Before publishing, run the generators in workflow order, the site suite, the intake
+and contact regression checks, and the static Pages build. Re-run generators to prove
+idempotence. Check mobile and desktop layouts, mailto behavior and both Letter/A4
+checklist PDFs. After the approved commit is deployed, verify live HTML, robots.txt
+and sitemap.xml. Eligibility for indexing is not a guarantee of search-engine inclusion.
 
 ## Running the tests
 
@@ -327,8 +335,7 @@ node tests/site/run.js            # every suite
 node tests/site/run.js --mutate   # and the mutation harnesses
 ```
 
-Twenty-one suites plus a snapshot baseline, in [`tests/site/`](../tests/site/). Plain node, no
-runner, no dependency — the same style as the app's own tests one directory up.
+The complete suite list plus the scene snapshot baseline lives in [`tests/site/run.js`](../tests/site/run.js).
 
 **They used to live in a scratch directory outside the repo.** They were real and they passed, and
 this file cited them by name in a dozen places as the thing enforcing an invariant — but the
@@ -336,9 +343,8 @@ operating system was entitled to delete them at any moment, and nothing in a fre
 have said they were missing. Moving them cost one change each: an absolute path that worked on one
 machine became a path derived from the test file's own location.
 
-They are in `tests/site/` rather than `site/tests/` deliberately. `_config.yml` already excludes
-`tests/` from the Pages build, and `site/` **stops** being excluded the day this site publishes —
-test files being served to the public is not a thing to discover afterwards.
+They are in `tests/site/` rather than `site/tests/` deliberately. The explicit Pages builder
+excludes test directories; those files are never part of the deployed public website.
 
 `snapshot.js` is a tool rather than a suite: `verify` compares every path string in all seven
 drawings against a captured baseline, and `capture <scene>` re-takes one after a deliberate change.

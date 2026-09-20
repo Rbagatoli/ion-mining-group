@@ -11,9 +11,8 @@
 <meta property="og:description" content="Run a full mining projection on your own fleet or your own stranded energy.">
 <meta property="og:url" content="https://protonminingco.com/calculator.html">
 <meta name="theme-color" content="#000000">
-<meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=ad97697a">
+<link rel="stylesheet" href="./styles.css?v=15d08313">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -524,7 +523,7 @@
               <span class="cs-track" aria-hidden="true"></span>
               <span class="cs-body">
                 <span class="cs-title">Apply Tax Adjustment</span>
-                <span class="cs-desc">Compare mining against buy-and-hold with realistic tax treatment</span>
+                <span class="cs-desc">Apply optional, simplified tax assumptions to both scenarios</span>
               </span>
             </label>
 
@@ -543,9 +542,7 @@
                 <span class="cs-track" aria-hidden="true"></span>
                 <span class="cs-body">
                   <span class="cs-title">This is pre-tax income</span>
-                  <span class="cs-desc">Miners are equipment, so a first-year write-off puts the
-                    whole amount to work. Buying bitcoin is not deductible, so the income is taxed
-                    first and only what is left buys coins.</span>
+                  <span class="cs-desc">Model an immediate equipment deduction against available income. The direct-buying scenario first deducts the entered income tax. This is a modeling assumption, not a determination of eligibility.</span>
                 </span>
               </label>
               <!-- The distinction the default cannot make for you. -->
@@ -556,18 +553,10 @@
                 <label for="infraDepreciationEligiblePct">Infrastructure Depreciable</label>
                 <div class="calc-unit">
                   <input id="infraDepreciationEligiblePct" type="number" min="0" max="100" step="1" value="90" data-default="90"><span class="cu-post">%</span></div>
-                <p class="calc-explain">Machines are always fully eligible. This is the
-                  infrastructure share that is equipment rather than land and soft costs.</p>
+                <p class="calc-explain">The model assumes full machine eligibility. Enter the infrastructure share you want to treat as eligible; actual classification and deduction timing require separate tax advice.</p>
               </div>
               <p class="calc-hint calc-hint--warn" id="eblNote" data-when="ebl" hidden></p>
-              <p class="calc-hint calc-hint--warn">A deferral, not an escape, and smaller in
-                practice than the ratio suggests. It needs an <strong>active trade or
-                business</strong>, <strong>matching income the same year</strong>,
-                <strong>material participation</strong> (&sect;469), and a <strong>US
-                site</strong> &mdash; &sect;168(g) forces foreign property onto ADS with no
-                bonus depreciation. Recaptured as ordinary income on sale.
-                <a href="./why-mining.html#tax">What this depends on</a> &mdash; and it is not tax
-                advice.</p>
+              <p class="calc-hint calc-hint--warn">This is a simplified scenario, not a tax calculation or eligibility decision. Applicable rules, timing, limits and treatment on disposal depend on your jurisdiction and circumstances. Confirm them with a qualified adviser before relying on a deduction; turn tax adjustment off to compare without these assumptions.</p>
 
               <div class="field">
                 <label for="capitalGainsTaxRate">Capital Gains Tax Rate</label>
@@ -631,7 +620,7 @@
         </div>
         <div>
           <h4>Where we come in</h4>
-          <p data-mobile-copy="Use a confirmed power quote. We develop sites on flared gas, landfill gas and surplus energy.">The single input with the most leverage is your power cost. That is the number we exist to change, by building on energy that is currently being flared, vented, or curtailed. Put a real quote in and see what it does.</p>
+          <p data-mobile-copy="Use a confirmed delivered-power quote. Budget generation, hosting and remaining capital separately where the model excludes them.">Our site-sourcing service helps you investigate potential energy options and the work still needed. Use a confirmed delivered-power quote in your scenario, and budget generation, hosting and remaining capital separately wherever the model excludes them.</p>
         </div>
       </div>
       <div class="calc-cta">
@@ -655,17 +644,11 @@
 <div class="calc-models-grid">
         <div class="cm">
           <h3>Buying the machines against buying the coin</h3>
-          <p data-mobile-copy="Compare a fleet with buying bitcoin on day one using the same outlay. Both positions include the taxes you enter and show any crossover.">The comparison nobody runs. It plots what a fleet does against putting the same
-            money into bitcoin on day one and holding it, and tells you which period the two
-            cross over in — if they do. Both sides are figured after tax, which matters,
-            because mined coins are income when they are mined and held coins are not.</p>
+          <p data-mobile-copy="Compare mining with buying bitcoin under your inputs. Tax adjustments apply only when enabled.">Compare a fleet with buying bitcoin on day one under the inputs you choose. The chart shows whether the modeled values cross. Tax adjustments are optional and apply only when enabled; the model does not determine your legal tax treatment.</p>
         </div>
         <div class="cm">
           <h3>Difficulty growth as an input, not an assumption</h3>
-          <p data-mobile-copy="Set positive or negative difficulty growth. It changes the fleet’s share of mining output over time.">Your share of the network shrinks every time somebody else plugs in, whether or not
-            you do anything. Most models leave this at zero, which quietly assumes the network
-            stops growing. Set it to what you actually believe, including negative — network
-            difficulty fell about 15% over the first eight months of 2026.</p>
+          <p data-mobile-copy="Set positive or negative difficulty growth. It changes modeled mining output over time.">Change the difficulty path to test how the same hardware could produce different amounts of bitcoin. Positive, zero and negative paths are scenarios you select, not forecasts.</p>
         </div>
         <div class="cm">
           <h3>Halvings, on their projected dates</h3>
@@ -681,9 +664,7 @@
         </div>
         <div class="cm">
           <h3>Tax on both sides, separately</h3>
-          <p data-mobile-copy="Mining income and capital gains are modeled separately, with taxes applied to both mining and direct buying.">Mining income and capital gains are different taxes at different rates on different
-            events. They are modelled as two figures rather than one blended number, because the
-            comparison against simply holding bitcoin is meaningless if only one side is taxed.</p>
+          <p data-mobile-copy="Optional tax inputs apply simplified assumptions to mining and direct buying.">When enabled, the model applies separate income and capital-gains inputs to its mining and direct-buying scenarios. Confirm the relevant treatment with a tax adviser; your circumstances may differ from these simplified assumptions.</p>
         </div>
         <div class="cm">
           <h3>Sizing from energy instead of from machines</h3>
@@ -755,6 +736,7 @@
         <h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
+        <a href="./site-screening-checklist.html">Site screening checklist</a>
         <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>
 
 </div></details></div>
@@ -773,11 +755,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=ad97697a"></script>
-<script src="./hero-anim.js?v=ad97697a"></script>
-<script src="./cart.js?v=ad97697a"></script>
-<script src="./miner-db.js?v=ad97697a"></script>
-<script src="./calc-engine.js?v=ad97697a"></script>
-<script src="./calculator.js?v=ad97697a"></script>
+<script src="./site.js?v=15d08313"></script>
+<script src="./hero-anim.js?v=15d08313"></script>
+<script src="./cart.js?v=15d08313"></script>
+<script src="./miner-db.js?v=15d08313"></script>
+<script src="./calc-engine.js?v=15d08313"></script>
+<script src="./calculator.js?v=15d08313"></script>
 </body>
 </html>

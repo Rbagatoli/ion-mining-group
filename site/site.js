@@ -3,8 +3,71 @@
    the nav links are real links, and the forms fall back to the
    plain mailto address printed beside them. */
 
+/* Shared, local-only enquiry drafts. Long text is kept whole for explicit copy/paste. */
+(function (root, factory) {
+    var api = factory();
+    if (typeof module === 'object' && module.exports) module.exports = api;
+    else root.ProtonMailDraft = api;
+})(typeof window === 'undefined' ? globalThis : window, function () {
+    'use strict';
+    var regions = new WeakMap();
+    function compose(to, subject, body) {
+        if (!/^[A-Za-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(to)) throw Error('Use the email address shown on this page.');
+        var prefix = 'mailto:' + encodeURIComponent(to).replace(/%40/g, '@') + '?subject=' + encodeURIComponent(subject) + '&body=';
+        var href = prefix + encodeURIComponent(body), long = href.length > 1800;
+        if (long) href = prefix + encodeURIComponent('I have prepared an enquiry on protonminingco.com.\n\n[Paste the complete enquiry copied from the website here before sending.]');
+        return { to: to, subject: subject, body: body, href: href, long: long };
+    }
+    function campaign(location) {
+        var params = new URLSearchParams(location.search || ''), lines = [];
+        [['utm_source', 'Campaign source', 120], ['utm_medium', 'Campaign medium', 120], ['utm_campaign', 'Campaign name', 180]].forEach(function (item) {
+            var value = (params.get(item[0]) || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, item[2]);
+            if (value) lines.push(item[1] + ': ' + value);
+        });
+        if (lines.length && location.pathname) lines.push('Enquiry page: ' + location.pathname.slice(0, 320));
+        return lines.length ? ['Campaign context from the page URL:'].concat(lines) : [];
+    }
+    function open(w, form, to, subject, body) {
+        var draft = compose(to, subject, body), previous = regions.get(form);
+        if (!draft.long) {
+            if (previous) previous.region.hidden = true;
+            w.location.href = draft.href;
+            return { opened: true, long: false };
+        }
+        var d = w.document, view = previous;
+        if (!view) {
+            var region = d.createElement('div'); region.className = 'field inquiry-email-draft';
+            var heading = d.createElement('p'); heading.className = 'form-note';
+            heading.textContent = 'Your enquiry is longer than some email apps accept. Copy the complete text below, open the email draft, then paste it before sending. This email has not been sent.';
+            var label = d.createElement('label'); label.textContent = 'Complete enquiry text';
+            var textarea = d.createElement('textarea'); textarea.readOnly = true; textarea.rows = 8; textarea.setAttribute('aria-label', 'Complete enquiry text'); label.append(textarea);
+            var actions = d.createElement('div'); actions.className = 'btn-row';
+            var copy = d.createElement('button'); copy.type = 'button'; copy.className = 'btn btn--ghost'; copy.textContent = 'Copy complete enquiry';
+            var link = d.createElement('a'); link.className = 'btn btn--primary'; link.textContent = 'Open email draft ↗';
+            var status = d.createElement('p'); status.className = 'form-note'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+            copy.addEventListener('click', async function () {
+                try {
+                    if (!w.navigator?.clipboard?.writeText) throw Error('Clipboard unavailable');
+                    await w.navigator.clipboard.writeText(textarea.value);
+                    status.textContent = 'Complete enquiry copied. Paste it into your email draft and send it from your mail app.';
+                } catch (_) {
+                    textarea.focus(); textarea.select();
+                    status.textContent = 'Select and copy the complete text above, then paste it into your email draft.';
+                }
+            });
+            actions.append(copy, link); region.append(heading, label, actions, status); form.append(region);
+            view = { region: region, textarea: textarea, link: link, status: status }; regions.set(form, view);
+        }
+        view.region.hidden = false; view.textarea.value = draft.body; view.link.href = draft.href; view.status.textContent = '';
+        view.textarea.focus();
+        return { opened: false, long: true };
+    }
+    return { compose: compose, campaign: campaign, open: open };
+});
+
 (function () {
     'use strict';
+    if (typeof document === 'undefined') return;
 
     /* --- Sticky nav gets a hairline once you scroll past the top --- */
     var nav = document.querySelector('.nav');
@@ -237,15 +300,14 @@
                 lines.push(key + ': ' + (value || '—'));
             });
 
-            var body = lines.join('\n') + '\n\n— Sent from protonminingco.com\n';
-            window.location.href = 'mailto:' + to +
-                '?subject=' + encodeURIComponent(subject) +
-                '&body=' + encodeURIComponent(body);
+            var context = window.ProtonMailDraft.campaign(window.location);
+            var body = lines.concat(context.length ? [''].concat(context) : []).join('\n') + '\n\n— Enquiry prepared on protonminingco.com\n';
+            var draft = window.ProtonMailDraft.open(window, form, to, subject, body);
 
             var btn = form.querySelector('button[type="submit"]');
             if (btn) {
                 var original = btn.textContent;
-                btn.textContent = 'Opening your mail app…';
+                btn.textContent = draft.opened ? 'Opening your mail app…' : 'Complete enquiry ready below';
                 setTimeout(function () { btn.textContent = original; }, 4000);
             }
         });
@@ -293,7 +355,7 @@
 /* Compact supporting detail on phones; preserve the full desktop/no-JS page. */
 (function () {
     'use strict';
-    if (typeof window.matchMedia !== 'function') return;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     var media = window.matchMedia('(max-width: 640px)');
     document.documentElement.classList.add('mobile-details-ready');
     // Desktop HTML is the source copy. Only phone layouts use the short variant.

@@ -781,12 +781,21 @@ var appCalc = fs.readFileSync(D + 'calculator.html', 'utf8');
     var html = pair[0].replace(/\s+/g, ' '), where = pair[1];
     ok(html.indexOf('id="preTaxCapital"') >= 0,
        where + ' calculator carries the pre-tax control');
-    ok(/recaptur/i.test(html) && /trade or business/i.test(html),
-       where + ' calculator says it is a deferral, not an escape');
-    ok(/why-mining\.html#tax/.test(html),
-       where + ' calculator links to what it depends on');
-    ok(/not tax advice/i.test(html),
-       where + ' calculator says it is not tax advice');
+    if (where === 'site') {
+      ok(/modeling assumption, not a determination of eligibility/i.test(html),
+         'public calculator identifies the deduction as an assumption');
+      ok(/qualified adviser/i.test(html) && /jurisdiction and circumstances/i.test(html),
+         'public calculator directs actual eligibility and timing to qualified advice');
+      ok(/not a tax calculation or eligibility decision/i.test(html),
+         'public calculator does not present the simplified model as tax advice');
+    } else {
+      ok(/recaptur/i.test(html) && /trade or business/i.test(html),
+         where + ' calculator says it is a deferral, not an escape');
+      ok(/why-mining\.html#tax/.test(html),
+         where + ' calculator links to what it depends on');
+      ok(/not tax advice/i.test(html),
+         where + ' calculator says it is not tax advice');
+    }
 });
 
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  calc-suite: ALL OK');

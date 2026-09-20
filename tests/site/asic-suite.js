@@ -405,11 +405,10 @@ ok(bar0.indexOf('<a class="dg-toggle-to" href="./hosting.html#inside-container">
     ok(b0 >= 0 && bar.length > 0 && prose.length < copy.length,
        'the home section carries a chain bar, and it can be told apart from the prose',
        strip(bar).replace(/\s+/g, ' ').trim());
-    ok(!/\bsites?\b/i.test(prose),
-       'the home drawing section no longer calls itself a site',
-       (prose.match(/[^.]*\bsites?\b[^.]*/i) || ['clean'])[0].trim().slice(0, 60));
-    ok(copy.indexOf('Inside our mine') >= 0 && copy.indexOf('Our mine') >= 0,
-       'and its eyebrow agrees with the label above it');
+    ok(/illustrative/i.test(prose) && /approvals and a funded build scope/i.test(prose),
+       'the home drawing is an illustration with project-specific approvals and funding');
+    ok(copy.indexOf('Inside a mine') >= 0 && copy.indexOf('Our mine') >= 0,
+       'the mine illustration keeps the existing mine navigation stop');
 }
 
 /* The divider has to sit between every pair now: the current stop can be at

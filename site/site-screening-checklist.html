@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitcoin Mining Site Screening Checklist | Proton</title>
+<meta name="description" content="Check usable power, delivered costs, infrastructure, rights and funding before pursuing a Bitcoin mining site. Free printable checklist from Proton.">
+<link rel="canonical" href="https://protonminingco.com/site-screening-checklist.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bitcoin Mining Site Screening Checklist | Proton">
+<meta property="og:description" content="Check usable power, delivered costs, infrastructure, rights and funding before pursuing a Bitcoin mining site. Free printable checklist from Proton.">
+<meta property="og:url" content="https://protonminingco.com/site-screening-checklist.html">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css?v=15d08313">
+<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+<link rel="stylesheet" href="./site-screening-checklist.css?v=15d08313">
+<!-- ===== SHARE CARD ===== -->
+<meta property="og:image" content="https://protonminingco.com/og/energy.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://protonminingco.com/og/energy.png">
+<!-- ===== /SHARE CARD ===== -->
+</head>
+<body class="checklist-page">
+<canvas class="anim-field anim-field--page" data-w="1440" data-h="900" aria-hidden="true"></canvas>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="./index.html">
+      <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="protonMarkNavP" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#5c5b58"/>
+          <stop offset="13%" stop-color="#b5b4b1"/>
+          <stop offset="25%" stop-color="#ffffff"/>
+          <stop offset="34%" stop-color="#d0cfcd"/>
+          <stop offset="50%" stop-color="#83827f"/>
+          <stop offset="65%" stop-color="#e8e7e5"/>
+          <stop offset="76%" stop-color="#ffffff"/>
+          <stop offset="89%" stop-color="#a2a19e"/>
+          <stop offset="100%" stop-color="#6b6a67"/>
+          </linearGradient>
+          <linearGradient id="protonMarkNavO" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffcf8a"/>
+          <stop offset="38%" stop-color="#f7a02b"/>
+          <stop offset="70%" stop-color="#ffdcae"/>
+          <stop offset="100%" stop-color="#e07f10"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkNavP)" stroke-width="26"/>
+        <circle cx="256" cy="256" r="52" fill="url(#protonMarkNavP)"/>
+        <circle cx="373" cy="106" r="42" fill="url(#protonMarkNavO)"/>
+        </svg>
+      <span class="brand-name">Proton <span>Mining</span></span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links">
+      <!-- Lead with the site search; keep the separate owner and hosting routes close. -->
+      <a href="./energy-sites.html">Find a site</a>
+      <a href="./energy.html">Energy Partners</a>
+      <a href="./hosting.html">Hosting</a>
+      <a href="./hardware.html">Hardware</a>
+      <!-- Sits after both audience pages because it is what you reach for once
+           you know which side of the business you are on: you have machines,
+           or you have energy. Either way the next question is the numbers. -->
+      <a href="./calculator.html">Calculator</a>
+      <!-- The argument for owning machines at all, and the posts that hang off it. Sits after
+           the calculator because it is what you read when the numbers raised a question. -->
+      <a href="./why-mining.html" class="active">Learn</a>
+      <!-- "How We Operate" was here. Removed 24 Aug 2026 on request. The section it pointed
+           at still exists on the home page and the footer still links it twice (Company, and
+           "Site development" under Services) - it is out of the top nav, not off the site.
+           The nav is the better place to lose an item: it was eight links wide and its
+           breakpoints had to be re-measured once already to stop the page scrolling sideways. -->
+      <a href="./contact.html">Contact</a>
+      <!-- The order, when there is one. Hidden at zero rather than showing
+           a 0, because an empty cart does not deserve a place in the nav.
+           cart.js unhides it, and cart.js is on every page. -->
+      <a class="nav-cart" id="navCart" href="./cart.html" hidden>Order <span class="nav-cart-n" data-cart-count>0</span></a>
+      <!-- For people who are already counterparties, not for prospects — so it sits apart from
+           the audience pages and is styled quietly rather than as a call to action. Somebody
+           choosing between Hosting and Energy is not looking for this; somebody who already
+           signed something is, and they know it exists because we told them.
+
+           PATH: the portal is a sibling of site/ in the repo, so ../portal/ is correct for the
+           current layout, where Pages publishes the root and site/ is excluded. If the marketing
+           site ever becomes the domain root, this becomes /portal/ — one line, here. -->
+      <a class="btn btn--ghost btn--sm nav-signin" href="../portal/">Client portal</a>
+      <a class="btn btn--primary btn--sm nav-cta" href="./energy-sites.html#request">Find a site</a>
+    </div>
+  </div>
+</nav>
+<main class="screening-checklist wrap" id="checklist">
+
+<section class="checklist-sheet" aria-label="Worksheet page 1">
+<h1>Bitcoin mining site screening checklist</h1>
+<p class="checklist-version"><strong>Proton Mining Co. · Version 1.0 · 20 September 2026</strong><span class="checklist-page-number"> · Page 1 of 2</span></p>
+<p>Use one worksheet per physical site to decide what to check next. Engineering approval, confirmed supply and signed rights require separate evidence and work.</p>
+<div class="checklist-tools">
+<p class="eyebrow">Free resource · no account needed</p>
+<div class="checklist-actions"><button type="button" class="btn btn--primary" data-print-checklist hidden>Print or save as PDF</button><a class="btn btn--ghost" href="./energy-sites.html#request">Find a site or request a review</a></div>
+<p>Print this worksheet and write your answers. In the print dialog, choose A4 or Letter at 100% scale; turn off browser headers and footers.</p>
+<noscript><p>Use your browser’s Print command to print this worksheet or save it as a PDF.</p></noscript>
+<p class="checklist-related">Related guide: <a href="./cheap-mining-power-quote.html">What does a cheap mining power quote actually include?</a></p>
+</div>
+<h2>Start with your decision</h2>
+<p class="checklist-paths"><strong>Choose a path:</strong> □ Find a new site: record your requirements and already-known/rejected sites. □ Review a site I found: keep its original listing/referral and identify the decision you need to make.</p>
+<p class="checklist-field">Site / location / original source: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Brief version / review date / reviewed by: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Must-haves: states and sources <span class="checklist-write-line" aria-hidden="true"></span> usable load + unit <span class="checklist-write-line" aria-hidden="true"></span> start / term <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Delivered-power price ceiling + currency <span class="checklist-write-line" aria-hidden="true"></span> project capital ceiling + currency <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Operating hours / interruption tolerance <span class="checklist-write-line" aria-hidden="true"></span> other hard exclusions <span class="checklist-write-line" aria-hidden="true"></span></p>
+<h2>Label the evidence</h2>
+<p>For each answer choose <strong>C — Confirmed</strong> (the specific fact is supported by reviewed, relevant evidence); <strong>R — Reported</strong> (an attributed statement awaiting corroboration); <strong>U — Unknown</strong>; <strong>X — Conflict</strong>; or <strong>N/A</strong> (give a reason). A model remains an estimate. Keep facts with different statuses separate.</p>
+<p>Next to each answer, record a source link/document, issuer, original measurement or effective date, and date checked. An old measurement stays old when read today. Use an attached evidence log if needed; number its entries to match the checks.</p>
+<h2>Power and operating cost</h2>
+<table class="checklist-table" role="table"><caption class="checklist-visually-hidden">Checks 1 to 6: power and operating cost</caption><colgroup><col class="checklist-check-col"><col class="checklist-record-col"><col class="checklist-evidence-col"></colgroup><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">Check</th><th scope="col" role="columnheader">Record or ask for</th><th scope="col" role="columnheader">Status / evidence reference</th></tr></thead><tbody role="rowgroup">
+<tr role="row"><th scope="row" role="rowheader"><strong>1. Is this the exact site and decision route?</strong></th><td role="cell" data-label="Record or ask for">Name, address/map, physical-site ID or aliases; owner and operator; business contact, role and source. Who can discuss the asset or refer you? Combine duplicate listings of the same site.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>2. What energy actually exists?</strong></th><td role="cell" data-label="Record or ask for">Source, operating status, raw fuel versus generated electricity; dated measurements or output logs with units/period. Gas: flow/quality. Hydro/renewables: seasonality. Storage: charging supply and duration. Keep hybrid sources separate.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>3. How much usable power is being offered, and where?</strong></th><td role="cell" data-label="Record or ask for">Current owner-offered net kW/MW, delivery/meter point, existing allocations, auxiliaries and losses. Separate nameplate, historical output and modeled potential. Unused nameplate does not establish available supply.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>4. Can the supply meet your operating needs?</strong></th><td role="cell" data-label="Record or ask for">Recent logs, interruptions, maintenance and seasonal limits; expected resource life; proposed operating hours, curtailment notice, restart and backup arrangements. Historical performance and offered commitments are separate answers.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>5. What does the quoted price buy?</strong></th><td role="cell" data-label="Record or ask for">Issuer, quote/date/expiry, currency and unit; fuel, energy-only or delivered electricity; exact delivery point. Keep the seller's quote, your target and any modeled cost visibly separate.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>6. What costs sit outside that price?</strong></th><td role="cell" data-label="Record or ask for">Fuel/treatment/charging, generation, maintenance, losses, connection/delivery, demand/standby, taxes/fees and backup. Add fixed charges, deposits, minimum purchase and escalation. List inclusions, exclusions and unknowns; an unknown cost stays blank.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+</tbody></table>
+<p><strong>For each unresolved answer:</strong> what document or person could resolve it? Carry the most important question to page 2.</p>
+</section>
+<section class="checklist-sheet" aria-label="Worksheet page 2">
+<p class="checklist-print-title">Bitcoin mining site screening checklist</p>
+<p class="checklist-version"><strong>Proton Mining Co. · Version 1.0 · 20 September 2026</strong><span class="checklist-page-number"> · Page 2 of 2</span></p>
+<p class="checklist-field">Site / brief version: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p><strong>Statuses:</strong> C Confirmed · R Reported · U Unknown · X Conflict · N/A with reason. Record source, original date and checked date for every substantive answer.</p>
+<h2>Rights, infrastructure and remaining work</h2>
+<table class="checklist-table" role="table"><caption class="checklist-visually-hidden">Checks 7 to 12: rights, infrastructure and remaining work</caption><colgroup><col class="checklist-check-col"><col class="checklist-record-col"><col class="checklist-evidence-col"></colgroup><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">Check</th><th scope="col" role="columnheader">Record or ask for</th><th scope="col" role="columnheader">Status / evidence reference</th></tr></thead><tbody role="rowgroup">
+<tr role="row"><th scope="row" role="rowheader"><strong>7. Is there a real commercial opening?</strong></th><td role="cell" data-label="Record or ask for">Attributed owner interest; who controls land, fuel/water, power and delivery access; marketing authority; existing contracts, allocations and exclusivity. Record the actual offer or next authority question. A public contact alone proves no willingness.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>8. Which equipment can you actually use?</strong></th><td role="cell" data-label="Record or ask for">Generation/conversion, transformers, switchgear/protection, voltage, metering and connection configuration. Request ratings, condition/inspection evidence, use rights and missing works. Record compatibility questions; nearby infrastructure alone proves no connection capacity.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>9. Can the physical site support deployment?</strong></th><td role="cell" data-label="Record or ask for">Usable pad/building area, truck/winter access, communications and cooling/water where relevant. Record zoning, permits, noise/environmental restrictions and approval status. Maps/photos help locate features; date them and confirm condition or availability separately.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>10. What remains to be funded, owned and operated?</strong></th><td role="cell" data-label="Record or ask for">Itemized repairs, construction, connection, freight, installation and startup cash; dated quote scopes/exclusions. Name the proposed funder, owner and operator of each item; identify funding evidence and conditions. Keep research fees separate from project capital.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>11. What terms and timing are actually offered?</strong></th><td role="cell" data-label="Record or ask for">Supply term, start date, approval/procurement route, deadlines and written conditions. List permits, equipment, construction and energization dependencies. Distinguish a requested date from an evidenced schedule or contractual commitment.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+<tr role="row"><th scope="row" role="rowheader"><strong>12. Does the evidence meet your must-haves?</strong></th><td role="cell" data-label="Record or ask for">Check load, location/source, delivered cost, capital, readiness, reliability and timing against the exact brief. List hard mismatches, conflicting claims and missing essentials. Preserve the reasons a site was already known or rejected.</td><td role="cell" data-label="Status / evidence reference" class="checklist-evidence"><span>Status: <span class="checklist-write-line" aria-hidden="true"></span></span><span>Ref: <span class="checklist-write-line" aria-hidden="true"></span></span></td></tr>
+</tbody></table>
+<h2>Choose the next step</h2>
+<p class="checklist-decision"><span class="checklist-box" aria-hidden="true">□</span><strong>Proceed with the next check:</strong> no evidenced hard mismatch; one useful question has a reachable answer source and a finite effort limit. This means further investigation only.</p>
+<p class="checklist-decision"><span class="checklist-box" aria-hidden="true">□</span><strong>Park:</strong> a material answer, authority route or funding prerequisite is missing/conflicting, or the agreed research effort is exhausted. Record what new evidence would justify reopening.</p>
+<p class="checklist-decision"><span class="checklist-box" aria-hidden="true">□</span><strong>Exclude:</strong> evidence contradicts a hard requirement. Record the source and reason; reconsider only after relevant evidence or requirements change.</p>
+<p class="checklist-field">Reason / most important unresolved question: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Next document or person / responsible person / effort limit: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<p class="checklist-field">Review date or reopening trigger: <span class="checklist-write-line" aria-hidden="true"></span></p>
+<h2>Want help applying this to your project?</h2>
+<p>Proton offers <strong>Custom Site Search</strong> and <strong>Existing Site Review</strong>, specializing in landfill and stranded gas while considering other sources that fit your needs. Scope and fees are agreed before research; candidate counts and outcomes depend on the evidence.</p>
+<p><a href="https://protonminingco.com/energy-sites.html#request">Find a site or request a review</a></p>
+<p class="checklist-request-url"><strong>protonminingco.com/energy-sites.html#request</strong></p>
+</section>
+</main>
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="./index.html">
+          <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="protonMarkFootP" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5c5b58"/>
+              <stop offset="13%" stop-color="#b5b4b1"/>
+              <stop offset="25%" stop-color="#ffffff"/>
+              <stop offset="34%" stop-color="#d0cfcd"/>
+              <stop offset="50%" stop-color="#83827f"/>
+              <stop offset="65%" stop-color="#e8e7e5"/>
+              <stop offset="76%" stop-color="#ffffff"/>
+              <stop offset="89%" stop-color="#a2a19e"/>
+              <stop offset="100%" stop-color="#6b6a67"/>
+              </linearGradient>
+              <linearGradient id="protonMarkFootO" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffcf8a"/>
+              <stop offset="38%" stop-color="#f7a02b"/>
+              <stop offset="70%" stop-color="#ffdcae"/>
+              <stop offset="100%" stop-color="#e07f10"/>
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="256" r="190" fill="none" stroke="url(#protonMarkFootP)" stroke-width="26"/>
+            <circle cx="256" cy="256" r="52" fill="url(#protonMarkFootP)"/>
+            <circle cx="373" cy="106" r="42" fill="url(#protonMarkFootO)"/>
+            </svg>
+          <span class="brand-name">Proton <span>Mining</span></span>
+        </a>
+        <p class="footer-blurb">Bitcoin mining, hosting and nationwide energy site sourcing.</p>
+      </div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Services</span></summary><div class="mobile-details-body">
+
+        <h4>Services</h4>
+        <a href="./energy-sites.html">Energy site sourcing</a>
+        <a href="./hardware.html#miners">Mining hardware</a>
+        <a href="./hosting.html">Hosting</a>
+        <a href="./energy.html">Energy partnerships</a>
+        <a href="./energy.html#managed-hosting">Managed Energy Hosting</a>
+        <a href="./index.html#operate">Site development</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Company</span></summary><div class="mobile-details-body">
+
+        <h4>Company</h4>
+        <a href="./index.html#operate">How we operate</a>
+        <a href="./contact.html">Contact</a>
+        <a href="./site-screening-checklist.html">Site screening checklist</a>
+        <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>
+
+</div></details></div>
+      <div class="footer-col"><details class="mobile-details mobile-footer-details" data-mobile-details open><summary><span>Legal</span></summary><div class="mobile-details-body">
+
+        <h4>Legal</h4>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./contact.html">Media &amp; enquiries</a>
+
+</div></details></div>
+    </div>
+    <div class="footer-bottom">
+      <div>&copy; <span data-year>2026</span> Proton Mining. All rights reserved.</div>
+      <div><a href="./contact.html">Company &amp; enquiries</a></div>
+    </div>
+  </div>
+</footer>
+<script src="./site.js?v=15d08313"></script>
+<script src="./hero-anim.js?v=15d08313"></script>
+<script src="./cart.js?v=15d08313"></script>
+<script src="./site-screening-checklist.js?v=15d08313"></script>
+</body>
+</html>

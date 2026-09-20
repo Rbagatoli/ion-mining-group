@@ -8,6 +8,11 @@ status:   published
 sources:  https://hashrateindex.com/blog/hashrate-index-roundup-november-3-2025/, https://hashrateindex.com/blog/hashrate-index-roundup-june-8-2026/, https://hashrateindex.com/blog/hashrate-index-roundup-august-17-2026/, https://www.law.cornell.edu/uscode/text/11/362, https://www.law.cornell.edu/uscode/text/11/365, https://www.law.cornell.edu/ucc/9/9-609, https://www.law.cornell.edu/ucc/9/9-334, https://www.epa.gov/lmop/landfill-gas-energy-project-development-handbook, https://ngfcp.nuprc.gov.ng/, https://www.aer.ca/regulations-and-compliance-enforcement/rules-and-regulations/directives/directive-060, https://rrc.texas.gov/resource-center/research/research-queries/about-swr32-query, https://www.vnf.com/ferc-provides-further-guidance-on-co-located-load-interconnection
 ---
 
+**Service clarification — 20 September 2026:** Proton's service descriptions and the funding
+discussion below have been updated. Funding and ownership depend on the agreed model; an
+operator-funded build is not the default. The market and legal references retain their
+original observation dates.
+
 The [energy page](energy.html) sets out three ways to be paid for energy you are currently flaring,
 venting or curtailing. This note is the other half of that conversation: what each one costs you
 when the deal goes wrong. A price is the easy part of a term sheet. The hard part is the list of
@@ -30,9 +35,8 @@ unit of mining capacity earns in a day. Hashrate Index put it at
 [$28.94 on 8 June 2026](https://hashrateindex.com/blog/hashrate-index-roundup-june-8-2026/), and
 [$31.89 on 17 August 2026](https://hashrateindex.com/blog/hashrate-index-roundup-august-17-2026/).
 A third of the revenue line went and part of it came back inside ten months, on a site whose gas
-supply never changed. Hashrate Index is published by Luxor Technology, which runs a mining pool and
-brokers ASICs — two of the businesses Proton is in — and those are three readings from one provider
-rather than a cross-checked series.
+supply never changed. Hashrate Index is published by Luxor Technology. These are three readings
+from one provider rather than a cross-checked series.
 
 - Under a **purchase**, the buyer carries the movement in price. They do not carry the movement in
   volume, and a purchase pays per unit delivered: if they answer a fall in hashprice by switching
@@ -50,13 +54,21 @@ agreement actually does is convert your commodity exposure into credit exposure 
 single-purpose counterparty. That is usually a good trade. It is not the same as having no
 exposure.
 
-That includes when we say it. Our own [energy page](energy.html) describes a purchase agreement as bankable and as moving the price risk off your side of the table, which it does. It is not the same as the risk leaving the deal, and the page says so. If a proposal in front of you claims otherwise, that is the sentence to push on.
+Our [energy page](energy.html) describes payments for metered gas or delivered electricity,
+with minimum purchases, curtailment and payment security agreed in the contract. A fixed price
+does not by itself guarantee a minimum volume or the buyer's ability to pay.
 
 ## Who funds the capex, and what the capex buys
 
-In all three structures the capital is normally the operator's: gas conditioning, generation,
-switchgear, transformers, containers, machines, and the site work under them. That is the reason
-these deals exist at all. It also creates two things worth naming out loud.
+Funding and ownership must be agreed by asset, separately from the payment structure. The site
+owner, operator, equipment customer or financier may fund different parts of a project. List
+the responsibilities for any required gas treatment and generation, electrical works, cooling,
+containers, miners and site preparation.
+
+In Proton's **Managed Energy Hosting** model, the owner funds and owns the agreed infrastructure
+and customers own their miners. A separate **Proton-funded project** requires committed
+financing and an agreed scope; financing is not automatic. The
+[energy page](energy.html#managed-hosting) describes both models.
 
 The first is the term. Capital spent on your pad has a payback period, and the term is what lets it
 be earned back. So when a counterparty asks for sixty months, the useful question is not how keen
@@ -64,13 +76,14 @@ they are to work with you but what the sixty months is the payback on. Ask them,
 price does at forty-eight. Shorten the term and the price has to move, because the same capital has
 fewer months to earn back.
 
-The second is that from the day the equipment lands there is property on your ground that is not
-yours, and what happens to it is now a permanent feature of the arrangement.
+The second is ownership. Equipment supplied by another party may remain that party's property
+while it is on your ground. Record which assets you own and what happens to each party's assets
+when the arrangement ends.
 
-If any of the capital is yours — you grade the pad, you build the road, you pay for the tie-in —
-you have quietly bought into the project. Ask what happens to that spend if the deal ends in month
-nine: reimbursed, amortised against future payments, or simply gone. Money you spend to make a site
-attractive to one counterparty may be worth nothing to the next one.
+For capital you contribute — including a pad, road or tie-in — ask what happens if the deal
+ends in month nine. The agreement should address ownership, unrecovered costs and any repayment
+or removal obligations. Work installed for one project's needs may have limited value to the
+next customer.
 
 ## What happens when they stop paying
 
@@ -112,12 +125,11 @@ your contract, and a counterparty outside the United States sits under a differe
 
 ## The equipment on your land after they walk
 
-If an operator leaves, you have containers, engines, a transformer and possibly several thousand
-machines on your pad, and none of it is yours. Three separate questions decide what that means, and
-they have three different answers.
+If an operator leaves, equipment may remain on your pad. Some assets may belong to you and
+others to customers, the operator or a financier. Three separate questions decide what that means.
 
-1. **Who owns it.** The operator, or a leasing company, or an investor whose machines were hosted
-   on that pad and who has never spoken to you. Ask for the answer in writing, by item, and ask
+1. **Who owns it.** The site owner, operator, leasing company or customer whose machines were
+   hosted on that pad. Ask for the answer in writing, by item, and ask
    again when the site expands.
 2. **Who has a security interest in it.** Equipment of this kind can be financed or leased, and
    where it is, the party who eventually arrives at your gate is a lender you never negotiated

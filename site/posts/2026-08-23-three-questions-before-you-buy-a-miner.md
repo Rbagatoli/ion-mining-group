@@ -2,66 +2,83 @@
 title: Three questions before you buy a miner
 slug: three-questions-before-you-buy-a-miner
 date: 2026-08-23
-summary: Hashrate is the number on the box and the least useful one. The three that decide whether a machine pays are power, difficulty and where it sits.
+summary: Before buying a miner, compare all-in power costs, changing network difficulty and equipment life against the cost of buying bitcoin directly.
 tags: economics, hardware
 status: published
+sources: https://developer.bitcoin.org/devguide/block_chain.html, https://developer.bitcoin.org/devguide/mining.html, https://www.irs.gov/pub/irs-drop/n-14-21.pdf
 ---
 
-Most miner comparisons start with terahash. It is the number printed on the box, it is the
-number every reseller leads with, and on its own it tells you almost nothing about whether a
-machine will make money.
+Miner comparisons often start with terahashes per second. Hashrate is useful, but it needs
+to sit beside efficiency, equipment price and operating costs.
 
-Terahash decides your **share** of what the network pays out. It does not decide what that
-payout is worth, what it costs you to earn it, or how quickly your share shrinks. Those are
-three separate questions, and they are the ones worth asking first.
+Your hashrate affects expected mining output. It does not determine the value of that output
+or the cost of earning it. These three questions help turn a machine specification into a
+budget you can compare with buying bitcoin directly.
 
 ## 1. What does the power cost, and who is exposed to it moving?
 
-Electricity is the whole game. A machine at *5 cents* and the same machine at *9 cents* are
-different businesses, and the gap widens every month the machine runs.
+Electricity is a major running cost. The same machine at **5 US cents/kWh** and **9 US cents/kWh**
+has different operating margins, even before hardware, hosting and repairs are considered.
 
 The thing to work out is not just the rate but who carries the risk if it changes:
 
-- A **fixed rate** moves the risk to whoever sold it to you, and you pay for that in the rate.
-- A **floating rate** is usually cheaper and leaves the risk with you.
-- A **prepaid discount** fixes what you save, not what you pay, if the underlying rate floats.
+- A **fixed rate** limits changes to the charges and period covered by the agreement. Check
+  exclusions, pass-through charges and renewal terms.
+- A **floating rate** can rise or fall. It is not necessarily cheaper than a fixed offer over
+  your operating period.
+- A **prepaid discount** on a floating rate does not fix the underlying bill. Check refund,
+  usage and expiry terms before tying up cash with the provider.
 
-> A quoted rate means nothing until you know whether it includes cooling, network, and hands on
-> site. An energy-only rate with fees on top can beat an all-in rate, or lose to it badly.
+> Compare the full bill: energy, cooling, network, maintenance, minimum charges and any taxes.
+> An energy-only rate and an all-in hosting rate are not directly comparable.
 
-## 2. How fast is difficulty growing?
+## 2. What if network difficulty changes?
 
-Your machine's output falls every time the network adds hashrate, whether or not you do
-anything. Two machines with identical specs bought a year apart earn very differently, because
-the second one starts further down the curve.
+Bitcoin adjusts its mining difficulty every **2,016 blocks**. Higher difficulty reduces the
+expected blocks found by the same hashrate over a given operating time; difficulty can also
+fall. A change in network hashrate does not instantly change the difficulty target.
+[Bitcoin's developer guide explains the adjustment](https://developer.bitcoin.org/devguide/block_chain.html).
 
-This is the number people leave at zero when they model a purchase, and it is the single
-assumption most likely to turn a projection into fiction. Run it pessimistically at least once.
+Bitcoin price, the block subsidy, transaction fees and uptime also affect revenue. Pool
+payout methods and fees affect what reaches your wallet; the
+[mining guide describes how pools share rewards](https://developer.bitcoin.org/devguide/mining.html).
+Do not extend today's daily earnings unchanged over several years. Test higher difficulty,
+lower bitcoin prices and downtime alongside a base case, and account for any subsidy halving
+within the period you model.
 
 ## 3. What happens at the end?
 
-A miner is equipment, and equipment has an end. Three things happen there and all of them are
-worth a number:
+A miner has an operating life, but its economic life and resale value are uncertain. Budget for
+three separate questions:
 
-1. It stops being economic before it stops working. The date it becomes unprofitable is not
-   the date it breaks.
-2. It has a salvage value, which is rarely zero and rarely much.
-3. Owning it may have had tax consequences that owning bitcoin would not have had.
+1. Could it become uneconomic before it fails? Compare expected revenue with running costs
+   and allow for repairs or early retirement.
+2. What could you recover on sale after removal, shipping and selling costs? Test a zero
+   resale value rather than relying on a buyer being available.
+3. What taxes and obligations arise while you operate it and when you sell it?
 
-That third one is genuinely different from buying the coin, and it is specific enough that it
-gets [its own page](why-mining.html) rather than a paragraph here.
+For example, the U.S. IRS says mined virtual currency's fair market value at receipt is
+included in gross income; mining that qualifies as a trade or business can also create
+self-employment tax obligations. That is not a blanket tax advantage over buying bitcoin.
+[IRS Notice 2014-21, questions 8 and 9](https://www.irs.gov/pub/irs-drop/n-14-21.pdf) describes
+these rules. Use advice specific to your jurisdiction and circumstances for deductions and
+equipment disposal.
 
 ---
 
 ## So is a machine better than just buying bitcoin?
 
-Sometimes. It depends entirely on the three answers above, and anybody who gives you a single
-number without asking for them is selling you something.
+Either approach can produce the higher outcome under different assumptions. Cheap power and a
+rising bitcoin price do not guarantee that mining wins: hardware cost, efficiency, fees,
+difficulty, uptime, timing and resale value can outweigh them.
 
-The honest version: mining wins when bitcoin appreciates *and* you are buying cheap power, and
-loses to simply holding when the price is flat and difficulty keeps climbing. Where the
-crossover falls is arithmetic, not opinion, so we would rather you did the arithmetic.
+Compare the same cash outlays over the same period. If mining requires additional money each
+month for electricity, include that spending when comparing it with buying bitcoin. State
+whether mined coins are held or sold to pay bills, and apply tax assumptions consistently.
 
-[Put your own assumptions in the calculator](calculator.html) — power price, difficulty growth,
-horizon, and your own tax rates. It plots what a fleet does against buying the same dollars of
-bitcoin on day one, and tells you which period the two cross over in, if they do.
+[Put your own assumptions in the calculator](calculator.html), then check the comparison's
+funding assumptions and any costs it leaves out. Treat a projected crossover as the result
+of that scenario, not a promised date when mining becomes the better choice.
+
+**Reviewed — 20 September 2026:** Updated the rate, difficulty and mining-versus-buying examples
+to distinguish assumptions from guaranteed outcomes. The original publication date is retained.

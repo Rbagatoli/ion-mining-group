@@ -26,6 +26,7 @@ const PAGES = {
   /* Learn covers the evergreen guide and the blog. */
   'why-mining.html': 'learn',
   'blog.html':    'learn',
+  'site-screening-checklist.html': 'learn',
   'contact.html': 'contact',
   /* The checkout highlights the catalogue: it is the same errand, and a nav
      item that only appears mid-purchase would be an eighth thing to read.
@@ -152,6 +153,7 @@ const CTA = {
   'calculator.html':       { href: './contact.html', label: 'Talk to us' },
   'why-mining.html':       { href: './hardware.html', label: 'Start mining' },
   'blog.html':             { href: './why-mining.html', label: 'Why own machines' },
+  'site-screening-checklist.html': { href: './energy-sites.html#request', label: 'Find a site' },
   'contact.html':          { href: '#form', label: 'Send a message' },
   'cart.html':             { href: './hardware.html', label: 'Add machines' },
   'pay.html':              { href: './hardware.html', label: 'Back to the catalogue' },
@@ -172,6 +174,7 @@ const LEGAL_COL = `<h4>Legal</h4>
 const COMPANY_COL = `<h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
+        <a href="./site-screening-checklist.html">Site screening checklist</a>
         <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>`;
 
 /* Company-wide service scope. Individual project pages retain their own fuel
@@ -204,15 +207,13 @@ const SERVICES_COL = `<h4>Services</h4>
    already use <noscript><style> for their own reasons, so the idiom is house style. */
 const NOSCRIPT = '<noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>';
 
-/* ---- the launch hold ----
-   The site is live and unfinished, so every page asks not to be indexed until launch.js says
-   otherwise. Written by the generator rather than pasted, for the same reason the nav is: the
-   next page somebody adds would not have it. */
-const { INDEXABLE, HOLD_TAG } = require('./launch.js');
+/* ---- per-page search readiness ----
+   New pages default to noindex. Only a specifically audited public landing page
+   can have its generated hold removed; purchase/private routes remain held. */
+const { isIndexablePage, HOLD_TAG } = require('./launch.js');
 
-/* Matched with the tag optional, so this both ADDS it while the hold is on and REMOVES it when
-   the hold lifts. A one-way injector would leave seventeen pages noindexed after launch, which
-   is the failure that looks exactly like nothing happening. */
+/* Matching the optional tag lets a readiness change both add and remove its
+   generated hold without erasing independently authored robots restrictions. */
 const HOLD_ANCHOR = /(<meta name="theme-color" content="#000000">)(\s*<meta name="robots" content="noindex, nofollow">)?/;
 
 function applyHold(html, file) {
@@ -220,11 +221,8 @@ function applyHold(html, file) {
     console.error(file + ': no theme-color meta to anchor the robots tag to');
     process.exit(1);
   }
-  /* 404.html carries its own noindex for its own reason and keeps it either way. */
-  if (/<meta name="robots" content="noindex[^>]*>/.test(html) && !INDEXABLE) {
-    return html.replace(HOLD_ANCHOR, (m, anchor) => anchor + '\n' + HOLD_TAG);
-  }
-  return html.replace(HOLD_ANCHOR, (m, anchor) => anchor + (INDEXABLE ? '' : '\n' + HOLD_TAG));
+  /* Independently authored noindex tags (404/pay/order) are preserved. */
+  return html.replace(HOLD_ANCHOR, (m, anchor) => anchor + (isIndexablePage(file) ? '' : '\n' + HOLD_TAG));
 }
 
 /* Placed straight after the stylesheet link so it can override it, and matched with the
@@ -258,7 +256,7 @@ function applyFooterBlurb(html, file) {
    Post pages are generated in full, so they cannot be spliced by the loop below the way a
    hand-authored page is - and a second copy of the nav is the exact drift this file exists to
    stop. Run build-blog.js after this one and generated pages pick up any nav change. */
-module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, SERVICES_COL, BRAND_MARK, FOOTER_BLURB, applyFooterBlurb };
+module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, SERVICES_COL, BRAND_MARK, FOOTER_BLURB, applyFooterBlurb, applyHold };
 
 /* Guarded, so requiring this file does not rewrite eleven pages as a side effect. */
 if (require.main !== module) return;

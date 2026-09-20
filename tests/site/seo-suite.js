@@ -56,21 +56,18 @@ ok(!!BASE && BASE.indexOf('https://') === 0, 'the generator names one origin', S
 var robots = fs.readFileSync(S + 'robots.txt', 'utf8');
 var sitemap = fs.readFileSync(S + 'sitemap.xml', 'utf8');
 
-/* THE LAUNCH HOLD CHANGES WHAT IS CORRECT, so the suite reads the flag rather than assuming
-   one state. While the hold is on the site is live and every page carries noindex, so robots
-   must NOT name the sitemap: advertising pages you have asked not to index is the same
-   contradiction 404.html is kept out of the sitemap for. When the hold lifts, the sitemap is
-   named and the noindex tags are gone. Both are correct; which one is correct is a one-line
-   flag, and a suite that only knew one of them would fail on launch day. */
+/* Only audited pages/posts are advertised. Published content and public
+   reachability alone must not unlock indexing for the rest of the site. */
 var LAUNCH = require(S + 'tools/launch.js');
+var seoOutput = require(S + 'tools/build-seo.js');
 
-if (LAUNCH.INDEXABLE) {
+if (/<loc>/.test(seoOutput.sitemap)) {
     ok(robots.indexOf('Sitemap: ' + BASE + '/sitemap.xml') >= 0,
        'robots.txt points crawlers at the sitemap', 'the sitemap line is missing or wrong');
 } else {
     ok(robots.indexOf('Sitemap:') < 0,
-       'robots.txt withholds the sitemap while the site is on the launch hold',
-       'it advertises pages that carry noindex');
+       'robots.txt withholds an empty readiness sitemap',
+       'it advertises a sitemap with no approved pages');
     ok(/Sitemap withheld/.test(robots), 'and says why, in the file itself');
 }
 ok(robots.indexOf('Allow: /') >= 0, 'and does not block the site', 'nothing is allowed');
@@ -82,7 +79,7 @@ ok(robots.indexOf('Allow: /') >= 0, 'and does not block the site', 'nothing is a
 ok(!/^Disallow:\s*\/\s*$/m.test(robots), 'and carries no blanket Disallow',
    'the site is asking not to be indexed');
 
-/* ---- the sitemap and the nav agree on what pages exist ---- */
+/* ---- the sitemap and page robots tags follow the same readiness policy ---- */
 
 function pagesOf(src, marker) {
     var block = src.slice(src.indexOf(marker), src.indexOf('};', src.indexOf(marker)));
@@ -98,48 +95,33 @@ var navPages = pagesOf(nav, 'const PAGES = {');
 var seoPages = pagesOf(seo, 'const PAGES = {');
 ok(navPages.length >= 5, 'read the nav page list', navPages.join(', '));
 
-/* Some pages are deliberately in one list and not the other, because they carry
-   noindex and listing a page you have asked not to be indexed contradicts
-   itself. That WAS a hard-coded exemption for 404.html; it is now the rule it
-   was always standing in for — a page belongs in the sitemap exactly when it is
-   not noindex. Stated that way it covers pay.html and order.html, which carry an
-   order reference and would put a delivery address in a search result, and it
-   keeps covering whatever comes next without being edited. */
 function isNoindex(page) {
     var p = S + page;
     if (!fs.existsSync(p)) return false;
     return /<meta\s+name="robots"\s+content="[^"]*noindex/i.test(fs.readFileSync(p, 'utf8'));
 }
-var exempt = navPages.filter(isNoindex);
-ok(exempt.indexOf('404.html') >= 0, 'the error page is noindex', exempt.join(', '));
-ok(exempt.length >= 1, 'and the noindex pages are found by reading them, not by a list',
-   exempt.join(', '));
-/* While the hold is on, EVERY page is noindex, so "belongs in the sitemap exactly when it is
-   not noindex" would empty the expected list and report all ten as inventions. The rule is
-   right; it is just about the post-launch state. During the hold the generator's list is
-   checked against the pages that will be indexable once the tags come off — which is every
-   page that does not carry a noindex of its own for its own reason. */
-function isOwnNoindex(page) {
-    var p = S + page;
-    if (!fs.existsSync(p)) return false;
-    var h = fs.readFileSync(p, 'utf8');
-    /* 404, pay and order each carry one because of what they are, not because of the hold.
-       The hold's tag is the one immediately after theme-color. */
-    var withoutHold = h.replace(
-        /<meta name="theme-color" content="#000000">\s*<meta name="robots" content="noindex, nofollow">/,
-        '<meta name="theme-color" content="#000000">');
-    return /<meta\s+name="robots"\s+content="[^"]*noindex/i.test(withoutHold);
-}
-var expected = navPages.filter(function (p) {
-    return LAUNCH.INDEXABLE ? !isNoindex(p) : !isOwnNoindex(p);
-});
+var expected = navPages.filter(LAUNCH.isIndexablePage);
 var missing = expected.filter(function (p) { return seoPages.indexOf(p) < 0; });
-var extra = seoPages.filter(function (p) { return expected.indexOf(p) < 0; });
-ok(missing.length === 0, 'every real page is in the sitemap generator',
+var extra = seoPages.filter(function (p) { return navPages.indexOf(p) < 0; });
+ok(missing.length === 0, 'every ready public page has sitemap metadata',
    'absent: ' + missing.join(', '));
 ok(extra.length === 0, 'and the sitemap invents none', 'unexpected: ' + extra.join(', '));
-ok(seoPages.indexOf('404.html') < 0, 'the error page is kept out of the sitemap',
-   'a noindex page is being advertised');
+navPages.forEach(function (p) {
+    ok(isNoindex(p) === !LAUNCH.isIndexablePage(p), p + ' robots tag follows its audited readiness');
+});
+LAUNCH.READY_PAGES.forEach(function (p) {
+    ok(navPages.indexOf(p) >= 0 && seoPages.indexOf(p) >= 0,
+       p + ' approval names a registered public page');
+    var html = fs.readFileSync(S + p, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    var placeholder = Array.from(html.matchAll(/\bclass\s*=\s*["']([^"']*)["']/gi))
+        .some(function (match) { return match[1].split(/\s+/).indexOf('ph') >= 0; });
+    ok(!placeholder,
+       p + ' is not approved with rendered placeholder spans');
+});
+['cart.html', 'pay.html', 'order.html', '404.html', 'brokerage.html'].forEach(function (p) {
+    ok(seoPages.indexOf(p) < 0 && sitemap.indexOf('/' + p + '</loc>') < 0,
+       p + ' is excluded from sitemap metadata and output');
+});
 
 var notFound = fs.readFileSync(S + '404.html', 'utf8');
 ok(notFound.indexOf('name="robots" content="noindex"') >= 0,
@@ -147,12 +129,26 @@ ok(notFound.indexOf('name="robots" content="noindex"') >= 0,
 
 /* Every listed url must actually resolve to a file. */
 var badUrl = [];
-seoPages.forEach(function (p) {
+expected.forEach(function (p) {
     var url = p === 'index.html' ? BASE + '/' : BASE + '/' + p;
     if (sitemap.indexOf('<loc>' + url + '</loc>') < 0) badUrl.push(p);
 });
 ok(badUrl.length === 0, 'the written sitemap lists every one of them',
    'not in the file: ' + badUrl.join(', '));
+ok(sitemap === seoOutput.sitemap, 'the written sitemap exactly matches ready canonical pages and audited published posts');
+ok(robots === seoOutput.robots, 'the written robots.txt matches the readiness sitemap');
+var posts = require(S + 'tools/build-blog.js').readPosts();
+posts.forEach(function (p) {
+    var file = p.meta.slug + '.html';
+    ok(isNoindex(file) === !LAUNCH.isIndexablePost(p.meta), file + ' robots tag follows publication and audit readiness');
+});
+LAUNCH.READY_POSTS.forEach(function (slug) {
+    ok(posts.some(function (p) { return p.meta.slug === slug; }), slug + ' approval names an existing post');
+});
+var known = navPages.concat(posts.map(function (p) { return p.meta.slug + '.html'; }), ['brokerage.html']);
+fs.readdirSync(S).filter(function (f) { return /\.html$/.test(f) && known.indexOf(f) < 0; }).forEach(function (f) {
+    ok(isNoindex(f), f + ' is unknown and must default to noindex');
+});
 
 /* ---- canonicals agree with the sitemap ---- */
 
@@ -353,10 +349,10 @@ ok(ticking.length === 0,
 var sm = fs.readFileSync(S + 'sitemap.xml', 'utf8');
 var lastmods = (sm.match(/<lastmod>/g) || []).length;
 var postCount = require(S + 'tools/build-blog.js').readPosts()
-    .filter(function (p) { return p.meta.status === 'published'; }).length;
+    .filter(function (p) { return LAUNCH.isIndexablePost(p.meta); }).length;
 ok(lastmods === postCount,
    'only the posts, which have a real date, claim a lastmod',
-   lastmods + ' lastmod(s) for ' + postCount + ' published post(s)');
+   lastmods + ' lastmod(s) for ' + postCount + ' audited published post(s)');
 
 console.log(fail ? '\n  ' + fail + ' FAILED' : '\n  seo-suite: ALL OK');
 process.exit(fail ? 1 : 0);

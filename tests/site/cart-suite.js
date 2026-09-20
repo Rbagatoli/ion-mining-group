@@ -615,19 +615,14 @@ var navGen = fs.readFileSync(S + 'tools/build-nav.js', 'utf8');
 var seoGen = fs.readFileSync(S + 'tools/build-seo.js', 'utf8');
 var ogGen = fs.readFileSync(S + 'tools/build-og.js', 'utf8');
 ok(navGen.indexOf("'cart.html'") >= 0, 'the nav generator knows the page');
-ok(seoGen.indexOf("'cart.html'") >= 0, 'and so does the sitemap');
+ok(seoGen.indexOf("'cart.html'") < 0, 'the checkout is not sitemap landing-page metadata');
 ok(ogGen.indexOf("'cart.html'") >= 0, 'and it has a share card');
-ok(fs.readFileSync(S + 'sitemap.xml', 'utf8').indexOf('cart.html') >= 0,
-   'and it is in the written sitemap');
+ok(fs.readFileSync(S + 'sitemap.xml', 'utf8').indexOf('cart.html') < 0,
+   'and it is absent from the written sitemap');
 
 /* A checkout is a step inside a purchase, not a landing page. */
-(function () {
-    var i = seoGen.indexOf("'cart.html'");
-    var seg = seoGen.slice(i, seoGen.indexOf('}', i));
-    var m = /priority: '([\d.]+)'/.exec(seg);
-    ok(m && parseFloat(m[1]) <= 0.3, 'and it is not ranked as a landing page',
-       m ? m[1] : 'no priority found');
-})();
+ok(/<meta name="robots" content="noindex/.test(html),
+   'the checkout continues to refuse indexing when public landing pages launch');
 
 /* ---- house rules ---- */
 
