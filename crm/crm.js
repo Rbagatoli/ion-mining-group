@@ -45,7 +45,9 @@
     $('peopleLink').innerHTML=icon('people')+'<span>People</span>';$('settingsLink').innerHTML=icon('settings')+'<span>Settings</span>';
     const status=D.status();$('connectionLabel').textContent=!status.ready?'Connecting…':status.error?'Needs attention':status.uid?status.agent.mode==='cloud'?'Account connected':'Account · checking sync':'On this device';
   }
+  let stopWorkFreshness=()=>{};
   function render(){
+    stopWorkFreshness();stopWorkFreshness=()=>{};
     discovery.unmount();$('content').classList.toggle('crm-discover',current==='discover');$('content').classList.toggle('crm-control',current==='control');nav();const status=D.status();
     if(!status.ready){$('content').innerHTML='<div class="loading">Opening your account…</div>';return;}
     if(status.error){$('content').innerHTML=head('Your data needs attention','Your original records have been retained.')+'<div class="banner">'+esc(status.error)+'</div>'+button('Export original backup','backup')+' '+button('Reload workspace','reload');return;}
@@ -54,6 +56,7 @@
     $('content').innerHTML=(status.syncError?'<div class="banner" role="status">'+esc(status.syncError)+' · Local changes are retained.</div>':'')+(['error','offline'].includes(status.agent.mode)?'<div class="banner" role="status">Team register: '+esc(status.agent.error||'Cloud connection is offline. Team changes are paused.')+' '+textButton('Export backup','backup')+'</div>':'')+html;
     $('content').querySelectorAll('label').forEach(label=>{const control=label.querySelector('select,input');if(control&&!control.hasAttribute('aria-label'))control.setAttribute('aria-label',label.firstChild.textContent.trim());});
     if(current==='discover')discovery.mount();
+    if(current==='control')stopWorkFreshness=ProtonCrmControl.watchFreshness($('content'),()=>agent().tasks);
   }
   function queueRender(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render();});}
   function renderToday(){
