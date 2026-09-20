@@ -115,12 +115,12 @@
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "If you are flaring landfill gas, flaring associated gas, or curtailing generation because there is nowhere to send it, you have a product with no customer. We finance, build, and run the load that turns it into revenue &mdash; on your land, without a pipeline, and without you spending a dollar of capital."
+      "html": "Hydro, nuclear, renewables, gas, industrial surplus and grid-connected sites can all be considered. We assess usable supply, existing infrastructure and commercial fit, then explore a mining customer or a hosting project built around your site."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Interruptible by design. If you need the gas or the power back, we shut down &mdash; on your schedule, not ours."
+      "html": "Power availability, funding responsibilities and operating terms are agreed for each project. Flexible demand is designed around the supplier’s needs."
     },
     {
       "file": "site/energy.html",
@@ -155,112 +155,112 @@
     {
       "file": "site/energy.html",
       "tag": "h2",
-      "html": "We bring the capital and the complexity."
+      "html": "Agree the scope. Confirm the funding."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Most partners want the revenue without inheriting a new line of business. That is exactly how we structure it."
+      "html": "Where a separately funded model fits, we define who owns, funds and maintains each asset before any build commitment. Project financing and final agreements must be in place."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>All of the capital.</strong> Generation, switchgear, containers, machines, and site work are funded by us. Your capital budget is untouched."
+      "html": "<strong>Agreed project capital.</strong> The funded scope can include electrical works, containers, miners and any required generation or treatment. The agreement identifies exclusions and any owner contribution; financing is not automatic."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>Permitting and compliance.</strong> Air permits, noise, setbacks, and interconnect paperwork handled by our team, in your jurisdiction."
+      "html": "<strong>Development coordination.</strong> We coordinate the agreed planning, utility, noise and permitting work. Generation, water and other technology-specific approvals are included where needed, with responsibilities assigned in the contract."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>Build and commissioning.</strong> Pads, foundations, gas conditioning, and electrical, delivered as one contract with one accountable party."
+      "html": "<strong>Build and commissioning.</strong> Reuse verified equipment where it fits, then scope the missing site works, electrical connection, cooling and network. Add fuel treatment or generation only where the selected supply requires it."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>Operations, forever.</strong> Staffed and monitored 24/7. Engine maintenance, machine repair, and curtailment response are ours, not yours."
+      "html": "<strong>Operating responsibilities.</strong> Agree monitoring, maintenance, miner repairs, curtailment response and service levels for the contract term. Existing plant operations and hosting operations have separate responsibilities."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>Decommissioning.</strong> Bonded removal and site restoration at end of term, written into the agreement up front."
+      "html": "<strong>End-of-term obligations.</strong> Specify asset ownership, removal, restoration and any required financial security before signing."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>The energy.</strong> Gas volume and composition over time, or available electrical capacity with a real load profile behind it."
+      "html": "<strong>The energy.</strong> Evidence of net power that could serve a new load, an operating profile and who controls supply. Fuel projects also need volume, composition and expected production life."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>Site control.</strong> Surface rights or a lease you can assign, clean enough to survive diligence."
+      "html": "<strong>Site control.</strong> Confirm the land, equipment and energy rights needed for the proposal, including any third-party consent or utility approval."
     },
     {
       "file": "site/energy.html",
       "tag": "li",
-      "html": "<strong>A decision maker.</strong> Someone who can sign a term sheet without a six-month committee cycle."
+      "html": "<strong>A decision maker.</strong> The people authorized to discuss energy supply, land access and project approval, including separate asset owners where relevant."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Pick the risk profile you want. Fixed and predictable, or tied to the upside &mdash; we will quote any of them on the same site."
+      "html": "Compare energy payments, a share of mining results, or site rent. Suitability, funding, price and responsibilities are agreed for each project."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "We buy your gas at a fixed <span class=\"ph\">[$X.XX]</span>/MMBtu, or your power at <span class=\"ph\">[$0.0XX]</span>/kWh, on a take-or-pay style contract. Simple, bankable, and it moves the bitcoin price risk off your side of the table. What it does not do is remove that risk from the deal: a fixed price is only as good as the company paying it, so ask what stands behind the obligation before you weigh it against a share."
+      "html": "Negotiate payment for metered gas or delivered electricity. Price, minimum purchases, supply windows, curtailment and payment security need explicit terms. A fixed energy price separates your rate from bitcoin prices, but payment still depends on the counterparty meeting its obligations."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "You supply the energy, we supply everything else, and mining revenue splits <span class=\"ph\">[XX]</span>/<span class=\"ph\">[XX]</span> after agreed operating costs. Lower floor than a fixed contract, meaningfully higher ceiling. Reporting is open-book, with the same telemetry we run on."
+      "html": "Agree the share, which costs are deducted, who supplies capital and how production is reported. Payments vary with mining output, bitcoin prices and operating costs; any minimum payment requires separate agreed support."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "You lease us the pad and the interconnect for <span class=\"ph\">[$X,XXX]</span> per month and take a <span class=\"ph\">[X]</span>% royalty on gross production. Most common where the landowner is not the energy owner, or where a municipality needs a clean, predictable line item."
+      "html": "Agree rent for defined land or equipment access, with an optional production-based royalty. Confirm energy procurement separately where another party controls the supply. Rent, royalty basis and restoration duties belong in the signed terms."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "If your site is close on most of these, send it anyway &mdash; the edges are negotiable and we would rather look than guess."
+      "html": "Start with the information you have. We assess what can reach a new load, what can be reused and what still needs funding. The acceptable size and schedule depend on the site economics."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "You send volumes, composition, location, and land status. We run it through our screening model and come back with a yes, a no, or the two specific things that would turn a no into a yes. We do not sit on sites."
+      "html": "Share location, energy source, potential usable MW, delivery hours, existing equipment and who controls the assets. We identify the evidence needed to assess the opportunity."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Non-binding terms covering structure, price, term, interruption rights, and pad requirements. Signed under NDA, with enough detail that neither side is surprised later."
+      "html": "Set proposed energy terms, access rights, capital responsibilities, service scope and operating flexibility. Agree any confidentiality terms and remaining conditions before detailed work."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Site walk, metered gas sampling, title and surface review, permit path confirmation, and a full economic model across hashprice scenarios. This is where a site either earns the build or gets returned to you with our reasoning."
+      "html": "Review supply and load records, equipment, land and energy rights, connection requirements and the permit path. Fuel sampling applies where needed. Test the remaining build budget and operating economics before a commitment."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Pad, foundations, gas conditioning, generation, switchgear, containers, and network. Long-lead equipment is ordered at term-sheet signing, not at the end of diligence, which is how the schedule holds."
+      "html": "After the required agreements, funding and approvals are in place, procure and build the missing works. Existing assets are reused only after technical and commercial checks; new generation is included only when the supply route requires it."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Commissioning, then continuous operation with 24/7 monitoring. You get production reporting on the same cadence as your payments, and a direct line to the people actually running the site."
+      "html": "Test the connection, protection, cooling, metering and control systems before acceptance. Operate within the agreed supply windows, with monitoring, maintenance, reporting and curtailment duties defined by the service agreement."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "This is not a marketing claim about being green. It is a straightforward comparison against what happens to the gas today."
+      "html": "For landfill, flare and other gas projects, assess the existing operation and proposed use separately. An emissions benefit needs site-specific evidence; this comparison does not apply automatically to electrical supply from other sources."
     },
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "You do not need a data room. Volumes, a location, and who controls the land is enough for us to tell you whether it is worth either side&rsquo;s time."
+      "html": "Start with your energy source, location, available power and existing infrastructure. If a figure or supply right is unconfirmed, say so; we can identify what needs to be checked next."
     },
     {
       "file": "site/energy.html",

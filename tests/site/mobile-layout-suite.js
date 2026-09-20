@@ -12,8 +12,10 @@ assert.equal(fixture.blocks.length,122);
 const replacedHardwareBlocks=[1,3,4,5,6,7,8].map(index=>fixture.blocks.filter(block=>block.file==='site/hardware.html')[index]);
 /* The service expansion intentionally replaces the homepage introduction and audience note. */
 const replacedServiceBlocks=[0,1].map(index=>fixture.blocks.filter(block=>block.file==='site/index.html')[index]);
-const retainedBlocks=fixture.blocks.filter(block=>!replacedHardwareBlocks.includes(block)&&!replacedServiceBlocks.includes(block));
-assert.equal(retainedBlocks.length,113);
+/* The requested source explorer replaces the old four-card Energy Partners section. */
+const replacedPartnerBlocks=[2,3,4,5,6,7].map(index=>fixture.blocks.filter(block=>block.file==='site/energy.html')[index]);
+const retainedBlocks=fixture.blocks.filter(block=>!replacedHardwareBlocks.includes(block)&&!replacedServiceBlocks.includes(block)&&!replacedPartnerBlocks.includes(block));
+assert.equal(retainedBlocks.length,107);
 for(const block of retainedBlocks){
  const source=read(block.file),matches=[...source.matchAll(new RegExp('<'+block.tag+'\\b[^>]*data-mobile-copy="([^"]*)"[^>]*>([\\s\\S]*?)<\\/'+block.tag+'>','g'))];
  assert.ok(matches.some(m=>m[2]===block.html),block.file+' lost original desktop copy: '+block.html.slice(0,75));
@@ -29,6 +31,6 @@ assert.ok(variants>=126,'Expected mobile variants outside the replaced Hardware 
 assert.match(read('site/index.html'),/<h1[^>]*>Power in\.<br>Bitcoin out\.<\/h1>/);
 assert.match(read('site/site.js'),/max-width: 640px/);
 assert.match(read('site/site.js'),/replacement\.replaceWith\(node\)/,'Live price and order-link nodes must survive a layout switch');
-console.log('ok 113 original desktop copy blocks retained outside the requested Hardware and service-introduction changes');
+console.log('ok 107 approved desktop copy blocks retained outside the replaced Hardware, service-introduction and energy-source sections');
 console.log('ok '+variants+' mobile variants preserve live targets and avoid replacing controls');
 console.log('ok the requested headline is shared by both layouts');

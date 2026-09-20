@@ -83,16 +83,16 @@ const PAGES = {
     /* Literal em dash, not an entity: lede/heading/eyebrow all go through
        esc(), which would turn &mdash; into &amp;mdash; and print it. Only
        'note' is inserted raw and may carry entities. */
-    eyebrow: 'Your site, before and after',
-    heading: 'The flare goes out. Nothing else moves.',
+    eyebrow: 'Gas-site examples · before and after',
+    heading: 'See two gas-site configurations.',
     /* FUEL-NEUTRAL ON PURPOSE, and it has to stay that way. This paragraph
        opens the drawing for BOTH fuels, so it may not name a wellhead, a
        separator or a tank battery: a landfill has none of them. It says "your
        existing equipment" and lets whichever drawing is on screen be the
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
-    lede: 'Choose your kind of site, then select “With Proton on it” to build your mine around the infrastructure already there. Enter your available power or gas and choose your machines to see the layout and estimated bitcoin production.',
-    mobileLede: 'Choose a site and select “With Proton on it” to size your mine and estimate bitcoin production.',
+    lede: 'These landfill and flare examples show the equipment used for a gas-to-power project. Other energy sources follow the routes above. Select “With Proton on it” to configure a mining layout; existing assets and reuse still require site-specific verification.',
+    mobileLede: 'Gas-site examples only. Select “With Proton on it” to explore a layout; other sources follow the routes above.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
@@ -114,7 +114,7 @@ const PAGES = {
        THROUGH a container wall and the near faces have to be nearly
        transparent. These are solid plant standing on open ground, and at
        cutaway weights they read as a ghost of a site rather than a site. */
-    fuelLabel: 'Which kind of site is yours?',
+    fuelLabel: 'Choose a gas-site example',
     fuels: [
       {
         key: 'landfill', label: 'Landfill gas', link: 'landfill',

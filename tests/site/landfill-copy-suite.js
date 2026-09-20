@@ -1,13 +1,13 @@
 /* Nationwide sourcing and accurate project-specific fuel descriptions.
 
    The company-wide footer and Organization metadata must reflect broad energy
-   sourcing. Landfill still leads the existing hosted-project presentation, with
-   flared gas also served. Those project details and drawings remain accurate
-   without constraining the scope of the separate nationwide sourcing service.
+   sourcing. The Energy Partners explorer and enquiry accept the complete source
+   range. The two existing gas drawings remain accurate examples, without
+   implying that every energy source uses gas collection and generation.
 
    WHAT IS NOT A VIOLATION. Oil and gas vocabulary is correct in two places: the
-   "Flared associated gas" card, which is about oil and gas, and the wellpad
-   drawing behind the fuel switch, whose own labels and alt text describe a
+   legacy "Flared associated gas" card, if present, and the wellpad drawing
+   behind the fuel switch, whose own labels and alt text describe a
    wellpad. Flagging those would be flagging the flared-gas business for
    existing. The checks below carve those zones out and read what is left. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
@@ -62,22 +62,52 @@ ok(organization && organization.description.startsWith(expectedFooter) &&
 ['flared gas, landfill gas', 'flared gas, landfill'].forEach(bad2 => {
     ok(index.indexOf(bad2) < 0, 'the home page does not lead with flare ("' + bad2 + '")');
 });
+const homeSources = (index.match(/<ul class="home-energy-types"[^>]*>([\s\S]*?)<\/ul>/) || [])[1] || '';
+ok(['Hydro', 'Nuclear', 'Wind', 'Solar', 'Landfill gas', 'Flare gas'].every(label => homeSources.includes('<li>' + label + '</li>')),
+   'the home sourcing preview includes gas and non-gas energy options');
 
-/* The four-fuel grid on energy.html: landfill's card comes first. */
+/* Energy-owner discovery and intake must cover the same broad service. Keep an
+   independent ID list so removing a source from both the module and the page
+   cannot make the two agree on an accidentally narrowed catalogue. */
 const energy = fs.readFileSync(D + 'energy.html', 'utf8');
 const LFION = require(D + 'scene-landfill-ion.js');
 const PROTON   = require(D + 'scene-pad-ion.js');
-const cards = [...energy.matchAll(/<h3 class="h-card">([^<]+)<\/h3>/g)].map(m => m[1]);
-const iLandCard = cards.findIndex(c => /landfill/i.test(c));
-const iFlareCard = cards.findIndex(c => /flared/i.test(c));
-ok(iLandCard >= 0 && iFlareCard >= 0 && iLandCard < iFlareCard,
-   'the fuel cards put landfill ahead of flared gas',
-   cards.slice(0, 4).join(' | '));
-
-/* The form's fuel select, same order. */
-const opts = [...energy.matchAll(/<option>([^<]*(?:andfill|lared)[^<]*)<\/option>/g)].map(m => m[1]);
-ok(opts.length >= 2 && /andfill/.test(opts[0]),
-   'and so does the enquiry form', opts.join(' | '));
+const { sources } = require(D + 'energy-partners.js');
+const requiredSources = ['hydro', 'nuclear', 'wind', 'solar', 'geothermal', 'natural_gas',
+    'landfill_gas', 'flare_gas', 'biomass_biogas', 'waste_to_energy', 'marine',
+    'recovered_energy', 'coal', 'oil', 'industrial_surplus', 'grid_supply'];
+ok(sources.length === requiredSources.length && requiredSources.every(id => sources.some(source => source.id === id)),
+   'the owner explorer supports all sixteen energy source types');
+function selectMarkup(id) {
+    const match = energy.match(new RegExp('<select\\b([^>]*\\bid="' + id + '"[^>]*)>([\\s\\S]*?)<\\/select>'));
+    return match ? { attributes: match[1], options: [...match[2].matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)].map(option => ({
+        attributes: option[1], value: (option[1].match(/\bvalue="([^"]*)"/) || [])[1], label: option[2]
+    })) } : { attributes: '', options: [] };
+}
+const explorer = selectMarkup('partnerSource');
+const intake = selectMarkup('s-type');
+for (const [label, select] of [['explorer', explorer], ['enquiry form', intake]]) {
+    ok(requiredSources.every(id => select.options.filter(option => option.value === id).length === 1) &&
+       sources.every(source => select.options.some(option => option.value === source.id && option.label === source.label)),
+       'the ' + label + ' includes each source exactly once with the matching label');
+}
+ok(/id="partnerExplorer"/.test(energy) && /data-partner-discuss/.test(energy),
+   'source-specific guidance has a route to the owner enquiry');
+ok(/\brequired\b/.test(intake.attributes) && intake.options[0] && intake.options[0].value === '' &&
+   !intake.options.some(option => /\bselected\b/.test(option.attributes)),
+   'the enquiry requires an explicit source choice, without a preselected offer');
+ok(intake.options.some(option => option.value === 'other'),
+   'the enquiry allows other or mixed energy sources');
+const gasSection = (energy.match(/<!-- ===== THE PAD ===== -->([\s\S]*?)<!-- ===== \/THE PAD ===== -->/) || [])[1] || '';
+const gasIntro = gasSection.split('<div class="dg-fuel-pane"')[0];
+ok(/Gas-site examples/.test(gasIntro) && /two gas-site configurations/.test(gasIntro) &&
+   /landfill and flare examples/.test(gasIntro) && /Other energy sources follow the routes above/.test(gasIntro),
+   'the 3D introduction explicitly limits the drawings to two gas-site examples');
+ok(/Choose a gas-site example/.test(gasIntro),
+   'the scene selector describes gas examples rather than all energy sources');
+const sceneTypes = [...gasSection.matchAll(/class="dg-fuel-pane" data-fuel="([^"]+)"/g)].map(match => match[1]);
+ok(sceneTypes.length === 2 && sceneTypes.includes('landfill') && sceneTypes.includes('flare'),
+   'the gas drawings are not relabelled as other types of energy infrastructure');
 
 /* ---------- 2. The narrative is fuel-neutral ----------
    Everything outside the flared-gas card and the wellpad drawing. */
@@ -119,10 +149,12 @@ UPSTREAM.forEach(t => {
     ok(!re.test(narrative), 'no "' + t + '" outside the flared-gas card and drawing');
 });
 
-/* The page lede itself names landfill first. */
+/* The main owner invitation must describe the broader service before the
+   project-specific illustrations appear. */
 const lede = (energy.match(/<p class="lede"(?:\s[^>]*)?>([^<]+)/) || [])[1] || '';
-ok(/landfill/i.test(lede) && lede.indexOf('landfill') < lede.indexOf('associated'),
-   'the page lede names landfill before associated gas', lede.slice(0, 72) + '...');
+ok(['hydro', 'nuclear', 'renewables', 'gas', 'industrial surplus', 'grid-connected'].every(term => lede.toLowerCase().includes(term)) &&
+   /usable supply/.test(lede) && /existing infrastructure/.test(lede),
+   'the owner lede includes non-gas sources, usable supply and existing infrastructure');
 
 /* ---------- 3. The landfill drawings describe a landfill ---------- */
 

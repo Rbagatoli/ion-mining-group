@@ -1029,12 +1029,12 @@ node tools/build-diagram.js            # both pages
 node tools/build-diagram.js hosting    # just one
 ```
 
-### Nationwide sourcing and the existing landfill project drawings
+### Broad energy partnerships and the existing gas project drawings
 
-The separate energy site sourcing service researches opportunities across the United States
-and across energy sources. The existing hosted-project presentation continues to lead with
-**landfill gas, with flared gas also served**. Its drawings describe those projects; they do
-not define the scope of a client's sourcing search.
+The Energy Partners page (`energy.html`) accepts opportunities across energy sources, and
+the separate energy site sourcing service researches potential sites across the United States.
+Neither page is restricted to landfill or flared gas. Available power, access rights, usable
+infrastructure and project funding require site-specific confirmation.
 
 **Company-wide scope.** `tools/build-nav.js` owns `FOOTER_BLURB` and applies it to every
 registered static page. `tools/build-seo.js` uses that same description when generating the
@@ -1044,26 +1044,29 @@ describes mining, hosting and nationwide energy site sourcing without implying c
 power offers. `landfill-copy-suite.js` checks the shared source, generated metadata and all
 page footers; its mutation checks reject a narrowed service description or a stale footer.
 
-**Project-specific ordering.** Landfill still comes before flared gas in the hosted-project
-home hero, the four-fuel grid and the enquiry form on `energy.html`. Preserve these existing
-project descriptions and imagery while broadening the separate sourcing service.
+**Source explorer and submission.** The interactive source explorer and the Energy Partners
+form expose the same 16 energy categories: hydro, nuclear, wind, solar, geothermal, natural
+gas generation, landfill gas, flare gas, biomass/biogas, waste-to-energy, marine/tidal/wave,
+recovered energy/waste heat, coal generation, oil generation, industrial surplus and grid
+supply. The form also accepts other or mixed sources. The explorer shows a discussion guide,
+potential connection route and infrastructure checks; its illustrations do not assert that
+energy or equipment is available. An owner may offer electricity, a fuel needing conversion,
+or a site and infrastructure. Energy rights and site rights are checked separately.
 
-**The flare framing survived, on purpose.** It is tempting to read "The flare goes out.
-Nothing else moves." as oil-and-gas language that had to go. It is not: landfill gas is
-flared too, and most collection systems end in an enclosed flare. The heading, the slider
-ends, and "your flare stays" are all true of both fuels and were left alone.
+**Funding and operations.** Managed Energy Hosting retains owner-funded infrastructure and
+customer-owned miners. Any separately funded project requires committed financing and agreed
+capital responsibilities. Shared criteria and project stages cover electrical and fuel
+routes. The emissions section is explicitly for gas projects and makes no universal
+environmental-benefit claim.
 
-What is genuinely oil-and-gas-only is the **upstream vocabulary** — wellhead, separator, tank
-battery, lease, royalty, Permian, Bakken. A landfill has none of those. Those words are gone
-from the page's narrative, which now says "your collection system, your existing equipment"
-and lets whichever drawing is on screen be the specific one.
-
-They are **not** gone from the page, and should not be. Two zones keep them legitimately:
-the *Flared associated gas* card, which is about oil and gas, and the wellpad drawing behind
-the fuel switch, whose own labels and alt text describe a wellpad. `landfill-copy-suite.js`
-carves both zones out and asserts the vocabulary is absent from everything that is left —
-scoping that matters, because a check that greps for absent words also passes when its own
-carve-out has silently eaten the whole page.
+**Two clearly labeled gas examples.** The existing 3D comparison still shows a landfill gas
+collection system and an associated-gas pad. They are examples, not the entire partnership
+offer or renderings of every source. Keep their equipment, labels, alt text, independent
+camera state and before/after behavior accurate. The landfill example must not describe a
+wellhead, separator or tank battery; the wellpad example legitimately includes them. Do not
+relabel either gas scene as hydro, nuclear, wind or another source. Change the comparison's
+generated heading and introduction in `tools/build-diagram.js`, so regeneration preserves
+that distinction.
 
 **The drawings.** `index.html` and `hosting.html` draw conditioning → generation → containers,
 which is the same whatever feeds it, and needed **no change at all**. Only `energy.html` drew
