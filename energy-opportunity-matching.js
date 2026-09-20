@@ -79,26 +79,78 @@
         if (typeof v !== 'string') throw new Error(key + ' must be text.');
         return v.replace(/\r\n?/g, '\n').trim();
     }
+    function exactIds(raw, key) {
+        if (raw[key] === undefined || raw[key] === null) return [];
+        if (!Array.isArray(raw[key])) throw new Error(key + ' must be a list of exact stable IDs.');
+        return unique(raw[key].map(function (id) { if (!text(id)) throw new Error(key + ' require nonempty exact IDs.'); return id.trim(); })).sort();
+    }
+    function serviceScope(raw) {
+        var service = enumInput(raw, 'service', ['custom_search', 'site_review', 'site_submission'], 'custom_search');
+        var scope = enumInput(raw, 'scope', ['public_us', 'internal_review'], 'public_us');
+        var countryCode = text(raw.country).toUpperCase() || 'USA';
+        if (countryCode === 'US') countryCode = 'USA';
+        if (countryCode === 'CA') countryCode = 'CAN';
+        var internalScopeEvidence = narrativeInput(raw, 'internalScopeEvidence');
+        if (scope === 'internal_review' && (service !== 'site_review' || !internalScopeEvidence)) throw new Error('An internal review requires an explicit site-review scope and its authorization/evidence reference.');
+        if (scope === 'public_us' && countryCode !== 'USA') throw new Error('Public site sourcing is US-based. A non-US site requires a separately bounded internal review.');
+        var opportunities = raw.existingOpportunities;
+        if (opportunities === undefined || opportunities === null) opportunities = [];
+        if (typeof opportunities === 'string') opportunities = opportunities.trim() ? [{ reference: opportunities.trim(), siteId: null, disposition: service === 'site_review' ? 'target' : 'known' }] : [];
+        if (!Array.isArray(opportunities) || opportunities.length > 50) throw new Error('Existing opportunities must be text or a list of at most 50 references.');
+        opportunities = opportunities.map(function (o) {
+            if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('An existing opportunity needs a reference or exact site ID.');
+            var siteId = text(o.siteId) || null, reference = narrativeInput(o, 'reference');
+            if (!siteId && !reference) throw new Error('An existing opportunity needs a reference or exact site ID.');
+            return { siteId: siteId, reference: reference, disposition: enumInput(o, 'disposition', ['known', 'rejected', 'target'], 'known'), notes: narrativeInput(o, 'notes') };
+        });
+        var targetSiteIds = exactIds(raw, 'targetSiteIds').concat(opportunities.filter(function (o) { return o.disposition === 'target' && o.siteId; }).map(function (o) { return o.siteId; }));
+        var knownSiteExclusions = exactIds(raw, 'knownSiteExclusions').concat(service === 'custom_search' ? opportunities.filter(function (o) { return o.siteId; }).map(function (o) { return o.siteId; }) : []);
+        var budget = raw.upfrontBudget, amount = null, currency = null;
+        if (budget !== undefined && budget !== null) {
+            if (typeof budget !== 'object' || Array.isArray(budget)) throw new Error('Upfront budget must preserve its amount and currency.');
+            amount = numericInput(budget, 'amount', null, true);
+            currency = text(budget.currency).toUpperCase();
+            if (!currency || currency === 'UNKNOWN') currency = null;
+            else if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Budget currency must be an explicit three-letter code or unknown.');
+        } else if (raw.maxSiteCapitalUsd !== undefined && raw.maxSiteCapitalUsd !== null && raw.maxSiteCapitalUsd !== '') {
+            amount = numericInput(raw, 'maxSiteCapitalUsd', null, true); currency = 'USD';
+        }
+        return { service: service, scope: scope, country: countryCode, internalScopeEvidence: internalScopeEvidence,
+            geography: narrativeInput(raw, 'geography'), transaction: narrativeInput(raw, 'transaction'), timing: narrativeInput(raw, 'timing'), costBasis: narrativeInput(raw, 'costBasis'),
+            existingOpportunities: opportunities, targetSiteIds: unique(targetSiteIds).sort(), knownSiteExclusions: unique(knownSiteExclusions).sort(),
+            siteDetails: narrativeInput(raw, 'siteDetails'), acquisitionSource: narrativeInput(raw, 'acquisitionSource'), upfrontBudget: { amount: amount, currency: currency } };
+    }
     function normalizeBrief(raw) {
         if (raw === undefined) raw = {};
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Client brief must be an object.');
-        var b = {
+        var scope = serviceScope(raw), power = raw.power, minimum = numericInput(raw, 'minMw', own(raw, 'service') ? null : 1, false);
+        if (power !== undefined && power !== null) {
+            if (typeof power !== 'object' || Array.isArray(power)) throw new Error('Power must include a value and kW/MW unit.');
+            var value = numericInput(power, 'value', null, false), unit = enumInput(power, 'unit', ['kW', 'MW'], 'MW');
+            var converted = value === null ? null : value / (unit === 'kW' ? 1000 : 1);
+            if (own(raw, 'minMw') && raw.minMw !== null && raw.minMw !== '' && converted !== null && Math.abs(minimum - converted) > 1e-10) throw new Error('Usable power and minMw disagree; retain the original unit and resolve the conflict.');
+            // Older received briefs may carry the original minMw beside an
+            // empty newer power control. Preserve that explicit requirement;
+            // an unknown display value must not erase a known legacy load.
+            if (converted !== null || !own(raw, 'minMw')) minimum = converted;
+            power = { value: value, unit: unit };
+        } else power = { value: minimum, unit: 'MW' };
+        var b = Object.assign({}, scope, {
             id: text(raw.id) || null, revision: raw.revision === undefined || raw.revision === null ? null : String(raw.revision),
             notes: narrativeInput(raw, 'notes'), additionalRequirements: narrativeInput(raw, 'additionalRequirements'),
             states: listInput(raw, 'states', states, true), excludedStates: listInput(raw, 'excludedStates', states, true),
             energySources: listInput(raw, 'energySources', typeIds),
-            excludedSources: listInput(raw, 'excludedSources', typeIds), minMw: numericInput(raw, 'minMw', 1, false),
-            maxMw: numericInput(raw, 'maxMw', null, false), maxDeliveredCentsKwh: numericInput(raw, 'maxDeliveredCentsKwh', null, false),
-            maxEnergyCentsKwh: numericInput(raw, 'maxEnergyCentsKwh', null, false), minTermMonths: numericInput(raw, 'minTermMonths', null, false),
-            maxSiteCapitalUsd: numericInput(raw, 'maxSiteCapitalUsd', null, true),
+            excludedSources: listInput(raw, 'excludedSources', typeIds), minMw: minimum,
+            maxMw: numericInput(raw, 'maxMw', null, false), maxDeliveredCentsKwh: numericInput(raw, 'maxDeliveredCentsKwh', null, true),
+            maxEnergyCentsKwh: numericInput(raw, 'maxEnergyCentsKwh', null, true), minTermMonths: numericInput(raw, 'minTermMonths', null, false),
+            maxSiteCapitalUsd: scope.upfrontBudget.currency === 'USD' ? scope.upfrontBudget.amount : null,
             supply: enumInput(raw, 'supply', ['either', 'electricity', 'fuel'], 'either'),
             operation: enumInput(raw, 'operation', ['flexible', 'continuous', 'interruptible', 'seasonal'], 'flexible'),
             connectionReadiness: enumInput(raw, 'connectionReadiness', ['any', 'existing', 'new_build_allowed'], 'any'),
             minUptimePct: numericInput(raw, 'minUptimePct', null, true), startBy: raw.startBy === undefined || raw.startBy === null || raw.startBy === '' ? null : raw.startBy
-        };
-        if (raw.knownSiteExclusions !== undefined && !Array.isArray(raw.knownSiteExclusions)) throw new Error('knownSiteExclusions must be a list of exact stable IDs.');
-        b.knownSiteExclusions = unique((raw.knownSiteExclusions || []).map(function (id) { if (!text(id)) throw new Error('Known site exclusions require nonempty exact IDs.'); return id.trim(); })).sort();
-        if (b.maxMw !== null && b.maxMw < b.minMw) throw new Error('maxMw cannot be smaller than minMw; it describes the client allocation, not plant size.');
+        });
+        if (raw.power !== undefined && raw.power !== null) b.power = power;
+        if (b.maxMw !== null && b.minMw !== null && b.maxMw < b.minMw) throw new Error('maxMw cannot be smaller than minMw; it describes the client allocation, not plant size.');
         if (b.minUptimePct !== null && b.minUptimePct > 100) throw new Error('minUptimePct cannot exceed 100.');
         if (b.startBy !== null && date(b.startBy) === null) throw new Error('startBy must be a real calendar date in YYYY-MM-DD format.');
         if (b.energySources.some(function (s) { return b.excludedSources.indexOf(s) >= 0; })) throw new Error('An energy source cannot be both selected and excluded.');
@@ -232,14 +284,25 @@
         var c = Object.assign({}, candidate, { availableMw: null, deliveredCentsKwh: null, energyCentsKwh: null, capitalUsd: null });
         var types = Array.isArray(c.energyTypes) ? unique(c.energyTypes.filter(function (t) { return typeIds.indexOf(t) >= 0; })) : [];
         var explicitTerritory = own(territories, c.state) && brief.states.indexOf(c.state) >= 0;
-        var allowedCountry = c.country === 'USA' || (explicitTerritory && c.country === territories[c.state]);
-        if (c.country && !allowedCountry) disqualifiers.push('Outside the United States search area and explicitly selected territories.');
-        else if (!c.country) missing.push('Confirm that the physical site is in the United States.');
-        else { score += 5; reasons.push(explicitTerritory ? 'Explicitly selected US territory recorded.' : 'US location recorded.'); }
-        if (own(territories, c.state) && !explicitTerritory) disqualifiers.push('US territory is outside the default 50-state and DC search; select it explicitly to include it.');
+        var internalReview = brief.scope === 'internal_review';
+        var allowedCountry = internalReview ? c.country === brief.country : c.country === 'USA' || (explicitTerritory && c.country === territories[c.state]);
+        if (c.country && !allowedCountry) disqualifiers.push(internalReview ? 'Site is outside the explicitly bounded internal-review country.' : 'Outside the United States search area and explicitly selected territories.');
+        else if (!c.country) missing.push(internalReview ? 'Confirm the physical site country against the internal review scope.' : 'Confirm that the physical site is in the United States.');
+        else { score += 5; reasons.push(internalReview ? 'Country matches the bounded internal review; this does not expand public sourcing coverage.' : explicitTerritory ? 'Explicitly selected US territory recorded.' : 'US location recorded.'); }
+        if (!internalReview && own(territories, c.state) && !explicitTerritory) disqualifiers.push('US territory is outside the default 50-state and DC search; select it explicitly to include it.');
         if (c.state && brief.excludedStates.indexOf(c.state) >= 0) disqualifiers.push('State is explicitly excluded by the client.');
         var identifiers = [c.id, c.physicalId].concat(c.sourceRecordIds || []);
-        if (identifiers.some(function (id) { return brief.knownSiteExclusions.indexOf(id) >= 0; })) disqualifiers.push('Site ID is explicitly excluded by the client.');
+        if (brief.service === 'site_review') {
+            if (!brief.targetSiteIds.length) missing.push('Resolve the supplied site reference to an exact physical/site record ID before asserting client fit.');
+            else if (!identifiers.some(function (id) { return brief.targetSiteIds.indexOf(id) >= 0; })) disqualifiers.push('This is not the supplied site selected for review.');
+            else reasons.push('Supplied site is the review target; known-site exclusions do not discard a requested review.');
+        } else if (brief.service === 'site_submission') missing.push('Supply submission is not a client search brief; record its authority and provenance before assessing a separate client brief.');
+        else {
+            if (identifiers.some(function (id) { return brief.knownSiteExclusions.indexOf(id) >= 0; })) disqualifiers.push('Site ID is explicitly excluded by the client.');
+            if (brief.existingOpportunities.some(function (o) { return !o.siteId; })) missing.push('Resolve the client\'s existing/rejected opportunity references to exact site IDs before treating this as a new opportunity.');
+        }
+        if (brief.minMw === null) missing.push('Client usable-power requirement is unknown; confirm the required kW/MW allocation.');
+        if (brief.upfrontBudget.amount !== null && brief.upfrontBudget.currency !== 'USD') missing.push('Upfront budget is ' + (brief.upfrontBudget.currency || 'in an unknown currency') + '; reconcile currency and scope before comparing USD site capital.');
         if (!c.state) missing.push('Confirm state before matching the national or selected geography.');
         else if (brief.states.length && brief.states.indexOf(c.state) < 0) disqualifiers.push('State is outside the client search area.');
         else if (c.state) { score += 5; reasons.push('State matches the geographic brief.'); }
@@ -251,7 +314,7 @@
         if (c.operator) score += 3;
         if (Number.isFinite(c.lat) && Number.isFinite(c.lng)) score += 2;
         if (c.sourceUrl) score += 2;
-        if (c.nameplateMw !== null && c.nameplateMw >= brief.minMw) { score += 3; reasons.push('Reported plant size merits allocation research; no uncommitted MW are inferred.'); }
+        if (brief.minMw !== null && c.nameplateMw !== null && c.nameplateMw >= brief.minMw) { score += 3; reasons.push('Reported plant size merits allocation research; no uncommitted MW are inferred.'); }
         function check(key, label, weight) {
             var r = evidenceFor(c, key, now, brief); checks[key] = r;
             if (r.value === null) missing.push(label + ': ' + r.reason + '.');
@@ -267,7 +330,7 @@
         c.capitalUsd = check('capitalUsd', 'Client total site capital', 10);
         var rights = check('rights', 'Sale and site-use rights', 9), supply = check('supply', 'Delivery product', 7), operation = check('operation', 'Operating schedule', 5);
         if (rights === 'unavailable') disqualifiers.push('Owner confirms that the required sale or site-use rights are unavailable.');
-        if (c.availableMw !== null && c.availableMw < brief.minMw) disqualifiers.push('Confirmed available allocation is below the minimum MW.');
+        if (brief.minMw !== null && c.availableMw !== null && c.availableMw < brief.minMw) disqualifiers.push('Confirmed available allocation is below the minimum MW.');
         if (c.availableMw !== null && brief.maxMw !== null && c.availableMw > brief.maxMw) missing.push('Confirm that the owner will sell a smaller allocation within the preferred client range.');
         if (c.deliveredCentsKwh !== null && brief.maxDeliveredCentsKwh !== null && c.deliveredCentsKwh > brief.maxDeliveredCentsKwh) disqualifiers.push('Comparable delivered energy price exceeds the client ceiling.');
         if (c.capitalUsd !== null && brief.maxSiteCapitalUsd !== null && c.capitalUsd > brief.maxSiteCapitalUsd) disqualifiers.push('Confirmed client site capital exceeds the client budget.');

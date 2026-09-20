@@ -1,5 +1,13 @@
 # Proton Mining — public website
 
+## Energy Sites service update — 20 September 2026
+
+`energy-sites.html` presents a 16-source explorer plus three request routes: find a site, review an existing opportunity, and submit/referral. The researched landfill shortlist is explicitly a sample, not the complete source range or a list of available offers. Power retains kW/MW, capital retains its currency, and energy ceilings retain their cost basis.
+
+`site-intake.js` supports validated private receipts and safe retries; `intake-config.js` keeps its endpoint empty until production storage and owner access are verified. An unconfigured form exposes the direct energy email fallback without claiming receipt. Other mailto forms are unchanged. No backend code, private inbox data or synthetic test records are copied into the public tree. See `../worker-intake/README.md` and `../docs/energy-site-sourcing.md` for current scope and deployment status.
+
+Public corporate footer placeholders have been removed. Proton Mining and the existing contact routes remain; no registered legal entity or business address has been invented. Historic renderer notes later in this document are not authority to republish unresolved corporate placeholders.
+
 The company-facing marketing site. Completely separate from the app that lives at the
 repo root — no shared CSS, no dependencies. Six pages plus an error page, one stylesheet,
 and a small diagram engine. Most pages carry one drawing; the energy page carries
@@ -226,12 +234,9 @@ Every unverified fact is wrapped in `<span class="ph">[LIKE THIS]</span>` and re
 **orange text on a dashed underline**, so nothing false can ship by accident. Search for
 `class="ph"` to find them all.
 
-### Appears on every page (footer)
+### Company footer identity
 
-| Placeholder | What it needs |
-|---|---|
-| `[REGISTERED ENTITY NAME]` | Legal entity, e.g. "Proton Mining LLC" |
-| `[CITY, JURISDICTION]` | Where the entity is registered |
+The footer uses Proton Mining and links to the existing contact page. Registered entity name and jurisdiction remain unverified; add them only when supported. Do not publish placeholder identity text or invent an LLC/address.
 
 ### `index.html`
 

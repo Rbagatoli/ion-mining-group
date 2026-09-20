@@ -49,7 +49,8 @@ test('zero, NaN, booleans and malformed numeric requirements are rejected', () =
     [0, '0', NaN, Infinity, false, true, 'abc', ' '].forEach(v => assert.throws(() => M.normalizeBrief({ minMw: v }), /minMw/));
     assert.throws(() => M.normalizeBrief({ minMw: 5, maxMw: 2 }), /maxMw/);
     assert.throws(() => M.normalizeBrief({ minUptimePct: 101 }), /100/);
-    assert.throws(() => M.normalizeBrief({ maxDeliveredCentsKwh: '0' }), /positive/);
+    assert.equal(M.normalizeBrief({ maxDeliveredCentsKwh: '0', maxEnergyCentsKwh: 0 }).maxDeliveredCentsKwh, 0);
+    assert.throws(() => M.normalizeBrief({ maxDeliveredCentsKwh: -1 }), /nonnegative/);
 });
 test('malformed dates, array types and contradictory constraints are rejected', () => {
     ['2026-02-30', '2026-9-01', 0, false].forEach(startBy => assert.throws(() => M.normalizeBrief({ startBy }), /startBy/));

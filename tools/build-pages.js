@@ -36,7 +36,7 @@ const NEVER = new Set([
     'tests', 'tools',
     /* Cloudflare Worker source. Their route surface and key-derivation schemes are not
        something to hand out, and nothing on any page loads them. */
-    'worker', 'worker-strike', 'worker-orders', 'worker-portal',
+    'worker', 'worker-strike', 'worker-orders', 'worker-portal', 'worker-intake',
 ]);
 
 /* Excluded from the MARKETING site specifically. tools/ is generator source whose comments

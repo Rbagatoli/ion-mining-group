@@ -10,14 +10,15 @@
   const operation={flexible:'Flexible',continuous:'Continuous',interruptible:'Interruptible',seasonal:'Seasonal'};
   const costBases={delivered:'Delivered electricity',energy_only:'Energy only; delivery costs unresolved'};
   const readiness={any:'Any; report readiness',existing:'Existing connection required',new_build_allowed:'New connection / build allowed'};
+  const services={custom_search:'Find a site',site_review:'Review a site I found',site_submission:'Submit or refer a site'};
   const list=v=>Array.isArray(v)?v.map(String).map(s=>s.trim()).filter(Boolean):String(v||'').split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);
-  const number=v=>v==null||String(v).trim()===''?null:Number(v);
+  const number=v=>v==null||typeof v==='string'&&v.trim()===''?null:typeof v==='number'||typeof v==='string'?Number(v):NaN;
   const known=v=>v===null||v===undefined||v===''?'Unknown':String(v);
   function normalizeBrief(raw={}){
-    if(number(raw.minMw)===null)throw Error('Enter the client minimum load; an unknown load is not a one-MW requirement.');
+    if(!raw.service&&!raw.power&&number(raw.minMw)===null)throw Error('Enter the client minimum load; an unknown load is not a one-MW requirement.');
     const input={...raw};for(const key of ['states','excludedStates','energySources','excludedSources','knownSiteExclusions'])input[key]=list(input[key]);
     for(const key of ['minMw','maxMw','maxDeliveredCentsKwh','maxEnergyCentsKwh','maxSiteCapitalUsd','minUptimePct','minTermMonths'])input[key]=number(input[key]);
-    input.costBasis=input.costBasis||'delivered';
+    input.costBasis=input.costBasis||(raw.service?'':'delivered');
     const unknownCriteria=Array.isArray(raw.unknownCriteria)?raw.unknownCriteria.filter(k=>['supply','operation','connectionReadiness'].includes(k)):['supply','operation','connectionReadiness'].filter(k=>!raw[k]);
     const unresolved=unknownCriteria.length?'Confirm client criteria: '+unknownCriteria.join(', ')+'.':'';
     if(typeof input.additionalRequirements==='string')input.additionalRequirements=input.additionalRequirements.replace(/^Confirm client criteria: (?:supply|operation|connectionReadiness)(?:, (?:supply|operation|connectionReadiness))*\.\s*$/gm,'').trim();
@@ -58,16 +59,28 @@
   function briefText(b={}){
     const criterion=(key,labels)=>b.unknownCriteria?.includes(key)||!b[key]?'Unknown; confirm with client':labels[b[key]];
     return [
+      'Service: '+(services[b.service]||services.custom_search),
       'Client / internal sample: '+(b.client||'INTERNAL SAMPLE — no customer requirement claimed'),
       'Brief reference/version: '+(b.reference||'Unassigned; identify before accepted delivery'),
-      'United States states: '+(list(b.states).join(', ')||'Nationwide; territories only when explicitly selected'),
-      'Excluded states / known sites: '+(list(b.excludedStates).concat(list(b.knownSiteExclusions)).join(', ')||'None supplied'),
+      ...(b.id?['Private request / brief: '+b.id+'; immutable brief revision: '+known(b.revision)]:[]),
+      ...(b.geography?['Requested geography: '+b.geography]:[]),
+      ...(b.scope==='internal_review'?['Separately bounded internal review: '+b.country+'; scope evidence: '+b.internalScopeEvidence+'; no expansion of US public sourcing coverage.']:[]),
+      b.scope==='internal_review'?'Internal-review location: '+(b.geography||b.country)+'; this is not a nationwide search.':'United States states: '+(list(b.states).join(', ')||(b.geography?'No structured state IDs; follow the supplied geography and resolve it before selecting sites.':'Nationwide; territories only when explicitly selected')),
+      'Excluded states: '+(list(b.excludedStates).join(', ')||'None supplied'),
+      (b.service==='site_review'?'Known sites retained as review context; target is deliberately investigated: ':'Known/rejected site IDs excluded from a custom search: ')+(list(b.knownSiteExclusions).join(', ')||'None supplied'),
+      ...(b.existingOpportunities?.length?['Existing opportunities: '+b.existingOpportunities.map(o=>typeof o==='string'?o:[o.disposition,o.siteId,o.reference,o.notes].filter(Boolean).join(' · ')).join('\n')]:[]),
+      ...(b.siteDetails?['Supplied site / owner submission: '+b.siteDetails]:[]),
+      ...(b.targetSiteIds?.length?['Exact site IDs selected for review: '+b.targetSiteIds.join(', ')]:[]),
       'Allowed source families: '+(list(b.energySources).join(', ')||'All source families'),
       'Excluded sources: '+(list(b.excludedSources).join(', ')||'None supplied'),
       'Client allocation: minimum '+known(b.minMw)+' MW; maximum '+known(b.maxMw)+' MW (not a maximum plant nameplate size)',
+      ...(b.power?['Original usable-power input: '+known(b.power.value)+' '+b.power.unit+(b.power.value===null&&b.minMw!==null?'; the explicit legacy minimum of '+b.minMw+' MW is retained.':'')]:[]),
       'All-in delivered price ceiling: '+known(b.maxDeliveredCentsKwh)+' USD cents/kWh',
       'Energy-only price ceiling: '+known(b.maxEnergyCentsKwh)+' USD cents/kWh; delivery costs remain separate',
       'Maximum site capital: '+known(b.maxSiteCapitalUsd)+' USD',
+      ...(b.upfrontBudget?['Upfront budget as supplied: '+known(b.upfrontBudget.amount)+' '+(b.upfrontBudget.currency||'unknown currency')+'; no currency conversion assumed.']:[]),
+      'Transaction preference: '+known(b.transaction)+'; timing: '+known(b.timing)+'; cost basis: '+known(b.costBasis),
+      'Acquisition / referral source: '+known(b.acquisitionSource),
       'Supply: '+criterion('supply',supply)+'; operation: '+criterion('operation',operation)+'; minimum uptime: '+known(b.minUptimePct)+'%',
       'Connection: '+criterion('connectionReadiness',readiness)+'; start by: '+known(b.startBy)+'; minimum term: '+known(b.minTermMonths)+' months',
       'Delivery point, auxiliaries and further requirements: '+(b.notes||'Unknown; resolve against the client brief.'),
@@ -75,13 +88,21 @@
     ].join('\n');
   }
   function assignment({brief={},candidate=null,source=null,page='https://protonminingco.com/crm/'}={}){
+    const template=!Object.keys(brief).length&&!candidate;
+    brief=normalizeBrief(template?{service:'custom_search',minMw:null}:brief);
+    if(brief.service==='site_submission')throw Error('A site submission is supply input, not a client research assignment. Record authority and provenance, then attach a separate qualified client brief.');
+    if(!template&&brief.service==='custom_search'&&brief.minMw===null)throw Error('Confirm the client usable-power requirement before creating a custom-search research draft.');
+    if(brief.service==='site_review'&&!candidate&&!brief.siteDetails&&!brief.existingOpportunities.length&&!brief.targetSiteIds.length)throw Error('Identify the supplied site or its original opportunity reference before creating a review draft.');
+    const candidateIds=candidate?[candidate.id,candidate.physicalId,...(candidate.sourceRecordIds||[])].filter(Boolean):[];
+    if(candidate&&brief.service==='site_review'&&brief.targetSiteIds.length&&!candidateIds.some(id=>brief.targetSiteIds.includes(id)))throw Error('This candidate is not the exact supplied site selected for review.');
+    if(candidate&&brief.service==='custom_search'&&candidateIds.some(id=>brief.knownSiteExclusions.includes(id)))throw Error('This site is already known or rejected; exclude it from the custom search. Use a site-review brief to investigate it deliberately.');
     const sourceUrl=candidate?.sourceSnapshot?.sourceUrl||candidate?.sourceUrl||candidate?.sourceURL||candidate?.sourceDetail?.sourceUrl||source?.url;
     const sourcePeriod=candidate?.sourceSnapshot?.reportingPeriod||candidate?.sourceDetail?.reportingPeriod||source?.reportingPeriod;
     const context=candidate?'\nSource record: '+candidate.id+'\nSite: '+candidate.name+'\nSource evidence: '+(sourceUrl||'Record original URLs and source dates; do not invent a URL.')+'\nSource reporting period: '+(sourcePeriod||'Unknown; confirm from original source')+'\nCRM: '+page:'';
-    const scope=candidate?'Review only this identified site against the exact brief. Do not launch a nationwide search or duplicate other roles’ work.': 'Choose one bounded search unit across the permitted US geography and source families; record actual coverage and continue from a deduplicated next action. Do not claim exhaustive national coverage.';
-    const makeDraft=detail=>({title:(candidate?'Energy fit: '+candidate.name:'United States energy search brief').slice(0,180),role:'supply',brief:marker+'\n'+rules+'\n\n'+assignmentFocus+'\n\n'+scope+' Keep existing limits: one small production assignment, about ten substantive minutes/fifteen overall; retain partial findings when the budget expires.\n\n'+briefText(brief)+context+'\n\n'+detail+'\n\nReturn a source-linked shortlist or a justified no-match/unresolved result for this exact brief, with exclusions, ranking rationale and one next action. Preserve immutable reviewed versions. No outreach is authorized.'});
+    const scope=brief.service==='site_review'?'Review only the supplied site/opportunity against this exact brief, even when it appears in prior known-site exclusions. Resolve its exact physical identity and originating source; do not substitute a new nationwide search. Any unknown client load remains unresolved.':candidate?'Review only this identified site against the exact brief. Do not launch a nationwide search or duplicate other roles’ work.': 'Choose one bounded search unit across the permitted US geography and source families; record actual coverage and continue from a deduplicated next action. Exclude already-known and rejected opportunities; map narrative references to exact site IDs before calling an opportunity new. Do not claim exhaustive national coverage.';
+    const makeDraft=detail=>({title:(candidate?'Energy fit: '+candidate.name:brief.service==='site_review'?'Review supplied energy site':'United States energy search brief').slice(0,180),role:'supply',brief:marker+'\n'+rules+'\n\n'+assignmentFocus+'\n\n'+scope+' Keep existing limits: one small production assignment, about ten substantive minutes/fifteen overall; retain partial findings when the budget expires.\n\n'+briefText(brief)+context+'\n\n'+detail+'\n\nThis is a saved research draft only. It does not invoke a native agent; record a separate exact-task delivery acknowledgment before claiming handoff. Return a source-linked shortlist or a justified no-match/unresolved result for this exact brief, with exclusions, ranking rationale and one next action. Preserve immutable reviewed versions. No outreach is authorized.'});
     const full=makeDraft(checklist);
     return full.brief.length<=9000?full:makeDraft('Retain original units, dates and source evidence. Distinguish resource, generation and offered client MW; compare delivered cost and remaining capital. Missing facts stay unresolved. Apply hard exclusions before ranking. Use the complete energy checklist in the handoff packet and return independent-review evidence.');
   }
-  return {KEY,marker,rules,researchPolicy,checklist,supply,operation,costBases,readiness,list,number,known,isTask,briefText,assignment,normalizeBrief,candidate,assess,saveEvidence,matching:E};
+  return {KEY,marker,rules,researchPolicy,checklist,supply,operation,costBases,readiness,services,list,number,known,isTask,briefText,assignment,normalizeBrief,candidate,assess,saveEvidence,matching:E};
 }));

@@ -1,0 +1,23 @@
+name = "proton-site-intake"
+main = "index.mjs"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# Set an explicitly verified Proton account before deployment. Do not reuse
+# an unrelated application's database. Apply schema.sql before enabling intake.
+[[d1_databases]]
+binding = "INTAKE_DB"
+database_name = "proton-site-intake"
+database_id = "REPLACE_WITH_VERIFIED_D1_ID"
+
+[vars]
+FIREBASE_PROJECT_ID = "ion-mining"
+ROUTE_EMAIL = "energy@protonminingco.com"
+ALLOWED_ORIGINS = "https://protonminingco.com,https://www.protonminingco.com"
+# OWNER_UIDS or OWNER_EMAILS must contain explicitly confirmed exact identities.
+# OWNER_EMAILS additionally requires a Firebase-signed email_verified === true.
+# Keep real owner identities out of this public config; set as Worker secrets.
+# RATE_LIMIT_SECRET: >=32 random characters, set as a Worker secret.
+
+[triggers]
+crons = ["17 4 * * *"]

@@ -43,21 +43,23 @@
   }
   function close(){taskRequest=null;completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
   function nav(){
-    const labels={control:'Control Center',today:'Today',pipeline:'Pipeline',discover:'Discover',team:'Team'};
+    const labels={control:'Control Center',today:'Today',requests:'Inbox',pipeline:'Pipeline',discover:'Discover',team:'Team'};
     $('navigation').innerHTML=Object.keys(labels).map(name=>'<a class="nav-item" href="#'+name+'" aria-label="'+labels[name]+'" title="'+labels[name]+'"'+(current===name?' aria-current="page"':'')+'>'+icon(name)+'<span>'+labels[name]+'</span></a>').join('');
     $('peopleLink').innerHTML=icon('people')+'<span>People</span>';$('settingsLink').innerHTML=icon('settings')+'<span>Settings</span>';
     const status=D.status();$('connectionLabel').textContent=!status.ready?'Connecting…':status.error?'Needs attention':status.uid?status.agent.mode==='cloud'?'Account connected':'Account · checking sync':'On this device';
   }
+  const intakeInbox=ProtonCrmIntakeInbox.create({D,E,esc,model:ProtonSourcingModel,config:window.ProtonIntakeConfig});
   let stopWorkFreshness=()=>{};
   function render(){
-    stopWorkFreshness();stopWorkFreshness=()=>{};
+    stopWorkFreshness();stopWorkFreshness=()=>{};intakeInbox.dispose();
     discovery.unmount();$('content').classList.toggle('crm-discover',current==='discover');$('content').classList.toggle('crm-control',current==='control');nav();const status=D.status();
     if(!status.ready){$('content').innerHTML='<div class="loading">Opening your account…</div>';return;}
     if(status.error){$('content').innerHTML=head('Your data needs attention','Your original records have been retained.')+'<div class="banner">'+esc(status.error)+'</div>'+button('Export original backup','backup')+' '+button('Reload workspace','reload');return;}
     let html='';
-    if(current==='control')html=ProtonCrmControl.render({sites:D.sites(),state:agent(),followups:D.followups(),contacts:D.contacts(),date:day(),connection:D.status()},{head,stat,esc,icon,row,tag,money,href,stageLabel,leadCard});else if(current==='today')html=renderToday();else if(current==='pipeline')html=renderPipeline();else if(current==='discover')html=renderDiscover();else if(current==='team')html=renderTeam();else if(current==='people')html=renderPeople();else html=renderSettings();
+    if(current==='control')html=ProtonCrmControl.render({sites:D.sites(),state:agent(),followups:D.followups(),contacts:D.contacts(),date:day(),connection:D.status()},{head,stat,esc,icon,row,tag,money,href,stageLabel,leadCard});else if(current==='today')html=renderToday();else if(current==='requests')html=intakeInbox.html();else if(current==='pipeline')html=renderPipeline();else if(current==='discover')html=renderDiscover();else if(current==='team')html=renderTeam();else if(current==='people')html=renderPeople();else html=renderSettings();
     $('content').innerHTML=(status.syncError?'<div class="banner" role="status">'+esc(status.syncError)+' · Local changes are retained.</div>':'')+(['error','offline'].includes(status.agent.mode)?'<div class="banner" role="status">Team register: '+esc(status.agent.error||'Cloud connection is offline. Team changes are paused.')+' '+textButton('Export backup','backup')+'</div>':'')+html;
     $('content').querySelectorAll('label').forEach(label=>{const control=label.querySelector('select,input');if(control&&!control.hasAttribute('aria-label'))control.setAttribute('aria-label',label.firstChild.textContent.trim());});
+    if(current==='requests')intakeInbox.mount($('content'));
     if(current==='discover')discovery.mount();
     if(current==='control')stopWorkFreshness=ProtonCrmControl.watchFreshness($('content'),()=>agent().tasks);
   }
@@ -107,7 +109,7 @@
   // Detail panels and write forms are defined below; each form captures its original revision.
   function route(){
     taskRequest=null;completedReviewSession=null;
-    const parts=location.hash.replace(/^#/,'').split('/');current=['control','today','pipeline','discover','team','people','settings'].includes(parts[0])?parts[0]:'control';
+    const parts=location.hash.replace(/^#/,'').split('/');current=['control','today','requests','pipeline','discover','team','people','settings'].includes(parts[0])?parts[0]:'control';
     try{selection=parts.length>=3?{kind:parts[1],id:decodeURIComponent(parts.slice(2).join('/'))}:null;}catch(_){selection=null;}
     if(sheet.open)sheet.close();modalForm=false;siteTab='overview';render();
     if(selection){if(selection.kind==='site')openSite(selection.id);else if(selection.kind==='lead')openLead(selection.id);else if(selection.kind==='task')openTask(selection.id);else if(selection.kind==='deal')dealForm(selection.id);}

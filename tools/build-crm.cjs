@@ -2,13 +2,13 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'..');
-const shell=['index.html','crm.css','crm.js','crm-model.js','outreach-model.js','control-center.js','control-center.css','workflow.js','workflow.css','crm-data.js','contacts.js','public-infrastructure.js','public-infrastructure.css','discovery.css','discovery-model.js','discovery.js','discovery-globe.js','grok-managed-hosting.js','sourcing.js','energy-scouting.js','grok-team.js','manifest.webmanifest','icon.svg'];
+const shell=['index.html','crm.css','crm.js','crm-model.js','outreach-model.js','control-center.js','control-center.css','workflow.js','workflow.css','crm-data.js','contacts.js','public-infrastructure.js','public-infrastructure.css','discovery.css','discovery-model.js','discovery.js','discovery-globe.js','grok-managed-hosting.js','sourcing.js','energy-scouting.js','sourcing-model.js','intake-inbox.js','intake-inbox.css','grok-team.js','manifest.webmanifest','icon.svg'];
 function assets(){
   const html=fs.readFileSync(path.join(ROOT,'crm/index.html'),'utf8');
   const runtime=[...html.matchAll(/(?:src|href)="\.\/runtime\/([^"?]+)(?:\?[^"\s]*)?"/g)].map(m=>m[1]);
   const data=JSON.parse(fs.readFileSync(path.join(ROOT,'tools/app-assets.json'),'utf8')).filter(p=>p.startsWith('data/'));
   const globe=['map-globe-style.js','prospect-globe-layer.js','globe-assets/globe-surface.js','globe-assets/hosting-earth-data.js','globe-assets/textures/earth-normal.png','globe-assets/vendor/three-0.185.1/three.module.min.js','globe-assets/vendor/three-0.185.1/three.core.min.js','globe-assets/vendor/three-0.185.1/RoomEnvironment.js','globe-assets/vendor/three-0.185.1/LICENSE'];
-  return [...shell.map(p=>({from:'crm/'+p,to:p})),...runtime.concat(globe).map(p=>({from:p,to:'runtime/'+p})),{from:'site/vendor/three-0.185.1/OrbitControls.js',to:'runtime/globe-assets/vendor/three-0.185.1/OrbitControls.js'},...data.map(p=>({from:p,to:p}))];
+  return [{from:'site/intake-config.js',to:'intake-config.js'},...shell.map(p=>({from:'crm/'+p,to:p})),...runtime.concat(globe).map(p=>({from:p,to:'runtime/'+p})),{from:'site/vendor/three-0.185.1/OrbitControls.js',to:'runtime/globe-assets/vendor/three-0.185.1/OrbitControls.js'},...data.map(p=>({from:p,to:p}))];
 }
 function build(destination){
   const out=path.resolve(destination||path.join(ROOT,'_site/crm'));

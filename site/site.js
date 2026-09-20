@@ -193,6 +193,7 @@
        already in worker/, is the natural fit). */
     var forms = document.querySelectorAll('form[data-mailto]');
     Array.prototype.forEach.call(forms, function (form) {
+        if (form.getAttribute('data-private-intake') !== null) return;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (!form.reportValidity()) return;
