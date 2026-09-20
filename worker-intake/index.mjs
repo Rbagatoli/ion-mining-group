@@ -105,7 +105,7 @@ export function validateSubmission(raw) {
 function config(env) {
   const uids=String(env.OWNER_UIDS||'').split(',').map(x=>x.trim()).filter(Boolean);
   const emails=String(env.OWNER_EMAILS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-  if (!env.INTAKE_DB?.prepare || env.FIREBASE_PROJECT_ID !== 'ion-mining' || env.ROUTE_EMAIL !== ROUTE || (!uids.length && !emails.length) || String(env.RATE_LIMIT_SECRET||'').length<32) fail(503,'unavailable','Private intake is not configured. Please email energy@protonminingco.com.');
+  if (!env.INTAKE_DB?.prepare || env.FIREBASE_PROJECT_ID !== 'ion-mining' || env.ROUTE_EMAIL !== ROUTE || (!uids.length && !emails.length) || String(env.RATE_LIMIT_SECRET||'').length<32) fail(503,'unavailable','Private intake is not configured. Please email sales@protonminingco.com.');
   if (uids.some(x=>x.length>128 || /\s/.test(x)) || emails.some(x=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x))) fail(503,'unavailable','Private intake is not configured.');
   return {uids,emails};
 }
@@ -168,7 +168,7 @@ async function receive(request,env,origin){
     stmt(env,'SELECT count,bucket FROM intake_rates WHERE bucket IN (?,?)',[bucket,globalBucket])
   ]));
   const row=results[3].results?.[0];
-  if(!row)fail(429,'rate_limited','Too many requests. Keep your request identity and try again later, or email energy@protonminingco.com.');
+  if(!row)fail(429,'rate_limited','Too many requests. Keep your request identity and try again later, or email sales@protonminingco.com.');
   if(row.payload_hash!==hash)fail(409,'idempotency_conflict','This request identity already received different details. Start a new request to change them.');
   const duplicate=row.id!==id;
   return response({received:true,requestId:row.id,receivedAt:row.received_at,status:'received',duplicate,receipt:'private_queue',notification:'not_configured'},duplicate?200:201,origin);
@@ -275,7 +275,7 @@ export default {
       return response({error:{code:'not_found',message:'Endpoint not found.'}},404,origin);
     }catch(error){
       // No customer payload/token/database errors in logs or public responses.
-      return response({...new URL(request.url).pathname.startsWith('/v1/health')?{ready:false}:{},error:{code:error instanceof IntakeError?error.code:'unavailable',message:error instanceof IntakeError?error.message:'Private intake is temporarily unavailable. Keep your request identity and retry, or email energy@protonminingco.com.'}},error instanceof IntakeError?error.status:503,origin);
+      return response({...new URL(request.url).pathname.startsWith('/v1/health')?{ready:false}:{},error:{code:error instanceof IntakeError?error.code:'unavailable',message:error instanceof IntakeError?error.message:'Private intake is temporarily unavailable. Keep your request identity and retry, or email sales@protonminingco.com.'}},error instanceof IntakeError?error.status:503,origin);
     }
   },
   async scheduled(_event,env){config(env);await env.INTAKE_DB.prepare('DELETE FROM intake_rates WHERE expires_at<?').bind(Date.now()).run();}

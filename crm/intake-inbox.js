@@ -24,7 +24,7 @@
     function assertAccount(s){const current=D.status();if(current.uid!==s.uid||current.epoch!==s.epoch||auth()?.currentUser?.uid!==s.uid)throw Error('The account changed. This request was not continued in the new account. Your draft is retained for the original account during this session.');}
     function cloud(s){assertAccount(s);if(D.status().agent?.mode!=='cloud')throw Error('Wait for the confirmed cloud CRM connection before creating or linking an assignment.');}
     async function api(path,{method='GET',body}={},captured){
-      const s=captured||stamp(),base=endpoint(configuration());if(!base)throw Error('Private intake is not connected. Email energy@protonminingco.com directly.');
+      const s=captured||stamp(),base=endpoint(configuration());if(!base)throw Error('Private intake is not connected. Email sales@protonminingco.com directly.');
       assertAccount(s);const token=await s.user.getIdToken();assertAccount(s);
       const response=await fetcher(base+path,{method,headers:{Accept:'application/json',Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},cache:'no-store',credentials:'omit',redirect:'error',...(body?{body:JSON.stringify(body)}:{})});assertAccount(s);
       let data;try{data=await response.json();}catch(_){throw Error('The private request service did not return a receipt. Keep this draft and retry.');}assertAccount(s);
@@ -130,7 +130,7 @@
     }
     function content(){
       synchronizeOwner();let configured=false;try{configured=!!endpoint(configuration());}catch(e){loadError=e.message;}
-      if(!configured)return '<section class="panel"><div class="panel-body"><h2>Private intake is not connected</h2><p>There is no confirmed online receiving service configured. No request is treated as received here.</p><p class="quiet-note">Use <a href="mailto:energy@protonminingco.com">energy@protonminingco.com</a> while the private endpoint is being configured.</p></div></section>';
+      if(!configured)return '<section class="panel"><div class="panel-body"><h2>Private intake is not connected</h2><p>There is no confirmed online receiving service configured. No request is treated as received here.</p><p class="quiet-note">Use <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a> while the private endpoint is being configured.</p></div></section>';
       if(!owner)return '<section class="panel"><div class="panel-body"><h2>Sign in to view private requests</h2><p class="quiet-note">Only the configured Proton owner account can access this inbox.</p></div></section>';
       const m=metrics;let html='<div class="intake-toolbar"><p class="quiet-note">Private receiving queue · no automatic outreach or bot execution</p><button class="text-button" data-intake="refresh" type="button">Refresh inbox</button></div>';
       if(m)html+='<div class="intake-metrics">'+[['Received',m.receivedTotal],['Qualified',m.qualifiedTotal],['CRM drafts',m.queueDrafts],['Acknowledged',m.acknowledged]].map(([name,n])=>'<div><strong>'+esc(n)+'</strong><span>'+name+'</span></div>').join('')+'</div>';

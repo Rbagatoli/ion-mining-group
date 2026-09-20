@@ -260,13 +260,13 @@
     var topicSelect = document.querySelector('[data-topic-select]');
     if (topicSelect) {
         var routes = {
-            hosting:     { to: 'hosting@protonminingco.com', subject: 'Hosting enquiry via protonminingco.com' },
-            'site-sourcing': { to: 'energy@protonminingco.com', subject: 'Energy site sourcing enquiry via protonminingco.com' },
-            energy:      { to: 'energy@protonminingco.com',  subject: 'Site / energy enquiry via protonminingco.com' },
-            'managed-hosting': { to: 'energy@protonminingco.com', subject: 'Managed Energy Hosting enquiry via protonminingco.com' },
-            partnership: { to: 'hello@protonminingco.com',   subject: 'Partnership enquiry via protonminingco.com' },
-            media:       { to: 'hello@protonminingco.com',   subject: 'Media enquiry via protonminingco.com' },
-            other:       { to: 'hello@protonminingco.com',   subject: 'Enquiry via protonminingco.com' }
+            hosting:     { to: 'sales@protonminingco.com', subject: 'Hosting enquiry via protonminingco.com' },
+            'site-sourcing': { to: 'sales@protonminingco.com', subject: 'Energy site sourcing enquiry via protonminingco.com' },
+            energy:      { to: 'sales@protonminingco.com',  subject: 'Site / energy enquiry via protonminingco.com' },
+            'managed-hosting': { to: 'sales@protonminingco.com', subject: 'Managed Energy Hosting enquiry via protonminingco.com' },
+            partnership: { to: 'sales@protonminingco.com',   subject: 'Partnership enquiry via protonminingco.com' },
+            media:       { to: 'sales@protonminingco.com',   subject: 'Media enquiry via protonminingco.com' },
+            other:       { to: 'sales@protonminingco.com',   subject: 'Enquiry via protonminingco.com' }
         };
 
         var applyRoute = function () {

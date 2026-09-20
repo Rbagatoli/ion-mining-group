@@ -82,7 +82,7 @@ jobs:
         run: node --test tests/facility-national.test.js tests/site-links.test.js tests/energy-opportunity-matching.test.js tests/crm-energy-scouting.test.js tests/crm-service-briefs.test.js
 
       - name: Private site-intake and CRM handoff checks
-        run: node --test tests/intake-backend.test.mjs tests/crm-intake-inbox.test.js tests/crm-intake-backend-integration.test.mjs
+        run: node --test tests/intake-backend.test.mjs tests/crm-intake-inbox.test.js tests/crm-intake-backend-integration.test.mjs tests/site-intake-recipient.test.js
 
       - name: Prospect evidence and capital checks
         run: node --test tests/prospect-diligence.test.js tests/prospect-energy-economics.test.js tests/site-capacity.test.js tests/site-infrastructure.test.js tests/site-opportunity.test.js tests/site-availability.test.js tests/site-engine.test.js tests/site-capex.test.js tests/landfill-shortlist.test.js tests/landfill-ca.test.js tests/capacity-audit.test.js tests/capex-rate.test.js

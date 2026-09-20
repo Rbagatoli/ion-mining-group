@@ -21,7 +21,7 @@
     const payload=object(record.payload,'Received request payload');
     if(!SERVICES.includes(record.service)||payload.service!==record.service)throw Error('Request service and immutable payload disagree.');
     if(!['received','qualified','rejected'].includes(record.status))throw Error('A durable received request is required; a local draft is not a receipt.');
-    return {requestId:id(record.id,'Private request ID'),briefId:id(record.id,'Brief ID'),briefRevision:revision(record.briefRevision),receivedAt:date(record.receivedAt,'Receipt time',null,true),routeEmail:text(record.routeEmail||'energy@protonminingco.com','Private routing address',254,true)};
+    return {requestId:id(record.id,'Private request ID'),briefId:id(record.id,'Brief ID'),briefRevision:revision(record.briefRevision),receivedAt:date(record.receivedAt,'Receipt time',null,true),routeEmail:text(record.routeEmail||'Not recorded','Private routing address',254,true)};
   }
   function fromRequest(record){
     const ref=requestRef(record),raw=object(record.payload.brief,'Received brief'),contact=object(record.payload.contact,'Received contact');

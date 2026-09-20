@@ -272,21 +272,18 @@ standards, and the small-volume threshold in the last FAQ.
 
 ### `contact.html`
 
-Phone number, business hours and time zone, street address, city/state/postal, and
-response-time commitment.
+Phone number, business hours and time zone, and response-time commitment.
+The business/home address is private and must not be published on this page.
 
 ---
 
 ## Email addresses
 
-Three addresses are referenced throughout and **need to exist before launch**:
+Public enquiries use the owner-confirmed `sales@protonminingco.com` inbox.
 
-- `hosting@protonminingco.com`
-- `energy@protonminingco.com`
-- `hello@protonminingco.com`
-
-They are hardcoded in the HTML and in the `routes` map at the top of the topic handler in
-`site.js`. If you use different addresses, update both.
+The recipient is set in public HTML, shared contact routes, checkout recovery,
+and the energy-intake email fallback. Keep those routes consistent when the
+owner confirms a change; do not invent separate departmental inboxes.
 
 ## Forms
 

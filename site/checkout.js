@@ -191,7 +191,7 @@
         var contact = ['ck-name', 'ck-company', 'ck-email', 'ck-phone', 'ck-notes'].map(function (id) {
             var field = $(id); return field && field.value.trim() ? id.slice(3) + ': ' + field.value.trim() : '';
         }).filter(Boolean).join('\n');
-        return 'mailto:hosting@protonminingco.com?subject=' + encodeURIComponent('Hardware and hosting quote request') +
+        return 'mailto:sales@protonminingco.com?subject=' + encodeURIComponent('Hardware and hosting quote request') +
             '&body=' + encodeURIComponent(text + '\n\n' + contact);
     }
 
@@ -567,7 +567,7 @@
                     note.textContent = isLocal()
                         ? 'Your order was not placed. ' + OrdersAPI.explain(err)
                         : 'Your order was not placed (' + why + '). Nothing was charged. ' +
-                          'Copy the order above and email it to hosting@protonminingco.com ' +
+                          'Copy the order above and email it to sales@protonminingco.com ' +
                           'and we will pick it up from there.';
                     note.hidden = false;
                 }

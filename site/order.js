@@ -213,7 +213,7 @@
             return;
         }
         if (!ordersBase()) {
-            fail('Order tracking is not switched on yet. Email hosting@protonminingco.com with reference ' +
+            fail('Order tracking is not switched on yet. Email sales@protonminingco.com with reference ' +
                  ref + ' and we will tell you where it stands.');
             return;
         }

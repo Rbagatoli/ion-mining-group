@@ -1,10 +1,12 @@
 # Private energy-site intake
 
-This Worker receives enquiries into a dedicated private D1 queue. It does not send email, contact an owner, execute a native agent, change Firebase rules, or purchase a service. `energy@protonminingco.com` remains the recorded routing destination and direct-email fallback. A successful response means the enquiry is durably stored for the configured Proton owner account; it is not an email-delivery claim.
+This Worker receives enquiries into a dedicated private D1 queue. It does not send email, contact an owner, execute a native agent, change Firebase rules, or purchase a service. The confirmed direct-email fallback is `sales@protonminingco.com`. A successful response means the enquiry is durably stored for the configured Proton owner account; it is not an email-delivery claim.
 
 ## Deployment state: 20 September 2026
 
 Implemented and tested locally; **not deployed**. The committed Wrangler file deliberately has a placeholder D1 ID and no configured owner identity. Public receipt remains unavailable until the prerequisites below are resolved.
+
+The owner confirmed that the former energy mailbox does not exist. Public links and recovery messages now use the confirmed sales mailbox. The inactive scaffold's routing constant, schema constraint and Wrangler variable still contain its original recorded-route value; these are not a supported contact address or authorization to deploy. Correct them together before activation. Preserve the route recorded on any existing receipt rather than rewriting historical provenance. No database migration, provider change or intake activation was performed with the public-contact correction.
 
 Read-only checks observed Wrangler 4.69.0 installed and an existing Cloudflare login. The token can read the Scalpdesk account, which contains `scalpdesk-db`; the known `proton-strike-proxy` Worker is absent there (Cloudflare error 10007). The personal account listed by Wrangler rejects D1 and Proton Worker deployment reads with authentication error 10000. No unrelated database or Worker was changed. The correct Proton account is not accessible with the observed token. No deployment account was inferred from the login email.
 
@@ -13,7 +15,7 @@ Remaining prerequisites:
 1. Access to the intended Proton Cloudflare account. Confirm its existing Proton Worker footprint before selecting it. A new login/token or account permission is needed; do not copy credentials into this repository.
 2. A dedicated D1 database, `INTAKE_DB` binding, and `schema.sql` applied to that database. Never bind `scalpdesk-db` or another application's storage.
 3. An explicitly confirmed CRM owner: set `OWNER_UIDS` (comma-separated exact Firebase UIDs) or `OWNER_EMAILS` (exact emails, requiring Firebase-signed `email_verified: true`). An ordinary sign-in to the same Firebase project is insufficient. There is no domain-wide allow rule. Secrets should hold the real allowlist; do not commit owner identities.
-4. Set a random `RATE_LIMIT_SECRET` of at least 32 characters, `FIREBASE_PROJECT_ID=ion-mining`, and `ROUTE_EMAIL=energy@protonminingco.com`. Keep CORS limited to the exact production website origins.
+4. Correct the routing constant and schema for new requests to use `sales@protonminingco.com`; if a database already exists, use a reviewed migration that preserves historical route values. Then set a random `RATE_LIMIT_SECRET` of at least 32 characters, `FIREBASE_PROJECT_ID=ion-mining`, and `ROUTE_EMAIL=sales@protonminingco.com`. Keep CORS limited to the exact production website origins.
 5. Deploy the Worker, confirm `/v1/health`, and configure the public form and private CRM inbox with the same HTTPS endpoint. GitHub Pages deployment alone does not deploy this Worker.
 6. Before calling intake live, use a clearly synthetic request to verify an actual deployed receipt, retrieve that exact request in the authorized private inbox, retry the same identity once, and confirm unauthorized reads fail. No customer records are needed for this check.
 

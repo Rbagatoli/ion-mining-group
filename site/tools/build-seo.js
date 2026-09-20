@@ -185,7 +185,7 @@ const LD = {
   description: FOOTER_BLURB + ' We specialize in landfill and stranded gas sourcing for Bitcoin mining across the United States. ' +
                'Hydro, existing powered sites and other sources are researched selectively around a client brief. ' +
                'Owner confirmation is required for available power and commercial terms.',
-  email: 'hello@protonminingco.com',
+  email: 'sales@protonminingco.com',
 };
 
 const LD_BLOCK = '<script type="application/ld+json">\n' +

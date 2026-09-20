@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
-const {chromium}=require('../tools/.cache/hosting-terrain-browser/node_modules/playwright-core');
+const {chromium}=require(process.env.PLAYWRIGHT_CORE_PATH||'../tools/.cache/hosting-terrain-browser/node_modules/playwright-core');
 const root=path.resolve(__dirname,'../_site'),out=path.resolve(__dirname,'../reports/managed-hosting-runtime-2026-09-17');fs.mkdirSync(out,{recursive:true});
 const server=http.createServer((req,res)=>{const rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname),file=path.resolve(root,'.'+rel+(rel.endsWith('/')?'index.html':''));if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);return res.end();}res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'})[path.extname(file)]||'application/octet-stream');fs.createReadStream(file).pipe(res);});
 let browser,page;const checks=[];async function check(name,fn){await fn();checks.push({name,pass:true});console.log('PASS '+name);}
@@ -38,7 +38,7 @@ let browser,page;const checks=[];async function check(name,fn){await fn();checks
  });
  await check('public service and contact routing are present with no universal rate or occupancy promise',async()=>{
   await page.goto(origin+'/energy.html#managed-hosting');assert.match(await page.locator('#managed-hosting').innerText(),/owner-funded budget/);assert.doesNotMatch(await page.locator('#managed-hosting').innerText(),/7¢|3\.5¢|guaranteed occupancy/);await page.setViewportSize({width:390,height:900});await page.getByText('Managed Energy Hosting',{exact:true}).first().click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-  await page.goto(origin+'/contact.html?topic=managed-hosting');assert.equal(await page.locator('#c-topic').inputValue(),'managed-hosting');assert.match(await page.locator('#c-topic').evaluate(e=>e.form.getAttribute('data-subject')),/Managed Energy Hosting/);assert.equal(await page.locator('#c-topic').evaluate(e=>e.form.getAttribute('data-mailto')),'energy@protonminingco.com');
+  await page.goto(origin+'/contact.html?topic=managed-hosting');assert.equal(await page.locator('#c-topic').inputValue(),'managed-hosting');assert.match(await page.locator('#c-topic').evaluate(e=>e.form.getAttribute('data-subject')),/Managed Energy Hosting/);assert.equal(await page.locator('#c-topic').evaluate(e=>e.form.getAttribute('data-mailto')),'sales@protonminingco.com');
  });
  await check('no uncaught browser errors',async()=>assert.deepEqual(errors,[]));
  fs.writeFileSync(path.join(out,'browser-checks.json'),JSON.stringify({checks},null,2));

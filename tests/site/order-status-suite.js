@@ -18,7 +18,7 @@ function failed(result,text){
 (async()=>{
  let r=await load();failed(r,/missing its order reference/);assert.equal(r.requests.length,0);
  console.log('ok missing reference shows recovery instructions without a request');
- r=await load({ref:'PM-EXAMPLE',base:''});failed(r,/hosting@protonminingco.com.*PM-EXAMPLE/);assert.equal(r.requests.length,0);
+ r=await load({ref:'PM-EXAMPLE',base:''});failed(r,/sales@protonminingco.com.*PM-EXAMPLE/);assert.equal(r.requests.length,0);
  console.log('ok unavailable tracking shows the reference and contact address');
  r=await load({ref:'PM-EXAMPLE',response:{ok:false,body:{error:'Order not found'}}});failed(r,/Order not found/);
  console.log('ok unknown order replaces loading with an error');

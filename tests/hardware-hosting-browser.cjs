@@ -123,7 +123,7 @@ async function assertQuoteGate(page){
   assert(await page.locator('#ckQuoteReview').isVisible());assert(await page.locator('#ckSubmit').isHidden()||await page.locator('#ckSubmit').isDisabled());assert(await page.locator('#ckPaymentChoice').isHidden());
   await contact(page);await page.locator('#ckForm').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
   assert.deepEqual(await page.evaluate(()=>window.__testOrderCalls),[]);assert.equal(await page.evaluate(()=>window.__testPaymentURL||null),null);
-  const href=await page.locator('#ckQuoteRequest').getAttribute('href');assert(href.startsWith('mailto:hosting@protonminingco.com?'));return decodeURIComponent(href);
+  const href=await page.locator('#ckQuoteRequest').getAttribute('href');assert(href.startsWith('mailto:sales@protonminingco.com?'));return decodeURIComponent(href);
 }
 (async()=>{
   const markup=fs.readFileSync(path.join(site,'hardware.html'),'utf8');if(!markup.includes('hwCatalogQuantity')||markup.includes('hwHostingForm'))throw Error('Restored catalogue/order markup is not ready.');
@@ -350,7 +350,7 @@ async function assertQuoteGate(page){
   }
   if(!layoutOnly){const context=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false,serviceWorkers:'block'});await network(context,origin);const page=await context.newPage();activePage=page;observe(page,'no-js');await page.goto(origin+'/hardware.html',{waitUntil:'domcontentloaded'});
   await check('JavaScript-disabled hardware retains a static model, order and direct email without the removed quote form',async()=>{
-    const poster=page.locator('#brMiner .br-scene-poster');await poster.scrollIntoViewIfNeeded();assert(await poster.isVisible());assert.equal(await page.locator('#brMinerCanvas canvas').count(),0);assert.equal(await page.locator('.hw-order').count(),1);assert.equal(await page.locator('#quote').count(),0);assert.equal(await page.locator('#hwSubmit').count(),0);assert(await page.locator('a[href="mailto:hosting@protonminingco.com"]').count()>0);await noOverflow(page);await page.screenshot({path:path.join(out,'no-js.png')});
+    const poster=page.locator('#brMiner .br-scene-poster');await poster.scrollIntoViewIfNeeded();assert(await poster.isVisible());assert.equal(await page.locator('#brMinerCanvas canvas').count(),0);assert.equal(await page.locator('.hw-order').count(),1);assert.equal(await page.locator('#quote').count(),0);assert.equal(await page.locator('#hwSubmit').count(),0);assert(await page.locator('a[href="mailto:sales@protonminingco.com"]').count()>0);await noOverflow(page);await page.screenshot({path:path.join(out,'no-js.png')});
   });await context.close();}
   await check('all viewports have no runtime errors, failed local assets or attempted HTTP writes',async()=>{assert.deepEqual(runtimeErrors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(localFailures,[]);assert.deepEqual(blockedWrites,[]);assert(requests.every(request=>['GET','HEAD'].includes(request.method)));});
 })().catch(error=>{process.exitCode=1;console.error(error.stack||error);}).finally(async()=>{

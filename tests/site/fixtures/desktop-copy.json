@@ -265,7 +265,7 @@
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "Prefer email? Write to <a class=\"accent\" href=\"mailto:energy@protonminingco.com\">energy@protonminingco.com</a>. We reply to every submission, including the ones we pass on &mdash; with the reason."
+      "html": "Prefer email? Write to <a class=\"accent\" href=\"mailto:sales@protonminingco.com\">sales@protonminingco.com</a>. We reply to every submission, including the ones we pass on &mdash; with the reason."
     },
     {
       "file": "site/energy.html",
@@ -275,7 +275,7 @@
     {
       "file": "site/energy.html",
       "tag": "p",
-      "html": "This opens a pre-filled message in your mail app addressed to energy@protonminingco.com &mdash; nothing is sent until you press send there."
+      "html": "This opens a pre-filled message in your mail app addressed to sales@protonminingco.com &mdash; nothing is sent until you press send there."
     },
     {
       "file": "site/hosting.html",
@@ -415,7 +415,7 @@
     {
       "file": "site/hardware.html",
       "tag": "p",
-      "html": "This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href=\"mailto:hosting@protonminingco.com\">hosting@protonminingco.com</a>."
+      "html": "This opens a pre-filled draft in your own mail app &mdash; nothing is sent until you send it yourself. If nothing opens, copy the order and write to <a href=\"mailto:sales@protonminingco.com\">sales@protonminingco.com</a>."
     },
     {
       "file": "site/calculator.html",

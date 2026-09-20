@@ -172,7 +172,7 @@ const LEGAL_COL = `<h4>Legal</h4>
 const COMPANY_COL = `<h4>Company</h4>
         <a href="./index.html#operate">How we operate</a>
         <a href="./contact.html">Contact</a>
-        <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>`;
+        <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>`;
 
 /* Company-wide service scope. Individual project pages retain their own fuel
    descriptions; this shared footer must also represent nationwide sourcing. */
@@ -276,7 +276,7 @@ for (const [file, active] of Object.entries(PAGES)) {
   html = applyHold(html, file);
   html = ensureNoscript(html, file);
   html = replaceBlock(html, '<nav class="nav">', '</nav>', nav(active, CTA[file]), 'nav', file);
-  html = replaceBlock(html, '<h4>Company</h4>', 'hello@protonminingco.com</a>',
+  html = replaceBlock(html, '<h4>Company</h4>', 'sales@protonminingco.com</a>',
                       COMPANY_COL, 'footer Company column', file);
   html = replaceBlock(html, '<h4>Legal</h4>', 'Media &amp; enquiries</a>',
                       LEGAL_COL, 'footer Legal column', file);

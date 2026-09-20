@@ -54,7 +54,7 @@ check('every selected key and quantity remains in the quote draft, including sta
 });
 check('contact text remains in an encoded mailto draft, without a request or header injection',()=>{
  const h=harness({'catalogue:s21-pro-245':1});h.element('ck-name').value='Test & Example';h.element('ck-email').value='synthetic@example.test';h.element('ck-notes').value='a&bcc=outside@example.test\nprivate note';h.review.render();
- const href=h.element('ckQuoteRequest').href,url=new URL(href);assert.equal(url.protocol,'mailto:');assert.equal(url.pathname,'hosting@protonminingco.com');assert.equal(url.searchParams.get('bcc'),null);assert.equal(url.searchParams.size,2);
+ const href=h.element('ckQuoteRequest').href,url=new URL(href);assert.equal(url.protocol,'mailto:');assert.equal(url.pathname,'sales@protonminingco.com');assert.equal(url.searchParams.get('bcc'),null);assert.equal(url.searchParams.size,2);
  assert.match(url.searchParams.get('body'),/synthetic@example.test/);assert.match(url.searchParams.get('body'),/a&bcc=outside@example.test/);assert.equal(h.calls.length,0);
 });
 check('removing the final unknown selection restores the unchanged legacy payment path',()=>{

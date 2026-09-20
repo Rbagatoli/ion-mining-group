@@ -4570,10 +4570,9 @@ a.fac:hover .fac-go { color: var(--btc-200); }
 
 
 /* ===== no word may push a line past its box =====
-   A site-wide floor rather than a fix for one string. The known candidates are
-   the two support addresses: hello@protonminingco.com measures 280px inside a
-   280px column at 320px wide, which is not overflowing and is one notch of font
-   scaling, a longer domain, or a narrower phone away from it. break-word only
+   A site-wide floor rather than a fix for one string. Email addresses and long
+   domains can fill a narrow column, especially with larger text or a narrower
+   phone. break-word only
    acts on words that would otherwise overflow, so it changes nothing anywhere
    else. */
 body {

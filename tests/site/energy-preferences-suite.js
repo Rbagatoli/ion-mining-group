@@ -93,7 +93,7 @@ check('national source categories round-trip without treating storage as primary
   assert.doesNotMatch(html, /name="energySources" value="(?:storage|hybrid)"/);
   assert.match(prefs.coverage({ energySources: [] }), /net power available.*all-in delivered cost.*operating windows.*connection work.*capital responsibilities.*timing/);
 });
-check('the public brief covers the same sources and starts unrestricted without changing its inbox', () => {
+check('the public brief covers the same sources, starts unrestricted and routes email to sales', () => {
   const page = fs.readFileSync(path.join(__dirname, '../../site/energy-sites.html'), 'utf8');
   const form = page.match(/<form\b[^>]*id="siteSearchForm"[\s\S]*?<\/form>/)[0];
   const publicInputs = [...form.matchAll(/<input\b[^>]*name="energy_sources"[^>]*>/g)].map(match => match[0]);
@@ -102,7 +102,7 @@ check('the public brief covers the same sources and starts unrestricted without 
   assert.deepEqual(publicValues, portalLabels);
   assert.equal(publicInputs.some(input => /\schecked(?:\s|>)/.test(input)), false);
   assert.match(form, /Any energy source by default/);
-  assert.match(form, /data-mailto="energy@protonminingco\.com"/);
+  assert.match(form, /data-mailto="sales@protonminingco\.com"/);
   assert.match(form, /data-subject="Energy site sourcing enquiry via protonminingco\.com"/);
   assert.match(form, /All-in delivered energy target \(US ¢\/kWh\)/);
   assert.match(form, /name="minimum_availability_pct"[^>]*min="0" max="100"/);

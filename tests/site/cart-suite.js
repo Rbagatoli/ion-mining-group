@@ -476,7 +476,7 @@ var apiSrc = fs.readFileSync(S + 'orders-api.js', 'utf8');
     var body = ckSrc.slice(a, ckSrc.indexOf('function init()', a));
     ok(body.indexOf('was not placed') >= 0,
        'and says the order was not placed rather than implying it was');
-    ok(body.indexOf('hosting@protonminingco.com') >= 0,
+    ok(body.indexOf('sales@protonminingco.com') >= 0,
        'and names an address to use instead');
     /* Named, never opened. A checkout that pops a mail window instead of
        taking payment is the exact behaviour this page was rebuilt to stop. */
