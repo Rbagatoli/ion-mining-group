@@ -48,13 +48,22 @@
     function initial() {
         return { schema: 1, revision: 0, goalCents: 500000, paused: false, leads: [], tasks: [], deals: [], entries: [], activity: [] };
     }
+    function leadFieldFailure(field, recordId) {
+        // Legacy IDs may contain names. Only expose the opaque UUID form used by new leads.
+        var safeId = /^lead_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recordId) ? recordId : null;
+        var error = new Error('Unsupported lead ' + field + '.' + (safeId ? ' Record: ' + safeId + '.' : ''));
+        error.code = 'unsupported_lead_field'; error.field = field; error.recordId = safeId;
+        throw error;
+    }
     function leadValid(l) {
         id(l.id); str(l.company,180,'lead company',true); str(l.website,1800,'account website',true); url(l.website);
         str(l.signal,2000,'buying signal'); str(l.contact,300,'public business contact route'); str(l.buyer,180,'buyer role');
         if(l.serviceFit!==undefined)str(l.serviceFit,2000,'service-buying rationale');
         str(l.nextAction,1000,'next action'); str(l.notes,4000,'lead notes'); str(l.lastNote,2000,'contact / outcome note');
         url(l.source); if(l.checked)date(l.checked); if(l.due)date(l.due); if(l.lastTouch)date(l.lastTouch);
-        if(!Object.prototype.hasOwnProperty.call(LEAD_STAGES,l.stage)||!Object.prototype.hasOwnProperty.call(OFFERS,l.offer)||!Object.prototype.hasOwnProperty.call(CHANNELS,l.channel))fail('Choose a valid lead stage, service and channel.');
+        if(!Object.prototype.hasOwnProperty.call(LEAD_STAGES,l.stage))leadFieldFailure('stage',l.id);
+        if(!Object.prototype.hasOwnProperty.call(OFFERS,l.offer))leadFieldFailure('service',l.id);
+        if(!Object.prototype.hasOwnProperty.call(CHANNELS,l.channel))leadFieldFailure('channel',l.id);
         if(['qualified','contacted','replied','meeting'].includes(l.stage)&&(!l.signal.trim()||!l.source||!l.checked||!l.contact.trim()||!l.buyer.trim()||!l.nextAction.trim()||!l.due))fail('Qualification needs a buying signal, source, checked date, buyer role, contact route and dated next action.');
         if(['contacted','replied','meeting'].includes(l.stage)&&(!l.lastTouch||!l.lastNote.trim()))fail('Record the actual contact / outcome date and what happened. Drafts are not contacts.');
         if(['dnc','disqualified'].includes(l.stage)&&!l.notes.trim())fail('Record the reason in lead notes.');

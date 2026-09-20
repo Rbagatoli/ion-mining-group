@@ -9,7 +9,7 @@
   const kinds={site:'Energy site',lead:'Revenue lead',deal:'Service deal'},energy={landfill_gas:'Landfill gas',flare_gas:'Flare gas',grid_facility:'Power facility',unknown:'Other energy'};
   let current='control',selection=null,siteTab='overview',pipelineKind='all',pipelineGroup='all',pipelineSearch='',pipelineLimit=60,pipelineWorkflow='all',teamTab='workflow',taskFilter='open',taskRole='',month=day().slice(0,7),peopleSearch='',modalForm=false,modalBack=null,focusBefore=null,busy=false,noticeTimer,renderQueued=false;
   const sheet=$('sheet'),expandedLeads=new Set(),expandedLeadSections=new Set(),outreachPlans=new Map();
-  let completedReviewSession=null,taskRequest=null;
+  let completedReviewSession=null,taskRequest=null,releaseUpdates=null,activeActions=0;
   const sidebarKey='protonCrmSidebarCollapsed_v1';
   function setSidebarCollapsed(collapsed){
     document.body.classList.toggle('sidebar-collapsed',collapsed);
@@ -42,11 +42,21 @@
     const first=$('sheetBody').querySelector(form?'input:not([type=hidden]),select,textarea':'[autofocus]');if(first)first.focus();else $('sheetClose').focus();
   }
   function close(){taskRequest=null;completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
+  function registerConfirmed(status){const a=status.agent;return status.uid?a.uid===status.uid&&a.mode==='cloud'&&a.serverConfirmed===true:a.mode==='local';}
+  function syncLabel(status){return !status.ready?'Connecting…':status.error||['error','offline'].includes(status.agent.mode)?'Needs attention':status.uid?registerConfirmed(status)?'Account connected':'Verifying sync…':'On this device';}
+  function syncNotice(status){
+    const a=status.agent;if(registerConfirmed(status))return '';
+    const failed=['error','offline'].includes(a.mode),fields={stage:'lead stage',service:'lead service',channel:'lead channel'},issue=a.validationIssue;
+    const reason=issue&&fields[issue.field]?'A saved '+fields[issue.field]+' is unsupported. The original record has not been changed.':a.error||'Waiting for a server-confirmed task register.';
+    const verified=typeof a.lastServerConfirmedAt==='string'&&Number.isFinite(Date.parse(a.lastServerConfirmedAt))?new Date(a.lastServerConfirmedAt).toLocaleString(undefined,{timeZone:'UTC'})+' UTC':'';
+    const snapshot=a.mode==='error'?'Showing the last valid snapshot; it is not confirmed current.':a.mode==='offline'?'Showing a cached snapshot; it is not confirmed current.':'Displayed records are not yet confirmed current.';
+    return '<section class="banner crm-sync-notice" role="status" aria-label="Team register sync"><div><strong>'+esc(failed?'Team register needs attention':'Verifying the team register')+'</strong><p>'+esc(reason)+'</p><p>'+esc(snapshot)+' '+(failed?'Team changes are paused.':'')+'</p><small>'+esc(verified?'Last verified sync: '+verified:'No server-verified sync recorded for this account session.')+'</small></div><div class="crm-sync-actions">'+textButton('Export backup','backup')+textButton('Reload workspace','reload')+'</div></section>';
+  }
   function nav(){
     const labels={control:'Control Center',today:'Today',requests:'Inbox',pipeline:'Pipeline',discover:'Discover',team:'Team'};
     $('navigation').innerHTML=Object.keys(labels).map(name=>'<a class="nav-item" href="#'+name+'" aria-label="'+labels[name]+'" title="'+labels[name]+'"'+(current===name?' aria-current="page"':'')+'>'+icon(name)+'<span>'+labels[name]+'</span></a>').join('');
     $('peopleLink').innerHTML=icon('people')+'<span>People</span>';$('settingsLink').innerHTML=icon('settings')+'<span>Settings</span>';
-    const status=D.status();$('connectionLabel').textContent=!status.ready?'Connecting…':status.error?'Needs attention':status.uid?status.agent.mode==='cloud'?'Account connected':'Account · checking sync':'On this device';
+    const status=D.status();$('connectionLabel').textContent=syncLabel(status);$('accountButton').setAttribute('data-sync-state',status.error||['error','offline'].includes(status.agent.mode)?'attention':registerConfirmed(status)?'confirmed':'checking');
   }
   const intakeInbox=ProtonCrmIntakeInbox.create({D,E,esc,model:ProtonSourcingModel,config:window.ProtonIntakeConfig});
   let stopWorkFreshness=()=>{};
@@ -57,11 +67,12 @@
     if(status.error){$('content').innerHTML=head('Your data needs attention','Your original records have been retained.')+'<div class="banner">'+esc(status.error)+'</div>'+button('Export original backup','backup')+' '+button('Reload workspace','reload');return;}
     let html='';
     if(current==='control')html=ProtonCrmControl.render({sites:D.sites(),state:agent(),followups:D.followups(),contacts:D.contacts(),date:day(),connection:D.status()},{head,stat,esc,icon,row,tag,money,href,stageLabel,leadCard});else if(current==='today')html=renderToday();else if(current==='requests')html=intakeInbox.html();else if(current==='pipeline')html=renderPipeline();else if(current==='discover')html=renderDiscover();else if(current==='team')html=renderTeam();else if(current==='people')html=renderPeople();else html=renderSettings();
-    $('content').innerHTML=(status.syncError?'<div class="banner" role="status">'+esc(status.syncError)+' · Local changes are retained.</div>':'')+(['error','offline'].includes(status.agent.mode)?'<div class="banner" role="status">Team register: '+esc(status.agent.error||'Cloud connection is offline. Team changes are paused.')+' '+textButton('Export backup','backup')+'</div>':'')+html;
+    $('content').innerHTML=(status.syncError?'<div class="banner" role="status">'+esc(status.syncError)+' · Local changes are retained.</div>':'')+syncNotice(status)+html;
     $('content').querySelectorAll('label').forEach(label=>{const control=label.querySelector('select,input');if(control&&!control.hasAttribute('aria-label'))control.setAttribute('aria-label',label.firstChild.textContent.trim());});
     if(current==='requests')intakeInbox.mount($('content'));
     if(current==='discover')discovery.mount();
-    if(current==='control')stopWorkFreshness=ProtonCrmControl.watchFreshness($('content'),()=>agent().tasks);
+    if(current==='control')stopWorkFreshness=ProtonCrmControl.watchFreshness($('content'),()=>agent().tasks,{getConnection:()=>D.status()});
+    releaseUpdates?.restore();
   }
   function queueRender(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;render();});}
   function renderToday(){
@@ -88,9 +99,9 @@
   function renderTeam(){
     const s=agent(),tasks=s.tasks.filter(t=>F.matches(t,taskFilter)&&(!taskRole||t.role===taskRole));
     let html=head('Proton Revenue Desk.','Six Grokbots. One place for assignments, evidence and feedback.','new-task','New task')+'<div class="toolbar"><div class="segmented" aria-label="Team views">'+[['workflow','Progress'],['tasks','Assignments'],['roles','Team & workflows'],['revenue','Revenue'],['activity','Activity']].map(([id,label])=>'<button data-action="team-tab" data-id="'+id+'" aria-pressed="'+(teamTab===id)+'">'+label+'</button>').join('')+'</div>'+textButton(s.paused?'Resume queue':'Pause queue','pause')+'</div>';
-    const connection=D.status().agent;html+='<section class="team-connection"><div><strong>Existing Proton Grok team</strong><p>'+esc(connection.mode==='cloud'?'Shared task register connected.':connection.mode==='local'?'On this device · sign in to share tasks.':'Task register: '+connection.mode)+ ' Conversations remain in Grok; task status is recorded here.</p></div>'+button('CRM handoff','setup')+'</section>';
+    const status=D.status(),connection=status.agent;html+='<section class="team-connection"><div><strong>Existing Proton Grok team</strong><p>'+esc(registerConfirmed(status)?status.uid?'Shared task register verified.':'On this device · sign in to share tasks.':'Task register is not confirmed current.')+' Conversations remain in Grok; task status is recorded here.</p></div>'+button('CRM handoff','setup')+'</section>';
     if(s.paused)html+='<div class="banner">Queue paused. Stop active work separately in Grok.</div>';
-    if(teamTab==='workflow')html+=F.overview(s)+'<section class="panel">'+((s.leads||[]).filter(l=>!F.leadProgress(l,s).closed).map(leadCard).join('')||empty('No individual leads saved yet.','Research batches above may contain candidates awaiting qualification. They become visible here when saved as lead records.','new-lead','Add a lead','people'))+'</section>';
+    if(teamTab==='workflow')html+=ProtonCrmControl.recentWork(s,{esc},{connection:status})+F.overview(s)+'<section class="panel">'+((s.leads||[]).filter(l=>!F.leadProgress(l,s).closed).map(leadCard).join('')||empty('No individual leads saved yet.','Research batches above may contain candidates awaiting qualification. They become visible here when saved as lead records.','new-lead','Add a lead','people'))+'</section>';
     if(teamTab==='tasks')html+='<div class="filters"><label>Show<select id="taskFilter">'+options({open:'Open work',review:'Team review',owner:'Owner decisions',correction:'Corrections requested',blocked:'Execution blockers',working:'In progress',ready:'Ready for handoff',draft:'Drafts',reference:'Reference / superseded',closed:'Completed / cancelled',all:'All tasks'},taskFilter)+'</select></label><label>Role<select id="taskRole">'+options(Object.assign({'':'All roles'},Object.fromEntries(A.ROLES.map(r=>[r.id,r.name]))),taskRole)+'</select></label></div><section class="panel">'+(tasks.length?tasks.map(t=>row({name:t.title,sub:'Next: '+F.taskMeaning(t,s).owner+' · '+F.taskMeaning(t,s).next+(t.due?' · Due '+t.due:''),badge:tag(F.taskMeaning(t,s).label,['review','owner','blocked'].includes(F.bucket(t))),glyph:'task',url:href('task',t.id)})).join(''):empty('Give your team a useful job.','Start with a site, a buyer, or a question. Tasks begin as drafts until you prepare the handoff.','new-task','Create a task','team'))+'</section><p class="quiet-note">Task statuses are recorded workflow updates. A ready task does not start a bot or send outreach.</p>';
     if(teamTab==='roles')html+='<div class="team-grid">'+G.roles.map(r=>'<button class="role-card" data-action="role" data-id="'+r.id+'"><span class="avatar">'+r.initials+'</span><h3>'+r.botName+'</h3><p>'+r.job+'</p><span class="role-count">'+s.tasks.filter(t=>t.role===r.id&&A.actionable(t)).length+' open assignments →</span></button>').join('')+'</div><section class="panel"><div class="panel-head"><h2>Start a workflow</h2></div>'+row({name:'Source miners for a buyer',sub:'Supplier shortlist, comparable quotes, volume terms and owner review.',action:'sourcing-start',glyph:'task'})+row({name:'Research an energy opportunity',sub:'Infrastructure, remaining capital, authority and availability.',action:'workflow',id:'energy',glyph:'site'})+row({name:'Find buyers for a paid pilot',sub:'Buying signals, contact routes and an outreach draft.',action:'workflow',id:'revenue',glyph:'people'})+Object.entries(G.workflows).filter(([key])=>key.startsWith('hosting_')).map(([key,w])=>row({name:w.title,sub:w.description||'Managed Energy Hosting · draft assignment',action:'workflow',id:key,glyph:'site'})).join('')+row({name:'Review a result before delivery',sub:'Sources, assumptions and a clear pass or revise decision.',action:'workflow',id:'review',glyph:'check'})+'</section><div class="actions" style="margin-top:18px">'+button('Grok connection & setup','setup')+'</div>';
     if(teamTab==='revenue')html+=renderRevenue();
@@ -705,7 +716,7 @@
       if(link&&!event.defaultPrevented&&!event.button&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey&&link.getAttribute('href')===location.hash&&/^#team\/task\//.test(location.hash)){event.preventDefault();route();}
       return;
     }
-    event.preventDefault();try{await act(target.dataset.action,target.dataset.id);}catch(e){error(e);}
+    event.preventDefault();activeActions++;try{await act(target.dataset.action,target.dataset.id);}catch(e){error(e);}finally{activeActions--;}
   });
   let searchTimer;
   document.addEventListener('input',event=>{
@@ -719,5 +730,30 @@
     if(el.dataset.outreachPlan){const leadId=el.dataset.leadId,key=el.dataset.outreachPlan;outreachPlans.set(leadId,{...(outreachPlans.get(leadId)||{}),[key]:el.value});render();requestAnimationFrame(()=>{const control=$('content').querySelector('[data-outreach-plan="'+CSS.escape(key)+'"][data-lead-id="'+CSS.escape(leadId)+'"]');if(control)control.focus({preventScroll:true});});}
     if(el.id==='taskFilter'){taskFilter=el.value;render();}if(el.id==='taskRole'){taskRole=el.value;render();}if(el.id==='revenueMonth'){month=el.value||day().slice(0,7);render();}
   });
+  function safeToUpdate(){
+    const status=D.status(),a=status.agent;
+    if(!status.ready||status.error||busy||activeActions||sheet.open||modalForm||completedReviewSession?.saving||completedReviewSession?.pending)return false;
+    if(!D.reloadSafety?.().safe||!intakeInbox.reloadSafety?.().safe)return false;
+    // A newer validator may read a rejected snapshot. Reloading never accepts it:
+    // the fresh client must validate again, and all writes stay blocked meanwhile.
+    const staleValidator=status.uid&&a.uid===status.uid&&a.mode==='error'&&a.validationIssue?.code==='unsupported_lead_field';
+    if(!registerConfirmed(status)&&!staleValidator)return false;
+    if(document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]'))return false;
+    // These planning values are intentionally kept in memory, not saved records.
+    if(discovery.brief()||outreachPlans.size)return false;
+    return true;
+  }
+  function updatePending(update){
+    let banner=$('crmUpdateNotice');
+    if(update?.status==='current'){banner?.remove();return;}
+    if(!banner){banner=document.createElement('aside');banner.id='crmUpdateNotice';banner.className='banner crm-update-notice';banner.setAttribute('role','status');$('content').before(banner);}
+    banner.textContent=update?.message||'A CRM update is ready. Finish editing and confirm pending saves; your work stays open.';
+  }
   route();
+  if(window.ProtonCrmRelease)releaseUpdates=window.ProtonCrmRelease.start({
+    isSafeToReload:safeToUpdate,
+    getAccountKey:()=>D.status().ready?(D.status().uid||'local'):null,
+    onUpdatePending:updatePending
+  });
+  releaseUpdates?.restore();
 }());

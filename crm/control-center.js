@@ -8,6 +8,12 @@
   const openLead=l=>!['dnc','disqualified'].includes(l.stage);
   const hasText=v=>typeof v==='string'&&!!v.trim();
   const WORK_STALE_MS=30*60*1000;
+  function confirmedSnapshot(connection){
+    if(!connection)return true;
+    const a=connection.agent||{};
+    return connection.uid?a.uid===connection.uid&&a.mode==='cloud'&&a.serverConfirmed===true:a.mode==='local';
+  }
+  function snapshotReport(task,now,connection){const report=workFreshness(task,now);return confirmedSnapshot(connection)?report:{...report,fresh:false,reason:'sync'};}
   // A saved report is not a heartbeat. Reject ambiguous dates and clock skew.
   function workFreshness(task,now=Date.now()){
     const values=[task.startedAt,task.updatedAt].filter(v=>v!==undefined&&v!==null&&v!=='');
@@ -28,6 +34,7 @@
     let lastReported=working.length?(latest?'Last reported: '+new Date(latest).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'UTC'})+' UTC':'Last reported time unavailable'):'';
     if(reports.some(r=>r.reason==='future'))lastReported+=' · future timestamp';
     if(latest&&reports.some(r=>['invalid','missing'].includes(r.reason)))lastReported+=' · some report times unavailable';
+    if(reports.some(r=>r.reason==='sync'))lastReported+=' · sync not verified';
     return {working:working.length,needsCheck,shining:working.length>0&&!needsCheck,status,lastReported,warm:working.length>0||review>0||blocked>0};
   }
   // Patch status nodes only: the timer must not re-render forms or write records.
@@ -46,6 +53,7 @@
     let disposed=false;
     const observed=new Map();
     const reportOf=(task,at)=>{
+      if(env.getConnection&&!confirmedSnapshot(env.getConnection()))return snapshotReport(task,at,env.getConnection());
       const signature=JSON.stringify([task.startedAt,task.updatedAt]),previous=observed.get(task.id);
       // Time passing (or a clock correction) cannot repair an uncertain report.
       if(previous&&previous.signature===signature&&!previous.report.fresh)return previous.report;
@@ -55,6 +63,13 @@
     const timer=schedule(refresh,30000);
     doc.addEventListener('visibilitychange',refresh);refresh();
     return ()=>{disposed=true;cancel(timer);doc.removeEventListener('visibilitychange',refresh);};
+  }
+  function recentWork(state,{esc},options={}){
+    const work=F.latestWork(state),active=work.activeTasks||[],confirmed=confirmedSnapshot(options.connection);
+    const dated=[work.latestLead,work.latestResult].filter(Boolean),saved=dated.length?dated:(work.undatedOutcomes||[]).slice(0,1);
+    const short=value=>String(value||'').length>220?String(value).slice(0,217)+'…':String(value||'');
+    const entry=(item,label)=>'<a class="crm-work-entry" href="'+esc(/^#(?:team\/task|pipeline\/lead)\//.test(item.href)?item.href:'#team')+'"><span class="crm-work-kind">'+esc(item.campaignLabel||'Saved work')+' · '+esc(label||item.label||'Saved assignment')+'</span><strong>'+esc(item.title)+'</strong><span>'+esc(short(item.next||item.label))+'</span><small>'+esc(item.updatedAt?(item.timestampLabel||'Record updated')+': '+new Date(item.updatedAt).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'UTC'})+' UTC':'Update time unavailable · order not established')+' <span aria-hidden="true">↗</span></small></a>';
+    return '<section class="panel crm-recent-work" aria-label="Recent saved work"><div class="panel-head"><h2>Recent saved work</h2><span class="tag">'+esc(confirmed?options.connection?.uid?'Verified register':'On this device':'Snapshot not current')+'</span></div><div class="crm-work-grid"><div><h3>Latest saved outcomes</h3>'+(saved.length?saved.map(item=>entry(item,(dated.length?'Latest saved ':'Saved ')+(item.kind==='lead'?'lead':'result'))).join(''):'<p class="crm-work-empty">No lead or result recorded in this snapshot.</p>')+'</div><div><h3>'+esc(active.length?active.length+' open assignments recorded':'No active task recorded')+'</h3>'+(active.length?active.slice(0,2).map(item=>entry(item)).join(''):'<p class="crm-work-empty">'+esc(work.activeExplanation||'No open assignment appears in this saved snapshot.')+'</p>')+(active.length>2?'<a class="text-button" href="#team">Open the team workspace for all assignments ↗</a>':'')+'</div></div><p class="crm-work-note">'+(confirmed?'':'These records may be out of date. ')+'Saved updates are separate from live execution. A missing task or animation does not prove that no work ran.</p></section>';
   }
   function summary({sites,state,followups,contacts,date}){
     const leads=(state.leads||[]).filter(l=>openLead(l)&&!A.outreachForLead(state,l)?.suppressed),tasks=state.tasks.filter(A.actionable);
@@ -99,7 +114,7 @@
       return '<button class="cc-stage" data-action="cc-stage" data-id="'+group+'"><span>'+label+'</span><span class="cc-track" aria-hidden="true"><i style="width:'+pct+'%"></i></span><strong>'+count+'</strong></button>';
     }).join('');
     const roleRows=A.ROLES.map(r=>{
-      const report=roleReport(v.tasks.filter(t=>t.role===r.id),input.now);
+      const report=roleReport(v.tasks.filter(t=>t.role===r.id),input.now,(task,now)=>snapshotReport(task,now,input.connection));
       return '<button class="cc-role'+(report.shining?' is-working':'')+'" data-action="cc-role" data-id="'+r.id+'"><span class="cc-role-name">'+esc(r.name)+'</span><span class="cc-role-report"><span class="cc-role-status '+(report.warm?'accent':'muted')+'">'+esc(report.status)+'</span><span class="cc-role-time"'+(report.lastReported?'':' hidden')+'>'+esc(report.lastReported)+'</span></span></button>';
     }).join('');
     const pipelineTypes=[['site','Energy sites'],['lead','Buyer leads'],['deal','Service deals']].map(([kind,label])=>'<button class="cc-type" data-action="cc-pipeline" data-id="'+kind+'"><strong>'+v.pipeline.filter(p=>p.kind===kind).length+'</strong><span>'+label+'</span></button>').join('');
@@ -107,9 +122,10 @@
     const nextLeads=v.leads.slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,2).map(l=>h.leadCard?h.leadCard(l):row({name:l.company,sub:l.nextAction||'Set the next buyer step',badge:tag(A.LEAD_STAGES[l.stage]),url:href('lead',l.id),glyph:'people'})).join('');
     const updates=v.updates.map(e=>'<li><p>'+esc(e.message)+'</p><time datetime="'+esc(e.at)+'">'+esc(new Date(e.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'</time></li>').join('');
     const connection=input.connection;
-    const locationLabel=connection.uid&&connection.agent.mode==='cloud'?'Shared account records':connection.uid?'Account connection needs attention':'Records on this device';
+    const confirmed=confirmedSnapshot(connection),locationLabel=connection.uid&&confirmed?'Shared account records':connection.uid?'Account snapshot · not confirmed current':confirmed?'Records on this device':'Local register needs attention';
     return h.head('Control Center','Your priorities, pipeline and team at a glance.','add','Add new',new Date(date+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'}))+
-      '<div class="cc-context"><span>'+icon('control')+esc(locationLabel)+'</span><span>'+esc(s.paused?'Team queue paused':'Team queue open')+'</span><a href="#settings">Workspace settings</a></div>'+
+      '<div class="cc-context"><span>'+icon('control')+esc(locationLabel)+'</span><span>'+esc((confirmed?'Team queue':'Saved queue')+(s.paused?' paused':' open'))+'</span><a href="#settings">Workspace settings</a></div>'+
+      recentWork(s,{esc},{connection})+
       '<div class="stat-grid cc-stats">'+h.stat('Due & overdue',v.due,v.overdue?v.overdue+' overdue':'No overdue actions','show-due')+h.stat('Owner decisions',v.owners,'Team reviews: '+v.reviews,'show-owner')+h.stat('Active opportunities',v.pipeline.length,'Energy, buyers & service deals','cc-pipeline')+h.stat('Monthly contribution',money(v.cash.contribution/100),'of '+money(target/100)+' target','cc-revenue')+'</div>'+
       '<div class="cc-grid">'+
       widget('team','Grokbot team','team',F.overview(s,{compact:true})+'<div class="cc-body"><div class="cc-task-counts">'+[['ready',v.ready,'Ready'],['working',v.working,'Reported work'],['review',v.reviews,'Team review'],['correction',v.corrections,'Corrections'],['owner',v.owners,'Owner decision'],['blocked',v.blocked,'Execution blocked']].map(([id,n,label])=>'<button data-action="cc-team" data-id="'+id+'"><strong>'+n+'</strong><span>'+label+'</span></button>').join('')+'</div><div class="cc-roles">'+roleRows+'</div><p class="cc-caption">Grok runtime and usage are not connected. Saved assignments are not live bot health. Shine marks work reported within 30 minutes, not verified execution. Older or unclear reports need checking. Reference and superseded records are excluded.</p></div>',action('Open team workspace','cc-team','open'),'cc-team-primary')+
@@ -122,5 +138,5 @@
       widget('activity','Latest team updates','task',updates?'<ol class="cc-updates">'+updates+'</ol>':small('New assignments, results and recorded revenue updates will appear here.'),action('View activity','cc-activity'))+
       '</div>';
   }
-  return {summary,render,WORK_STALE_MS,workFreshness,roleReport,refreshFreshness,watchFreshness};
+  return {summary,render,recentWork,confirmedSnapshot,snapshotReport,WORK_STALE_MS,workFreshness,roleReport,refreshFreshness,watchFreshness};
 }));

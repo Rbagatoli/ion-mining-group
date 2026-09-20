@@ -4,7 +4,7 @@
   if(typeof module==='object'&&module.exports)module.exports=api;else root.ProtonCrmWorkflow=api;
 }(typeof window!=='undefined'?window:globalThis,function(A){
   'use strict';
-  const steps=[['research','Research'],['qualify','Check fit'],['draft','Draft message'],['review','Review draft'],['contact','Contact'],['conversation','Conversation']];
+  const steps=[['research','Research'],['qualify','Check fit'],['draft','Draft message'],['review','Review draft'],['contact','Outreach'],['conversation','Conversation']];
   const pilotSteps=['Research candidates','Check candidate fit','Prepare messages','Review messages'];
   const active=t=>A.actionable(t);
   const role=id=>(A.ROLES.find(r=>r.id===id)||{name:'Revenue Lead'}).name;
@@ -36,7 +36,10 @@
   function emailReadiness(state){
     const r=state.outreachReadiness,missing=['sender','reply','footer'].filter(k=>!r||r[k]!=='verified');
     const ready=!!r&&!missing.length&&r.authority==='authorized';
-    return {record:r,ready,missing,label:ready?'Email readiness recorded':r&&r.authority==='held'?'Sending scope on hold':missing.length?'Email verification pending':'Sending scope not recorded',next:ready?'Revenue rechecks the recipient, suppression and recorded scope before each send.':missing.length?'Revenue: verify '+missing.map(k=>({sender:'cloud sender / test send',reply:'reply path',footer:'company footer'}[k])).join(', ')+'.':r&&r.authority==='held'?'Revenue: follow the recorded hold and resolve its stated decision.':'Revenue: record the owner’s authorized recipients, channel and scope.'};
+    const footerOnly=missing.length===1&&missing[0]==='footer',held=r?.authority==='held';
+    const verification=footerOnly?'Revenue: record and verify the business mailing address for the company footer.':missing.length?'Revenue: verify '+missing.map(k=>({sender:'cloud sender / test send',reply:'reply path',footer:'company footer'}[k])).join(', ')+'.':'';
+    const scope=held?'Sending remains on hold: follow the recorded hold and resolve its stated decision.':r?.authority!=='authorized'?'Revenue: record the owner’s authorized recipients, channel and scope.':'';
+    return {record:r,ready,missing,label:ready?'Email readiness recorded':held?'Sending scope on hold':footerOnly?'Business mailing address needed':missing.length?'Email verification pending':'Sending scope not recorded',next:ready?'Revenue rechecks the recipient, suppression and recorded scope before each send.':[verification,scope].filter(Boolean).join(' ')};
   }
   function hold(state){const readiness=emailReadiness(state);return readiness.ready?null:readiness;}
   function bucket(t){
@@ -83,7 +86,7 @@
     if(lead.stage==='contacted'){step='contact';now='Contact recorded · awaiting reply';owner='Outreach & Channels';next=lead.nextAction||'Check for a reply and record the next follow-up.';}
     if(['replied','meeting'].includes(lead.stage)){step='conversation';now=lead.stage==='meeting'?'Meeting recorded':'Reply recorded';owner='Revenue Lead';next=lead.nextAction||'Confirm requirements and agree the next conversation.';}
     if(current&&active(current)){const meaning=taskMeaning(current,state);owner=meaning.owner;if(['review','blocked'].includes(current.status)||bucket(current)==='owner'){now=meaning.label;next=meaning.next;}else if(current.role==='review'&&outreach&&['review','done'].includes(outreach.status)&&!['contacted','replied','meeting'].includes(lead.stage)){step='review';now=current.status==='working'?'Draft review in progress':current.status==='ready'?'Draft review queued':'Draft review pending';next='Review the message, recipient and sources; Revenue records the supported verdict.';}}
-    if(sendHold&&step==='contact'&&lead.stage!=='contacted'&&bucket(current||{})!=='owner'){now='Draft accepted · email readiness pending';owner='Revenue Lead';next=sendHold.next;}
+    if(sendHold&&step==='contact'&&lead.stage!=='contacted'&&bucket(current||{})!=='owner'){now='Draft accepted · sending blocked';owner='Revenue Lead';next=sendHold.next;}
     if(suppressed){step='closed';now='Do not contact';owner='No outreach';next='Keep this contact suppressed.';}
     else if(closed){step='closed';now='Not a fit';owner='No active follow-up';next='Keep the reason in the lead notes.';}
     else if(contact?.unknown){now='Reconcile uncertain contact';owner='Revenue Lead';next='Check the actual provider or conversation outcome before any retry or alternate channel.';}
@@ -93,6 +96,8 @@
     return {lead,step,now,owner,next,tasks,current,closed,sendHold,contact,updated:[lead.updatedAt||'',tasks[0]?stamp(tasks[0]):''].sort().pop()};
   }
   function campaigns(state){
+    // These legacy titles explicitly encode four ordered assignments. Do not
+    // infer an energy cycle, dependency or current global campaign from prose.
     const groups=new Map();
     (state.tasks||[]).forEach(t=>{const m=/^(PM-ASIC-\d{3})-0([1-4])\b/.exec(t.title||'');if(!m||A.taskKind(t)!=='work')return;const rows=groups.get(m[1])||[];rows.push({index:Number(m[2])-1,task:t});groups.set(m[1],rows);});
     return [...groups].map(([id,rows])=>{
@@ -102,6 +107,69 @@
       return {id,rows,current,next,latest:rows.slice().sort((a,b)=>stamp(b.task).localeCompare(stamp(a.task)))[0]};
     }).sort((a,b)=>stamp(b.latest.task).localeCompare(stamp(a.latest.task)));
   }
+  function recordedTime(value,now){
+    if(value===undefined||value===null||value==='')return {updatedAt:'',timestampIssue:'missing'};
+    const valid=typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)&&Number.isFinite(Date.parse(value));
+    if(!valid||!Number.isFinite(now))return {updatedAt:'',timestampIssue:'invalid'};
+    const [year,month,day]=value.slice(0,10).split('-').map(Number);
+    if(new Date(Date.UTC(year,month-1,day)).toISOString().slice(0,10)!==value.slice(0,10))return {updatedAt:'',timestampIssue:'invalid'};
+    if(Date.parse(value)>now)return {updatedAt:'',timestampIssue:'future'};
+    return {updatedAt:new Date(value).toISOString(),timestampIssue:''};
+  }
+  function recentFirst(a,b){return b.updatedAt.localeCompare(a.updatedAt)||String(a.kind).localeCompare(String(b.kind))||String(a.id).localeCompare(String(b.id));}
+  function savedReview(task,state,now){
+    // An older accepted version is not acceptance of the result now displayed.
+    const h=(task.reviewHistory||[]).slice().reverse().find(h=>h.review&&h.review.version===A.resultVersion(task)&&h.result===task.result);
+    if(!h)return null;
+    const r=h.review,evidence=(state.tasks||[]).find(t=>t.id===r.evidenceTaskId),source=(state.tasks||[]).find(t=>t.id===task.parentTaskId);
+    return {decision:h.decision,note:h.note,at:recordedTime(h.at,now).updatedAt,actor:r.actor,reviewer:r.reviewer,basis:r.basis,version:r.version,
+      evidenceTaskId:r.evidenceTaskId||'',evidenceHref:evidence?href('task',evidence.id):'',
+      evidenceCurrent:!!evidence&&A.reviewEvidence(state,task).some(t=>t.id===evidence.id),
+      qualityVerdict:r.qualityVerdict||'',sourceVersion:r.sourceVersion,
+      sourceCurrent:source&&r.sourceVersion!==undefined?r.sourceVersion===A.resultVersion(source):null};
+  }
+  function latestWork(state,{now=Date.now()}={}){
+    const tasks=state.tasks||[],leads=state.leads||[],leadLinks=new Map(),batches=new Map();
+    leads.forEach(lead=>linkedTasks(lead,state).forEach(task=>{
+      const links=leadLinks.get(task.id)||[];
+      links.push({id:lead.id,title:lead.company,href:href('lead',lead.id),offer:lead.offer,label:offerLabel(lead)});leadLinks.set(task.id,links);
+    }));
+    campaigns(state).forEach(batch=>batch.rows.forEach(row=>batches.set(row.task.id,batch.id)));
+    function campaignLabel(task,links){
+      const services=[...new Set(links.map(l=>l.label))];
+      if(services.length)return services.length===1?services[0]:'Multiple linked services';
+      // Service labels may follow a recorded source-task relationship, not a
+      // matching company, date, native conversation or task-title keyword.
+      const seen=new Set();let source=task;
+      while(source&&!seen.has(source.id)){
+        seen.add(source.id);
+        if(batches.has(source.id))return 'ASIC brokerage · '+batches.get(source.id);
+        const deal=(state.deals||[]).find(d=>d.id===source.dealId);
+        if(deal&&A.OFFERS[deal.offer])return A.OFFERS[deal.offer];
+        if(String(source.brief||'').startsWith('[ENERGY SCOUTING]'))return 'Energy site research';
+        source=tasks.find(t=>t.id===source.parentTaskId);
+      }
+      return 'Team assignment';
+    }
+    const taskEntries=tasks.filter(t=>A.taskKind(t)==='work').map(task=>{
+      const meaning=taskMeaning(task,state),links=leadLinks.get(task.id)||[];
+      return {kind:'task',id:task.id,title:task.title,href:href('task',task.id),record:task,status:task.status,label:meaning.label,
+        campaignLabel:campaignLabel(task,links),...recordedTime(task.updatedAt,now),timestampLabel:'Task record updated',
+        owner:meaning.owner,next:meaning.next,linkedLeads:links,result:task.result||'',review:savedReview(task,state,now)};
+    }).sort(recentFirst);
+    const leadEntries=leads.map(lead=>({kind:'lead',id:lead.id,title:lead.company,href:href('lead',lead.id),record:lead,status:lead.stage,
+      label:A.LEAD_STAGES[lead.stage]||'Stage not recorded',campaignLabel:offerLabel(lead),...recordedTime(lead.updatedAt,now),timestampLabel:'Lead record updated',
+      owner:'',next:lead.nextAction||'',linkedLeads:[],linkedTasks:tasks.filter(t=>(leadLinks.get(t.id)||[]).some(l=>l.id===lead.id)).map(t=>({id:t.id,title:t.title,href:href('task',t.id)})),
+      result:'',review:null})).sort(recentFirst);
+    const activeTasks=taskEntries.filter(e=>active(e.record)&&['draft','ready','working','review','blocked'].includes(e.status));
+    const results=taskEntries.filter(e=>e.result.trim()),outcomes=leadEntries.concat(results).sort(recentFirst);
+    const dated=entries=>entries.find(e=>e.updatedAt)||null;
+    const activity=(state.activity||[]).map(event=>({...event,...recordedTime(event.at,now)})).filter(e=>e.updatedAt).sort(recentFirst);
+    return {activeTasks,reportedWorking:activeTasks.filter(e=>bucket(e.record)==='working'),outcomes,
+      latestLead:dated(leadEntries),latestResult:dated(results),latestOutcome:dated(outcomes),undatedOutcomes:outcomes.filter(e=>!e.updatedAt),
+      latestActivity:activity[0]||null,
+      activeExplanation:activeTasks.length?'Open assignments are saved task statuses, not live agent activity.':'No open assignment is recorded in this snapshot. A saved lead or result does not report current agent activity.'};
+  }
   const escape=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const href=(kind,id)=>'#'+(kind==='lead'?'pipeline':'team')+'/'+kind+'/'+encodeURIComponent(id);
   function when(value){const date=new Date(value);return Number.isFinite(+date)?date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'No update recorded';}
@@ -109,7 +177,7 @@
   function campaignCard(c,state){
     const current=c.current,task=current&&current.task,meaning=task&&taskMeaning(task,state);
     const strip=pilotSteps.map((label,index)=>{const entry=c.rows.find(r=>r.index===index),t=entry&&entry.task;return '<li class="'+(current&&current.index===index?'is-current':t&&t.status==='done'?'is-accepted':t&&t.status==='review'?'has-result':'')+'"'+(current&&current.index===index?' aria-current="step"':'')+'><span class="wf-number">'+(index+1)+'</span><span><strong>'+label+'</strong><small>'+(t?escape(taskMeaning(t,state).label):'Not assigned')+'</small></span></li>';}).join('');
-    return '<article class="wf-campaign"><div class="wf-campaign-head"><div><p class="eyebrow">ASIC BROKERAGE · '+escape(c.id)+'</p><h3>'+(current?escape(pilotSteps[current.index]):'Batch closed · see recorded outcomes')+'</h3></div><span class="tag">'+(state.paused?'Queue paused':task?escape(meaning.label):'Complete')+'</span></div><ol class="wf-batch-path" aria-label="Brokerage batch progress">'+strip+'</ol>'+(task?'<div class="wf-next-grid"><div><small>Responsible</small><strong>'+escape(meaning.owner)+'</strong></div><div><small>Next action</small><p>'+escape(meaning.next)+'</p></div><div><small>After this</small><p>'+escape(c.next?pilotSteps[c.next.index]:'Advance within recorded email readiness and authorized scope.')+'</p></div></div><a class="text-button" href="'+href('task',task.id)+'">Open current assignment →</a>':'')+'<p class="wf-note">Batch work can contain several candidates. Individual lead progress below uses saved lead records and explicitly linked assignments. Latest update: '+escape(when(stamp(c.latest.task)))+'.</p></article>';
+    return '<article class="wf-campaign"><div class="wf-campaign-head"><div><p class="eyebrow">RECORDED ASIC BATCH · '+escape(c.id)+'</p><h3>'+(current?escape(pilotSteps[current.index]):'Batch closed · see recorded outcomes')+'</h3></div><span class="tag">'+(state.paused?'Queue paused':task?escape(meaning.label):'Complete')+'</span></div><ol class="wf-batch-path" aria-label="Brokerage batch progress">'+strip+'</ol>'+(task?'<div class="wf-next-grid"><div><small>Responsible</small><strong>'+escape(meaning.owner)+'</strong></div><div><small>Next action</small><p>'+escape(meaning.next)+'</p></div><div><small>After this</small><p>'+escape(c.next?pilotSteps[c.next.index]:'Advance within recorded email readiness and authorized scope.')+'</p></div></div><a class="text-button" href="'+href('task',task.id)+'">Open current assignment →</a>':'')+'<p class="wf-note">This recorded batch can contain several candidates; it is not the current workflow for every service. Individual lead progress uses saved records and explicitly linked assignments. Latest update: '+escape(when(stamp(c.latest.task)))+'.</p></article>';
   }
   function leadCounts(state,selected){
     const rows=(state.leads||[]).map(l=>leadProgress(l,state)).filter(r=>!r.closed);
@@ -135,5 +203,5 @@
     const entry=campaign&&campaign.rows.find(r=>r.task.id===task.id),prev=entry&&campaign.rows.find(r=>r.index===entry.index-1),next=entry&&campaign.rows.find(r=>r.index===entry.index+1);
     return '<section class="wf-task-context"><div class="wf-next-grid"><div><small>What this means</small><strong>'+escape(meaning.label)+'</strong></div><div><small>Next action · '+escape(meaning.owner)+'</small><p>'+escape(meaning.next)+'</p></div></div>'+(lead?'<a class="text-button" href="'+href('lead',lead.id)+'">Lead: '+escape(lead.company)+' →</a>':'')+(prev||next?'<div class="wf-dependencies">'+(prev?'<a href="'+href('task',prev.task.id)+'">Before: '+escape(pilotSteps[prev.index])+' · '+escape(taskMeaning(prev.task,state).label)+'</a>':'')+(next?'<a href="'+href('task',next.task.id)+'">Next: '+escape(pilotSteps[next.index])+' · '+escape(taskMeaning(next.task,state).label)+'</a>':'')+'</div>':'')+'</section>';
   }
-  return {steps,linkedTasks,hold,emailReadiness,holdBanner,bucket,matches,taskMeaning,leadProgress,campaigns,overview,leadCounts,offerLabel,card,detail,taskContext};
+  return {steps,linkedTasks,hold,emailReadiness,holdBanner,bucket,matches,taskMeaning,leadProgress,campaigns,latestWork,overview,leadCounts,offerLabel,card,detail,taskContext};
 }));

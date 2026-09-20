@@ -22,7 +22,7 @@ function reviewFixture(){
 // All account/store transitions execute the actual adapters; no network exists.
 function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdTransactions=false,holdSettlement=false}={}){
   const elements=new Map(),documentEvents=new Map(),windowEvents=new Map(),queue=[],snapshots=new Map(),writes=[];
-  const storage=new Map([[LOCAL,JSON.stringify(local)]]);let authCallback,authError,currentUser=null,releaseRead,settleTransaction,transactionReads=0;
+  const storage=new Map([[LOCAL,JSON.stringify(local)]]);let authCallback,authError,currentUser=null,releaseRead,settleTransaction,transactionReads=0,releaseOptions;
   const decode=s=>s.replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
   function element(id){
     if(elements.has(id))return elements.get(id);
@@ -70,7 +70,8 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
     SiteData:{KEY:'sites',list:()=>[]},CrmContacts:{...noRecords,KEY:'contacts'},CrmFollowups:{...noRecords,KEY:'followups',today:()=> '2026-09-20'},CrmLog:{...noRecords,KEY:'log'},CrmConfig:{...noRecords,KEY:'config',publish(){},stageLabel:value=>value},
     SyncEngine:{stopAll(){},switchAccount(){},listen(){},SYNC_KEYS:{}},
     ProtonCrmDiscovery:{create:()=>({unmount(){},collapseDetail(){},mount(){},html:()=>'',brief:()=>null})},
-    ProtonCrmControl:{render:()=>'',watchFreshness:()=>()=>{}},
+    ProtonCrmControl:{render:()=>'',recentWork:()=>'',watchFreshness:()=>()=>{}},
+    ProtonCrmRelease:{start(options){releaseOptions=options;return {restore(){}};}},
     ProtonAuth:{getUser:()=>currentUser}
   };
   if(firebase)box.firebase={firestore:()=>db,auth:()=>({onAuthStateChanged(fn,error){authCallback=fn;authError=error;}})};
@@ -81,7 +82,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   let data;const create=box.ProtonCrmData.create;box.ProtonCrmData.create=()=>{data=create();return data;};
   run('crm/crm.js');
   function flush(){for(let limit=0;queue.length;limit++){assert(limit<100,'event queue did not settle');queue.shift()();}}
-  const h={el:element,location,writes,data,storage,flush,title:()=>element('sheetTitle').textContent,body:()=>element('sheetBody').innerHTML,isOpen:()=>element('sheet').open,
+  const h={el:element,location,writes,data,storage,flush,releaseOptions:()=>releaseOptions,title:()=>element('sheetTitle').textContent,body:()=>element('sheetBody').innerHTML,isOpen:()=>element('sheet').open,
     transactionReads:()=>transactionReads,releaseRead:state=>releaseRead(state),settleTransaction:error=>settleTransaction(error),
     auth(uid){currentUser=uid?{uid,email:uid+'@example.test'}:null;authCallback(currentUser);flush();},
     authFail(){authError(Error('Synthetic authentication failed.'));flush();},
@@ -100,6 +101,29 @@ function opened(h,title='Synthetic owner A task'){
 }
 function waiting(h){assert.equal(h.isOpen(),true);assert.equal(h.title(),'Opening task');assert.doesNotMatch(h.body(),/no longer|not found/i);}
 function attention(h){assert.equal(h.isOpen(),true);assert.equal(h.title(),'Task connection needs attention');assert.doesNotMatch(h.body(),/no longer|not found/i);}
+
+test('automatic release activation requires settled browsing and preserves forms and account boundaries',async()=>{
+  const h=harness({hash:'#pipeline'}),update=h.releaseOptions();
+  assert.equal(update.getAccountKey(),null);assert.equal(update.isSafeToReload(),false);
+  h.auth('owner_a');assert.equal(update.isSafeToReload(),false);
+  h.snapshot('owner_a',fixture());assert.equal(update.getAccountKey(),'owner_a');assert.equal(update.isSafeToReload(),true);
+  h.snapshot('owner_a',fixture(),{pending:true});assert.equal(update.isSafeToReload(),false);
+  h.snapshot('owner_a',fixture(),{cache:true});assert.equal(update.isSafeToReload(),false);
+  h.snapshot('owner_a',fixture());await h.click('new-task');h.el('f_title').value='Retained unsaved title';
+  assert.equal(update.isSafeToReload(),false);assert.equal(h.el('f_title').value,'Retained unsaved title');
+  h.close();assert.equal(update.isSafeToReload(),true);
+  h.auth('owner_b');assert.equal(update.isSafeToReload(),false);
+  h.snapshot('owner_b',fixture());assert.equal(update.getAccountKey(),'owner_b');assert.equal(update.isSafeToReload(),true);
+  assert.equal(h.writes.length,0);
+});
+
+test('a read-only rejected lead snapshot can update its validator without accepting or replacing records',()=>{
+  const h=harness({hash:'#pipeline'});h.auth('owner_a');const state=fixture();h.snapshot('owner_a',state);
+  const invalid=apply(state,'lead.save',{id:'lead_12345678-1234-4234-8234-123456789abc',company:'Synthetic only',website:'https://example.test/fixture',offer:'custom_search',channel:'direct',stage:'discovered'});invalid.leads[0].offer='unsupported_fixture';
+  h.snapshot('owner_a',invalid);assert.equal(h.data.status().agent.mode,'error');assert.equal(h.data.agent().revision,state.revision);
+  assert.equal(h.releaseOptions().isSafeToReload(),true);assert.equal(h.writes.length,0);
+  h.storeFail('owner_a');assert.equal(h.releaseOptions().isSafeToReload(),false);
+});
 
 test('initial task link waits for resolved auth and a delayed server register, preserving exact ID',()=>{
   const h=harness({local:fixture('Anonymous task must not flash')});waiting(h);

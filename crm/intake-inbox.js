@@ -18,22 +18,43 @@
     const D=options.D,E=options.E||root.ProtonCrmEnergyScouting,esc=options.esc||escape,fetcher=options.fetch||root.fetch.bind(root);
     const model=()=>options.model||root.ProtonSourcingModel,auth=()=>options.auth||root.firebase?.auth(),configuration=()=>options.config||root.ProtonIntakeConfig||{};
     let host=null,generation=0,owner=null,busy=false,records=[],metrics=null,selected=null,cursor=null,loaded=false,notice='',loadError='';
-    const drafts=new Map();
+    const drafts=new Map(),unconfirmedWrites=new Map();let inFlight=0,publicOperations=0;
     const uid=()=>D.status().uid;
+    function reloadSafety(){
+      const reasons=[],s=D.status(),dirtyDrafts=[...drafts.values()].filter(d=>d.touched).length,active=inFlight+publicOperations+(busy?1:0);
+      if(!s.ready||s.error)reasons.push('intake-account-not-ready');
+      if(owner&&owner!==s.uid)reasons.push('intake-account-changed');
+      if(active)reasons.push('intake-operation-in-flight');
+      if(dirtyDrafts)reasons.push('intake-draft-retained');
+      if(unconfirmedWrites.size)reasons.push('intake-write-unconfirmed');
+      return Object.freeze({safe:!reasons.length,reasons:Object.freeze(reasons),inFlight:active,uncertain:unconfirmedWrites.size,dirtyDrafts});
+    }
+    async function operation(fn){publicOperations++;try{return await fn();}finally{publicOperations--;}}
+    const writeKey=(s,path,body)=>JSON.stringify([s.uid,path,body]);
+    function confirmAction(s,path,body,record){
+      const recordId=decodeURIComponent(path.split('/')[3]||'');
+      const event=record?.id===recordId&&Array.isArray(record.history)&&record.history.find(event=>event.actionId===body.actionId&&event.recordedByUid===s.uid&&event.revision===body.expectedRevision+1&&Object.entries(body).every(([key,value])=>event[key]===(typeof value==='string'?value.trim():value)));
+      if(!event||!Number.isSafeInteger(record.revision)||record.revision<event.revision)return false;
+      unconfirmedWrites.delete(writeKey(s,path,body));return true;
+    }
     function stamp(){const s=D.status();if(!s.uid||!s.ready||s.error)throw Error(s.error||'Sign in to the Proton owner account to view private requests.');const user=auth()?.currentUser;if(!user||user.uid!==s.uid)throw Error('Wait for the signed-in account to connect.');return {uid:s.uid,epoch:s.epoch,user};}
     function assertAccount(s){const current=D.status();if(current.uid!==s.uid||current.epoch!==s.epoch||auth()?.currentUser?.uid!==s.uid)throw Error('The account changed. This request was not continued in the new account. Your draft is retained for the original account during this session.');}
     function cloud(s){assertAccount(s);if(D.status().agent?.mode!=='cloud')throw Error('Wait for the confirmed cloud CRM connection before creating or linking an assignment.');}
     async function api(path,{method='GET',body}={},captured){
-      const s=captured||stamp(),base=endpoint(configuration());if(!base)throw Error('Private intake is not connected. Email sales@protonminingco.com directly.');
-      assertAccount(s);const token=await s.user.getIdToken();assertAccount(s);
-      const response=await fetcher(base+path,{method,headers:{Accept:'application/json',Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},cache:'no-store',credentials:'omit',redirect:'error',...(body?{body:JSON.stringify(body)}:{})});assertAccount(s);
-      let data;try{data=await response.json();}catch(_){throw Error('The private request service did not return a receipt. Keep this draft and retry.');}assertAccount(s);
-      if(!response.ok){const e=new Error(data.error?.message||'The request could not be confirmed. Keep this draft and retry.');e.code=data.error?.code;e.status=response.status;throw e;}
-      return data;
+      inFlight++;
+      try{
+        const s=captured||stamp(),base=endpoint(configuration());if(!base)throw Error('Private intake is not connected. Email sales@protonminingco.com directly.');
+        assertAccount(s);const token=await s.user.getIdToken();assertAccount(s);
+        const key=!['GET','HEAD'].includes(method)?writeKey(s,path,body):null;if(key)unconfirmedWrites.set(key,true);
+        const response=await fetcher(base+path,{method,headers:{Accept:'application/json',Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},cache:'no-store',credentials:'omit',redirect:'error',...(body?{body:JSON.stringify(body)}:{})});assertAccount(s);
+        let data;try{data=await response.json();}catch(_){throw Error('The private request service did not return a receipt. Keep this draft and retry.');}assertAccount(s);
+        if(!response.ok){if(key&&[400,422].includes(response.status)&&data.error?.code==='invalid_request')unconfirmedWrites.delete(key);const e=new Error(data.error?.message||'The request could not be confirmed. Keep this draft and retry.');e.code=data.error?.code;e.status=response.status;throw e;}
+        return data;
+      }finally{inFlight--;}
     }
     function synchronizeOwner(){const current=uid();if(owner!==current){owner=current;records=[];metrics=null;selected=null;cursor=null;loaded=false;loadError='';notice='';generation++;}}
     function key(kind){return String(owner)+'/'+selected?.id+'/'+kind;}
-    function draft(kind){const k=key(kind);if(!drafts.has(k))drafts.set(k,{actionId:root.crypto.randomUUID(),expectedRevision:selected.revision,values:{},stamp:D.snapshot()});return drafts.get(k);}
+    function draft(kind){const k=key(kind);if(!drafts.has(k))drafts.set(k,{actionId:root.crypto.randomUUID(),expectedRevision:selected.revision,values:{},stamp:D.snapshot(),touched:false});return drafts.get(k);}
     function setRecord(r){selected=r;const at=records.findIndex(v=>v.id===r.id);if(at<0)records.unshift(r);else records[at]=r;}
     async function refresh(append=false){
       synchronizeOwner();const s=stamp(),g=generation;loadError='';
@@ -45,19 +66,21 @@
     function values(form){const out={};for(const field of form.elements){if(!field.name||['submit','button','reset'].includes(field.type)||['checkbox','radio'].includes(field.type)&&!field.checked)continue;out[field.name]=field.value;}return out;}
     async function mutate(kind,fields){
       const s=stamp(),r=selected,d=draft(kind);
+      d.touched=true;d.values={...d.values,...fields};
       if(kind==='acknowledge'&&r.queue?.taskOwnerUid!==s.uid)throw Error('Record the handoff from the original CRM owner account.');
       const body=d.payload||(d.payload={actionId:d.actionId,expectedRevision:d.expectedRevision,type:kind,...fields});
       if(JSON.stringify({...body,...fields})!==JSON.stringify(body))throw Error('This attempted save has retained its original values. Reopen the request before making a different decision.');
-      let result;try{result=await api('/v1/requests/'+encodeURIComponent(r.id)+'/actions',{method:'POST',body},s);}catch(e){d.failedStatus=e.status;if([400,422].includes(e.status))d.payload=null;throw e;}assertAccount(s);setRecord(result.request);drafts.delete(String(s.uid)+'/'+r.id+'/'+kind);notice=result.duplicate?'This exact action was already saved; no duplicate was created.':'Request record saved.';draw();return result;
+      const path='/v1/requests/'+encodeURIComponent(r.id)+'/actions';
+      let result;try{result=await api(path,{method:'POST',body},s);}catch(e){d.failedStatus=e.status;if([400,422].includes(e.status))d.payload=null;throw e;}assertAccount(s);if(!confirmAction(s,path,body,result.request))throw Error('The exact saved action is not confirmed in the returned record. Keep this draft and reconcile the original request.');setRecord(result.request);drafts.delete(String(s.uid)+'/'+r.id+'/'+kind);notice=result.duplicate?'This exact action was already saved; no duplicate was created.':'Request record saved.';draw();return result;
     }
     async function queue(){
-      const s=stamp();cloud(s);const current=await api('/v1/requests/'+encodeURIComponent(selected.id),{},s);assertAccount(s);
+      const s=stamp();cloud(s);draft('queue').touched=true;const current=await api('/v1/requests/'+encodeURIComponent(selected.id),{},s);assertAccount(s);
       if(current.request.service==='site_submission')throw Error('Supply submissions are qualified and linked to a physical site; they do not create a customer research assignment.');
       const r=current.request,d=Object.assign({},model().researchDraft(r,{page:'https://protonminingco.com/crm/#requests'}),{id:taskId(r)});
       const exists=D.agent().tasks.find(t=>t.id===d.id);if(exists&&!sameTask(exists,d))throw Error('That task identity already contains different work. Reconcile the exact request and task before proceeding.');
       if(r.queue?.state!=='not_queued'){
         if(r.queue?.taskOwnerUid!==s.uid)throw Error('This queue link belongs to another or unrecorded CRM owner account. Verify the original account before reconciling its task.');
-        if(r.queue?.taskId===d.id&&sameTask(exists,d)){setRecord(r);notice='The exact CRM draft is already linked. No second assignment was created.';draw();return;}
+        if(r.queue?.taskId===d.id&&sameTask(exists,d)){const saved=drafts.get(String(s.uid)+'/'+r.id+'/queue');if(!saved?.payload||confirmAction(s,'/v1/requests/'+encodeURIComponent(r.id)+'/actions',saved.payload,r))drafts.delete(String(s.uid)+'/'+r.id+'/queue');setRecord(r);notice='The exact CRM draft is already linked. No second assignment was created.';draw();return;}
         throw Error('This request has a different queue record. Reconcile it before making another assignment.');
       }
       // Keep the record revision from the original form. Never silently rebase a pending decision.
@@ -99,7 +122,7 @@
       return form(kind,'Link the exact physical site',choose(kind,'siteId','Existing saved site',[['','Select the exact physical site'],...sites.map(s=>[s.id,s.name+' · '+s.id])])+input(kind,'partnerId','Partner / source contact reference','text','required maxlength="180"')+input(kind,'partnerName','Partner or contact name','text','required maxlength="180"')+choose(kind,'partnerKind','Submitting party’s role',[['unknown','Unconfirmed'],['owner','Owner'],['operator','Operator'],['intermediary','Intermediary'],['referrer','Referrer']])+input(kind,'originatingSource','Originating source','text','required maxlength="500"')+input(kind,'sourceReference','Source or request evidence','text','required maxlength="2000"')+choose(kind,'authority','Authority evidence',[['unverified','Not verified'],['owner','Ownership evidenced'],['operator','Operator authority evidenced'],['mandated','Mandate evidenced']])+input(kind,'authorityEvidence','Authority evidence reference, if verified','text','maxlength="2000"')+input(kind,'contactRoute','Contact route as supplied','text','required maxlength="1000"')+input(kind,'lastConfirmedAt','Last actually confirmed, if known','date')+area(kind,'introductionTerms','Introduction terms or explicit unknowns')+input(kind,'recordedBy','Recorded by','text','required maxlength="180"')+'<p class="quiet-note">This adds a source route to the selected site. It does not merge nearby records, certify authority or qualify the site for a client.</p>','Save source route');
     }
     async function linkSite(fields){
-      const s=stamp();cloud(s);if(selected.service!=='site_submission')throw Error('Customer briefs link to client assessments, not an assumed supply contact.');const d=draft('site-link');if(!fields.siteId)throw Error('Select the exact existing physical site.');const site=D.sites().find(v=>String(v.id)===String(fields.siteId));if(!site)throw Error('That saved site no longer exists.');
+      const s=stamp();cloud(s);if(selected.service!=='site_submission')throw Error('Customer briefs link to client assessments, not an assumed supply contact.');const d=draft('site-link');d.touched=true;d.values={...d.values,...fields};if(!fields.siteId)throw Error('Select the exact existing physical site.');const site=D.sites().find(v=>String(v.id)===String(fields.siteId));if(!site)throw Error('That saved site no longer exists.');
       const payload={...fields,id:'intake_'+selected.id.replace(/[^a-z0-9_-]/gi,''),requestId:selected.id,lastConfirmedAt:fields.lastConfirmedAt||null};delete payload.siteId;
       const provenance=model().siteRecord(site.custom_fields?.sourcing,{type:'route.upsert',payload},{siteId:site.id,now:new Date().toISOString()});
       await D.saveSite(site.id,{custom_fields:{...site.custom_fields,sourcing:provenance}},d.stamp);assertAccount(s);drafts.delete(key('site-link'));notice='Source route saved to the exact physical site. Check CRM sync status for cloud confirmation.';draw();
@@ -122,7 +145,7 @@
       return form(kind,'Record this client’s site assessment',body,'Save client assessment');
     }
     async function linkAssessment(fields){
-      const s=stamp();cloud(s);if(selected.service==='site_submission')throw Error('A supply submission is not a customer brief.');const d=draft('assessment'),site=D.sites().find(v=>String(v.id)===String(fields.siteId));if(!fields.siteId||!site)throw Error('Select the exact existing physical site.');
+      const s=stamp();cloud(s);if(selected.service==='site_submission')throw Error('A supply submission is not a customer brief.');const d=draft('assessment'),site=D.sites().find(v=>String(v.id)===String(fields.siteId));d.touched=true;d.values={...d.values,...fields};if(!fields.siteId||!site)throw Error('Select the exact existing physical site.');
       const facet=name=>({status:fields[name+'Status'],reference:fields[name+'Reference']||'',confirmedAt:fields[name+'Date']||null});
       const payload={id:'assessment_'+selected.id.replace(/[^a-z0-9_-]/gi,'')+'_v'+(selected.briefRevision||1),requestId:selected.id,briefRevision:selected.briefRevision||1,recordedBy:fields.recordedBy,notes:fields.notes,research:researchFacet(selected),ownerInterest:facet('ownerInterest'),terms:facet('terms'),clientFit:facet('clientFit')};
       const provenance=model().siteRecord(site.custom_fields?.sourcing,{type:'assessment.record',payload},{siteId:site.id,now:new Date().toISOString()});
@@ -143,10 +166,10 @@
     function draw(){if(host){host.innerHTML=content();if(busy)host.querySelectorAll('button,input,textarea,select').forEach(el=>{el.disabled=true;});}}
     function failure(error,kind){loadError=error.message;if(host){const target=kind&&host.querySelector('[data-intake-error="'+kind+'"]')||host.querySelector('.intake-error');if(target)target.textContent=error.message;}}
     function unlock(){busy=false;if(host)host.querySelectorAll('button:disabled,input:disabled,textarea:disabled,select:disabled').forEach(b=>{b.disabled=false;});}
-    async function click(event){const el=event.target.closest('[data-intake]');if(!el||!host?.contains(el)||busy)return;event.preventDefault();const action=el.dataset.intake;busy=true;el.disabled=true;try{if(action==='refresh')await refresh();if(action==='more')await refresh(true);if(action==='open')await open(el.dataset.request);if(action==='reopen')await open(selected.id);if(action==='queue')await queue();if(action==='fresh'){const k=key(el.dataset.kind),old=drafts.get(k);drafts.delete(k);draft(el.dataset.kind).values=old?.values||{};notice='A new decision draft now targets the displayed record revision. Previous field values were preserved.';draw();}}catch(e){failure(e);}finally{unlock();}}
-    async function submit(event){const form=event.target.closest('[data-intake-form]');if(!form||busy)return;event.preventDefault();const kind=form.dataset.intakeForm,v=values(form);draft(kind).values=v;busy=true;form.querySelector('button[type="submit"]').disabled=true;try{if(kind==='site-link')await linkSite(v);else if(kind==='assessment')await linkAssessment(v);else if(kind==='acknowledge'){const at=new Date(v.acknowledgedAt);if(!Number.isFinite(at.getTime())||at.getTime()>Date.now())throw Error('Record the actual acknowledgment time, no later than now.');await mutate(kind,{...v,taskId:selected.queue.taskId,acknowledgedAt:at.toISOString()});}else await mutate(kind,v);}catch(e){failure(e,kind);}finally{unlock();}}
+    async function click(event){const el=event.target.closest('[data-intake]');if(!el||!host?.contains(el)||busy)return;event.preventDefault();const action=el.dataset.intake;busy=true;el.disabled=true;try{if(action==='refresh')await refresh();if(action==='more')await refresh(true);if(action==='open')await open(el.dataset.request);if(action==='reopen')await open(selected.id);if(action==='queue')await queue();if(action==='fresh'){const k=key(el.dataset.kind),old=drafts.get(k);drafts.delete(k);const next=draft(el.dataset.kind);next.values=old?.values||{};next.touched=!!old?.touched;notice='A new decision draft now targets the displayed record revision. Previous field values were preserved.';draw();}}catch(e){failure(e);}finally{unlock();}}
+    async function submit(event){const form=event.target.closest('[data-intake-form]');if(!form||busy)return;event.preventDefault();const kind=form.dataset.intakeForm,v=values(form),d=draft(kind);d.values=v;d.touched=true;busy=true;form.querySelector('button[type="submit"]').disabled=true;try{if(kind==='site-link')await linkSite(v);else if(kind==='assessment')await linkAssessment(v);else if(kind==='acknowledge'){const at=new Date(v.acknowledgedAt);if(!Number.isFinite(at.getTime())||at.getTime()>Date.now())throw Error('Record the actual acknowledgment time, no later than now.');await mutate(kind,{...v,taskId:selected.queue.taskId,acknowledgedAt:at.toISOString()});}else await mutate(kind,v);}catch(e){failure(e,kind);}finally{unlock();}}
     function capture(event){
-      const form=event.target.closest('[data-intake-form]');if(!form)return;const kind=form.dataset.intakeForm,d=draft(kind),priorSite=d.values.siteId;d.values=values(form);
+      const form=event.target.closest('[data-intake-form]');if(!form)return;const kind=form.dataset.intakeForm,d=draft(kind),priorSite=d.values.siteId;d.values=values(form);d.touched=true;
       if(event.target.name!=='siteId'||priorSite===d.values.siteId||!['site-link','assessment'].includes(kind))return;
       const site=D.sites().find(s=>String(s.id)===String(d.values.siteId)),p=site?.custom_fields?.sourcing;
       const saved=kind==='site-link'?p?.routes?.find(r=>r.id==='intake_'+selected.id.replace(/[^a-z0-9_-]/gi,'')):p?.assessments?.find(a=>a.requestId===selected.id&&String(a.briefRevision)===String(selected.briefRevision||1));
@@ -163,7 +186,7 @@
     function dispose(){if(host){if(selected&&owner===uid())host.querySelectorAll('[data-intake-form]').forEach(form=>{draft(form.dataset.intakeForm).values=values(form);});host.removeEventListener('click',click);host.removeEventListener('submit',submit);host.removeEventListener('input',capture);host.removeEventListener('change',capture);}host=null;generation++;}
     function mount(target){dispose();host=target.querySelector('[data-intake-root]')||target;host.addEventListener('click',click);host.addEventListener('submit',submit);host.addEventListener('input',capture);host.addEventListener('change',capture);draw();try{if(owner&&!loaded&&endpoint(configuration()))refresh().catch(e=>failure(e));}catch(e){failure(e);}}
     D.subscribe?.(()=>{if(owner!==uid()){synchronizeOwner();draw();}});
-    return {html:()=>'<div class="page-head"><div><p class="eyebrow">Site sourcing</p><h1>Requests.</h1><p>Receive a brief. Qualify the work. Track its handoff.</p></div></div><div class="intake-inbox" data-intake-root></div>',mount,dispose,refresh,open,mutate,queue,api,linkSite,linkAssessment,select:record=>{synchronizeOwner();setRecord(record);},state:()=>({records,selected,metrics,notice,loadError})};
+    return {html:()=>'<div class="page-head"><div><p class="eyebrow">Site sourcing</p><h1>Requests.</h1><p>Receive a brief. Qualify the work. Track its handoff.</p></div></div><div class="intake-inbox" data-intake-root></div>',mount,dispose,reloadSafety,refresh,open,mutate:(...args)=>operation(()=>mutate(...args)),queue:()=>operation(queue),api,linkSite:(...args)=>operation(()=>linkSite(...args)),linkAssessment:(...args)=>operation(()=>linkAssessment(...args)),select:record=>{synchronizeOwner();setRecord(record);},state:()=>({records,selected,metrics,notice,loadError})};
   }
   return {create,taskId,sameTask,endpoint,SERVICES};
 }));

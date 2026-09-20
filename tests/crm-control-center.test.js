@@ -99,3 +99,18 @@ test('time passing or a clock rollback cannot make the same uncertain report ani
   const expired=watcherHarness([work('expired',{updatedAt:at(0)})]);expired.setNow(NOW+31*MINUTE);expired.tick();assert.equal(expired.button.classList.contains('is-working'),false);
   expired.setNow(NOW+MINUTE);expired.tick();assert.equal(expired.button.classList.contains('is-working'),false);expired.dispose();
 });
+test('a retained or pending account snapshot never animates as freshly reported work',()=>{
+  const task=work('reported',{updatedAt:at(0)}),status=agent=>({uid:'synthetic',agent:{uid:'synthetic',...agent}});
+  for(const agent of [{mode:'error',serverConfirmed:false},{mode:'offline',serverConfirmed:false},{mode:'cloud',serverConfirmed:false},{mode:'cloud',serverConfirmed:true,uid:'other'}]){
+    const connection=status(agent),report=C.roleReport([task],NOW,(t,now)=>C.snapshotReport(t,now,connection));
+    assert.equal(C.confirmedSnapshot(connection),false);assert.equal(report.shining,false);assert.match(report.status,/needs checking/);assert.match(report.lastReported,/sync not verified/);
+  }
+  assert(C.confirmedSnapshot(status({mode:'cloud',serverConfirmed:true})));
+  assert(C.confirmedSnapshot({uid:null,agent:{mode:'local'}}));
+});
+test('latest saved energy lead remains visible apart from historical tasks and no recorded active task',()=>{
+  const state=A.initial();state.leads=[{id:'energy_new',company:'Synthetic energy <img src=x>',offer:'custom_search',stage:'discovered',updatedAt:'2025-09-20T12:00:00Z',nextAction:'Confirm usable power and owner access.'}];
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const before=JSON.stringify(state),html=C.recentWork(state,{esc},{connection:{uid:'synthetic',agent:{uid:'synthetic',mode:'error',serverConfirmed:false}}});
+  assert.match(html,/Latest saved lead/);assert.match(html,/Synthetic energy &lt;img src=x&gt;/);assert.match(html,/#pipeline\/lead\/energy_new/);assert.match(html,/No active task recorded/);assert.match(html,/Snapshot not current/);assert.match(html,/does not prove that no work ran/);assert.doesNotMatch(html,/<img|Result accepted|is-working/);assert.equal(JSON.stringify(state),before);
+});

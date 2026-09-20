@@ -48,7 +48,35 @@ test('site-search and review leads/deals preserve legacy service identity and re
     }
     assert.deepEqual(s.leads[0],oldLead);assert.deepEqual(s.deals[0],oldDeal);assert.equal(s.tasks.length,0);assert.equal(s.entries.length,0);assert.equal(M.metrics(s,'2026-09').contribution,0);
     assert(s.leads.slice(1).every(l=>l.stage==='qualified'&&!l.lastTouch));
-    assert.throws(()=>apply(s,'lead.save',lead({id:'submission',offer:'site_submission'})),/valid lead stage, service/);
+    assert.throws(()=>apply(s,'lead.save',lead({id:'submission',offer:'site_submission'})),/Unsupported lead service/);
+});
+test('unsupported lead enums identify only the field and an opaque record ID',()=>{
+    const opaqueId='lead_00000000-0000-4000-8000-000000000001';
+    for(const [property,field] of [['stage','stage'],['offer','service'],['channel','channel']]){
+        const invalid=lead({id:opaqueId,company:'Private fixture company',contact:'private@example.test',
+            [property]:'private-invalid-value@example.test'});
+        const original=JSON.stringify(invalid);
+        const check=error=>{
+            assert.equal(error.code,'unsupported_lead_field');assert.equal(error.field,field);
+            assert.equal(error.recordId,opaqueId);
+            assert.equal(error.message,'Unsupported lead '+field+'. Record: '+opaqueId+'.');
+            assert(!JSON.stringify(error).includes(invalid.company));
+            assert(!JSON.stringify(error).includes(invalid.contact));
+            assert(!JSON.stringify(error).includes(invalid[property]));return true;
+        };
+        assert.throws(()=>M.valid({...M.initial(),leads:[invalid]}),check);
+        assert.throws(()=>apply(M.initial(),'lead.save',invalid),check);
+        assert.equal(JSON.stringify(invalid),original,'validation never repairs the input');
+        const legacy=lead({id:'lead_Private_Company_Name',[property]:'unsupported'});
+        assert.throws(()=>M.valid({...M.initial(),leads:[legacy]}),error=>{
+            assert.equal(error.recordId,null);assert.equal(error.message,'Unsupported lead '+field+'.');
+            assert(!JSON.stringify(error).includes(legacy.id));return true;
+        });
+    }
+    for(const [property,value,field] of [['stage','Research needed','stage'],['channel','email','channel'],['offer','site_submission','service']]){
+        assert.throws(()=>M.valid({...M.initial(),leads:[lead({[property]:value})]}),error=>error.field===field);
+    }
+    assert.throws(()=>M.valid({...M.initial(),leads:[lead({id:'private@example.test',offer:'unsupported'})]}),/Invalid record ID/);
 });
 test('current site services retain per-service deduplication and cross-service contact suppression',()=>{
     let s=apply(M.initial(),'lead.save',qualified({offer:'custom_search'}));
@@ -167,4 +195,50 @@ test('cloud persistence confirmation follows current snapshot metadata and reset
     c.callbacks.get('b')({exists:false,metadata:{fromCache:false,hasPendingWrites:true}});
     emit({fromCache:false,hasPendingWrites:false});assert.equal(h.snapshot().uid,'b');assert.equal(h.snapshot().serverConfirmed,false);
     h.setUser(null);assert.equal(h.snapshot().mode,'local');assert.equal(h.snapshot().serverConfirmed,false);
+});
+test('rejected lead snapshots keep the last valid register unconfirmed and cannot write',async()=>{
+    const c=cloud(),data=storage(),h=storeHarness({db:c.db,storage:data}).store,views=[];
+    const owner='synthetic_owner';
+    let accepted=apply(M.initial(),'lead.save',lead({id:'lead_search',offer:'custom_search'}));
+    accepted=apply(accepted,'lead.save',lead({id:'lead_review',offer:'site_review'}));
+    c.docs.set(owner,{data:accepted});h.subscribe(view=>views.push(view));h.setUser({uid:owner});
+    assert.equal(h.snapshot().mode,'cloud');assert.equal(h.snapshot().serverConfirmed,true);
+    assert.deepEqual(h.snapshot().state.leads.map(l=>l.offer),['custom_search','site_review']);
+    assert.equal(h.snapshot().validationIssue,null);
+    const lastValid=JSON.stringify(h.snapshot().state),confirmedAt=h.snapshot().lastServerConfirmedAt;
+    assert(Number.isFinite(Date.parse(confirmedAt)),'a valid server snapshot records its local observation time');
+    const send=(state,metadata={fromCache:false,hasPendingWrites:false})=>c.callbacks.get(owner)({exists:true,data:()=>({data:state}),metadata});
+    const opaqueId='lead_00000000-0000-4000-8000-000000000002';
+    for(const [property,field] of [['stage','stage'],['offer','service'],['channel','channel']]){
+        const rejected=JSON.parse(lastValid);rejected.revision++;
+        rejected.leads[0].id=opaqueId;rejected.leads[0][property]='private-rejected-value@example.test';
+        send(rejected);
+        const view=h.snapshot();
+        assert.equal(view.mode,'error');assert.equal(view.serverConfirmed,false);
+        assert.equal(JSON.stringify(view.state),lastValid,'the newer invalid snapshot cannot replace validated data');
+        assert.equal(view.lastServerConfirmedAt,confirmedAt,'a rejection cannot refresh the verification time');
+        assert.equal(JSON.stringify(view.validationIssue),JSON.stringify({code:'unsupported_lead_field',field,recordId:opaqueId}));
+        assert(!view.error.includes(rejected.leads[0][property]));
+        assert.equal(views.at(-1).serverConfirmed,false,'subscribers see the rejection as unconfirmed');
+        assert.equal(h.raw(),JSON.stringify(rejected),'the original rejected snapshot remains available for explicit backup');
+        await assert.rejects(h.dispatch(action(view.state,'pause',{})),/recover/);
+        assert.equal(c.writes.length,0,'no repair or write is attempted');
+        assert.equal(data.getItem('protonAgentControlLocal_v1'),null,'remote failures do not alter local work');
+    }
+    send(accepted,{fromCache:true,hasPendingWrites:false});
+    assert.equal(h.snapshot().mode,'offline');assert.equal(h.snapshot().serverConfirmed,false);
+    assert.equal(h.snapshot().validationIssue,null);assert.equal(h.snapshot().lastServerConfirmedAt,confirmedAt);
+    await assert.rejects(h.dispatch(action(h.snapshot().state,'pause',{})),/connection/);
+    send(accepted,{fromCache:false,hasPendingWrites:true});
+    assert.equal(h.snapshot().serverConfirmed,false);assert.equal(h.snapshot().lastServerConfirmedAt,confirmedAt);
+    send(accepted);
+    assert.equal(h.snapshot().mode,'cloud');assert.equal(h.snapshot().serverConfirmed,true);
+    assert.equal(h.snapshot().error,'');assert.equal(h.snapshot().validationIssue,null);
+    const refreshedAt=h.snapshot().lastServerConfirmedAt;
+    c.failures.get(owner)({code:'permission-denied'});
+    assert.equal(h.snapshot().serverConfirmed,false);assert.equal(h.snapshot().lastServerConfirmedAt,refreshedAt);
+    h.setUser({uid:'synthetic_second_owner'});
+    assert.equal(views.at(-2).mode,'connecting');assert.equal(views.at(-2).lastServerConfirmedAt,null);
+    assert.equal(views.at(-2).validationIssue,null,'diagnostics do not leak between accounts');
+    h.setUser(null);assert.equal(h.snapshot().lastServerConfirmedAt,null);assert.equal(h.snapshot().validationIssue,null);
 });
