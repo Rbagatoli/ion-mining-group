@@ -40,6 +40,7 @@ const ROOT = path.join(__dirname, '..');
  * nobody asked about. */
 const AREAS = [
     { name: 'portal', dir: 'portal' },
+    { name: 'scouting', dir: 'portal/scouting' },
     { name: 'site', dir: 'site' }
 ];
 

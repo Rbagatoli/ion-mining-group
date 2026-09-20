@@ -133,6 +133,8 @@ const MUST_EXIST = [
     'index.html', 'why-mining.html', 'blog.html', 'hosting.html', 'hardware.html', 'brokerage.html', 'energy-sites.html',
     'sitemap.xml', 'robots.txt', '404.html', 'styles.css',
     'portal/index.html',
+    'portal/scouting/index.html', 'portal/scouting/scouting.css',
+    'portal/scouting/scouting.js', 'portal/scouting/sample-data.js',
     /* The portal's two parent-directory dependencies. Without them the portal renders as a
        black page with a wordmark and no sign-in form. */
     'tokens.css', 'firebase-config.js',

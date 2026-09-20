@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#101110">
+  <title>Your energy search · Proton Mining</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./scouting.css?v=c08d3099">
+  <script defer src="./sample-data.js?v=c08d3099"></script>
+  <script defer src="./scouting.js?v=c08d3099"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <div class="pixel-field" aria-hidden="true"></div>
+  <aside class="sidebar">
+    <a class="brand" href="../../index.html" aria-label="Proton Mining home"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="20" cy="20" r="4" fill="currentColor"/><circle cx="30" cy="8" r="4" fill="#f7931a"/></svg><span>PROTON<small>ENERGY SITES</small></span></a>
+    <p class="rail-label">YOUR WORKSPACE</p>
+    <nav aria-label="Client workspace">
+      <a href="#overview" data-route="overview"><span aria-hidden="true">◫</span> Overview</a>
+      <a href="#brief" data-route="brief"><span aria-hidden="true">≡</span> My brief</a>
+      <a href="#sites" data-route="sites"><span aria-hidden="true">⌖</span> Sites <b>4</b></a>
+      <a href="#updates" data-route="updates"><span aria-hidden="true">↻</span> Updates</a>
+    </nav>
+    <div class="rail-bottom"><div class="support-mark" aria-hidden="true">P</div><strong>Let’s find your next site.</strong><p>One brief. A clear view of the options.</p><a href="mailto:sales@protonminingco.com">Talk to Proton <span aria-hidden="true">↗</span></a><a class="quiet" href="../">Hosting &amp; energy portal</a></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div><span class="status-dot"></span>Energy site sourcing <span class="top-divider">/</span> <span id="pageLabel">Overview</span></div><a href="../../energy-sites.html">About the service <span aria-hidden="true">↗</span></a></header>
+    <div class="preview-banner"><span><strong>Workspace preview</strong> · Public research from Sep 19, 2026. No available power confirmed.</span><span id="saveState">Drafts stay in this browser</span></div>
+    <main id="main" tabindex="-1"></main>
+    <noscript><section class="panel"><h1>Your energy search</h1><p>Enable JavaScript to explore the workspace. To start a search, email your location, target MW and site budget to <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>.</p></section></noscript>
+    <footer class="workspace-footer"><span>PROTON MINING <span class="muted">/ Power in. Bitcoin out.</span></span><button type="button" class="text-button" id="resetPreview">Reset preview</button></footer>
+  </div>
+  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+  <dialog id="draftDialog" aria-labelledby="draftTitle"><form method="dialog"><div class="section-heading"><h2 id="draftTitle">Review your request</h2><button class="icon-button" aria-label="Close request">×</button></div></form><p class="muted">This is an unsent draft to <strong>sales@protonminingco.com</strong>. Review it, then send it through your email app.</p><label for="draftText">Email text</label><textarea id="draftText" rows="13"></textarea><div class="actions"><button type="button" id="copyDraft" class="button secondary">Copy text</button><a id="emailDraft" class="button primary" href="mailto:sales@protonminingco.com">Open email draft <span aria-hidden="true">↗</span></a></div><p class="small muted">Opening your email app does not submit a request here. Scope and fees are agreed before research begins.</p></dialog>
+</body>
+</html>
