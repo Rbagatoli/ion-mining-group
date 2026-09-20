@@ -23,9 +23,13 @@ var LF = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'landfills.json'), '
 
 console.log('\n=== the join ===');
 (function() {
+    eq('facility snapshot identifies the refreshed inventory', LINKS.sourceSnapshots.facilities.reportingYear, 2025);
+    eq('facility snapshot hash matches the exact input', LINKS.sourceSnapshots.facilities.sha256,
+       require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'data', 'facilities.json'))).digest('hex'));
+    eq('landfill research date is preserved', LINKS.sourceSnapshots.landfills.sourceReleaseDate, '2024-09-04');
     var lfg = FAC.filter(function(f) { return f.technology === 'Landfill Gas'; });
-    eq('279 EIA landfill-gas plants', lfg.length, 279);
-    eq('204 of them link', LINKS.links.length, 204);
+    eq('278 EIA landfill-gas plants in the 2025 inventory', lfg.length, 278);
+    eq('203 of them link', LINKS.links.length, 203);
     eq('counts agree with the array', LINKS.counts.linked, LINKS.links.length);
     eq('the rest are recorded as unlinked', LINKS.counts.unlinked, lfg.length - LINKS.links.length);
 
@@ -155,7 +159,7 @@ console.log('\n=== nothing is deleted ===');
        Object.keys(referenced).every(function(p) { return !!lfIds[p]; }));
     // Re-pinned for the coverage sweep: +849 rows, proven additive (0 repriced, 0 removed).
     eq('the landfill catalog is unchanged in size', LF.length, 2755);
-    eq('and the facility catalog too', FAC.length, 9765);
+    eq('national facility inventory is preserved by the linking pass', FAC.length, 14327);
 })();
 
 // ---- 7. The browser module -------------------------------------------------------------------

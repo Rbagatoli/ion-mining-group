@@ -1,11 +1,9 @@
-/* Landfill leads. This suite is the standing proof of it.
+/* Nationwide sourcing and accurate project-specific fuel descriptions.
 
-   The company's priority changed: landfill gas first, flared gas still served
-   and second. That is a claim made in prose, in ordering, and in which drawing
-   opens the page — three things nothing else checks, and all three are one
-   careless edit from silently reverting. In particular the footer tagline is
-   GENERATED, so fixing the eleven pages without fixing tools/build-seo.js buys
-   exactly one build.
+   The company-wide footer and Organization metadata must reflect broad energy
+   sourcing. Landfill still leads the existing hosted-project presentation, with
+   flared gas also served. Those project details and drawings remain accurate
+   without constraining the scope of the separate nationwide sourcing service.
 
    WHAT IS NOT A VIOLATION. Oil and gas vocabulary is correct in two places: the
    "Flared associated gas" card, which is about oil and gas, and the wellpad
@@ -27,33 +25,40 @@ function ok(cond, what, detail) {
 
 const pages = fs.readdirSync(D).filter(f => f.endsWith('.html'));
 
-/* ---------- 1. Ordering, wherever both fuels are named ---------- */
+/* ---------- 1. Broad company scope; specific hosted-project fuels ---------- */
 
-/* Read the tagline out of the GENERATOR, not off a page. A page can be right
-   while the thing that rewrites it is wrong, and the next build settles it. */
-const seoSrc = fs.readFileSync(D + 'tools/build-seo.js', 'utf8');
-const seoFlat = seoSrc.replace(/\s*\+\s*\n\s*'/g, '').replace(/\s+/g, ' ');
-const iLandSeo = seoFlat.indexOf('landfill gas');
-const iFlareSeo = seoFlat.indexOf('flared gas');
-ok(iLandSeo > 0 && iFlareSeo > 0 && iLandSeo < iFlareSeo,
-   'the generated tagline lists landfill before flared gas',
-   'landfill@' + iLandSeo + ' flared@' + iFlareSeo);
+const navigation = require(D + 'tools/build-nav.js');
+const expectedFooter = 'Bitcoin mining, hosting and nationwide energy site sourcing.';
+ok(navigation.FOOTER_BLURB === expectedFooter,
+   'the shared footer describes nationwide sourcing alongside mining and hosting');
+const oldFooterFixture = '<main>Landfill project equipment.</main><footer><p class="footer-blurb">Landfill and flare sites only.</p><a href="./energy.html">Energy partnerships</a></footer>';
+const generatedFooterFixture = navigation.applyFooterBlurb(oldFooterFixture, 'test-fixture');
+ok(generatedFooterFixture === oldFooterFixture.replace('Landfill and flare sites only.', expectedFooter),
+   'footer replacement changes the company description without rewriting project content');
+ok(navigation.applyFooterBlurb(generatedFooterFixture, 'test-fixture') === generatedFooterFixture,
+   'repeated footer generation is stable');
 
-/* And every page agrees with it right now. */
-let wrongOrder = [];
+/* Static pages are updated by build-nav; generated articles inherit the updated
+   privacy footer through build-blog. Check the artifacts as well as the source. */
+const wrongFooters = [], missingFooters = [];
 pages.forEach(f => {
     const s = fs.readFileSync(D + f, 'utf8');
-    const m = s.match(/Bitcoin mining sites built on ([^.<]+)\./);
-    if (!m) return;
-    const list = m[1];
-    if (list.indexOf('landfill') > list.indexOf('flared')) wrongOrder.push(f);
+    const m = s.match(/<p class="footer-blurb">([^<]*)<\/p>/);
+    if (!m && Object.prototype.hasOwnProperty.call(navigation.PAGES, f)) missingFooters.push(f);
+    if (m && m[1] !== expectedFooter) wrongFooters.push(f);
 });
-ok(wrongOrder.length === 0, 'and every page carries it in that order',
-   wrongOrder.length ? 'STILL FLARE-FIRST: ' + wrongOrder.join(', ')
-                     : pages.length + ' pages');
+ok(!wrongFooters.length && !missingFooters.length,
+   'static pages and generated articles retain the same broad footer',
+   wrongFooters.concat(missingFooters).join(', ') || pages.length + ' pages');
 
 /* The home hero. */
 const index = fs.readFileSync(D + 'index.html', 'utf8');
+const structuredData = [...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map(m => JSON.parse(m[1]));
+const organization = structuredData.find(item => item['@type'] === 'Organization');
+ok(organization && organization.description.startsWith(expectedFooter) &&
+   /hydro, nuclear/.test(organization.description) && /Owner confirmation/.test(organization.description),
+   'generated Organization metadata includes broad research scope and unconfirmed supply');
 ['flared gas, landfill gas', 'flared gas, landfill'].forEach(bad2 => {
     ok(index.indexOf(bad2) < 0, 'the home page does not lead with flare ("' + bad2 + '")');
 });

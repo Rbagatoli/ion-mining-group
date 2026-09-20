@@ -1,10 +1,10 @@
-/* Mutation-test the landfill-first copy guards.
+/* Mutation-test national service scope and project-specific fuel copy guards.
 
    The plan for this change asked specifically that the vocabulary check be
    mutation-tested "by putting one back", because a check that greps for absent
    words passes just as happily when its own scoping is broken and it is reading
-   an empty string. Each mutation below reinstates exactly one thing the switch
-   to landfill-first removed. */
+   an empty string. Mutations narrow the company-wide service scope or reinstate
+   an inaccurate fuel description in the hosted-project presentation. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
@@ -21,18 +21,29 @@ function fails(args, cwd) {
 const copy = () => fails([HERE + 'landfill-copy-suite.js'], HERE);
 const rebuild = () => { try { execFileSync(process.execPath, ['tools/build-seo.js'], { cwd: S, stdio: 'pipe' }); execFileSync(process.execPath, ['tools/build-diagram.js', 'energy'], { cwd: S, stdio: 'pipe' }); } catch (e) {} };
 
+/* An existing unrelated failure must not make every mutation look caught. */
+if (copy()) {
+    console.error('Copy checks must pass before mutations run. Regenerate the site first.');
+    process.exit(1);
+}
+
 const MUTATIONS = [
-    /* The tagline is a concatenation split over three lines in the generator,
-       which is exactly why it survived the first pass of this change: the
-       eleven pages were fixed and the thing that rewrites them was not. */
+    /* Check the shared source separately from one stale generated artifact.
+       Requiring build-nav is read-only, so its source mutation needs no rebuild. */
+    { file: S + 'tools/build-nav.js',
+      why: 'the shared footer source narrows nationwide sourcing to two fuels',
+      from: "const FOOTER_BLURB = 'Bitcoin mining, hosting and nationwide energy site sourcing.';",
+      to:   "const FOOTER_BLURB = 'Bitcoin mining sites built on landfill gas and flared gas.';" },
+
     { file: S + 'tools/build-seo.js', gen: true,
-      why: 'the GENERATED tagline put back to flare-first',
-      from: "'Bitcoin mining sites built on landfill gas, flared gas, and '",
-      to:   "'Bitcoin mining sites built on flared gas, landfill gas, and '" },
+      why: 'generated Organization metadata loses the nationwide service scope',
+      from: "description: FOOTER_BLURB +",
+      to:   "description: 'Landfill and flare site sourcing only. ' +" },
 
     { file: S + 'hosting.html',
-      why: 'one page left flare-first while the generator is right',
-      from: 'built on landfill gas, flared gas', to: 'built on flared gas, landfill gas' },
+      why: 'one page retains a restricted company footer while the source is broad',
+      from: '<p class="footer-blurb">Bitcoin mining, hosting and nationwide energy site sourcing.</p>',
+      to:   '<p class="footer-blurb">Bitcoin mining sites built on landfill gas and flared gas.</p>' },
 
     { file: S + 'index.html',
       why: 'the home hero back to flare-first',

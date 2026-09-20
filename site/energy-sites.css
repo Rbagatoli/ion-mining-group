@@ -32,6 +32,7 @@
 .sites-sources li:first-child { padding-top: 0; }
 .sites-sources strong { display: block; color: var(--plat-100); font: 500 17px/1.5 var(--sans); }
 .sites-sources span { display: block; margin-top: 5px; color: var(--plat-300); font: 13px/1.6 var(--sans); }
+.sites-coverage-note { max-width: 440px; margin-top: 24px; color: var(--plat-400); font: 12px/1.7 var(--sans); }
 .sites-process { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 36px; margin: 0; padding: 0; list-style: none; counter-reset: none; }
 .sites-process li { padding-top: 20px; border-top: 1px solid var(--line-mid); }
 .sites-process li > span { color: var(--btc-200); font: 13px/1.5 var(--mono); }
@@ -47,6 +48,12 @@
 .sites-form .form-row { align-items: start; }
 .sites-form .field label span { font-size: 10px; text-transform: none; letter-spacing: 0; color: var(--plat-400); }
 .sites-form .field small { display: block; margin-top: 6px; color: var(--plat-400); font: 11px/1.5 var(--sans); }
+.sites-energy-choices { min-width: 0; margin: 0; padding: 18px 0; border: 0; border-top: 1px solid var(--line); }
+.sites-energy-choices legend { padding: 0 8px 0 0; color: var(--plat-200); font: 500 13px/1.5 var(--sans); }
+.sites-energy-choices > p { margin: 0 0 12px; color: var(--plat-400); font: 11px/1.6 var(--sans); }
+.sites-energy-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 2px 16px; }
+.sites-energy-grid .field label { display: flex; align-items: center; gap: 10px; min-height: 42px; margin: 0; color: var(--plat-200); font: 12px/1.5 var(--sans); text-transform: none; letter-spacing: 0; cursor: pointer; }
+.sites-energy-grid input[type="checkbox"] { flex: 0 0 auto; width: 16px; height: 16px; min-height: 0; padding: 0; margin: 0; accent-color: var(--btc-300); }
 .sites-form-options { border-block: 1px solid var(--line); }
 .sites-form-options summary { min-height: 48px; padding-block: 14px; cursor: pointer; color: var(--plat-200); font: 13px/1.5 var(--sans); }
 .sites-form-options summary span { float: right; color: var(--plat-400); font-size: 11px; }
@@ -102,4 +109,5 @@
   .sites-form .form-row { grid-template-columns: minmax(0,1fr); }
   .sites-form input, .sites-form select, .sites-form textarea { font-size: 16px; }
   .sites-form-options summary { font-size: 12px; }
+  .sites-energy-grid { grid-template-columns: minmax(0,1fr); }
 }

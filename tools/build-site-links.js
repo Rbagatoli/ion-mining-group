@@ -283,14 +283,20 @@ function main() {
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
         source: 'EIA-860/923 landfill-gas plants joined to EPA LMOP landfills by coordinate proximity',
+        sourceSnapshots: {
+            facilities: { reportingYear: facDoc.eia860Year || null, artifactGenerated: facDoc.generated || null,
+                records: facilities.length, sha256: require('crypto').createHash('sha256').update(fs.readFileSync(facPath)).digest('hex') },
+            landfills: { sourceReleaseDate: lfDoc.sourceReleaseDate || null, artifactGenerated: lfDoc.generated || null,
+                records: projects.length, sha256: require('crypto').createHash('sha256').update(fs.readFileSync(lfPath)).digest('hex') }
+        },
         method: 'Coordinate proximity only, ' + RADIUS_M + ' m, restricted to EIA technology "' +
                 EIA_FUEL + '". No name matching of any kind — an earlier name-based join in this ' +
                 'project matched 4 of 5 wrong on shared town names. Every landfill inside the ' +
                 'radius is emitted; the nearest is never silently chosen.',
         joinNote: 'These are LINKS, not merges. Neither dataset\'s figures are overwritten, and ' +
                   'where the two disagree both numbers are carried so the disagreement is visible.',
-        capacityNote: 'Only 772 of 1,908 LMOP rows carry an EPA rated MW; the rest are derived ' +
-                      'from measured gas flow. capacityBasis states which, per landfill. A ' +
+        capacityNote: 'LMOP records can carry an EPA generator rating, a gas-flow-derived estimate or no quantified capacity. ' +
+                      'capacityBasis states which, per landfill. A ' +
                       'resource estimate differing from a generator nameplate is not a conflict.',
         radiusM: RADIUS_M,
         counts: {

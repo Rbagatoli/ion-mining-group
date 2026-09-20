@@ -1,15 +1,8 @@
 // ===== Facility index — EIA-860 + EIA-923 =====
 //
-// Builds the universe of small US generating facilities that ALREADY produce and sell power,
-// plus a monthly capacity-factor history for each, and derives the distress signals that history
-// implies. One ingestion serves three consumers:
-//
-//   1. the facility universe        (development_stage: operating / energized)
-//   2. capacity-factor distress     (output falling against the plant's OWN history)
-//   3. curtailment                  (output far below the regional norm for its resource class)
-//
-// (2) and (3) are the same time series read two different ways, which is why they are computed
-// together rather than in two pipelines that could drift.
+// Builds national discovery coverage of US operable generating facilities of every size and
+// technology, plus reported generation history where available. Inventory capacity and historical
+// output do NOT establish surplus power, curtailment, owner willingness or an available allocation.
 //
 // Why EIA-860 rather than FERC Form 556: Form 556 is the formal Qualifying Facility registry, but
 // data.ferc.gov requires an API key and www.ferc.gov/qf is behind a bot challenge. EIA-860 is
@@ -18,36 +11,51 @@
 // Power Producer and Cogeneration status per plant, which recovers part of the QF signal.
 //
 // KNOWN COVERAGE GAP, stated rather than papered over: EIA-860 covers plants of 1 MW and above.
-// Facilities below 1 MW are not required to report and are largely absent. Form 556 has the same
-// 1 MW threshold, so this is a limit of the public data, not of this choice of source.
+// Sub-1 MW plants are largely absent; this inventory is not a complete list of every energy opportunity.
 //
 // Usage:
-//   node tools/build-facility-index.js [--max-mw 50] [--years 5] [--out data/facilities.json]
+//   node tools/build-facility-index.js [--max-mw 50] [--years 5] [--eia860-year 2025]
+// Default: no upper capacity limit. --max-mw is an optional discovery filter, never available MW.
 var https = require('https'), fs = require('fs'), path = require('path'), zlib = require('zlib');
 var xlsx = require(path.join(__dirname, 'xlsx-lite.js'));
 
 var ROOT = path.join(__dirname, '..');
 var CACHE = path.join(__dirname, '.cache');
 
-var argv = process.argv.slice(2);
-function arg(name, dflt) {
-    var i = argv.indexOf('--' + name);
-    return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
+function parseOptions(argv) {
+    var values = {}, allowed = ['max-mw', 'years', 'eia860-year', 'out'];
+    for (var i = 0; i < argv.length; i += 2) {
+        var key = String(argv[i]).replace(/^--/, '');
+        if (argv[i] !== '--' + key || allowed.indexOf(key) < 0) throw new Error('Unknown option: ' + argv[i]);
+        if (Object.prototype.hasOwnProperty.call(values, key)) throw new Error('Duplicate option: --' + key);
+        if (!argv[i + 1] || /^--/.test(argv[i + 1])) throw new Error('Missing value for --' + key);
+        values[key] = argv[i + 1];
+    }
+    function positive(key, fallback, integer) {
+        if (values[key] === undefined) return fallback;
+        var raw = String(values[key]);
+        var value = Number(raw);
+        if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw) || !Number.isFinite(value) || value <= 0 ||
+                (integer && !Number.isInteger(value))) throw new Error('--' + key + ' must be a positive ' + (integer ? 'integer' : 'number'));
+        return value;
+    }
+    var year = positive('eia860-year', 2025, true);
+    if (year < 2001 || year > new Date().getUTCFullYear()) throw new Error('--eia860-year is outside the supported annual range');
+    var years = positive('years', 5, true);
+    if (years > year - 2000) throw new Error('--years exceeds available supported annual history');
+    return { maxMw: positive('max-mw', null, false), years: years, eia860Year: year,
+        out: path.resolve(ROOT, values.out || 'data/facilities.json') };
 }
-function flag(name) { return argv.indexOf('--' + name) >= 0; }
-
-// Above this the asset is a different business with a different counterparty. Everything larger
-// is DROPPED, and the count of what was dropped is reported — a filtered universe that says
-// nothing about its own filter reads as though it were complete.
-var MAX_MW = parseFloat(arg('max-mw', '50'));
-var YEARS = parseInt(arg('years', '5'), 10);
-var OUT = path.resolve(ROOT, arg('out', 'data/facilities.json'));
+var OPTIONS = parseOptions(require.main === module ? process.argv.slice(2) : []);
+var MAX_MW = OPTIONS.maxMw;
+var YEARS = OPTIONS.years;
+var OUT = OPTIONS.out;
 
 // The most recent EIA-860 annual release. EIA-923 years are resolved below; note that finalised
 // years live under archive/xls/ while the current early-release year does not — guessing the
 // wrong one yields a 301 to a generic landing page rather than an error, which is the trap that
 // makes this worth writing down.
-var EIA860_YEAR = parseInt(arg('eia860-year', '2024'), 10);
+var EIA860_YEAR = OPTIONS.eia860Year;
 var EIA860_URL = 'https://www.eia.gov/electricity/data/eia860/xls/eia860' + EIA860_YEAR + '.zip';
 
 // Months of capacity-factor history kept per facility for the detail chart. The trend ANALYSIS
@@ -262,6 +270,9 @@ function loadUtilities(zipPath) {
 // them would assert a single ownership structure that the filing does not.
 function loadOwners(zipPath) {
     var rows = xlsx.read(memberBuf(zipPath, '4___owner')).sheet('Ownership') || [];
+    return aggregateOwners(rows);
+}
+function aggregateOwners(rows) {
     var hi = headerIndex(rows), col = colFinder(rows[hi] || []);
     // FULL fragments throughout: colFinder is a PREFIX matcher, and this sheet carries both
     // "State"/"Zip" (the plant's) and "Owner State"/"Owner Zip". Asking for 'state' here would
@@ -283,24 +294,28 @@ function loadOwners(zipPath) {
         var ownId = str(r[cOwnId]), name = str(r[cOwnName]);
         if (!ownId || !name) continue;
         var p = byPlant[code] || (byPlant[code] = { owners: {}, order: [] });
-        var o = p.owners[ownId];
+        var pct = num(r[cPct]);
+        var sharePct = pct === null ? null : round(pct * 100, 4);
+        // One owner can hold different shares of different generators. Keep those groups
+        // distinct instead of copying the first generator's percentage onto every unit.
+        var ownKey = ownId + ':' + sharePct;
+        var o = p.owners[ownKey];
         if (!o) {
             // "Percent Owned" is a FRACTION: plant 51's four owners read 0.5 / 0.0586 / 0.039 /
             // 0.4024 and sum to 1.0. Rendered raw it says "1% owned" for a 100% owner — a 100x
             // error on the one number that decides who has to sign. Converted once, here, with
             // the unit in the field name so a caller cannot repeat the mistake.
-            var pct = num(r[cPct]);
-            o = p.owners[ownId] = {
+            o = p.owners[ownKey] = {
                 ownershipId: ownId,
                 name: name,
                 address: str(r[cOwnAddr]),
                 city: str(r[cOwnCity]),
                 state: str(r[cOwnState]),
                 zip: zip5(r[cOwnZip]),
-                sharePct: pct === null ? null : round(pct * 100, 4),
+                sharePct: sharePct,
                 generators: []
             };
-            p.order.push(ownId);
+            p.order.push(ownKey);
         }
         var g = cGen >= 0 ? str(r[cGen]) : null;
         if (g && o.generators.indexOf(g) < 0) o.generators.push(g);
@@ -391,7 +406,31 @@ var STATUS_LABEL = {
 
 function loadGenerators(zipPath) {
     var wb = xlsx.read(memberBuf(zipPath, '3_1_generator'));
+    return aggregateGenerators(wb);
+}
+
+function classifyTechnology(technology, fuel, primeMover) {
+    var t = String(technology || '').toLowerCase(), f = String(fuel || '').toUpperCase();
+    if (/pumped storage|batter|flywheel|compressed air|energy storage/.test(t) || /^(BA|PS|FW|CE)$/.test(String(primeMover || ''))) return 'storage';
+    if (/nuclear/.test(t) || f === 'NUC') return 'nuclear';
+    if (/tidal|wave|ocean/.test(t) || /^(TID|WAV)$/.test(f)) return 'marine';
+    if (/hydroelectric|hydrokinetic/.test(t) || f === 'WAT') return 'hydro';
+    if (/solar/.test(t) || f === 'SUN') return 'solar';
+    if (/wind/.test(t) || f === 'WND') return 'wind';
+    if (/geothermal/.test(t) || f === 'GEO') return 'geothermal';
+    if (/landfill/.test(t) || f === 'LFG') return 'landfill_gas';
+    if (/municipal solid waste/.test(t) || /^(MSW|TDF)$/.test(f)) return 'waste_to_energy';
+    if (/biomass|wood|biogenic/.test(t) || /^(AB|BLQ|OBG|OBS|SLW|WDL|WDS)$/.test(f)) return 'biomass_biogas';
+    if (/waste heat/.test(t) || f === 'WH') return 'recovered_energy';
+    if (/natural gas/.test(t) || f === 'NG') return 'natural_gas';
+    if (/coal/.test(t) || /^(ANT|BIT|LIG|RC|SGC|SUB|WC)$/.test(f)) return 'coal';
+    if (/petroleum/.test(t) || /^(DFO|JF|KER|PC|RFO|WO)$/.test(f)) return 'oil';
+    return 'unknown';
+}
+
+function aggregateGenerators(wb) {
     var acc = {};
+    var seen = {}, duplicateRows = 0;
 
     function ingest(sheetName, retired) {
         var rows = wb.sheet(sheetName) || [];
@@ -399,27 +438,36 @@ function loadGenerators(zipPath) {
         var hi = headerIndex(rows), col = colFinder(rows[hi] || []);
         var cCode = col('plant code'), cMW = col('nameplate capacity'),
             cTech = col('technology'), cPM = col('prime mover'), cStatus = col('status'),
+            cGenerator = need(col('generator id'), 'generator id'), cFuel = col('energy source 1', true),
             cOpYear = col('operating year'), cRetYear = col('planned retirement year'),
             // Reference Table 3 of the layout sheet: S = single ownership by the respondent,
             // J = jointly owned with another entity, W = wholly owned by an entity OTHER than the
             // respondent. Present on all 9,765 catalogued plants.
             cOwn = col('ownership');
+        var fuelColumns = [1, 2, 3, 4, 5, 6].map(function (number) { return col('energy source ' + number, true); }).filter(function (index) { return index >= 0; });
         if (cCode < 0 || cMW < 0) return;
         for (var i = hi + 1; i < rows.length; i++) {
             var r = rows[i], code = num(r[cCode]);
             if (code === null) continue;
             var mw = num(r[cMW]);
             if (mw === null) continue;
+            var generatorId = str(r[cGenerator]);
+            if (generatorId === null) throw new Error('EIA-860 generator id missing at plant ' + code);
+            // One physical generator is counted once. Operable is read first, so a repeated
+            // retired/canceled row cannot add capacity or overrule its current status.
+            var generatorKey = code + ':' + generatorId;
+            if (seen[generatorKey]) { duplicateRows++; continue; }
+            seen[generatorKey] = true;
             var a = acc[code];
             if (!a) {
-                a = acc[code] = { mw: 0, retiredMw: 0, units: 0, tech: {}, primeMover: {},
+                a = acc[code] = { mw: 0, retiredMw: 0, units: 0, tech: {}, primeMover: {}, fuel: {}, allFuel: {}, energy: {},
                                   status: {}, opYear: null, plannedRetirementYear: null,
-                                  ownership: {} };
+                                  statusMw: {}, retiredUnits: 0, canceledUnits: 0, ownership: {} };
             }
             var st = str(r[cStatus]);
             if (retired) {
-                a.retiredMw += mw;
-                a.status.RE = (a.status.RE || 0) + 1;
+                if (st === 'CN') a.canceledUnits++;
+                else { a.retiredMw += mw; a.retiredUnits++; }
             } else {
                 a.mw += mw;
                 a.units++;
@@ -428,8 +476,24 @@ function loadGenerators(zipPath) {
                 var oc = cOwn >= 0 ? str(r[cOwn]) : null;
                 if (oc) a.ownership[oc] = (a.ownership[oc] || 0) + 1;
                 if (st) a.status[st] = (a.status[st] || 0) + 1;
+                if (st) a.statusMw[st] = (a.statusMw[st] || 0) + mw;
                 if (cTech >= 0 && str(r[cTech])) a.tech[str(r[cTech])] = (a.tech[str(r[cTech])] || 0) + mw;
                 if (cPM >= 0 && str(r[cPM])) a.primeMover[str(r[cPM])] = (a.primeMover[str(r[cPM])] || 0) + mw;
+                var fuel = cFuel >= 0 ? str(r[cFuel]) : null;
+                if (fuel) a.fuel[fuel] = (a.fuel[fuel] || 0) + mw;
+                var energy = classifyTechnology(str(r[cTech]), fuel, str(r[cPM]));
+                a.energy[energy] = (a.energy[energy] || 0) + mw;
+                fuelColumns.forEach(function (column) {
+                    var reportedFuel = str(r[column]);
+                    if (!reportedFuel) return;
+                    a.allFuel[reportedFuel] = true;
+                    // Backup/alternate fuels are evidence for exclusion screening, not more
+                    // plant capacity or a claim about the actual generation mix.
+                    if (column !== cFuel) {
+                        var alternative = classifyTechnology(null, reportedFuel, null);
+                        if (!Object.prototype.hasOwnProperty.call(a.energy, alternative)) a.energy[alternative] = 0;
+                    }
+                });
                 var oy = cOpYear >= 0 ? num(r[cOpYear]) : null;
                 if (oy !== null && (a.opYear === null || oy < a.opYear)) a.opYear = oy;
                 var ry = cRetYear >= 0 ? num(r[cRetYear]) : null;
@@ -441,6 +505,7 @@ function loadGenerators(zipPath) {
     }
     ingest('Operable', false);
     ingest('Retired and Canceled', true);
+    Object.defineProperty(acc, 'duplicateGeneratorRows', { value: duplicateRows, enumerable: false });
     return acc;
 }
 
@@ -618,9 +683,9 @@ function round(v, dp) {
 }
 
 // ---- Main ---------------------------------------------------------------------------------
-(async function main() {
+async function main() {
     log('facility index — EIA-860 + EIA-923');
-    log('  max plant capacity  ' + MAX_MW + ' MW');
+    log('  max plant capacity  ' + (MAX_MW === null ? 'none (all sizes)' : MAX_MW + ' MW'));
     log('  generation years    ' + YEARS);
     log('  out                 ' + path.relative(ROOT, OUT));
     log('');
@@ -682,7 +747,8 @@ function round(v, dp) {
     log('  ' + Object.keys(series).length.toLocaleString() + ' plants reported generation');
 
     log('[5/5] computing capacity factors and trends');
-    var out = [], dropped = { tooBig: 0, noCapacity: 0, noLocation: 0, noGeneration: 0 };
+    var out = [], dropped = { tooBig: 0, noCapacity: 0, noLocation: 0, noPlant: 0 };
+    var withoutGeneration = 0;
     var declines = 0, standby = 0, plannedRetire = 0;
     // Counterparty tallies. Every one of these is asserted in tests/facility-contact.test.js
     // against the artifact itself, so a silent coverage regression fails a build rather than
@@ -692,19 +758,19 @@ function round(v, dp) {
         sole: 0, thirdParty: 0, joint: 0, mixed: 0, ownershipUnknown: 0,
         soleButOwnerRowExists: 0, generatorsDisagreeOnOwners: 0, thirdPartyOwnerIsOperator: 0,
         operatorOutOfState: 0, operatorPoBox: 0, gridVoltage: 0, qfDocket: 0,
-        offtakeDisagreesWithRegulatoryStatus: 0
+        offtakeDisagreesWithRegulatoryStatus: 0, missingThirdPartyOwnerRows: 0, ownerShareConflicts: 0
     };
     var usedUtilities = {};
 
     Object.keys(gens).forEach(function (code) {
         var g = gens[code], p = plants[code];
-        if (!p) return;
+        if (!p) { dropped.noPlant++; return; }
         if (!g.mw || g.mw <= 0) { dropped.noCapacity++; return; }
-        if (g.mw > MAX_MW) { dropped.tooBig++; return; }
+        if (MAX_MW !== null && g.mw > MAX_MW) { dropped.tooBig++; return; }
         if (p.lat === null || p.lon === null) { dropped.noLocation++; return; }
 
-        var s = series[code];
-        if (!s || !Object.keys(s).length) { dropped.noGeneration++; return; }
+        var s = series[code] || {};
+        if (!Object.keys(s).length) withoutGeneration++;
 
         var cf = capacityFactors(s, g.mw);
         var keysAll = Object.keys(cf).sort();
@@ -715,7 +781,7 @@ function round(v, dp) {
             if (!ks.length) return null;
             return ks.sort(function (a, b) { return o[b] - o[a]; })[0];
         }
-        var statusCode = topKey(g.status) || null;
+        var statusCode = topKey(g.statusMw) || null;
 
         // Trailing series for the detail chart, stored as a FLAT ARRAY with a start month
         // rather than an object keyed by date. The keys ("2024-01") cost more bytes than the
@@ -761,6 +827,22 @@ function round(v, dp) {
 
         var ownState = ownershipStateOf(g.ownership);
         var ownRows = owners[code] || null;
+        var ownershipWarnings = [];
+        if (ownState === 'third_party' && (!ownRows || !ownRows.length)) {
+            cp.missingThirdPartyOwnerRows++;
+            ownershipWarnings.push('Generator ownership is reported as third-party, but no owner row was published. Identify the owner before qualification.');
+        }
+        var sharesByGenerator = {};
+        (ownRows || []).forEach(function (owner) {
+            if (owner.sharePct === null) return;
+            owner.generators.forEach(function (generator) { sharesByGenerator[generator] = (sharesByGenerator[generator] || 0) + owner.sharePct; });
+        });
+        Object.keys(sharesByGenerator).forEach(function (generator) {
+            if (Math.abs(sharesByGenerator[generator] - 100) > 0.5) {
+                cp.ownerShareConflicts++;
+                ownershipWarnings.push('Published owner shares for generator ' + generator + ' total ' + round(sharesByGenerator[generator], 4) + '%. Confirm the ownership record.');
+            }
+        });
         if (ownState === 'sole_operator') cp.sole++;
         else if (ownState === 'third_party') cp.thirdParty++;
         else if (ownState === 'joint') cp.joint++;
@@ -824,13 +906,24 @@ function round(v, dp) {
             // would cost real bytes on an artifact that loads before anything can be drawn, and
             // would read as "we looked and there are no owners" rather than "none was filed".
             owners: (ownRows && ownRows.length) ? ownRows : undefined,
+            ownershipWarnings: ownershipWarnings.length ? ownershipWarnings : undefined,
             nameplateMw: round(g.mw, 3),
             retiredMw: g.retiredMw > 0 ? round(g.retiredMw, 3) : null,
             units: g.units,
             technology: topKey(g.tech),
+            energyTechnology: topKey(g.energy),
+            energyTechnologies: Object.keys(g.energy).sort(),
+            technologyCapacityMw: Object.fromEntries(Object.keys(g.tech).map(function (key) { return [key, round(g.tech[key], 3)]; })),
+            primaryFuelCodes: Object.keys(g.fuel).sort(),
+            fuelCodes: Object.keys(g.allFuel).sort(),
             primeMover: topKey(g.primeMover),
             status: statusCode,
             statusLabel: statusCode ? (STATUS_LABEL[statusCode] || statusCode) : null,
+            statusCapacityMw: Object.fromEntries(Object.keys(g.statusMw).map(function (key) { return [key, round(g.statusMw[key], 3)]; })),
+            retiredUnits: g.retiredUnits,
+            canceledUnits: g.canceledUnits,
+            availableMiningMw: null,
+            availabilityStatus: 'unverified',
             inServiceYear: g.opYear,
             plannedRetirementYear: g.plannedRetirementYear,
             fercSmallPowerProducer: p.fercSmallPowerProducer,
@@ -874,7 +967,7 @@ function round(v, dp) {
             // Deliberately NOT called sizeClass. That name already means "AER active well
             // licences" on the Alberta companies, and the Alberta-only "small operators" filter
             // reads it. Reusing the name would silently change what that control matches.
-            portfolioBasis: 'EIA-860 plants under ' + MAX_MW + ' MW in this catalog — a ' +
+            portfolioBasis: 'EIA-860 plants ' + (MAX_MW === null ? 'of all sizes' : 'at or below ' + MAX_MW + ' MW') + ' in this catalog — a ' +
                             'catalogued footprint, not company size',
             contactRegistry: 'US EIA Form 860 Schedule 1 (utility registry)'
         };
@@ -888,6 +981,16 @@ function round(v, dp) {
     });
     cp.companies = Object.keys(companies).length;
 
+    var byEnergy = {}, byState = {}, latestGenerationMonth = null;
+    out.forEach(function (f) {
+        byEnergy[f.energyTechnology] = (byEnergy[f.energyTechnology] || 0) + 1;
+        if (f.state) byState[f.state] = (byState[f.state] || 0) + 1;
+        if (f.lastDataMonth && (!latestGenerationMonth || f.lastDataMonth > latestGenerationMonth)) latestGenerationMonth = f.lastDataMonth;
+    });
+    function archiveSnapshot(file, url, reportingYear) {
+        return { reportingYear: reportingYear, sourceUrl: url,
+            archiveSha256: require('crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex') };
+    }
     var payload = sortKeys({
         v: 1,
         generated: new Date().toISOString().slice(0, 10),
@@ -896,11 +999,19 @@ function round(v, dp) {
         eia860Year: EIA860_YEAR,
         generationYears: have,
         maxMw: MAX_MW,
+        latestGenerationMonth: latestGenerationMonth,
+        sourceSnapshots: { inventory: archiveSnapshot(eia860, EIA860_URL, EIA860_YEAR),
+            generation: have.map(function (year) { return archiveSnapshot(path.join(CACHE, 'eia923_' + year + '.zip'),
+                'https://www.eia.gov/electricity/data/eia923/', year); }) },
         // Stated in the artifact itself so a consumer cannot mistake a filtered universe for a
         // complete one.
-        coverageNote: 'EIA-860 covers generating plants of 1 MW and above. Facilities below 1 MW ' +
-                      'are not required to report and are largely absent. Plants above ' + MAX_MW +
-                      ' MW were deliberately excluded from this artifact.',
+        coverageNote: 'National US EIA-860 operable inventory across every technology; EIA generally surveys plants with at least 1 MW combined nameplate capacity. ' +
+                      'Sub-1 MW facilities, unreported off-grid supplies and opportunities outside this registry are not comprehensively covered. ' +
+                      (MAX_MW === null ? 'No upper plant-capacity limit is applied. ' : 'Plants above ' + MAX_MW + ' MW are deliberately excluded. ') +
+                      'Proposed projects and plants without positive operable capacity or mapped coordinates are excluded. Missing generation history does not exclude an operable plant. ' +
+                      'Inventory capacity is not available power; no electricity offer, price, curtailment or owner willingness is confirmed.',
+        statusNote: 'Plant status summarizes the largest share of operable capacity. statusCapacityMw preserves mixed statuses. Retired and canceled units never determine current status.',
+        generationNote: 'Capacity factors use reported monthly net generation divided by the inventory snapshot nameplate capacity. Changes in installed capacity, dispatch, outages and weather can affect this comparison. Low output is a research signal, not verified curtailment, surplus power or distress.',
         declineMethod: 'Capacity factor compared year-over-year for the SAME calendar months, so ' +
                        'seasonality cancels. Flagged only when the trailing 12 months are more ' +
                        'than 50% below the plant\'s own 3-year normal AND at least 60% of ' +
@@ -926,7 +1037,8 @@ function round(v, dp) {
                        'which then turns out to be the operator. Both contradictions are ' +
                        'reported, not resolved. Note that shares are filed PER GENERATOR, so a ' +
                        'plant with two wholly-owned generators legitimately sums to 200% and ' +
-                       'must never be averaged into a single plant-level figure.',
+                       'must never be averaged into a single plant-level figure. Distinct shares held by the same owner in different generators are preserved separately. ' +
+                       cp.missingThirdPartyOwnerRows + ' third-party plants have no published owner row, and ' + cp.ownerShareConflicts + ' generator ownership totals do not sum to 100%; these unresolved source conflicts carry per-plant warnings.',
         unitTrap: 'EIA Schedule 4 publishes "Percent Owned" as a FRACTION, not a percentage — ' +
                   'plant 51\'s four owners read 0.5, 0.0586, 0.039 and 0.4024, summing to 1.0. ' +
                   'This artifact emits sharePct already multiplied by 100. Rendering the raw ' +
@@ -948,7 +1060,14 @@ function round(v, dp) {
             droppedTooBig: dropped.tooBig,
             droppedNoCapacity: dropped.noCapacity,
             droppedNoLocation: dropped.noLocation,
-            droppedNoGeneration: dropped.noGeneration,
+            droppedNoGeneration: 0,
+            facilitiesWithoutGeneration: withoutGeneration,
+            droppedNoPlantRecord: dropped.noPlant,
+            duplicateGeneratorRows: gens.duplicateGeneratorRows,
+            byEnergyTechnology: byEnergy,
+            byState: byState,
+            above50Mw: out.filter(function (f) { return f.nameplateMw > 50; }).length,
+            maxPlantCapacityMw: out.reduce(function (largest, f) { return Math.max(largest, f.nameplateMw); }, 0),
             companies: cp.companies,
             operatorsWithMailingAddress: cp.operatorAddress,
             operatorAddressOutOfState: cp.operatorOutOfState,
@@ -965,6 +1084,8 @@ function round(v, dp) {
             plantsWithMoreThanOneOwner: cp.multiOwner,
             ownershipCodeSaysSoleButSchedule4RowExists: cp.soleButOwnerRowExists,
             ownershipThirdPartyButOwnerIsOperator: cp.thirdPartyOwnerIsOperator,
+            ownershipMissingThirdPartyRows: cp.missingThirdPartyOwnerRows,
+            ownershipGeneratorShareConflicts: cp.ownerShareConflicts,
             plantsWhereGeneratorsDisagreeOnOwners: cp.generatorsDisagreeOnOwners,
             offtakeDisagreesWithRegulatoryStatus: cp.offtakeDisagreesWithRegulatoryStatus
         },
@@ -982,13 +1103,20 @@ function round(v, dp) {
     log('  declining output      ' + declines.toLocaleString());
     log('  standby               ' + standby.toLocaleString());
     log('  planned retirement    ' + plannedRetire.toLocaleString());
-    log('  dropped: >' + MAX_MW + ' MW    ' + dropped.tooBig.toLocaleString() +
-        ',  no generation ' + dropped.noGeneration.toLocaleString() +
+    log('  dropped: size filter ' + dropped.tooBig.toLocaleString() +
+        ',  retained without generation ' + withoutGeneration.toLocaleString() +
         ',  no location ' + dropped.noLocation.toLocaleString());
     log('  size                  ' + Math.round(raw / 1024) + ' KB  (' + Math.round(gz / 1024) + ' KB gzipped)');
     log('');
     log('wrote ' + path.relative(ROOT, OUT));
-})().catch(function (e) {
+}
+
+module.exports = { parseOptions: parseOptions, aggregateGenerators: aggregateGenerators,
+    aggregateOwners: aggregateOwners,
+    classifyTechnology: classifyTechnology, capacityFactors: capacityFactors, analyseTrend: analyseTrend,
+    loadGenerators: loadGenerators, loadPlants: loadPlants, memberBuf: memberBuf };
+
+if (require.main === module) main().catch(function (e) {
     console.error('\nFAILED: ' + e.message);
     console.error(e.stack);
     process.exit(1);

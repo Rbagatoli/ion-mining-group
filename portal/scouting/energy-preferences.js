@@ -9,6 +9,14 @@
     ['nuclear', 'Nuclear'],
     ['wind', 'Wind'],
     ['solar', 'Solar'],
+    ['geothermal', 'Geothermal'],
+    ['natural_gas', 'Natural gas generation'],
+    ['biomass_biogas', 'Biomass / biogas'],
+    ['waste_to_energy', 'Waste-to-energy'],
+    ['marine', 'Marine / tidal / wave'],
+    ['recovered_energy', 'Recovered energy / waste heat'],
+    ['coal', 'Coal generation'],
+    ['oil', 'Oil generation'],
     ['industrial_surplus', 'Industrial surplus'],
     ['grid_supply', 'Grid supply']
   ].map(source => Object.freeze(source)));
@@ -38,7 +46,7 @@
   }
   function render(brief) {
     const values = selected(brief);
-    return `<section class="form-section" aria-labelledby="energy-source-heading"><h2 id="energy-source-heading">Energy sources</h2><p class="small muted" id="energy-source-help">Choose every source you would consider, or leave the source unrestricted. Your choice becomes part of your research request.</p><div class="form-grid" role="group" aria-labelledby="energy-source-heading" aria-describedby="energy-source-help"><label class="check"><input type="checkbox" name="anyEnergySource" value="any"${values.length ? '' : ' checked'}> Any energy source</label>${sources.map(([id, label]) => `<label class="check"><input type="checkbox" name="energySources" value="${esc(id)}"${values.includes(id) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}</div><p class="small muted" data-energy-research-note role="status" aria-live="polite">${esc(researchNote(brief))}</p></section>`;
+    return `<section class="form-section" aria-labelledby="energy-source-heading"><h2 id="energy-source-heading">Energy sources</h2><p class="small muted" id="energy-source-help">Choose every source you would consider for your United States search, or leave the source unrestricted. Record excluded sources in your requirements. Storage and hybrid systems are supply arrangements; their underlying energy source still needs verification.</p><div class="form-grid" role="group" aria-labelledby="energy-source-heading" aria-describedby="energy-source-help"><label class="check"><input type="checkbox" name="anyEnergySource" value="any"${values.length ? '' : ' checked'}> Any energy source</label>${sources.map(([id, label]) => `<label class="check"><input type="checkbox" name="energySources" value="${esc(id)}"${values.includes(id) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}</div><p class="small muted" data-energy-research-note role="status" aria-live="polite">${esc(researchNote(brief))}</p></section>`;
   }
   function inputs(form) {
     return Array.from(form.querySelectorAll('input[name="energySources"]')).filter(input => sources.some(([id]) => id === input.value));
@@ -80,7 +88,7 @@
     ];
   }
   function coverage(brief) {
-    return `<div class="callout"><strong>${changed(brief) ? 'New source research required' : 'Current report coverage'}</strong><p>Your energy preference: ${esc(summary(brief))}.</p><p>The current four-site report covers landfills only. Selecting another source does not change those examples or establish available power.</p><ul class="note-list"><li>Flare gas and hydro can be included in discovery. Those leads still need owner qualification, usable power confirmation and commercial terms.</li><li>Nuclear requires dedicated research. We do not currently have nuclear generating sites in this search inventory.</li></ul><p class="small muted">Save your brief and review an unsent request to include your preferences. Research scope and delivery are agreed before work begins.</p></div>`;
+    return `<div class="callout"><strong>${changed(brief) ? 'New source research required' : 'Current report coverage'}</strong><p>Your energy preference: ${esc(summary(brief))}.</p><p>The current four-site report covers landfills only. Selecting another source does not change those examples or establish available power.</p><ul class="note-list"><li>The service can research energy opportunities nationwide, including hydro, nuclear, renewable and thermal plants, gas resources, industrial surplus and grid supply. A catalog record is a discovery lead, not an offer of power.</li><li>Every source requires owner qualification: net power available to your project, all-in delivered cost, operating windows, connection work, capital responsibilities and timing. Plant records, including nuclear records, need dedicated commercial qualification.</li><li>Coverage varies by source and record date. A search does not establish that every United States opportunity is known. Storage and hybrid arrangements need a confirmed charging source and usable delivery schedule.</li></ul><p class="small muted">Save your brief and review an unsent request to include your preferences. Research scope and delivery are agreed before work begins.</p></div>`;
   }
   window.ProtonEnergyPreferences = Object.freeze({ defaultSources, normalize, render, bind, read, summary, changed, draftLines, coverage });
 }());

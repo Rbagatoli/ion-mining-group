@@ -1,4 +1,4 @@
-/* Writes the nav and the footer's Company column into every site page from one
+/* Writes the nav and the footer's shared description and link columns into every site page from one
    definition here.
 
    The nav is otherwise hand-copied into every page, which drifts. Run after
@@ -176,6 +176,10 @@ const COMPANY_COL = `<h4>Company</h4>
         <a href="./contact.html">Contact</a>
         <a href="mailto:hello@protonminingco.com">hello@protonminingco.com</a>`;
 
+/* Company-wide service scope. Individual project pages retain their own fuel
+   descriptions; this shared footer must also represent nationwide sourcing. */
+const FOOTER_BLURB = 'Bitcoin mining, hosting and nationwide energy site sourcing.';
+
 /* Buyer-facing site sourcing and owner-facing energy partnerships are separate
    services. Share this column with generated articles as well as static pages. */
 const SERVICES_COL = `<h4>Services</h4>
@@ -246,11 +250,17 @@ function replaceBlock(html, startTag, endTag, replacement, label, file) {
   return html.slice(0, a) + replacement + html.slice(b + endTag.length);
 }
 
+function applyFooterBlurb(html, file) {
+  return replaceBlock(html, '<p class="footer-blurb">', '</p>',
+                      '<p class="footer-blurb">' + FOOTER_BLURB + '</p>',
+                      'footer description', file);
+}
+
 /* EXPORTED so build-blog.js can build a whole page with the same nav rather than a copy of it.
    Post pages are generated in full, so they cannot be spliced by the loop below the way a
    hand-authored page is - and a second copy of the nav is the exact drift this file exists to
    stop. Run build-blog.js after this one and generated pages pick up any nav change. */
-module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, SERVICES_COL, BRAND_MARK };
+module.exports = { nav, CTA, PAGES, COMPATIBILITY_PAGES, COMPANY_COL, LEGAL_COL, SERVICES_COL, BRAND_MARK, FOOTER_BLURB, applyFooterBlurb };
 
 /* Guarded, so requiring this file does not rewrite eleven pages as a side effect. */
 if (require.main !== module) return;
@@ -262,6 +272,7 @@ for (const [file, active] of Object.entries(PAGES)) {
   let html = fs.readFileSync(p, 'utf8');
   const before = html;
 
+  html = applyFooterBlurb(html, file);
   html = replaceBlock(html, '<h4>Services</h4>', './index.html#operate">Site development</a>',
                       SERVICES_COL, 'footer Services column', file);
   html = applyHold(html, file);

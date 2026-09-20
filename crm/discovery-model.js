@@ -23,7 +23,7 @@
   }
   function validate(f){for(const k of ['cash','minMw','maxMw'])if(Number.isNaN(numeric(f[k])))return 'Use a positive number or leave the field empty.';if(numeric(f.minMw)!==null&&numeric(f.maxMw)!==null&&Number(f.minMw)>Number(f.maxMw))return 'Minimum capacity must be no larger than maximum capacity.';return '';}
   function matchCandidate(c,f,saved){
-    if(f.kind!=='all'&&f.kind!==c.energyType||f.country&&f.country!==c.iso3)return false;
+    if(f.kind!=='all'&&f.kind!==c.energyType&&!(c.energyTypes||c.energyTechnologies||[]).includes(f.kind)||f.country&&f.country!==c.iso3)return false;
     if(!matches(searchable(c),f.query)||!matches(placeSearch(c),f.location))return false;
     if(f.generation&&!(Number.isFinite(c.existingGenerationKw)&&c.existingGenerationKw>0))return false;
     if(f.tracking==='saved'&&!saved||f.tracking==='new'&&saved)return false;

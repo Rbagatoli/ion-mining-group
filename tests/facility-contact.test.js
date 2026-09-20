@@ -1,7 +1,7 @@
 // Tests for the US counterparty data in data/facilities.json — EIA-860 Schedules 1, 3 and 4.
 //
 // These run against the REAL artifact rather than fixtures, for the same reason site-links does:
-// the value of this join is that it is true of the actual 9,765 plants, and a fixture would only
+// the value of this join is that it is true of the actual national 2025 inventory, and a fixture would only
 // prove the code agrees with itself.
 //
 // The counts here are deliberately EXACT rather than ">= some floor". A silent coverage
@@ -31,11 +31,11 @@ console.log('\n=== keyed by Utility ID, never by name ===');
     F.forEach(function(f) { if (f.utilityId) ids[f.utilityId] = true; });
     Object.keys(C).forEach(function(k) { if (C[k].name) names[C[k].name] = true; });
     eq('every facility carries a utilityId', F.filter(function(f) { return !f.utilityId; }).length, 0);
-    eq('4,084 distinct operators', Object.keys(ids).length, 4084);
-    eq('the companies map has one entry each', Object.keys(C).length, 4084);
+    eq('5,852 distinct operators', Object.keys(ids).length, 5852);
+    eq('the companies map has one entry each', Object.keys(C).length, 5852);
     eq('counts agree with the map', N.companies, Object.keys(C).length);
     // The whole argument for the id key in one assertion: four names are held by two companies.
-    eq('but only 4,080 distinct NAMES', Object.keys(names).length, 4080);
+    eq('but only 5,842 distinct NAMES', Object.keys(names).length, 5842);
 
     var byName = {};
     Object.keys(C).forEach(function(k) {
@@ -43,7 +43,7 @@ console.log('\n=== keyed by Utility ID, never by name ===');
         (byName[n] = byName[n] || []).push(C[k]);
     });
     var collided = Object.keys(byName).filter(function(n) { return byName[n].length > 1; }).sort();
-    eq('exactly four names collide', collided.length, 4);
+    eq('exactly ten names collide', collided.length, 10);
     collided.forEach(function(n) {
         var addrs = {};
         byName[n].forEach(function(c) { addrs[[c.address, c.city, c.state].join('|')] = true; });
@@ -59,19 +59,19 @@ console.log('\n=== keyed by Utility ID, never by name ===');
 
 console.log('\n=== coverage ===');
 (function() {
-    eq('9,765 facilities', F.length, 9765);
+    eq('14,327 facilities in the 2025 national inventory', F.length, 14327);
     eq('counts agree', N.facilities, F.length);
 
     var withMail = F.filter(function(f) { return C[f.utilityId] && C[f.utilityId].address; }).length;
-    eq('9,764 have an operator mailing address', withMail, 9764);
+    eq('14,322 have an operator mailing address', withMail, 14322);
     eq('counts agree', N.operatorsWithMailingAddress, withMail);
 
     var withSite = F.filter(function(f) { return !!f.address; }).length;
-    eq('9,761 have a plant street address', withSite, 9761);
+    eq('14,321 have a plant street address', withSite, 14321);
     eq('counts agree', N.plantsWithSiteAddress, withSite);
 
     var withKv = F.filter(function(f) { return f.gridVoltageKv !== null && f.gridVoltageKv !== undefined; }).length;
-    eq('every plant has a grid voltage', withKv, 9765);
+    eq('every plant has a grid voltage', withKv, 14327);
     eq('counts agree', N.plantsWithGridVoltage, withKv);
 })();
 
@@ -81,10 +81,10 @@ console.log('\n=== who owns it ===');
 (function() {
     var h = { sole_operator: 0, third_party: 0, joint: 0, mixed: 0 }, none = 0;
     F.forEach(function(f) { if (f.ownership) h[f.ownership]++; else none++; });
-    eq('8,264 report single ownership by the operator', h.sole_operator, 8264);
-    eq('1,294 are wholly owned by a third party', h.third_party, 1294);
-    eq('188 are jointly owned', h.joint, 188);
-    eq('19 are mixed across their generators', h.mixed, 19);
+    eq('12,065 report single ownership by the operator', h.sole_operator, 12065);
+    eq('1,818 are wholly owned by a third party', h.third_party, 1818);
+    eq('401 are jointly owned', h.joint, 401);
+    eq('43 are mixed across their generators', h.mixed, 43);
     // The load-bearing one: the code is present on EVERY plant, which is what lets sole ownership
     // be read as a statement rather than inferred from a missing Schedule 4 row.
     eq('and NONE is unknown', none, 0);
@@ -94,30 +94,33 @@ console.log('\n=== who owns it ===');
     eq('counts agree', N.ownershipThirdParty, h.third_party);
 
     var withRows = F.filter(function(f) { return f.owners && f.owners.length; });
-    eq('1,512 carry Schedule 4 owner rows', withRows.length, 1512);
+    eq('2,292 carry Schedule 4 owner rows', withRows.length, 2292);
     eq('counts agree', N.plantsWithOwnerRows, withRows.length);
 
     var multi = withRows.filter(function(f) {
         var n = {}; f.owners.forEach(function(o) { n[o.name] = true; });
         return Object.keys(n).length > 1;
     }).length;
-    eq('199 have more than one distinct owner', multi, 199);
+    eq('452 have more than one distinct owner', multi, 452);
 
     // The contradiction is REPORTED, not resolved by picking a winner.
     var contra = withRows.filter(function(f) { return f.ownership === 'sole_operator'; }).length;
-    eq('11 are coded sole yet carry an owner row', contra, 11);
+    eq('31 are coded sole yet carry an owner row', contra, 31);
     eq('counts agree', N.ownershipCodeSaysSoleButSchedule4RowExists, contra);
 
     // Honesty guard: a third-party plant with no owner row would assert someone else owns it
     // while being unable to say who.
-    eq('no third_party plant lacks an owner row',
-       F.filter(function(f) { return f.ownership === 'third_party' && !(f.owners && f.owners.length); }).length, 0);
+    var missing = F.filter(function(f) { return f.ownership === 'third_party' && !(f.owners && f.owners.length); });
+    eq('one published third-party record lacks an owner row', missing.length, 1);
+    eq('the unresolved source record is Mulberry', missing[0].plantCode, '54426');
+    ok('the missing owner is explicitly flagged', /no owner row/.test(missing[0].ownershipWarnings.join(' ')));
+    eq('the missing owner count is declared', N.ownershipMissingThirdPartyRows, missing.length);
 
     // The reason the whole build exists.
     var sole = withRows.filter(function(f) { return f.owners.length === 1; });
-    eq('1,313 plants have exactly one filed owner', sole.length, 1313);
-    eq('1,307 of them name someone OTHER than the operator',
-       sole.filter(function(f) { return f.owners[0].name !== f.operator; }).length, 1307);
+    eq('1,840 plants have exactly one filed owner/share group', sole.length, 1840);
+    eq('1,832 of them name someone OTHER than the operator',
+       sole.filter(function(f) { return f.owners[0].name !== f.operator; }).length, 1832);
 
     // No empty arrays: 8,253 records would each carry one for nothing on an artifact fetched
     // before the prospects tab can draw.
@@ -149,7 +152,7 @@ console.log('\n=== percent owned is a fraction in the source ===');
     // the build must never average generator shares into one plant figure.
     var badGen = 0, checked = 0;
     F.forEach(function(f) {
-        if (!f.owners || f.owners.length < 2) return;
+        if (!f.owners || !f.owners.length) return;
         var perGen = {};
         f.owners.forEach(function(o) {
             if (o.sharePct === null) return;
@@ -161,12 +164,15 @@ console.log('\n=== percent owned is a fraction in the source ===');
         });
     });
     ok('several hundred generators were checked', checked > 300);
-    eq('every generator has shares summing to 100', badGen, 0);
-    ok('and 17 plants legitimately exceed 100 at plant level', F.filter(function(f) {
+    eq('three published generators have incomplete or conflicting owner totals', badGen, 3);
+    eq('that unresolved total is counted', N.ownershipGeneratorShareConflicts, badGen);
+    var longBeach = F.filter(function(f) { return f.plantCode === '341'; })[0];
+    ok('Long Beach CT5 source conflict is surfaced', /CT5 total 150%/.test(longBeach.ownershipWarnings.join(' ')));
+    ok('81 plants exceed 100 when distinct per-generator share groups are added', F.filter(function(f) {
         if (!f.owners || f.owners.length < 2) return false;
         var s = 0; f.owners.forEach(function(o) { s += o.sharePct || 0; });
         return s > 100.5;
-    }).length === 17);
+    }).length === 81);
 })();
 
 // ---- 5. Zero-padded ZIPs ----------------------------------------------------------------------
@@ -198,7 +204,7 @@ console.log('\n=== the operator is not the owner ===');
         if (!f.owners || f.ownership !== 'third_party') return false;
         return f.owners.some(function(o) { return o.name === f.operator; });
     }).length;
-    eq('6 third-party plants name their own operator as the owner', selfOwned, 6);
+    eq('12 third-party plants name their own operator as the owner', selfOwned, 12);
     eq('and the artifact reports that', N.ownershipThirdPartyButOwnerIsOperator, selfOwned);
     ok('ownershipNote states it too', A.ownershipNote.indexOf(String(selfOwned)) >= 0);
     ok('and warns against averaging shares', /PER GENERATOR/.test(A.ownershipNote));

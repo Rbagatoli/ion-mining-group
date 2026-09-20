@@ -15,6 +15,7 @@
 const fs = require('fs');
 const writeGenerated = require('../../tools/write-generated.cjs');
 const path = require('path');
+const { FOOTER_BLURB } = require('./build-nav.js');
 
 const SITE = path.join(__dirname, '..');
 const BASE = 'https://protonminingco.com';
@@ -181,9 +182,9 @@ const LD = {
   name: 'Proton Mining',
   url: BASE + '/',
   logo: BASE + '/favicon.svg',
-  description: 'Bitcoin mining sites built on landfill gas, flared gas, and ' +
-               'curtailed power. We finance, build, and operate the interruptible ' +
-               'load that turns stranded energy into revenue, and runs the machines it sells.',
+  description: FOOTER_BLURB + ' We research potential United States power opportunities ' +
+               'across energy sources, including hydro, nuclear, renewables, gas and grid supply. ' +
+               'Owner confirmation is required for available power and commercial terms.',
   email: 'hello@protonminingco.com',
 };
 

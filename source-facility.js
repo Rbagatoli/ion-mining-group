@@ -1,10 +1,8 @@
 // US generating facilities as a SourceAdapter.
 //
-// The first source that is NOT raw resource. A flare is gas with no generator, no interconnection
-// and no permit; these are plants already producing and selling power, where an acquisition
-// inherits the permits, the grid connection, the fuel supply and the commissioning. That is the
-// whole point of the second source, and it is why development_stage carries 25% of the
-// opportunity score — until now every prospect scored the same 20 there.
+// National plant discovery from reported operable equipment, across sizes and technologies.
+// The inventory is evidence of equipment, ownership and past output; it is not evidence that
+// power, permits, interconnection rights or a site are available to a new mining customer.
 //
 // Reads data/facilities.json, built offline by tools/build-facility-index.js from EIA-860 and
 // EIA-923. Registration is side-effecting on load, matching the rest of the codebase.
@@ -172,10 +170,18 @@ var FacilitySource = (function() {
         return {
             sourceSnapshot: { dataset: 'EIA 860 / 923', artifactGenerated: _data && _data.generated || null,
                 sourceUrl: 'https://www.eia.gov/electricity/data/eia860/', reportingPeriod: f.lastDataMonth || (_data && _data.eia860Year) || null,
+                inventoryReportingYear: _data && _data.eia860Year || null,
+                generationLastMonth: f.lastDataMonth || null,
                 capacityBasis: 'Published plant capacity; available mining power requires owner verification.' },
             id: f.id,
             name: f.name,
             energyType: 'grid_facility',
+            // Keep the legacy adapter category for existing consumers. Client matching can use
+            // every constituent technology without losing mixed-fuel or storage constraints.
+            energyTechnology: f.energyTechnology || null,
+            energyTechnologies: Array.isArray(f.energyTechnologies) ? f.energyTechnologies.slice() : [],
+            availableMiningMw: null,
+            availabilityStatus: 'unverified',
             lat: f.lat,
             lng: f.lon,
             iso3: 'USA',
@@ -232,6 +238,7 @@ var FacilitySource = (function() {
                 // someone other than the operator. The seller signs, not the operator.
                 ownership: f.ownership || null,
                 owners: f.owners || null,
+                ownershipWarnings: f.ownershipWarnings || null,
                 // The connection, and whose wires it is. Only 1,144 plants sit on their own
                 // operator's system, so for the rest this is a second counterparty.
                 gridVoltageKv: f.gridVoltageKv === undefined ? null : f.gridVoltageKv,
@@ -242,6 +249,15 @@ var FacilitySource = (function() {
                 qfDocket: f.qfDocket || null,
                 cogenDocket: f.cogenDocket || null,
                 technology: f.technology,
+                energyTechnology: f.energyTechnology || null,
+                energyTechnologies: Array.isArray(f.energyTechnologies) ? f.energyTechnologies.slice() : [],
+                primaryFuelCodes: Array.isArray(f.primaryFuelCodes) ? f.primaryFuelCodes.slice() : [],
+                fuelCodes: Array.isArray(f.fuelCodes) ? f.fuelCodes.slice() : [],
+                technologyCapacityMw: f.technologyCapacityMw || null,
+                statusCapacityMw: f.statusCapacityMw || null,
+                classificationBasis: 'EIA-860 reported generator technology and fuels, including alternate/backup fuels for screening. Primary plant category follows the largest operable MW share; this is not the actual operating fuel mix.',
+                availableMiningMw: null,
+                availabilityStatus: 'unverified',
                 primeMover: f.primeMover,
                 sector: f.sector,
                 state: f.state,
@@ -250,6 +266,8 @@ var FacilitySource = (function() {
                 inServiceYear: f.inServiceYear,
                 plannedRetirementYear: f.plannedRetirementYear,
                 retiredMw: f.retiredMw,
+                retiredUnits: f.retiredUnits === undefined ? null : f.retiredUnits,
+                canceledUnits: f.canceledUnits === undefined ? null : f.canceledUnits,
                 fercSmallPowerProducer: f.fercSmallPowerProducer,
                 fercCogen: f.fercCogen,
                 // Permit detail, present only where the join was exact.

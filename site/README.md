@@ -82,7 +82,10 @@ configuration is 10 MW, with editable assumptions of $0.03/kWh electricity and
 2% monthly BTC price growth. The original site and the configured mine share the
 same ground and framing. Toggling fades only the added equipment, preserving the
 visitor's angle, zoom and target. Reduced motion switches immediately. Editing
-the fleet also preserves the camera; Reset explicitly fits the current layout.
+the fleet also preserves the camera; Reset restores the current layout's opening view.
+On wide screens, Your site opens close at a 12-degree angle, with the foreground
+nearly filling the panel to match the supplied screenshot. This applies to both
+configured sites and the presentation fallback. Smaller screens retain a full-footprint fit.
 Both modes retain their callout cards. Build callouts use current fleet totals
 and modeled equipment bounds; hovering the load highlights all displayed
 containers and clicking focuses the configured section. All configuration
@@ -1026,16 +1029,24 @@ node tools/build-diagram.js            # both pages
 node tools/build-diagram.js hosting    # just one
 ```
 
-### Landfill leads, and what that did to the drawings
+### Nationwide sourcing and the existing landfill project drawings
 
-The company's priority moved to **landfill gas first, flared gas still served and second**.
-That is a copy change almost everywhere and a drawing change in exactly one place.
+The separate energy site sourcing service researches opportunities across the United States
+and across energy sources. The existing hosted-project presentation continues to lead with
+**landfill gas, with flared gas also served**. Its drawings describe those projects; they do
+not define the scope of a client's sourcing search.
 
-**Ordering.** Wherever both fuels are named, landfill comes first: the footer tagline on all
-eleven pages, the home hero, the four-fuel grid and the enquiry form on `energy.html`. The
-tagline is **generated** — it lives in `tools/build-seo.js` as a string split across three
-lines. Fixing the eleven pages without fixing the generator buys exactly one build, which is
-what happened the first time.
+**Company-wide scope.** `tools/build-nav.js` owns `FOOTER_BLURB` and applies it to every
+registered static page. `tools/build-seo.js` uses that same description when generating the
+home Organization metadata; it does not generate the footer itself. Generated articles copy
+the footer from `privacy.html`, so run `build-nav.js` before `build-blog.js`. The shared copy
+describes mining, hosting and nationwide energy site sourcing without implying confirmed
+power offers. `landfill-copy-suite.js` checks the shared source, generated metadata and all
+page footers; its mutation checks reject a narrowed service description or a stale footer.
+
+**Project-specific ordering.** Landfill still comes before flared gas in the hosted-project
+home hero, the four-fuel grid and the enquiry form on `energy.html`. Preserve these existing
+project descriptions and imagery while broadening the separate sourcing service.
 
 **The flare framing survived, on purpose.** It is tempting to read "The flare goes out.
 Nothing else moves." as oil-and-gas language that had to go. It is not: landfill gas is

@@ -40,4 +40,15 @@ check('only opted-in draft buttons are enabled after attaching the submit handle
  const draft=harness('',{topic:false,enableDraft:true,disabled:true,to:'energy@protonminingco.com'});assert.equal(draft.button.disabled,false);assert.deepEqual(draft.navigation,[]);
  const other=harness('',{disabled:true});assert.equal(other.button.disabled,true);assert.deepEqual(other.navigation,[]);
 });
+check('energy choices preserve only checked sources and distinguish an unrestricted search',()=>{
+ const h=harness('',{topic:false,to:'energy@protonminingco.com'});
+ const fields=[['Hydro',true],['Nuclear',true],['Landfill gas',false]].map(([value,checked])=>({name:'energy_sources',type:'checkbox',value,checked}));
+ h.form.elements.push(...fields);h.submit();let body=new URL(h.navigation.at(-1)).searchParams.get('body');
+ assert.match(body,/Energy sources: Hydro, Nuclear/);assert(!body.includes('Landfill gas'));assert.equal((body.match(/Energy sources:/g)||[]).length,1);
+ fields.forEach(f=>{f.checked=false;});h.submit();body=new URL(h.navigation.at(-1)).searchParams.get('body');assert.match(body,/Energy sources: Any energy source/);
+});
+check('unchecked or disabled controls do not become requirements and multiselect retains all choices',()=>{
+ const h=harness('',{topic:false});const field=(name,type,value,extra={})=>({name,type,value,closest:()=>null,...extra});
+ h.form.elements.push(field('reject','checkbox','not selected',{checked:false}),field('disabled','text','not active',{disabled:true}),field('allowed','checkbox','Yes',{checked:true}),field('states','select-multiple','NY',{multiple:true,options:[{value:'NY',selected:true},{value:'PA',selected:true},{value:'TX',selected:false}]}));h.submit();const body=new URL(h.navigation.at(-1)).searchParams.get('body');assert(!body.includes('not selected'));assert(!body.includes('not active'));assert.match(body,/allowed: Yes/);assert.match(body,/states: NY, PA/);
+});
 console.log('\n'+checks+' contact routing checks passed.');

@@ -13,7 +13,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('  ok    ' + name); }
 function fakeForm(values) {
-  const ids = ['landfill_gas', 'flare_gas', 'hydro', 'nuclear', 'wind', 'solar', 'industrial_surplus', 'grid_supply'];
+  const ids = ['landfill_gas', 'flare_gas', 'hydro', 'nuclear', 'wind', 'solar', 'geothermal', 'natural_gas', 'biomass_biogas', 'waste_to_energy', 'marine', 'recovered_energy', 'coal', 'oil', 'industrial_surplus', 'grid_supply'];
   function checkbox(value, checked) {
     const handlers = [];
     return { value, checked, addEventListener(type, handler) { assert.equal(type, 'change'); handlers.push(handler); }, change(next) { this.checked = next; handlers.forEach(handler => handler()); }, get listeners() { return handlers.length; } };
@@ -40,7 +40,7 @@ check('explicit any-source and valid selections are preserved through JSON persi
 });
 check('the form offers only allowed values and keeps untrusted strings out of markup', () => {
   const html = prefs.render({ energySources: ['<img src=x onerror=alert(1)>', 'hydro'] });
-  assert.equal((html.match(/name="energySources"/g) || []).length, 8);
+  assert.equal((html.match(/name="energySources"/g) || []).length, 16);
   assert.match(html, /name="anyEnergySource"/);
   assert.match(html, /value="hydro" checked/);
   assert.doesNotMatch(html, /<img|onerror|name="region"|name="budget"/);
@@ -76,8 +76,38 @@ check('requests and coverage distinguish broader research from current results',
   assert.match(prefs.draftLines(brief).join(' '), /does not establish matches or available power/);
   assert.match(prefs.coverage(brief), /four-site report covers landfills only/);
   assert.match(prefs.coverage(brief), /owner qualification/);
-  assert.match(prefs.coverage(brief), /Nuclear requires dedicated research/);
+  assert.match(prefs.coverage(brief), /nationwide/);
+  assert.match(prefs.coverage(brief), /including nuclear records, need dedicated commercial qualification/);
+  assert.doesNotMatch(prefs.coverage(brief), /do not currently have nuclear|guaranteed|cheapest available/);
   assert.match(prefs.coverage(brief), /unsent request/);
   assert.doesNotMatch(source, /\b(?:fetch|localStorage|sessionStorage|XMLHttpRequest)\b/);
+});
+check('national source categories round-trip without treating storage as primary energy', () => {
+  const values = ['geothermal', 'natural_gas', 'biomass_biogas', 'waste_to_energy', 'marine', 'recovered_energy', 'coal', 'oil'];
+  const form = fakeForm(values);
+  assert.deepEqual(plain(prefs.normalize(values)), values);
+  assert.deepEqual(plain(prefs.read(form)), values);
+  assert.equal(prefs.summary({ energySources: values }), 'Geothermal, Natural gas generation, Biomass / biogas, Waste-to-energy, Marine / tidal / wave, Recovered energy / waste heat, Coal generation, Oil generation');
+  const html = prefs.render({ energySources: [] });
+  assert.match(html, /Storage and hybrid systems are supply arrangements/);
+  assert.doesNotMatch(html, /name="energySources" value="(?:storage|hybrid)"/);
+  assert.match(prefs.coverage({ energySources: [] }), /net power available.*all-in delivered cost.*operating windows.*connection work.*capital responsibilities.*timing/);
+});
+check('the public brief covers the same sources and starts unrestricted without changing its inbox', () => {
+  const page = fs.readFileSync(path.join(__dirname, '../../site/energy-sites.html'), 'utf8');
+  const form = page.match(/<form\b[^>]*id="siteSearchForm"[\s\S]*?<\/form>/)[0];
+  const publicInputs = [...form.matchAll(/<input\b[^>]*name="energy_sources"[^>]*>/g)].map(match => match[0]);
+  const publicValues = publicInputs.map(input => input.match(/value="([^"]+)"/)[1]);
+  const portalLabels = [...prefs.render({ energySources: [] }).matchAll(/name="energySources" value="[^"]+"[^>]*> ([^<]+)/g)].map(match => match[1]);
+  assert.deepEqual(publicValues, portalLabels);
+  assert.equal(publicInputs.some(input => /\schecked(?:\s|>)/.test(input)), false);
+  assert.match(form, /Any energy source by default/);
+  assert.match(form, /data-mailto="energy@protonminingco\.com"/);
+  assert.match(form, /data-subject="Energy site sourcing enquiry via protonminingco\.com"/);
+  assert.match(form, /All-in delivered energy target \(US ¢\/kWh\)/);
+  assert.match(form, /name="minimum_availability_pct"[^>]*min="0" max="100"/);
+  assert.match(form, /name="exclusions"/);
+  assert.match(form, /name="capital_responsibility"/);
+  assert.match(page, /four landfill research reports/);
 });
 console.log('\n' + checks + ' energy preference checks passed.');

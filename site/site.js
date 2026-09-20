@@ -211,13 +211,26 @@
 
             var subject = form.getAttribute('data-subject') || 'Website enquiry';
             var lines = [];
+            var energySourcesWritten = false;
 
             Array.prototype.forEach.call(form.elements, function (el) {
-                if (!el.name || el.type === 'submit') return;
+                if (!el.name || el.disabled || el.type === 'submit' || el.type === 'button' || el.type === 'reset') return;
+                // Preserve multi-source intent as one field, including an unrestricted brief.
+                if (el.name === 'energy_sources' && el.type === 'checkbox') {
+                    if (energySourcesWritten) return;
+                    energySourcesWritten = true;
+                    var sources = Array.prototype.filter.call(form.elements, function (item) {
+                        return item.name === 'energy_sources' && item.type === 'checkbox' && item.checked && !item.disabled;
+                    }).map(function (item) { return item.value; });
+                    lines.push('Energy sources: ' + (sources.length ? sources.join(', ') : 'Any energy source'));
+                    return;
+                }
+                if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
                 var field = el.closest('.field');
                 var label = field && field.querySelector('label');
                 var key = label ? label.textContent.trim() : el.name;
-                lines.push(key + ': ' + (el.value || '—'));
+                var value = el.multiple && el.options ? Array.prototype.filter.call(el.options, function (item) { return item.selected && !item.disabled; }).map(function (item) { return item.value; }).join(', ') : el.value;
+                lines.push(key + ': ' + (value || '—'));
             });
 
             var body = lines.join('\n') + '\n\n— Sent from protonminingco.com\n';
