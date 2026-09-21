@@ -12,7 +12,8 @@
 <meta property="og:url" content="https://protonminingco.com/calculator.html">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=e7b882f1">
+<link rel="stylesheet" href="./styles.css?v=bd814f80">
+<link rel="stylesheet" href="./calculator-inputs.css?v=bd814f80">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -261,50 +262,8 @@
 
         <div class="calc-cols">
 
-          <!-- ===== Market ===== -->
-          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Market assumptions</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
-
-            <h2 class="calc-group-title">Market Parameters</h2>
-
-            <div class="field">
-              <label for="btcPrice">BTC Price</label>
-              <div class="calc-unit"><span class="cu-pre">$</span>
-                <input id="btcPrice" type="number" min="0" step="100" value="72684" data-default="72684"></div>
-            </div>
-            <div class="field">
-              <label for="priceChange">Monthly Price Change</label>
-              <div class="calc-unit">
-                <input id="priceChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
-            </div>
-            <div class="field">
-              <label for="difficulty">Current Network Difficulty</label>
-              <div class="calc-unit">
-                <input id="difficulty" type="number" min="0" step="0.01" value="127.48" data-default="127.48"><span class="cu-post">T</span></div>
-            </div>
-            <div class="field">
-              <label for="diffChange">Monthly Difficulty Change</label>
-              <div class="calc-unit">
-                <input id="diffChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
-            </div>
-            <p class="calc-hint calc-hint--warn" id="marketNote">BTC price and network difficulty are fetched when this page loads. If that does not land, the figures shown are from <strong>20 August 2026</strong> &mdash; BTC $72,684, difficulty 127.48&nbsp;T &mdash; and are <strong>not live data</strong>, so set them yourself.</p>
-            <div class="field">
-              <label for="periodLength">Period Length</label>
-              <select id="periodLength" data-default="monthly">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly" selected>Monthly</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="investPeriod">Number of Periods</label>
-              <div class="calc-unit">
-                <input id="investPeriod" type="number" min="1" max="730" step="1" value="60" data-default="60"><span class="cu-post" data-period-unit>months</span></div>
-            </div>
-
-</div></details></div>
-
           <!-- ===== Machine ===== -->
-          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Machines &amp; replacements</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-calc-section="machines" data-mobile-details data-mobile-open open><summary><span class="calc-summary-title"><span class="calc-section-mark" aria-hidden="true">01</span>Your machines</span><small data-calc-summary="machines">Model, quantity &amp; cost</small></summary><div class="mobile-details-body">
 
             <h2 class="calc-group-title">Machine Parameters</h2>
 
@@ -312,27 +271,34 @@
               <label for="minerModel">Machine Model</label>
               <select id="minerModel"></select>
             </div>
-            <div class="field">
-              <label for="hashrate">Hashrate <small>per machine</small></label>
-              <div class="calc-unit">
-                <input id="hashrate" type="number" min="0" step="1" value="270" data-default="270"><span class="cu-post">TH/s</span></div>
-            </div>
-            <div class="field">
-              <label for="power">Power Consumption <small>per machine</small></label>
-              <div class="calc-unit">
-                <input id="power" type="number" min="0" step="0.01" value="3.645" data-default="3.645"><span class="cu-post">kW</span></div>
-            </div>
-            <div class="field">
-              <label for="capex">Machine CAPEX <small>per machine</small></label>
-              <div class="calc-unit"><span class="cu-pre">$</span>
-                <input id="capex" type="number" min="0" step="1" value="3010" data-default="3010"></div>
-            </div>
-            <div class="field" data-when="machines">
+<div class="field" data-when="machines">
               <label for="machineCount">Number of Machines</label>
               <div class="calc-unit">
                 <input id="machineCount" type="number" min="0" step="1" value="100" data-default="100"><span class="cu-post">units</span></div>
             </div>
+<div class="field">
+              <label for="capex">Machine CAPEX <small>per machine</small></label>
+              <div class="calc-unit"><span class="cu-pre">$</span>
+                <input id="capex" type="number" min="0" step="1" value="3010" data-default="3010"></div>
+            </div>
+<details class="mobile-details calc-tune" data-mobile-details open><summary><span>Machine specs</span><small data-calc-summary="specs">Hashrate &amp; power</small></summary><div class="mobile-details-body calc-field-grid">
+<div class="field">
+              <label for="hashrate">Hashrate <small>per machine</small></label>
+              <div class="calc-unit">
+                <input id="hashrate" type="number" min="0" step="1" value="270" data-default="270"><span class="cu-post">TH/s</span></div>
+            </div>
+<div class="field">
+              <label for="power">Power Consumption <small>per machine</small></label>
+              <div class="calc-unit">
+                <input id="power" type="number" min="0" step="0.01" value="3.645" data-default="3.645"><span class="cu-post">kW</span></div>
+            </div>
+
+
+
+
             <p class="calc-hint" data-mobile-copy="Choose a model, then edit its specs. &lt;a href=&quot;./hardware.html&quot;&gt;Browse miners&lt;/a&gt;.">Specs fill in from the model you pick, and stay editable &mdash; an underclocked machine is a different machine. <a href="./hardware.html">We can source any of them</a>.</p>
+</div></details>
+<details class="mobile-details calc-tune" data-mobile-details open><summary><span>Replacements &amp; growth</span><small data-calc-summary="lifecycle">Lifespan, additions &amp; salvage</small></summary><div class="mobile-details-body">
             <div class="field">
               <label for="minerAdditions">Monthly Miner Additions</label>
               <div class="calc-unit">
@@ -432,10 +398,11 @@
               </span>
             </label>
 
+</div></details>
 </div></details></div>
 
           <!-- ===== Energy (only when starting from energy) ===== -->
-          <div class="calc-group" data-when="energy" hidden><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Available energy</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+          <div class="calc-group" data-when="energy" hidden><details class="mobile-details mobile-input-details" data-calc-section="energy" data-mobile-details open><summary><span class="calc-summary-title"><span class="calc-section-mark" aria-hidden="true">02</span>Available energy</span><small data-calc-summary="energy">Power your fleet</small></summary><div class="mobile-details-body">
 
             <h2 class="calc-group-title">Energy Parameters</h2>
 
@@ -476,8 +443,50 @@
 
 </div></details></div>
 
+          <!-- ===== Market ===== -->
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-calc-section="market" data-mobile-details open><summary><span class="calc-summary-title"><span class="calc-section-mark" aria-hidden="true">03</span>Market &amp; timeframe</span><small data-calc-summary="market">Price, difficulty &amp; timeline</small></summary><div class="mobile-details-body">
+
+            <h2 class="calc-group-title">Market Parameters</h2>
+
+            <div class="field">
+              <label for="btcPrice">BTC Price</label>
+              <div class="calc-unit"><span class="cu-pre">$</span>
+                <input id="btcPrice" type="number" min="0" step="100" value="72684" data-default="72684"></div>
+            </div>
+            <div class="field">
+              <label for="priceChange">Monthly Price Change</label>
+              <div class="calc-unit">
+                <input id="priceChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
+            </div>
+            <div class="field">
+              <label for="difficulty">Current Network Difficulty</label>
+              <div class="calc-unit">
+                <input id="difficulty" type="number" min="0" step="0.01" value="127.48" data-default="127.48"><span class="cu-post">T</span></div>
+            </div>
+            <div class="field">
+              <label for="diffChange">Monthly Difficulty Change</label>
+              <div class="calc-unit">
+                <input id="diffChange" type="number" step="0.1" value="2" data-default="2"><span class="cu-post">%</span></div>
+            </div>
+            <p class="calc-hint calc-hint--warn" id="marketNote">BTC price and network difficulty are fetched when this page loads. If that does not land, the figures shown are from <strong>20 August 2026</strong> &mdash; BTC $72,684, difficulty 127.48&nbsp;T &mdash; and are <strong>not live data</strong>, so set them yourself.</p>
+            <div class="field">
+              <label for="periodLength">Period Length</label>
+              <select id="periodLength" data-default="monthly">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly" selected>Monthly</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="investPeriod">Number of Periods</label>
+              <div class="calc-unit">
+                <input id="investPeriod" type="number" min="1" max="730" step="1" value="60" data-default="60"><span class="cu-post" data-period-unit>months</span></div>
+            </div>
+
+</div></details></div>
+
           <!-- ===== Operating ===== -->
-          <div class="calc-group"><details class="mobile-details mobile-input-details" data-mobile-details open><summary><span>Operating costs &amp; taxes</span><small>Tap to review or edit</small></summary><div class="mobile-details-body">
+          <div class="calc-group"><details class="mobile-details mobile-input-details" data-calc-section="operating" data-mobile-details open><summary><span class="calc-summary-title"><span class="calc-section-mark" aria-hidden="true">04</span>Power &amp; costs</span><small data-calc-summary="operating">Electricity, uptime &amp; taxes</small></summary><div class="mobile-details-body">
 
             <h2 class="calc-group-title">Operating Parameters</h2>
 
@@ -755,11 +764,12 @@
   </div>
 </footer>
 
-<script src="./site.js?v=e7b882f1"></script>
-<script src="./hero-anim.js?v=e7b882f1"></script>
-<script src="./cart.js?v=e7b882f1"></script>
-<script src="./miner-db.js?v=e7b882f1"></script>
-<script src="./calc-engine.js?v=e7b882f1"></script>
-<script src="./calculator.js?v=e7b882f1"></script>
+<script src="./site.js?v=bd814f80"></script>
+<script src="./hero-anim.js?v=bd814f80"></script>
+<script src="./cart.js?v=bd814f80"></script>
+<script src="./miner-db.js?v=bd814f80"></script>
+<script src="./calc-engine.js?v=bd814f80"></script>
+<script src="./calculator.js?v=bd814f80"></script>
+<script src="./calculator-inputs.js?v=bd814f80"></script>
 </body>
 </html>

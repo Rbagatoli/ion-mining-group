@@ -1,0 +1,1950 @@
+{
+  "phase": "baseline",
+  "capturedAt": "2026-09-21T21:05:05.487Z",
+  "engineHashes": {
+    "/calc-engine.js": "b8e22a647b824fed42317d6972e2afd4d3a456531e8d166a148e4f475c862d40",
+    "/mine-builder-model.js": "67f5212a18b7ed0095ed1c51d3a86cee32c91f6763a82afe02b7e5494a003df8",
+    "/miner-db.js": "d9a0cf9d3643a7189b6286f9a53fad5a368e1b7aa15cd2916183b2b5519c7550",
+    "/price-list.js": "1b80b81e6ffe5c2dc45f67265dfbd0c7bd1946d1fba623cdbef459e5379e0a57"
+  },
+  "pages": [
+    {
+      "height": 2043,
+      "width": 390,
+      "pageWidth": 390,
+      "viewport": 390,
+      "controlIds": [
+        "mb-btcPrice",
+        "mb-capex",
+        "mb-containerMW",
+        "mb-cooling",
+        "mb-diffChange",
+        "mb-difficulty",
+        "mb-elecCost",
+        "mb-gasBtu",
+        "mb-gasMcf",
+        "mb-hashrate",
+        "mb-heatRate",
+        "mb-infrastructureCost",
+        "mb-machineCount",
+        "mb-model",
+        "mb-overhead",
+        "mb-poolFee",
+        "mb-power",
+        "mb-power-slider",
+        "mb-powerMW",
+        "mb-priceChange",
+        "mb-refresh-market",
+        "mb-reset-inputs",
+        "mb-sizing",
+        "mb-slots",
+        "mb-source",
+        "mb-uptime"
+      ],
+      "controls": [
+        {
+          "label": "mb-sizing",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 364,
+          "height": 44
+        },
+        {
+          "label": "mb-powerMW",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 341,
+          "height": 44
+        },
+        {
+          "label": "mb-power-slider",
+          "tag": "INPUT",
+          "type": "range",
+          "font": 13.3333,
+          "width": 364,
+          "height": 24
+        },
+        {
+          "label": "mb-source",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 364,
+          "height": 44
+        },
+        {
+          "label": "mb-model",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 364,
+          "height": 44
+        },
+        {
+          "label": "mb-hashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 144,
+          "height": 44
+        },
+        {
+          "label": "mb-power",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 155,
+          "height": 44
+        },
+        {
+          "label": "mb-elecCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 138,
+          "height": 44
+        },
+        {
+          "label": "mb-overhead",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 127,
+          "height": 44
+        },
+        {
+          "label": "Market, operating & build assumptions",
+          "tag": "SUMMARY",
+          "font": 11,
+          "width": 364,
+          "height": 44
+        },
+        {
+          "label": "mb-btcPrice",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 150,
+          "height": 44
+        },
+        {
+          "label": "mb-difficulty",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 121,
+          "height": 44
+        },
+        {
+          "label": "mb-uptime",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 161,
+          "height": 44
+        },
+        {
+          "label": "mb-poolFee",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 161,
+          "height": 44
+        },
+        {
+          "label": "mb-diffChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 161,
+          "height": 44
+        },
+        {
+          "label": "mb-priceChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 161,
+          "height": 44
+        },
+        {
+          "label": "mb-cooling",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 364,
+          "height": 44
+        },
+        {
+          "label": "mb-capex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 150,
+          "height": 44
+        },
+        {
+          "label": "mb-infrastructureCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 150,
+          "height": 44
+        },
+        {
+          "label": "mb-slots",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 178,
+          "height": 45
+        },
+        {
+          "label": "mb-containerMW",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 155,
+          "height": 44
+        },
+        {
+          "label": "mb-reset-inputs",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 115,
+          "height": 44
+        },
+        {
+          "label": "mb-refresh-market",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 157,
+          "height": 44
+        },
+        {
+          "label": "mb-calculator",
+          "tag": "A",
+          "type": "",
+          "font": 11.5,
+          "width": 364,
+          "height": 48
+        },
+        {
+          "label": "Assumptions & exclusions",
+          "tag": "SUMMARY",
+          "font": 14,
+          "width": 364,
+          "height": 44
+        }
+      ],
+      "details": [
+        {
+          "summary": "Market, operating & build assumptions",
+          "open": false
+        },
+        {
+          "summary": "Assumptions & exclusions",
+          "open": false
+        }
+      ],
+      "name": "builder",
+      "outputs": {
+        "mb-out-count": "1,607",
+        "mb-out-hashrate": "634.77",
+        "mb-out-load": "9.998",
+        "mb-out-containers": "7",
+        "mb-out-btc30": "8.316312",
+        "mb-out-btcDay": "0.279833",
+        "mb-out-btcYear": "90.947706",
+        "mb-out-revenueDay": "$24,346",
+        "mb-out-energyDay": "$6,838",
+        "mb-out-marginDay": "$17,508",
+        "mb-out-energyPerBTC": "$24,437",
+        "mb-out-breakEvenRate": "$0.1068/kWh",
+        "mb-out-hardwareCost": "$4,256,943"
+      }
+    },
+    {
+      "height": 316,
+      "width": 350,
+      "pageWidth": 390,
+      "viewport": 390,
+      "controlIds": [
+        "additionCapex",
+        "additionalReplacementCapital",
+        "autoReplace",
+        "btcPrice",
+        "btcTreasury",
+        "calcCopy",
+        "calcReset",
+        "capex",
+        "capitalGainsTaxRate",
+        "coverElec",
+        "diffChange",
+        "difficulty",
+        "elecCost",
+        "energyBasis",
+        "energyValue",
+        "gasBtuPerCf",
+        "hashrate",
+        "heatRate",
+        "hodlRatio",
+        "hodlSlider",
+        "infraDepreciationEligiblePct",
+        "infrastructureCost",
+        "investPeriod",
+        "machineCount",
+        "minerAdditions",
+        "minerLifespan",
+        "minerModel",
+        "miningIncomeTaxRate",
+        "periodLength",
+        "poolFee",
+        "power",
+        "preTaxCapital",
+        "priceChange",
+        "reinvest",
+        "replacementCapex",
+        "replacementEfficiency",
+        "replacementEnabled",
+        "replacementHashrate",
+        "replacementPower",
+        "replacementRecalc",
+        "replacementSizing",
+        "salvageValue",
+        "taxAdjustment",
+        "uptime"
+      ],
+      "controls": [
+        {
+          "label": "I have machines",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 174,
+          "height": 41
+        },
+        {
+          "label": "I have energy",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 174,
+          "height": 41
+        },
+        {
+          "label": "Market assumptionsTap to review or edit",
+          "tag": "SUMMARY",
+          "font": 14,
+          "width": 348,
+          "height": 48
+        },
+        {
+          "label": "btcPrice",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "priceChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "difficulty",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "diffChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "periodLength",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 348,
+          "height": 44
+        },
+        {
+          "label": "investPeriod",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 283,
+          "height": 44
+        },
+        {
+          "label": "Machines & replacementsTap to review or edit",
+          "tag": "SUMMARY",
+          "font": 14,
+          "width": 348,
+          "height": 48
+        },
+        {
+          "label": "minerModel",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 348,
+          "height": 44
+        },
+        {
+          "label": "hashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 296,
+          "height": 44
+        },
+        {
+          "label": "power",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 310,
+          "height": 44
+        },
+        {
+          "label": "capex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "machineCount",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 289,
+          "height": 44
+        },
+        {
+          "label": "minerAdditions",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 263,
+          "height": 44
+        },
+        {
+          "label": "minerLifespan",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 283,
+          "height": 44
+        },
+        {
+          "label": "salvageValue",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 256,
+          "height": 44
+        },
+        {
+          "label": "Replacement hardware",
+          "tag": "SUMMARY",
+          "font": 16,
+          "width": 332,
+          "height": 26
+        },
+        {
+          "label": "replacementEfficiency",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 280,
+          "height": 44
+        },
+        {
+          "label": "replacementHashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 280,
+          "height": 44
+        },
+        {
+          "label": "replacementPower",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 294,
+          "height": 44
+        },
+        {
+          "label": "replacementCapex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 203,
+          "height": 44
+        },
+        {
+          "label": "replacementRecalc",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 332,
+          "height": 37
+        },
+        {
+          "label": "replacementSizing",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 16,
+          "width": 332,
+          "height": 44
+        },
+        {
+          "label": "additionalReplacementCapital",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 300,
+          "height": 44
+        },
+        {
+          "label": "Operating costs & taxesTap to review or edit",
+          "tag": "SUMMARY",
+          "font": 14,
+          "width": 348,
+          "height": 48
+        },
+        {
+          "label": "btcTreasury",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 303,
+          "height": 44
+        },
+        {
+          "label": "infrastructureCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "elecCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 266,
+          "height": 44
+        },
+        {
+          "label": "poolFee",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "uptime",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 316,
+          "height": 44
+        },
+        {
+          "label": "hodlSlider",
+          "tag": "INPUT",
+          "type": "range",
+          "font": 16,
+          "width": 262,
+          "height": 26
+        },
+        {
+          "label": "hodlRatio",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 16,
+          "width": 42,
+          "height": 44
+        },
+        {
+          "label": "calcReset",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 350,
+          "height": 37
+        },
+        {
+          "label": "calcCopy",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 350,
+          "height": 37
+        }
+      ],
+      "details": [
+        {
+          "summary": "Market assumptions",
+          "open": false
+        },
+        {
+          "summary": "Machines & replacements",
+          "open": false
+        },
+        {
+          "summary": "",
+          "open": false
+        },
+        {
+          "summary": "Available energyTap to review or edit",
+          "open": false
+        },
+        {
+          "summary": "Operating costs & taxes",
+          "open": false
+        }
+      ],
+      "name": "calculator",
+      "outputs": {
+        "outDailyProfit": "$719.91",
+        "outCostPerBtc": "$28,071",
+        "outBreakEven": "12 months",
+        "outRoi": "491.3%",
+        "outMachines": "100",
+        "outInvestment": "$301,000",
+        "outBtcMined": "9.5657 BTC",
+        "outTotalPl": "$1,478,858"
+      },
+      "topSectionsExpanded": {
+        "height": 2601,
+        "width": 350,
+        "pageWidth": 390,
+        "viewport": 390,
+        "controlIds": [
+          "additionCapex",
+          "additionalReplacementCapital",
+          "autoReplace",
+          "btcPrice",
+          "btcTreasury",
+          "calcCopy",
+          "calcReset",
+          "capex",
+          "capitalGainsTaxRate",
+          "coverElec",
+          "diffChange",
+          "difficulty",
+          "elecCost",
+          "energyBasis",
+          "energyValue",
+          "gasBtuPerCf",
+          "hashrate",
+          "heatRate",
+          "hodlRatio",
+          "hodlSlider",
+          "infraDepreciationEligiblePct",
+          "infrastructureCost",
+          "investPeriod",
+          "machineCount",
+          "minerAdditions",
+          "minerLifespan",
+          "minerModel",
+          "miningIncomeTaxRate",
+          "periodLength",
+          "poolFee",
+          "power",
+          "preTaxCapital",
+          "priceChange",
+          "reinvest",
+          "replacementCapex",
+          "replacementEfficiency",
+          "replacementEnabled",
+          "replacementHashrate",
+          "replacementPower",
+          "replacementRecalc",
+          "replacementSizing",
+          "salvageValue",
+          "taxAdjustment",
+          "uptime"
+        ],
+        "controls": [
+          {
+            "label": "I have machines",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 174,
+            "height": 41
+          },
+          {
+            "label": "I have energy",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 174,
+            "height": 41
+          },
+          {
+            "label": "Market assumptionsTap to review or edit",
+            "tag": "SUMMARY",
+            "font": 14,
+            "width": 348,
+            "height": 48
+          },
+          {
+            "label": "btcPrice",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "priceChange",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "difficulty",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "diffChange",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "periodLength",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 16,
+            "width": 348,
+            "height": 44
+          },
+          {
+            "label": "investPeriod",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 283,
+            "height": 44
+          },
+          {
+            "label": "Machines & replacementsTap to review or edit",
+            "tag": "SUMMARY",
+            "font": 14,
+            "width": 348,
+            "height": 48
+          },
+          {
+            "label": "minerModel",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 16,
+            "width": 348,
+            "height": 44
+          },
+          {
+            "label": "hashrate",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 296,
+            "height": 44
+          },
+          {
+            "label": "power",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 310,
+            "height": 44
+          },
+          {
+            "label": "capex",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "machineCount",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 289,
+            "height": 44
+          },
+          {
+            "label": "minerAdditions",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 263,
+            "height": 44
+          },
+          {
+            "label": "minerLifespan",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 283,
+            "height": 44
+          },
+          {
+            "label": "salvageValue",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 256,
+            "height": 44
+          },
+          {
+            "label": "Replacement hardware",
+            "tag": "SUMMARY",
+            "font": 16,
+            "width": 332,
+            "height": 26
+          },
+          {
+            "label": "replacementEfficiency",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 280,
+            "height": 44
+          },
+          {
+            "label": "replacementHashrate",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 280,
+            "height": 44
+          },
+          {
+            "label": "replacementPower",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 294,
+            "height": 44
+          },
+          {
+            "label": "replacementCapex",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 203,
+            "height": 44
+          },
+          {
+            "label": "replacementRecalc",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 332,
+            "height": 37
+          },
+          {
+            "label": "replacementSizing",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 16,
+            "width": 332,
+            "height": 44
+          },
+          {
+            "label": "additionalReplacementCapital",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 300,
+            "height": 44
+          },
+          {
+            "label": "Operating costs & taxesTap to review or edit",
+            "tag": "SUMMARY",
+            "font": 14,
+            "width": 348,
+            "height": 48
+          },
+          {
+            "label": "btcTreasury",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 303,
+            "height": 44
+          },
+          {
+            "label": "infrastructureCost",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "elecCost",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 266,
+            "height": 44
+          },
+          {
+            "label": "poolFee",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "uptime",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 316,
+            "height": 44
+          },
+          {
+            "label": "hodlSlider",
+            "tag": "INPUT",
+            "type": "range",
+            "font": 16,
+            "width": 262,
+            "height": 26
+          },
+          {
+            "label": "hodlRatio",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 16,
+            "width": 42,
+            "height": 44
+          },
+          {
+            "label": "calcReset",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 350,
+            "height": 37
+          },
+          {
+            "label": "calcCopy",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 350,
+            "height": 37
+          }
+        ],
+        "details": [
+          {
+            "summary": "Market assumptions",
+            "open": true
+          },
+          {
+            "summary": "Machines & replacements",
+            "open": true
+          },
+          {
+            "summary": "Replacement hardware",
+            "open": false
+          },
+          {
+            "summary": "Available energyTap to review or edit",
+            "open": true
+          },
+          {
+            "summary": "Operating costs & taxes",
+            "open": true
+          }
+        ]
+      }
+    },
+    {
+      "height": 1414,
+      "width": 1384,
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "controlIds": [
+        "mb-btcPrice",
+        "mb-capex",
+        "mb-containerMW",
+        "mb-cooling",
+        "mb-diffChange",
+        "mb-difficulty",
+        "mb-elecCost",
+        "mb-gasBtu",
+        "mb-gasMcf",
+        "mb-hashrate",
+        "mb-heatRate",
+        "mb-infrastructureCost",
+        "mb-machineCount",
+        "mb-model",
+        "mb-overhead",
+        "mb-poolFee",
+        "mb-power",
+        "mb-power-slider",
+        "mb-powerMW",
+        "mb-priceChange",
+        "mb-refresh-market",
+        "mb-reset-inputs",
+        "mb-sizing",
+        "mb-slots",
+        "mb-source",
+        "mb-uptime"
+      ],
+      "controls": [
+        {
+          "label": "mb-sizing",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 13,
+          "width": 651,
+          "height": 42
+        },
+        {
+          "label": "mb-powerMW",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 628,
+          "height": 42
+        },
+        {
+          "label": "mb-power-slider",
+          "tag": "INPUT",
+          "type": "range",
+          "font": 13.3333,
+          "width": 651,
+          "height": 24
+        },
+        {
+          "label": "mb-source",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 13,
+          "width": 651,
+          "height": 42
+        },
+        {
+          "label": "mb-model",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 13,
+          "width": 651,
+          "height": 42
+        },
+        {
+          "label": "mb-hashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 285,
+          "height": 42
+        },
+        {
+          "label": "mb-power",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 297,
+          "height": 42
+        },
+        {
+          "label": "mb-elecCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 280,
+          "height": 42
+        },
+        {
+          "label": "mb-overhead",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 268,
+          "height": 42
+        },
+        {
+          "label": "Market, operating & build assumptions",
+          "tag": "SUMMARY",
+          "font": 11,
+          "width": 1334,
+          "height": 46
+        },
+        {
+          "label": "mb-btcPrice",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 633,
+          "height": 42
+        },
+        {
+          "label": "mb-difficulty",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 604,
+          "height": 42
+        },
+        {
+          "label": "mb-uptime",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 644,
+          "height": 42
+        },
+        {
+          "label": "mb-poolFee",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 644,
+          "height": 42
+        },
+        {
+          "label": "mb-diffChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 644,
+          "height": 42
+        },
+        {
+          "label": "mb-priceChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 644,
+          "height": 42
+        },
+        {
+          "label": "mb-cooling",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 13,
+          "width": 1334,
+          "height": 42
+        },
+        {
+          "label": "mb-capex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 633,
+          "height": 42
+        },
+        {
+          "label": "mb-infrastructureCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 633,
+          "height": 42
+        },
+        {
+          "label": "mb-slots",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 661,
+          "height": 43
+        },
+        {
+          "label": "mb-containerMW",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 13,
+          "width": 638,
+          "height": 42
+        },
+        {
+          "label": "mb-reset-inputs",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 115,
+          "height": 28
+        },
+        {
+          "label": "mb-refresh-market",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 157,
+          "height": 28
+        },
+        {
+          "label": "mb-calculator",
+          "tag": "A",
+          "type": "",
+          "font": 11.5,
+          "width": 237,
+          "height": 48
+        }
+      ],
+      "details": [
+        {
+          "summary": "Market, operating & build assumptions",
+          "open": false
+        },
+        {
+          "summary": "Assumptions & exclusions",
+          "open": true
+        }
+      ],
+      "name": "builder",
+      "outputs": {
+        "mb-out-count": "1,607",
+        "mb-out-hashrate": "634.77",
+        "mb-out-load": "9.998",
+        "mb-out-containers": "7",
+        "mb-out-btc30": "8.316312",
+        "mb-out-btcDay": "0.279833",
+        "mb-out-btcYear": "90.947706",
+        "mb-out-revenueDay": "$24,346",
+        "mb-out-energyDay": "$6,838",
+        "mb-out-marginDay": "$17,508",
+        "mb-out-energyPerBTC": "$24,437",
+        "mb-out-breakEvenRate": "$0.1068/kWh",
+        "mb-out-hardwareCost": "$4,256,943"
+      }
+    },
+    {
+      "height": 1270,
+      "width": 1144,
+      "pageWidth": 1440,
+      "viewport": 1440,
+      "controlIds": [
+        "additionCapex",
+        "additionalReplacementCapital",
+        "autoReplace",
+        "btcPrice",
+        "btcTreasury",
+        "calcCopy",
+        "calcReset",
+        "capex",
+        "capitalGainsTaxRate",
+        "coverElec",
+        "diffChange",
+        "difficulty",
+        "elecCost",
+        "energyBasis",
+        "energyValue",
+        "gasBtuPerCf",
+        "hashrate",
+        "heatRate",
+        "hodlRatio",
+        "hodlSlider",
+        "infraDepreciationEligiblePct",
+        "infrastructureCost",
+        "investPeriod",
+        "machineCount",
+        "minerAdditions",
+        "minerLifespan",
+        "minerModel",
+        "miningIncomeTaxRate",
+        "periodLength",
+        "poolFee",
+        "power",
+        "preTaxCapital",
+        "priceChange",
+        "reinvest",
+        "replacementCapex",
+        "replacementEfficiency",
+        "replacementEnabled",
+        "replacementHashrate",
+        "replacementPower",
+        "replacementRecalc",
+        "replacementSizing",
+        "salvageValue",
+        "taxAdjustment",
+        "uptime"
+      ],
+      "controls": [
+        {
+          "label": "I have machines",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 571,
+          "height": 41
+        },
+        {
+          "label": "I have energy",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 571,
+          "height": 41
+        },
+        {
+          "label": "btcPrice",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "priceChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "difficulty",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "diffChange",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "periodLength",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 14.5,
+          "width": 323,
+          "height": 46
+        },
+        {
+          "label": "investPeriod",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 258,
+          "height": 44
+        },
+        {
+          "label": "minerModel",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 14.5,
+          "width": 323,
+          "height": 46
+        },
+        {
+          "label": "hashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 272,
+          "height": 44
+        },
+        {
+          "label": "power",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 285,
+          "height": 44
+        },
+        {
+          "label": "capex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "machineCount",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 265,
+          "height": 44
+        },
+        {
+          "label": "minerAdditions",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 238,
+          "height": 44
+        },
+        {
+          "label": "minerLifespan",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 258,
+          "height": 44
+        },
+        {
+          "label": "salvageValue",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 231,
+          "height": 44
+        },
+        {
+          "label": "Replacement hardware",
+          "tag": "SUMMARY",
+          "font": 16,
+          "width": 307,
+          "height": 26
+        },
+        {
+          "label": "replacementEfficiency",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 256,
+          "height": 44
+        },
+        {
+          "label": "replacementHashrate",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 256,
+          "height": 44
+        },
+        {
+          "label": "replacementPower",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 269,
+          "height": 44
+        },
+        {
+          "label": "replacementCapex",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 179,
+          "height": 44
+        },
+        {
+          "label": "replacementRecalc",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 236,
+          "height": 37
+        },
+        {
+          "label": "replacementSizing",
+          "tag": "SELECT",
+          "type": "select-one",
+          "font": 14.5,
+          "width": 307,
+          "height": 46
+        },
+        {
+          "label": "additionalReplacementCapital",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 276,
+          "height": 44
+        },
+        {
+          "label": "btcTreasury",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 278,
+          "height": 44
+        },
+        {
+          "label": "infrastructureCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "elecCost",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 242,
+          "height": 44
+        },
+        {
+          "label": "poolFee",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "uptime",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 292,
+          "height": 44
+        },
+        {
+          "label": "hodlSlider",
+          "tag": "INPUT",
+          "type": "range",
+          "font": 14.5,
+          "width": 237,
+          "height": 26
+        },
+        {
+          "label": "hodlRatio",
+          "tag": "INPUT",
+          "type": "number",
+          "font": 14.5,
+          "width": 42,
+          "height": 35
+        },
+        {
+          "label": "calcReset",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 165,
+          "height": 37
+        },
+        {
+          "label": "calcCopy",
+          "tag": "BUTTON",
+          "type": "button",
+          "font": 11,
+          "width": 231,
+          "height": 37
+        }
+      ],
+      "details": [
+        {
+          "summary": "Market assumptionsTap to review or edit",
+          "open": true
+        },
+        {
+          "summary": "Machines & replacementsTap to review or edit",
+          "open": true
+        },
+        {
+          "summary": "Replacement hardware",
+          "open": false
+        },
+        {
+          "summary": "Available energyTap to review or edit",
+          "open": true
+        },
+        {
+          "summary": "Operating costs & taxesTap to review or edit",
+          "open": true
+        }
+      ],
+      "name": "calculator",
+      "outputs": {
+        "outDailyProfit": "$719.91",
+        "outCostPerBtc": "$28,071",
+        "outBreakEven": "12 months",
+        "outRoi": "491.3%",
+        "outMachines": "100",
+        "outInvestment": "$301,000",
+        "outBtcMined": "9.5657 BTC",
+        "outTotalPl": "$1,478,858"
+      },
+      "topSectionsExpanded": {
+        "height": 1270,
+        "width": 1144,
+        "pageWidth": 1440,
+        "viewport": 1440,
+        "controlIds": [
+          "additionCapex",
+          "additionalReplacementCapital",
+          "autoReplace",
+          "btcPrice",
+          "btcTreasury",
+          "calcCopy",
+          "calcReset",
+          "capex",
+          "capitalGainsTaxRate",
+          "coverElec",
+          "diffChange",
+          "difficulty",
+          "elecCost",
+          "energyBasis",
+          "energyValue",
+          "gasBtuPerCf",
+          "hashrate",
+          "heatRate",
+          "hodlRatio",
+          "hodlSlider",
+          "infraDepreciationEligiblePct",
+          "infrastructureCost",
+          "investPeriod",
+          "machineCount",
+          "minerAdditions",
+          "minerLifespan",
+          "minerModel",
+          "miningIncomeTaxRate",
+          "periodLength",
+          "poolFee",
+          "power",
+          "preTaxCapital",
+          "priceChange",
+          "reinvest",
+          "replacementCapex",
+          "replacementEfficiency",
+          "replacementEnabled",
+          "replacementHashrate",
+          "replacementPower",
+          "replacementRecalc",
+          "replacementSizing",
+          "salvageValue",
+          "taxAdjustment",
+          "uptime"
+        ],
+        "controls": [
+          {
+            "label": "I have machines",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 571,
+            "height": 41
+          },
+          {
+            "label": "I have energy",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 571,
+            "height": 41
+          },
+          {
+            "label": "btcPrice",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "priceChange",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "difficulty",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "diffChange",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "periodLength",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 14.5,
+            "width": 323,
+            "height": 46
+          },
+          {
+            "label": "investPeriod",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 258,
+            "height": 44
+          },
+          {
+            "label": "minerModel",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 14.5,
+            "width": 323,
+            "height": 46
+          },
+          {
+            "label": "hashrate",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 272,
+            "height": 44
+          },
+          {
+            "label": "power",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 285,
+            "height": 44
+          },
+          {
+            "label": "capex",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "machineCount",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 265,
+            "height": 44
+          },
+          {
+            "label": "minerAdditions",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 238,
+            "height": 44
+          },
+          {
+            "label": "minerLifespan",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 258,
+            "height": 44
+          },
+          {
+            "label": "salvageValue",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 231,
+            "height": 44
+          },
+          {
+            "label": "Replacement hardware",
+            "tag": "SUMMARY",
+            "font": 16,
+            "width": 307,
+            "height": 26
+          },
+          {
+            "label": "replacementEfficiency",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 256,
+            "height": 44
+          },
+          {
+            "label": "replacementHashrate",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 256,
+            "height": 44
+          },
+          {
+            "label": "replacementPower",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 269,
+            "height": 44
+          },
+          {
+            "label": "replacementCapex",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 179,
+            "height": 44
+          },
+          {
+            "label": "replacementRecalc",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 236,
+            "height": 37
+          },
+          {
+            "label": "replacementSizing",
+            "tag": "SELECT",
+            "type": "select-one",
+            "font": 14.5,
+            "width": 307,
+            "height": 46
+          },
+          {
+            "label": "additionalReplacementCapital",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 276,
+            "height": 44
+          },
+          {
+            "label": "btcTreasury",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 278,
+            "height": 44
+          },
+          {
+            "label": "infrastructureCost",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "elecCost",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 242,
+            "height": 44
+          },
+          {
+            "label": "poolFee",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "uptime",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 292,
+            "height": 44
+          },
+          {
+            "label": "hodlSlider",
+            "tag": "INPUT",
+            "type": "range",
+            "font": 14.5,
+            "width": 237,
+            "height": 26
+          },
+          {
+            "label": "hodlRatio",
+            "tag": "INPUT",
+            "type": "number",
+            "font": 14.5,
+            "width": 42,
+            "height": 35
+          },
+          {
+            "label": "calcReset",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 165,
+            "height": 37
+          },
+          {
+            "label": "calcCopy",
+            "tag": "BUTTON",
+            "type": "button",
+            "font": 11,
+            "width": 231,
+            "height": 37
+          }
+        ],
+        "details": [
+          {
+            "summary": "Market assumptionsTap to review or edit",
+            "open": true
+          },
+          {
+            "summary": "Machines & replacementsTap to review or edit",
+            "open": true
+          },
+          {
+            "summary": "Replacement hardware",
+            "open": false
+          },
+          {
+            "summary": "Available energyTap to review or edit",
+            "open": true
+          },
+          {
+            "summary": "Operating costs & taxesTap to review or edit",
+            "open": true
+          }
+        ]
+      }
+    }
+  ],
+  "checks": [],
+  "errors": [],
+  "missing": [],
+  "writes": [],
+  "external": []
+}

@@ -391,7 +391,7 @@
         }
     });
     var groups = Array.from(document.querySelectorAll('details[data-mobile-details]')).map(function (el) {
-        return { el: el, summary: el.querySelector('summary'), mobileOpen: false, wasMobile: false };
+        return { el: el, summary: el.querySelector('summary'), mobileOpen: el.hasAttribute('data-mobile-open'), wasMobile: false };
     });
     function apply(group) {
         if (group.wasMobile && !media.matches) group.mobileOpen = group.el.open;

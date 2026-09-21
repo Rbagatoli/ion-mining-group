@@ -77,6 +77,12 @@
     }
     function noteMarket() {
         text('market-note', 'BTC price: ' + market.btcPrice + ' · Difficulty: ' + market.difficulty + '.');
+        var values = [market.btcPrice, market.difficulty];
+        var summary = values.every(function (value) { return value === 'your input'; }) ? 'Your inputs'
+            : values.some(function (value) { return value.indexOf('example') === 0; }) ? 'Includes example inputs'
+            : values.some(function (value) { return value.indexOf('unavailable') >= 0; }) ? 'Refresh unavailable'
+            : values.some(function (value) { return value === 'your input'; }) ? 'Fetched + your inputs' : 'Fetched inputs';
+        text('market-summary', summary);
     }
     async function fetchMarket() {
         var seq = ++requestSequence;
@@ -122,6 +128,9 @@
     function render() {
         syncMode();
         result = M.estimate(settings());
+        var specs = Number(fields.hashrate.value), power = Number(fields.power.value);
+        text('machine-specs', fields.hashrate.value && fields.power.value && isFinite(specs) && isFinite(power)
+            ? number(specs, 3).replace(/\.?0+$/, '') + ' TH/s · ' + number(power, 3).replace(/\.?0+$/, '') + ' kW' : 'Edit specifications');
         Object.keys(fields).forEach(function (key) { fields[key].removeAttribute('aria-invalid'); });
         $('error').hidden = result.valid;
         clearTimeout(sceneTimer); clearTimeout(announceTimer);
@@ -129,7 +138,12 @@
             result.errors.forEach(function (error) {
                 if (fields[error.field]) {
                     fields[error.field].setAttribute('aria-invalid', 'true');
-                    if (fields[error.field].closest('details')) $('assumptions').open = true;
+                    // Any invalid advanced field must be visible, even inside nested disclosures.
+                    var disclosure = fields[error.field].closest('details');
+                    while (disclosure) {
+                        disclosure.open = true;
+                        disclosure = disclosure.parentNode && disclosure.parentNode.closest('details');
+                    }
                 }
             });
             text('error', result.errors.map(function (e) { return e.message; }).join(' '));
@@ -219,7 +233,10 @@
     form.addEventListener('submit', function (event) { event.preventDefault(); });
     form.addEventListener('input', function (event) {
         var name = event.target.name;
-        if (name === 'model') applyModel();
+        if (name === 'model') {
+            applyModel();
+            if (fields.model.value === '__custom__') $('machine-settings').open = true;
+        }
         if (['hashrate', 'power', 'capex', 'cooling'].indexOf(name) >= 0) fields.model.value = '__custom__';
         if (name === 'btcPrice' || name === 'difficulty') { revisions[name]++; market[name] = 'your input'; noteMarket(); }
         if (name === 'powerMW') $('power-slider').value = Math.min(20, Number(fields.powerMW.value) || 0);

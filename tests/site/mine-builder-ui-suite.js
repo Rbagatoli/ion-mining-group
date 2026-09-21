@@ -120,6 +120,22 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
         assert.equal(el('canvas-host'),null);assert.equal(fuelPanes[0].querySelector('.dg-views').hidden,false);
         assert.ok(el('calculator').href.includes('machineCount=1607'));
     });
+    check('compact layout retains every model input once and keeps the primary inputs outside disclosures',()=>{
+        for(const name of Object.keys(sandbox.MineBuilderModel.defaults)){
+            assert.equal(el('form').querySelectorAll('[name="'+name+'"]').length,1,name+' remains editable');
+        }
+        for(const name of ['sizing','powerMW','model','elecCost'])assert.equal(el(name).closest('details'),null,name+' stays visible');
+        assert.equal(el('machine-settings').getAttribute('data-mobile-details'),'');
+        assert.equal(el('power-settings').getAttribute('data-mobile-details'),'');
+        assert.match(el('machine-specs').textContent,/395 TH\/s · 5\.925 kW/);
+    });
+    check('compact results retain primary production and all secondary projections with clear market provenance',()=>{
+        assert.equal(el('out-btc30').closest('details'),null);
+        for(const name of ['out-btcDay','out-btcYear','chart','sizing-note'])assert.equal(el(name).closest('details'),el('production-details'));
+        assert.equal(el('market-note').closest('details'),el('market-details'));
+        assert.equal(el('refresh-market').closest('details'),el('market-details'));
+        assert.match(el('market-summary').textContent,/example inputs/);
+    });
     input('btcPrice','123456');
     requests[0].resolve({ok:true,text:async()=>'{"data":{"amount":"111111"}}'});
     requests[1].resolve({ok:true,text:async()=>'250000000000000'});
@@ -127,6 +143,7 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     check('a late response cannot overwrite a market input typed by the visitor',()=>{
         assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250.0000');assert.match(el('market-note').textContent,/BTC price: your input/);
         assert.match(el('market-note').textContent,/Difficulty: fetched/);
+        assert.equal(el('market-summary').textContent,'Fetched + your inputs');
     });
     check('market requests omit credentials and send no visitor configuration',()=>{
         for(const request of requests){assert.equal(request.options.credentials,'omit');assert.equal(request.options.referrerPolicy,'no-referrer');assert.ok(!request.options.body);assert.ok(!request.url.includes('?'));}
@@ -150,9 +167,23 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     input('model','Antminer S21 XP');
     check('choosing an air-cooled model updates specs, cooling and price together',()=>{
         assert.equal(el('power').value,'3.645');assert.equal(el('hashrate').value,'270');assert.equal(el('cooling').value,'air');assert.equal(el('capex').value,'3010');
+        assert.match(el('machine-specs').textContent,/270 TH\/s · 3\.645 kW/);
     });
+    el('machine-settings').open=false;input('model','__custom__');
+    check('choosing Custom reveals editable machine specifications',()=>assert.equal(el('machine-settings').open,true));
     input('power','4');
     check('editing a catalog specification visibly switches to Custom',()=>assert.equal(el('model').value,'__custom__'));
+    el('machine-settings').open=false;el('assumptions').open=false;input('overhead','101');
+    check('invalid compact machine settings reveal their own disclosure and clear stale estimates',()=>{
+        assert.equal(el('machine-settings').open,true);assert.equal(el('assumptions').open,false);
+        assert.equal(el('overhead').getAttribute('aria-invalid'),'true');assert.equal(el('out-count').textContent,'—');
+        assert.equal(el('calculator').href,undefined);
+    });
+    input('overhead','5');
+    check('correcting an advanced field restores the live estimate and handoff',()=>{
+        assert.equal(el('error').hidden,true);assert.equal(el('overhead').getAttribute('aria-invalid'),null);
+        assert.notEqual(el('out-count').textContent,'—');assert.ok(el('calculator').href);
+    });
     input('difficulty','');
     check('invalid inputs clear stale numbers and block the calculator handoff',()=>{
         assert.equal(el('error').hidden,false);assert.equal(el('out-btc30').textContent,'—');assert.equal(el('difficulty').getAttribute('aria-invalid'),'true');assert.equal(el('calculator').href,undefined);
@@ -197,6 +228,7 @@ function check(name,fn){fn();passed++;console.log('  ok    '+name);}
     requests[2].resolve({ok:false,text:async()=>''});requests[3].reject(new Error('offline'));await settle();
     check('failed feed refresh keeps entered values and states the failure',()=>{
         assert.equal(el('btcPrice').value,'123456');assert.equal(el('difficulty').value,'250');assert.match(el('market-note').textContent,/refresh unavailable/);assert.equal(el('refresh-market').disabled,false);
+        assert.equal(el('market-summary').textContent,'Refresh unavailable');
     });
     input('priceChange','5');click('reset-inputs');
     check('reset restores the build while preserving market inputs',()=>{
