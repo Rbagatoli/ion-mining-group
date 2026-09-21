@@ -27,12 +27,12 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   function element(id){
     if(elements.has(id))return elements.get(id);
     const listeners=new Map(),attrs=new Map(),classes=new Set();let html='';
-    const el={id,tagName:'DIV',open:false,hidden:false,disabled:false,readOnly:false,isConnected:true,value:'',textContent:'',dataset:{},children:[],scrollTop:0,
+    const el={id,tagName:'DIV',open:false,hidden:false,disabled:false,readOnly:false,isConnected:true,value:'',textContent:'',dataset:{},children:[],scrollTop:0,scrollRequests:[],
       classList:{toggle(name,force){const next=force===undefined?!classes.has(name):force;if(next)classes.add(name);else classes.delete(name);return next;},contains:name=>classes.has(name),add:name=>classes.add(name),remove:name=>classes.delete(name)},
       setAttribute:(name,value)=>attrs.set(name,String(value)),getAttribute:name=>attrs.get(name),hasAttribute:name=>attrs.has(name),
       addEventListener(name,fn){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(fn);},
       async emit(name,event={}){for(const fn of listeners.get(name)||[])await fn({target:el,currentTarget:el,preventDefault(){},...event});},
-      focus(){document.activeElement=el;},showModal(){el.open=true;},close(){el.open=false;},
+      focus(options){document.activeElement=el;el.focusOptions=options;},scrollIntoView(options){el.scrollRequests.push(options);},showModal(){el.open=true;},close(){el.open=false;},
       querySelector(selector){if(selector==='[type=submit]')return element('submitButton');if(selector==='[value=accept]')return element(id+'_accept');return null;},
       querySelectorAll(selector){return selector==='input,select,textarea'?[...elements.values()].filter(item=>/^(INPUT|SELECT|TEXTAREA)$/.test(item.tagName)):[];},
       matches(){return false;},closest(){return null;}
@@ -82,7 +82,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   let data;const create=box.ProtonCrmData.create;box.ProtonCrmData.create=()=>{data=create();return data;};
   run('crm/crm.js');
   function flush(){for(let limit=0;queue.length;limit++){assert(limit<100,'event queue did not settle');queue.shift()();}}
-  const h={el:element,location,writes,data,storage,flush,releaseOptions:()=>releaseOptions,title:()=>element('sheetTitle').textContent,body:()=>element('sheetBody').innerHTML,isOpen:()=>element('sheet').open,
+  const h={el:element,location,writes,data,storage,flush,releaseOptions:()=>releaseOptions,title:()=>element('sheetTitle').textContent,body:()=>element('sheetBody').innerHTML,isOpen:()=>element('sheet').open,focused:()=>document.activeElement,
     transactionReads:()=>transactionReads,releaseRead:state=>releaseRead(state),settleTransaction:error=>settleTransaction(error),
     auth(uid){currentUser=uid?{uid,email:uid+'@example.test'}:null;authCallback(currentUser);flush();},
     authFail(){authError(Error('Synthetic authentication failed.'));flush();},
@@ -101,6 +101,11 @@ function opened(h,title='Synthetic owner A task'){
 }
 function waiting(h){assert.equal(h.isOpen(),true);assert.equal(h.title(),'Opening task');assert.doesNotMatch(h.body(),/no longer|not found/i);}
 function attention(h){assert.equal(h.isOpen(),true);assert.equal(h.title(),'Task connection needs attention');assert.doesNotMatch(h.body(),/no longer|not found/i);}
+function focusedError(h){
+  const alert=h.el('sheetError');assert.equal(alert.hidden,false);assert.equal(h.focused(),alert);assert.equal(alert.tabIndex,-1);
+  assert.deepEqual({...alert.focusOptions},{preventScroll:true});
+  assert.deepEqual({...alert.scrollRequests.at(-1)},{block:'nearest',inline:'nearest',behavior:'instant'});
+}
 
 test('automatic release activation requires settled browsing and preserves forms and account boundaries',async()=>{
   const h=harness({hash:'#pipeline'}),update=h.releaseOptions();
@@ -213,6 +218,7 @@ test('a pending completed-review save retains original fields, versions and rece
   const frozen=h.el('f_retainedDraft').value;
   h.snapshot('owner_b',fixture('Other owner same ID'));h.snapshot('owner_a',state);h.releaseRead(state);await submitted;h.flush();
   assert.equal(h.isOpen(),true);assert.equal(h.title(),'Record completed team review');assert.equal(h.el('submitButton').disabled,true);assert.equal(h.el('checkCompletedReceipt').disabled,true);assert.equal(h.el('f_retainedDraft').value,frozen);assert.equal(h.writes.length,0);assert.equal(h.data.status().uid,'owner_b');
+  focusedError(h);
   await h.el('checkCompletedReceipt').emit('click');assert.equal(h.el('f_retainedDraft').value,frozen);assert.equal(h.title(),'Record completed team review');assert.equal(h.writes.length,0);
 });
 
@@ -233,7 +239,7 @@ for(const outcome of ['confirm-before-settlement','resolve-before-confirmation',
   }else{
     h.settleTransaction(outcome==='reject-before-confirmation'?Error('Synthetic transaction rejected'):null);await submitted;h.flush();
     assert.equal(h.title(),'Record completed team review');
-    if(outcome==='reject-before-confirmation')assert.match(h.el('sheetError').textContent,/Synthetic transaction rejected/);
+    if(outcome==='reject-before-confirmation'){assert.match(h.el('sheetError').textContent,/Synthetic transaction rejected/);focusedError(h);}
     await h.el('checkCompletedReceipt').emit('click');assert.equal(h.title(),'Record completed team review');
     for(const [name,value] of Object.entries(fields))assert.equal(h.el('f_'+name).value,value,name+' retained');
     h.snapshot('owner_a',receiptState,{cache:true});assert.equal(h.title(),'Record completed team review');
