@@ -85,6 +85,54 @@ test('actual touches require provider receipts; prepared drafts bind exact versi
  assert.throws(()=>touch(s,{status:'prepared',providerRef:''}),/exact source/);
  const next=touch(s,{status:'prepared',providerRef:'',taskId:'source1',resultVersion:2,messageVersion:'copy-v2'});assert.equal(evaluate(next).counters.proactiveTouches,0);assert.equal(O.forLead(next,'l1',{now:NOW}).lastActualTouch,null);
 });
+test('numeric zero draft and prepared references survive recording, import and reconciliation without relabeling',()=>{
+ const s=base(),refs={taskId:'source_zero',resultVersion:0,messageVersion:'message-v0',reviewTaskId:'quality_zero',author:'Original author',reviewer:'Independent Quality'};
+ s.tasks=[{id:refs.taskId,resultVersion:0,result:'Original source version zero.'},{id:refs.reviewTaskId,resultVersion:1,reviewOfVersion:0,qualityVerdict:'revise'}];
+ const before=JSON.stringify(s);
+ for(const status of ['draft','prepared']){
+  const next=touch(s,{id:'version_zero',status,providerRef:'',...refs}),originalTouch=next.outreach.events.at(-1).touch;
+  for(const [key,value] of Object.entries(refs))assert.equal(originalTouch[key],value);
+  const bytes=JSON.stringify(next.outreach),imported=JSON.parse(bytes);
+  assert.equal(O.valid(imported,s.leads),imported);assert.equal(JSON.stringify(imported),bytes);
+  const restored={...next,outreach:imported},projection=O.forLead(restored,'l1',{now:NOW});
+  for(const [key,value] of Object.entries(refs))assert.equal(projection.touches[0][key],value);
+  assert.equal(projection.lastActualTouch,null);assert.equal(projection.transportActive,false);assert.equal(projection.evaluation.allowed,false);
+  assert(codes(projection.evaluation).includes('qa_unverified'));assert.deepEqual(projection.evaluation.counters,{outboundToday:0,newRecipientsToday:0,initialThisCycle:0,proactiveTouches:0});
+  const reconciled=apply(restored,'outreach.touch.update',{touchId:'version_zero',status:status==='draft'?'prepared':'failed',evidence:'Synthetic reconciliation',occurredAt:NOW});
+  for(const [key,value] of Object.entries(refs))assert.equal(O.forLead(reconciled,'l1',{now:NOW}).touches[0][key],value);
+  assert.deepEqual(reconciled.outreach.events.slice(0,-1),imported.events);assert.deepEqual(reconciled.tasks,s.tasks);
+ }
+ assert.equal(JSON.stringify(s),before);
+});
+test('draft and prepared versions reject absent, blank, coerced and invalid numbers at record and import boundaries',()=>{
+ const s=base(),before=JSON.stringify(s);
+ for(const status of ['draft','prepared']){
+  const refs={status,taskId:'source_zero',messageVersion:'message-v0',reviewTaskId:'quality_zero'},valid=touch(s,{...refs,resultVersion:0}).outreach;
+  for(const resultVersion of [undefined,null,'',' ','0','1',false,true,{},[],-1,-0.5,0.5,NaN,Infinity,-Infinity,Number.MAX_SAFE_INTEGER+1]){
+   assert.throws(()=>touch(s,{...refs,resultVersion}),/exact source/);
+   const imported=JSON.parse(JSON.stringify(valid));imported.events.at(-1).touch.resultVersion=resultVersion;
+   assert.throws(()=>O.valid(imported,s.leads),/exact source/);
+  }
+  for(const missing of ['taskId','messageVersion'])assert.throws(()=>touch(s,{...refs,resultVersion:0,[missing]:''}),/exact source/);
+ }
+ assert.equal(JSON.stringify(s),before);
+});
+test('existing positive versions and optional actual-touch null remain valid without relaxing provided-version checks',()=>{
+ const s=base();
+ for(const status of ['prepared','sent'])for(const resultVersion of [0,1,2,Number.MAX_SAFE_INTEGER]){
+  const next=touch(s,{status,taskId:'source_exact',resultVersion,messageVersion:'exact-copy',reviewTaskId:'quality_exact'});
+  assert.equal(next.outreach.events.at(-1).touch.resultVersion,resultVersion);
+  assert.equal(O.valid(JSON.parse(JSON.stringify(next.outreach)),s.leads).events.at(-1).touch.resultVersion,resultVersion);
+ }
+ for(const resultVersion of [undefined,null]){
+  const next=touch(s,{resultVersion});assert.equal(next.outreach.events.at(-1).touch.resultVersion,null);assert.doesNotThrow(()=>O.valid(next.outreach,s.leads));
+ }
+ for(const resultVersion of ['','0',false,-1,0.5,NaN,Infinity,Number.MAX_SAFE_INTEGER+1]){
+  assert.throws(()=>touch(s,{resultVersion}),/Invalid touch result version/);
+  const imported=JSON.parse(JSON.stringify(touch(s,{resultVersion:0}).outreach));imported.events.at(-1).touch.resultVersion=resultVersion;
+  assert.throws(()=>O.valid(imported,s.leads),/Invalid touch result version/);
+ }
+});
 test('drafts, failed attempts and internal QA are not prospect contacts or counters',()=>{
  let s=base();s=touch(s,{status:'draft',taskId:'source1',resultVersion:1,messageVersion:'v1'});s=touch(s,{status:'failed'});s=touch(s,{internalTest:true});
  const p=O.forLead(s,'l1',{now:NOW});assert.equal(p.lastActualTouch,null);assert.deepEqual(p.evaluation.counters,{outboundToday:0,newRecipientsToday:0,initialThisCycle:0,proactiveTouches:0});

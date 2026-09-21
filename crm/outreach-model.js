@@ -116,8 +116,8 @@
       const t=p.touch,r=routeFor(outreach,t.routeId);id(t.id);if(t.leadId!==r.leadId||t.accountKey!==r.accountKey||t.routeKey!==r.routeKey||t.channel!==r.channel)fail('Touch identity changed.');own(t.purpose,PURPOSES,'touch purpose');
       if(!['inbound','outbound'].includes(t.direction)||(t.direction==='inbound')!==(t.status==='received'))fail('Inbound touches must record an actual received event.');
       if(t.direction==='inbound'&&!['human','auto'].includes(t.replyKind))fail('Classify the received reply.');if(typeof t.internalTest!=='boolean')fail('Classify internal test evidence.');
-      touchFields(t,event.at);if(['draft','prepared'].includes(t.status)&&(!t.taskId||!Number.isSafeInteger(t.resultVersion)||t.resultVersion<1||!t.messageVersion))fail('A prepared draft needs its exact source task, result version and message version.');
-      for(const key of ['taskId','reviewTaskId','cycleId','personId'])if(t[key])id(t[key]);if(t.resultVersion!==null&&(!Number.isSafeInteger(t.resultVersion)||t.resultVersion<1))fail('Invalid touch result version.');
+      touchFields(t,event.at);if(['draft','prepared'].includes(t.status)&&(!t.taskId||!Number.isSafeInteger(t.resultVersion)||t.resultVersion<0||!t.messageVersion))fail('A prepared draft needs its exact source task, result version and message version.');
+      for(const key of ['taskId','reviewTaskId','cycleId','personId'])if(t[key])id(t[key]);if(t.resultVersion!==null&&(!Number.isSafeInteger(t.resultVersion)||t.resultVersion<0))fail('Invalid touch result version.');
       for(const key of ['messageVersion','author','reviewer'])text(t[key]||'',180,key);
     } else if(event.type==='outreach.touch.update') { id(p.touchId);touchFields(p.update,event.at); }
     else fail('Unknown outreach journal event.');

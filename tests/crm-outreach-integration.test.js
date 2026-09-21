@@ -34,6 +34,83 @@ function touch(state,extra={}){
   return apply(state,'outreach.touch.record',Object.assign({id:'touch_'+(++sequence),leadId:'buyer_one',routeId:'route_one',direction:'outbound',purpose:'prospecting',status:'sent',occurredAt:'2026-09-17T14:00:00Z',providerRef:'synthetic_message_'+sequence,evidence:'Synthetic observed provider receipt',cycleId:'synthetic_cycle',recordedBy:'Synthetic Revenue'},extra));
 }
 function today(state){return M.today({sites:[],leads:state.leads,tasks:state.tasks,followups:[],date:'2026-09-18',state});}
+const review=evidenceTaskId=>({actor:'coordinator',reviewer:'Independent synthetic Revenue',basis:'Recorded independent review of the exact legacy result.',evidenceTaskId,checks:{evidence:'pass',arithmetic:'na',fit:'pass'}});
+function legacyReviewed({missingVersion=false,acceptSource=true,verdict='pass'}={}){
+  let state=apply(A.initial(),'lead.save',lead());
+  state=apply(state,'task.add',{id:'legacy_source',role:'outreach',leadId:'buyer_one',title:'Legacy source version zero',brief:'Preserve the original reviewed draft.'});
+  state=apply(state,'task.ready',{id:'legacy_source'});
+  state=apply(state,'task.result',{id:'legacy_source',result:'Existing legacy message, original version zero.',sources:['https://integration.example.test/legacy-source']});
+  // Imported legacy fixtures can have explicit zero or no version field. Bind
+  // the subsequent independent QA through real model transitions to logical 0.
+  const source=state.tasks.find(task=>task.id==='legacy_source');
+  if(missingVersion)delete source.resultVersion;else source.resultVersion=0;
+  A.valid(state);
+  state=apply(state,'task.add',{id:'legacy_quality',role:'review',parentTaskId:'legacy_source',leadId:'buyer_one',title:'Independent legacy QA',brief:'Review the exact existing result version zero.'});
+  state=apply(state,'task.ready',{id:'legacy_quality'});
+  state=apply(state,'task.result',{id:'legacy_quality',result:'Independent review of original source version zero.',sources:['https://integration.example.test/legacy-quality'],qualityVerdict:verdict,confirmCurrentSource:true});
+  state=apply(state,'task.accept',{id:'legacy_quality',note:'The independent QA artifact is supported.',review:review('')});
+  if(acceptSource)state=apply(state,'task.accept',{id:'legacy_source',note:'The exact legacy message is accepted.',review:review('legacy_quality')});
+  return route(state);
+}
+function legacyTouch(id='legacy_touch',status='prepared'){
+  return {id,leadId:'buyer_one',routeId:'route_one',direction:'outbound',purpose:'prospecting',status,occurredAt:'2026-09-18T14:00:00Z',providerRef:'',evidence:'Synthetic record of the existing reviewed draft; no send.',taskId:'legacy_source',resultVersion:0,messageVersion:'original-message-v0',reviewTaskId:'legacy_quality',author:'Original author',reviewer:'Independent synthetic Quality',cycleId:'original_cycle',recordedBy:'Synthetic Revenue'};
+}
+
+test('local store records and exports logical legacy version zero with exact accepted source, QA and route references',async()=>{
+  for(const missingVersion of [false,true]){
+    const original=apply(legacyReviewed({missingVersion}),'pause',{}),data=storage();data.setItem(LOCAL,JSON.stringify(original));
+    const h=harness({data}),refs=legacyTouch(),before=h.store.raw();
+    const source=original.tasks.find(task=>task.id===refs.taskId),qa=original.tasks.find(task=>task.id===refs.reviewTaskId);
+    assert.equal(A.resultVersion(source),0);assert.equal(source.status,'done');assert.equal(qa.status,'done');assert.equal(qa.reviewOfVersion,0);
+    assert.equal(qa.reviewHistory.at(-1).review.sourceVersion,0);assert.equal(source.reviewHistory.at(-1).review.version,0);
+    await h.store.dispatch(action(h.store.snapshot().state,'outreach.touch.record',refs));
+    const exported=h.store.raw(),saved=JSON.parse(exported),touch=saved.outreach.events.at(-1).touch;
+    assert.equal(saved.revision,original.revision+1);assert.equal(saved.paused,true);assert.equal(saved.schema,1);
+    for(const key of ['taskId','resultVersion','messageVersion','reviewTaskId','author','reviewer','cycleId','routeId'])assert.equal(touch[key],refs[key]);
+    assert.equal(typeof touch.resultVersion,'number');assert.deepEqual(saved.tasks,original.tasks);assert.deepEqual(saved.leads,original.leads);
+    assert.deepEqual(saved.outreach.routes,original.outreach.routes);assert.deepEqual(saved.outreach.events.slice(0,-1),original.outreach.events);
+    assert.equal(JSON.stringify(original),before,'recording does not rewrite the source snapshot');
+    const reopened=harness({data});assert.equal(reopened.store.snapshot().mode,'local');assert.equal(reopened.store.raw(),exported);
+    const restored=reopened.store.snapshot().state,view=O.forLead(restored,'buyer_one',{now:'2026-09-18T15:00:00Z'});
+    assert.equal(A.reviewEvidence(restored,restored.tasks.find(task=>task.id===refs.taskId))[0].id,refs.reviewTaskId);
+    assert.equal(view.touches[0].resultVersion,0);assert.equal(view.lastActualTouch,null);assert.equal(view.transportActive,false);assert.equal(view.evaluation.allowed,false);
+    for(const invalid of [undefined,null,'',-1,0.5]){
+      await assert.rejects(reopened.store.dispatch(action(restored,'outreach.touch.record',{...refs,id:'invalid_touch',resultVersion:invalid})),/exact source/);
+      assert.equal(reopened.store.raw(),exported);assert.equal(JSON.stringify(reopened.store.snapshot().state),exported);
+    }
+  }
+});
+
+test('synthetic cloud hydration and transaction preserve an imported zero-version journal and reject invalid writes atomically',async()=>{
+  const initial=apply(legacyReviewed(),'outreach.touch.record',legacyTouch()),c=cloud(),data=storage();
+  c.docs.set('legacy_owner',{data:initial});const h=harness({db:c.db,data});h.store.setUser({uid:'legacy_owner'});
+  assert.equal(h.store.snapshot().mode,'cloud');assert.equal(h.store.snapshot().state.outreach.events.at(-1).touch.resultVersion,0);assert.equal(c.writes.length,0);
+  await h.store.dispatch(action(h.store.snapshot().state,'outreach.touch.record',legacyTouch('second_draft','draft')));
+  assert.deepEqual(c.writes,['legacy_owner']);const exported=h.store.raw(),saved=JSON.parse(exported);
+  assert.deepEqual(saved.tasks,initial.tasks);assert.deepEqual(saved.outreach.routes,initial.outreach.routes);assert.deepEqual(saved.outreach.events.slice(0,-1),initial.outreach.events);
+  for(const touch of saved.outreach.events.filter(event=>event.type==='outreach.touch.record').map(event=>event.touch)){
+    for(const key of ['taskId','resultVersion','messageVersion','reviewTaskId','author','reviewer','cycleId','routeId'])assert.equal(touch[key],legacyTouch()[key]);
+  }
+  const reopened=harness({db:c.db,data});reopened.store.setUser({uid:'legacy_owner'});assert.equal(reopened.store.raw(),exported);
+  await assert.rejects(reopened.store.dispatch(action(reopened.store.snapshot().state,'outreach.touch.record',{...legacyTouch('invalid_draft'),resultVersion:-1})),/exact source/);
+  assert.deepEqual(c.writes,['legacy_owner']);assert.equal(reopened.store.raw(),exported);assert.equal(JSON.stringify(c.docs.get('legacy_owner').data),exported);assert.equal(data.getItem(LOCAL),null);
+});
+
+test('zero-version journal support preserves source acceptance and independent exact-version QA guards',()=>{
+  let state=legacyReviewed({acceptSource:false}),source=state.tasks.find(task=>task.id==='legacy_source');
+  assert.equal(A.reviewEvidence(state,source)[0].id,'legacy_quality');
+  const bytes=JSON.stringify(state);
+  assert.throws(()=>apply(state,'task.accept',{id:source.id,note:'Attempt with missing Quality reference.',review:review('')}),/exact result version/);
+  assert.throws(()=>apply(state,'task.accept',{id:source.id,note:'Attempt with unchecked criterion.',review:{...review('legacy_quality'),checks:{evidence:'pass',arithmetic:'na',fit:'unchecked'}}}),/failed or unchecked/);
+  assert.equal(JSON.stringify(state),bytes);
+  state=apply(state,'task.revise',{id:source.id,note:'Source needs a new version.',review:review('legacy_quality')});
+  state=apply(state,'task.result',{id:source.id,result:'Newly corrected source version one.',sources:['https://integration.example.test/corrected-source']});
+  source=state.tasks.find(task=>task.id===source.id);assert.equal(A.resultVersion(source),1);assert.equal(A.reviewEvidence(state,source).length,0);
+  const advanced=JSON.stringify(state);
+  assert.throws(()=>apply(state,'task.accept',{id:source.id,note:'Old QA cannot approve the correction.',review:review('legacy_quality')}),/exact result version/);assert.equal(JSON.stringify(state),advanced);
+  const adverse=legacyReviewed({acceptSource:false,verdict:'revise'}),adverseBytes=JSON.stringify(adverse);
+  assert.throws(()=>apply(adverse,'task.accept',{id:'legacy_source',note:'Do not convert adverse QA into source acceptance.',review:review('legacy_quality')}),/corrections or reported a blocker/);assert.equal(JSON.stringify(adverse),adverseBytes);
+});
 
 test('a queued anonymous write cannot replace signed-in state after the local lock resolves',async()=>{
   let release;
