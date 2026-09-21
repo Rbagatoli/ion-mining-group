@@ -13,10 +13,10 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=66f817cc">
+<link rel="stylesheet" href="./styles.css?v=5b0e3bfb">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./brokerage.css?v=66f817cc">
-<link rel="stylesheet" href="./hardware-catalog.css?v=66f817cc">
+<link rel="stylesheet" href="./brokerage.css?v=5b0e3bfb">
+<link rel="stylesheet" href="./hardware-catalog.css?v=5b0e3bfb">
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
 <meta property="og:image:width" content="1200">
@@ -132,7 +132,7 @@
 
   <section class="hw-cat br-catalog" id="miners" aria-labelledby="brCatalogTitle">
     <div id="brCatalog" data-catalog-purpose="hosting">
-      <div class="br-catalog-heading"><div><p class="br-eyebrow">The miner lineup</p><h2 id="brCatalogTitle">Explore the machines.</h2></div><p data-mobile-copy="Compare models. Set quantities. Build your order.">Choose a model. Compare the variants. <br>Set quantities. Add them to your order.</p></div>
+      <div class="br-catalog-heading"><div><p class="br-eyebrow">The miner lineup</p><h2 id="brCatalogTitle">Explore the machines.</h2></div></div>
       <div class="br-catalog-tools" id="brCatalogTools" hidden>
         <label class="br-catalog-search" for="brCatalogSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="br-sr-only">Search miners, variants or manufacturers</span><input id="brCatalogSearch" type="search" autocomplete="off" placeholder="Search S21, M60, Antminer…" aria-controls="brCatalogProduct brCatalogRail"></label>
         <label class="br-catalog-filter" for="brCatalogCooling"><span class="br-sr-only">Cooling type</span><select id="brCatalogCooling" aria-controls="brCatalogProduct brCatalogRail"><option value="all">All cooling</option><option value="air">Air-cooled</option><option value="hydro">Hydro-cooled</option><option value="immersion">Immersion</option></select></label>
@@ -165,9 +165,9 @@
           <p class="br-catalog-subtitle" id="brCatalogSubtitle">SHA-256 · Bitcoin</p>
           <div class="br-catalog-variants" id="brCatalogVariants" role="group" aria-label="Choose miner variant"></div>
           <dl class="br-catalog-specs" id="brCatalogSpecs"><div><dt>Hashrate</dt><dd>234 <small>TH/s</small></dd></div><div><dt>Power</dt><dd>3,510 <small>W</small></dd></div><div><dt>Efficiency</dt><dd>15 <small>J/TH</small></dd></div></dl>
-          <div class="br-catalog-economics"><div id="brCatalogMarket"><p class="br-catalog-label">Public market reference</p><p class="br-catalog-price">Check current quote</p><p class="br-catalog-fine">Exact variant, condition and delivery terms matter.</p></div><div id="brCatalogSavings"><p class="br-catalog-label">Hosting requirements</p><p class="br-catalog-saving">Air-cooled</p><p class="br-catalog-fine">Facility fit and cooling capacity need confirmation.</p></div></div>
+          <div class="br-catalog-economics"><div id="brCatalogMarket"><p class="br-catalog-label">Public hardware reference · USD / machine</p><p class="br-catalog-price">Check current quote</p></div><div id="brCatalogSavings"><p class="br-catalog-label">Hosting requirements</p><p class="br-catalog-saving">Air-cooled</p></div></div>
           <details class="br-catalog-compare" id="brCatalogCompare" hidden><summary>Have a Proton quote? Compare it.</summary><div class="br-compare-fields"><label for="brCatalogQuote">USD per machine<input id="brCatalogQuote" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="Enter quoted price" aria-describedby="brCatalogQuoteScope"></label><label for="brCatalogCondition">Quoted condition<select id="brCatalogCondition"><option value="new">New</option><option value="used">Used</option></select></label></div><label class="br-compare-check"><input id="brCatalogQuoteMatch" type="checkbox">This quote matches the selected variant and hashrate.</label><p id="brCatalogQuoteScope" data-mobile-copy="USD hardware only; shipping, taxes, duties and fees excluded. Comparison stays on-device.">Hardware price only, in USD. Excludes shipping, taxes, duties and fees. This comparison stays on your device.</p><p id="brCatalogQuoteResult" role="status" aria-live="polite"></p></details>
-          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div></details>
+          <details class="br-catalog-sources" id="brCatalogSources"><summary>Specifications &amp; price sources</summary><div id="brCatalogEvidence"><p>Manufacturer-rated specifications. Exact variant, availability, condition and delivered cost need confirmation. Public asking prices are reference points, not Proton offers.</p><p>3D previews are modeled from public product references. They are not manufacturer CAD files.</p><a href="https://www.bitmain.com/" target="_blank" rel="noopener noreferrer">Bitmain manufacturer information ↗</a></div><p id="hwCatalogPriceDetails"></p></details>
           </div>
           <div class="hw-catalog-actions">
             <div class="field hw-catalog-quantity"><label for="hwCatalogQuantity">Quantity</label><input id="hwCatalogQuantity" type="number" min="1" max="100000" step="1" value="1" inputmode="numeric" required></div>
@@ -179,7 +179,6 @@
         </div>
       </article>
       </div>
-      <p class="br-catalog-footnote" data-mobile-copy="Cooling, capacity, equipment availability and hosting terms need confirmation.">Browse model families and exact variants. Cooling compatibility, facility capacity, equipment availability and hosting terms are confirmed separately.</p>
       <noscript><p class="br-note">Enable JavaScript to browse models and add miners to your order. You can also email your requirements to <a href="mailto:sales@protonminingco.com">sales@protonminingco.com</a>.</p></noscript>
     </div>
   </section>
@@ -289,21 +288,21 @@
   </div>
 </footer>
 
-<script src="./site.js?v=66f817cc"></script>
-<script src="./hero-anim.js?v=66f817cc"></script>
-<script src="./miner-db.js?v=66f817cc"></script>
-<script src="./price-list.js?v=66f817cc"></script>
-<script src="./calc-engine.js?v=66f817cc"></script>
-<script src="./facilities.js?v=66f817cc"></script>
-<script src="./prepay.js?v=66f817cc"></script>
-<script src="./brokerage-catalog-data.js?v=66f817cc"></script>
-<script src="./hardware-order-catalog.js?v=66f817cc"></script>
-<script src="./cart.js?v=66f817cc"></script>
-<script src="./hardware.js?v=66f817cc"></script>
-<script src="./brokerage-catalog.js?v=66f817cc"></script>
-<script src="./hardware-catalog.js?v=66f817cc"></script>
-<script src="./diagram-engine.js?v=66f817cc"></script>
-<script src="./scene-asic.js?v=66f817cc"></script>
-<script src="./brokerage-scene.js?v=66f817cc" data-module-src="./brokerage-stage.js?v=66f817cc" data-model-src="./brokerage-models.js?v=66f817cc"></script>
+<script src="./site.js?v=5b0e3bfb"></script>
+<script src="./hero-anim.js?v=5b0e3bfb"></script>
+<script src="./miner-db.js?v=5b0e3bfb"></script>
+<script src="./price-list.js?v=5b0e3bfb"></script>
+<script src="./calc-engine.js?v=5b0e3bfb"></script>
+<script src="./facilities.js?v=5b0e3bfb"></script>
+<script src="./prepay.js?v=5b0e3bfb"></script>
+<script src="./brokerage-catalog-data.js?v=5b0e3bfb"></script>
+<script src="./hardware-order-catalog.js?v=5b0e3bfb"></script>
+<script src="./cart.js?v=5b0e3bfb"></script>
+<script src="./hardware.js?v=5b0e3bfb"></script>
+<script src="./brokerage-catalog.js?v=5b0e3bfb"></script>
+<script src="./hardware-catalog.js?v=5b0e3bfb"></script>
+<script src="./diagram-engine.js?v=5b0e3bfb"></script>
+<script src="./scene-asic.js?v=5b0e3bfb"></script>
+<script src="./brokerage-scene.js?v=5b0e3bfb" data-module-src="./brokerage-stage.js?v=5b0e3bfb" data-model-src="./brokerage-models.js?v=5b0e3bfb"></script>
 </body>
 </html>

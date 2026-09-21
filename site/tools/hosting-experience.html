@@ -1,7 +1,6 @@
     <div class="hx-experience" id="hosting-experience">
       <span id="hosting-terrain" aria-hidden="true"></span>
       <section class="hx-panel hx-globe-panel" id="hosting-globe" aria-label="Explore hosting regions on the globe">
-        <div class="hx-heading"><div><span class="eyebrow">Find your region</span><h3 data-mobile-copy="Explore regions.">Explore the hosting regions.</h3></div><span class="hx-model-note">Select a region to explore</span></div>
         <div class="hx-regions" data-globe="regions" role="group" aria-label="Choose a hosting region">
 {{REGIONS}}
         </div>
@@ -9,17 +8,16 @@
           <canvas class="anim-field hx-field" data-globe="field" aria-hidden="true"></canvas>
           <div class="hx-canvas" data-globe="canvas"></div>
           <div class="hx-fallback" data-globe="fallback"><span class="hx-fallback-mark" aria-hidden="true">◎</span><p data-globe="message">Explore the hosting regions below. The globe loads as you approach.</p></div>
-          <div class="hx-caption"><span>Hosting regions</span><span>Regional markers · approximate locations</span></div>
           <svg class="hx-globe-leaders" data-globe="leaders" aria-hidden="true"></svg>
           <div class="hx-globe-markers" data-globe="markers" aria-label="Regions visible on the globe"></div>
           <div class="hx-globe-place"><span data-globe="place-region">Texas, USA</span><strong data-globe="place-name">Permian Basin</strong></div>
           <p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom</span></p>
         </div>
-        <div class="hx-toolbar" data-globe="toolbar"><p data-mobile-copy="Choose a region.">Select a marker or a region above.</p><span class="hx-tool-spacer"></span><button type="button" data-globe="out" aria-label="Zoom out of the globe" disabled>−</button><button type="button" data-globe="in" aria-label="Zoom into the globe" disabled>+</button><button type="button" data-globe="reset" disabled>Reset globe</button></div>
+        <div class="hx-toolbar" data-globe="toolbar"><button type="button" data-globe="out" aria-label="Zoom out of the globe" disabled>−</button><button type="button" data-globe="in" aria-label="Zoom into the globe" disabled>+</button><button type="button" data-globe="reset" disabled>Reset globe</button></div>
         <div class="hx-summary" aria-live="polite" aria-atomic="true">
 {{DETAILS}}
         </div>
-        <details class="mobile-details hx-map-details" data-mobile-details open>
+        <details class="hx-map-details">
           <summary>Map details</summary>
           <div class="mobile-details-body">
             <p class="hx-note" data-mobile-copy="Approximate locations. Rates and capacity confirmed in your agreement.">Markers identify regions, not exact facilities. {{INDICATIVE}}</p>

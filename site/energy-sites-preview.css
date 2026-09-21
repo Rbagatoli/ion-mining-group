@@ -70,6 +70,15 @@
 }
 
 /* On phones the chooser names the source; the guide goes straight to the facts. */
+@media screen {
+  .ep-preview-label, .ep-source-note, .ep-panel-intro .ep-kicker, .ep-source-repeat-title,
+  [data-preview-view="sources"] .ep-brief,
+  [data-preview-view="sources"] .ep-detail-heading > .ep-kicker,
+  [data-preview-view="sources"] .ep-detail-heading > .ep-badge,
+  [data-preview-view="sources"] .ep-panel > .ep-copy,
+  [data-preview-view="sources"] .ep-footer { display: none; }
+  [data-preview-view="sources"] .ep-panel { min-height: 0; }
+}
 @media screen and (max-width: 640px) {
   .ep-preview-label, .ep-source-note, .ep-footer { display: none; }
   [data-preview-view="sources"] .ep-brief,

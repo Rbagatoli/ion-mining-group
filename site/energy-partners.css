@@ -41,3 +41,10 @@
   .partner-form-more summary { padding-block: 11px; min-height: 44px; }
   .partner-form-more > div { gap: 14px; padding-block: 4px 14px; }
 }
+/* Source controls and diagrams already explain these repeated helper lines. */
+@media screen {
+  .partner-explorer-head > div,
+  .partner-route-step > small,
+  .partner-connection-note { display: none; }
+  noscript .partner-connection-note { display: block; }
+}

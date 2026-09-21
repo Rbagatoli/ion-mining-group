@@ -132,7 +132,18 @@
  .hx-credit { padding: 0 12px 10px; font-size: 11px; }
 }
 
-/* Background map notes stay available without competing with the site choice. */
+/* Map context and source credits are optional detail at every screen size. */
+.hx-map-details { margin: 0; border-top: 1px solid var(--line); }
+.hx-map-details > summary { display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 9px 28px; cursor: pointer; list-style: none; color: var(--plat-200); font: 500 14px/1.45 var(--sans); }
+.hx-map-details > summary::-webkit-details-marker { display: none; }
+.hx-map-details > summary::after { content: '+'; color: var(--btc-300); font: 20px/1 var(--mono); }
+.hx-map-details[open] > summary::after { content: '−'; }
+.hx-map-details > summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
+.hx-map-details > .mobile-details-body { padding-bottom: 0; }
+.hx-map-details .hx-note { border-top: 0; }
+@media screen {
+ .hx-globe-place, .hosting-details > summary > small { display: none; }
+}
 @media screen and (max-width: 640px) {
  .hx-map-details { margin: 0; border-bottom: 0; }
  .hx-map-details > summary { padding: 9px 12px; }

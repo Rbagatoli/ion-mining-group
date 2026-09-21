@@ -4885,11 +4885,26 @@ body {
     .mobile-vignette figcaption { margin-top: 5px; font: 10px/1.4 var(--mono); color: var(--plat-400); text-align: center; }
 }
 @media print { .mobile-vignette { display: none !important; } }
+/* Repeated captions and labels add no new decision information at either width.
+   Keep the complete reference and worksheet text when printing. */
+@media screen {
+    .hero-zone .hero-note,
+    .home-sourcing-preview > .home-sourcing-top,
+    .home-sourcing-note,
+    .contact-page .spec-val > small,
+    .wm-note-sub,
+    .wm-block-note,
+    .wm-mech-note,
+    .bc-tags,
+    .checklist-version,
+    .checklist-tools > .eyebrow,
+    .calc-tile .ct-sub--repeated { display: none; }
+}
 /* Phone screens keep the action and primary facts, without repeated helper lines. */
 @media screen and (max-width: 640px) {
     .mobile-details > summary > small,
     .hero-note,
-    .home-sourcing-top,
+    .home-sourcing-preview > .home-sourcing-top,
     .home-sourcing-note,
     .partner-explorer-head > div,
     .partner-route-step > small,

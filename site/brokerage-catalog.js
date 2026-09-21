@@ -37,7 +37,7 @@
   function availabilityText(variant, purpose) {
     if (variant.availability === 'preorder') return 'SHA-256 · Bitcoin · Future batch · availability to confirm';
     if (variant.availability === 'sold-out') return 'SHA-256 · Bitcoin · Listed sold out · availability to confirm';
-    return variant.hashrateTH == null ? 'SHA-256 · Bitcoin · Exact hashrate bin to confirm' : purpose === 'hosting' ? 'SHA-256 · Bitcoin · Published specifications · confirm exact unit' : 'SHA-256 · Bitcoin · New & used sourcing';
+    return variant.hashrateTH == null ? 'SHA-256 · Bitcoin · Exact hashrate bin to confirm' : purpose === 'hosting' ? 'SHA-256 · Bitcoin' : 'SHA-256 · Bitcoin · New & used sourcing';
   }
   function hostingRequirements(family, variant) {
     const requirements = {
@@ -101,7 +101,7 @@
       if (!target) return;
       if (hosting) {
         const presentation = hostingRequirements(selectedFamily, selectedVariant);
-        target.replaceChildren(node('p', presentation.label, 'br-catalog-label'), node('p', presentation.value, 'br-catalog-saving'), node('p', presentation.detail, 'br-catalog-fine'));
+        target.replaceChildren(node('p', presentation.label, 'br-catalog-label'), node('p', presentation.value, 'br-catalog-saving'));
         return;
       }
       let result = typeof catalog.savingsFor === 'function' ? catalog.savingsFor(selectedVariant) : {status: 'quote-required'};
@@ -119,7 +119,7 @@
       const presentation = comparisonText(result);
       target.replaceChildren(node('p', presentation.label, 'br-catalog-label'), node('p', presentation.value, 'br-catalog-saving'), node('p', presentation.detail, 'br-catalog-fine'));
     }
-    function renderEvidence(market) {
+    function renderEvidence(market, referenceNote) {
       const target = el('brCatalogEvidence'), list = node('ul');
       target.replaceChildren();
       target.append(node('p', hosting ? 'Published specifications for the selected variant. Confirm the exact unit, electrical requirements and cooling compatibility with the hosting site. Listed miner power excludes facility cooling and other site loads.' : 'Manufacturer-rated specifications for the selected variant. Actual performance depends on operating conditions; confirm exact batch, electrical and cooling requirements before purchase.'));
@@ -138,6 +138,8 @@
       });
       if (list.childNodes.length) target.append(list);
       if (hosting) {
+        target.append(node('p', hostingRequirements(selectedFamily, selectedVariant).detail));
+        target.append(node('p', 'Public hardware reference: ' + referenceNote));
         const count = Number(market.count);
         target.append(node('p', count === 1 ? 'One observed hardware asking-price reference, not a market average or Proton offer.' : count > 1 ? 'The reference uses ' + number(count) + ' observed hardware asking-price listings, not the whole market or a Proton offer.' : 'Public hardware asking prices are reference points, not Proton offers. Confirm the exact variant, condition and current listing.'));
         target.append(node('p', 'Hardware references exclude shipping, taxes, duties and hosting costs. A listing does not confirm stock or compatibility with a hosting site.'));
@@ -154,8 +156,10 @@
         value = market.low === market.high ? money(market.low) : money(market.low) + '–' + money(market.high);
         note = 'USD / machine · new hardware' + (market.checkedOn ? ' · checked ' + market.checkedOn : '');
       } else if (market.status === 'stale') { value = 'Price needs refresh'; note = market.checkedOn ? 'Last reference checked ' + market.checkedOn + '.' : hosting ? 'A fresh matching listing needs to be checked.' : 'A fresh matching quote is needed.'; }
-      el('brCatalogMarket').replaceChildren(node('p', hosting ? 'Public hardware reference' : 'Public market reference', 'br-catalog-label'), node('p', value, 'br-catalog-price'), node('p', note, 'br-catalog-fine'));
-      renderEvidence(market); renderSavings();
+      const reference = [node('p', hosting ? 'Public hardware reference · USD / machine' : 'Public market reference', 'br-catalog-label'), node('p', value, 'br-catalog-price')];
+      if (!hosting) reference.push(node('p', note, 'br-catalog-fine'));
+      el('brCatalogMarket').replaceChildren(...reference);
+      renderEvidence(market, note); renderSavings();
     }
     function renderVariants() {
       variants.replaceChildren();

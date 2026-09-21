@@ -52,9 +52,12 @@
       const key = win.HardwareOrderCatalog.keyForVariant(selected.variant.id);
       const price = key && !key.startsWith('catalogue:') && win.PriceList ? win.PriceList.priceFor(key) : null;
       target.textContent = price === null
-        ? 'Add this exact configuration to review hosting and energy costs at checkout. Hardware price needs a confirmed quote.'
-        : 'Order estimate: ' + new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}).format(price) +
-          ' / machine · indicative as of ' + win.PriceList.ASOF + '. The public market reference above is separate; your final price is confirmed on quote.';
+        ? 'Hardware price: quote required'
+        : 'Order estimate: ' + new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}).format(price) + ' USD / machine';
+      const detail = el('hwCatalogPriceDetails');
+      if (detail) detail.textContent = price === null
+        ? 'A confirmed hardware quote is required for this configuration. Review hosting and energy costs at checkout.'
+        : 'The order estimate is indicative as of ' + win.PriceList.ASOF + '. It is separate from the public hardware reference; your final hardware price is confirmed on quote. Hosting and energy costs are shown at checkout.';
     }
     function syncCheckout() {
       const chosen = win.Facilities && win.Facilities.chosen();

@@ -71,7 +71,7 @@ async function storageSnapshot() {
     assert.equal(await page.locator('#ep-source').inputValue(), 'landfill_gas');
     assert.equal(await page.locator('[data-preview-source="landfill_gas"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('[data-preview-source="flare_gas"]').count(), 1);
-    assert.match(await page.locator('.ep-detail-heading').innerText(), /Our sourcing specialty/);
+    assert.match(await page.locator('.ep-detail-heading').innerText(), /Landfill gas/);
     assert.equal(await page.locator('[data-preview-site]:visible').count(), 0);
     assert.equal(await page.locator('#locator .sl-pin:visible').count(), 0);
     assert.match(await page.locator('#energyWorkspacePreview').innerText(), /research|qualification|search/i);
