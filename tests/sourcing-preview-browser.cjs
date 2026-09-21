@@ -11,7 +11,7 @@ const crypto = require('node:crypto');
 const {chromium} = require(process.env.PLAYWRIGHT_CORE_PATH || 'C:/Users/rbaga/ion-mining-group/tools/.cache/hosting-terrain-browser/node_modules/playwright-core');
 
 const root = path.resolve(process.env.SOURCING_PREVIEW_ROOT || path.join(__dirname, '../_site'));
-const out = path.resolve(process.env.SOURCING_PREVIEW_REPORT || path.join(__dirname, '../reports/animated-sourcing-scenes-20260921'));
+const out = path.resolve(process.env.SOURCING_PREVIEW_REPORT || path.join(__dirname, '../reports/sourcing-no-controls-20260921'));
 const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const captureArcsOnly = process.env.SOURCING_PREVIEW_CAPTURE_ONLY === 'arcs';
 const report = {checks: [], pageErrors: [], missingAssets: [], blockedWrites: []};
@@ -87,56 +87,50 @@ async function open(spec, width, reducedMotion = 'no-preference', webglUnavailab
   const size = await figure.boundingBox();
   assert.ok(size.width > 200 && size.height > 70 && size.height < 280, 'Preview should retain its compact layout.');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow.');
-  return {context, page, figure, img, toggle: figure.locator('.sourcing-motion-toggle')};
+  assert.equal(await figure.locator('button').count(), 0, 'Decorative previews should have no corner controls.');
+  return {context, page, figure, img};
 }
 
 async function frame(canvas, filename) {
   // A fractional CSS boundary can include one pixel of the moving page backdrop.
   // Crop just inside the canvas so only its own rendered content is compared.
   const box = await canvas.boundingBox();
-  const buffer = await canvas.page().screenshot({clip: {x: box.x + 2, y: box.y + 2, width: box.width - 4, height: box.height - 4}, mask: [canvas.page().locator('.sourcing-motion-toggle')], maskColor: '#101111'});
+  const buffer = await canvas.page().screenshot({clip: {x: box.x + 2, y: box.y + 2, width: box.width - 4, height: box.height - 4}});
   if (filename) fs.writeFileSync(path.join(out, filename), buffer);
   return digest(buffer);
 }
 async function renderCount(canvas) { return canvas.evaluate(element => window.__sourcingRenderCounts.get(element) || 0); }
 
 async function checkMotion(spec, width) {
-  const {context, page, figure, img, toggle} = await open(spec, width);
+  const {context, page, figure, img} = await open(spec, width);
   try {
     await page.waitForFunction(selector => document.querySelector(selector)?.dataset.renderState === 'ready', 'figure[data-sourcing-scene="' + spec.scene + '"]', {timeout: 30000});
     const canvas = figure.locator('canvas');
     assert.equal(await canvas.count(), 1, 'Only one rendering canvas should mount.');
     assert.ok(await canvas.isVisible());
     assert.equal(await canvas.evaluate(element => getComputedStyle(element).pointerEvents), 'none', 'Decorative canvas must allow page scrolling.');
-    assert.ok(await toggle.isVisible(), 'Motion control should appear with the live scene.');
-    assert.equal(await toggle.getAttribute('aria-label'), 'Pause animation');
+    assert.equal(await figure.locator('button').count(), 0, 'Live previews should animate without corner controls.');
     // A solid underlay prevents unrelated moving background stars from affecting
-    // canvas screenshots when testing whether the preview itself has paused.
+    // canvas screenshots when testing whether the preview itself is moving.
     const testBackground = await page.addStyleTag({content: 'figure.sourcing-render{background:#101111!important}'});
     const prefix = spec.scene + '-' + width;
     const before = await frame(canvas, prefix + '-motion-before.png');
     await page.waitForTimeout(650);
     const after = await frame(canvas, prefix + '-motion-after.png');
     assert.notEqual(after, before, 'The live rendering must visibly animate.');
-    await toggle.click();
-    assert.equal(await toggle.getAttribute('aria-label'), 'Play animation');
-    await page.waitForTimeout(180);
-    const paused = await frame(canvas, prefix + '-paused.png');
-    const pausedCount = await renderCount(canvas);
-    await page.waitForTimeout(650);
-    const pausedLater = await frame(canvas, prefix + '-paused-later.png');
-    report.motionDiagnostics = {scene: spec.scene, width, pausedCount, pausedLaterCount: await renderCount(canvas), paused, pausedLater};
-    assert.equal(pausedLater, paused, 'Pause must hold the exact canvas frame.');
-    assert.equal(await renderCount(canvas), pausedCount, 'Pause must stop GPU rendering work.');
-    await toggle.click();
-    assert.equal(await toggle.getAttribute('aria-label'), 'Pause animation');
-    await page.waitForTimeout(650);
-    assert.notEqual(await frame(canvas), paused, 'Play must resume motion.');
     // Move well below the widget. Reading draw counts does not scroll it back
     // into view, unlike taking a locator screenshot of an offscreen canvas.
     await page.evaluate(() => window.scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'}));
-    await page.waitForTimeout(400);
-    const offscreenCount = await renderCount(canvas);
+    // Allow a queued observer/resize frame to finish before measuring steady
+    // offscreen behavior. Continuous rendering never reaches this idle window.
+    let offscreenCount = await renderCount(canvas), idleSamples = 0;
+    for (let attempt = 0; attempt < 12 && idleSamples < 3; attempt++) {
+      await page.waitForTimeout(200);
+      const count = await renderCount(canvas);
+      idleSamples = count === offscreenCount ? idleSamples + 1 : 0;
+      offscreenCount = count;
+    }
+    assert.equal(idleSamples, 3, 'Offscreen rendering should settle after queued observer work.');
     await page.waitForTimeout(650);
     assert.equal(await renderCount(canvas), offscreenCount, 'Offscreen scenes must stop GPU rendering work.');
     await figure.evaluate(element => element.scrollIntoView({block: 'center', behavior: 'instant'}));
@@ -145,7 +139,7 @@ async function checkMotion(spec, width) {
     await testBackground.evaluate(element => element.remove());
     await figure.locator('..').screenshot({path: path.join(out, prefix + '-widget.png')});
     await page.screenshot({path: path.join(out, prefix + '-page.png')});
-    pass(prefix + ': motion, pause/play, offscreen suspension, copy and layout', {width: Math.round((await figure.boundingBox()).width), poster: await img.getAttribute('src')});
+    pass(prefix + ': automatic motion, no controls, offscreen suspension, copy and layout', {width: Math.round((await figure.boundingBox()).width), poster: await img.getAttribute('src')});
     const contextLostSupported = await canvas.evaluate(element => {
       const gl = element.getContext('webgl2') || element.getContext('webgl');
       const extension = gl?.getExtension('WEBGL_lose_context');
@@ -156,14 +150,14 @@ async function checkMotion(spec, width) {
     await page.waitForFunction(selector => document.querySelector(selector)?.dataset.renderState === 'fallback', 'figure[data-sourcing-scene="' + spec.scene + '"]');
     assert.ok(await img.isVisible(), 'Context loss must reveal the poster.');
     assert.ok(await img.evaluate(image => Number(getComputedStyle(image).opacity) > 0), 'Fallback poster must be opaque.');
-    assert.equal(await toggle.isVisible(), false, 'Hide unusable motion controls after context loss.');
+    assert.equal(await figure.locator('button').count(), 0, 'Fallback previews should have no corner controls.');
     pass(prefix + ': context-loss poster fallback');
   } finally { await context.close(); }
 }
 
 async function checkStatic(spec, width, webglUnavailable = false) {
   const label = spec.scene + '-' + width + (webglUnavailable ? '-no-webgl' : '-reduced-motion');
-  const {context, page, figure, img, toggle} = await open(spec, width, webglUnavailable ? 'no-preference' : 'reduce', webglUnavailable);
+  const {context, page, figure, img} = await open(spec, width, webglUnavailable ? 'no-preference' : 'reduce', webglUnavailable);
   try {
     if (webglUnavailable) await page.waitForFunction(selector => document.querySelector(selector)?.dataset.renderState === 'fallback', 'figure[data-sourcing-scene="' + spec.scene + '"]');
     else {
@@ -172,7 +166,7 @@ async function checkStatic(spec, width, webglUnavailable = false) {
     }
     assert.ok(await img.isVisible(), 'Static presentation must keep its image.');
     assert.ok(await img.evaluate(image => Number(getComputedStyle(image).opacity) > 0));
-    assert.equal(await toggle.isVisible(), false, 'Static previews should have no nonfunctional motion control.');
+    assert.equal(await figure.locator('button').count(), 0, 'Static previews should have no corner controls.');
     await figure.locator('..').screenshot({path: path.join(out, label + '-widget.png')});
     pass(label + ': visible poster and preserved layout');
   } finally { await context.close(); }
