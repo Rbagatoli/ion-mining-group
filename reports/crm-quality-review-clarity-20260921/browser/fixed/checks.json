@@ -1,0 +1,135 @@
+{
+  "syntheticOnly": true,
+  "baseline": false,
+  "scenario": "Quality-only accessible wording, unchanged non-QA checks, and rejected acceptance with no mutation",
+  "views": [
+    {
+      "name": "desktop",
+      "qaGuidanceVisible": true,
+      "explicitQaLabels": true,
+      "controlsDescribeGuidance": true,
+      "unchangedKeysValuesAndDefaults": true,
+      "noHorizontalOverflow": true,
+      "zeroDispatch": true,
+      "registerUnchanged": true,
+      "fieldsPreserved": true,
+      "focused": true,
+      "alert": {
+        "top": 823.96875,
+        "bottom": 875.46875,
+        "left": 390,
+        "right": 1050,
+        "width": 660,
+        "height": 51.5
+      },
+      "dialog": {
+        "top": 24,
+        "bottom": 876,
+        "left": 365,
+        "right": 1075,
+        "width": 710,
+        "height": 852
+      },
+      "header": {
+        "top": 25,
+        "bottom": 110,
+        "left": 366,
+        "right": 1074,
+        "width": 708,
+        "height": 85
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "visibleWithinDialog": true
+    },
+    {
+      "name": "mobile",
+      "qaGuidanceVisible": true,
+      "explicitQaLabels": true,
+      "controlsDescribeGuidance": true,
+      "unchangedKeysValuesAndDefaults": true,
+      "noHorizontalOverflow": true,
+      "zeroDispatch": true,
+      "registerUnchanged": true,
+      "fieldsPreserved": true,
+      "focused": true,
+      "alert": {
+        "top": 668.625,
+        "bottom": 739.625,
+        "left": 21,
+        "right": 369,
+        "width": 348,
+        "height": 71
+      },
+      "dialog": {
+        "top": 59.203125,
+        "bottom": 740,
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 680.796875
+      },
+      "header": {
+        "top": 60.203125,
+        "bottom": 137.203125,
+        "left": 1,
+        "right": 389,
+        "width": 388,
+        "height": 77
+      },
+      "viewport": {
+        "width": 390,
+        "height": 740
+      },
+      "visibleWithinDialog": true
+    }
+  ],
+  "nonQaViews": [
+    {
+      "name": "desktop",
+      "originalLabelsAndOptions": true,
+      "unchangedDefaults": true,
+      "zeroDispatch": true,
+      "registerUnchanged": true
+    },
+    {
+      "name": "mobile",
+      "originalLabelsAndOptions": true,
+      "unchangedDefaults": true,
+      "zeroDispatch": true,
+      "registerUnchanged": true
+    }
+  ],
+  "pageErrors": [],
+  "missingAssets": [],
+  "blockedWrites": [],
+  "blockedExternal": [
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com"
+  ],
+  "pass": true
+}

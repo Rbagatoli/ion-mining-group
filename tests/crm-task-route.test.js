@@ -106,6 +106,40 @@ function focusedError(h){
   assert.deepEqual({...alert.focusOptions},{preventScroll:true});
   assert.deepEqual({...alert.scrollRequests.at(-1)},{block:'nearest',inline:'nearest',behavior:'instant'});
 }
+function renderedSelect(html,name){
+  const matches=[...html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/g)].filter(match=>match[1].includes('name="'+name+'"'));
+  assert.equal(matches.length,1,name+' is rendered exactly once');
+  const [,attributes,body]=matches[0];
+  return {attributes:Object.fromEntries([...attributes.matchAll(/([\w-]+)="([^"]*)"/g)].map(match=>[match[1],match[2]])),
+    options:[...body.matchAll(/<option value="([^"]*)"([^>]*)>([^<]*)<\/option>/g)].map(match=>({value:match[1],label:match[3],selected:/\bselected\b/.test(match[2])}))};
+}
+
+for(const quality of [false,true])test((quality?'Quality':'Source')+' review labels retain the exact field contract and unchecked defaults without mutating records',async()=>{
+  const state=apply(reviewFixture(),'task.result',{id:'qa',result:'Synthetic independent review requests correction.',sources:['https://example.test/qa'],qualityVerdict:'revise',confirmCurrentSource:true});
+  const id=quality?'qa':'source',h=harness({firebase:false,local:state,hash:'#team/task/'+id});
+  const stored=h.storage.get(LOCAL);await h.click('task-review',id);const html=h.body();
+  assert.equal(h.title(),'Record team review');
+  const labels=quality?{evidence:'Quality review: evidence reasoning',arithmetic:'Quality review: arithmetic reasoning',fit:'Quality review: commercial-fit reasoning'}:{evidence:'Source evidence',arithmetic:'Arithmetic',fit:'Commercial fit'};
+  const optionLabels=quality?['Not checked','Pass · review supported and complete','Needs revision · review needs correction','Blocked · cannot assess review','Not applicable to this review']:['Not checked','Pass','Needs revision','Blocked','Not applicable'];
+  for(const [name,label] of Object.entries(labels)){
+    const control=renderedSelect(html,name);
+    assert.equal(control.attributes.id,'f_'+name);assert.equal(control.attributes['aria-label'],label);
+    assert.deepEqual(control.options.map(option=>option.value),['unchecked','pass','revise','blocked','na']);
+    assert.deepEqual(control.options.map(option=>option.label),optionLabels);
+    assert.deepEqual(control.options.filter(option=>option.selected).map(option=>option.value),['unchecked']);
+    assert.equal(control.attributes['aria-describedby'],quality?'qaReviewChecksHelp':undefined);
+  }
+  assert.deepEqual(renderedSelect(html,'decision').options.filter(option=>option.selected).map(option=>option.value),['']);
+  assert.deepEqual(renderedSelect(html,'actor').options.filter(option=>option.selected).map(option=>option.value),['coordinator']);
+  if(quality){
+    const help=html.match(/<p\b[^>]*id="qaReviewChecksHelp"[^>]*>([^<]*)<\/p>/);
+    assert.ok(help,'Every Quality check refers to an existing accessible explanation');
+    assert.match(help[1],/Pass means its reasoning is supported and complete/);
+    assert.match(help[1],/Needs revision means this review needs correction/);
+    assert.match(help[1],/does not approve the source result or change its verdict/);
+  }else assert.doesNotMatch(html,/qaReviewChecksHelp|data-qa-review-guidance|Quality review: .* reasoning/);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.data.agent())),state);assert.equal(h.storage.get(LOCAL),stored);assert.equal(h.writes.length,0);
+});
 
 test('automatic release activation requires settled browsing and preserves forms and account boundaries',async()=>{
   const h=harness({hash:'#pipeline'}),update=h.releaseOptions();
