@@ -145,14 +145,14 @@ async function checkLive(width){
     pass(width+': rapid selection resolves to the latest facility and heading');
     if(width===1440){
       await checkResponsiveSelection(test,true);
-      const advancementStarted=Date.now();
       await verifyChoice(test,'landfill',{live:true});
       await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
-      await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.energySite==='flare',selector,{timeout:9000});
+      const advancementStarted=Date.now();
+      await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.energySite==='flare',selector,{timeout:5500});
       const advancementMs=Date.now()-advancementStarted;
-      assert.ok(advancementMs>=4500&&advancementMs<9000,'The visible carousel should advance after approximately six seconds, not immediately or after the old eleven-second dwell.');
+      assert.ok(advancementMs>=2500&&advancementMs<5500,'The visible carousel should advance after approximately three seconds.');
       await verifyChoice(test,'flare',{live:true,click:false});
-      pass('Visible carousel automatically advances from landfill to flare in approximately six seconds',{advancementMs});
+      pass('Visible carousel automatically advances from landfill to flare in approximately three seconds',{advancementMs});
       await verifyChoice(test,'solar',{live:true});
       await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));
       await page.waitForTimeout(7500);

@@ -1,6 +1,6 @@
 # Homepage energy-site miniatures
 
-Replaces the single mixed sourcing landscape with eight original animated models: landfill gas, flare gas, hydro, nuclear, wind, solar, industrial surplus and grid supply. Existing energy labels select each facility; the visible carousel advances every 11 seconds. Its dimensions and the surrounding copy are preserved.
+Replaces the single mixed sourcing landscape with eight original animated models: landfill gas, flare gas, hydro, nuclear, wind, solar, industrial surplus and grid supply. Existing energy labels select each facility; the visible carousel advances every 3 seconds. Its dimensions and the surrounding copy are preserved.
 
 Landfill includes a moving refuse truck and collection wells. Hydro includes a dam, flowing spillways and a cutaway turbine. Nuclear includes a containment dome, cooling loop and cooling-tower vapour. Wind blades, solar tracking panels, industrial ventilation and power-flow pulses animate within their respective scenes. These are illustrative miniatures, not specific available properties.
 

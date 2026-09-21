@@ -23,7 +23,7 @@
   function schedule(){
     clearTimeout(timer);timer=0;
     const keyboardFocus=buttons.some(button=>button.matches(':focus-visible'));
-    if(running()&&stage&&!failed&&!busy&&!keyboardFocus)timer=setTimeout(()=>choose(order[(order.indexOf(selected)+1)%order.length]),6000);
+    if(running()&&stage&&!failed&&!busy&&!keyboardFocus)timer=setTimeout(()=>choose(order[(order.indexOf(selected)+1)%order.length]),3000);
   }
   function fallback(){failed=true;stage?.dispose();stage=null;rendered=null;host.dataset.renderState='fallback';schedule();}
   function choose(id){
