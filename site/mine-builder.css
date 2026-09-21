@@ -32,6 +32,24 @@
 .mb-site-action:hover:not(:disabled) { filter: brightness(1.12); }
 .mb-site-action:disabled { cursor: default; opacity: .6; }
 .mb-site-action:focus-visible, .mb-panel button:focus-visible, .mb-panel summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
+/* The original comparison buttons become the mobile viewer's header. Keeping
+   them in place retains the builder events, focus and progressive fallback. */
+@media (max-width: 700px) {
+    .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) {
+        border: 1px solid rgba(229,228,226,.14); border-radius: 14px;
+        overflow: hidden; background: #0b0c0d;
+    }
+    .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch {
+        margin: 0; padding: 8px 12px; gap: 6px; border: 0;
+        border-bottom: 1px solid rgba(229,228,226,.09); background: rgba(229,228,226,.025);
+    }
+    .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch .mb-site-action {
+        min-height: 44px; padding: 8px 6px; border: 1px solid rgba(229,228,226,.12); border-radius: 7px;
+        font: 500 12px/1.4 var(--sans); letter-spacing: 0; text-transform: none; touch-action: manipulation;
+    }
+    .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch small { display: none; }
+    .mb-site-preview > .dg-fuel-pane > .dg-views.plant-ready { border: 0; border-radius: 0; }
+}
 .mb-panel { --mb-line: rgba(229,228,226,.14); min-width: 0; color: var(--plat-200); }
 .mb-details { margin-top: 18px; border: 1px solid var(--mb-line); background: #090909; }
 .mb-panel *, .mb-panel *::before, .mb-panel *::after { box-sizing: border-box; }
