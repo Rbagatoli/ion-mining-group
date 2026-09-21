@@ -1,0 +1,2130 @@
+{
+  "nativeCDPTouch": true,
+  "checks": [
+    {
+      "name": "index.html 390 two-finger horizontal pan keeps angle and zoom",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 two-finger vertical pan stays with the model",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 pinch zoom retains the model rather than browser zoom",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 single-finger horizontal swipe rotates",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 single-finger upward drag changes model elevation",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 single-finger downward drag changes elevation in the opposite direction",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 single-finger diagonal drag changes both axes",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 single-finger vertical swipe outside the canvas scrolls the page",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 remaining contact after two-finger pan cannot jump into rotation or selection",
+      "passed": true
+    },
+    {
+      "name": "index.html 390 touch cancellation releases the gesture and preserves narrow layout",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 two-finger horizontal pan keeps angle and zoom",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 two-finger vertical pan stays with the model",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 pinch zoom retains the model rather than browser zoom",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 single-finger horizontal swipe rotates",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 single-finger upward drag changes model elevation",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 single-finger downward drag changes elevation in the opposite direction",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 single-finger diagonal drag changes both axes",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 single-finger vertical swipe outside the canvas scrolls the page",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 remaining contact after two-finger pan cannot jump into rotation or selection",
+      "passed": true
+    },
+    {
+      "name": "energy.html 390 touch cancellation releases the gesture and preserves narrow layout",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 two-finger horizontal pan keeps angle and zoom",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 two-finger vertical pan stays with the model",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 pinch zoom retains the model rather than browser zoom",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 single-finger horizontal swipe rotates",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 single-finger upward drag changes model elevation",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 single-finger downward drag changes elevation in the opposite direction",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 single-finger diagonal drag changes both axes",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 single-finger vertical swipe outside the canvas scrolls the page",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 remaining contact after two-finger pan cannot jump into rotation or selection",
+      "passed": true
+    },
+    {
+      "name": "hosting.html 390 touch cancellation releases the gesture and preserves narrow layout",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 two-finger horizontal pan keeps angle and zoom",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 two-finger vertical pan stays with the model",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 pinch zoom retains the model rather than browser zoom",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 single-finger horizontal swipe rotates",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 single-finger upward drag changes model elevation",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 single-finger downward drag changes elevation in the opposite direction",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 single-finger diagonal drag changes both axes",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 single-finger vertical swipe outside the canvas scrolls the page",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 remaining contact after two-finger pan cannot jump into rotation or selection",
+      "passed": true
+    },
+    {
+      "name": "index.html 320 touch cancellation releases the gesture and preserves narrow layout",
+      "passed": true
+    }
+  ],
+  "gestures": [
+    {
+      "label": "index.html 390",
+      "name": "two-finger pan 48,0",
+      "before": {
+        "position": [
+          62.92258496543602,
+          71.55460594384805,
+          109.59983260687746
+        ],
+        "target": [
+          10.15000057220459,
+          2.0512501038610935,
+          1.4000000953674314
+        ],
+        "distance": 139.00671167997393,
+        "theta": 0.4537856055185257,
+        "phi": 1.0471975511965979,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          55.95406972728089,
+          71.55460594384797,
+          112.99860458244343
+        ],
+        "target": [
+          3.181485334049492,
+          2.051250103861095,
+          4.798772070933471
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.4537856055185256,
+        "phi": 1.047197551196598,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          55.954069727280896,
+          71.55460594384797,
+          112.99860458244342
+        ],
+        "target": [
+          3.181485334049492,
+          2.051250103861095,
+          4.798772070933471
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.4537856055185257,
+        "phi": 1.047197551196598,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "two-finger pan 0,55",
+      "before": {
+        "position": [
+          55.95406972728089,
+          71.55460594384797,
+          112.99860458244343
+        ],
+        "target": [
+          3.181485334049492,
+          2.051250103861095,
+          4.798772070933471
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.4537856055185256,
+        "phi": 1.047197551196598,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          53.94539870016022,
+          79.49107781282936,
+          108.88021865906889
+        ],
+        "target": [
+          1.172814306928779,
+          9.987721972842532,
+          0.6803861475588402
+        ],
+        "distance": 139.0067116799739,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          53.94539870016022,
+          79.49107781282936,
+          108.88021865906889
+        ],
+        "target": [
+          1.172814306928779,
+          9.987721972842532,
+          0.6803861475588402
+        ],
+        "distance": 139.0067116799739,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "pinch",
+      "before": {
+        "position": [
+          53.94539870016022,
+          79.49107781282936,
+          108.88021865906889
+        ],
+        "target": [
+          1.172814306928779,
+          9.987721972842532,
+          0.6803861475588402
+        ],
+        "distance": 139.0067116799739,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          29.913879171212685,
+          47.898643340108094,
+          59.719927657488505
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453129,
+        "theta": 0.45378560551852565,
+        "phi": 1.047197551196599,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "single-finger rotation 60,0",
+      "before": {
+        "position": [
+          29.913879171212685,
+          47.898643340108094,
+          59.719927657488505
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453129,
+        "theta": 0.45378560551852565,
+        "phi": 1.047197551196599,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          11.907990315252288,
+          47.89864334010812,
+          65.47469916296019
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453132,
+        "theta": 0.1649035224298089,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "single-finger rotation 0,-40",
+      "before": {
+        "position": [
+          11.907990315252288,
+          47.89864334010812,
+          65.47469916296019
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453132,
+        "theta": 0.1649035224298089,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          12.89985452964484,
+          34.62974859048265,
+          71.43489463974221
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453132,
+        "theta": 0.1649035224298088,
+        "phi": 1.2397856065890762,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "single-finger rotation 0,40",
+      "before": {
+        "position": [
+          12.89985452964484,
+          34.62974859048265,
+          71.43489463974221
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453132,
+        "theta": 0.1649035224298088,
+        "phi": 1.2397856065890762,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          11.90799031525228,
+          47.898643340108116,
+          65.47469916296018
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.8218427345313,
+        "theta": 0.1649035224298088,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "single-finger rotation 35,-25",
+      "before": {
+        "position": [
+          11.90799031525228,
+          47.898643340108116,
+          65.47469916296018
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.8218427345313,
+        "theta": 0.1649035224298088,
+        "phi": 1.0471975511965987,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          0.8769979477685967,
+          39.73964244305791,
+          70.442152961871
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453134,
+        "theta": -0.003611026038609335,
+        "phi": 1.167565085816897,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "outside-canvas page-scroll",
+      "before": {
+        "position": [
+          0.8769979477685967,
+          39.73964244305791,
+          70.442152961871
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453134,
+        "theta": -0.003611026038609335,
+        "phi": 1.167565085816897,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          0.8769979477685967,
+          39.73964244305791,
+          70.442152961871
+        ],
+        "target": [
+          1.1288331385409616,
+          9.98772197284253,
+          0.701837196664781
+        ],
+        "distance": 75.82184273453134,
+        "theta": -0.003611026038609335,
+        "phi": 1.167565085816897,
+        "scrollY": 990,
+        "scale": 1,
+        "cancels": 0
+      },
+      "outside": {
+        "x": 2,
+        "y": 310.296875
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "two-finger pan 30,0",
+      "before": {
+        "position": [
+          4.146688481006683,
+          39.739642443057924,
+          70.4539599508439
+        ],
+        "target": [
+          4.3985236717790475,
+          9.987721972842534,
+          0.7136441856376566
+        ],
+        "distance": 75.82184273453136,
+        "theta": -0.0036110260386093343,
+        "phi": 1.167565085816897,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          1.4720688275947111,
+          39.73964244305782,
+          70.44430178765238
+        ],
+        "target": [
+          1.7239040183670757,
+          9.987721972842536,
+          0.703986022446538
+        ],
+        "distance": 75.82184273453096,
+        "theta": -0.0036110260386093516,
+        "phi": 1.1675650858168964,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          1.4720688275947111,
+          39.73964244305782,
+          70.44430178765239
+        ],
+        "target": [
+          1.7239040183670757,
+          9.987721972842536,
+          0.703986022446538
+        ],
+        "distance": 75.82184273453096,
+        "theta": -0.0036110260386093508,
+        "phi": 1.1675650858168964,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 390",
+      "name": "two-finger pan 0,25",
+      "before": {
+        "position": [
+          1.4688454409333371,
+          37.64719545179068,
+          71.33694908967631
+        ],
+        "target": [
+          1.7206806317057013,
+          7.895274981575486,
+          1.5966333244706896
+        ],
+        "distance": 75.82184273453072,
+        "theta": -0.0036110260386093564,
+        "phi": 1.1675650858168962,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 2
+      },
+      "after": {
+        "position": [
+          1.4720688275947147,
+          39.73964244305769,
+          70.44430178765207
+        ],
+        "target": [
+          1.723904018367078,
+          9.987721972842536,
+          0.7039860224465385
+        ],
+        "distance": 75.82184273453062,
+        "theta": -0.0036110260386093486,
+        "phi": 1.1675650858168962,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 2
+      },
+      "moving": {
+        "position": [
+          1.4720688275947147,
+          39.73964244305769,
+          70.44430178765207
+        ],
+        "target": [
+          1.723904018367078,
+          9.987721972842536,
+          0.7039860224465385
+        ],
+        "distance": 75.82184273453062,
+        "theta": -0.0036110260386093486,
+        "phi": 1.1675650858168962,
+        "scrollY": 899,
+        "scale": 1,
+        "cancels": 2
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "two-finger pan 48,0",
+      "before": {
+        "position": [
+          -0.05115699768066406,
+          43.2223372026944,
+          115.03642099740776
+        ],
+        "target": [
+          -0.05115699768066406,
+          3.4387500267475843,
+          5.7319135665893555
+        ],
+        "distance": 116.31942723930511,
+        "theta": 0,
+        "phi": 1.2217304763960308,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -14.310246707251151,
+          43.222337202694405,
+          115.03642099740777
+        ],
+        "target": [
+          -14.310246707251151,
+          3.438750026747585,
+          5.731913566589355
+        ],
+        "distance": 116.31942723930513,
+        "theta": 0,
+        "phi": 1.2217304763960308,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -14.310246707251151,
+          43.222337202694405,
+          115.03642099740777
+        ],
+        "target": [
+          -14.310246707251151,
+          3.4387500267475843,
+          5.731913566589354
+        ],
+        "distance": 116.31942723930513,
+        "theta": 0,
+        "phi": 1.2217304763960308,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "two-finger pan 0,55",
+      "before": {
+        "position": [
+          -14.310246707251151,
+          43.222337202694405,
+          115.03642099740777
+        ],
+        "target": [
+          -14.310246707251151,
+          3.438750026747585,
+          5.731913566589355
+        ],
+        "distance": 116.31942723930513,
+        "theta": 0,
+        "phi": 1.2217304763960308,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -14.310246707251158,
+          59.06012063954701,
+          109.27193924963926
+        ],
+        "target": [
+          -14.310246707251158,
+          19.276533463600206,
+          -0.03256818117927268
+        ],
+        "distance": 116.31942723930523,
+        "theta": 0,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -14.310246707251158,
+          59.06012063954701,
+          109.27193924963926
+        ],
+        "target": [
+          -14.310246707251158,
+          19.276533463600206,
+          -0.03256818117927268
+        ],
+        "distance": 116.31942723930523,
+        "theta": 0,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "pinch",
+      "before": {
+        "position": [
+          -14.310246707251158,
+          59.06012063954701,
+          109.27193924963926
+        ],
+        "target": [
+          -14.310246707251158,
+          19.276533463600206,
+          -0.03256818117927268
+        ],
+        "distance": 116.31942723930523,
+        "theta": 0,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -14.400241692429612,
+          40.976671923207604,
+          59.58807223563092
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.4469603123484,
+        "theta": 0,
+        "phi": 1.221730476396031,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "single-finger rotation 60,0",
+      "before": {
+        "position": [
+          -14.400241692429612,
+          40.976671923207604,
+          59.58807223563092
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.4469603123484,
+        "theta": 0,
+        "phi": 1.221730476396031,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -31.385018003938555,
+          40.97667192320762,
+          57.11756862844343
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234845,
+        "theta": -0.2888820830887167,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "single-finger rotation 0,-40",
+      "before": {
+        "position": [
+          -31.385018003938555,
+          40.97667192320762,
+          57.11756862844343
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234845,
+        "theta": -0.2888820830887167,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -32.254230546321,
+          29.164108310189906,
+          60.042282784386416
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234845,
+        "theta": -0.28888208308871705,
+        "phi": 1.4143185317885087,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "single-finger rotation 0,40",
+      "before": {
+        "position": [
+          -32.254230546321,
+          29.164108310189906,
+          60.042282784386416
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234845,
+        "theta": -0.28888208308871705,
+        "phi": 1.4143185317885087,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -31.385018003938583,
+          40.97667192320763,
+          57.11756862844349
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234852,
+        "theta": -0.2888820830887169,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "single-finger rotation 35,-25",
+      "before": {
+        "position": [
+          -31.385018003938583,
+          40.97667192320763,
+          57.11756862844349
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234852,
+        "theta": -0.2888820830887169,
+        "phi": 1.2217304763960313,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -41.689747038959624,
+          33.660589050165676,
+          55.41018261368152
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234855,
+        "theta": -0.4573966315571355,
+        "phi": 1.3420980110163296,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "outside-canvas page-scroll",
+      "before": {
+        "position": [
+          -41.689747038959624,
+          33.660589050165676,
+          55.41018261368152
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234855,
+        "theta": -0.4573966315571355,
+        "phi": 1.3420980110163296,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -41.689747038959624,
+          33.660589050165676,
+          55.41018261368152
+        ],
+        "target": [
+          -14.400241692429612,
+          19.276533463600213,
+          -0.03256818117927266
+        ],
+        "distance": 63.44696031234855,
+        "theta": -0.4573966315571355,
+        "phi": 1.3420980110163296,
+        "scrollY": 1361,
+        "scale": 1,
+        "cancels": 0
+      },
+      "outside": {
+        "x": 2,
+        "y": 310.828125
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "two-finger pan 30,0",
+      "before": {
+        "position": [
+          -36.2944792246052,
+          33.66058905016568,
+          58.06579020448374
+        ],
+        "target": [
+          -9.004973878075207,
+          19.276533463600213,
+          2.6230394096229093
+        ],
+        "distance": 63.44696031234857,
+        "theta": -0.45739663155713495,
+        "phi": 1.3420980110163296,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -40.70782941325521,
+          33.66058905016571,
+          55.89349280144012
+        ],
+        "target": [
+          -13.4183240667252,
+          19.276533463600213,
+          0.4507420065792456
+        ],
+        "distance": 63.44696031234863,
+        "theta": -0.45739663155713495,
+        "phi": 1.3420980110163294,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -40.70782941325521,
+          33.66058905016571,
+          55.89349280144012
+        ],
+        "target": [
+          -13.4183240667252,
+          19.276533463600213,
+          0.4507420065792456
+        ],
+        "distance": 63.44696031234863,
+        "theta": -0.45739663155713495,
+        "phi": 1.3420980110163294,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "name": "two-finger pan 0,25",
+      "before": {
+        "position": [
+          -41.1267068924122,
+          29.585698477060717,
+          56.74450565035692
+        ],
+        "target": [
+          -13.837201545882186,
+          15.201642890495217,
+          1.3017548554960403
+        ],
+        "distance": 63.44696031234864,
+        "theta": -0.4573966315571349,
+        "phi": 1.3420980110163294,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 2
+      },
+      "after": {
+        "position": [
+          -40.70782941325521,
+          33.66058905016574,
+          55.89349280144012
+        ],
+        "target": [
+          -13.418324066725198,
+          19.276533463600213,
+          0.4507420065792463
+        ],
+        "distance": 63.44696031234864,
+        "theta": -0.45739663155713495,
+        "phi": 1.342098011016329,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 2
+      },
+      "moving": {
+        "position": [
+          -40.70782941325521,
+          33.66058905016574,
+          55.89349280144012
+        ],
+        "target": [
+          -13.418324066725198,
+          19.276533463600213,
+          0.4507420065792463
+        ],
+        "distance": 63.44696031234864,
+        "theta": -0.45739663155713495,
+        "phi": 1.342098011016329,
+        "scrollY": 1270,
+        "scale": 1,
+        "cancels": 2
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "two-finger pan 48,0",
+      "before": {
+        "position": [
+          0,
+          19.20278492760203,
+          43.61792328972721
+        ],
+        "target": [
+          0,
+          1.5800000020861626,
+          0
+        ],
+        "distance": 47.04344567141651,
+        "theta": 0,
+        "phi": 1.1868238913561442,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -2.623876688683202,
+          19.20278492760202,
+          43.61792328972716
+        ],
+        "target": [
+          -2.623876688683202,
+          1.5800000020861624,
+          0
+        ],
+        "distance": 47.04344567141646,
+        "theta": 0,
+        "phi": 1.186823891356144,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -2.623876688683202,
+          19.20278492760202,
+          43.61792328972716
+        ],
+        "target": [
+          -2.623876688683202,
+          1.5800000020861624,
+          0
+        ],
+        "distance": 47.04344567141646,
+        "theta": 0,
+        "phi": 1.186823891356144,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "two-finger pan 0,55",
+      "before": {
+        "position": [
+          -2.623876688683202,
+          19.20278492760202,
+          43.61792328972716
+        ],
+        "target": [
+          -2.623876688683202,
+          1.5800000020861624,
+          0
+        ],
+        "distance": 47.04344567141646,
+        "theta": 0,
+        "phi": 1.186823891356144,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -2.6238766886832017,
+          22.07836896429214,
+          42.456111924311465
+        ],
+        "target": [
+          -2.6238766886832017,
+          4.455584038776255,
+          -1.1618113654157243
+        ],
+        "distance": 47.04344567141649,
+        "theta": 0,
+        "phi": 1.1868238913561437,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -2.6238766886832017,
+          22.07836896429214,
+          42.456111924311465
+        ],
+        "target": [
+          -2.6238766886832017,
+          4.455584038776255,
+          -1.1618113654157243
+        ],
+        "distance": 47.04344567141649,
+        "theta": 0,
+        "phi": 1.1868238913561437,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "pinch",
+      "before": {
+        "position": [
+          -2.6238766886832017,
+          22.07836896429214,
+          42.456111924311465
+        ],
+        "target": [
+          -2.6238766886832017,
+          4.455584038776255,
+          -1.1618113654157243
+        ],
+        "distance": 47.04344567141649,
+        "theta": 0,
+        "phi": 1.1868238913561437,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -2.640437054633466,
+          14.06801217996674,
+          22.629783156253644
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318082,
+        "theta": 0,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "single-finger rotation 60,0",
+      "before": {
+        "position": [
+          -2.640437054633466,
+          14.06801217996674,
+          22.629783156253644
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318082,
+        "theta": 0,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -9.418205763919918,
+          14.06801217996674,
+          21.64392960493964
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.66006127531808,
+        "theta": -0.28888208308871655,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "single-finger rotation 0,-40",
+      "before": {
+        "position": [
+          -9.418205763919918,
+          14.06801217996674,
+          21.64392960493964
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.66006127531808,
+        "theta": -0.28888208308871655,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -9.817027870506363,
+          9.336594209574091,
+          22.985880628378954
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318082,
+        "theta": -0.2888820830887166,
+        "phi": 1.379411946748621,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "single-finger rotation 0,40",
+      "before": {
+        "position": [
+          -9.817027870506363,
+          9.336594209574091,
+          22.985880628378954
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318082,
+        "theta": -0.2888820830887166,
+        "phi": 1.379411946748621,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -9.418205763919925,
+          14.068012179966745,
+          21.643929604939657
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318096,
+        "theta": -0.28888208308871666,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "single-finger rotation 35,-25",
+      "before": {
+        "position": [
+          -9.418205763919925,
+          14.068012179966745,
+          21.643929604939657
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318096,
+        "theta": -0.28888208308871666,
+        "phi": 1.1868238913561435,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -13.580839263843947,
+          11.141636678815722,
+          21.065267710531327
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318096,
+        "theta": -0.4573966315571347,
+        "phi": 1.307191425976442,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "outside-canvas page-scroll",
+      "before": {
+        "position": [
+          -13.580839263843947,
+          11.141636678815722,
+          21.065267710531327
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318096,
+        "theta": -0.4573966315571347,
+        "phi": 1.307191425976442,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -13.580839263843947,
+          11.141636678815722,
+          21.065267710531327
+        ],
+        "target": [
+          -2.640437054633466,
+          4.455584038776257,
+          -1.1618113654157243
+        ],
+        "distance": 25.660061275318096,
+        "theta": -0.4573966315571347,
+        "phi": 1.307191425976442,
+        "scrollY": 1400,
+        "scale": 1,
+        "cancels": 0
+      },
+      "outside": {
+        "x": 2,
+        "y": 310.890625
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "two-finger pan 30,0",
+      "before": {
+        "position": [
+          -12.588032728810663,
+          11.14163667881572,
+          21.5539375340418
+        ],
+        "target": [
+          -1.6476305196001928,
+          4.455584038776257,
+          -0.6731415419052401
+        ],
+        "distance": 25.660061275318085,
+        "theta": -0.45739663155713445,
+        "phi": 1.307191425976442,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -13.403712429565708,
+          11.141636678815715,
+          21.152451402208783
+        ],
+        "target": [
+          -2.4633102203552393,
+          4.455584038776257,
+          -1.0746276737382605
+        ],
+        "distance": 25.660061275318082,
+        "theta": -0.4573966315571344,
+        "phi": 1.3071914259764421,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -13.403712429565708,
+          11.141636678815715,
+          21.152451402208783
+        ],
+        "target": [
+          -2.4633102203552393,
+          4.455584038776257,
+          -1.0746276737382605
+        ],
+        "distance": 25.660061275318082,
+        "theta": -0.4573966315571344,
+        "phi": 1.3071914259764421,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "name": "two-finger pan 0,25",
+      "before": {
+        "position": [
+          -13.492301511497304,
+          10.398346616221879,
+          21.332433499000526
+        ],
+        "target": [
+          -2.5518993022868117,
+          3.7122939761824103,
+          -0.8946455769465277
+        ],
+        "distance": 25.660061275318107,
+        "theta": -0.4573966315571351,
+        "phi": 1.307191425976442,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 2
+      },
+      "after": {
+        "position": [
+          -13.403712429565736,
+          11.141636678815724,
+          21.152451402208793
+        ],
+        "target": [
+          -2.4633102203552406,
+          4.4555840387762595,
+          -1.0746276737382607
+        ],
+        "distance": 25.660061275318107,
+        "theta": -0.4573966315571352,
+        "phi": 1.3071914259764421,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 2
+      },
+      "moving": {
+        "position": [
+          -13.403712429565736,
+          11.141636678815724,
+          21.152451402208793
+        ],
+        "target": [
+          -2.4633102203552406,
+          4.4555840387762595,
+          -1.0746276737382607
+        ],
+        "distance": 25.660061275318107,
+        "theta": -0.4573966315571352,
+        "phi": 1.3071914259764421,
+        "scrollY": 1309,
+        "scale": 1,
+        "cancels": 2
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "two-finger pan 48,0",
+      "before": {
+        "position": [
+          62.92258496543602,
+          71.55460594384805,
+          109.59983260687746
+        ],
+        "target": [
+          10.15000057220459,
+          2.0512501038610935,
+          1.4000000953674314
+        ],
+        "distance": 139.00671167997393,
+        "theta": 0.4537856055185257,
+        "phi": 1.0471975511965979,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          54.22027646228609,
+          71.55460594384792,
+          113.84423205961745
+        ],
+        "target": [
+          1.4476920690546675,
+          2.051250103861092,
+          5.644399548107453
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965985,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          54.22027646228609,
+          71.55460594384792,
+          113.84423205961745
+        ],
+        "target": [
+          1.4476920690546675,
+          2.051250103861092,
+          5.644399548107453
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965985,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "two-finger pan 0,55",
+      "before": {
+        "position": [
+          54.22027646228609,
+          71.55460594384792,
+          113.84423205961745
+        ],
+        "target": [
+          1.4476920690546675,
+          2.051250103861092,
+          5.644399548107453
+        ],
+        "distance": 139.00671167997385,
+        "theta": 0.45378560551852565,
+        "phi": 1.0471975511965985,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          51.71184039492483,
+          81.4657023926716,
+          108.7011759543506
+        ],
+        "target": [
+          -1.0607439983066058,
+          11.96234655268479,
+          0.5013434428405724
+        ],
+        "distance": 139.00671167997388,
+        "theta": 0.4537856055185257,
+        "phi": 1.0471975511965987,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          51.71184039492483,
+          81.4657023926716,
+          108.7011759543506
+        ],
+        "target": [
+          -1.0607439983066058,
+          11.96234655268479,
+          0.5013434428405724
+        ],
+        "distance": 139.00671167997388,
+        "theta": 0.4537856055185257,
+        "phi": 1.0471975511965987,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "pinch",
+      "before": {
+        "position": [
+          51.71184039492483,
+          81.4657023926716,
+          108.7011759543506
+        ],
+        "target": [
+          -1.0607439983066058,
+          11.96234655268479,
+          0.5013434428405724
+        ],
+        "distance": 139.00671167997388,
+        "theta": 0.4537856055185257,
+        "phi": 1.0471975511965987,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          27.669378182933468,
+          49.87326791995036,
+          59.54622205589706
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453129,
+        "theta": 0.45378560551852604,
+        "phi": 1.047197551196599,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "single-finger rotation 60,0",
+      "before": {
+        "position": [
+          27.669378182933468,
+          49.87326791995036,
+          59.54622205589706
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453129,
+        "theta": 0.45378560551852604,
+        "phi": 1.047197551196599,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          4.984118704581986,
+          49.87326791995039,
+          65.90784160312354
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453133,
+        "theta": 0.09302855438859757,
+        "phi": 1.0471975511965987,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "single-finger rotation 0,-40",
+      "before": {
+        "position": [
+          4.984118704581986,
+          49.87326791995039,
+          65.90784160312354
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453133,
+        "theta": 0.09302855438859757,
+        "phi": 1.0471975511965987,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          5.647400818339971,
+          33.14150254103847,
+          73.0171382752028
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453139,
+        "theta": 0.09302855438859774,
+        "phi": 1.2877022519498846,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "single-finger rotation 0,40",
+      "before": {
+        "position": [
+          5.647400818339971,
+          33.14150254103847,
+          73.0171382752028
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453139,
+        "theta": 0.09302855438859774,
+        "phi": 1.2877022519498846,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          4.984118704582016,
+          49.87326791995041,
+          65.9078416031236
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453139,
+        "theta": 0.09302855438859794,
+        "phi": 1.047197551196599,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "single-finger rotation 35,-25",
+      "before": {
+        "position": [
+          4.984118704582016,
+          49.87326791995041,
+          65.9078416031236
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453139,
+        "theta": 0.09302855438859794,
+        "phi": 1.047197551196599,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -9.386040644173486,
+          39.612648448805245,
+          70.64242097002516
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453143,
+        "theta": -0.11741305877052688,
+        "phi": 1.1975129891674021,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "outside-canvas page-scroll",
+      "before": {
+        "position": [
+          -9.386040644173486,
+          39.612648448805245,
+          70.64242097002516
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453143,
+        "theta": -0.11741305877052688,
+        "phi": 1.1975129891674021,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -9.386040644173486,
+          39.612648448805245,
+          70.64242097002516
+        ],
+        "target": [
+          -1.1156678497382813,
+          11.962346552684792,
+          0.5281315950733507
+        ],
+        "distance": 75.82184273453143,
+        "theta": -0.11741305877052688,
+        "phi": 1.1975129891674021,
+        "scrollY": 1040,
+        "scale": 1,
+        "cancels": 0
+      },
+      "outside": {
+        "x": 2,
+        "y": 284.5625
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "two-finger pan 30,0",
+      "before": {
+        "position": [
+          -5.33092499081204,
+          39.61264844880524,
+          71.12074455394534
+        ],
+        "target": [
+          2.939447803623167,
+          11.962346552684787,
+          1.0064551789936067
+        ],
+        "distance": 75.82184273453136,
+        "theta": -0.11741305877052705,
+        "phi": 1.1975129891674017,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "after": {
+        "position": [
+          -8.64802546655583,
+          39.61264844880519,
+          70.72947399019054
+        ],
+        "target": [
+          -0.37765267212063847,
+          11.962346552684783,
+          0.6151846152388756
+        ],
+        "distance": 75.82184273453127,
+        "theta": -0.11741305877052693,
+        "phi": 1.197512989167402,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      },
+      "moving": {
+        "position": [
+          -8.64802546655583,
+          39.61264844880519,
+          70.72947399019054
+        ],
+        "target": [
+          -0.37765267212063847,
+          11.962346552684783,
+          0.6151846152388756
+        ],
+        "distance": 75.82184273453127,
+        "theta": -0.11741305877052693,
+        "phi": 1.197512989167402,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 0
+      }
+    },
+    {
+      "label": "index.html 320",
+      "name": "two-finger pan 0,25",
+      "before": {
+        "position": [
+          -8.769386681151662,
+          36.967384949546584,
+          71.75834602904145
+        ],
+        "target": [
+          -0.4990138867164752,
+          9.317083053426224,
+          1.6440566540898485
+        ],
+        "distance": 75.8218427345312,
+        "theta": -0.11741305877052698,
+        "phi": 1.1975129891674021,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 2
+      },
+      "after": {
+        "position": [
+          -8.648025466555818,
+          39.612648448805146,
+          70.72947399019046
+        ],
+        "target": [
+          -0.3776526721206386,
+          11.96234655268477,
+          0.6151846152388774
+        ],
+        "distance": 75.82184273453119,
+        "theta": -0.1174130587705269,
+        "phi": 1.197512989167402,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 2
+      },
+      "moving": {
+        "position": [
+          -8.648025466555818,
+          39.612648448805146,
+          70.72947399019046
+        ],
+        "target": [
+          -0.3776526721206386,
+          11.96234655268477,
+          0.6151846152388774
+        ],
+        "distance": 75.82184273453119,
+        "theta": -0.1174130587705269,
+        "phi": 1.197512989167402,
+        "scrollY": 949,
+        "scale": 1,
+        "cancels": 2
+      }
+    }
+  ],
+  "pageErrors": [],
+  "missingAssets": [],
+  "blockedWrites": [],
+  "blockedExternal": [],
+  "layouts": [
+    {
+      "label": "index.html 390",
+      "hint": {
+        "text": "Drag to rotate · Two fingers move/zoom",
+        "display": "inline",
+        "width": 348,
+        "scrollWidth": 348,
+        "left": 21,
+        "right": 369,
+        "stageLeft": 21,
+        "stageRight": 369
+      }
+    },
+    {
+      "label": "energy.html 390",
+      "hint": {
+        "text": "Drag to rotate · Two fingers move/zoom",
+        "display": "inline",
+        "width": 348,
+        "scrollWidth": 348,
+        "left": 21,
+        "right": 369,
+        "stageLeft": 21,
+        "stageRight": 369
+      }
+    },
+    {
+      "label": "hosting.html 390",
+      "hint": {
+        "text": "Drag to rotate · Two fingers move/zoom",
+        "display": "inline",
+        "width": 348,
+        "scrollWidth": 348,
+        "left": 21,
+        "right": 369,
+        "stageLeft": 21,
+        "stageRight": 369
+      }
+    },
+    {
+      "label": "index.html 320",
+      "hint": {
+        "text": "Drag to rotate · Two fingers move/zoom",
+        "display": "inline",
+        "width": 278,
+        "scrollWidth": 278,
+        "left": 21,
+        "right": 299,
+        "stageLeft": 21,
+        "stageRight": 299
+      }
+    }
+  ],
+  "passed": true
+}

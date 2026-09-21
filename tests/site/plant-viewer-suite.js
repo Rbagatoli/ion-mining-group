@@ -183,7 +183,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
         assert.match(group.querySelector('.scene-gesture-mouse').textContent,/Left-drag shift · Right-drag rotate · Scroll zoom/);
         const touchHint=group.querySelector('.scene-gesture-touch').textContent;
-        assert.match(touchHint,/Swipe to turn/);assert.match(touchHint,/(?:Two|2) fingers? (?:to )?(?:shift|move|pan)/i);assert.match(touchHint,/zoom/i);
+        assert.match(touchHint,/Drag to rotate/);assert.match(touchHint,/(?:Two|2) fingers? (?:to )?(?:shift|move|pan)/i);assert.match(touchHint,/zoom/i);
         assert.equal(home.scenes[0].callbacks.scrollFriendlyTouch,true);
     });
     check('the compact equipment picker uses the same scene labels and follows focus, reset and inspection', () => {

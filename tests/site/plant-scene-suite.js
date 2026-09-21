@@ -843,19 +843,38 @@ class Surface {
         assert.ok(renderer.camera.position.distanceTo(desktop.position)<1e-8,'crossing to desktop restores the original camera');
         compactPreview=true;previewHost.clientWidth=390;previewHost.clientHeight=220;resizeScene();preview.reset();flush();
     });
-    check('scroll-friendly previews leave vertical and diagonal swipes to the page without selecting equipment', () => {
-        assert.equal(previewHost.canvas.style.touchAction,'pan-y');
-        assert.match(previewHost.canvas.attrs['aria-label'],/swipe vertically to scroll the page/);
-        const before=renderer.camera.position.clone(),target=controls.target.clone(),count=previewEvents.length;
-        previewTouch('pointerdown',21,150,100);
-        assert.ok(!previewTouch('pointermove',21,152,170).defaultPrevented);
-        assert.ok(!previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,'native vertical touch scroll remains available');
-        previewTouch('pointermove',21,235,171); previewTouch('pointerup',21,235,171); flush();
-        assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'a vertical gesture cannot switch into rotation');
-        previewTouch('pointerdown',22,150,100); previewTouch('pointermove',22,190,140); previewTouch('pointerup',22,190,140); flush();
-        assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'diagonal intent defaults to page scrolling');
-        assert.ok(controls.target.distanceTo(target)<1e-8,'page scrolling cannot shift the model pivot');
-        assert.equal(previewEvents.length,count,'scrolling never taps into equipment');
+    check('mobile previews rotate up, down and diagonally around the same center at the same zoom', () => {
+        assert.equal(previewHost.canvas.style.touchAction,'none');
+        assert.match(previewHost.canvas.attrs['aria-label'],/drag in any direction to rotate/);
+        assert.match(previewHost.canvas.attrs['aria-label'],/Swipe outside the rendering to scroll the page/);
+        for(const view of ['site','landfill','pad','hosting','asic']) {
+            preview.setConfig({view,definition:definition(view)});preview.reset();flush();
+            const target=controls.target.clone(),radius=renderer.camera.position.distanceTo(target),count=previewEvents.length;
+            for(const [dx,dy] of [[0,40],[0,-40],[35,30]]) {
+                const phi=controls.getPolarAngle(),theta=controls.getAzimuthalAngle();
+                previewTouch('pointerdown',21,150,100);
+                assert.equal(previewTouch('pointermove',21,150+dx,100+dy).defaultPrevented,true);
+                assert.equal(previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true);
+                previewTouch('pointerup',21,150+dx,100+dy);flush();
+                assert.ok((controls.getPolarAngle()-phi)*dy<0,view+' vertical drag changes the viewing elevation');
+                if(dx) assert.ok(Math.abs(controls.getAzimuthalAngle()-theta)>.1,view+' diagonal drag changes both axes');
+                else assert.ok(Math.abs(controls.getAzimuthalAngle()-theta)<1e-8,view+' vertical drag keeps the horizontal angle');
+                assert.ok(controls.target.distanceTo(target)<1e-8,view+' rotation keeps the chosen center');
+                assert.ok(Math.abs(renderer.camera.position.distanceTo(target)-radius)<1e-8,view+' rotation keeps the chosen zoom');
+            }
+            assert.equal(previewEvents.length,count,'dragging never selects equipment');
+        }
+        assert.ok(!previewHost.fire('touchmove',{cancelable:true}).defaultPrevented,'surrounding content remains available for scrolling');
+    });
+    check('vertical preview rotation respects both polar limits and can reverse away from either edge', () => {
+        for(const dy of [4000,-4000]) {
+            previewTouch('pointerdown',22,150,100);previewTouch('pointermove',22,150,100+dy);flush();
+            const limit=dy>0?controls.minPolarAngle:controls.maxPolarAngle;
+            assert.ok(Math.abs(controls.getPolarAngle()-limit)<1e-8,'vertical rotation stays within the camera limits');
+            previewTouch('pointermove',22,150,100+dy-Math.sign(dy)*20);flush();
+            assert.ok(Math.abs(controls.getPolarAngle()-limit)>.05,'reversing direction moves away immediately');
+            previewTouch('pointerup',22,150,100+dy-Math.sign(dy)*20);flush();
+        }
     });
     check('scroll-friendly previews rotate sideways at touch sensitivity and ignore a swipe returning to its origin', () => {
         const before=controls.getAzimuthalAngle(),radius=renderer.camera.position.distanceTo(controls.target),count=previewEvents.length;

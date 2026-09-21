@@ -1301,7 +1301,7 @@ export function mountMineScene(host, callbacks = {}) {
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
     canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. '+
-        (scrollFriendlyTouch ? 'Touch: drag sideways to rotate, swipe vertically to scroll the page, two-finger drag to move the model, pinch to zoom. ' : 'Touch: drag to rotate, pinch to zoom, two fingers to shift. ')+
+        (scrollFriendlyTouch ? 'Touch: drag in any direction to rotate, two-finger drag to move the model, pinch to zoom. Swipe outside the rendering to scroll the page. ' : 'Touch: drag to rotate, pinch to zoom, two fingers to shift. ')+
         'Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
@@ -1317,9 +1317,9 @@ export function mountMineScene(host, callbacks = {}) {
     controls.enableDamping = false; controls.enableZoom = true;
     const navigation = enableScenePan(controls,canvas);
     controls.minPolarAngle = .30; controls.maxPolarAngle = Math.PI*.46;
-    // Builders own model gestures from the first contact. Marketing previews
-    // may instead leave vertical swipes to the page while retaining model pinch.
-    canvas.style.touchAction = scrollFriendlyTouch ? 'pan-y' : 'none';
+    // The canvas owns both rotation axes and pinch from the first contact.
+    // Page scrolling remains available on the surrounding content and controls.
+    canvas.style.touchAction = 'none';
     const interactionSurface = callbacks.interactionSurface || host;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false, ready = false;
@@ -1635,7 +1635,8 @@ export function mountMineScene(host, callbacks = {}) {
             }
         }
     }
-    // Marketing previews opt into sideways rotation / vertical page scrolling.
+    // Marketing previews keep explicit contact tracking for tap suppression
+    // after a multi-touch gesture, with rotation on both axes.
     // Capture touch contacts before OrbitControls claims them; mouse navigation
     // and the full-touch mine builder retain the existing OrbitControls path.
     const touchPoints = new Map();
@@ -1666,7 +1667,7 @@ export function mountMineScene(host, callbacks = {}) {
         if (!active || !yard || !controls.enabled) return;
         touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});
         if (touchPoints.size === 1) {
-            touchGesture = {id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,direction:'',moved:false,multi:false,interacting:false};
+            touchGesture = {id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,multi:false,interacting:false};
         } else {
             touchGesture.multi = true; beginTouchInteraction();
             pinchDistance = span(); pinchCenter = center();
@@ -1694,16 +1695,18 @@ export function mountMineScene(host, callbacks = {}) {
         if (touchPoints.size !== 1 || touchGesture.multi || touchGesture.id !== event.pointerId) return;
         const dx = event.clientX-touchGesture.x, dy = event.clientY-touchGesture.y;
         if (Math.hypot(dx,dy)>7) touchGesture.moved = true;
-        if (!touchGesture.direction) {
+        if (!touchGesture.interacting) {
             if (Math.max(Math.abs(dx),Math.abs(dy))<10) return;
-            touchGesture.direction = Math.abs(dx)>Math.abs(dy)*1.25 ? 'horizontal' : 'vertical';
-            if (touchGesture.direction === 'horizontal') { canvas.setPointerCapture(event.pointerId); beginTouchInteraction(); }
+            canvas.setPointerCapture(event.pointerId); beginTouchInteraction();
         }
-        if (touchGesture.direction !== 'horizontal') return;
-        const delta = event.clientX-touchGesture.lastX; touchGesture.lastX = event.clientX;
-        const offset = camera.position.clone().sub(controls.target);
-        offset.applyAxisAngle(UP,-delta*Math.PI*2*.2/Math.max(1,canvas.clientHeight));
-        camera.position.copy(controls.target).add(offset); controls.update(); pauseOrbit(); wake();
+        const deltaX = event.clientX-touchGesture.lastX, deltaY = event.clientY-touchGesture.lastY;
+        touchGesture.lastX = event.clientX; touchGesture.lastY = event.clientY;
+        const sensitivity = Math.PI*2*.2/Math.max(1,canvas.clientHeight);
+        const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+        spherical.theta -= deltaX*sensitivity;
+        spherical.phi = THREE.MathUtils.clamp(spherical.phi-deltaY*sensitivity,controls.minPolarAngle,controls.maxPolarAngle);
+        camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical));
+        controls.update(); pauseOrbit(); wake();
         if (event.cancelable) event.preventDefault();
     }
     function finishTouch(event, cancelled = false) {
@@ -1744,9 +1747,9 @@ export function mountMineScene(host, callbacks = {}) {
     function visibility() { if (document.hidden) { clearTouchGesture(); stop(); } else wake(); }
     function motion(event) { reduced = event.matches; autoRotate = motionEnabled && !reduced; wake(); }
     function touchmove(event) {
-        // Native touch events must agree with the selected pointer policy:
-        // preview vertical swipes scroll, while rotation/model pan/pinch stay here.
-        if (active && yard && event.cancelable && (!scrollFriendlyTouch || touchPoints.size>1 || touchGesture?.direction === 'horizontal')) event.preventDefault();
+        // Keep native touch events consistent with canvas gesture ownership.
+        // This listener is canvas-only; surrounding content still scrolls.
+        if (active && yard && event.cancelable) event.preventDefault();
     }
     function contextLost(event) { event.preventDefault(); lost = true; clearTouchGesture(); stop(); callbacks.onError?.(); }
     function contextRestored() { lost = false; ready = false; callbacks.onRestore?.(); wake(); }

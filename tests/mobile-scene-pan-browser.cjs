@@ -2,7 +2,7 @@
  * fresh browser contexts, and no external requests or form submissions. */
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..'),site=path.join(root,'site'),out=path.join(root,'reports/mobile-scene-pan-20260921');
+const root=path.resolve(__dirname,'..'),site=path.join(root,'site'),out=path.join(root,'reports/mobile-scene-rotation-20260921');
 function dependencyRoot(){let p=root;for(;;){if(fs.existsSync(path.join(p,'tools/.cache/hosting-terrain-browser/node_modules/playwright-core')))return p;const next=path.dirname(p);if(next===p)throw Error('Set PROTON_PLAYWRIGHT_PATH');p=next;}}
 const {chromium}=require(process.env.PROTON_PLAYWRIGHT_PATH||path.join(dependencyRoot(),'tools/.cache/hosting-terrain-browser/node_modules/playwright-core'));
 const chrome=process.env.PROTON_CHROME_PATH||['C:/Program Files/Google/Chrome/Application/chrome.exe','/usr/bin/google-chrome','/usr/bin/chromium'].find(p=>fs.existsSync(p));
@@ -55,6 +55,19 @@ async function pan(dx,dy){
   assert(Math.abs(after.scrollY-before.scrollY)<2,'Two-finger pan must not scroll the page.');assert.equal(after.cancels,before.cancels,'The browser must not cancel two-finger pan.');
   assert(dist(after.target,moving.target)<1e-5,'Releasing pan must not jump.');
 }
+async function rotate(dx,dy){
+  const center=await point(),before=await read();await gesture(center,{two:false,dx,dy});const after=await read();await record('single-finger rotation '+dx+','+dy,before,after);
+  if(dx)assert(angular(after.theta,before.theta)>.03,'Horizontal drag must change the azimuth.');
+  else assert(angular(after.theta,before.theta)<1e-5,'Vertical drag must preserve azimuth.');
+  if(dy)assert(Math.abs(after.phi-before.phi)>.03,'Vertical drag must change the polar angle.');
+  else assert(Math.abs(after.phi-before.phi)<1e-5,'Horizontal drag must preserve elevation.');
+  assert(dist(after.target,before.target)<1e-5,'Rotation must keep the target fixed.');
+  assert(Math.abs(after.distance/before.distance-1)<1e-5,'Rotation must keep the camera distance fixed.');
+  assert(Math.abs(after.scrollY-before.scrollY)<2,'Dragging the canvas must not scroll the page.');
+  assert.equal(after.cancels,before.cancels,'The browser must not cancel canvas rotation.');
+  assert.equal(after.scale,1,'Rotation must not zoom the browser.');
+  return after.phi-before.phi;
+}
 (async()=>{
   fs.mkdirSync(out,{recursive:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));origin='http://127.0.0.1:'+server.address().port;
   browser=await chromium.launch({headless:true,executablePath:chrome,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
@@ -78,13 +91,24 @@ async function pan(dx,dy){
       const center=await point(),before=await read();await gesture(center,{span:30,endSpan:55});const after=await read();await record('pinch',before,after);
       assert(after.distance<before.distance*.8);assert.equal(after.scale,1);assert(Math.abs(after.scrollY-before.scrollY)<2);assert(angular(after.theta,before.theta)<1e-5);
     });
-    await check('single-finger horizontal swipe rotates',async()=>{
-      const center=await point(),before=await read();await gesture(center,{two:false,dx:60});const after=await read();await record('rotation',before,after);
-      assert(angular(after.theta,before.theta)>.03);assert(dist(after.target,before.target)<1e-5);assert(Math.abs(after.distance/before.distance-1)<1e-5);assert(Math.abs(after.scrollY-before.scrollY)<2);
+    await check('single-finger horizontal swipe rotates',()=>rotate(60,0));
+    let upDelta;
+    await check('single-finger upward drag changes model elevation',async()=>{upDelta=await rotate(0,-40);});
+    await check('single-finger downward drag changes elevation in the opposite direction',async()=>{
+      const downDelta=await rotate(0,40);assert(upDelta*downDelta<0,'Up and down must rotate in opposite directions.');
     });
-    await check('single-finger vertical swipe scrolls the page',async()=>{
-      const center=await point(),before=await read();await gesture(center,{two:false,dy:-90});const after=await read();await record('page-scroll',before,after);
-      assert(after.scrollY>before.scrollY+30,'Vertical single touch must scroll page.');assert(dist(after.position,before.position)<1e-5);assert(dist(after.target,before.target)<1e-5);
+    await check('single-finger diagonal drag changes both axes',()=>rotate(35,-25));
+    await check('single-finger vertical swipe outside the canvas scrolls the page',async()=>{
+      const center=await point();
+      const outside=await page.evaluate(({x,y})=>{
+        for(const candidate of [{x:2,y},{x:innerWidth-2,y}]){
+          const el=document.elementFromPoint(candidate.x,candidate.y);
+          if(el&&!el.closest('.plant-canvas,button,a,input,select,textarea,nav,header'))return candidate;
+        }
+        throw Error('No observed page-scroll point outside the canvas.');
+      },center);
+      const before=await read();await gesture(outside,{two:false,dy:-90});const after=await read();await record('outside-canvas page-scroll',before,after,{outside});
+      assert(after.scrollY>before.scrollY+30,'Vertical single touch outside the model must scroll the page.');assert(dist(after.position,before.position)<1e-5);assert(dist(after.target,before.target)<1e-5);
     });
     await check('remaining contact after two-finger pan cannot jump into rotation or selection',async()=>{
       const center=await point();const {moving,remaining}=await gesture(center,{dx:-35,leaveOne:true});const after=await read();
@@ -95,7 +119,7 @@ async function pan(dx,dy){
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert(await page.evaluate(()=>window.__touchEvents.every(e=>e.trusted)));
       const group=page.locator(selector);await group.getByRole('button',{name:'More view controls',exact:true}).click();await group.getByRole('button',{name:'Reset',exact:true}).click();await group.getByRole('button',{name:'More view controls',exact:true}).click();await point();await page.waitForTimeout(900);
       const hint=await group.locator('.scene-gesture-hint').evaluate(el=>{const r=el.getBoundingClientRect(),stage=el.closest('.plant-stage').getBoundingClientRect(),touch=el.querySelector('.scene-gesture-touch');return {text:touch.textContent,display:getComputedStyle(touch).display,width:el.clientWidth,scrollWidth:el.scrollWidth,left:r.left,right:r.right,stageLeft:stage.left,stageRight:stage.right};});
-      assert.equal(hint.text,'Swipe to turn · Two fingers move/zoom');assert.notEqual(hint.display,'none');assert(hint.scrollWidth<=hint.width+1&&hint.left>=hint.stageLeft-1&&hint.right<=hint.stageRight+1,JSON.stringify(hint));
+      assert.equal(hint.text,'Drag to rotate · Two fingers move/zoom');assert.notEqual(hint.display,'none');assert(hint.scrollWidth<=hint.width+1&&hint.left>=hint.stageLeft-1&&hint.right<=hint.stageRight+1,JSON.stringify(hint));
       (report.layouts||=[]).push({label,hint});
       await page.screenshot({path:path.join(out,spec.file.replace('.html','')+'-'+spec.width+'.png')});
     });
