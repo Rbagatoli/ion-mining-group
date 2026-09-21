@@ -3,17 +3,17 @@
   'use strict';
   const script=document.currentScript,host=document.querySelector('[data-energy-site]');
   if(!script||!host)return;
-  const buttons=[...document.querySelectorAll('[data-energy-site-select]')],image=host.querySelector('img');
+  const buttons=[...document.querySelectorAll('[data-energy-site-select]')],image=host.querySelector('img'),heading=document.getElementById('home-search-scope');
   const sources=script.dataset,preference=matchMedia('(prefers-reduced-motion: reduce)');
   const sites={
-    landfill:['gas','buildLandfillScene','Landfill gas: collection wells, a moving refuse truck, gas treatment, generator and transformer.'],
-    flare:['gas','buildFlareScene','Flare gas: a wellhead, separator, burning flare, generator and transformer.'],
-    hydro:['water','buildHydroScene','Hydro: a dam and reservoir feed flowing spillways and a spinning turbine beside the powerhouse.'],
-    nuclear:['water','buildNuclearScene','Nuclear: a containment dome, cooling tower with water vapour, turbine hall and transformer.'],
-    wind:['renewables','buildWindScene','Wind: three rotating turbines send power through collection cables to a transformer.'],
-    solar:['renewables','buildSolarScene','Solar: tracking panel banks connect through inverters and collection cables to a transformer.'],
-    industrial:['industry','buildIndustrialScene','Industrial surplus: a factory, energy recovery equipment, rotating fans and a power branch to a transformer.'],
-    grid:['industry','buildGridScene','Grid supply: a transmission tower connects to a substation with busbars, switchgear and transformers.']
+    landfill:['gas','buildLandfillScene','Landfill gas: collection wells, a moving refuse truck, gas treatment, generator and transformer.','Landfill gas. New purpose.'],
+    flare:['gas','buildFlareScene','Flare gas: a wellhead, separator, burning flare, generator and transformer.','Flare gas. More potential.'],
+    hydro:['water','buildHydroScene','Hydro: a dam and reservoir feed flowing spillways and a spinning turbine beside the powerhouse.','Hydro. Power in motion.'],
+    nuclear:['water','buildNuclearScene','Nuclear: a containment dome, cooling tower with water vapour, turbine hall and transformer.','Nuclear. Power at scale.'],
+    wind:['renewables','buildWindScene','Wind: three rotating turbines send power through collection cables to a transformer.','Wind. Catch the current.'],
+    solar:['renewables','buildSolarScene','Solar: tracking panel banks connect through inverters and collection cables to a transformer.','Solar. Follow the sun.'],
+    industrial:['industry','buildIndustrialScene','Industrial surplus: a factory, energy recovery equipment, rotating fans and a power branch to a transformer.','Industry. Find the surplus.'],
+    grid:['industry','buildGridScene','Grid supply: a transmission tower connects to a substation with busbars, switchgear and transformers.','Grid. Find your connection.']
   };
   const order=Object.keys(sites),modules=new Map();
   let selected='landfill',shown=null,rendered=null,stage=null,busy=false,failed=false,visible=false,disposed=false,timer=0,leaving=false;
@@ -23,7 +23,7 @@
   function schedule(){
     clearTimeout(timer);timer=0;
     const keyboardFocus=buttons.some(button=>button.matches(':focus-visible'));
-    if(running()&&stage&&!failed&&!busy&&!keyboardFocus)timer=setTimeout(()=>choose(order[(order.indexOf(selected)+1)%order.length]),11000);
+    if(running()&&stage&&!failed&&!busy&&!keyboardFocus)timer=setTimeout(()=>choose(order[(order.indexOf(selected)+1)%order.length]),6000);
   }
   function fallback(){failed=true;stage?.dispose();stage=null;rendered=null;host.dataset.renderState='fallback';schedule();}
   function choose(id){
@@ -36,7 +36,9 @@
     const srcset=src+' 960w, '+new URL('./assets/visuals/energy-site-'+id+'-1920.webp',script.src).href+' 1920w';
     const next=new Image();next.sizes=image.sizes;next.srcset=srcset;next.src=src;await next.decode();
     if(disposed||id!==selected)return false;
-    image.srcset=srcset;image.src=src;image.alt='Illustrative miniature. '+sites[id][2];shown=id;host.dataset.energySite=id;return true;
+    image.srcset=srcset;image.src=src;image.alt='Illustrative miniature. '+sites[id][2];
+    if(heading)heading.textContent=sites[id][3];
+    shown=id;host.dataset.energySite=id;return true;
   }
   async function sync(){
     if(disposed)return;

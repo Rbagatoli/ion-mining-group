@@ -16,7 +16,7 @@ const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrom
 const captureArcsOnly = process.env.SOURCING_PREVIEW_CAPTURE_ONLY === 'arcs';
 const report = {checks: [], pageErrors: [], missingAssets: [], blockedWrites: []};
 const pages = [
-  {file: 'index.html', scene: 'discovery', heading: '#home-search-scope', mobile: 'Gas first. Your brief.', desktop: 'Gas first. A wider search.'},
+  {file: 'index.html', scene: 'discovery', heading: '#home-search-scope', mobile: 'Landfill gas. New purpose.', desktop: 'Landfill gas. New purpose.'},
   {file: 'energy-sites.html', scene: 'capital', heading: '#brief-title', mobile: 'Look beyond power.', desktop: 'Power is only part of the picture.'}
 ];
 const files = new Map();

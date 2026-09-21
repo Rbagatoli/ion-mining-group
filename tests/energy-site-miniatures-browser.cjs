@@ -13,8 +13,18 @@ const root=path.resolve(process.env.ENERGY_MINIATURES_ROOT||path.join(__dirname,
 const out=path.resolve(process.env.ENERGY_MINIATURES_REPORT||path.join(__dirname,'../reports/energy-site-miniatures-20260921'));
 const executablePath=process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const ids=['landfill','flare','hydro','nuclear','wind','solar','industrial','grid'];
+const headings={
+  landfill:'Landfill gas. New purpose.',
+  flare:'Flare gas. More potential.',
+  hydro:'Hydro. Power in motion.',
+  nuclear:'Nuclear. Power at scale.',
+  wind:'Wind. Catch the current.',
+  solar:'Solar. Follow the sun.',
+  industrial:'Industry. Find the surplus.',
+  grid:'Grid. Find your connection.'
+};
 const selector='figure[data-sourcing-scene="discovery"]';
-const report={checks:[],pageErrors:[],missingAssets:[],blockedWrites:[]};
+const report={checks:[],pageErrors:[],missingAssets:[],blockedWrites:[],headingLayouts:[]};
 const files=new Map();
 function snapshot(dir){
   for(const item of fs.readdirSync(dir,{withFileTypes:true})){
@@ -93,6 +103,15 @@ async function verifyChoice(test,id,{live=false,click=true}={}){
   },{selector,id});
   await img.evaluate(image=>image.decode());
   assert.ok((await img.getAttribute('alt')||'').length>12,'The selected facility poster needs a useful alternative description.');
+  assert.equal((await page.locator('#home-search-scope').innerText()).replace(/\s+/g,' ').trim(),headings[id],'The visible heading must match the selected '+id+' facility.');
+  const viewport=page.viewportSize().width;
+  if(!report.headingLayouts.some(item=>item.viewport===viewport&&item.id===id)){
+    const dimensions=await page.locator('#home-search-scope').evaluate(heading=>{
+      const bounds=heading.getBoundingClientRect(),style=getComputedStyle(heading);
+      return{width:bounds.width,height:bounds.height,fontSize:style.fontSize,lineHeight:style.lineHeight};
+    });
+    report.headingLayouts.push({viewport,id,text:headings[id],...dimensions});
+  }
   if(live){
     assert.equal(await figure.locator('canvas').count(),1,'Switching '+id+' must preserve a single canvas.');
     assert.equal(await figure.locator('canvas').evaluate(canvas=>canvas===window.__originalMiniatureCanvas),true,'Switching '+id+' must reuse the existing canvas.');
@@ -117,27 +136,46 @@ async function checkLive(width){
       await page.waitForFunction(({selector,before})=>{const canvas=document.querySelector(selector+' canvas');return(window.__miniatureDraws.get(canvas)||0)>before;},{selector,before});
       await figure.screenshot({path:path.join(out,'energy-'+id+'-'+width+'.png')});
     }
-    pass(width+': all eight facilities render with selected labels and one shared canvas/context');
+    pass(width+': all eight facilities render with their unique headings, selected labels and one shared canvas/context');
     await page.evaluate(()=>{for(const id of ['wind','nuclear','solar','industrial','landfill','grid'])document.querySelector('[data-energy-site-select="'+id+'"]').click();});
     await verifyChoice(test,'grid',{live:true,click:false});
     await page.waitForTimeout(400);
     assert.equal(await figure.getAttribute('data-energy-site'),'grid','Rapid choices must finish on the most recent selection.');
-    pass(width+': rapid selection resolves to the latest facility');
+    assert.equal(await page.locator('#home-search-scope').innerText(),headings.grid,'Rapid choices must leave the latest facility heading visible.');
+    pass(width+': rapid selection resolves to the latest facility and heading');
     if(width===1440){
+      await checkResponsiveSelection(test,true);
+      const advancementStarted=Date.now();
       await verifyChoice(test,'landfill',{live:true});
       await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
-      await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.energySite==='flare',selector,{timeout:15000});
+      await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.energySite==='flare',selector,{timeout:9000});
+      const advancementMs=Date.now()-advancementStarted;
+      assert.ok(advancementMs>=4500&&advancementMs<9000,'The visible carousel should advance after approximately six seconds, not immediately or after the old eleven-second dwell.');
       await verifyChoice(test,'flare',{live:true,click:false});
-      pass('Visible carousel automatically advances from landfill to flare');
+      pass('Visible carousel automatically advances from landfill to flare in approximately six seconds',{advancementMs});
       await verifyChoice(test,'solar',{live:true});
       await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));
-      await page.waitForTimeout(12000);
+      await page.waitForTimeout(7500);
       assert.equal(await figure.getAttribute('data-energy-site'),'solar','Offscreen carousel must retain its selected facility.');
+      assert.equal(await page.locator('#home-search-scope').innerText(),headings.solar,'Offscreen carousel must retain its facility heading.');
       pass('Offscreen carousel suspends automatic advancement');
       await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
     }
     await figure.locator('..').screenshot({path:path.join(out,'energy-carousel-'+width+'.png')});
   }finally{await context.close();}
+}
+
+async function checkResponsiveSelection(test,live){
+  const {page,figure}=test;
+  await verifyChoice(test,'hydro',{live});
+  for(const width of [390,1440]){
+    await page.setViewportSize({width,height:900});
+    await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+    // Give resize and media-query listeners time to apply their responsive copy.
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await verifyChoice(test,'hydro',{live,click:false});
+  }
+  pass((live?'Live':'Static')+' selected facility and heading survive both responsive breakpoint changes');
 }
 
 async function checkStatic(width,noWebGL=false){
@@ -151,11 +189,13 @@ async function checkStatic(width,noWebGL=false){
       assert.ok(await img.evaluate(image=>Number(getComputedStyle(image).opacity)>0),'Static poster should remain opaque.');
     }
     if(width===390&&!noWebGL){
-      await verifyChoice(test,'hydro');await page.waitForTimeout(12000);
+      await verifyChoice(test,'hydro');await page.waitForTimeout(7500);
       assert.equal(await figure.getAttribute('data-energy-site'),'hydro','Reduced motion must disable automatic facility changes.');
+      assert.equal(await page.locator('#home-search-scope').innerText(),headings.hydro,'Reduced motion must retain the selected facility heading.');
     }
+    if(width===1440&&!noWebGL)await checkResponsiveSelection(test,false);
     await figure.locator('..').screenshot({path:path.join(out,'energy-carousel-'+width+(noWebGL?'-fallback':'-reduced')+'.png')});
-    pass(width+(noWebGL?': WebGL fallback':': reduced motion')+' preserves all eight selectable facility posters without canvas or overflow');
+    pass(width+(noWebGL?': WebGL fallback':': reduced motion')+' preserves all eight selectable facility posters and headings without canvas or overflow');
   }finally{await context.close();}
 }
 
@@ -163,11 +203,15 @@ async function checkStatic(width,noWebGL=false){
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));origin='http://127.0.0.1:'+server.address().port;
   browser=await chromium.launch({headless:true,executablePath,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   for(const width of [390,1440])await checkLive(width);
-  for(const width of [320,390,1440])await checkStatic(width);
+  for(const width of [320,390,768,1440])await checkStatic(width);
   await checkStatic(390,true);
   assert.deepEqual(report.pageErrors,[],'No uncaught page errors.');
   assert.deepEqual(report.missingAssets,[],'No missing local assets.');
   assert.deepEqual(report.blockedWrites,[],'No write requests should be attempted.');
+  report.headingHeightRanges=[320,390,768,1440].map(viewport=>{
+    const heights=report.headingLayouts.filter(item=>item.viewport===viewport).map(item=>item.height);
+    return{viewport,min:Math.min(...heights),max:Math.max(...heights),difference:Math.max(...heights)-Math.min(...heights)};
+  });
   pass('No uncaught errors, missing assets or write requests');
 })().catch(error=>{report.failure=error.stack;console.error(error);process.exitCode=1;}).finally(async()=>{
   if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));
