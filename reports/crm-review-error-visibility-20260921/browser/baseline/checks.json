@@ -1,0 +1,56 @@
+{
+  "syntheticOnly": true,
+  "baseline": true,
+  "scenario": "Rejected coordinator acceptance stays in the dialog with focused visible error and no mutation",
+  "views": [
+    {
+      "name": "desktop",
+      "zeroDispatch": true,
+      "registerUnchanged": true,
+      "fieldsPreserved": true,
+      "focused": false,
+      "alert": {
+        "top": 874.78125,
+        "bottom": 926.28125,
+        "left": 390,
+        "right": 1050,
+        "width": 660,
+        "height": 51.5
+      },
+      "dialog": {
+        "top": 24,
+        "bottom": 876,
+        "left": 365,
+        "right": 1075,
+        "width": 710,
+        "height": 852
+      },
+      "header": {
+        "top": 25,
+        "bottom": 110,
+        "left": 366,
+        "right": 1074,
+        "width": 708,
+        "height": 85
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "visibleWithinDialog": false
+    }
+  ],
+  "pageErrors": [],
+  "missingAssets": [],
+  "blockedWrites": [],
+  "blockedExternal": [
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com"
+  ],
+  "pass": false,
+  "error": "AssertionError [ERR_ASSERTION]: Rejected decision must focus the exact inline alert\n\nfalse !== true\n\n    at runView (C:\\Users\\rbaga\\ion-mining-group\\tools\\.cache\\proton-crm-workbench-local-20260921\\tests\\crm-review-error-browser.cjs:81:10)\n    at async C:\\Users\\rbaga\\ion-mining-group\\tools\\.cache\\proton-crm-workbench-local-20260921\\tests\\crm-review-error-browser.cjs:102:113"
+}
