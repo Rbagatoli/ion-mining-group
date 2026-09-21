@@ -4870,17 +4870,9 @@ body {
     .bp-sources, .bp-next { margin-top: 20px; padding-top: 14px; }
 }
 
-/* Native scene captures share one compact treatment at every width. */
+/* Original sourcing compositions stay compact and visible at every width. */
 .sourcing-render { position: relative; display: block; width: 100%; margin: 12px 0 16px; }
 .sourcing-render img { display: block; width: 100%; height: auto; }
-.sourcing-render-credit { position: absolute; top: 0; right: 0; z-index: 1; }
-.sourcing-render-credit summary { display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto; cursor: pointer; list-style: none; color: var(--plat-200); }
-.sourcing-render-credit summary::-webkit-details-marker { display: none; }
-.sourcing-render-credit summary svg { width: 18px; height: 18px; }
-.sourcing-render-credit summary:hover, .sourcing-render-credit details[open] summary { color: var(--btc-300); }
-.sourcing-render-credit summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -3px; }
-.sourcing-render-credit p { position: absolute; top: 44px; right: 0; width: min(270px, calc(100vw - 96px)); margin: 0; padding: 12px; border: 1px solid var(--line); background: #101112; color: var(--plat-200); font: 13px/1.5 var(--sans); }
-.sourcing-render-credit a { color: inherit; text-decoration: underline; }
 @media (max-width: 640px) {
     .sourcing-render { margin: 8px 0 12px; }
 }
