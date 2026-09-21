@@ -74,6 +74,54 @@
 }
 @media (prefers-reduced-motion: reduce) { .plant-callout { transition: none; } }
 
+/* Desktop keeps its equipment cards and authored camera composition, with the
+   same contained frame and compact controls as the phone presentation. */
+@media (min-width: 701px) {
+    .dg-wrap.plant-ready, .dg-views.plant-ready {
+        border: 1px solid rgba(229,228,226,.16); border-radius: 16px; overflow: hidden;
+        background: #0b0c0d;
+    }
+    .plant-stage { background: radial-gradient(ellipse at 50% 46%,rgba(229,228,226,.065),transparent 72%),#070809; }
+    .plant-callout {
+        border-color: rgba(229,228,226,.18); border-radius: 9px;
+        background: linear-gradient(135deg,rgba(229,228,226,.07),rgba(229,228,226,.015)),rgba(9,10,11,.94);
+        box-shadow: 0 6px 18px rgba(0,0,0,.15);
+    }
+    .plant-c-title { font: 600 clamp(10.5px,.85vw,12.5px)/1.4 var(--sans); letter-spacing: 0; text-transform: none; color: var(--plat-100); }
+    .plant-c-desc { color: var(--plat-300); }
+    .plant-callout.is-hot, .plant-callout:focus-visible {
+        border-color: var(--btc-300); background: linear-gradient(135deg,rgba(247,147,26,.13),rgba(247,147,26,.025)),#0b0c0d;
+    }
+    .plant-caption { color: var(--plat-400); font: 11px/1.4 var(--sans); text-transform: none; letter-spacing: 0; }
+    .plant-stage .scene-gesture-hint { background: transparent; color: var(--plat-400); font: 11px/1.4 var(--sans); }
+    .plant-hint { display: none; }
+    .plant-toolbar { justify-content: center; gap: 8px; padding: 12px 18px;
+        border-top: 1px solid rgba(229,228,226,.09); background: rgba(229,228,226,.025); }
+    .plant-toolbar button, .plant-toolbar [data-plant="inspect"],
+    .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] {
+        min-height: 44px; min-width: 44px; padding: 10px 16px; border-radius: 7px;
+        font: 500 12px/1.4 var(--sans); letter-spacing: 0;
+        border: 1px solid rgba(229,228,226,.15); background: rgba(229,228,226,.04);
+        color: var(--plat-200); box-shadow: none;
+    }
+    .plant-toolbar [data-plant="inspect"] { color: var(--btc-200); border-color: rgba(247,147,26,.28); background: rgba(247,147,26,.07); }
+    .plant-toolbar [data-plant="xray"][aria-pressed="true"] {
+        color: var(--btc-200); border-color: rgba(247,147,26,.45); background: rgba(247,147,26,.12); box-shadow: none;
+    }
+    .plant-toolbar [data-plant="xray"]:hover:not(:disabled) { color: var(--plat-100); border-color: var(--line-btc); filter: none; }
+    .plant-note { padding: 0 18px 14px; font: 12px/1.5 var(--sans); }
+    .dg-toggle { border: 0; border-bottom: 1px solid var(--line-mid); margin-bottom: 16px; }
+    .dg-toggle > * { min-height: 44px; padding: 10px 18px; font: 500 13px/1.4 var(--sans); letter-spacing: 0; text-transform: none; }
+    .dg-toggle > * + * { border-left: 0; }
+    .dg-toggle .dg-toggle-on { color: var(--btc-200); background: none; box-shadow: 0 2px var(--btc-300); }
+}
+
+/* Side cards need enough vertical separation on smaller laptop windows. */
+@media (min-width: 901px) and (max-width: 1100px) {
+    .plant-stage { width: 100%; min-height: 400px; }
+    .plant-callout { padding: 9px 10px; }
+}
+
 /* On phones, the scene is the focus. Keep inspection at hand, with equipment
    details and secondary camera tools available without a wall of buttons. */
 @media (max-width: 700px) {
