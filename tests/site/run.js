@@ -34,7 +34,7 @@ const SUITES = [
     'pad-suite.js', 'landfill-copy-suite.js', 'dg-crop.js',
     'hardware-suite.js', 'brokerage-catalog-data-suite.js', 'brokerage-catalog-ui-suite.js', 'brokerage-models-suite.js', 'hardware-order-catalog-suite.js', 'checkout-quote-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js', 'order-status-suite.js', 'mobile-layout-suite.js',
     'orders-suite.mjs', 'pay-suite.mjs', 'stripe-suite.mjs', 'facility-suite.mjs',
-    'blog-suite.mjs', 'contact-routing-suite.js', 'scouting-suite.js', 'energy-access-suite.js', 'energy-preferences-suite.js', 'site-diligence-suite.js', 'site-locator-suite.js',
+    'blog-suite.mjs', 'mobile-blog-copy.test.cjs', 'contact-routing-suite.js', 'scouting-suite.js', 'energy-access-suite.js', 'energy-preferences-suite.js', 'site-diligence-suite.js', 'site-locator-suite.js',
     /* The deploy tree. It asserts that every sitemap url resolves to a real file and every
        canonical points at the page it is on — the launch-day failure the /site/ topology
        would have caused on all twelve pages, silently. --check builds it, verifies it, and

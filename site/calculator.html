@@ -12,7 +12,7 @@
 <meta property="og:url" content="https://protonminingco.com/calculator.html">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=15d08313">
+<link rel="stylesheet" href="./styles.css?v=fae36b5c">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <!-- ===== SHARE CARD ===== -->
 <meta property="og:image" content="https://protonminingco.com/og/home.png">
@@ -106,7 +106,7 @@
            and a crawler sees 778 words, nearly all of them form labels. -->
       <h1 class="h-display" style="font-size:clamp(32px,4.4vw,48px)">Bitcoin mining<br>calculator.</h1>
       <p class="calc-strap">Run the numbers on your own setup.</p>
-      <p class="lede" data-mobile-copy="Model your fleet or available energy, then compare mining with buying bitcoin. Every assumption is editable.">This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you are thinking of buying, or from energy you already have and want to put to work. Every assumption below is yours to change.</p>
+      <p class="lede" data-mobile-copy="Set your fleet or energy supply. Compare mining with buying bitcoin.">This is the projection engine we use internally, put on the public site unchanged. Start from a fleet you are thinking of buying, or from energy you already have and want to put to work. Every assumption below is yours to change.</p>
     </div>
   </div>
 </section>
@@ -332,7 +332,7 @@
               <div class="calc-unit">
                 <input id="machineCount" type="number" min="0" step="1" value="100" data-default="100"><span class="cu-post">units</span></div>
             </div>
-            <p class="calc-hint" data-mobile-copy="Selecting a model fills its specs. Edit them for your operating setup.">Specs fill in from the model you pick, and stay editable &mdash; an underclocked machine is a different machine. <a href="./hardware.html">We can source any of them</a>.</p>
+            <p class="calc-hint" data-mobile-copy="Choose a model, then edit its specs. &lt;a href=&quot;./hardware.html&quot;&gt;Browse miners&lt;/a&gt;.">Specs fill in from the model you pick, and stay editable &mdash; an underclocked machine is a different machine. <a href="./hardware.html">We can source any of them</a>.</p>
             <div class="field">
               <label for="minerAdditions">Monthly Miner Additions</label>
               <div class="calc-unit">
@@ -472,7 +472,7 @@
               <div class="calc-unit">
                 <input id="heatRate" type="number" min="1" step="100" value="10000" data-default="10000"><span class="cu-post">BTU/kWh</span></div>
             </div>
-            <p class="calc-hint">The same constants our internal engine uses &mdash; roughly 1 MMcf/day to 4 MW. Both are editable because heat rate moves with genset model and altitude.</p>
+            <p class="calc-hint" data-mobile-copy="Gas conversion: roughly 1 MMcf/day to 4 MW. Edit both constants for your genset and altitude.">The same constants our internal engine uses &mdash; roughly 1 MMcf/day to 4 MW. Both are editable because heat rate moves with genset model and altitude.</p>
 
 </div></details></div>
 
@@ -546,7 +546,7 @@
                 </span>
               </label>
               <!-- The distinction the default cannot make for you. -->
-              <p class="calc-explain"><strong>Turn this off if the money is savings</strong> you
+              <p class="calc-explain" data-mobile-copy="&lt;strong&gt;Using savings already taxed? Turn this off.&lt;/strong&gt; Both scenarios then start equally."><strong>Turn this off if the money is savings</strong> you
                 already paid tax on &mdash; then both sides start from the same figure.</p>
 
               <div class="field">
@@ -612,7 +612,7 @@
       <div class="calc-note-cols">
         <div>
           <h4>It is a model, not a quote</h4>
-          <p data-mobile-copy="Results depend on your inputs. Test different bitcoin prices and difficulty paths; neither can be forecast reliably.">Every figure here comes from assumptions you typed. Bitcoin price and network difficulty are the two that matter most and the two nobody can forecast. Move them and watch how fast the answer changes &mdash; that sensitivity is the most useful thing on this page.</p>
+          <p data-mobile-copy="Test different bitcoin prices and difficulty paths. Neither is reliably predictable.">Every figure here comes from assumptions you typed. Bitcoin price and network difficulty are the two that matter most and the two nobody can forecast. Move them and watch how fast the answer changes &mdash; that sensitivity is the most useful thing on this page.</p>
         </div>
         <div>
           <h4>What it leaves out</h4>
@@ -635,7 +635,7 @@
          lists capabilities it does not have is worse than a page with no text at all. -->
     <div class="calc-models">
       <h2 class="h-section" data-mobile-copy="What the model includes.">What this models that most calculators do not.</h2>
-      <p class="calc-models-lede" data-mobile-copy="Long-term outcomes depend on more than today’s daily revenue. Explore the assumptions below.">Most bitcoin mining calculators answer one question: at
+      <p class="calc-models-lede" data-mobile-copy="Explore the assumptions behind long-term outcomes.">Most bitcoin mining calculators answer one question: at
         today—s price and today—s difficulty, what does this machine earn per day? That number
         is true for about a fortnight. These are the things that decide whether a machine pays
         for itself, and they are the ones usually left out.</p>
@@ -643,32 +643,32 @@
 
 <div class="calc-models-grid">
         <div class="cm">
-          <h3>Buying the machines against buying the coin</h3>
-          <p data-mobile-copy="Compare mining with buying bitcoin under your inputs. Tax adjustments apply only when enabled.">Compare a fleet with buying bitcoin on day one under the inputs you choose. The chart shows whether the modeled values cross. Tax adjustments are optional and apply only when enabled; the model does not determine your legal tax treatment.</p>
+          <h3 data-mobile-copy="Mining vs buying bitcoin">Buying the machines against buying the coin</h3>
+          <p data-mobile-copy="Compare both with your inputs. Optional tax modeling does not determine eligibility.">Compare a fleet with buying bitcoin on day one under the inputs you choose. The chart shows whether the modeled values cross. Tax adjustments are optional and apply only when enabled; the model does not determine your legal tax treatment.</p>
         </div>
         <div class="cm">
-          <h3>Difficulty growth as an input, not an assumption</h3>
-          <p data-mobile-copy="Set positive or negative difficulty growth. It changes modeled mining output over time.">Change the difficulty path to test how the same hardware could produce different amounts of bitcoin. Positive, zero and negative paths are scenarios you select, not forecasts.</p>
+          <h3 data-mobile-copy="Difficulty scenarios">Difficulty growth as an input, not an assumption</h3>
+          <p data-mobile-copy="Test rising, flat or falling difficulty. These are scenarios, not forecasts.">Change the difficulty path to test how the same hardware could produce different amounts of bitcoin. Positive, zero and negative paths are scenarios you select, not forecasts.</p>
         </div>
         <div class="cm">
-          <h3>Halvings, on their projected dates</h3>
-          <p data-mobile-copy="Subsidy falls on projected halving dates through 2100, instead of staying flat.">The block subsidy is stepped down on projected halving dates rather than held flat,
+          <h3 data-mobile-copy="Projected halvings">Halvings, on their projected dates</h3>
+          <p data-mobile-copy="Subsidy falls on projected halving dates through 2100.">The block subsidy is stepped down on projected halving dates rather than held flat,
             out to 2100. Over any horizon longer than about three years that is the difference
             between a projection and a straight line.</p>
         </div>
         <div class="cm">
-          <h3>The machine wearing out</h3>
-          <p data-mobile-copy="Set useful life, salvage value and economic retirement. Choose whether to replace miners, reinvest or withdraw proceeds.">Hardware has a lifespan, a salvage value, and a date it stops being economic that
+          <h3 data-mobile-copy="Hardware life">The machine wearing out</h3>
+          <p data-mobile-copy="Set useful life, salvage and retirement; choose replacement, reinvestment or withdrawals.">Hardware has a lifespan, a salvage value, and a date it stops being economic that
             arrives before the date it breaks. You can set all three, choose whether retired
             machines are replaced, and choose whether the proceeds are reinvested or taken out.</p>
         </div>
         <div class="cm">
-          <h3>Tax on both sides, separately</h3>
-          <p data-mobile-copy="Optional tax inputs apply simplified assumptions to mining and direct buying.">When enabled, the model applies separate income and capital-gains inputs to its mining and direct-buying scenarios. Confirm the relevant treatment with a tax adviser; your circumstances may differ from these simplified assumptions.</p>
+          <h3 data-mobile-copy="Optional tax assumptions">Tax on both sides, separately</h3>
+          <p data-mobile-copy="Optional mining and buying tax assumptions. Confirm your treatment with an adviser.">When enabled, the model applies separate income and capital-gains inputs to its mining and direct-buying scenarios. Confirm the relevant treatment with a tax adviser; your circumstances may differ from these simplified assumptions.</p>
         </div>
         <div class="cm">
-          <h3>Sizing from energy instead of from machines</h3>
-          <p data-mobile-copy="Enter gas volume, heat rate and heating value to size the available power and supported fleet.">If you have gas rather than hardware, start from the gas. Enter volume in mcf per
+          <h3 data-mobile-copy="Size a fleet from energy">Sizing from energy instead of from machines</h3>
+          <p data-mobile-copy="Enter gas volume, heat rate and heating value to estimate power and fleet size.">If you have gas rather than hardware, start from the gas. Enter volume in mcf per
             day with your own heat rate and BTU content, and it works out the load that supports
             and the fleet that fills it. That is the question a flare owner actually has, and it
             is the reverse of the one every other calculator answers.</p>
@@ -676,7 +676,7 @@
       </div>
 
 
-      <p class="calc-models-foot" data-mobile-copy="Also includes pool fees, uptime, infrastructure, scheduled additions and existing BTC. Share the URL to share your scenario.">Pool fee, uptime, infrastructure cost, scheduled additions and
+      <p class="calc-models-foot" data-mobile-copy="Includes fees, uptime, infrastructure, additions and existing BTC. Share your scenario URL.">Pool fee, uptime, infrastructure cost, scheduled additions and
         an existing bitcoin treasury are all inputs too. Nothing is assumed on your behalf, and
         the scenario travels in the address bar — the URL is the whole state, so you can send
         it to somebody and they will see exactly what you saw.</p>
@@ -755,11 +755,11 @@
   </div>
 </footer>
 
-<script src="./site.js?v=15d08313"></script>
-<script src="./hero-anim.js?v=15d08313"></script>
-<script src="./cart.js?v=15d08313"></script>
-<script src="./miner-db.js?v=15d08313"></script>
-<script src="./calc-engine.js?v=15d08313"></script>
-<script src="./calculator.js?v=15d08313"></script>
+<script src="./site.js?v=fae36b5c"></script>
+<script src="./hero-anim.js?v=fae36b5c"></script>
+<script src="./cart.js?v=fae36b5c"></script>
+<script src="./miner-db.js?v=fae36b5c"></script>
+<script src="./calc-engine.js?v=fae36b5c"></script>
+<script src="./calculator.js?v=fae36b5c"></script>
 </body>
 </html>

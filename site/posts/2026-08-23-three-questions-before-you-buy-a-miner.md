@@ -3,6 +3,7 @@ title: Three questions before you buy a miner
 slug: three-questions-before-you-buy-a-miner
 date: 2026-08-23
 summary: Before buying a miner, compare all-in power costs, changing network difficulty and equipment life against the cost of buying bitcoin directly.
+mobileSummary: Check power costs, difficulty and equipment life before choosing miners over bitcoin.
 tags: economics, hardware
 status: published
 sources: https://developer.bitcoin.org/devguide/block_chain.html, https://developer.bitcoin.org/devguide/mining.html, https://www.irs.gov/pub/irs-drop/n-14-21.pdf

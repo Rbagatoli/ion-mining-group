@@ -1,0 +1,138 @@
+{
+  "date": "2026-09-20",
+  "baseCommit": "14f3657404dfc1324db9f0e039b71c629e5f4d3d",
+  "scope": "Ten main public mobile journeys; full article, pricing, payment, privacy and expanded reference content retained.",
+  "phoneWidth": 390,
+  "desktopWidth": 1440,
+  "totals": {
+    "beforeWords": 4830,
+    "afterWords": 3070,
+    "visibleWordReductionPercent": 36.43892339544513,
+    "beforeEditorialWords": 3066,
+    "afterEditorialWords": 1869,
+    "beforeHeightPx": 34901,
+    "afterHeightPx": 27945,
+    "heightReductionPercent": 19.930661012578433,
+    "addedVisuals": 5
+  },
+  "desktop": {
+    "pages": 23,
+    "identicalText": true,
+    "identicalPageHeights": true
+  },
+  "layout": {
+    "pagesPerWidth": 23,
+    "overflow": false,
+    "pageErrors": 0,
+    "missingAssets": 0
+  },
+  "functionalChecks": {
+    "mobileScenarios": 24,
+    "energyPreviewScenarios": 8,
+    "energySourceOptions": 16,
+    "printScenarios": 4,
+    "siteSuite": "all green"
+  },
+  "pages": [
+    {
+      "page": "blog.html",
+      "beforeWords": 144,
+      "afterWords": 105,
+      "beforeEditorialWords": 123,
+      "afterEditorialWords": 84,
+      "beforeHeightPx": 1115,
+      "afterHeightPx": 1070,
+      "addedVisuals": 0
+    },
+    {
+      "page": "calculator.html",
+      "beforeWords": 213,
+      "afterWords": 208,
+      "beforeEditorialWords": 93,
+      "afterEditorialWords": 88,
+      "beforeHeightPx": 1729,
+      "afterHeightPx": 1729,
+      "addedVisuals": 0
+    },
+    {
+      "page": "contact.html",
+      "beforeWords": 149,
+      "afterWords": 133,
+      "beforeEditorialWords": 46,
+      "afterEditorialWords": 42,
+      "beforeHeightPx": 2154,
+      "afterHeightPx": 2052,
+      "addedVisuals": 0
+    },
+    {
+      "page": "energy-sites.html",
+      "beforeWords": 1164,
+      "afterWords": 827,
+      "beforeEditorialWords": 786,
+      "afterEditorialWords": 499,
+      "beforeHeightPx": 7382,
+      "afterHeightPx": 6677,
+      "addedVisuals": 1
+    },
+    {
+      "page": "energy.html",
+      "beforeWords": 439,
+      "afterWords": 339,
+      "beforeEditorialWords": 306,
+      "afterEditorialWords": 206,
+      "beforeHeightPx": 3120,
+      "afterHeightPx": 2950,
+      "addedVisuals": 1
+    },
+    {
+      "page": "hardware.html",
+      "beforeWords": 310,
+      "afterWords": 289,
+      "beforeEditorialWords": 161,
+      "afterEditorialWords": 140,
+      "beforeHeightPx": 1796,
+      "afterHeightPx": 1781,
+      "addedVisuals": 0
+    },
+    {
+      "page": "hosting.html",
+      "beforeWords": 398,
+      "afterWords": 325,
+      "beforeEditorialWords": 243,
+      "afterEditorialWords": 162,
+      "beforeHeightPx": 3314,
+      "afterHeightPx": 3270,
+      "addedVisuals": 1
+    },
+    {
+      "page": "index.html",
+      "beforeWords": 322,
+      "afterWords": 243,
+      "beforeEditorialWords": 221,
+      "afterEditorialWords": 145,
+      "beforeHeightPx": 3111,
+      "afterHeightPx": 3053,
+      "addedVisuals": 1
+    },
+    {
+      "page": "site-screening-checklist.html",
+      "beforeWords": 975,
+      "afterWords": 233,
+      "beforeEditorialWords": 445,
+      "afterEditorialWords": 221,
+      "beforeHeightPx": 7015,
+      "afterHeightPx": 2084,
+      "addedVisuals": 0
+    },
+    {
+      "page": "why-mining.html",
+      "beforeWords": 716,
+      "afterWords": 368,
+      "beforeEditorialWords": 642,
+      "afterEditorialWords": 282,
+      "beforeHeightPx": 4165,
+      "afterHeightPx": 3279,
+      "addedVisuals": 1
+    }
+  ]
+}

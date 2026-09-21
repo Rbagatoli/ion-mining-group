@@ -357,6 +357,7 @@
     'use strict';
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     var media = window.matchMedia('(max-width: 640px)');
+    var printing = false, printDetails = null;
     document.documentElement.classList.add('mobile-details-ready');
     // Desktop HTML is the source copy. Only phone layouts use the short variant.
     // Keep live nodes (prices, order references, links) instead of recreating them.
@@ -364,12 +365,13 @@
         return { el: el, desktop: el.innerHTML, mobile: el.getAttribute('data-mobile-copy'), mode: null, last: el.innerHTML };
     });
     function applyCopy(item) {
-        if (item.mode === media.matches) return;
-        if (item.mode === null && !media.matches) { item.mode = false; return; }
+        var mobile = media.matches && !printing;
+        if (item.mode === mobile) return;
+        if (item.mode === null && !mobile) { item.mode = false; return; }
         // These notes are owned by the quote/market renderer once it supplies live content.
         if (/^hw(Econ|Market)Note$/.test(item.el.id) && item.el.innerHTML !== item.last) return;
         var template = document.createElement('template');
-        template.innerHTML = media.matches ? item.mobile : item.desktop;
+        template.innerHTML = mobile ? item.mobile : item.desktop;
         var live = Array.from(item.el.querySelectorAll('[id]'));
         live.filter(function (node) { return !live.some(function (parent) { return parent !== node && parent.contains(node); }); })
             .forEach(function (node) {
@@ -377,7 +379,7 @@
                 if (replacement) replacement.replaceWith(node);
             });
         item.el.replaceChildren(template.content);
-        item.mode = media.matches; item.last = item.el.innerHTML;
+        item.mode = mobile; item.last = item.el.innerHTML;
     }
     copies.forEach(applyCopy);
 
@@ -398,7 +400,7 @@
         if (group.summary) group.summary.tabIndex = media.matches ? 0 : -1;
     }
     groups.forEach(function (group) {
-        group.el.addEventListener('toggle', function () { if (media.matches) group.mobileOpen = group.el.open; });
+        group.el.addEventListener('toggle', function () { if (media.matches && !printing) group.mobileOpen = group.el.open; });
         if (group.summary) group.summary.addEventListener('click', function (event) { if (!media.matches) event.preventDefault(); });
         apply(group);
     });
@@ -428,9 +430,25 @@
         }
         if (target) requestAnimationFrame(function () { target.scrollIntoView({ block: 'start' }); });
     }
-    var change = function () { copies.forEach(applyCopy); groups.forEach(apply); revealHash(); };
+    var change = function () { if (printing) return; copies.forEach(applyCopy); groups.forEach(apply); revealHash(); };
     if (media.addEventListener) media.addEventListener('change', change); else media.addListener(change);
     window.addEventListener('hashchange', revealHash);
+    // A phone worksheet remains complete when printed. Restore the reading state afterwards.
+    window.addEventListener('beforeprint', function () {
+        if (printing) return;
+        groups.forEach(function (group) {
+            if (media.matches) group.mobileOpen = group.el.open;
+            group.wasMobile = media.matches;
+        });
+        printDetails = Array.from(document.querySelectorAll('details')).map(function (el) { return { el: el, open: el.open }; });
+        printing = true; copies.forEach(applyCopy);
+        printDetails.forEach(function (item) { item.el.open = true; });
+    });
+    window.addEventListener('afterprint', function () {
+        if (!printing) return;
+        if (printDetails) printDetails.forEach(function (item) { item.el.open = item.open; });
+        printing = false; printDetails = null; copies.forEach(applyCopy); groups.forEach(apply);
+    });
     document.addEventListener('click', function (event) {
         var a = event.target.closest && event.target.closest('a[href^="#"]');
         if (a && a.getAttribute('href') === location.hash) revealHash();

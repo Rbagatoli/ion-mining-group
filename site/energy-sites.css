@@ -1,4 +1,9 @@
 /* Site sourcing uses the same platinum, Bitcoin orange and page field as the site. */
+.sites-infrastructure-vignette { display: none; }
+@media (max-width: 640px) {
+  .sites-infrastructure-vignette { display: block; margin: -4px 0 8px; }
+  .sites-infrastructure-vignette img { display: block; width: 100%; max-height: 72px; object-fit: contain; }
+}
 .sites-source-jump{display:block;color:var(--btc-200);font:11px/1.9 var(--mono);margin-top:25px;max-width:430px}
 @media(max-width:640px){.sites-page .sites-section.sites-collapsible{padding-block:12px}.sites-collapsible .mobile-details-body .sec-head{display:none}}
 .sites-workspace-head{display:flex;justify-content:space-between;align-items:end;gap:40px}.sites-workspace-head .lede{max-width:400px!important;font-size:16px}.sites-page .sites-workspace-section{padding-top:20px}.sites-demo-note{font:11px/1.7 var(--sans);color:var(--plat-400);margin:15px 0 0;max-width:900px}

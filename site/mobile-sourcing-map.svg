@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="88" viewBox="0 0 360 88" fill="none">
+  <defs>
+    <linearGradient id="terrain" x1="52" y1="11" x2="234" y2="87" gradientUnits="userSpaceOnUse"><stop stop-color="#d7d9d8" stop-opacity=".24"/><stop offset=".42" stop-color="#686e73" stop-opacity=".1"/><stop offset="1" stop-color="#bcc3c9" stop-opacity=".25"/></linearGradient>
+    <linearGradient id="platinum" x1="271" y1="10" x2="309" y2="77" gradientUnits="userSpaceOnUse"><stop stop-color="#e7e9e8"/><stop offset=".35" stop-color="#939a9f"/><stop offset=".59" stop-color="#eef0ed"/><stop offset="1" stop-color="#676f76"/></linearGradient>
+    <linearGradient id="orange" x1="123" y1="17" x2="141" y2="49" gradientUnits="userSpaceOnUse"><stop stop-color="#ffdbac"/><stop offset=".45" stop-color="#f7931a"/><stop offset="1" stop-color="#a85e15"/></linearGradient>
+  </defs>
+  <path d="m12 49 78-36 151 25-77 39Z" fill="url(#terrain)" stroke="#afb8bf" stroke-opacity=".4"/>
+  <path d="m12 49 1 6 151 29 77-40v-6M164 77v7" stroke="#7e888f" stroke-opacity=".38"/>
+  <g stroke="#aeb7be" stroke-opacity=".18"><path d="m36 38 153 26M62 26l153 26M62 58l77-36M114 68l77-37"/><path d="m72 60 18-17 36 5 28-12 31 11 18-6" stroke-opacity=".55"/></g>
+  <path d="m70 42 62 12 54-26M132 54l115 2 24-13" stroke="#f7931a" stroke-width="1.3" stroke-dasharray="3 5"/>
+  <ellipse cx="132" cy="54" rx="19" ry="7" fill="#f7931a" fill-opacity=".09" stroke="#f7931a" stroke-opacity=".4"/>
+  <g fill="#aeb6bc" stroke="#e4e7e6" stroke-width=".6"><path d="M70 22c-6 0-10 4-10 9 0 7 10 15 10 15s10-8 10-15c0-5-4-9-10-9Z"/><path d="M186 9c-5 0-9 3-9 8 0 6 9 13 9 13s9-7 9-13c0-5-4-8-9-8Z"/></g>
+  <circle cx="70" cy="31" r="3" fill="#20282e"/><circle cx="186" cy="17" r="2.8" fill="#20282e"/>
+  <path d="M132 19c-8 0-13 5-13 12 0 9 13 22 13 22s13-13 13-22c0-7-5-12-13-12Z" fill="url(#orange)" stroke="#ffd59f"/>
+  <circle cx="132" cy="31" r="4.2" fill="#392818"/>
+  <rect x="271" y="13" width="58" height="61" rx="5" fill="#171d22" stroke="url(#platinum)"/>
+  <path d="M281 25h27M291 37h26M291 48h26M291 59h18" stroke="#b6bec4" stroke-linecap="round"/>
+  <path d="m280 36 2 2 4-5m-6 14 2 2 4-5m-6 14 2 2 4-5" stroke="#ffb347" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="249" cy="56" r="2" fill="#f7931a"/>
+</svg>

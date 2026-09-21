@@ -3,6 +3,7 @@ title: What a cheap mining power quote leaves out
 slug: cheap-mining-power-quote
 date: 2026-09-20
 summary: Compare mining power quotes using usable capacity, operating costs, infrastructure funding and delivered energy. A worked example shows the difference.
+mobileSummary: Compare usable power, operating costs and infrastructure funding before ranking quotes.
 tags: energy-sourcing, economics
 status: published
 sources: https://www.eia.gov/tools/faqs/faq.php?id=107&t=3, https://www.eia.gov/tools/faqs/faq.php?id=101&t=3, https://www.epa.gov/system/files/documents/2024-01/pdh_chapter3.pdf, https://www.epa.gov/lmop/lfgcost-web-landfill-gas-energy-cost-model

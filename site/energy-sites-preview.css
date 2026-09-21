@@ -22,6 +22,8 @@
 /* The native source chooser retains all sixteen routes on a phone; the quick
    buttons repeat that chooser and need not push the actual report downward. */
 @media (max-width: 640px) {
+  /* The selected source is already named directly above the tabs. */
+  .ep-source-repeat-title, .ep-panel-intro .ep-kicker { display: none; }
   .ep-toolbar { padding: 11px 12px; }
   .ep-logo { width: 25px; height: 25px; }
   .ep-toolbar > div { gap: 8px; }

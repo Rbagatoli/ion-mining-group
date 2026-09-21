@@ -33,6 +33,7 @@ const PAGES = {
     insertBefore: '<!-- ===== THE MODEL ===== -->',
     eyebrow: 'Inside a mine',
     heading: 'Explore a possible setup.',
+    mobileHeading: 'Explore a setup.',
     lede: 'An illustrative gas-to-mining layout: treatment, generation, electrical equipment and containers of machines. A real project needs site-specific design, approvals and a funded build scope.',
     mobileLede: 'An illustrative layout. Actual equipment, approvals and build scope depend on the site.',
     deps: ['site-kit.js'],
@@ -50,8 +51,9 @@ const PAGES = {
     insertBefore: '<!-- ===== HOSTING OPTIONS ===== -->',
     eyebrow: 'Inside the container',
     heading: 'Where your machines actually sit.',
+    mobileHeading: 'Inside your container.',
     lede: 'The same list again, as a place: a closed water loop, your racks in the middle, metering on every circuit, and the heat leaving through the cooler on the roof. Pull the slider to go from the whole container down to a single machine.',
-    mobileLede: 'Explore a hydro-cooled container, then use the slider to inspect one miner.',
+    mobileLede: 'Slide from hydro-cooled container to miner.',
     link: 'hosting',
     chain: 'cont',
     /* scene-hosting.js reads KIT.COOLER so its roof cooler cannot drift from the one
@@ -85,6 +87,7 @@ const PAGES = {
        'note' is inserted raw and may carry entities. */
     eyebrow: 'Gas-site examples · before and after',
     heading: 'See two gas-site configurations.',
+    mobileHeading: 'Gas sites, before & after.',
     /* FUEL-NEUTRAL ON PURPOSE, and it has to stay that way. This paragraph
        opens the drawing for BOTH fuels, so it may not name a wellhead, a
        separator or a tank battery: a landfill has none of them. It says "your
@@ -92,7 +95,7 @@ const PAGES = {
        specific one. Changing it back here silently reverts energy.html on the
        next build. */
     lede: 'These landfill and flare examples show the equipment used for a gas-to-power project. Other energy sources follow the routes above. Select “With Proton on it” to configure a mining layout; existing assets and reuse still require site-specific verification.',
-    mobileLede: 'Gas-site examples only. Select “With Proton on it” to explore a layout; other sources follow the routes above.',
+    mobileLede: 'Gas-site examples. Tap “With Proton on it” to explore; verify reuse separately.',
     chain: 'pad',
     builder: true,
     /* pad-geometry.js FIRST. landfill-geometry.js is built on its primitives
@@ -620,7 +623,7 @@ function build(key) {
   <div class="wrap">
     <div class="reveal sec-head" style="--sh:40px">
       <div class="eyebrow">${esc(cfg.eyebrow)}</div>
-      <h2 class="h-section">${esc(cfg.heading)}</h2>
+      <h2 class="h-section"${cfg.mobileHeading ? ` data-mobile-copy="${esc(cfg.mobileHeading)}"` : ''}>${esc(cfg.heading)}</h2>
       <p class="lede" data-mobile-copy="${esc(cfg.mobileLede || cfg.lede)}">${esc(cfg.lede)}</p>
     </div>${toggle}${content}
   </div>

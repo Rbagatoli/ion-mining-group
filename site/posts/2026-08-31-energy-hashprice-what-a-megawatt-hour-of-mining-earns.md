@@ -3,6 +3,7 @@ title: Energy hashprice: what a megawatt-hour of mining earns
 slug: energy-hashprice-what-a-megawatt-hour-of-mining-earns
 date: 2026-08-31
 summary: Energy hashprice puts gross mining revenue beside your electricity bill. August 2026 examples show why efficiency matters before other costs.
+mobileSummary: Compare gross mining revenue per MWh with your power bill. Dated examples, before other costs.
 tags: economics, hardware
 status:   published
 sources: https://hashrateindex.com/blog/hashrate-index-roundup-august-17-2026/, https://hashrateindex.com/blog/hashrate-index-roundup-august-3-2026/

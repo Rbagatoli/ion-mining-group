@@ -4870,6 +4870,7 @@ body {
     .bp-sources, .bp-next { margin-top: 20px; padding-top: 14px; }
 }
 
+.mobile-vignette { display: none; }
 /* Keep the spacing utility last among unconditional rules. */
 .vgap.vgap { margin-top: var(--vg, 24px); }
 @media (max-width: 640px) {
@@ -4877,6 +4878,13 @@ body {
 }
 
 /* Phone density: reduce layout chrome, retain readable copy and full controls. */
+@media (max-width: 640px) {
+    /* Small explanatory drawings replace repeated prose without another large card. */
+    .mobile-vignette { display: block; width: 100%; max-width: 440px; margin: 14px auto 10px; }
+    .mobile-vignette svg, .mobile-vignette img { display: block; width: 100%; height: auto; max-height: 152px; object-fit: contain; }
+    .mobile-vignette figcaption { margin-top: 5px; font: 10px/1.4 var(--mono); color: var(--plat-400); text-align: center; }
+}
+@media print { .mobile-vignette { display: none !important; } }
 @media (max-width: 640px) {
     .hero { padding-block: 16px; }
     .band { padding-block: 16px; }

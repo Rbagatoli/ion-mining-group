@@ -52,7 +52,7 @@ const RAIL_MAX = 4;
    worth failing on instead of a silently ignored intention -- "publised: true" should not
    quietly leave a post as a draft. */
 
-const KEYS = ['title', 'slug', 'date', 'summary', 'tags', 'status', 'sources'];
+const KEYS = ['title', 'slug', 'date', 'summary', 'mobileSummary', 'tags', 'status', 'sources'];
 const REQUIRED = ['title', 'slug', 'date', 'summary'];
 const STATUSES = ['draft', 'published'];
 
@@ -133,6 +133,9 @@ function parseFrontMatter(file, raw) {
     if (meta.summary.length > 160) {
         fail(file, 'summary is ' + meta.summary.length + ' characters; keep it under 160 so it '
                  + 'is not truncated in a search result');
+    }
+    if (meta.mobileSummary !== undefined && (!meta.mobileSummary || meta.mobileSummary.length > 160)) {
+        fail(file, 'mobileSummary must contain 1 to 160 characters');
     }
 
     meta.tags = (meta.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
@@ -347,7 +350,7 @@ function readingMinutes(body) {
 
 module.exports = {
     parseFrontMatter, markdown, inline, esc, readPosts, longDate, readingMinutes,
-    relatedTo, indexCards, railItems,
+    relatedTo, indexCards, railItems, mobileCopyAttr,
 };
 
 if (require.main !== module) return;
@@ -386,6 +389,12 @@ function relatedTo(post, all) {
 }
 
 /* ---------- the pages ---------- */
+
+// Shared responsive copy parses an attribute as HTML. Escape twice so a plain-text
+// front-matter summary stays text after both the attribute and template are parsed.
+function mobileCopyAttr(text) {
+    return text ? ' data-mobile-copy="' + esc(esc(text)) + '"' : '';
+}
 
 // Keep article sections readable in full without JavaScript and on desktop.
 // On mobile the shared site controller turns headings into native disclosures.
@@ -511,7 +520,7 @@ ${draftBanner}      <div class="bp-meta">
         <span class="bp-read">${mins} min read</span>
       </div>
       <h1>${esc(m.title)}</h1>
-      <p class="lede">${esc(m.summary)}</p>
+      <p class="lede"${mobileCopyAttr(m.mobileSummary)}>${esc(m.summary)}</p>
 ${tags}
       <div class="bp-reading-controls"><button type="button" data-article-expand aria-expanded="false">Read full article</button></div>
       <div class="bp-body">
@@ -522,7 +531,7 @@ ${related.length ? `      <nav class="bp-rel" aria-label="Related notes">
         <div class="bp-rel-head">Read next</div>
 ${related.map((r) => '        <a class="bp-rel-item" href="' + r.meta.href + '">' +
     '<span class="bp-rel-title">' + esc(r.meta.title) + '</span>' +
-    '<span class="bp-rel-sum">' + esc(r.meta.summary) + '</span></a>').join('\n')}
+    '<span class="bp-rel-sum"' + mobileCopyAttr(r.meta.mobileSummary) + '>' + esc(r.meta.summary) + '</span></a>').join('\n')}
       </nav>
 ` : ''}      <div class="bp-next">
         <h2 data-mobile-copy="Mining or buying bitcoin?">Working out whether machines beat buying the coin?</h2>
@@ -579,7 +588,7 @@ function indexCards(posts) {
             '          <span class="bc-read">' + readingMinutes(p.body) + ' min</span>',
             '        </div>',
             '        <h3 class="bc-title">' + esc(m.title) + '</h3>',
-            '        <p class="bc-sum">' + esc(m.summary) + '</p>',
+            '        <p class="bc-sum"' + mobileCopyAttr(m.mobileSummary) + '>' + esc(m.summary) + '</p>',
             m.tags.length
                 ? '        <div class="bc-tags">' +
                   m.tags.map((t) => '<span class="bp-tag">' + esc(t) + '</span>').join('') +

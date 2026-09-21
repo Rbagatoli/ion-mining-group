@@ -12,13 +12,25 @@
     industrial: { icon:'industrial', route:'Electricity', intro:'Use the headroom that the owner can make available without disrupting the main operation.', checks:['Site load profile and unused capacity over time','Tariff, resale or supply restrictions and owner approval','Electrical condition, metering, access and noise limits'], assets:'Buildings, pads and electrical infrastructure can be useful starting points. Check usable capacity and connection rights before assuming savings.' },
     grid: { icon:'grid', route:'Delivered electricity', intro:'Assess the full cost and conditions of serving a new mining load.', checks:['Utility or supplier confirmation of service capacity','Energy, demand, connection and other applicable charges','Studies, upgrades, curtailment terms and energization timing'], assets:'An existing grid connection is a lead, not a capacity reservation. Confirm the approved load, upgrade scope and responsibility for the bill.' }
   };
+  // Mobile summaries retain the source checks; desktop uses the original copy.
+  const mobileGroups = {
+    hydro: { intro:'Match the load to offered output.', checks:['Seasonal output and existing commitments','Net MW at the connection','Water, land and electricity-sale rights'], assets:'Verify existing generation, switchgear, transformers and access: condition, spare capacity and connection rights.' },
+    nuclear: { intro:'Agree the supply route and load location.', checks:['Supplier authority and supply arrangement','Allocations, outages and backup needs','Permitted connection, access and security'], assets:'Generation gives no connection right. Agree the delivery point, electrical works and permitted footprint separately.' },
+    geothermal: { intro:'Confirm electrical output and supply terms.', checks:['Net output after plant use and sales','Resource performance, maintenance and hours','Supply rights, connection and upgrades'], assets:'Verify existing generation and electrical assets. Heat alone still needs feasible, funded conversion.' },
+    renewable: { intro:'Match mining hours to the output profile.', checks:['Hourly/seasonal output and curtailment','Minimum operating needs and shutdowns','Delivery rights, connection costs and backup'], assets:'Verify existing generation and electrical assets. Storage or firming costs extra and needs agreement.' },
+    thermal: { intro:'Check available power against plant obligations.', checks:['Net MW after site use and sales','Schedule, fuel costs and outages','Supply terms, permits and connection'], assets:'Assess connection and upgrades. Generator rating proves neither spare power nor a low delivered price.' },
+    fuel: { intro:'Scope conversion before sizing the mine.', checks:['Volume, composition and supply life','Fuel commitments and sale authority','Treatment, conversion equipment and permits'], assets:'Collection may exist. Assess treatment, generation and distribution separately; do not assume free infrastructure.' },
+    recovered: { intro:'Verify conversion equipment and usable electricity.', checks:['Waste/energy profile and competing uses','Conversion equipment and net output','Input contracts, operating hours and gaps'], assets:'Waste or heat is not electricity. Confirm conversion feasibility and equipment costs before crediting infrastructure.' },
+    industrial: { intro:'Use headroom without disrupting site operations.', checks:['Load profile and unused capacity','Tariff, resale/supply rules and owner approval','Electrical condition, metering, access and noise'], assets:'Buildings, pads and electrical assets may help. Verify usable capacity and connection rights before claiming savings.' },
+    grid: { intro:'Check full costs and service conditions.', checks:['Utility/supplier capacity confirmation','Energy, demand, connection and other charges','Studies, upgrades, curtailment and energization'], assets:'A connection does not reserve capacity. Confirm approved load, upgrades and who pays.' }
+  };
   const sources = [
     ['landfill_gas','Landfill gas','fuel'],['flare_gas','Flare gas','fuel'],['hydro','Hydro','hydro'],['grid_supply','Grid supply','grid'],
     ['nuclear','Nuclear','nuclear'],['wind','Wind','renewable'],['solar','Solar','renewable'],['geothermal','Geothermal','geothermal'],['natural_gas','Natural gas generation','thermal'],
     ['biomass_biogas','Biomass / biogas','fuel'],['waste_to_energy','Waste-to-energy','recovered'],['marine','Marine / tidal / wave','renewable'],
     ['recovered_energy','Recovered energy / waste heat','recovered'],['coal','Coal generation','thermal'],['oil','Oil generation','thermal'],
     ['industrial_surplus','Industrial surplus','industrial']
-  ].map(([id,label,group])=>({id,label,...groups[group],icon:({solar:'solar',marine:'marine',geothermal:'geothermal'})[id] || groups[group].icon}));
+  ].map(([id,label,group])=>({id,label,...groups[group],mobile:mobileGroups[group],icon:({solar:'solar',marine:'marine',geothermal:'geothermal'})[id] || groups[group].icon}));
   if (typeof module !== 'undefined' && module.exports) module.exports = { sources };
   if (typeof window !== 'undefined') window.ProtonEnergySourceGuide = { sources };
   if (typeof document === 'undefined') return;
@@ -38,17 +50,21 @@
     industrial:'<path d="M17 78V45l23-12v12l24-12v20h18v25ZM72 53V23h8v30M29 58v8m12-8v8m12-8v8m13-8v8"/>',
     grid:'<path d="m50 13-19 69m19-69 19 69M36 33h28M30 47h40M24 60h52M42 42l19 28M58 42 39 70M23 33h54M16 47h68"/>'
   };
+  const mobileQuery = window.matchMedia('(max-width: 640px)');
   function paint() {
     const source = sources.find(s=>s.id===select.value) || sources[0];
+    const copy = mobileQuery.matches ? source.mobile : source;
     select.value = source.id;
     root.querySelectorAll('[data-partner-source]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.partnerSource===source.id)));
     root.querySelector('#partnerRoute').innerHTML = `<div class="partner-route-source"><svg viewBox="0 0 100 100" aria-hidden="true">${icons[source.icon]}</svg><span>${esc(source.label)}</span></div><span class="partner-flow" aria-hidden="true"></span><div class="partner-route-step"><span class="partner-step-symbol" aria-hidden="true">↯</span><strong>${source.route.includes('conversion') || source.route.includes('Conversion') ? 'Conversion & connection' : 'Agreed connection'}</strong><small>Metering · protection · distribution</small></div><span class="partner-flow" aria-hidden="true"></span><div class="partner-route-step"><span class="partner-step-symbol partner-bitcoin" aria-hidden="true">₿</span><strong>Flexible mining load</strong><small>Size and operating hours agreed</small></div>`;
-    root.querySelector('#partnerSourceTitle').textContent = source.label + ', with a route to demand.';
-    root.querySelector('#partnerIntro').textContent = source.intro;
-    root.querySelector('#partnerChecks').innerHTML = source.checks.map(text=>`<li>${esc(text)}</li>`).join('');
-    root.querySelector('#partnerAssets').textContent = source.assets;
+    root.querySelector('#partnerSourceTitle').textContent = mobileQuery.matches ? source.label : source.label + ', with a route to demand.';
+    root.querySelector('#partnerIntro').textContent = copy.intro;
+    root.querySelector('#partnerChecks').innerHTML = copy.checks.map(text=>`<li>${esc(text)}</li>`).join('');
+    root.querySelector('#partnerAssets').textContent = copy.assets;
     root.querySelector('#partnerRouteLabel').textContent = source.route;
   }
+  if (mobileQuery.addEventListener) mobileQuery.addEventListener('change',paint);
+  else mobileQuery.addListener(paint);
   select.addEventListener('change',paint);
   root.addEventListener('click',e=>{const b=e.target.closest('[data-partner-source]');if(b){select.value=b.dataset.partnerSource;paint();}});
   root.querySelector('[data-partner-discuss]').addEventListener('click',()=>{field.value=select.value;field.dispatchEvent(new Event('change',{bubbles:true}));});

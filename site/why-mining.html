@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=15d08313">
+<link rel="stylesheet" href="./styles.css?v=fae36b5c">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
 <script type="application/ld+json">
 {
@@ -141,13 +141,28 @@
     <div class="wrap">
       <div class="sec-head reveal">
         <div class="eyebrow">Owning the machine</div>
-        <h1>Why own miners rather than coins</h1>
-        <p class="lede">Two arguments, and the conditions each one depends on.</p>
+        <h1 data-mobile-copy="Miners or bitcoin?">Why own miners rather than coins</h1>
+        <p class="lede" data-mobile-copy="Compare costs, risks and tax conditions.">Two arguments, and the conditions each one depends on.</p>
+        <figure class="mobile-vignette">
+          <svg viewBox="0 0 336 84" role="img" aria-labelledby="miningFlowTitle miningFlowDesc">
+            <title id="miningFlowTitle">How mining produces bitcoin</title>
+            <desc id="miningFlowDesc">Electricity powers mining equipment, which produces bitcoin over time. Output and operating costs vary.</desc>
+            <defs><linearGradient id="miningFlowMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a5a4a1"/><stop offset=".45" stop-color="#eeedeb"/><stop offset="1" stop-color="#8b8a87"/></linearGradient></defs>
+            <g fill="none" stroke="url(#miningFlowMetal)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M51 7 37 28h12l-3 17 17-25H51Z"/>
+              <path d="M93 27h34m-5-4 5 4-5 4M210 27h34m-5-4 5 4-5 4" stroke="#f7931a"/>
+              <rect x="148" y="9" width="42" height="36" rx="3"/><circle cx="162" cy="26" r="8"/><path d="m158 22 8 8m0-8-8 8M179 17v18"/>
+              <rect x="266" y="11" width="40" height="31" rx="4"/><path d="M292 22h14v12h-14z"/><circle cx="297" cy="28" r="1.3" fill="#f7931a" stroke="none"/>
+            </g>
+            <g fill="#e5e4e2" text-anchor="middle" font-family="Arial,sans-serif" font-size="12"><text x="51" y="66">Power</text><text x="169" y="66">Mining hardware</text><text x="286" y="66">BTC output</text></g>
+          </svg>
+          <figcaption>Output varies with efficiency, uptime and difficulty.</figcaption>
+        </figure>
         <div class="btn-row">
           <a class="btn btn--primary" href="./site-screening-checklist.html">Printable site checklist</a>
           <a class="btn btn--ghost" href="./blog.html">Guides and articles</a>
         </div>
-        <p>Free checklist: 12 checks for power, infrastructure, costs and terms. Open it, then choose “Print or save as PDF.”</p>
+        <p data-mobile-copy="12 site checks. Open the checklist to print or save as PDF.">Free checklist: 12 checks for power, infrastructure, costs and terms. Open it, then choose “Print or save as PDF.”</p>
       </div>
       <!-- ===== WHY BODY ===== -->
       <div class="wm-layout">
@@ -161,7 +176,7 @@
         <div class="wm-tldr">
           <div class="wm-tldr-cell">
             <p class="wm-tldr-k">Machines or coins</p>
-            <p>Mining wins on genuinely cheap power and a rising price. Buying the coin wins at
+            <p data-mobile-copy="Cheap power can favor mining. Retail power and rising difficulty can favor buying bitcoin.">Mining wins on genuinely cheap power and a rising price. Buying the coin wins at
               a retail power rate, or if the price goes sideways while difficulty climbs.</p>
             <div class="wm-tldr-go">
               <a href="#machines-win">When machines win</a>
@@ -170,7 +185,7 @@
           </div>
           <div class="wm-tldr-cell">
             <p class="wm-tldr-k">The tax case</p>
-            <p>A miner is depreciable equipment; a held coin is not. Three mechanisms turn on
+            <p data-mobile-copy="Equipment depreciation depends on business eligibility and when machines enter service. A held coin is not depreciable.">A miner is depreciable equipment; a held coin is not. Three mechanisms turn on
               that, and every one is gated on running a real business and on the machines being
               switched on that year.</p>
             <div class="wm-tldr-go">
@@ -183,9 +198,9 @@
 
         <!-- ============ 1. MINERS VS BUYING THE COIN ============ -->
 
-        <h2 id="versus">Machines against simply buying bitcoin</h2>
+        <h2 id="versus" data-mobile-copy="Compare both routes">Machines against simply buying bitcoin</h2>
 
-        <p>If I have a hundred thousand dollars, do I buy machines or do I buy bitcoin? Anybody
+        <p data-mobile-copy="Buying fixes your BTC quantity upfront. Mining produces BTC over time, with power costs and aging equipment.">If I have a hundred thousand dollars, do I buy machines or do I buy bitcoin? Anybody
           who answers that with one number, without asking your power price, is selling you
           something. Buying the coin fixes your bitcoin on day one and everything after that is
           the price. Buying machines gives you a <em>stream</em> of coins, bought at a cost your
@@ -199,55 +214,55 @@
         <div class="wm-vs-col">
         <h3 id="machines-win">When machines win</h3>
         <ul>
-          <li><strong>Your power is genuinely cheap.</strong> This is the whole argument. Mining
+          <li data-mobile-copy="&lt;strong&gt;Cheap power.&lt;/strong&gt; Production below bitcoin’s market price can create a margin."><strong>Your power is genuinely cheap.</strong> This is the whole argument. Mining
             is a way of buying bitcoin at your marginal cost of production; if that cost is
             below the market price, you are buying at a discount, every day, without timing
             anything.</li>
-          <li><strong>The price rises.</strong> A fleet is leveraged to the price in a way a
+          <li data-mobile-copy="&lt;strong&gt;Rising BTC price.&lt;/strong&gt; Future mining output becomes more valuable."><strong>The price rises.</strong> A fleet is leveraged to the price in a way a
             coin is not: the coins you have not mined yet are also worth more.</li>
-          <li><strong>You can use the depreciation.</strong> The second half of this page. It is
+          <li data-mobile-copy="&lt;strong&gt;Usable depreciation.&lt;/strong&gt; Value depends on whether you qualify."><strong>You can use the depreciation.</strong> The second half of this page. It is
             worth real money and it is worth nothing if you do not qualify.</li>
         </ul>
         </div>
         <div class="wm-vs-col">
         <h3 id="coin-wins">When buying the coin wins</h3>
         <ul>
-          <li><strong>The price goes sideways and difficulty keeps climbing.</strong> Your output
+          <li data-mobile-copy="&lt;strong&gt;Flat BTC price, rising difficulty.&lt;/strong&gt; Mining output falls; held BTC quantity stays fixed."><strong>The price goes sideways and difficulty keeps climbing.</strong> Your output
             falls every fortnight whether or not you do anything, and the coin holder’s
             position does not.</li>
-          <li><strong>Your power is ordinary.</strong> At a retail rate the discount disappears
+          <li data-mobile-copy="&lt;strong&gt;Retail power.&lt;/strong&gt; Costs can erase the mining margin while equipment depreciates."><strong>Your power is ordinary.</strong> At a retail rate the discount disappears
             and you are buying bitcoin at roughly the market price, with extra steps and a
             depreciating asset attached.</li>
-          <li><strong>You want the money back next year.</strong> Coins sell in an afternoon. A
+          <li data-mobile-copy="&lt;strong&gt;Earlier exit.&lt;/strong&gt; Selling equipment takes longer and may require a discount."><strong>You want the money back next year.</strong> Coins sell in an afternoon. A
             fleet is equipment, and equipment sells slowly and at a discount.</li>
         </ul>
         </div>
         </div>
 
         <div class="wm-note">
-          <p><strong>We are not going to print a crossover number here.</strong> It moves with
+          <p data-mobile-copy="Compare both in the calculator. Your power cost, difficulty, time horizon and tax assumptions determine whether they cross."><strong>We are not going to print a crossover number here.</strong> It moves with
             your power price, your view on difficulty, your horizon and your tax rate, and a
             single figure on a sales page would be a figure chosen to flatter the thing being
             sold. The calculator runs both positions side by side from your own assumptions and
             tells you which period they cross in, if they do.</p>
           <a class="btn btn--primary"
              href="./calculator.html?machineCount=10&amp;taxAdjustment=1">Compare the two</a>
-          <p class="wm-note-sub">Opens with tax modelling switched on and a ten-machine fleet.
+          <p class="wm-note-sub" data-mobile-copy="Starts with 10 miners and tax modeling on. Set your power price, difficulty and horizon.">Opens with tax modelling switched on and a ten-machine fleet.
             Set your own power price, difficulty growth and horizon — those are the three
             inputs that decide the answer.</p>
         </div>
 
         <!-- ============ 2. THE TAX CASE ============ -->
 
-        <h2 id="tax">The tax case, and what it depends on</h2>
+        <h2 id="tax" data-mobile-copy="Tax conditions">The tax case, and what it depends on</h2>
 
         <div class="wm-warn">
-          <p><strong>This is not tax advice, and we are not tax advisers.</strong> Proton Mining
+          <p data-mobile-copy="&lt;strong&gt;Not tax advice or confirmation you qualify.&lt;/strong&gt; Proton sells hosting and hardware; discuss eligibility with a professional before buying."><strong>This is not tax advice, and we are not tax advisers.</strong> Proton Mining
             Group sells hosting and hardware. What follows describes how depreciation rules
             generally work so that you can have a useful conversation with a professional. It
             is not a statement that you qualify for anything, and you should not buy equipment
             on the strength of a web page.</p>
-          <p><strong>It describes United States federal rules only.</strong> Our sites are
+          <p data-mobile-copy="&lt;strong&gt;US federal rules only.&lt;/strong&gt; Other countries differ; these specifics do not apply to non-US taxpayers."><strong>It describes United States federal rules only.</strong> Our sites are
             planned in Canada and the United Arab Emirates as well as the United States, and the treatment of
             equipment differs between them in ways that matter. If you are not a US taxpayer, essentially none of the specifics
             below apply to you.</p>
@@ -405,7 +420,7 @@
 
         </div></details>
 
-        <h2 id="faq">Questions we actually get</h2>
+        <h2 id="faq" data-mobile-copy="Common questions">Questions we actually get</h2>
 
         <div class="faq wm-faq">
           <details>
@@ -554,8 +569,8 @@
   </div>
 </footer>
 
-<script src="./site.js?v=15d08313"></script>
-<script src="./hero-anim.js?v=15d08313"></script>
-<script src="./cart.js?v=15d08313"></script>
+<script src="./site.js?v=fae36b5c"></script>
+<script src="./hero-anim.js?v=fae36b5c"></script>
+<script src="./cart.js?v=fae36b5c"></script>
 </body>
 </html>
