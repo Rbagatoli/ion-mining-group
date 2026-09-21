@@ -131,3 +131,16 @@
  .hx-note { padding: 8px 12px; line-height: 1.5; }
  .hx-credit { padding: 0 12px 10px; font-size: 11px; }
 }
+
+/* Background map notes stay available without competing with the site choice. */
+@media screen and (max-width: 640px) {
+ .hx-map-details { margin: 0; border-bottom: 0; }
+ .hx-map-details > summary { padding: 9px 12px; }
+ .hx-map-details > .mobile-details-body { padding-bottom: 0; }
+ .hx-map-details .hx-note { border-top: 0; }
+ .hx-caption, .hx-globe-panel .scene-gesture-hint,
+ #facilities > .wrap > .sec-head > .lede,
+ #inside-container > .wrap > .sec-head > .lede,
+ #inside-container .dg-hint, #inside-container .dg-note,
+ .hosting-details > summary > small { display: none; }
+}

@@ -4885,6 +4885,27 @@ body {
     .mobile-vignette figcaption { margin-top: 5px; font: 10px/1.4 var(--mono); color: var(--plat-400); text-align: center; }
 }
 @media print { .mobile-vignette { display: none !important; } }
+/* Phone screens keep the action and primary facts, without repeated helper lines. */
+@media screen and (max-width: 640px) {
+    .mobile-details > summary > small,
+    .hero-note,
+    .home-sourcing-top,
+    .home-sourcing-note,
+    .partner-explorer-head > div,
+    .partner-route-step > small,
+    .partner-connection-note,
+    .br-catalog-heading > p,
+    .br-catalog-footnote,
+    #brCatalogSavings .br-catalog-fine,
+    .contact-page .spec-val > small,
+    .wm-note-sub,
+    .bc-tags,
+    .checklist-version,
+    .checklist-tools > .eyebrow,
+    .calc-tile .ct-sub:not([id]) { display: none; }
+    .mobile-section-details > summary,
+    .mobile-input-details > summary { min-height: 44px; }
+}
 @media (max-width: 640px) {
     .hero { padding-block: 16px; }
     .band { padding-block: 16px; }

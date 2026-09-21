@@ -194,3 +194,25 @@
   .sites-preview-fallback { padding: 18px; }
   .sites-preview-fallback p { margin-block: 10px; }
 }
+
+/* Phone browsing keeps service choices and source names in view. Detailed scope
+   and availability answers remain in the existing FAQ and screening disclosure. */
+@media screen and (max-width: 640px) {
+  .sites-entry-grid .sites-index,
+  .sites-entry-grid ul,
+  .sites-route-grid .sites-energy-number,
+  .sites-route-grid p,
+  .sites-scope-note,
+  .sites-demo-note:not(.sites-research-link),
+  .sites-hero .hero-note,
+  .sites-source-jump,
+  .sites-brief-note,
+  .sites-workspace-head > .lede { display: none; }
+  .sites-entry-grid h3 { margin-top: 0; }
+  .sites-entry-grid p { margin-bottom: 14px; }
+  .sites-entry-grid .btn { align-self: stretch; }
+  .sites-route-grid article { display: flex; align-items: center; box-sizing: border-box; min-height: 88px; }
+  .sites-route-grid h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+  .sites-research-link { margin-top: 12px; }
+  .sites-research-link .arrow-link { display: inline-flex; align-items: center; min-height: 44px; }
+}

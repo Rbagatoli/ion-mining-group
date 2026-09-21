@@ -68,3 +68,18 @@
   .ep-contacts article > span { margin-block: 4px 6px; }
   .ep-contacts small { margin-block: 7px 4px; line-height: 1.5; }
 }
+
+/* On phones the chooser names the source; the guide goes straight to the facts. */
+@media screen and (max-width: 640px) {
+  .ep-preview-label, .ep-source-note, .ep-footer { display: none; }
+  [data-preview-view="sources"] .ep-brief,
+  [data-preview-view="sources"] .ep-detail-heading,
+  [data-preview-view="sources"] .ep-panel > .ep-copy,
+  [data-preview-view="sources"][data-preview-panel="energy"] .ep-panel-intro,
+  [data-preview-view="sources"][data-preview-panel="energy"] .ep-next { display: none; }
+  [data-preview-view="sources"] .ep-tabs { margin-top: 0; }
+  [data-preview-view="sources"] .ep-detail { padding-top: 0; }
+  [data-preview-view="sources"] .ep-panel { padding-top: 3px; }
+  [data-preview-view="research"] .ep-brief > span { display: none; }
+  .ep-tabs button { font-size: 12px; }
+}
