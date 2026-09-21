@@ -2,6 +2,8 @@
    All terrain and equipment are procedural, illustrative and geographically fictional. */
 export function buildDiscoveryScene(T) {
   const root = new T.Group();
+  const motion = {rotors:[],terminals:[],flowPath:[]};
+  root.userData.motion = motion;
   const mat = (color, roughness=.35, metalness=.85, extra={}) => new T.MeshStandardMaterial({color, roughness, metalness, ...extra});
   const m = {
     terrain: mat(0x515551,.56,.78), edge:mat(0x434443,.48,.88),
@@ -68,6 +70,7 @@ export function buildDiscoveryScene(T) {
   // Recessed access corridor connects candidate pads across the landscape.
   const trace=[[-5.8,2.45],[-4.7,2.35],[-3.5,2.3],[-1.5,2.2],[.3,1.4],[2.5,1.6],[4.8,1.9],[6.4,1.8]].map(([x,z])=>[x,elevation(x,z)+.025,z]);
   route(trace,.13,m.dark);route(trace.map(([x,y,z])=>[x,y+.06,z]),.019,m.orange);
+  motion.flowPath = trace.map(([x,y,z])=>[x,y+.13,z]);
   function slab(x,z,w,d) {const y=elevation(x,z)+.07;box(w,.17,d,m.pad,x,y,z,root,.04);return y+.085;}
   // Candidate 1: landfill-gas collection skid, with separators and a manifold.
   const gx=-3.4,gz=.9,gy=slab(gx,gz,3.3,2.3);
@@ -99,12 +102,15 @@ export function buildDiscoveryScene(T) {
     for(let k=0;k<6;k++)box(.28,.026,.02,m.dark,sx+px,sy+.27+k*.065,sz+.245);
   }
   rod([sx-.86,sy+1.49,sz-.1],[sx+.99,sy+1.49,sz-.1],.035,m.silver);
+  motion.terminals = [sx-.85,sx-.48,sx-.1].map(x=>[x,sy+1.49,sz-.1]);
   // Candidate 3: wind generation, originally modeled slender tapered turbines.
   function turbine(x,z,height,phase){
     const y=elevation(x,z);cylinder(.36,.12,m.frame,x,y+.06,z);
     mesh(new T.CylinderGeometry(.042,.115,height,24),m.shell,x,y+height/2+.1,z);
     box(.23,.23,.55,m.rib,x,y+height+.1,z,root,.07);
     const rotor=new T.Group();rotor.position.set(x,y+height+.11,z+.31);root.add(rotor);
+    rotor.userData.sourcingDynamic=true;
+    motion.rotors.push({node:rotor,axis:'z',speed:.48,phase:0});
     const hub=mesh(new T.SphereGeometry(.12,20,12),m.silver,0,0,0,rotor);hub.scale.z=1.5;
     const blade=new T.Shape();blade.moveTo(-.045,.08);blade.bezierCurveTo(-.14,.45,-.17,.9,-.025,1.28);blade.lineTo(.028,1.22);blade.quadraticCurveTo(.11,.51,.057,.14);blade.closePath();
     const bg=new T.ExtrudeGeometry(blade,{depth:.025,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2,curveSegments:12});

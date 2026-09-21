@@ -5,7 +5,9 @@
  */
 export function buildCapitalScene(T) {
   const root = new T.Group();
-  root.name = 'Original power assets and remaining build';
+  root.name = 'Original power infrastructure and populated mining bay';
+  const rotors = [];
+  let minerCount = 0;
   const standard = (color, roughness, metalness, extra = {}) => new T.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const m = {
     shell: standard(0xb8b7b4, .26, .95), frame: standard(0x686765, .29, .9),
@@ -51,6 +53,48 @@ export function buildCapitalScene(T) {
     if (rotation) mesh.rotation.set(...rotation); return mesh;
   }
   const bolt = (x, y, z, parent = root) => cylinder(.028, .026, m.silver, x, y, z, 'z', parent, 6);
+
+  // Each fan is one moving mesh. Guards remain in the static geometry batch.
+  const rotorGeometry = new Map();
+  function spinningFan(radius, x, y, z, axis, phase, speed) {
+    const key = radius + ':' + axis;
+    let geometry = rotorGeometry.get(key);
+    if (!geometry) {
+      const parts = [], blade = new T.Shape();
+      blade.moveTo(radius * .17, -radius * .09);
+      blade.bezierCurveTo(radius * .36, -radius * .24, radius * .63, -radius * .40, radius * .91, -radius * .30);
+      blade.quadraticCurveTo(radius * 1.01, -radius * .11, radius * .91, radius * .08);
+      blade.bezierCurveTo(radius * .66, radius * .10, radius * .46, radius * .16, radius * .23, radius * .11);
+      blade.closePath();
+      const depth = radius * .065;
+      for (let i = 0; i < 7; i++) {
+        const piece = new T.ExtrudeGeometry(blade, { depth, steps: 1, bevelEnabled: false, curveSegments: 3 });
+        piece.translate(0, 0, -depth / 2); piece.rotateZ(i * Math.PI * 2 / 7); parts.push(piece);
+      }
+      const hub = new T.CylinderGeometry(radius * .24, radius * .24, depth * 2, 16);
+      hub.rotateX(Math.PI / 2); parts.push(hub);
+      const positions = [], normals = [];
+      for (const source of parts) {
+        const flat = source.index ? source.toNonIndexed() : source;
+        positions.push(...flat.getAttribute('position').array);
+        normals.push(...flat.getAttribute('normal').array);
+        if (flat !== source) flat.dispose(); source.dispose();
+      }
+      geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new T.Float32BufferAttribute(normals, 3));
+      if (axis === 'y') geometry.rotateX(-Math.PI / 2);
+      rotorGeometry.set(key, geometry);
+    }
+    const node = add(geometry, m.rib, x, y, z);
+    node.name = axis === 'y' ? 'Generator cooling rotor' : 'ASIC intake rotor';
+    node.userData.sourcingDynamic = true;
+    node.rotation[axis] = phase;
+    // Static housings receive shadows; tiny moving blades do not need shadow passes.
+    node.castShadow = false;
+    rotors.push({ node, axis, speed, phase });
+    return node;
+  }
 
   // Two foundations share a datum, but the future bay exposes its supports.
   bevel(6.65, .23, 5.15, m.slab, -3.27, .115, 0, .065);
@@ -102,11 +146,7 @@ export function buildCapitalScene(T) {
   // Twin roof fan assemblies, visible through concentric machined guards.
   for (const x of [gx - .98, gx + .12]) {
     cylinder(.405, .063, m.dark, x, 3.185, gz - .18);
-    cylinder(.105, .046, m.frame, x, 3.221, gz - .18);
-    for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4, blade = bevel(.22, .018, .15, m.rib, x + Math.sin(a) * .24, 3.218, gz - .18 + Math.cos(a) * .24, .009);
-      blade.rotation.y = a + .7;
-    }
+    spinningFan(.372, x, 3.232, gz - .18, 'y', rotors.length * .57, 5.1 + rotors.length * .35);
     for (const r of [.16, .24, .32, .397]) ring(r, .012, m.silver, x, 3.257, gz - .18, [Math.PI / 2, 0, 0]);
     for (let i = 0; i < 4; i++) {
       const a = Math.PI * i / 4; bar([x - Math.cos(a) * .40, 3.26, gz - .18 - Math.sin(a) * .40], [x + Math.cos(a) * .40, 3.26, gz - .18 + Math.sin(a) * .40], .009, m.frame);
@@ -183,40 +223,53 @@ export function buildCapitalScene(T) {
   box(.036, 1.62, .036, m.orange, 2.45, 1.14, z1);
   box(1.67, .036, .036, m.orange, 1.61, 1.95, z1);
 
-  // A first rack in the future bay: a handful of machines, not a completed mine.
-  const rx = 5.11, rz = -.20;
-  for (const x of [rx - .54, rx + .54]) for (const z of [rz - .48, rz + .48]) bevel(.067, 2.16, .067, m.frame, x, 1.52, z, .008);
-  for (const y of [.47, 1.10, 1.73, 2.59]) {
-    bevel(1.17, .053, 1.07, m.rib, rx, y, rz, .011);
-    box(1.18, .08, .055, m.silver, rx, y, rz + .54);
-  }
+  // Six full racks: two rows, a clear central aisle, and four ASICs per rack.
   function miner(x, y, z) {
+    minerCount++;
     bevel(.89, .46, .83, m.shell, x, y, z, .025);
     bevel(.92, .49, .068, m.frame, x, y, z + .44, .015);
     for (let i = 0; i < 9; i++) box(.016, .415, .014, m.rib, x - .36 + i * .09, y, z - .423);
     for (const dx of [-.222, .222]) {
       cylinder(.167, .034, m.dark, x + dx, y, z + .490, 'z');
-      cylinder(.044, .025, m.rib, x + dx, y, z + .517, 'z');
-      for (const radius of [.075, .119, .162]) ring(radius, .008, m.silver, x + dx, y, z + .528);
-      for (let j = 0; j < 4; j++) {
-        const a = j * Math.PI / 4;
+      spinningFan(.153, x + dx, y, z + .516, 'z', (minerCount * .63 + dx * 2.1) % (Math.PI * 2), 6.8 + (minerCount % 4) * .43);
+      for (const radius of [.084, .126, .162]) ring(radius, .006, m.silver, x + dx, y, z + .532);
+      for (let j = 0; j < 3; j++) {
+        const a = j * Math.PI / 3;
         bar([x + dx - Math.cos(a) * .168, y - Math.sin(a) * .168, z + .530], [x + dx + Math.cos(a) * .168, y + Math.sin(a) * .168, z + .530], .006, m.frame);
       }
     }
     bevel(.42, .075, .49, m.silver, x, y + .255, z - .05, .012);
     box(.056, .018, .023, m.warm, x + .343, y + .153, z + .493);
   }
-  miner(rx, .765, rz); miner(rx, 1.395, rz);
-  // The final shelf remains empty; orange rear uprights imply unfinished build.
-  for (const x of [rx - .54, rx + .54]) box(.024, .77, .024, m.orange, x, 2.16, rz - .49);
-  for (let j = 0; j < 7; j++) box(.024, .05, .98, m.rib, rx - .43 + j * .14, 1.762, rz);
-  pipe([[rx + .55, .52, rz + .16], [rx + .67, .39, rz + .63], [4.30, .365, 1.01], [3.10, .37, 1.18]], .036, m.rubber);
-  // Empty expansion pads keep the expected work legible at small sizes.
-  for (const x of [1.40, 2.16, 2.92, 3.68]) {
-    bevel(.27, .065, .32, m.frame, x, .265, -1.44, .022);
-    cylinder(.035, .041, m.orange, x, .317, -1.44);
+  for (const rz of [-1.42, .71]) for (const rx of [1.58, 3.36, 5.14]) {
+    for (const x of [rx - .54, rx + .54]) for (const z of [rz - .48, rz + .48]) {
+      bevel(.067, 2.64, .067, m.frame, x, 1.765, z, .008);
+      bevel(.16, .056, .17, m.silver, x, .433, z, .009);
+    }
+    for (const y of [.47, 1.10, 1.73, 2.36, 3.025]) {
+      bevel(1.17, .043, 1.07, m.rib, rx, y, rz, .009);
+      box(1.18, .065, .045, m.silver, rx, y, rz + .54);
+    }
+    // Repeated fan faces stay exposed toward the viewer; power runs down the back.
+    for (const y of [.765, 1.395, 2.025, 2.655]) miner(rx, y, rz);
+    bevel(.082, 2.29, .074, m.dark, rx + .58, 1.63, rz - .43, .012);
+    for (const y of [.72, 1.35, 1.98, 2.61]) {
+      box(.019, .028, .013, m.glow, rx + .624, y, rz - .389);
+      pipe([[rx + .39, y + .05, rz - .425], [rx + .49, y + .12, rz - .50], [rx + .59, y, rz - .47]], .016, m.rubber);
+    }
+    pipe([[rx + .58, .50, rz - .43], [rx + .66, .385, rz - .43], [rx + .66, .375, -.36]], .027, m.rubber);
   }
+  // Recessed cable tray travels through the aisle and joins the front feed.
+  bevel(4.87, .06, .19, m.dark, 3.32, .368, -.36, .018);
+  for (let i = 0; i < 29; i++) box(.063, .018, .17, m.rib, .96 + i * .167, .407, -.36);
+  pipe([[2.75, .39, 1.87], [2.77, .39, 1.41], [2.76, .408, .13], [3.02, .414, -.36], [5.62, .414, -.36]], .017, m.glow);
 
-  root.userData.editorial = 'Existing generation and electrical distribution, with an unfinished mining bay';
+  root.userData.editorial = 'Existing generation and electrical distribution powering a populated mining bay';
+  root.userData.minerCount = minerCount;
+  root.userData.motion = {
+    rotors,
+    terminals: [[tx - .44, 2.185, tz], [tx, 2.185, tz], [tx + .44, 2.185, tz]],
+    flowPath: [[-1.49, .46, 1.73], [-1.35, .455, 2.03], [-.70, .38, 2.03], [2.40, .38, 2.03], [2.75, .425, 1.87], [2.77, .425, 1.41], [2.76, .443, .13], [3.02, .449, -.36], [5.62, .449, -.36]],
+  };
   return root;
 }

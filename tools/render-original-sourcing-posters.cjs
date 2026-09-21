@@ -3,16 +3,16 @@
 /* Original sourcing models. Shares only Three.js and the website's material/light palette.
    Uses existing Playwright, Chrome and Sharp; installs nothing. No network assets. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
-const siteRoot=path.resolve(__dirname,'../site'),modelRoot=path.join(__dirname,'sourcing-scenes');
+const siteRoot=path.resolve(__dirname,'../site');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/rbaga/ion-mining-group/tools/.cache/hosting-terrain-browser/node_modules/playwright-core');
 const sharp=require(process.env.SHARP_MODULE||'C:/Users/rbaga/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/sharp');
-const output=path.join(siteRoot,'assets/visuals'),report=path.resolve(__dirname,'../reports/original-sourcing-scenes-20260921');
+const output=path.join(siteRoot,'assets/visuals'),report=path.resolve(__dirname,'../reports/animated-sourcing-scenes-20260921');
 const harness=String.raw`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:transparent}#host{width:1920px;height:800px}canvas{display:block;width:100%;height:100%}</style></head><body><div id="host"></div>
 <script type="module">
 import * as T from '/vendor/three-0.185.1/three.module.min.js';
 import {RoomEnvironment} from '/vendor/three-0.185.1/RoomEnvironment.js';
-import {buildDiscoveryScene} from '/__models__/discovery.js';
-import {buildCapitalScene} from '/__models__/capital.js';
+import {buildDiscoveryScene} from '/sourcing-discovery.js';
+import {buildCapitalScene} from '/sourcing-capital.js';
 const renderer=new T.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setSize(1920,800);renderer.setPixelRatio(1);
 renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.94;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.setClearColor(0,0);document.getElementById('host').append(renderer.domElement);
@@ -44,8 +44,8 @@ const server=http.createServer((req,res)=>{
  if(req.method!=='GET'){res.writeHead(405);return res.end();}
  let route;try{route=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{res.writeHead(400);return res.end();}
  if(route==='/__sourcing__'){res.writeHead(200,{'Content-Type':'text/html'});return res.end(harness);}
- try{const model=route.startsWith('/__models__/'),root=fs.realpathSync(model?modelRoot:siteRoot),relative=model?route.slice('/__models__'.length):route;
- const file=fs.realpathSync(path.resolve(root,'.'+relative));if(!inside(root,file)||!fs.statSync(file).isFile())throw Error('Outside render inputs');
+ try{const root=fs.realpathSync(siteRoot);
+ const file=fs.realpathSync(path.resolve(root,'.'+route));if(!inside(root,file)||!fs.statSync(file).isFile())throw Error('Outside render inputs');
  res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});res.end(fs.readFileSync(file));
  }catch{res.writeHead(404);res.end('Not found');}
 });
@@ -63,6 +63,6 @@ let browser;
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const png=await page.locator('#host').screenshot({omitBackground:true});
   await sharp(png).flatten({background:'#161717'}).png().toFile(path.join(report,kind+'-studio.png'));
-  for(const width of [960,1920]){const file=path.join(output,'sourcing-'+kind+'-original-'+width+'.webp');await sharp(png).resize({width}).webp({quality:92,alphaQuality:100,effort:6}).toFile(file);const info=await sharp(file).metadata();if(!info.hasAlpha)throw Error('Transparent background lost');console.log(JSON.stringify({file,width:info.width,height:info.height,bytes:fs.statSync(file).size,...meta}));}
+  for(const width of [960,1920]){const file=path.join(output,'sourcing-'+kind+'-motion-poster-'+width+'.webp');await sharp(png).resize({width}).webp({quality:92,alphaQuality:100,effort:6}).toFile(file);const info=await sharp(file).metadata();if(!info.hasAlpha)throw Error('Transparent background lost');console.log(JSON.stringify({file,width:info.width,height:info.height,bytes:fs.statSync(file).size,...meta}));}
  }
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));});
