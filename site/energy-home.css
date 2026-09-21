@@ -1,9 +1,4 @@
 /* The homepage introduction to the buyer-facing energy-site service. */
-.home-sourcing-vignette { display: none; }
-@media (max-width: 640px) {
-  .home-sourcing-vignette { display: block; margin: 4px 0 8px; }
-  .home-sourcing-vignette img { display: block; width: 100%; max-height: 78px; object-fit: contain; }
-}
 .home-sourcing { padding-block: 56px; }
 .home-sourcing-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 64px; align-items: center; }
 .home-sourcing-copy .lede { margin-top: 20px; max-width: 500px; }
