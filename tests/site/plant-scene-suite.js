@@ -846,7 +846,7 @@ class Surface {
     check('scroll-friendly previews leave vertical and diagonal swipes to the page without selecting equipment', () => {
         assert.equal(previewHost.canvas.style.touchAction,'pan-y');
         assert.match(previewHost.canvas.attrs['aria-label'],/swipe vertically to scroll the page/);
-        const before=renderer.camera.position.clone(),count=previewEvents.length;
+        const before=renderer.camera.position.clone(),target=controls.target.clone(),count=previewEvents.length;
         previewTouch('pointerdown',21,150,100);
         assert.ok(!previewTouch('pointermove',21,152,170).defaultPrevented);
         assert.ok(!previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,'native vertical touch scroll remains available');
@@ -854,6 +854,7 @@ class Surface {
         assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'a vertical gesture cannot switch into rotation');
         previewTouch('pointerdown',22,150,100); previewTouch('pointermove',22,190,140); previewTouch('pointerup',22,190,140); flush();
         assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'diagonal intent defaults to page scrolling');
+        assert.ok(controls.target.distanceTo(target)<1e-8,'page scrolling cannot shift the model pivot');
         assert.equal(previewEvents.length,count,'scrolling never taps into equipment');
     });
     check('scroll-friendly previews rotate sideways at touch sensitivity and ignore a swipe returning to its origin', () => {
@@ -867,6 +868,43 @@ class Surface {
         assert.ok(Math.abs(renderer.camera.position.distanceTo(controls.target)-radius)<1e-8);
         previewTouch('pointermove',23,150,100); previewTouch('pointerup',23,150,100); flush();
         assert.equal(previewEvents.length,count,'returning to the start remains a swipe, not a tap');
+    });
+    check('two fingers shift every scroll-friendly preview and its pivot without rotating or changing the chosen zoom', () => {
+        for(const view of ['site','landfill','pad','hosting','asic']) {
+            preview.setConfig({view,definition:definition(view)});preview.reset();flush();
+            const before=renderer.camera.position.clone(),target=controls.target.clone(),offset=before.clone().sub(target),count=previewEvents.length;
+            previewTouch('pointerdown',101,110,100);previewTouch('pointerdown',102,230,100);
+            previewTouch('pointermove',101,146,123);previewTouch('pointermove',102,266,123);flush();
+            const shift=controls.target.clone().sub(target),after=renderer.camera.position.clone();
+            assert.ok(shift.length()>.05,view+' two-finger translation moves the pivot');
+            assert.ok(after.clone().sub(before).distanceTo(shift)<1e-7,view+' camera and pivot translate equally');
+            assert.ok(after.clone().sub(controls.target).distanceTo(offset)<1e-7,view+' panning preserves orientation and final zoom');
+            assert.equal(previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true,view+' active model pan is not a page swipe');
+            previewTouch('pointerup',101,146,123);previewTouch('pointerup',102,266,123);flush();
+            assert.ok(renderer.camera.position.distanceTo(after)<1e-8,view+' release keeps the shifted view');
+            assert.equal(previewEvents.length,count,view+' pan never selects or opens equipment');
+            const pivot=controls.target.clone(),rotatingFrom=renderer.camera.position.clone();
+            previewTouch('pointerdown',103,140,105);previewTouch('pointermove',103,195,105);previewTouch('pointerup',103,195,105);flush();
+            assert.ok(renderer.camera.position.distanceTo(rotatingFrom)>.05,view+' a subsequent one-finger drag still rotates');
+            assert.ok(controls.target.distanceTo(pivot)<1e-8,view+' rotation uses the newly shifted pivot');
+        }
+        preview.setConfig({view:'hosting',definition:definition('hosting')});preview.reset();flush();
+    });
+    check('scroll-friendly two-finger translation and pinch work together without turning the model or scrolling the page', () => {
+        preview.reset();flush();
+        const target=controls.target.clone(),offset=renderer.camera.position.clone().sub(target),radius=offset.length(),count=previewEvents.length;
+        previewTouch('pointerdown',104,120,100);previewTouch('pointerdown',105,220,100);
+        previewTouch('pointermove',104,100,126);previewTouch('pointermove',105,270,126);flush();
+        const after=renderer.camera.position.clone(),nextOffset=after.clone().sub(controls.target);
+        assert.ok(controls.target.distanceTo(target)>.05,'the moving midpoint shifts the model');
+        assert.ok(Math.abs(nextOffset.length()-radius/1.7)<1e-7,'pinch follows the final finger span while panning');
+        assert.ok(nextOffset.clone().normalize().distanceTo(offset.clone().normalize())<1e-8,'two-finger input does not orbit');
+        assert.equal(previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true);
+        previewTouch('pointerup',105,270,126);const shifted=controls.target.clone();
+        previewTouch('pointermove',104,170,158);previewTouch('pointerup',104,170,158);flush();
+        assert.ok(renderer.camera.position.distanceTo(after)<1e-8,'the remaining finger cannot jump into rotation');
+        assert.ok(controls.target.distanceTo(shifted)<1e-8,'the remaining finger cannot continue the two-finger pan');
+        assert.equal(previewEvents.length,count,'combined gestures never become taps');preview.reset();flush();
     });
     check('scroll-friendly preview pinch zooms the model and cannot turn a remaining finger into a tap', () => {
         const radius=renderer.camera.position.distanceTo(controls.target),count=previewEvents.length;
@@ -905,6 +943,31 @@ class Surface {
         previewHost.canvas.fire('pointerup',{pointerType:'mouse',pointerId:40,button:2,buttons:0,clientX:190,clientY:100,pageX:190,pageY:100}); flush();
         assert.ok(renderer.camera.position.distanceTo(before)>.1,'mouse right-drag still rotates');
         assert.ok(controls.target.distanceTo(target)<1e-8,'mouse rotation keeps its chosen center');
+    });
+    check('cancelled, outside-released and suspended two-finger previews recover cleanly for the next gesture', () => {
+        for(const finish of ['cancel','outside','inactive']) {
+            preview.reset();flush();const count=previewEvents.length;
+            previewTouch('pointerdown',106,115,95);previewTouch('pointerdown',107,225,95);
+            previewTouch('pointermove',106,140,113);previewTouch('pointermove',107,250,113);flush();
+            if(finish==='cancel') {
+                previewTouch('pointercancel',106,140,113);const position=renderer.camera.position.clone(),target=controls.target.clone();
+                previewTouch('pointermove',107,285,145);flush();
+                assert.ok(renderer.camera.position.distanceTo(position)<1e-8,'one cancelled contact cannot make the other jump');
+                assert.ok(controls.target.distanceTo(target)<1e-8);previewTouch('pointercancel',107,285,145);
+            }else if(finish==='outside') {
+                document.fire('pointerup',{pointerType:'touch',pointerId:106,clientX:140,clientY:113});
+                document.fire('pointerup',{pointerType:'touch',pointerId:107,clientX:250,clientY:113});
+            }else {preview.setActive(false);preview.setActive(true);}
+            flush();assert.equal(previewEvents.length,count,finish+' cannot tap open equipment');
+            const target=controls.target.clone(),offset=renderer.camera.position.clone().sub(target);
+            previewTouch('pointerdown',108,110,95);previewTouch('pointerdown',109,230,95);
+            previewTouch('pointermove',108,132,110);previewTouch('pointermove',109,252,110);flush();
+            assert.ok(controls.target.distanceTo(target)>.05,finish+' permits a fresh two-finger pan');
+            assert.ok(renderer.camera.position.clone().sub(controls.target).distanceTo(offset)<1e-7,finish+' keeps orientation and zoom');
+            previewTouch('pointerup',108,132,110);previewTouch('pointerup',109,252,110);flush();
+            assert.equal(controls.enabled,true);assert.equal(previewEvents.length,count);
+        }
+        preview.reset();flush();
     });
     check('semantic focus notification ignores hover and clears on reset, inspection, configuration and progress changes', () => {
         preview.setConfig({view:'site',definition:definition('site')}); flush(); focusedParts.length=0;

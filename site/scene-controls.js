@@ -14,6 +14,19 @@ export function enableScenePan(controls, canvas, {pan = true} = {}) {
     const right = new Vector3(), up = new Vector3(), delta = new Vector3();
     let pointer = null, shifted = false;
 
+    function panBy(dx,dy) {
+        if (!pan || !controls.enablePan || (!dx && !dy)) return false;
+        const scale = 2 * camera.position.distanceTo(controls.target) *
+            Math.tan(camera.fov*Math.PI/360) / Math.max(1,canvas.clientHeight);
+        camera.updateMatrix();
+        right.setFromMatrixColumn(camera.matrix,0);
+        up.setFromMatrixColumn(camera.matrix,1);
+        delta.copy(right).multiplyScalar(-dx*scale).addScaledVector(up,dy*scale);
+        camera.position.add(delta);
+        controls.target.add(delta);
+        controls.update();
+        return true;
+    }
     function beginShift(event) {
         pointer.shift = true;
         pointer.enabled = controls.enabled;
@@ -45,16 +58,7 @@ export function enableScenePan(controls, canvas, {pan = true} = {}) {
         event.preventDefault();
         const dx = event.clientX-pointer.x, dy = event.clientY-pointer.y;
         pointer.x = event.clientX; pointer.y = event.clientY;
-        if (!dx && !dy) return;
-        const scale = 2 * camera.position.distanceTo(controls.target) *
-            Math.tan(camera.fov*Math.PI/360) / Math.max(1,canvas.clientHeight);
-        camera.updateMatrix();
-        right.setFromMatrixColumn(camera.matrix,0);
-        up.setFromMatrixColumn(camera.matrix,1);
-        delta.copy(right).multiplyScalar(-dx*scale).addScaledVector(up,dy*scale);
-        camera.position.add(delta);
-        controls.target.add(delta);
-        controls.update();
+        panBy(dx,dy);
     }
     function finish(event) {
         if (!pointer || (event && event.pointerId !== pointer.id)) return;
@@ -72,6 +76,7 @@ export function enableScenePan(controls, canvas, {pan = true} = {}) {
     canvas.addEventListener('lostpointercapture',finish);
     canvas.addEventListener('contextmenu',contextMenu);
     return {
+        pan: panBy,
         wasShiftGesture: () => shifted,
         dispose() {
             finish();

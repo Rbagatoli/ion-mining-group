@@ -3,7 +3,7 @@
 import * as THREE from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
-import { enableScenePan } from './scene-controls.js?v=3';
+import { enableScenePan } from './scene-controls.js?v=5';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYLINDER = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -1301,7 +1301,7 @@ export function mountMineScene(host, callbacks = {}) {
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
     canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. '+
-        (scrollFriendlyTouch ? 'Touch: drag sideways to rotate, swipe vertically to scroll the page, pinch to zoom the model. ' : 'Touch: drag to rotate, pinch to zoom, two fingers to shift. ')+
+        (scrollFriendlyTouch ? 'Touch: drag sideways to rotate, swipe vertically to scroll the page, two-finger drag to move the model, pinch to zoom. ' : 'Touch: drag to rotate, pinch to zoom, two fingers to shift. ')+
         'Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
@@ -1639,7 +1639,7 @@ export function mountMineScene(host, callbacks = {}) {
     // Capture touch contacts before OrbitControls claims them; mouse navigation
     // and the full-touch mine builder retain the existing OrbitControls path.
     const touchPoints = new Map();
-    let touchGesture = null, pinchDistance = 0;
+    let touchGesture = null, pinchDistance = 0, pinchCenter = null;
     function releaseTouch(id) { if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id); }
     function beginTouchInteraction() {
         if (touchGesture && !touchGesture.interacting) {
@@ -1648,13 +1648,17 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function clearTouchGesture() {
         const interacting = touchGesture?.interacting;
-        const ids = [...touchPoints.keys()]; touchPoints.clear(); touchGesture = null; pinchDistance = 0;
+        const ids = [...touchPoints.keys()]; touchPoints.clear(); touchGesture = null; pinchDistance = 0; pinchCenter = null;
         ids.forEach(releaseTouch);
         if (interacting) controls.dispatchEvent({type:'end'});
     }
     function span() {
         const points = [...touchPoints.values()];
         return points.length === 2 ? Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y) : 0;
+    }
+    function center() {
+        const points = [...touchPoints.values()];
+        return points.length === 2 ? {x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2} : null;
     }
     function touchDown(event) {
         if (!scrollFriendlyTouch || event.pointerType !== 'touch') return;
@@ -1665,7 +1669,7 @@ export function mountMineScene(host, callbacks = {}) {
             touchGesture = {id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,direction:'',moved:false,multi:false,interacting:false};
         } else {
             touchGesture.multi = true; beginTouchInteraction();
-            pinchDistance = span();
+            pinchDistance = span(); pinchCenter = center();
             for (const id of touchPoints.keys()) canvas.setPointerCapture(id);
         }
     }
@@ -1675,9 +1679,13 @@ export function mountMineScene(host, callbacks = {}) {
         if (!touchPoints.has(event.pointerId) || !touchGesture || !active || !yard) return;
         touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});
         if (touchPoints.size === 2) {
-            const next = span();
+            const next = span(), midpoint = center();
+            // OrbitControls does not receive preview touches, so preserve its
+            // two-finger pan here as well as pinch. Shift camera and target
+            // together; translating the pair must not rotate the model.
+            if (pinchCenter && navigation.pan(midpoint.x-pinchCenter.x,midpoint.y-pinchCenter.y)) { pauseOrbit(); wake(); }
             if (pinchDistance > 0 && next > 0) zoom(pinchDistance/next);
-            pinchDistance = next;
+            pinchDistance = next; pinchCenter = midpoint;
             if (event.cancelable) event.preventDefault();
             return;
         }
@@ -1705,7 +1713,7 @@ export function mountMineScene(host, callbacks = {}) {
             !gesture.multi && !gesture.moved && Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)<=7;
         touchPoints.delete(event.pointerId); releaseTouch(event.pointerId);
         if (!touchPoints.size) clearTouchGesture();
-        else pinchDistance = 0;
+        else { pinchDistance = 0; pinchCenter = null; }
         if (tap && active) pickAt(event);
     }
     function touchEnd(event) {
@@ -1737,7 +1745,7 @@ export function mountMineScene(host, callbacks = {}) {
     function motion(event) { reduced = event.matches; autoRotate = motionEnabled && !reduced; wake(); }
     function touchmove(event) {
         // Native touch events must agree with the selected pointer policy:
-        // preview vertical swipes scroll, while rotation/model pinch stay here.
+        // preview vertical swipes scroll, while rotation/model pan/pinch stay here.
         if (active && yard && event.cancelable && (!scrollFriendlyTouch || touchPoints.size>1 || touchGesture?.direction === 'horizontal')) event.preventDefault();
     }
     function contextLost(event) { event.preventDefault(); lost = true; clearTouchGesture(); stop(); callbacks.onError?.(); }
