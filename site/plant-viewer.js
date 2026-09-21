@@ -5,13 +5,14 @@
     var script = document.currentScript, moduleURL = script && script.getAttribute('data-module-src');
     if (!moduleURL) return;
     var modulePromise;
+    var compactMedia = window.matchMedia ? window.matchMedia('(max-width: 700px)') : null;
     var names = {site:'SiteDiagram',hosting:'ContainerDiagram',asic:'AsicDiagram',
         landfillnow:'LandfillNowDiagram',landfillion:'LandfillIonDiagram',padnow:'PadNowDiagram',padion:'PadIonDiagram'};
     var groups = Array.from(document.querySelectorAll('.dg-views'));
     document.querySelectorAll('.dg-wrap[data-scene="site"]').forEach(function (wrap) { groups.push(wrap); });
     var svgNS = 'http://www.w3.org/2000/svg';
     var siteViews = window.ProtonSiteViews = {};
-    groups.forEach(function (group) {
+    groups.forEach(function (group, groupIndex) {
         var wraps = group.matches('.dg-wrap') ? [group] : Array.from(group.querySelectorAll('.dg-wrap'));
         var name = wraps[0].getAttribute('data-scene');
         var fuel = name.indexOf('landfill') === 0 ? 'landfill' : name.indexOf('pad') === 0 ? 'pad' : null;
@@ -20,7 +21,8 @@
         var notes = wraps.map(function (wrap) { return wrap.querySelector('.dg-note')?.textContent || ''; });
         var scene = null, field = null, preview = null, loading = false, failed = false, xray = false, inspecting = false, current = '', calloutKey = '';
         var xrayStates = {asic:true};
-        var refs = {}, tethers = {}, cards = {};
+        var refs = {}, tethers = {}, cards = {}, partDescriptions = {};
+        var controlID = 'plant-tools-'+groupIndex, descriptionID = 'plant-part-description-'+groupIndex;
         var estimate = null, revision = 0, appliedRevision = -1, powered = true, resetPending = false;
         function state() {
             var value = scale ? Number(scale.value)/100 : 0;
@@ -49,6 +51,13 @@
                 tethers[key].line.classList.toggle('is-hot',key === id);
             });
         }
+        function describePart(id) {
+            if (!refs.parts) return;
+            var known = Object.prototype.hasOwnProperty.call(partDescriptions,id);
+            refs.parts.value = known ? id : '';
+            refs.description.textContent = known ? partDescriptions[id] : '';
+            refs.description.hidden = !known;
+        }
         function project(points) {
             points.forEach(function (p) {
                 var tether = tethers[p.id]; if (!tether) return;
@@ -61,13 +70,19 @@
             });
         }
         function callouts(diagram) {
-            refs.callouts.textContent = ''; refs.leaders.textContent = ''; tethers = {}; cards = {};
+            var selectedPart = refs.parts.value;
+            refs.callouts.textContent = ''; refs.leaders.textContent = ''; tethers = {}; cards = {}; partDescriptions = {};
+            refs.parts.textContent = '';
+            var overview = document.createElement('option'); overview.value = ''; overview.textContent = 'Explore equipment';
+            refs.parts.appendChild(overview);
             diagram.CALLOUTS.forEach(function (co) {
                 var button = document.createElement('button'); button.type = 'button'; button.className = 'plant-callout plant-callout--'+co.side;
                 button.style.top = (co.y/diagram.VB.h*100)+'%'; button.setAttribute('aria-pressed','false');
                 var title = document.createElement('span'), desc = document.createElement('span');
                 title.className = 'plant-c-title'; title.textContent = co.title; desc.className = 'plant-c-desc'; desc.textContent = co.desc;
                 button.appendChild(title); button.appendChild(desc); refs.callouts.appendChild(button); cards[co.id] = button;
+                var option = document.createElement('option'); option.value = co.id; option.textContent = co.title;
+                refs.parts.appendChild(option); partDescriptions[co.id] = co.desc;
                 var line = document.createElementNS(svgNS,'line'), dot = document.createElementNS(svgNS,'circle');
                 line.classList.add('plant-lead'); line.setAttribute('x1',co.side === 'l' ? '195.3' : '804.7');
                 line.setAttribute('y1',(co.y/diagram.VB.h*1000).toFixed(2)); dot.classList.add('plant-dot'); dot.setAttribute('r','2');
@@ -79,6 +94,7 @@
                 button.addEventListener('blur',function () { scene.highlightPart(null); });
                 button.addEventListener('click',function () { scene.focusPart(co.id); });
             });
+            describePart(selectedPart);
             scene.setAnnotations(diagram.CALLOUTS);
         }
         function configuredLabels(diagram) {
@@ -167,21 +183,25 @@
                     '<div class="plant-canvas" data-plant="host"></div>'+
                     '<svg class="plant-leaders" data-plant="leaders" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>'+
                     '<div class="plant-caption"><span data-plant="cooling"></span><span data-plant="mode"></span></div>'+
-                    '<p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag shift · Right-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom · Two fingers shift</span></p></div>'+
+                    '<p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag shift · Right-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Swipe to turn · Pinch to zoom</span></p></div>'+
                     '<div class="plant-callouts" data-plant="callouts" aria-label="Parts of the site"></div></div>'+
                     '<div class="plant-toolbar" aria-label="3D view controls">'+
                     '<p class="plant-hint">Select a label to explore</p>'+
-                    '<button type="button" data-plant="power" aria-pressed="true" hidden>Power down</button>'+
                     '<button type="button" data-plant="inspect" aria-pressed="false">Inside a container</button>'+
                     '<button type="button" data-plant="xray" aria-pressed="false">X-ray off</button>'+
+                    '<button type="button" class="plant-tools-toggle" data-plant="more" aria-label="More view controls" aria-expanded="false" aria-controls="'+controlID+'"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5"/><circle cx="15" cy="17" r="2.5"/></svg></button>'+
+                    '<div class="plant-tools" id="'+controlID+'">'+
+                    '<button type="button" data-plant="power" aria-pressed="true" hidden>Power down</button>'+
                     '<button type="button" data-plant="out" aria-label="Zoom out">−</button>'+
                     '<button type="button" data-plant="in" aria-label="Zoom in">+</button>'+
-                    '<button type="button" data-plant="reset">Reset</button></div>'+
+                    '<button type="button" data-plant="reset">Reset</button></div></div>'+
+                    '<div class="plant-equipment"><select data-plant="parts" aria-label="Explore equipment" aria-describedby="'+descriptionID+'"></select><p data-plant="description" id="'+descriptionID+'" aria-live="polite" hidden></p></div>'+
                     '<p class="plant-note" data-plant="note" hidden></p>';
                 preview.querySelectorAll('[data-plant]').forEach(function (el) { refs[el.getAttribute('data-plant')] = el; }); group.appendChild(preview);
                 if (window.ProtonField) { field = window.ProtonField.mount(refs.field); if (field) field.setActive(false); }
                 scene = module.mountMineScene(refs.host,{
-                    interactionSurface:refs.surface,onProject:project,onPart:highlight,onReady:ready,
+                    interactionSurface:refs.surface,scrollFriendlyTouch:true,compactView:function () { return !!compactMedia && compactMedia.matches; },
+                    onProject:project,onPart:highlight,onFocus:describePart,onReady:ready,
                     onInspect:function (value) { inspecting = value; syncControls(); },
                     onXray:function (value) { xray = value; if (current) xrayStates[current] = value; syncControls(); },
                     onError:fallback,
@@ -202,9 +222,18 @@
                     scene.inspect(!inspecting);
                 });
                 refs.power.addEventListener('click',function () { powered = !powered; update(); });
+                refs.more.addEventListener('click',function () {
+                    var expanded = refs.more.getAttribute('aria-expanded') !== 'true';
+                    refs.more.setAttribute('aria-expanded',String(expanded));
+                    preview.classList.toggle('plant-preview--tools',expanded);
+                });
+                refs.parts.addEventListener('change',function () {
+                    if (!refs.parts.value) scene.reset();
+                    else scene.focusPart(refs.parts.value,false);
+                });
                 refs.xray.addEventListener('click',function () { scene.setXray(!xray); });
                 refs.in.addEventListener('click',function () { scene.zoom(.8); }); refs.out.addEventListener('click',function () { scene.zoom(1.25); });
-                refs.reset.addEventListener('click',function () { scene.reset(); highlight(null); });
+                refs.reset.addEventListener('click',function () { scene.reset(); highlight(null); describePart(null); });
                 if (scale) { scale.addEventListener('input',update); scale.addEventListener('change',update); }
                 update(); scene.setActive(true);
             } catch (error) {

@@ -1243,7 +1243,17 @@ function cameraPose(bounds, target, aspect, direction, sweep = 0, fov = 38, fram
     }
     return target.clone().add(direction.clone().normalize().multiplyScalar(distance*1.02));
 }
-export function yardCameraPose(yard, aspect) {
+export function yardCameraPose(yard, aspect, {compact = false} = {}) {
+    if (compact && ['site','hosting','asic'].includes(yard.view)) {
+        // Mobile equipment pickers no longer occupy the drawing. Center the
+        // real subject (including its base) instead of the authored ground-level
+        // target, and reserve a safe envelope for an entire automatic turn.
+        const target = yard.bounds.getCenter(new THREE.Vector3()), v = yard.layout;
+        const pitch = v?.BASE_PITCH ?? THREE.MathUtils.degToRad(26), yaw = v?.BASE_YAW || 0;
+        const direction = new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
+        const fov = v ? THREE.MathUtils.radToDeg(2*Math.atan(v.VB.h/(2*v.FOV))) : 38;
+        return {target,position:cameraPose(yard.bounds,target,aspect,direction,Math.PI,fov,.90,.76),fov,verticalOffset:0};
+    }
     if (aspect >= 2 && (yard.configuredSite || yard.view === 'landfill' || yard.view === 'pad')) {
         // Match the raised, centered reference view. The front of the pad fills
         // roughly three quarters of a wide panel, with room to see its depth.
@@ -1282,6 +1292,7 @@ export function wheelZoomFactor(event, pageHeight = 800) {
 }
 
 export function mountMineScene(host, callbacks = {}) {
+    const scrollFriendlyTouch = callbacks.scrollFriendlyTouch === true;
     const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,1.6));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1289,7 +1300,9 @@ export function mountMineScene(host, callbacks = {}) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .94;
     host.appendChild(renderer.domElement);
     const canvas = renderer.domElement; canvas.tabIndex = 0;
-    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. Touch: drag to rotate, pinch to zoom, two fingers to shift. Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
+    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive 3D model. Right-drag rotates. Left-drag or both mouse buttons shift the view and rotation center. '+
+        (scrollFriendlyTouch ? 'Touch: drag sideways to rotate, swipe vertically to scroll the page, pinch to zoom the model. ' : 'Touch: drag to rotate, pinch to zoom, two fingers to shift. ')+
+        'Scroll to zoom. Keyboard: arrow keys rotate, plus and minus zoom, X toggles X-ray, and Escape resets.');
     const world = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38,1,.1,1000);
     const env = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
     const envTarget = pmrem.fromScene(env,.04); world.environment = envTarget.texture; world.environmentIntensity = 1.1;
@@ -1304,9 +1317,9 @@ export function mountMineScene(host, callbacks = {}) {
     controls.enableDamping = false; controls.enableZoom = true;
     const navigation = enableScenePan(controls,canvas);
     controls.minPolarAngle = .30; controls.maxPolarAngle = Math.PI*.46;
-    // Gestures on the drawing control the model from the very first touch.
-    // Callout cards and the rest of the page retain normal scrolling.
-    canvas.style.touchAction = 'none';
+    // Builders own model gestures from the first contact. Marketing previews
+    // may instead leave vertical swipes to the page while retaining model pinch.
+    canvas.style.touchAction = scrollFriendlyTouch ? 'pan-y' : 'none';
     const interactionSurface = callbacks.interactionSurface || host;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = media.matches, yard = null, active = false, visible = true, disposed = false, lost = false, ready = false;
@@ -1319,6 +1332,8 @@ export function mountMineScene(host, callbacks = {}) {
     let raf = 0, last = 0, elapsed = 0, buildTime = 0, key = '', transitioning = false;
     const desiredPosition = new THREE.Vector3(), desiredTarget = new THREE.Vector3(), homePosition = new THREE.Vector3();
     const homeTarget = new THREE.Vector3(0,.7,0);
+    function setFocus(value) { focus = value; callbacks.onFocus?.(focus?.id || null); }
+    function compactView() { return callbacks.compactView?.() === true; }
 
     function resize() {
         const w = host.clientWidth, h = host.clientHeight;
@@ -1340,7 +1355,7 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function fit(instant) {
         if (!yard) return;
-        const pose = yardCameraPose(yard,camera.aspect);
+        const pose = yardCameraPose(yard,camera.aspect,{compact:compactView()});
         camera.fov = pose.fov || 38;
         desiredViewOffset = pose.verticalOffset || 0;
         camera.updateProjectionMatrix();
@@ -1420,7 +1435,7 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function inspect(open, index) {
         if (!yard || !yard.containers.length || (open && yard.mining && progress < 1)) return;
-        focus = null; highlightPart(null);
+        setFocus(null); highlightPart(null);
         if (index === undefined) index = yard.inspectIndex ?? Math.max(0,yard.containers.length-2);
         selected = open ? Math.min(index,yard.containers.length-1) : -1;
         manual = true; resumeAt = elapsed+3;
@@ -1433,7 +1448,7 @@ export function mountMineScene(host, callbacks = {}) {
             // Authored scenes have a different lens and caption offset from the
             // builder. Fit the opened equipment with that lens and center it.
             desiredViewOffset = 0;
-            desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,direction,0,camera.fov,yard.view && camera.aspect >= 2 ? .52 : .92));
+            desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,direction,0,camera.fov,compactView() ? .86 : yard.view && camera.aspect >= 2 ? .52 : .92));
             const distance = desiredPosition.distanceTo(desiredTarget);
             controls.minDistance = Math.max(.25,distance*.12);
             controls.maxDistance = Math.max(controls.maxDistance,distance*2.5);
@@ -1449,7 +1464,7 @@ export function mountMineScene(host, callbacks = {}) {
         const saved = keep ? {position:camera.position.clone(),target:controls.target.clone(),fov:camera.fov,offset:viewOffset} : null;
         key = nextKey;
         clearHighlight();
-        focus = null; hoveredPart = null; manual = false; dragging = false; resumeAt = 0;
+        setFocus(null); hoveredPart = null; manual = false; dragging = false; resumeAt = 0;
         if (yard) { world.remove(yard.root); disposeYard(yard); }
         yard = callbacks.buildScene ? callbacks.buildScene(config) : config.view ? buildPresentation(config.view,config.definition) : config.siteType ? buildConfiguredSite(config) : buildYard(config);
         setSceneXray(yard,xray); world.add(yard.root); buildTime = reduced ? 10 : 0;
@@ -1548,8 +1563,8 @@ export function mountMineScene(host, callbacks = {}) {
         direction.phi = THREE.MathUtils.clamp(direction.phi,.45,1.18); direction.radius = 1;
         desiredViewOffset = 0;
         desiredTarget.copy(bounds.getCenter(new THREE.Vector3()));
-        desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,new THREE.Vector3().setFromSpherical(direction),.18,camera.fov,camera.aspect >= 2 ? .52 : .86,.7));
-        focus = {id,offset:desiredPosition.clone().sub(desiredTarget),phase:0};
+        desiredPosition.copy(cameraPose(bounds,desiredTarget,camera.aspect,new THREE.Vector3().setFromSpherical(direction),.18,camera.fov,compactView() ? .86 : camera.aspect >= 2 ? .52 : .86,.7));
+        setFocus({id,offset:desiredPosition.clone().sub(desiredTarget),phase:0});
         controls.minDistance = Math.max(.25,focus.offset.length()*.22);
         selected = -1; manual = false; transitioning = true;
         highlightPart(null); callbacks.onInspect?.(false); wake();
@@ -1567,12 +1582,12 @@ export function mountMineScene(host, callbacks = {}) {
             if (!revealing) { displayedProgress = progress; setSceneProgress(yard,progress); }
         } else { displayedProgress = progress; revealing = false; }
         if (changed) {
-            if (yard?.configuredSite) { focus = null; highlightPart(null); pauseOrbit(); }
+            if (yard?.configuredSite) { setFocus(null); highlightPart(null); pauseOrbit(); }
             else if (focus) reset(); else highlightPart(null);
         }
         wake();
     }
-    function reset() { focus = null; highlightPart(null); manual = false; selected = -1; fit(false); callbacks.onInspect?.(false); wake(); }
+    function reset() { setFocus(null); highlightPart(null); manual = false; selected = -1; fit(false); callbacks.onInspect?.(false); wake(); }
     function pauseOrbit() {
         manual = true; transitioning = false; resumeAt = elapsed+3;
         if (focus) { focus.offset.copy(camera.position).sub(controls.target); focus.phase = 0; }
@@ -1601,6 +1616,10 @@ export function mountMineScene(host, callbacks = {}) {
         if (!pointer || event.pointerId !== pointer.id) return;
         const moved = Math.hypot(event.clientX-pointer.x,event.clientY-pointer.y), multi = pointer.multi; pointer = null;
         if (moved > 7 || multi || !yard || event.button > 0 || navigation.wasShiftGesture()) return;
+        pickAt(event);
+    }
+    function pickAt(event) {
+        if (!yard) return;
         const rect = canvas.getBoundingClientRect(), point = new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
         const ray = new THREE.Raycaster(); ray.setFromCamera(point,camera);
         const hit = ray.intersectObjects(yard.containers.map(unit => unit.root),true).find(candidate => {
@@ -1616,6 +1635,87 @@ export function mountMineScene(host, callbacks = {}) {
             }
         }
     }
+    // Marketing previews opt into sideways rotation / vertical page scrolling.
+    // Capture touch contacts before OrbitControls claims them; mouse navigation
+    // and the full-touch mine builder retain the existing OrbitControls path.
+    const touchPoints = new Map();
+    let touchGesture = null, pinchDistance = 0;
+    function releaseTouch(id) { if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id); }
+    function beginTouchInteraction() {
+        if (touchGesture && !touchGesture.interacting) {
+            touchGesture.interacting = true; controls.dispatchEvent({type:'start'});
+        }
+    }
+    function clearTouchGesture() {
+        const interacting = touchGesture?.interacting;
+        const ids = [...touchPoints.keys()]; touchPoints.clear(); touchGesture = null; pinchDistance = 0;
+        ids.forEach(releaseTouch);
+        if (interacting) controls.dispatchEvent({type:'end'});
+    }
+    function span() {
+        const points = [...touchPoints.values()];
+        return points.length === 2 ? Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y) : 0;
+    }
+    function touchDown(event) {
+        if (!scrollFriendlyTouch || event.pointerType !== 'touch') return;
+        event.stopImmediatePropagation();
+        if (!active || !yard || !controls.enabled) return;
+        touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        if (touchPoints.size === 1) {
+            touchGesture = {id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,direction:'',moved:false,multi:false,interacting:false};
+        } else {
+            touchGesture.multi = true; beginTouchInteraction();
+            pinchDistance = span();
+            for (const id of touchPoints.keys()) canvas.setPointerCapture(id);
+        }
+    }
+    function touchMove(event) {
+        if (!scrollFriendlyTouch || event.pointerType !== 'touch') return;
+        event.stopImmediatePropagation();
+        if (!touchPoints.has(event.pointerId) || !touchGesture || !active || !yard) return;
+        touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        if (touchPoints.size === 2) {
+            const next = span();
+            if (pinchDistance > 0 && next > 0) zoom(pinchDistance/next);
+            pinchDistance = next;
+            if (event.cancelable) event.preventDefault();
+            return;
+        }
+        // Once a second finger participates, the remaining finger cannot turn
+        // into a fresh drag or tap until every contact has ended.
+        if (touchPoints.size !== 1 || touchGesture.multi || touchGesture.id !== event.pointerId) return;
+        const dx = event.clientX-touchGesture.x, dy = event.clientY-touchGesture.y;
+        if (Math.hypot(dx,dy)>7) touchGesture.moved = true;
+        if (!touchGesture.direction) {
+            if (Math.max(Math.abs(dx),Math.abs(dy))<10) return;
+            touchGesture.direction = Math.abs(dx)>Math.abs(dy)*1.25 ? 'horizontal' : 'vertical';
+            if (touchGesture.direction === 'horizontal') { canvas.setPointerCapture(event.pointerId); beginTouchInteraction(); }
+        }
+        if (touchGesture.direction !== 'horizontal') return;
+        const delta = event.clientX-touchGesture.lastX; touchGesture.lastX = event.clientX;
+        const offset = camera.position.clone().sub(controls.target);
+        offset.applyAxisAngle(UP,-delta*Math.PI*2*.2/Math.max(1,canvas.clientHeight));
+        camera.position.copy(controls.target).add(offset); controls.update(); pauseOrbit(); wake();
+        if (event.cancelable) event.preventDefault();
+    }
+    function finishTouch(event, cancelled = false) {
+        if (!touchPoints.has(event.pointerId)) return;
+        const gesture = touchGesture;
+        const tap = !cancelled && touchPoints.size === 1 && gesture?.id === event.pointerId &&
+            !gesture.multi && !gesture.moved && Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)<=7;
+        touchPoints.delete(event.pointerId); releaseTouch(event.pointerId);
+        if (!touchPoints.size) clearTouchGesture();
+        else pinchDistance = 0;
+        if (tap && active) pickAt(event);
+    }
+    function touchEnd(event) {
+        if (!scrollFriendlyTouch || event.pointerType !== 'touch') return;
+        event.stopImmediatePropagation(); finishTouch(event,event.type === 'pointercancel');
+    }
+    function outsideTouchEnd(event) {
+        if (event.target !== canvas) finishTouch(event,event.type === 'pointercancel');
+    }
+    function lostTouchCapture(event) { finishTouch(event,true); }
     function keydown(event) {
         if (event.ctrlKey || event.metaKey || event.altKey) return;
         if (event.key.toLowerCase() === 'x') { event.preventDefault(); setXray(!xray); return; }
@@ -1633,16 +1733,22 @@ export function mountMineScene(host, callbacks = {}) {
         spherical.phi = THREE.MathUtils.clamp(spherical.phi,controls.minPolarAngle,controls.maxPolarAngle);
         camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical)); controls.update(); pauseOrbit(); wake();
     }
-    function visibility() { if (document.hidden) stop(); else wake(); }
+    function visibility() { if (document.hidden) { clearTouchGesture(); stop(); } else wake(); }
     function motion(event) { reduced = event.matches; autoRotate = motionEnabled && !reduced; wake(); }
     function touchmove(event) {
-        // Keep the gesture with the canvas on mobile browsers that also emit
-        // native touch events alongside OrbitControls' pointer events.
-        if (active && yard && event.cancelable) event.preventDefault();
+        // Native touch events must agree with the selected pointer policy:
+        // preview vertical swipes scroll, while rotation/model pinch stay here.
+        if (active && yard && event.cancelable && (!scrollFriendlyTouch || touchPoints.size>1 || touchGesture?.direction === 'horizontal')) event.preventDefault();
     }
-    function contextLost(event) { event.preventDefault(); lost = true; stop(); callbacks.onError?.(); }
+    function contextLost(event) { event.preventDefault(); lost = true; clearTouchGesture(); stop(); callbacks.onError?.(); }
     function contextRestored() { lost = false; ready = false; callbacks.onRestore?.(); wake(); }
     interactionSurface.addEventListener('wheel',wheel,{passive:false,capture:true});
+    if (scrollFriendlyTouch) {
+        canvas.addEventListener('pointerdown',touchDown,true); canvas.addEventListener('pointermove',touchMove,true);
+        canvas.addEventListener('pointerup',touchEnd,true); canvas.addEventListener('pointercancel',touchEnd,true);
+        canvas.addEventListener('lostpointercapture',lostTouchCapture);
+        document.addEventListener('pointerup',outsideTouchEnd,true); document.addEventListener('pointercancel',outsideTouchEnd,true);
+    }
     canvas.addEventListener('pointerdown',down,true); canvas.addEventListener('pointerup',up);
     canvas.addEventListener('touchmove',touchmove,{passive:false});
     canvas.addEventListener('pointercancel',event => { contacts.delete(event.pointerId); pointer = null; });
@@ -1663,12 +1769,16 @@ export function mountMineScene(host, callbacks = {}) {
         setMotion(value) { motionEnabled = !!value; autoRotate = motionEnabled && !reduced; wake(); },
         setAnnotations(value) { annotations = value || []; updateCallouts(); wake(); },
         energize(value) { powered = !!value; wake(); },
-        setActive(value) { active = !!value; if (active) { resize(); wake(); } else stop(); },
+        setActive(value) { active = !!value; if (active) { resize(); wake(); } else { clearTouchGesture(); stop(); } },
         dispose() {
-            disposed = true; stop(); resizeObserver.disconnect(); observer.disconnect(); navigation.dispose(); controls.dispose();
+            disposed = true; clearTouchGesture(); stop(); resizeObserver.disconnect(); observer.disconnect(); navigation.dispose(); controls.dispose();
             media.removeEventListener('change',motion); document.removeEventListener('visibilitychange',visibility);
             interactionSurface.removeEventListener('wheel',wheel,true);
             canvas.removeEventListener('touchmove',touchmove);
+            canvas.removeEventListener('pointerdown',touchDown,true); canvas.removeEventListener('pointermove',touchMove,true);
+            canvas.removeEventListener('pointerup',touchEnd,true); canvas.removeEventListener('pointercancel',touchEnd,true);
+            canvas.removeEventListener('lostpointercapture',lostTouchCapture);
+            document.removeEventListener('pointerup',outsideTouchEnd,true); document.removeEventListener('pointercancel',outsideTouchEnd,true);
             clearHighlight(); disposeYard(yard); envTarget.dispose(); renderer.dispose(); canvas.remove();
         }
     };

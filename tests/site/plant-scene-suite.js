@@ -251,6 +251,35 @@ class Surface {
             assert.equal(phone.verticalOffset,0);
         }
     });
+    check('compact home, container and ASIC cameras center the complete subject and fit every angle of an automatic turn', () => {
+        for (const view of ['site','hosting','asic']) {
+            const yard=buildPresentation(view),v=yard.layout;
+            const desktop=yardCameraPose(yard,v.VB.w/v.VB.h);
+            const explicitDesktop=yardCameraPose(yard,v.VB.w/v.VB.h,{compact:false});
+            assert.ok(explicitDesktop.position.equals(desktop.position) && explicitDesktop.target.equals(desktop.target),'desktop projection is unchanged');
+            for (const aspect of [272/204,348/261,2.4]) {
+                const pose=yardCameraPose(yard,aspect,{compact:true}),camera=new T.PerspectiveCamera(pose.fov,aspect,.1,2000);
+                assert.ok(pose.target.distanceTo(yard.bounds.getCenter(new T.Vector3()))<1e-8,'compact '+view+' targets the subject center');
+                assert.equal(pose.verticalOffset,0);
+                assert.ok(pose.position.clone().sub(pose.target).normalize().distanceTo(desktop.position.clone().sub(desktop.target).normalize())<1e-8,'the authored angle is retained');
+                for(let yaw=0;yaw<Math.PI*2;yaw+=Math.PI/64) {
+                    camera.position.copy(pose.position).sub(pose.target).applyAxisAngle(new T.Vector3(0,1,0),yaw).add(pose.target);
+                    camera.lookAt(pose.target);camera.updateMatrixWorld();
+                    const heights=[];
+                    for(const x of [yard.bounds.min.x,yard.bounds.max.x])for(const y of [yard.bounds.min.y,yard.bounds.max.y])for(const z of [yard.bounds.min.z,yard.bounds.max.z]) {
+                        const point=new T.Vector3(x,y,z).project(camera);heights.push(point.y);
+                        assert.ok(Math.abs(point.x)<.93 && Math.abs(point.y)<.78,view+' stays clear of edges, caption and gesture hint throughout its turn');
+                    }
+                    assert.ok(Math.abs((Math.max(...heights)+Math.min(...heights))/2)<.11,view+' stays visually centered');
+                }
+            }
+        }
+        for(const view of ['landfill','pad']) {
+            const yard=shared.buildConfiguredSite(configured(view,{powerMW:10}));
+            const before=yardCameraPose(yard,4/3),compact=yardCameraPose(yard,4/3,{compact:true});
+            assert.ok(before.position.equals(compact.position) && before.target.equals(compact.target),'configured '+view+' retains its working mobile framing');
+        }
+    });
     check('detailed utilities share the same models across layouts and retain their authored positions', () => {
         for (const view of ['site','landfill','pad']) {
             const scene = buildPresentation(view), main = definition(view).main;
@@ -778,6 +807,117 @@ class Surface {
         assert.deepEqual(events.at(-1),['error']); assert.equal(frames.size,0);
         host.canvas.fire('webglcontextrestored'); flush(); touchGestures('after context recovery');
         api.dispose(); assert.equal(renderer.disposed,true); assert.equal(frames.size,0);
+    });
+    const previewHost = new Surface(); document.appendChild(previewHost);
+    previewHost.clientWidth = 390; previewHost.clientHeight = 220;
+    const previewEvents = [], focusedParts = []; let compactPreview = true;
+    const preview = mount(previewHost,{scrollFriendlyTouch:true,compactView:()=>compactPreview,
+        onInspect:value=>previewEvents.push(['inspect',value]),onXray:value=>previewEvents.push(['xray',value]),
+        onFocus:id=>focusedParts.push(id)});
+    preview.setConfig({view:'hosting',definition:definition('hosting')}); preview.setActive(true); flush();
+    const previewTouch=(type,id,x,y)=>previewHost.canvas.fire(type,{pointerType:'touch',pointerId:id,button:0,
+        buttons:type==='pointerup'?0:1,clientX:x,clientY:y,pageX:x,pageY:y,cancelable:true});
+    check('compact framing follows responsive layout and does not reserve desktop gutters for equipment focus or inspection', () => {
+        for(const view of ['site','hosting','asic']) {
+            preview.setConfig({view,definition:definition(view)});flush();
+            const expected=yardCameraPose(buildPresentation(view),390/220,{compact:true});
+            assert.ok(renderer.camera.position.distanceTo(expected.position)<1e-8);
+            assert.ok(controls.target.distanceTo(expected.target)<1e-8);
+            assert.ok(!renderer.camera.view?.enabled,'mobile overview has no authored vertical offset');
+        }
+        previewHost.clientWidth=540;previewHost.clientHeight=260;resizeScene();
+        preview.setConfig({view:'hosting',definition:definition('hosting')});flush();
+        preview.focusPart('shell',false);flush();const compactFocus=renderer.camera.position.distanceTo(controls.target);
+        compactPreview=false;preview.focusPart('shell',false);flush();
+        assert.ok(renderer.camera.position.distanceTo(controls.target)>compactFocus*1.1,'wide compact focus uses equipment space instead of desktop gutters');
+        compactPreview=true;preview.inspect(true);flush();const compactInside=renderer.camera.position.distanceTo(controls.target);
+        const interior=new T.Box3(new T.Vector3(-6.4,0,-1.4),new T.Vector3(6.4,6,1.4));
+        for(const x of [interior.min.x,interior.max.x])for(const y of [interior.min.y,interior.max.y])for(const z of [interior.min.z,interior.max.z]) {
+            const point=new T.Vector3(x,y,z).project(renderer.camera);
+            assert.ok(Math.abs(point.x)<.87 && Math.abs(point.y)<.76,'the complete opened container fits the compact inspection frame');
+        }
+        compactPreview=false;preview.inspect(true);flush();
+        assert.ok(renderer.camera.position.distanceTo(controls.target)>=compactInside-1e-8,'compact inspection never reserves more room than desktop gutters; height may limit both');
+        preview.reset();previewHost.clientWidth=1280;previewHost.clientHeight=470;resizeScene();flush();
+        const desktop=yardCameraPose(buildPresentation('hosting'),1280/470);
+        assert.ok(renderer.camera.position.distanceTo(desktop.position)<1e-8,'crossing to desktop restores the original camera');
+        compactPreview=true;previewHost.clientWidth=390;previewHost.clientHeight=220;resizeScene();preview.reset();flush();
+    });
+    check('scroll-friendly previews leave vertical and diagonal swipes to the page without selecting equipment', () => {
+        assert.equal(previewHost.canvas.style.touchAction,'pan-y');
+        assert.match(previewHost.canvas.attrs['aria-label'],/swipe vertically to scroll the page/);
+        const before=renderer.camera.position.clone(),count=previewEvents.length;
+        previewTouch('pointerdown',21,150,100);
+        assert.ok(!previewTouch('pointermove',21,152,170).defaultPrevented);
+        assert.ok(!previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,'native vertical touch scroll remains available');
+        previewTouch('pointermove',21,235,171); previewTouch('pointerup',21,235,171); flush();
+        assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'a vertical gesture cannot switch into rotation');
+        previewTouch('pointerdown',22,150,100); previewTouch('pointermove',22,190,140); previewTouch('pointerup',22,190,140); flush();
+        assert.ok(renderer.camera.position.distanceTo(before)<1e-8,'diagonal intent defaults to page scrolling');
+        assert.equal(previewEvents.length,count,'scrolling never taps into equipment');
+    });
+    check('scroll-friendly previews rotate sideways at touch sensitivity and ignore a swipe returning to its origin', () => {
+        const before=controls.getAzimuthalAngle(),radius=renderer.camera.position.distanceTo(controls.target),count=previewEvents.length;
+        previewTouch('pointerdown',23,150,100);
+        assert.equal(previewTouch('pointermove',23,210,102).defaultPrevented,true);
+        assert.equal(previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true,'locked rotation stays with the model');
+        flush();
+        const degrees=Math.abs(controls.getAzimuthalAngle()-before)*180/Math.PI;
+        assert.ok(degrees>18 && degrees<21,'60px turns by a controlled '+degrees.toFixed(1)+' degrees');
+        assert.ok(Math.abs(renderer.camera.position.distanceTo(controls.target)-radius)<1e-8);
+        previewTouch('pointermove',23,150,100); previewTouch('pointerup',23,150,100); flush();
+        assert.equal(previewEvents.length,count,'returning to the start remains a swipe, not a tap');
+    });
+    check('scroll-friendly preview pinch zooms the model and cannot turn a remaining finger into a tap', () => {
+        const radius=renderer.camera.position.distanceTo(controls.target),count=previewEvents.length;
+        previewTouch('pointerdown',24,120,110); previewTouch('pointerdown',25,220,110);
+        previewTouch('pointermove',25,280,110); flush();
+        const closer=renderer.camera.position.distanceTo(controls.target);
+        assert.ok(Math.abs(closer-radius/1.6)<1e-7,'spread zoom follows the finger span');
+        assert.equal(previewHost.canvas.fire('touchmove',{cancelable:true}).defaultPrevented,true,'native page scroll does not steal a live model pinch');
+        previewTouch('pointermove',25,200,110); flush();
+        assert.ok(renderer.camera.position.distanceTo(controls.target)>closer,'pinch moves outward again');
+        const afterPinch=renderer.camera.position.clone();
+        previewTouch('pointerup',25,200,110); previewTouch('pointermove',24,165,110); previewTouch('pointerup',24,165,110); flush();
+        assert.ok(renderer.camera.position.distanceTo(afterPinch)<1e-8,'remaining finger does not become a new rotation');
+        assert.equal(previewEvents.length,count);
+        preview.reset(); flush(); preview.setXray(false); flush();
+        const roof=renderer.world.getObjectByName('removable-roof');
+        const p=new T.Box3().setFromObject(roof).getCenter(new T.Vector3()).project(renderer.camera);
+        const x=(p.x+1)*previewHost.canvas.clientWidth/2,y=(1-p.y)*previewHost.canvas.clientHeight/2;
+        previewTouch('pointerdown',26,x,y); previewTouch('pointerup',26,x,y); flush();
+        assert.deepEqual(previewEvents.at(-1),['xray',true],'a new stationary touch still selects equipment');
+    });
+    check('touch cancellation, outside release and suspension leave the next preview gesture usable', () => {
+        for (const finish of ['cancel','outside','inactive']) {
+            previewTouch('pointerdown',30,140,100); previewTouch('pointermove',30,190,100); flush();
+            if (finish==='cancel') previewTouch('pointercancel',30,190,100);
+            else if (finish==='outside') document.fire('pointerup',{pointerType:'touch',pointerId:30,clientX:190,clientY:100});
+            else { preview.setActive(false); preview.setActive(true); }
+            flush(); const before=renderer.camera.position.clone();
+            previewTouch('pointerdown',31,140,100); previewTouch('pointermove',31,190,100); previewTouch('pointerup',31,190,100); flush();
+            assert.ok(renderer.camera.position.distanceTo(before)>.1,finish+' permits the next gesture');
+            assert.equal(controls.enabled,true);
+        }
+        const before=renderer.camera.position.clone(),target=controls.target.clone();
+        previewHost.canvas.fire('pointerdown',{pointerType:'mouse',pointerId:40,button:2,buttons:2,clientX:150,clientY:100,pageX:150,pageY:100});
+        previewHost.canvas.fire('pointermove',{pointerType:'mouse',pointerId:40,button:-1,buttons:2,clientX:190,clientY:100,pageX:190,pageY:100});
+        previewHost.canvas.fire('pointerup',{pointerType:'mouse',pointerId:40,button:2,buttons:0,clientX:190,clientY:100,pageX:190,pageY:100}); flush();
+        assert.ok(renderer.camera.position.distanceTo(before)>.1,'mouse right-drag still rotates');
+        assert.ok(controls.target.distanceTo(target)<1e-8,'mouse rotation keeps its chosen center');
+    });
+    check('semantic focus notification ignores hover and clears on reset, inspection, configuration and progress changes', () => {
+        preview.setConfig({view:'site',definition:definition('site')}); flush(); focusedParts.length=0;
+        preview.focusPart('gen',false); flush(); assert.deepEqual(focusedParts,['gen']);
+        preview.highlightPart('gas'); preview.highlightPart(null); flush(); assert.deepEqual(focusedParts,['gen'],'hover is independent of selected part');
+        preview.reset(); flush(); assert.equal(focusedParts.at(-1),null);
+        preview.focusPart('gen',false); preview.inspect(true); flush(); assert.equal(focusedParts.at(-1),null);
+        preview.focusPart('gen',false); preview.setConfig({view:'hosting',definition:definition('hosting')}); flush(); assert.equal(focusedParts.at(-1),null);
+        preview.setConfig(configured('landfill',{powerMW:1})); preview.setProgress(1); flush();
+        preview.focusPart('gen',false); flush(); assert.equal(focusedParts.at(-1),'gen');
+        preview.setProgress(0); flush(); assert.equal(focusedParts.at(-1),null);
+        const count=focusedParts.length; preview.focusPart('not-a-part',false); assert.equal(focusedParts.length,count,'invalid part does not claim a selection');
+        preview.dispose(); assert.equal(frames.size,0);
     });
     console.log('\n  '+passed+' shared 3D scene checks passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

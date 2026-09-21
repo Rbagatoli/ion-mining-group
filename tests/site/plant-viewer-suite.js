@@ -96,12 +96,12 @@ function fixture(page, fail = false, options = {}) {
                 try { const scene = options.mount(host,callbacks,document); scenes.push(scene); return scene; }
                 catch (error) { console.error('Scene mount failed:',error); throw error; }
             }
-            const scene = {host,callbacks,calls:[],setConfig(v) { this.config = v; callbacks.onInspect(false); },
+            const scene = {host,callbacks,calls:[],setConfig(v) { this.config = v; callbacks.onInspect(false); callbacks.onFocus?.(null); },
                 setProgress(v) { this.progress = v; if (v < 1 && this.inspecting) this.inspect(false); },energize(v) { this.powered = v; },setActive(v) { this.active = v; },
                 setAnnotations(v) { this.annotations = v; callbacks.onProject(v.map(co => ({id:co.id,x:.5,y:.5,visible:true}))); },
                 setXray(v) { this.xray = v; callbacks.onXray(v); },zoom(v) { this.calls.push(['zoom',v]); },
-                inspect(v) { this.inspecting = v; callbacks.onInspect(v); },reset() { this.inspect(false); callbacks.onPart(null); },
-                highlightPart(v) { callbacks.onPart(v); },focusPart(v) { this.inspect(false); this.calls.push(['part',v]); callbacks.onPart(v); },dispose() { this.disposed = true; }};
+                inspect(v) { this.inspecting = v; callbacks.onInspect(v); callbacks.onFocus?.(null); },reset() { this.inspect(false); callbacks.onPart(null); },
+                highlightPart(v) { callbacks.onPart(v); },focusPart(v) { this.inspect(false); this.calls.push(['part',v]); callbacks.onPart(v); callbacks.onFocus?.(v); },dispose() { this.disposed = true; }};
             scenes.push(scene); return scene;
         }};
     }};
@@ -182,7 +182,40 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     check('the view has no interaction gates or automatic rotation toggle', () => {
         assert.equal(ref(group,'rotate'),null); assert.equal(ref(group,'touch'),null);
         assert.match(group.querySelector('.scene-gesture-mouse').textContent,/Left-drag shift · Right-drag rotate · Scroll zoom/);
-        assert.match(group.querySelector('.scene-gesture-touch').textContent,/Drag rotate · Pinch zoom · Two fingers shift/);
+        assert.match(group.querySelector('.scene-gesture-touch').textContent,/Swipe to turn · Pinch to zoom/);
+        assert.equal(home.scenes[0].callbacks.scrollFriendlyTouch,true);
+    });
+    check('the compact equipment picker uses the same scene labels and follows focus, reset and inspection', () => {
+        const parts = ref(group,'parts'), description = ref(group,'description');
+        const original = require('../../site/scene-site.js').CALLOUTS;
+        assert.equal(parts.children.length,original.length+1);
+        original.forEach((co,i) => {
+            assert.equal(parts.children[i+1].value,co.id);
+            assert.equal(parts.children[i+1].textContent,co.title);
+        });
+        assert.equal(description.hidden,true);
+        parts.value = original[0].id; parts.fire('change');
+        assert.deepEqual(home.scenes[0].calls.at(-1),['part',original[0].id]);
+        assert.equal(description.textContent,original[0].desc); assert.equal(description.hidden,false);
+        home.scenes[0].highlightPart(original[1].id);
+        assert.equal(parts.value,original[0].id,'hover does not replace the selected equipment');
+        parts.value = ''; parts.fire('change');
+        assert.equal(description.hidden,true);
+        parts.value = original[2].id; parts.fire('change');
+        ref(group,'inspect').fire('click');
+        assert.equal(parts.value,''); assert.equal(description.hidden,true);
+        ref(group,'reset').fire('click');
+    });
+    check('secondary view controls expand without changing scene state', () => {
+        const more = ref(group,'more'), preview = group.querySelector('.plant-preview');
+        assert.equal(more.getAttribute('aria-expanded'),'false');
+        assert.ok(home.document.getElementById(more.getAttribute('aria-controls')));
+        const previous = home.scenes[0].calls.length;
+        more.fire('click');
+        assert.equal(more.getAttribute('aria-expanded'),'true'); assert.ok(preview.classList.contains('plant-preview--tools'));
+        more.fire('click');
+        assert.equal(more.getAttribute('aria-expanded'),'false'); assert.ok(!preview.classList.contains('plant-preview--tools'));
+        assert.equal(home.scenes[0].calls.length,previous);
     });
     check('pointing textboxes restore the original wording and two-column positions', () => {
         const original = require('../../site/scene-site.js');
@@ -387,11 +420,20 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         assert.equal(shared.world.getObjectByName('section-highlight').getObjectByProperty('isInstancedMesh',true).count,7);
         const position=shared.camera.position.clone();load.fire('click');shared.draw();
         assert.ok(shared.camera.position.distanceTo(position)>1);
+        assert.equal(ref(sharedGroup,'parts').value,'load');
+        assert.match(ref(sharedGroup,'description').textContent,/1,607 machines across 7 containers/);
         const focused=shared.camera.position.clone(),target=shared.controls.target.clone();
         change('powerMW','20');
         assert.ok(shared.camera.position.distanceTo(focused)<1e-9);assert.ok(shared.controls.target.distanceTo(target)<1e-9);
         load=ref(sharedGroup,'callouts').children.find(card=>card.textContent.includes('The load'));
         assert.match(load.textContent,/3,214 machines across 14 containers/);
+        assert.equal(ref(sharedGroup,'parts').value,'');
+        assert.equal(ref(sharedGroup,'description').hidden,true,'a rebuilt configuration clears the old selection');
+        ref(sharedGroup,'parts').value='load';ref(sharedGroup,'parts').fire('change');shared.draw();
+        assert.match(ref(sharedGroup,'description').textContent,/3,214 machines across 14 containers/);
+        change('difficulty','180');
+        assert.equal(ref(sharedGroup,'parts').value,'load','economics-only edits keep the focused equipment selected');
+        assert.match(ref(sharedGroup,'description').textContent,/3,214 machines across 14 containers/);
         load.fire('pointerenter');shared.draw();
         assert.equal(shared.world.getObjectByName('section-highlight').getObjectByProperty('isInstancedMesh',true).count,12);
         assert.ok(ref(sharedGroup,'leaders').children.some(line=>line.getAttribute('visibility')==='visible'));
@@ -412,6 +454,7 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
         change('difficulty','200');change('powerMW','2');assert.equal(ref(sharedGroup,'inspect').disabled,false);
         change('source','grid');
         assert.ok(!ref(sharedGroup,'callouts').textContent.includes('Generation'));
+        assert.ok(!ref(sharedGroup,'parts').children.some(option=>option.value==='gen'),'the mobile picker also removes unused generation');
         assert.ok(!ref(sharedGroup,'callouts').textContent.includes('Treatment'));
     });
     let releaseModule;

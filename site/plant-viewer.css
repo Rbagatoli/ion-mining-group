@@ -34,6 +34,10 @@
 .plant-caption { position: absolute; left: 21%; right: 21%; top: 14px; z-index: 2; display: flex; justify-content: space-between;
     gap: 10px; pointer-events: none; color: var(--plat-500); font: 9px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .plant-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; padding: 0 14px 14px; }
+.plant-tools { display: contents; }
+.plant-equipment, .plant-toolbar .plant-tools-toggle { display: none; }
+.plant-hint { order: -2; }
+.plant-tools [data-plant="power"] { order: -1; }
 .plant-hint { margin: 0 auto 0 0; color: var(--plat-500); font: 10px/1.6 var(--mono); }
 .plant-toolbar button { border: 1px solid var(--line-mid); border-radius: 0; background: rgba(0,0,0,.6);
     min-height: 36px; padding: 7px 11px; color: var(--plat-300); font: 10px/1.5 var(--mono); cursor: pointer; }
@@ -70,24 +74,61 @@
 }
 @media (prefers-reduced-motion: reduce) { .plant-callout { transition: none; } }
 
-@media (max-width: 640px) {
-    .plant-callouts { gap: 6px; padding: 0 12px 12px; align-items: start; }
-    .plant-callout { min-height: 48px; padding: 10px; }
-    .plant-c-title { margin-bottom: 0; font-size: 10px; line-height: 1.5; }
-    .plant-c-desc { display: none; margin-top: 7px; }
-    .plant-callout[aria-pressed="true"] .plant-c-desc, .plant-callout:focus-visible .plant-c-desc { display: block; }
-    .plant-toolbar { gap: 4px; padding: 6px 10px 10px; }
-    .plant-toolbar button, .plant-toolbar [data-plant="inspect"], .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] { min-height: 44px; min-width: 44px; padding: 8px 9px; font-size: 10px; }
-    .plant-hint { margin-bottom: 2px; }
-    .plant-note { padding: 0 12px 12px; font-size: 11px; }
-}
-
+/* On phones, the scene is the focus. Keep inspection at hand, with equipment
+   details and secondary camera tools available without a wall of buttons. */
 @media (max-width: 700px) {
-    .plant-stage { height: clamp(220px,56vw,310px); }
-    .plant-caption { top: 10px; left: 12px; right: 12px; }
-    .plant-toolbar { gap: 4px; padding: 4px 10px 8px; }
-    .plant-hint { margin-bottom: 0; line-height: 1.5; }
-    .plant-toolbar button, .plant-toolbar [data-plant="inspect"], .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] { min-height: 44px; min-width: 44px; padding: 8px 9px; }
-    .plant-callouts { gap: 5px; padding-bottom: 8px; }
-    .plant-note { padding-bottom: 8px; line-height: 1.5; }
+    .wrap > .dg-wrap.plant-ready, .wrap > .dg-views.plant-ready,
+    .mb-site-preview > .dg-fuel-pane > .dg-views.plant-ready {
+        --dg-w: 100%; width: 100%; margin-inline: 0;
+        border: 1px solid rgba(229,228,226,.14); border-radius: 14px; overflow: hidden;
+        background: #0b0c0d;
+    }
+    .plant-stage { height: auto; max-height: 380px; aspect-ratio: 4 / 3;
+        background: radial-gradient(ellipse at 50% 46%,rgba(229,228,226,.065),transparent 72%),#070809; }
+    .plant-caption { top: 12px; left: 14px; right: 14px; justify-content: flex-end;
+        font: 11px/1.4 var(--sans); text-transform: none; letter-spacing: 0; }
+    .plant-caption [data-plant="cooling"] { display: none; }
+    .plant-stage .scene-gesture-hint { inset: auto 0 5px; max-width: none; padding: 4px;
+        background: transparent; color: var(--plat-400); text-align: center; font: 11px/1.4 var(--sans); }
+    .plant-callouts, .plant-hint { display: none; }
+    .plant-toolbar { gap: 6px; padding: 8px 12px; background: rgba(229,228,226,.025); }
+    .plant-toolbar button, .plant-toolbar [data-plant="inspect"],
+    .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] {
+        min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 7px;
+        font: 500 12px/1.4 var(--sans); letter-spacing: 0; touch-action: manipulation;
+        background: rgba(229,228,226,.04); color: var(--plat-200);
+        border: 1px solid rgba(229,228,226,.12); box-shadow: none;
+    }
+    .plant-toolbar [data-plant="inspect"] { flex: 1; color: var(--btc-200); border-color: rgba(247,147,26,.24); background: rgba(247,147,26,.07); }
+    .plant-toolbar [data-plant="xray"] { flex: 0 0 83px; }
+    .plant-toolbar [data-plant="xray"][aria-pressed="true"] {
+        color: var(--btc-200); border-color: rgba(247,147,26,.45); background: rgba(247,147,26,.12); box-shadow: none;
+    }
+    .plant-toolbar [data-plant="xray"]:hover:not(:disabled) { color: var(--plat-100); border-color: var(--line-btc); filter: none; }
+    .plant-toolbar .plant-tools-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 8px; }
+    .plant-tools-toggle circle { fill: #171819; }
+    .plant-toolbar .plant-tools-toggle[aria-expanded="true"] { color: var(--btc-200); border-color: var(--line-btc); }
+    .plant-tools { display: none; }
+    .plant-preview--tools .plant-tools { display: flex; flex-basis: 100%; gap: 6px; padding-top: 2px; }
+    .plant-tools [data-plant="power"] { order: 0; margin-right: auto; }
+    .plant-tools [data-plant="reset"] { flex: 1; }
+    .plant-equipment { display: block; order: 2; border-top: 1px solid rgba(229,228,226,.09); padding: 0 12px 5px; }
+    .plant-equipment select { display: block; width: 100%; min-width: 0; height: 48px;
+        padding: 0 26px 0 2px; border: 0; border-radius: 0; color: var(--plat-200); background-color: transparent;
+        font: 400 16px/1.4 var(--sans); cursor: pointer; color-scheme: dark; }
+    .plant-equipment select:focus-visible { outline: 2px solid var(--btc-300); outline-offset: -2px; }
+    .plant-equipment p { margin: 0; padding: 0 2px 10px; color: var(--plat-300); font: 13px/1.5 var(--sans); }
+    .plant-note { display: none; padding: 0 14px 12px; font: 12px/1.5 var(--sans); }
+    .plant-preview--tools .plant-note { display: block; }
+
+    /* The three related pages use a quiet navigation rail on small screens. */
+    .dg-toggle { display: flex; width: 100%; margin-bottom: 12px; border: 0; border-bottom: 1px solid var(--line-mid); }
+    .dg-toggle > * { flex: 1; min-width: 0; min-height: 44px; justify-content: center; padding: 9px 3px;
+        font: 500 12px/1.4 var(--sans); text-transform: none; letter-spacing: 0; gap: 4px; }
+    .dg-toggle > * + * { border-left: 0; }
+    .dg-toggle svg { display: none; }
+    .dg-toggle .dg-toggle-on { color: var(--btc-200); background: none; box-shadow: 0 2px var(--btc-300); }
+    .dg-scale { margin-top: 0; margin-bottom: 12px; gap: 0 12px; }
+    .dg-scale-hint { display: none; }
+    .dg-scale-end { font: 12px/1.4 var(--sans); text-transform: none; letter-spacing: 0; }
 }
