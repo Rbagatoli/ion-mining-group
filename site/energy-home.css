@@ -10,7 +10,14 @@
 .home-sourcing-label { flex-shrink: 0; color: var(--plat-400); font: 9px/1.5 var(--mono); }
 .home-sourcing-preview h3 { margin: 20px 0 18px; font: 500 26px/1.2 var(--sans); letter-spacing: -.025em; }
 .home-energy-types { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.home-energy-types li { padding: 7px 10px; border: 1px solid rgba(247,147,26,.25); background: linear-gradient(120deg,rgba(247,147,26,.13),rgba(255,220,170,.045)); color: var(--btc-200); font: 11px/1.4 var(--sans); }
+.home-energy-types li { padding: 0; }
+.home-energy-types button { display: block; min-height: 32px; padding: 7px 10px; border: 1px solid rgba(247,147,26,.25); border-radius: 0; background: linear-gradient(120deg,rgba(247,147,26,.13),rgba(255,220,170,.045)); color: var(--btc-200); font: 11px/1.4 var(--sans); cursor: pointer; touch-action: manipulation; transition: border-color .2s, background .2s; }
+.home-energy-types button:hover { border-color: var(--btc-400); }
+.home-energy-types button[aria-pressed="true"] { border-color: #f7931a; color: #ffe1b2; background: linear-gradient(120deg,rgba(247,147,26,.32),rgba(255,220,170,.12)); box-shadow: inset 0 -2px #f7931a; }
+.home-energy-types button:focus-visible { outline: 2px solid var(--plat-100); outline-offset: 3px; }
+.sourcing-render[data-energy-site] img, .sourcing-render[data-energy-site] .sourcing-canvas { transition: opacity .3s ease; }
+.sourcing-render[data-energy-site][data-render-state="fallback"] img { transition: none; }
+@media (prefers-reduced-motion: reduce) { .sourcing-render[data-energy-site] img, .sourcing-render[data-energy-site] .sourcing-canvas { transition: none; } }
 .home-sourcing-checks { margin: 22px 0 0; }
 .home-sourcing-checks > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 18px; padding: 12px 0; border-top: 1px solid var(--line); }
 .home-sourcing-checks dt { color: var(--plat-100); font: 500 12px/1.5 var(--sans); }
@@ -44,7 +51,7 @@
   .home-sourcing-top { gap: 8px; }
   .home-sourcing-preview h3 { font-size: 21px; margin-block: 11px; }
   .home-energy-types { gap: 5px; }
-  .home-energy-types li { padding: 5px 7px; }
+  .home-energy-types button { padding: 5px 7px; }
   .home-sourcing-checks { margin-top: 12px; }
   .home-sourcing-checks > div { padding-block: 7px; gap: 3px 12px; }
   .home-sourcing-note { margin-top: 9px; line-height: 1.5; }
