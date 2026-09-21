@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_CORE_PATH||'../tools/.cache/hosting-terrain-browser/node_modules/playwright-core');
 const {createServer}=require('../tools/preview-crm.cjs'),A=require('../agent-control-model');
-const server=createServer(),out=path.resolve(__dirname,'../reports/crm-agent-workbench-local-20260921/browser');
+const server=createServer(),out=path.resolve(__dirname,'../reports/crm-workbench-review-guidance-20260921/browser');
 const KEY='protonAgentControlLocal_v1',JOURNAL='protonCompletedReviewWorkbench_v1:synthetic_revenue',AT='2026-09-21T12:00:00Z';
 const report={syntheticOnly:true,checks:[],pageErrors:[],missingAssets:[],blockedWrites:[],blockedExternal:[]};
 let browser,context,page,origin,sequence=0,initialAuth='authenticated';
@@ -22,6 +22,21 @@ function fixture(){
   add('cancelled');s=apply(s,'task.cancel',{id:'cancelled'});
   s=apply(s,'lead.save',{id:'lead',company:'Synthetic untouched buyer',website:'https://example.test/',offer:'research',channel:'direct',stage:'discovered'});
   return apply(s,'pause',{});
+}
+function reviewFixture(status='draft',siblings=false,paused=true){
+  let s=A.initial();
+  s=apply(s,'task.add',{id:'source',role:'analysis',title:'Synthetic source',brief:'Research source https://example.test/evidence/2024; preserve its published year 2024.'});
+  s=apply(s,'task.ready',{id:'source'});s=apply(s,'task.result',{id:'source',result:'Original source finding from 2024 remains unchanged.',sources:['https://example.test/evidence/2024']});
+  if(siblings){
+    s=apply(s,'task.add',{id:'qa_duplicate',role:'review',parentTaskId:'source',title:'Synthetic duplicate linked Quality',brief:'An existing linked assignment, not a request to create another.'});
+    s=apply(s,'task.route',{id:'qa_duplicate',kind:'reference',reviewOwner:'team',reason:'An existing archived duplicate; retain its exact ID.',recordedBy:'Synthetic Revenue'});
+    s=apply(s,'task.add',{id:'qa_cancelled',role:'review',parentTaskId:'source',title:'Synthetic cancelled linked Quality',brief:'Historic linked assignment.'});s=apply(s,'task.cancel',{id:'qa_cancelled'});
+    s=apply(s,'task.add',{id:'qa_unrelated',role:'review',title:'Unrelated Quality',brief:'Must not appear as linked to source.'});
+  }
+  s=apply(s,'task.add',{id:'qa',role:'review',parentTaskId:'source',title:'Synthetic exact Quality',brief:'Review the source at https://example.test/evidence/2024 and its published year 2024. No year correction has been authorized.'});
+  if(status!=='draft')s=apply(s,'task.ready',{id:'qa'});
+  if(status==='review')s=apply(s,'task.result',{id:'qa',result:'Immutable original independent review.',sources:['https://example.test/quality'],qualityVerdict:'revise',confirmCurrentSource:true});
+  return paused?apply(s,'pause',{}):s;
 }
 
 // Inject only in the fake server response. Dispatch still executes the real CRM
@@ -60,6 +75,10 @@ const entry=()=>page.getByRole('link',{name:'Agent workbench',exact:true});
 const jsonInput=()=>page.getByLabel('Completed team review JSON',{exact:true});
 const independent=()=>page.getByLabel('The actual Quality reviewer worked independently of the source author.',{exact:true});
 const exact=()=>page.getByLabel('The actual review covers this exact source result, evidence, recipient and scope.',{exact:true});
+const verdict=()=>page.getByLabel(/^Actual Quality verdict/);
+const finding=()=>page.getByLabel('Original completed Quality finding',{exact:true});
+const correction=()=>page.getByLabel('Factual transcription correction (optional)',{exact:true});
+const guidance=()=>page.locator('#agentWorkbench [data-wb=guidance]');
 const notice=()=>page.locator('#agentWorkbench [role=status]');
 const output=async()=>JSON.parse(await page.locator('#agentWorkbench [data-wb=output]').textContent());
 const state=()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
@@ -76,6 +95,13 @@ async function seed(s=fixture()){
 async function loadPair(){
   await page.getByLabel('Source task ID',{exact:true}).fill('source');await page.getByLabel('Quality task ID',{exact:true}).fill('qa');
   await button('Load exact pair and template').click();await idle();return JSON.parse(await jsonInput().inputValue());
+}
+async function prefillFields(value='revise'){
+  await page.getByText('Prefill from an already completed review',{exact:true}).click();
+  await verdict().selectOption(value);
+  const original='Actual independent '+value.toUpperCase()+': original 2024 evidence requires follow-up, https://example.test/evidence/2024.';
+  const corrected='Factual transcription correction: the original finding said 2023; the cited source is dated 2024.';
+  await finding().fill(original);await correction().fill(corrected);return {original,corrected};
 }
 async function fill(){
   const input=await loadPair(),p=input.payload;
@@ -117,7 +143,7 @@ async function prepare(){await fill();await independent().check();await exact().
   });
   await check('Team entry uses the stable route and closing returns to Team without another mount',async()=>{
     await seed();await button('Close panel').click();await page.waitForFunction(()=>location.hash==='#team');assert.equal(await page.locator('#sheet').evaluate(el=>el.open),false);
-    assert(await entry().isVisible());assert.equal(await entry().getAttribute('href'),'#team/workbench');await open();assert.equal(await page.evaluate(()=>__workbenchHarness.reads),0);
+    await entry().waitFor({state:'visible'});assert.equal(await entry().getAttribute('href'),'#team/workbench');await open();assert.equal(await page.evaluate(()=>__workbenchHarness.reads),0);
     await page.keyboard.press('Escape');await page.waitForFunction(()=>location.hash==='#team');await page.evaluate(()=>__workbenchHarness.emit('agents'));
     assert.equal(await page.locator('#sheet').evaluate(el=>el.open),false,'Later snapshots must not reopen a dismissed route');
   });
@@ -141,13 +167,78 @@ async function prepare(){await fill();await independent().check();await exact().
     assert.equal(await independent().isChecked(),false);assert.equal(await exact().isChecked(),false);assert.equal(await jsonInput().count(),1);
     assert.equal(await page.locator('#agentWorkbench img').count(),0);assert.match(await page.locator('#agentWorkbench [data-wb=pair]').innerText(),/Exact source remains unchanged <img src=x>/);
     assert.deepEqual(JSON.parse(await page.locator('#agentWorkbench [data-wb=pair]').textContent()),before.tasks.filter(task=>['source','qa'].includes(task.id)),'Explicit pair inspection retains both complete original task records');
-    await fill();await button('Preview completed review').click();await idle();assert.match(await notice().innerText(),/Confirm the actual independent review/);assert.equal(await journal(),null);
+    await fill();await button('Preview completed review').click();await idle();assert.match(await notice().innerText(),/confirm.*independent/i);assert.equal(await journal(),null);
     await independent().check();await button('Preview completed review').click();await idle();assert.equal(await journal(),null);assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);
+  });
+  await check('blank and uppercase verdicts report all exact JSON paths without inferred approval or a retained operation',async()=>{
+    const before=await seed(),blank=await loadPair();
+    assert.equal(await verdict().inputValue(),'');assert.equal(blank.payload.attribution.verdict,'');assert.equal(blank.payload.qaResult.verdict,'');
+    await independent().check();await exact().check();await button('Preview completed review').click();await idle();
+    const missing=await notice().innerText();
+    for(const path of ['payload.attribution.verdict','payload.qaResult.verdict','payload.attribution.reviewer','payload.attribution.reviewedAt','payload.attribution.evidence','payload.attribution.recordedBy','payload.qaResult.result','payload.sourceDecision.decision'])assert(missing.includes(path),path);
+    assert.match(missing,/lowercase/);assert.equal(await verdict().inputValue(),'');assert.equal(await journal(),null);assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);
+    const invalid=await fill();invalid.payload.attribution.verdict='PASS';invalid.payload.qaResult.verdict='PASS';
+    await jsonInput().fill(JSON.stringify(invalid,null,2));await independent().check();await exact().check();await button('Preview completed review').click();await idle();
+    const uppercase=await notice().innerText();assert.match(uppercase,/payload\.attribution\.verdict/);assert.match(uppercase,/payload\.qaResult\.verdict/);assert.match(uppercase,/lowercase/);
+    assert.equal(await verdict().inputValue(),'');assert.equal(await journal(),null);assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.deepEqual(await state(),before);
+  });
+  await check('linked Quality discovery reads every existing assignment and requires explicit selection without creating work',async()=>{
+    const before=await seed(reviewFixture('ready',true)),reads=await page.evaluate(()=>__workbenchHarness.reads);
+    await page.getByLabel('Source task ID',{exact:true}).fill('source');await button('Find linked Quality').click();await idle();
+    const linked=page.locator('#agentWorkbench [data-wb=linked]');
+    assert.equal(await linked.getByRole('button',{name:'Use this Quality assignment',exact:true}).count(),3);
+    for(const id of ['qa_duplicate','qa_cancelled','qa'])assert(await linked.locator('p').filter({hasText:new RegExp('^'+id+' ·')}).count());
+    assert.doesNotMatch(await linked.innerText(),/qa_unrelated/);assert.equal(await page.getByLabel('Quality task ID',{exact:true}).inputValue(),'');
+    assert.equal(await page.evaluate(()=>__workbenchHarness.reads),reads+1);
+    await linked.locator('p').filter({hasText:/^qa_duplicate ·/}).getByRole('button',{name:'Use this Quality assignment',exact:true}).click();
+    assert.equal(await page.getByLabel('Quality task ID',{exact:true}).inputValue(),'qa_duplicate');assert.equal(await jsonInput().inputValue(),'');
+    assert.equal(await page.evaluate(()=>__workbenchHarness.reads),reads+1,'Explicit selection only chooses the existing ID');
+    await button('Find linked Quality').click();await idle();
+    assert.equal(await linked.getByRole('button',{name:'Use this Quality assignment',exact:true}).count(),3);
+    assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
+  });
+  await check('Draft Quality exposes exact evidence and the existing readiness gate without altering its brief or queue hold',async()=>{
+    for(const paused of [false,true]){
+      const before=await seed(reviewFixture('draft',false,paused));
+      await page.getByLabel('Source task ID',{exact:true}).fill('source');await page.getByLabel('Quality task ID',{exact:true}).fill('qa');
+      await button('Load exact pair and template').click();await idle();
+      const pair=JSON.parse(await page.locator('#agentWorkbench [data-wb=pair]').textContent());assert.deepEqual(pair,before.tasks);
+      const qa=pair.find(task=>task.id==='qa');assert.equal(A.resultVersion(qa),0);assert.match(qa.brief,/https:\/\/example\.test\/evidence\/2024/);assert.match(qa.brief,/published year 2024/);
+      assert.match(await guidance().innerText(),paused?/Resume the queue before preparing a handoff/:/Draft.*Ready for handoff/);
+      assert.equal(await page.getByRole('link',{name:'Open selected Quality assignment',exact:true}).getAttribute('href'),'#team/task/qa');
+      assert.equal(await jsonInput().inputValue(),'');assert(await button('Record completed team review').isDisabled());
+      assert.equal(await page.locator('#agentWorkbench').getByRole('button',{name:/Claim task|Ready for handoff|rerun|dispatch/i}).count(),0);
+      assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
+    }
+  });
+  await check('Ready Quality prefills actual REVISE and BLOCKED findings safely while attribution and checks stay explicit',async()=>{
+    for(const actualVerdict of ['revise','blocked']){
+      const before=await seed(reviewFixture('ready')),pasted=await prefillFields(actualVerdict),input=await loadPair(),p=input.payload;
+      assert.equal(p.sourceDecision.decision,'revise');assert.equal(p.attribution.verdict,actualVerdict);assert.equal(p.qaResult.verdict,actualVerdict);
+      assert.equal(p.qaResult.result,pasted.original+'\n\nFactual transcription correction (recorded by Revenue):\n'+pasted.corrected);
+      assert.deepEqual(p.qaResult.sources,[]);assert.equal(Object.hasOwn(p.qaReview,'decision'),false,'Quality artifact acceptance must remain distinct from source revision');
+      for(const name of ['reviewer','reviewedAt','evidence','recordedBy'])assert.equal(p.attribution[name],'');
+      assert.equal(p.attribution.independent,false);assert.equal(p.confirmCurrentSource,false);
+      for(const decision of [p.qaReview,p.sourceDecision]){assert.equal(decision.note,'');assert.equal(decision.review.reviewer,'');assert.equal(decision.review.basis,'');assert.deepEqual(decision.review.checks,{evidence:'unchecked',arithmetic:'unchecked',fit:'unchecked'});}
+      assert.equal(await independent().isChecked(),false);assert.equal(await exact().isChecked(),false);assert(await button('Record completed team review').isDisabled());
+      assert.match(await page.locator('#agentWorkbench').innerText(),/does not accept the source/);
+      assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
+    }
+  });
+  await check('submitted Quality rejects replacement finding and correction while retaining the exact original evidence',async()=>{
+    const before=await seed(reviewFixture('review'));await prefillFields();
+    await page.getByLabel('Source task ID',{exact:true}).fill('source');await page.getByLabel('Quality task ID',{exact:true}).fill('qa');
+    await button('Load exact pair and template').click();await idle();
+    assert.match(await notice().innerText(),/submitted or accepted Quality result is immutable/);assert.equal(await jsonInput().inputValue(),'');
+    assert.deepEqual(JSON.parse(await page.locator('#agentWorkbench [data-wb=pair]').textContent()),before.tasks);
+    await finding().fill('');await correction().fill('');await button('Load exact pair and template').click();await idle();
+    const p=JSON.parse(await jsonInput().inputValue()).payload;assert.equal(Object.hasOwn(p,'qaResult'),false);assert.equal(p.sourceDecision.decision,'revise');
+    assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
   });
   await check('prepare locks editable inputs and confirmations until its fresh read completes',async()=>{
     await seed();await fill();await independent().check();await exact().check();await page.evaluate(()=>{__workbenchHarness.gateRead=true;});
     await button('Preview completed review').click();await page.waitForFunction(()=>typeof __workbenchHarness.releaseRead==='function');
-    for(const control of [jsonInput(),independent(),exact(),page.getByLabel('Source task ID',{exact:true}),page.getByLabel('Quality task ID',{exact:true})])assert(await control.isDisabled());
+    for(const control of [jsonInput(),independent(),exact(),verdict(),finding(),correction(),page.getByLabel('Source task ID',{exact:true}),page.getByLabel('Quality task ID',{exact:true})])assert(await control.isDisabled());
     assert(await button('Record completed team review').isDisabled());assert.equal(await journal(),null);
     await page.evaluate(()=>__workbenchHarness.releaseRead());await idle();assert.equal((await output()).status,'prepared');assert(await button('Record completed team review').isEnabled());
   });
@@ -177,13 +268,16 @@ async function prepare(){await fill();await independent().check();await exact().
     assert(await jsonInput().evaluate(element=>element===window.__originalWorkbenchInput));assert.equal(await jsonInput().inputValue(),draft);assert.equal(await page.getByLabel('Source task ID',{exact:true}).inputValue(),'source');assert.equal(await independent().isChecked(),true);assert.equal(await page.evaluate(()=>__workbenchHarness.reads),reads);
   });
   await check('account change retains the original draft read-only and blocks any late preparation',async()=>{
-    const before=await seed();await fill();await independent().check();await exact().check();const draft=await jsonInput().inputValue();await page.evaluate(()=>{__workbenchHarness.gateRead=true;});
+    const before=await seed();await fill();const pasted=await prefillFields('pass');await independent().check();await exact().check();const draft=await jsonInput().inputValue();await page.evaluate(()=>{__workbenchHarness.gateRead=true;});
     await button('Preview completed review').click();await page.waitForFunction(()=>typeof __workbenchHarness.releaseRead==='function');await page.evaluate(()=>__workbenchHarness.changeAccount());await page.evaluate(()=>__workbenchHarness.releaseRead());
     await page.waitForFunction(()=>document.querySelector('#agentWorkbench [data-wb=input]')?.readOnly===true);
+    for(const control of [verdict(),independent(),exact()])assert(await control.isDisabled());
+    for(const control of [finding(),correction()])assert(await control.evaluate(element=>element.readOnly));
+    assert.equal(await finding().inputValue(),pasted.original);assert.equal(await correction().inputValue(),pasted.corrected);
     assert.equal(await jsonInput().inputValue(),draft);assert.match(await notice().textContent(),/original-account draft is retained read-only/);assert.equal(await journal(),null);assert.deepEqual(await state(),before);assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);
   });
   await check('desktop and 390px layout contain loaded JSON and confirmation controls without horizontal overflow',async()=>{
-    await seed();await fill();
+    await seed(reviewFixture('ready',true));await prefillFields();await loadPair();
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:900});
       const metrics=await page.evaluate(()=>{

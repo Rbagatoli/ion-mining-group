@@ -1,0 +1,158 @@
+{
+  "syntheticOnly": true,
+  "checks": [
+    {
+      "name": "direct workbench route waits for settled auth and the authenticated register before mounting an editor",
+      "passed": true
+    },
+    {
+      "name": "anonymous direct route exposes sign-in guidance without a private editor, register or retained operation",
+      "passed": true
+    },
+    {
+      "name": "Team entry uses the stable route and closing returns to Team without another mount",
+      "passed": true
+    },
+    {
+      "name": "refresh classifies the complete register while outreach remains HOLD",
+      "passed": true
+    },
+    {
+      "name": "exact pair previews one JSON payload with two initially unchecked confirmations",
+      "passed": true
+    },
+    {
+      "name": "blank and uppercase verdicts report all exact JSON paths without inferred approval or a retained operation",
+      "passed": true
+    },
+    {
+      "name": "linked Quality discovery reads every existing assignment and requires explicit selection without creating work",
+      "passed": true
+    },
+    {
+      "name": "Draft Quality exposes exact evidence and the existing readiness gate without altering its brief or queue hold",
+      "passed": true
+    },
+    {
+      "name": "Ready Quality prefills actual REVISE and BLOCKED findings safely while attribution and checks stay explicit",
+      "passed": true
+    },
+    {
+      "name": "submitted Quality rejects replacement finding and correction while retaining the exact original evidence",
+      "passed": true
+    },
+    {
+      "name": "prepare locks editable inputs and confirmations until its fresh read completes",
+      "passed": true
+    },
+    {
+      "name": "one confirmed closeout preserves original evidence, unrelated tasks, queue and leads",
+      "passed": true
+    },
+    {
+      "name": "reload retains an unsent preparation but forbids submission and permits closing only that unsent job",
+      "passed": true
+    },
+    {
+      "name": "lost response after commit reconciles the original receipt after reload without another dispatch",
+      "passed": true
+    },
+    {
+      "name": "ordinary register updates preserve the mounted editor, explicit pair and dirty draft",
+      "passed": true
+    },
+    {
+      "name": "account change retains the original draft read-only and blocks any late preparation",
+      "passed": true
+    },
+    {
+      "name": "desktop and 390px layout contain loaded JSON and confirmation controls without horizontal overflow",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "missingAssets": [],
+  "blockedWrites": [],
+  "blockedExternal": [
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com",
+    "https://www.gstatic.com"
+  ],
+  "layouts": [
+    {
+      "document": 1440,
+      "viewport": 1440,
+      "sheet": 708,
+      "client": 708,
+      "overflow": []
+    },
+    {
+      "document": 390,
+      "viewport": 390,
+      "sheet": 388,
+      "client": 388,
+      "overflow": []
+    }
+  ],
+  "passed": true
+}

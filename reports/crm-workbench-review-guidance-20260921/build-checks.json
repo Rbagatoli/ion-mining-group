@@ -1,0 +1,12 @@
+{
+  "baseCommit": "505a0dcb9054c5f87237a33a98674c3907f99501",
+  "declaredAssets": 156,
+  "stampedReferences": 65,
+  "allReferenceHashesMatch": true,
+  "shellHashMatches": true,
+  "version": "2a0295531760c5d722e0ecf2d3ef538f3968af9a310b4cef4f6b973cea318ecb",
+  "shellHash": "bb2d2eb4aec4f75bb89ae5709132acbeb2a231119287d283df54e6d441b9889a",
+  "focusedNodeChecks": 116,
+  "browserScenarios": 17,
+  "published": false
+}
