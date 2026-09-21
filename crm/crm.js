@@ -9,7 +9,7 @@
   const kinds={site:'Energy site',lead:'Revenue lead',deal:'Service deal'},energy={landfill_gas:'Landfill gas',flare_gas:'Flare gas',grid_facility:'Power facility',unknown:'Other energy'};
   let current='control',selection=null,siteTab='overview',pipelineKind='all',pipelineGroup='all',pipelineSearch='',pipelineLimit=60,pipelineWorkflow='all',teamTab='workflow',taskFilter='open',taskRole='',month=day().slice(0,7),peopleSearch='',modalForm=false,modalBack=null,focusBefore=null,busy=false,noticeTimer,renderQueued=false;
   const sheet=$('sheet'),expandedLeads=new Set(),expandedLeadSections=new Set(),outreachPlans=new Map();
-  let completedReviewSession=null,taskRequest=null,releaseUpdates=null,activeActions=0;
+  let completedReviewSession=null,taskRequest=null,releaseUpdates=null,activeActions=0,agentWorkbench=null,workbenchGate='';
   const sidebarKey='protonCrmSidebarCollapsed_v1';
   function setSidebarCollapsed(collapsed){
     document.body.classList.toggle('sidebar-collapsed',collapsed);
@@ -34,6 +34,7 @@
   function note(message){$('notice').textContent=message;$('notice').hidden=false;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').hidden=true,7000);}
   function error(e){const target=sheet.open?$('sheetError'):$('notice');target.textContent=e.message||String(e);target.hidden=false;}
   function modal(title,html,back,form=false,taskView=false){
+    agentWorkbench?.destroy();agentWorkbench=null;
     if(!taskView)taskRequest=null;
     completedReviewSession=null;
     if(!sheet.open)focusBefore=document.activeElement;
@@ -41,7 +42,7 @@
     $('sheetBack').hidden=!back;if(!sheet.open)sheet.showModal();sheet.scrollTop=0;
     const first=$('sheetBody').querySelector(form?'input:not([type=hidden]),select,textarea':'[autofocus]');if(first)first.focus();else $('sheetClose').focus();
   }
-  function close(){taskRequest=null;completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(selection){location.hash='#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
+  function close(){const workbench=isWorkbenchRoute();agentWorkbench?.destroy();agentWorkbench=null;taskRequest=null;completedReviewSession=null;sheet.close();modalForm=false;modalBack=null;if(workbench||selection){location.hash=workbench?'#team':'#'+current;selection=null;}if(focusBefore&&document.contains(focusBefore))focusBefore.focus();}
   function registerConfirmed(status){const a=status.agent;return status.uid?a.uid===status.uid&&a.mode==='cloud'&&a.serverConfirmed===true:a.mode==='local';}
   function syncLabel(status){return !status.ready?'Connecting…':status.error||['error','offline'].includes(status.agent.mode)?'Needs attention':status.uid?registerConfirmed(status)?'Account connected':'Verifying sync…':'On this device';}
   function syncNotice(status){
@@ -63,6 +64,12 @@
   function render(){
     stopWorkFreshness();stopWorkFreshness=()=>{};intakeInbox.dispose();
     discovery.unmount();$('content').classList.toggle('crm-discover',current==='discover');$('content').classList.toggle('crm-control',current==='control');nav();const status=D.status();
+    if(isWorkbenchRoute()){
+      // The route shell never projects a local or previous account's task data.
+      // The mounted panel owns its draft and freezes itself on account changes.
+      $('content').innerHTML=head('Team','Completed reviews and saved receipts.')+'<a class="text-button" href="#team">Back to Team</a>';
+      reconcileWorkbenchRoute(status);return;
+    }
     if(!status.ready){$('content').innerHTML='<div class="loading">Opening your account…</div>';return;}
     if(status.error){$('content').innerHTML=head('Your data needs attention','Your original records have been retained.')+'<div class="banner">'+esc(status.error)+'</div>'+button('Export original backup','backup')+' '+button('Reload workspace','reload');return;}
     let html='';
@@ -100,6 +107,7 @@
     const s=agent(),tasks=s.tasks.filter(t=>F.matches(t,taskFilter)&&(!taskRole||t.role===taskRole));
     let html=head('Proton Revenue Desk.','Six Grokbots. One place for assignments, evidence and feedback.','new-task','New task')+'<div class="toolbar"><div class="segmented" aria-label="Team views">'+[['workflow','Progress'],['tasks','Assignments'],['roles','Team & workflows'],['revenue','Revenue'],['activity','Activity']].map(([id,label])=>'<button data-action="team-tab" data-id="'+id+'" aria-pressed="'+(teamTab===id)+'">'+label+'</button>').join('')+'</div>'+textButton(s.paused?'Resume queue':'Pause queue','pause')+'</div>';
     const status=D.status(),connection=status.agent;html+='<section class="team-connection"><div><strong>Existing Proton Grok team</strong><p>'+esc(registerConfirmed(status)?status.uid?'Shared task register verified.':'On this device · sign in to share tasks.':'Task register is not confirmed current.')+' Conversations remain in Grok; task status is recorded here.</p></div>'+button('CRM handoff','setup')+'</section>';
+    html+='<p><a class="text-button" href="#team/workbench">Agent workbench</a></p>';
     if(s.paused)html+='<div class="banner">Queue paused. Stop active work separately in Grok.</div>';
     if(teamTab==='workflow')html+=ProtonCrmControl.recentWork(s,{esc},{connection:status})+F.overview(s)+'<section class="panel">'+((s.leads||[]).filter(l=>!F.leadProgress(l,s).closed).map(leadCard).join('')||empty('No individual leads saved yet.','Research batches above may contain candidates awaiting qualification. They become visible here when saved as lead records.','new-lead','Add a lead','people'))+'</section>';
     if(teamTab==='tasks')html+='<div class="filters"><label>Show<select id="taskFilter">'+options({open:'Open work',review:'Team review',owner:'Owner decisions',correction:'Corrections requested',blocked:'Execution blockers',working:'In progress',ready:'Ready for handoff',draft:'Drafts',reference:'Reference / superseded',closed:'Completed / cancelled',all:'All tasks'},taskFilter)+'</select></label><label>Role<select id="taskRole">'+options(Object.assign({'':'All roles'},Object.fromEntries(A.ROLES.map(r=>[r.id,r.name]))),taskRole)+'</select></label></div><section class="panel">'+(tasks.length?tasks.map(t=>row({name:t.title,sub:'Next: '+F.taskMeaning(t,s).owner+' · '+F.taskMeaning(t,s).next+(t.due?' · Due '+t.due:''),badge:tag(F.taskMeaning(t,s).label,['review','owner','blocked'].includes(F.bucket(t))),glyph:'task',url:href('task',t.id)})).join(''):empty('Give your team a useful job.','Start with a site, a buyer, or a question. Tasks begin as drafts until you prepare the handoff.','new-task','Create a task','team'))+'</section><p class="quiet-note">Task statuses are recorded workflow updates. A ready task does not start a bot or send outreach.</p>';
@@ -119,6 +127,7 @@
   function options(map,selected){return Object.entries(map).map(([v,l])=>'<option value="'+esc(v)+'"'+(String(selected)===v?' selected':'')+'>'+esc(l)+'</option>').join('');}
   // Detail panels and write forms are defined below; each form captures its original revision.
   function route(){
+    agentWorkbench?.destroy();agentWorkbench=null;workbenchGate='';
     taskRequest=null;completedReviewSession=null;
     const parts=location.hash.replace(/^#/,'').split('/');current=['control','today','requests','pipeline','discover','team','people','settings'].includes(parts[0])?parts[0]:'control';
     try{selection=parts.length>=3?{kind:parts[1],id:decodeURIComponent(parts.slice(2).join('/'))}:null;}catch(_){selection=null;}
@@ -131,7 +140,7 @@
   D.subscribe(reason=>{
     if(reason==='account'){
       expandedLeads.clear();expandedLeadSections.clear();if(selection?.kind==='lead')expandedLeads.add(selection.id);discovery.collapseDetail(false);
-      if(sheet.open){if(completedReviewSession)freezeCompletedReviewAccount();else if(!taskRequest){sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}}
+      if(sheet.open){if(completedReviewSession)freezeCompletedReviewAccount();else if(isWorkbenchRoute()){/* Await initial auth, or let the mounted workbench freeze its original draft. */}else if(!taskRequest){sheet.close();modalForm=false;selection=null;note('Account changed. Reopen the record before editing.');}}
     }
     if(reason!=='catalog')queueRender();
     if(reason==='remote'&&sheet.open)note('Updated records arrived. Reopen this panel to see the latest version.');
@@ -646,10 +655,29 @@
   function account(){
     const user=ProtonAuth.getUser(),status=D.status();
     if(user){modal('Your Proton account','<p>'+esc(user.email||user.displayName||user.uid)+'</p><p class="quiet-note">Agent register: '+esc(status.agent.mode)+'. '+esc(status.agent.error||'')+'</p><p class="quiet-note">Prospects use Proton’s existing sync. The agent register uses its own transactional connection. Local changes are retained when signed out.</p><div class="actions">'+button('Export backup','backup')+button('Sign out','signout')+'</div>');return;}
-    form('Sign in to Proton','<p class="quiet-note">Use your existing Proton account. Local agent work remains separate and is not automatically uploaded.</p>'+field('email','Email','','email','required autocomplete="username"')+field('password','Password','','password','required autocomplete="current-password"')+button('Continue with Google','google-signin'),'Sign in',async v=>{await ProtonAuth.signInWithEmail(v.email,v.password);close();note('Signed in. Checking your account records.');});
+    form('Sign in to Proton','<p class="quiet-note">Use your existing Proton account. Local agent work remains separate and is not automatically uploaded.</p>'+field('email','Email','','email','required autocomplete="username"')+field('password','Password','','password','required autocomplete="current-password"')+button('Continue with Google','google-signin'),'Sign in',async v=>{await ProtonAuth.signInWithEmail(v.email,v.password);afterSignIn();note('Signed in. Checking your account records.');});
   }
   function allActions(){const state=agent(),actions=M.today({state,sites:D.sites(),leads:state.leads||[],tasks:state.tasks,followups:D.followups(),date:day()});modal('Due & review queue',actions.length?actions.map(i=>row({name:i.name,sub:i.context+' · '+(i.due||'Review'),action:i.kind==='followup'?'reminder':'open-'+i.kind,id:i.id,glyph:'today'})).join(''):empty('You are up to date.','Dated follow-ups and team results appear here.'));}
   function addPicker(){modal('What would you like to add?',row({name:'Energy opportunity',sub:'A landfill, power facility or other energy site.',action:'new-site',glyph:'site'})+row({name:'Revenue lead',sub:'A potential buyer for a paid service.',action:'new-lead',glyph:'people'})+row({name:'Team assignment',sub:'Research, draft, analyze or review.',action:'new-task',glyph:'team'}));}
+  function isWorkbenchRoute(){return location.hash==='#team/workbench';}
+  function afterSignIn(){if(isWorkbenchRoute()){workbenchGate='';reconcileWorkbenchRoute();}else close();}
+  function reconcileWorkbenchRoute(status=D.status()){
+    if(!isWorkbenchRoute()||agentWorkbench)return;
+    let gate='',message='';
+    if(!status.ready){gate='loading';message='Opening your account…';}
+    else if(!status.uid){gate='anonymous';message='Sign in to your Proton account to open the agent workbench.';}
+    else if(status.error){gate='error';message='Your account needs attention before the workbench can open. '+status.error;}
+    else if(status.agent.error||!registerConfirmed(status)){gate='register';message='Waiting for a server-confirmed task register.';}
+    if(gate){
+      if(workbenchGate===gate&&sheet.open)return;
+      workbenchGate=gate;
+      modal('Agent workbench','<p role="status">'+esc(message)+'</p>'+(gate==='anonymous'?button('Sign in','account'):'')+'<p class="quiet-note">No task data or review editor is opened until your account and register are confirmed.</p>',close);
+      return;
+    }
+    workbenchGate='ready';
+    modal('Agent workbench','<div id="agentWorkbench"></div>',close,true);
+    agentWorkbench=ProtonAgentWorkbench.mount({root:$('agentWorkbench'),data:D});
+  }
   async function act(action,id){
     if(action==='outreach-route-add')return outreachRouteForm(id);
     if(action==='outreach-route-evidence')return outreachRouteForm(null,id);
@@ -697,7 +725,7 @@
     if(action==='show-reviews'||action==='show-owner'){taskFilter=action==='show-owner'?'owner':'review';taskRole='';teamTab='tasks';if(current==='team')render();else location.hash='#team';return;}if(action==='show-due')return allActions();
     if(action==='deal-list'){teamTab='revenue';return render();}if(action==='cash-info'){modal('Collected contribution','<p class="quiet-note">Earned fees collected, less paid delivery and software costs, less cash reserved, plus released reserves. This is a manual operating register, not bank reconciliation.</p>');return;}
     if(action==='setup')return setup();if(action==='copy-setup')return copy(G.briefing(location.href));if(action==='backup'){download(D.backup(),'proton-crm-'+day()+'.json');note('CRM backup exported.');return;}
-    if(action==='account')return account();if(action==='signout'){await ProtonAuth.signOut();close();return;}if(action==='google-signin'){await ProtonAuth.signInWithGoogle();close();return;}
+    if(action==='account')return account();if(action==='signout'){await ProtonAuth.signOut();close();return;}if(action==='google-signin'){await ProtonAuth.signInWithGoogle();afterSignIn();return;}
     if(action==='cancel-form'){if(modalBack)modalBack();else close();return;}if(action==='reload')location.reload();
   }
   document.addEventListener('toggle',event=>{

@@ -33,6 +33,24 @@
                 catch(e){mode='error';error=e.message;validationIssue=issueFrom(e);}emit();
             },function(e){if(generation!==epoch)return;serverConfirmed=false;validationIssue=null;mode='error';error='Cloud unavailable: '+(e.code||e.message)+'. Your local register has not been uploaded.';emit();});
         }
+        async function readServer(){
+            var generation=epoch, owner=uid;
+            function assertAccount(){
+                if(generation!==epoch||uid!==owner)throw new Error('The account changed while reading. Read the register again in the original account.');
+                if(!owner||!db||mode!=='cloud'||error||!serverConfirmed)throw new Error('Wait for a confirmed signed-in cloud register before reading it from the server.');
+            }
+            assertAccount();
+            var ref=db.collection('users').doc(owner).collection('data').doc('agentControl'),snap;
+            try{snap=await ref.get({source:'server'});}catch(e){assertAccount();throw new Error('The server register could not be confirmed. Read it again before continuing.');}
+            assertAccount();
+            if(!snap||typeof snap.exists!=='boolean'||!snap.metadata||snap.metadata.fromCache!==false||snap.metadata.hasPendingWrites!==false)throw new Error('The register read is cached or pending; a confirmed server snapshot is required.');
+            var data=snap.exists?snap.data().data:Model.initial();
+            // A read is independent of the listener: never replace its state,
+            // refresh its confirmation time, or return a mutable alias of it.
+            var verified=Model.valid(JSON.parse(JSON.stringify(data)));
+            assertAccount();
+            return {uid:owner,serverConfirmed:true,observedAt:new Date().toISOString(),state:verified};
+        }
         async function dispatch(action){
             if(mode==='error'||mode==='connecting'||mode==='offline')throw new Error('Wait for a confirmed cloud connection or recover the current register before changing it.');
             var generation=epoch, owner=uid;
@@ -60,7 +78,7 @@
         if(root.addEventListener)root.addEventListener('storage',storageListener);
         local();
         if(auth)auth.onAuthStateChanged(setUser);
-        return {subscribe:function(fn){listeners.push(fn);fn(snapshot());},dispatch:dispatch,
+        return {subscribe:function(fn){listeners.push(fn);fn(snapshot());},dispatch:dispatch,readServer:readServer,
             snapshot:snapshot,raw:function(){return uid?(remoteRaw||JSON.stringify(state)):storage.getItem(LOCAL)||JSON.stringify(state);},
             setUser:setUser,destroy:function(){epoch++;if(stop)stop();listeners=[];if(root.removeEventListener)root.removeEventListener('storage',storageListener);}};
     }

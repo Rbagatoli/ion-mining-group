@@ -50,6 +50,20 @@
         return navigator.locks?navigator.locks.request('proton-crm-records-v1',work):work();
       });
     }
+    async function readAgentRegister(){
+      const original={uid,epoch};
+      function assertAccount(){
+        if(original.uid!==uid||original.epoch!==epoch)throw Error('The account changed while reading. Reopen the original account before continuing.');
+        const current=status();
+        if(!current.uid||!current.ready||current.error||current.agent.uid!==current.uid||current.agent.mode!=='cloud'||current.agent.error||current.agent.serverConfirmed!==true)throw Error('Wait for a confirmed signed-in CRM connection before reading the work register.');
+      }
+      assertAccount();
+      let result;
+      try{result=await agent.readServer();}catch(e){assertAccount();throw e;}
+      assertAccount();
+      if(!result||result.uid!==original.uid||result.serverConfirmed!==true||typeof result.observedAt!=='string'||!Number.isFinite(Date.parse(result.observedAt)))throw Error('The server read did not confirm this account’s work register.');
+      return {uid:original.uid,epoch:original.epoch,serverConfirmed:true,observedAt:result.observedAt,state:result.state};
+    }
     async function dispatch(type,payload,revision){
       return trackedWrite(()=>{
         if(!ready||sessionError)throw Error(sessionError||'Wait for the account connection.');
@@ -119,7 +133,7 @@
       return loading;
     }
     function backup(){const out={format:'proton-crm-backup-v1',exportedAt:new Date().toISOString(),uid,stores:{},agentRegister:agent.raw()};syncKeys.forEach(k=>{const cfg=SyncEngine.SYNC_KEYS[k];if(cfg)out.stores[cfg.lsKey]=localStorage.getItem(cfg.lsKey);});return out;}
-    return {status,snapshot,reloadSafety,write,dispatch,load,candidate,saved,estimate,priority,summary,backup,agent:()=>agentView.state,subscribe:fn=>listeners.push(fn),sites:()=>{verify();return SiteData.list();},contacts:()=>{verify();return CrmContacts.list();},followups:()=>{verify();return CrmFollowups.pending();},
+    return {status,snapshot,reloadSafety,write,dispatch,readAgentRegister,load,candidate,saved,estimate,priority,summary,backup,agent:()=>agentView.state,subscribe:fn=>{listeners.push(fn);return()=>{listeners=listeners.filter(listener=>listener!==fn);};},sites:()=>{verify();return SiteData.list();},contacts:()=>{verify();return CrmContacts.list();},followups:()=>{verify();return CrmFollowups.pending();},
       saveSite:(id,patch,stamp)=>write(()=>id?SiteData.update(id,patch):SiteData.add(patch),stamp),
       track:(c,stamp)=>write(()=>SiteData.fromCandidate(c),stamp),
       stage:(id,value,reason,stamp)=>write(()=>SiteData.setStage(id,value,{deadReason:reason}),stamp),
