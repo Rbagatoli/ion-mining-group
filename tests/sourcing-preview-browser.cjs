@@ -85,7 +85,8 @@ async function open(spec, width, reducedMotion = 'no-preference', webglUnavailab
   assert.ok(await img.evaluate(image => image.complete && image.naturalWidth > 0), 'Fallback must be decoded.');
   assert.equal(normalize(await page.locator(spec.heading).innerText()), width < 641 ? spec.mobile : spec.desktop, 'Responsive heading copy must remain unchanged.');
   const size = await figure.boundingBox();
-  assert.ok(size.width > 200 && size.height > 70 && size.height < 280, 'Preview should retain its compact layout.');
+  const maxHeight = spec.file === 'index.html' ? page.viewportSize().height * .6 : 280;
+  assert.ok(size.width > 200 && size.height > 70 && size.height < maxHeight, 'Preview should fit its hero or compact section layout.');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow.');
   assert.equal(await figure.locator('button').count(), 0, 'Decorative previews should have no corner controls.');
   return {context, page, figure, img};

@@ -83,7 +83,7 @@ async function open(width,reducedMotion='no-preference',noWebGL=false){
   assert.equal(await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.every(button=>button.tagName==='BUTTON')),true,'Choices should be keyboard-accessible native buttons.');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No horizontal overflow at '+width+'.');
   const bounds=await figure.boundingBox();
-  assert.ok(bounds.width>190&&bounds.height>70&&bounds.height<300,'The animation should remain compact.');
+  assert.ok(bounds.width>190&&bounds.height>70&&bounds.height<page.viewportSize().height*.6,'The hero animation should fit comfortably in the viewport.');
   return{context,page,figure,img:figure.locator('img'),width};
 }
 
