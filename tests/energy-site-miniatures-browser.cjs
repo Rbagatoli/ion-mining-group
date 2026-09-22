@@ -1,4 +1,4 @@
-/* Homepage energy-site carousel: real-browser rendering, selection and motion checks.
+/* Homepage globe explorer: real-browser rendering, selection and motion checks.
  * Uses a read-only snapshot of the assembled public site and never submits forms.
  * Run after tools/build-pages.js: node tests/energy-site-miniatures-browser.cjs
  */
@@ -23,7 +23,8 @@ const headings={
   industrial:'Industry. Find the surplus.',
   grid:'Grid. Find your connection.'
 };
-const selector='figure[data-sourcing-scene="discovery"]';
+const selector='#home-energy-explorer figure[data-sourcing-scene="discovery"]';
+const researchTitles={landfill:'Landfill gas',flare:'Flare gas',hydro:'Operating hydro',nuclear:'Nuclear power',wind:'Wind power',solar:'Solar power',industrial:'Industrial surplus',grid:'Grid supply'};
 const report={checks:[],pageErrors:[],missingAssets:[],blockedWrites:[],headingLayouts:[]};
 const files=new Map();
 function snapshot(dir){
@@ -73,25 +74,42 @@ async function open(width,reducedMotion='no-preference',noWebGL=false){
   page.on('response',response=>{if(response.url().startsWith(origin+'/')&&response.status()>=400)report.missingAssets.push({width,asset:response.url().slice(origin.length),status:response.status()});});
   await page.goto(origin+'/index.html',{waitUntil:'networkidle'});
   await page.addStyleTag({content:'html{scroll-behavior:auto!important}.reveal{opacity:1!important;transform:none!important}'});
-  const figure=page.locator(selector);
+  const explorer=page.locator('#home-energy-explorer'),figure=page.locator(selector);
   assert.equal(await figure.count(),1,'One energy discovery preview should exist.');
-  await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+  assert.equal(await page.locator('.home-hero [data-energy-site]').count(),0,'Facilities should belong to the globe explorer, outside the hero.');
+  await page.waitForFunction(()=>document.querySelector('#home-energy-explorer')?.dataset.explorerReady==='true'&&document.querySelector('#home-research-preview')?.dataset.researchReady==='true');
+  await explorer.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+  assert.equal(await explorer.getAttribute('data-view'),'globe','Exploration must start with the globe.');
+  assert.equal(await page.locator('#home-search-scope').innerText(),'A world of energy.');
+  assert.equal(await explorer.locator('.home-facility-layer').getAttribute('aria-hidden'),'true','Unselected facilities must be hidden from assistive technology.');
+  assert.equal(await explorer.locator('[data-globe-back]').isVisible(),false,'Back should appear only after choosing a source.');
+  assert.equal(await figure.locator('canvas').count(),0,'The facility renderer should wait for a user choice.');
   assert.equal(await figure.locator('button').count(),0,'No corner controls should return.');
   assert.equal(await page.locator('[data-energy-site-select]').count(),8,'All eight energy routes should have native choices.');
   const actualIds=await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.map(button=>button.dataset.energySiteSelect));
   assert.deepEqual(actualIds,ids,'Choices should follow the intended site order.');
   assert.equal(await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.every(button=>button.tagName==='BUTTON')),true,'Choices should be keyboard-accessible native buttons.');
+  assert.equal(await page.locator('[data-research-source]').count(),8,'Research and facility selection should share the same eight controls.');
+  assert.equal(await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.every(button=>button.dataset.researchSource===button.dataset.energySiteSelect&&['home-energy-explorer','research-content'].every(id=>(button.getAttribute('aria-controls')||'').split(/\s+/).includes(id)))),true,'Every source should control both the explorer and research panel.');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No horizontal overflow at '+width+'.');
-  const bounds=await figure.boundingBox();
-  assert.ok(bounds.width>190&&bounds.height>70&&bounds.height<page.viewportSize().height*.6,'The hero animation should fit comfortably in the viewport.');
-  return{context,page,figure,img:figure.locator('img'),width};
+  const bounds=await explorer.locator('.home-explorer-stage').boundingBox();
+  assert.ok(bounds&&bounds.width>190&&bounds.height>70&&bounds.width<=width+1,'The globe and facility stage should have usable dimensions without horizontal overflow.');
+  return{context,page,explorer,figure,img:figure.locator('img'),width};
 }
 
 async function verifyChoice(test,id,{live=false,click=true}={}){
-  const {page,figure,img}=test,button=page.locator('[data-energy-site-select="'+id+'"]');
+  const {page,explorer,figure,img}=test,button=page.locator('[data-energy-site-select="'+id+'"]');
   if(click)await button.click();
-  await page.waitForFunction(({selector,id})=>document.querySelector(selector)?.dataset.energySite===id,{selector,id});
+  await explorer.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+  await page.waitForFunction(({selector,id})=>document.querySelector('#home-energy-explorer')?.dataset.view==='facility'&&document.querySelector(selector)?.dataset.energySite===id,{selector,id},{timeout:30000});
   if(live)await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.renderState==='ready',selector,{timeout:30000});
+  await explorer.locator('.home-facility-layer').evaluate(async layer=>{
+    layer.getBoundingClientRect();
+    await Promise.all(layer.getAnimations().map(animation=>animation.finished.catch(()=>{})));
+  });
+  assert.equal(await explorer.getAttribute('aria-busy'),null,'A completed journey should clear its loading announcement.');
+  assert.equal(await explorer.locator('.home-facility-layer').getAttribute('aria-hidden'),'false','The chosen facility should be available to assistive technology.');
+  assert.equal(await explorer.locator('[data-globe-back]').isVisible(),true,'The selected facility should offer a return to the globe.');
   assert.equal(await button.getAttribute('aria-pressed'),'true','Selected '+id+' button should be announced.');
   const selected=page.locator('[data-energy-site-select][aria-pressed="true"]');
   assert.equal(await selected.count(),1,'Exactly one energy route should be selected.');
@@ -104,6 +122,9 @@ async function verifyChoice(test,id,{live=false,click=true}={}){
   await img.evaluate(image=>image.decode());
   assert.ok((await img.getAttribute('alt')||'').length>12,'The selected facility poster needs a useful alternative description.');
   assert.equal((await page.locator('#home-search-scope').innerText()).replace(/\s+/g,' ').trim(),headings[id],'The visible heading must match the selected '+id+' facility.');
+  assert.equal(await page.locator('#home-research-preview').getAttribute('data-research-active-source'),id,'Research should follow the same source as the facility.');
+  assert.equal(await page.locator('#research-site-title').innerText(),researchTitles[id],'The research title should match the chosen energy route.');
+  assert.equal(await page.locator('#research-content .research-row').count(),4,'Every source should retain its four research rows.');
   const viewport=page.viewportSize().width;
   if(!report.headingLayouts.some(item=>item.viewport===viewport&&item.id===id)){
     const dimensions=await page.locator('#home-search-scope').evaluate(heading=>{
@@ -114,16 +135,19 @@ async function verifyChoice(test,id,{live=false,click=true}={}){
   }
   if(live){
     assert.equal(await figure.locator('canvas').count(),1,'Switching '+id+' must preserve a single canvas.');
-    assert.equal(await figure.locator('canvas').evaluate(canvas=>canvas===window.__originalMiniatureCanvas),true,'Switching '+id+' must reuse the existing canvas.');
-    assert.equal(await figure.locator('canvas').evaluate(canvas=>window.__miniatureContexts.get(canvas)),test.contextId,'Switching '+id+' must reuse its WebGL context.');
+    if(test.contextId){
+      assert.equal(await figure.locator('canvas').evaluate(canvas=>canvas===window.__originalMiniatureCanvas),true,'Switching '+id+' must reuse the existing canvas.');
+      assert.equal(await figure.locator('canvas').evaluate(canvas=>window.__miniatureContexts.get(canvas)),test.contextId,'Switching '+id+' must reuse its WebGL context.');
+    }
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Choice '+id+' must not overflow horizontally.');
 }
 
 async function checkLive(width){
-  const test=await open(width),{context,page,figure}=test;
+  const test=await open(width),{context,page,explorer,figure}=test;
   try{
-    await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.renderState==='ready',selector,{timeout:30000});
+    await page.waitForFunction(()=>document.querySelector('#home-discovery-globe')?.dataset.renderState==='ready',{},{timeout:30000});
+    await verifyChoice(test,'landfill',{live:true});
     const canvas=figure.locator('canvas');
     test.contextId=await canvas.evaluate(element=>{window.__originalMiniatureCanvas=element;return window.__miniatureContexts.get(element);});
     assert.ok(test.contextId,'A real WebGL context should be observed.');
@@ -136,33 +160,47 @@ async function checkLive(width){
       await page.waitForFunction(({selector,before})=>{const canvas=document.querySelector(selector+' canvas');return(window.__miniatureDraws.get(canvas)||0)>before;},{selector,before});
       await figure.screenshot({path:path.join(out,'energy-'+id+'-'+width+'.png')});
     }
-    pass(width+': all eight facilities render with their unique headings, selected labels and one shared canvas/context');
+    pass(width+': all eight user-selected facilities render with matching research and one shared facility canvas/context');
     await page.evaluate(()=>{for(const id of ['wind','nuclear','solar','industrial','landfill','grid'])document.querySelector('[data-energy-site-select="'+id+'"]').click();});
     await verifyChoice(test,'grid',{live:true,click:false});
-    await page.waitForTimeout(400);
     assert.equal(await figure.getAttribute('data-energy-site'),'grid','Rapid choices must finish on the most recent selection.');
     assert.equal(await page.locator('#home-search-scope').innerText(),headings.grid,'Rapid choices must leave the latest facility heading visible.');
     pass(width+': rapid selection resolves to the latest facility and heading');
+    await checkReturnToGlobe(test,true);
     if(width===1440){
       await checkResponsiveSelection(test,true);
       await verifyChoice(test,'landfill',{live:true});
-      await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
-      const advancementStarted=Date.now();
-      await page.waitForFunction(selector=>document.querySelector(selector)?.dataset.energySite==='flare',selector,{timeout:5500});
-      const advancementMs=Date.now()-advancementStarted;
-      assert.ok(advancementMs>=2500&&advancementMs<5500,'The visible carousel should advance after approximately three seconds.');
-      await verifyChoice(test,'flare',{live:true,click:false});
-      pass('Visible carousel automatically advances from landfill to flare in approximately three seconds',{advancementMs});
+      await page.waitForTimeout(7500);
+      await verifyChoice(test,'landfill',{live:true,click:false});
+      pass('Visible explorer keeps the selected facility until the user chooses another source');
       await verifyChoice(test,'solar',{live:true});
       await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));
       await page.waitForTimeout(7500);
-      assert.equal(await figure.getAttribute('data-energy-site'),'solar','Offscreen carousel must retain its selected facility.');
-      assert.equal(await page.locator('#home-search-scope').innerText(),headings.solar,'Offscreen carousel must retain its facility heading.');
-      pass('Offscreen carousel suspends automatic advancement');
-      await figure.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
+      assert.equal(await figure.getAttribute('data-energy-site'),'solar','Offscreen explorer must retain its selected facility.');
+      assert.equal(await page.locator('#home-search-scope').innerText(),headings.solar,'Offscreen explorer must retain its facility heading.');
+      pass('Offscreen explorer retains the user-selected facility');
+      await explorer.evaluate(element=>element.scrollIntoView({block:'center',behavior:'instant'}));
     }
-    await figure.locator('..').screenshot({path:path.join(out,'energy-carousel-'+width+'.png')});
+    await explorer.screenshot({path:path.join(out,'energy-explorer-'+width+'.png')});
   }finally{await context.close();}
+}
+
+async function checkReturnToGlobe(test,live){
+  const {page,explorer}=test;
+  await page.locator('[data-research-tab="contacts"]').click();
+  await verifyChoice(test,'wind',{live});
+  assert.equal(await page.locator('[data-research-tab="contacts"]').getAttribute('aria-selected'),'true','Changing sources should preserve the research tab.');
+  assert.equal(await page.locator('#research-content').getAttribute('aria-labelledby'),'research-tab-contacts');
+  await explorer.locator('[data-globe-back]').click();
+  await page.waitForFunction(()=>document.querySelector('#home-energy-explorer')?.dataset.view==='globe',{},{timeout:30000});
+  assert.equal(await page.locator('#home-search-scope').innerText(),'A world of energy.');
+  assert.equal(await explorer.locator('.home-facility-layer').getAttribute('aria-hidden'),'true');
+  assert.equal(await explorer.locator('[data-globe-back]').isVisible(),false);
+  assert.equal(await page.locator('[data-energy-site-select="wind"]').evaluate(button=>button===document.activeElement),true,'Returning to the globe should focus the selected source.');
+  // The same source must reopen from the globe, including native keyboard activation.
+  await page.locator('[data-energy-site-select="wind"]').press('Enter');
+  await verifyChoice(test,'wind',{live,click:false});
+  pass((live?'Live':'Static')+' explorer returns to the globe and reopens the same source from the keyboard');
 }
 
 async function checkResponsiveSelection(test,live){
@@ -179,8 +217,15 @@ async function checkResponsiveSelection(test,live){
 }
 
 async function checkStatic(width,noWebGL=false){
-  const test=await open(width,noWebGL?'no-preference':'reduce',noWebGL),{context,page,figure,img}=test;
+  const test=await open(width,noWebGL?'no-preference':'reduce',noWebGL),{context,page,explorer,figure,img}=test;
   try{
+    if(noWebGL){
+      await page.waitForFunction(()=>document.querySelector('#home-discovery-globe')?.dataset.renderState==='fallback',{},{timeout:30000});
+      const globePoster=explorer.locator('#home-discovery-globe img');
+      await globePoster.evaluate(image=>image.decode());
+      assert.ok(await globePoster.evaluate(image=>image.naturalWidth>0&&Number(getComputedStyle(image).opacity)>0),'WebGL failure should preserve the initial globe poster.');
+    }
+    await verifyChoice(test,'landfill');
     await page.waitForFunction(({selector,state})=>document.querySelector(selector)?.dataset.renderState===state,{selector,state:noWebGL?'fallback':'reduced'},{timeout:30000});
     for(const id of ids){
       await verifyChoice(test,id);
@@ -190,11 +235,12 @@ async function checkStatic(width,noWebGL=false){
     }
     if(width===390&&!noWebGL){
       await verifyChoice(test,'hydro');await page.waitForTimeout(7500);
-      assert.equal(await figure.getAttribute('data-energy-site'),'hydro','Reduced motion must disable automatic facility changes.');
+      assert.equal(await figure.getAttribute('data-energy-site'),'hydro','Reduced motion must retain the user-selected facility.');
       assert.equal(await page.locator('#home-search-scope').innerText(),headings.hydro,'Reduced motion must retain the selected facility heading.');
     }
+    await checkReturnToGlobe(test,false);
     if(width===1440&&!noWebGL)await checkResponsiveSelection(test,false);
-    await figure.locator('..').screenshot({path:path.join(out,'energy-carousel-'+width+(noWebGL?'-fallback':'-reduced')+'.png')});
+    await explorer.screenshot({path:path.join(out,'energy-explorer-'+width+(noWebGL?'-fallback':'-reduced')+'.png')});
     pass(width+(noWebGL?': WebGL fallback':': reduced motion')+' preserves all eight selectable facility posters and headings without canvas or overflow');
   }finally{await context.close();}
 }

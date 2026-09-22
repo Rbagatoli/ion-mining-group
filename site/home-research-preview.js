@@ -30,13 +30,40 @@
         ['Research output', 'Find business contact routes and questions to ask.']
       ]
     },
-    powered: {
-      title: 'Powered industrial site',
+    flare: {
+      title: 'Flare gas',
       overview: [
-        ['Already in place', 'An industrial site and electrical infrastructure.'],
-        ['Remaining work', 'Check service rights, equipment and usable space.'],
-        ['Energy access', 'Verify capacity, tariff terms and upgrade needs.'],
-        ['Next conversation', 'Property owner, utility and electrical engineer.']
+        ['Already in place', 'An oilfield gas stream and flare system.'],
+        ['Remaining work', 'Check gas treatment, generation and site access.'],
+        ['Energy access', 'Verify gas rights, flow variability and field life.'],
+        ['Next conversation', 'Field operator, gas-rights holder and developer.']
+      ],
+      infrastructure: [
+        ['Existing assets', 'Review gas gathering, flare equipment and access.'],
+        ['Work to scope', 'Gas conditioning, engines and electrical works.'],
+        ['Evidence needed', 'Gas assays, flow history and production forecasts.'],
+        ['Reuse potential', 'Confirm gas routing and equipment ownership.']
+      ],
+      capital: [
+        ['Cost status', 'Unpriced — requires diligence.'],
+        ['Scope to price', 'Gas conditioning, generation and connection works.'],
+        ['Commercial terms', 'Gas purchase, operating duties and relocation rights.'],
+        ['Before investing', 'Validate supply duration and obtain project quotes.']
+      ],
+      contacts: [
+        ['Field operator', 'Check production plans, access and site constraints.'],
+        ['Gas-rights holder', 'Establish control of the gas and supply terms.'],
+        ['Technical partners', 'Scope conditioning, generation and gas routing.'],
+        ['Research output', 'Find business contact routes and questions to ask.']
+      ]
+    },
+    industrial: {
+      title: 'Industrial surplus',
+      overview: [
+        ['Already in place', 'An industrial operation and electrical infrastructure.'],
+        ['Remaining work', 'Check spare capacity, service rights and usable space.'],
+        ['Energy access', 'Verify surplus timing, tariff terms and load priority.'],
+        ['Next conversation', 'Industrial operator, utility and electrical engineer.']
       ],
       infrastructure: [
         ['Existing assets', 'Review transformers, switchgear and the building.'],
@@ -47,11 +74,11 @@
       capital: [
         ['Cost status', 'Unpriced — requires diligence.'],
         ['Scope to price', 'Electrical upgrades, fit-out, cooling and civil works.'],
-        ['Commercial terms', 'Property control, supply terms and network charges.'],
-        ['Before investing', 'Confirm utility service and obtain upgrade quotes.']
+        ['Commercial terms', 'Power allocation, curtailment and upgrade costs.'],
+        ['Before investing', 'Confirm spare capacity and obtain upgrade quotes.']
       ],
       contacts: [
-        ['Property owner', 'Confirm site control, access and permitted uses.'],
+        ['Industrial operator', 'Confirm surplus capacity, access and load priority.'],
         ['Utility contact', 'Check service capacity, tariff and upgrade process.'],
         ['Electrical engineer', 'Assess equipment condition and connection work.'],
         ['Research output', 'Find business contact routes and questions to ask.']
@@ -81,6 +108,114 @@
         ['Asset owner', 'Establish power allocation and commercial interest.'],
         ['Plant operator', 'Review output, maintenance and operating constraints.'],
         ['Grid counterparty', 'Check connection rights and new-load requirements.'],
+        ['Research output', 'Find business contact routes and questions to ask.']
+      ]
+    },
+    nuclear: {
+      title: 'Nuclear power',
+      overview: [
+        ['Already in place', 'An operating plant and established grid connection.'],
+        ['Remaining work', 'Qualify the supply route and permitted connection.'],
+        ['Energy access', 'Check power allocation, outage plans and supply terms.'],
+        ['Next conversation', 'Power seller, plant owner and network operator.']
+      ],
+      infrastructure: [
+        ['Existing assets', 'Review the plant connection and nearby network.'],
+        ['Work to scope', 'Load connection, metering and electrical protection.'],
+        ['Evidence needed', 'Connection studies, site limits and outage schedules.'],
+        ['Reuse potential', 'Confirm access and approval for the proposed load.']
+      ],
+      capital: [
+        ['Cost status', 'Unpriced — requires diligence.'],
+        ['Scope to price', 'Connection upgrades, metering and load-side works.'],
+        ['Commercial terms', 'Supply contract, outage cover and network charges.'],
+        ['Before investing', 'Confirm the supply arrangement and connection costs.']
+      ],
+      contacts: [
+        ['Power seller', 'Establish whether a supply arrangement is available.'],
+        ['Plant owner', 'Clarify site access and plant operating constraints.'],
+        ['Network operator', 'Check the connection route and study requirements.'],
+        ['Research output', 'Find business contact routes and questions to ask.']
+      ]
+    },
+    wind: {
+      title: 'Wind power',
+      overview: [
+        ['Already in place', 'Wind turbines and a collection network.'],
+        ['Remaining work', 'Assess variable output and load connection needs.'],
+        ['Energy access', 'Review wind profile, offtake and backup options.'],
+        ['Next conversation', 'Wind asset owner, operator and power buyer.']
+      ],
+      infrastructure: [
+        ['Existing assets', 'Review turbines, collection cables and substation.'],
+        ['Work to scope', 'Load connection, controls and any balancing equipment.'],
+        ['Evidence needed', 'Output history, curtailment records and site plans.'],
+        ['Reuse potential', 'Confirm spare connection capacity and access rights.']
+      ],
+      capital: [
+        ['Cost status', 'Unpriced — requires diligence.'],
+        ['Scope to price', 'Connection, load controls and any balancing option.'],
+        ['Commercial terms', 'Output allocation, curtailment and backup supply.'],
+        ['Before investing', 'Model variable output and price the connection.']
+      ],
+      contacts: [
+        ['Wind asset owner', 'Establish power allocation and commercial interest.'],
+        ['Plant operator', 'Review output variability, outages and access.'],
+        ['Power buyer', 'Check existing offtake commitments and flexibility.'],
+        ['Research output', 'Find business contact routes and questions to ask.']
+      ]
+    },
+    solar: {
+      title: 'Solar power',
+      overview: [
+        ['Already in place', 'Solar panels, inverters and a site connection.'],
+        ['Remaining work', 'Assess daytime output and load connection needs.'],
+        ['Energy access', 'Review generation timing, offtake and storage options.'],
+        ['Next conversation', 'Solar asset owner, operator and power buyer.']
+      ],
+      infrastructure: [
+        ['Existing assets', 'Review panels, inverters and electrical connection.'],
+        ['Work to scope', 'Load connection, controls and any storage system.'],
+        ['Evidence needed', 'Hourly generation, equipment records and site plans.'],
+        ['Reuse potential', 'Confirm connection capacity and available site space.']
+      ],
+      capital: [
+        ['Cost status', 'Unpriced — requires diligence.'],
+        ['Scope to price', 'Connection, load controls and any storage option.'],
+        ['Commercial terms', 'Daytime allocation, charging rights and backup supply.'],
+        ['Before investing', 'Model operating hours and price the chosen supply mix.']
+      ],
+      contacts: [
+        ['Solar asset owner', 'Confirm output allocation and space for a load.'],
+        ['Plant operator', 'Review generation patterns and equipment condition.'],
+        ['Power buyer', 'Check existing contracts and uncommitted output.'],
+        ['Research output', 'Find business contact routes and questions to ask.']
+      ]
+    },
+    grid: {
+      title: 'Grid supply',
+      overview: [
+        ['Already in place', 'A grid-served area and nearby network assets.'],
+        ['Remaining work', 'Confirm service feasibility and required upgrades.'],
+        ['Energy access', 'Review tariff, capacity and curtailment conditions.'],
+        ['Next conversation', 'Utility, property owner and electrical engineer.']
+      ],
+      infrastructure: [
+        ['Existing assets', 'Review nearby lines, substation and site service.'],
+        ['Work to scope', 'Utility upgrades, metering and on-site distribution.'],
+        ['Evidence needed', 'Service study, site drawings and utility requirements.'],
+        ['Reuse potential', 'Confirm network capacity and equipment suitability.']
+      ],
+      capital: [
+        ['Cost status', 'Unpriced — requires diligence.'],
+        ['Scope to price', 'Service upgrades, connection and site electrical works.'],
+        ['Commercial terms', 'Tariff, demand charges, deposits and curtailment.'],
+        ['Before investing', 'Obtain utility terms and a service-cost estimate.']
+      ],
+      contacts: [
+        ['Utility contact', 'Check service capacity, tariff and connection process.'],
+        ['Property owner', 'Confirm site control, access and easement requirements.'],
+        ['Electrical engineer', 'Scope on-site distribution and load protection.'],
         ['Research output', 'Find business contact routes and questions to ask.']
       ]
     }
@@ -158,9 +293,11 @@
     sourceButtons.forEach(button => {
       button.addEventListener('click', () => {
         const nextSource = button.dataset.researchSource;
-        if (nextSource === source) return;
-        source = nextSource;
-        render();
+        if (nextSource !== source) {
+          source = nextSource;
+          render();
+        }
+        // Re-selecting a source still opens its facility from the globe view.
         document.dispatchEvent(new CustomEvent('proton:discovery-source', { detail: { source } }));
       });
     });
@@ -171,6 +308,7 @@
         render();
       });
       button.addEventListener('keydown', event => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
         let nextIndex;
         if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
         else if (event.key === 'ArrowLeft') nextIndex = (index + tabs.length - 1) % tabs.length;

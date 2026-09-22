@@ -6,6 +6,11 @@ const vm = require('node:vm');
 const {Element, parse} = require('./helpers/terrain-dom.js');
 const html = fs.readFileSync(__dirname + '/../../site/index.html', 'utf8');
 const script = new vm.Script(fs.readFileSync(__dirname + '/../../site/home-research-preview.js', 'utf8'));
+const sources = ['landfill', 'flare', 'hydro', 'nuclear', 'wind', 'solar', 'industrial', 'grid'];
+const sourceTitles = {
+  landfill: 'Landfill gas', flare: 'Flare gas', hydro: 'Operating hydro', nuclear: 'Nuclear power',
+  wind: 'Wind power', solar: 'Solar power', industrial: 'Industrial surplus', grid: 'Grid supply'
+};
 let passed = 0;
 function check(name, fn) { fn(); passed++; console.log('  ok    ' + name); }
 
@@ -43,19 +48,26 @@ Element.prototype.replaceChildren = function (...nodes) {
 };
 
 function fixture({loading = false, markup = html} = {}) {
-  const document = parse(markup), events = [];
+  const document = parse(markup), events = [], eventViews = [];
   document.readyState = loading ? 'loading' : 'complete';
   document.getElementById = id => document.querySelector('#' + id);
   document.createElement = tag => new Element(tag);
   document.createDocumentFragment = () => new Element('#fragment');
-  document.addEventListener('proton:discovery-source', event => events.push(event.detail.source));
+  document.addEventListener('proton:discovery-source', event => {
+    events.push(event.detail.source);
+    eventViews.push({
+      source: document.getElementById('home-research-preview').dataset.researchActiveSource,
+      title: document.getElementById('research-site-title').textContent,
+      selected: document.querySelector('[data-research-source="' + event.detail.source + '"]').getAttribute('aria-pressed')
+    });
+  });
   const sandbox = vm.createContext({document, CustomEvent: class {
     constructor(type, options) { this.type = type; this.detail = options.detail; }
   }});
   const run = () => script.runInContext(sandbox);
   run();
   return {
-    document, events, run,
+    document, events, eventViews, run,
     root: document.getElementById('home-research-preview'),
     panel: document.getElementById('research-content'),
     source: name => document.querySelector('[data-research-source="' + name + '"]'),
@@ -81,6 +93,14 @@ check('the authored homepage remains useful before JavaScript runs', () => {
   assert.equal(root.querySelector('.research-cta').getAttribute('href'), './energy-sites.html#request');
   assert.equal(root.querySelector('.research-workspace-link').getAttribute('href'), './energy-sites.html#workspace');
   assert.match(html, /<script src="\.\/home-research-preview\.js(?:\?v=[a-f0-9]+)?" defer><\/script>/);
+  const choices = root.querySelectorAll('[data-research-source]');
+  assert.deepEqual(choices.map(button => button.dataset.researchSource), sources);
+  assert.equal(document.querySelectorAll('[data-energy-site-select]').length, sources.length,
+    'One set of source controls should serve both research and facility selection.');
+  for (const button of choices) {
+    assert.equal(button.tagName, 'button');
+    assert.equal(button.dataset.energySiteSelect, button.dataset.researchSource);
+  }
 });
 
 check('deferred initialization preserves the fallback until DOM readiness', () => {
@@ -89,7 +109,7 @@ check('deferred initialization preserves the fallback until DOM readiness', () =
   assert.equal(test.panel.querySelectorAll('.research-row').length, 4);
   test.document.fire('DOMContentLoaded');
   assert.equal(test.root.dataset.researchReady, 'true');
-  assert.equal(test.document.querySelectorAll('[data-research-source]').length, 3,
+  assert.equal(test.document.querySelectorAll('[data-research-source]').length, sources.length,
     'Only source controls may carry data-research-source.');
   assert.equal(test.document.querySelectorAll('[data-research-tab]').length, 4,
     'Only tab controls may carry data-research-tab.');
@@ -97,27 +117,43 @@ check('deferred initialization preserves the fallback until DOM readiness', () =
   assert.deepEqual(test.events, [], 'Initialization must not act like a user source change.');
 });
 
-check('changing the source retains the selected tab and tells the globe once', () => {
+check('even the initial selected source opens its facility on every click', () => {
+  const test = fixture(), initialContent = test.panel.textContent;
+  test.source('landfill').fire('click');
+  test.source('landfill').fire('click');
+  assert.deepEqual(test.events, ['landfill', 'landfill']);
+  assert.equal(test.panel.textContent, initialContent, 'Reselecting a source must preserve its current research.');
+  assertTabState(test, 'overview');
+});
+
+check('changing the source retains the tab and updates research before the globe event', () => {
   const test = fixture();
   test.tab('capital').fire('click');
   const landfillCapital = test.panel.textContent;
-  test.source('powered').fire('click');
+  test.source('industrial').fire('click');
   assertTabState(test, 'capital');
-  assert.equal(test.document.getElementById('research-site-title').textContent, 'Powered industrial site');
+  assert.equal(test.document.getElementById('research-site-title').textContent, 'Industrial surplus');
   assert.notEqual(test.panel.textContent, landfillCapital);
   assert.match(test.panel.textContent, /Unpriced — requires diligence/);
-  assert.match(test.panel.textContent, /utility service/);
-  assert.deepEqual(test.events, ['powered']);
-  test.source('powered').fire('click');
-  assert.deepEqual(test.events, ['powered'], 'Reselecting the same source must not replay globe movement.');
+  assert.match(test.panel.textContent, /spare capacity/);
+  assert.deepEqual(test.events, ['industrial']);
+  assert.deepEqual(test.eventViews, [{source: 'industrial', title: 'Industrial surplus', selected: 'true'}]);
+  test.source('industrial').fire('click');
+  assert.deepEqual(test.events, ['industrial', 'industrial'], 'Each explicit choice must be able to open its facility again.');
   assert.equal(test.root.querySelectorAll('[data-research-source]').filter(button => button.getAttribute('aria-pressed') === 'true').length, 1);
-  assert.equal(test.source('powered').getAttribute('aria-pressed'), 'true');
+  assert.equal(test.source('industrial').getAttribute('aria-pressed'), 'true');
 });
 
 check('all research routes keep their own content and illustrative boundaries', () => {
-  const test = fixture(), overviews = new Set(), contactRoles = new Set();
-  for (const source of ['landfill', 'powered', 'hydro']) {
+  const test = fixture();
+  const views = Object.fromEntries(['overview', 'infrastructure', 'capital', 'contacts'].map(name => [name, new Set()]));
+  const energyQuestions = {
+    landfill: /gas rights/, flare: /flow variability/, hydro: /water rights/, nuclear: /outage plans/,
+    wind: /wind profile/, solar: /generation timing/, industrial: /surplus timing/, grid: /curtailment conditions/
+  };
+  for (const source of sources) {
     test.source(source).fire('click');
+    assert.equal(test.document.getElementById('research-site-title').textContent, sourceTitles[source]);
     for (const tab of ['overview', 'infrastructure', 'capital', 'contacts']) {
       test.tab(tab).fire('click');
       assertTabState(test, tab);
@@ -126,12 +162,14 @@ check('all research routes keep their own content and illustrative boundaries', 
       assert.doesNotMatch(test.panel.textContent, /\$|\b(?:MW|kWh)\b|@/);
       assert.equal(test.panel.querySelectorAll('a').length, 0, 'Example contact roles must not become invented contact links.');
       if (tab === 'capital') assert.match(test.panel.textContent, /Unpriced — requires diligence/);
-      if (tab === 'overview') overviews.add(test.panel.textContent);
-      if (tab === 'contacts') contactRoles.add(test.panel.querySelector('.research-row-label').textContent);
+      if (tab === 'overview') assert.match(test.panel.textContent, energyQuestions[source]);
+      views[tab].add(test.panel.textContent);
     }
   }
-  assert.equal(overviews.size, 3);
-  assert.equal(contactRoles.size, 3);
+  for (const [tab, content] of Object.entries(views)) {
+    assert.equal(content.size, sources.length, 'Every source needs its own ' + tab + ' research.');
+  }
+  assert.deepEqual(test.events, sources, 'All eight selections, including initial landfill, reach the facility controller.');
 });
 
 check('arrow keys wrap and Home/End move both focus and selected content', () => {
@@ -151,6 +189,22 @@ check('arrow keys wrap and Home/End move both focus and selected content', () =>
   assert.equal(test.tab(current).fire('keydown', {key: 'Tab'}).defaultPrevented, undefined);
   assert.equal(test.panel.textContent, before);
   assert.deepEqual(test.events, [], 'Navigating research tabs must not change the globe source.');
+});
+
+check('modified navigation keys preserve browser shortcuts and the selected tab', () => {
+  const test = fixture();
+  test.tab('capital').fire('click');
+  test.tab('capital').focus();
+  const content = test.panel.textContent;
+  for (const modifier of ['altKey', 'ctrlKey', 'metaKey']) {
+    for (const key of ['Home', 'End', 'ArrowLeft', 'ArrowRight']) {
+      const event = test.tab('capital').fire('keydown', {key, [modifier]:true});
+      assert.equal(event.defaultPrevented, undefined, modifier + '+' + key + ' must reach the browser.');
+      assertTabState(test, 'capital');
+      assert.equal(test.document.activeElement, test.tab('capital'));
+      assert.equal(test.panel.textContent, content);
+    }
+  }
 });
 
 check('reinitialization cannot duplicate source-change listeners', () => {

@@ -63,8 +63,8 @@ ok(organization && organization.description.startsWith(expectedFooter) &&
 ['flared gas, landfill gas', 'flared gas, landfill'].forEach(bad2 => {
     ok(index.indexOf(bad2) < 0, 'the home page does not lead with flare ("' + bad2 + '")');
 });
-const homeSources = (index.match(/<ul class="home-energy-types"[^>]*>([\s\S]*?)<\/ul>/) || [])[1] || '';
-const homeSourceLabels = [...homeSources.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)]
+const homeSources = (index.match(/<div class="home-research-sources"[^>]*>([\s\S]*?)<\/div>/) || [])[1] || '';
+const homeSourceLabels = [...homeSources.matchAll(/<button\b[^>]*data-energy-site-select="[^"]+"[^>]*>([\s\S]*?)<\/button>/g)]
     .map(match => match[1].replace(/<[^>]+>/g, '').trim());
 ok(['Hydro', 'Nuclear', 'Wind', 'Solar', 'Landfill gas', 'Flare gas', 'Industrial surplus', 'Grid supply'].every(label => homeSourceLabels.includes(label)),
    'the home sourcing preview includes gas and non-gas energy options');

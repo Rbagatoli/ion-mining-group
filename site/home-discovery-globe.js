@@ -2,18 +2,26 @@
    never facility coordinates, available inventory or an energy-access claim. */
 const mounted = new WeakMap();
 const SOURCES = Object.freeze({
-    landfill: {lat:31.7,lon:-100.0},
-    powered: {lat:43.2,lon:-85.5},
-    hydro: {lat:46.7,lon:-120.3}
+    landfill: {lat:41.8,lon:-87.5},
+    flare: {lat:31.8,lon:-103.0},
+    hydro: {lat:47.2,lon:-120.7},
+    nuclear: {lat:35.2,lon:-80.8},
+    wind: {lat:42.0,lon:-101.0},
+    solar: {lat:33.4,lon:-112.2},
+    industrial: {lat:40.7,lon:-80.4},
+    grid: {lat:34.0,lon:-84.4}
 });
+const sourceID = source => source === 'powered' ? 'grid' : source;
+const ease = value => value*value*(3-2*value);
 
 export function mountHomeDiscoveryGlobe(host) {
     if (!host) return null;
     if (mounted.has(host)) return mounted.get(host);
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let selected = Object.hasOwn(SOURCES,host.dataset.discoverySource) ? host.dataset.discoverySource : 'landfill';
-    let visible = false, suspended = false, disposed = false, failed = false, loading = false, ready = false;
+    let selected = Object.hasOwn(SOURCES,sourceID(host.dataset.discoverySource)) ? sourceID(host.dataset.discoverySource) : 'landfill';
+    let visible = false, active = true, suspended = false, disposed = false, failed = false, loading = false, ready = false;
     let frame = 0, last = 0, time = 0, width = 0, height = 0;
+    let direction = null, homeDistance = 0, zoom = 1, flight = null;
     let T, renderer, world, camera, earth, environment, resizeObserver, loadObserver, viewObserver;
     let markers = [], routes = [];
     const textureSet = new Set();
@@ -21,7 +29,7 @@ export function mountHomeDiscoveryGlobe(host) {
     host.dataset.renderState = 'poster';
 
     function stop() { if (frame) cancelAnimationFrame(frame); frame = 0; last = 0; }
-    function canAnimate() { return ready && visible && !suspended && !document.hidden && !motion.matches && !disposed && !failed; }
+    function canAnimate() { return ready && active && visible && !suspended && !document.hidden && (!motion.matches || !!flight) && !disposed && !failed; }
     function wake() { if (canAnimate() && !frame) frame = requestAnimationFrame(tick); }
     function releaseResources() {
         if (renderer) renderer.domElement.removeEventListener('webglcontextlost',contextLost);
@@ -42,6 +50,7 @@ export function mountHomeDiscoveryGlobe(host) {
     }
     function fallback() {
         failed = true; ready = false; stop();
+        finishFlight(false);
         releaseResources(); host.dataset.renderState = 'fallback';
     }
     function contextLost(event) { event.preventDefault(); fallback(); }
@@ -56,17 +65,20 @@ export function mountHomeDiscoveryGlobe(host) {
             // The sphere fills the short edge. The surrounding layout may crop
             // its lower edge, but a wide host never reduces it to a tiny globe.
             const halfAngle = Math.atan(Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));
-            const distance = 3.39/Math.sin(halfAngle)*1.025;
-            camera.position.copy(earth.front).multiplyScalar(distance);
-            camera.lookAt(0,0,0); camera.updateProjectionMatrix();
+            homeDistance = 3.39/Math.sin(halfAngle)*1.025;
+            camera.updateProjectionMatrix();
         }
+        direction ||= earth.front.clone();
+        camera.position.copy(direction).multiplyScalar(3.2+(homeDistance-3.2)*zoom);
+        camera.lookAt(0,0,0);
         return true;
     }
     function setVisuals() {
         if (!earth) return;
         const animated = !motion.matches;
-        earth.root.rotation.y = animated ? Math.sin(time*.12)*.018 : 0;
-        earth.root.rotation.z = animated ? Math.sin(time*.08)*.004 : 0;
+        const drifting = animated && !flight && zoom > .999;
+        earth.root.rotation.y = drifting ? Math.sin(time*.12)*.018 : 0;
+        earth.root.rotation.z = drifting ? Math.sin(time*.08)*.004 : 0;
         markers.forEach((marker,index) => {
             const active = marker.id === selected;
             const pulse = animated ? .5+.5*Math.sin(time*1.1-index*.6) : .5;
@@ -87,7 +99,7 @@ export function mountHomeDiscoveryGlobe(host) {
         if (!renderer || disposed || failed || !fit()) return;
         try {
             setVisuals(); renderer.render(world,camera);
-            if (!ready) { ready = true; host.dataset.renderState = 'ready'; }
+            if (!ready) { ready = true; host.dataset.renderState = 'ready'; startFlight(); }
         } catch { fallback(); }
     }
     function tick(now) {
@@ -95,32 +107,98 @@ export function mountHomeDiscoveryGlobe(host) {
         if (!canAnimate()) return;
         if (!last) last = now;
         const elapsed = (now-last)/1000;
-        if (elapsed >= 1/30) { time += Math.min(elapsed,.1); last = now; render(); }
+        if (elapsed >= 1/30) {
+            const dt = Math.min(elapsed,.1); time += dt; last = now;
+            let completed = false;
+            if (flight?.started) {
+                flight.elapsed = Math.min(flight.duration,flight.elapsed+dt);
+                animateFlight(flight.elapsed/flight.duration);
+                completed = flight.elapsed >= flight.duration;
+            }
+            render();
+            if (completed && flight) finishFlight(true);
+        }
         wake();
     }
     function resize() {
-        if (!disposed && !failed && renderer) { render(); wake(); }
+        if (!disposed && !failed && renderer && active) { render(); startFlight(); wake(); }
     }
     function select(source) {
+        source = sourceID(source);
         if (!Object.hasOwn(SOURCES,source) || disposed || selected === source) return;
         selected = source; host.dataset.discoverySource = source;
-        if (visible && !document.hidden) render();
+        if (active && visible && !document.hidden) render();
         wake();
     }
-    function sourceChanged(event) { select(event.detail?.source); }
-    function visibilityChanged() { if (document.hidden) stop(); else if (visible) { render(); wake(); } }
-    function motionChanged() { stop(); if (visible) render(); wake(); }
+    function finishFlight(success) {
+        if (!flight) return;
+        const previous = flight; flight = null;
+        clearTimeout(previous.timeout); previous.resolve(success);
+    }
+    function animateFlight(progress) {
+        if (!flight?.started) return;
+        if (flight.kind === 'reset') {
+            const t = ease(progress);
+            direction.copy(flight.from).applyQuaternion(new T.Quaternion().slerp(flight.rotation,t));
+            zoom = T.MathUtils.lerp(flight.zoom,1,t);
+        } else {
+            // First turn the geography toward the chosen region, then approach
+            // its surface. The second phase is deliberately a distinct zoom.
+            const turn = ease(Math.min(1,progress/.60));
+            direction.copy(flight.from).applyQuaternion(new T.Quaternion().slerp(flight.rotation,turn));
+            const approach = ease(Math.max(0,(progress-.60)/.40));
+            zoom = progress < .60 ? T.MathUtils.lerp(flight.zoom,1,turn) : T.MathUtils.lerp(1,.24,approach);
+        }
+        if (progress >= 1) direction.copy(flight.to);
+    }
+    function startFlight() {
+        if (!flight || flight.started || !ready || !active || !visible || suspended || document.hidden || !fit()) return;
+        const destination = flight.kind === 'reset' ? earth.front.clone() : markers.find(marker => marker.id === flight.source).anchor.clone().normalize();
+        Object.assign(flight,{started:true,elapsed:0,from:direction.clone(),to:destination,zoom,
+            rotation:new T.Quaternion().setFromUnitVectors(direction,destination)});
+        if (motion.matches) { animateFlight(1); render(); finishFlight(true); }
+        else wake();
+    }
+    function travel(kind,source) {
+        source = sourceID(source);
+        if (kind === 'fly' && !Object.hasOwn(SOURCES,source)) return Promise.resolve(false);
+        finishFlight(false);
+        if (disposed || failed || !active || suspended || document.hidden) return Promise.resolve(false);
+        if (kind === 'fly') select(source);
+        return new Promise(resolve => {
+            const request = {kind,source,resolve,started:false,duration:kind === 'reset' ? .70 : 1.30};
+            flight = request;
+            // A failed import, zero-size host or absent visibility notification
+            // must not leave the caller waiting indefinitely for a transition.
+            request.timeout = setTimeout(() => { if (flight === request) finishFlight(false); },15000);
+            if (!renderer) load();
+            startFlight(); wake();
+        });
+    }
+    function setActive(value) {
+        active = !!value;
+        if (!active) { finishFlight(false); stop(); }
+        else if (!disposed && !failed && visible) { if (!renderer) load(); else { render(); startFlight(); wake(); } }
+    }
+    function visibilityChanged() {
+        if (document.hidden) { finishFlight(false); stop(); }
+        else if (active && visible) { render(); startFlight(); wake(); }
+    }
+    function motionChanged() {
+        stop();
+        if (motion.matches && flight?.started) { animateFlight(1); render(); finishFlight(true); }
+        else if (active && visible) render();
+        startFlight(); wake();
+    }
     function pageHide(event) {
-        suspended = true; stop();
+        suspended = true; finishFlight(false); stop();
         if (!event.persisted) dispose();
     }
-    function pageShow() { suspended = false; if (visible) { render(); wake(); } }
+    function pageShow() { suspended = false; if (active && visible) { render(); wake(); } }
     function dispose() {
         if (disposed) return;
-        disposed = true; stop();
+        disposed = true; finishFlight(false); stop();
         resizeObserver?.disconnect(); loadObserver?.disconnect(); viewObserver?.disconnect();
-        document.removeEventListener('proton:discovery-source',sourceChanged);
-        window.removeEventListener('proton:discovery-source',sourceChanged);
         document.removeEventListener('visibilitychange',visibilityChanged);
         motion.removeEventListener('change',motionChanged);
         window.removeEventListener('pagehide',pageHide); window.removeEventListener('pageshow',pageShow);
@@ -219,7 +297,7 @@ export function mountHomeDiscoveryGlobe(host) {
                 texture.anisotropy = anisotropy; textureSet.add(texture);
                 earth.surface.material.normalMap = texture; earth.surface.material.normalScale.set(6,6);
                 earth.surface.material.needsUpdate = true;
-                if (visible && !document.hidden) render();
+                if (active && visible && !document.hidden) render();
             },undefined,() => {});
             if (!fit()) { host.dataset.renderState = 'loading'; return; }
             if (renderer.compileAsync) await renderer.compileAsync(world,camera);
@@ -229,8 +307,6 @@ export function mountHomeDiscoveryGlobe(host) {
         finally { loading = false; }
     }
 
-    document.addEventListener('proton:discovery-source',sourceChanged);
-    window.addEventListener('proton:discovery-source',sourceChanged);
     document.addEventListener('visibilitychange',visibilityChanged);
     motion.addEventListener('change',motionChanged);
     window.addEventListener('pagehide',pageHide); window.addEventListener('pageshow',pageShow);
@@ -239,13 +315,14 @@ export function mountHomeDiscoveryGlobe(host) {
     if (typeof IntersectionObserver === 'function') {
         viewObserver = new IntersectionObserver(entries => {
             visible = entries.some(entry => entry.isIntersecting);
-            if (visible) { if (!renderer) load(); else { render(); wake(); } } else stop();
+            if (visible && active) { if (!renderer) load(); else { render(); startFlight(); wake(); } }
+            else { finishFlight(false); stop(); }
         }); viewObserver.observe(host);
         loadObserver = new IntersectionObserver(entries => {
             if (entries.some(entry => entry.isIntersecting)) { loadObserver.disconnect(); load(); }
         },{rootMargin:'240px'}); loadObserver.observe(host);
     } else { visible = true; load(); }
-    const api = {select,dispose}; mounted.set(host,api);
+    const api = {select,flyTo:source => travel('fly',source),reset:() => travel('reset'),setActive,dispose}; mounted.set(host,api);
     return api;
 }
 

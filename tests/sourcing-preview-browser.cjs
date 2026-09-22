@@ -16,7 +16,7 @@ const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrom
 const captureArcsOnly = process.env.SOURCING_PREVIEW_CAPTURE_ONLY === 'arcs';
 const report = {checks: [], pageErrors: [], missingAssets: [], blockedWrites: []};
 const pages = [
-  {file: 'index.html', scene: 'discovery', heading: '#home-search-scope', mobile: 'Landfill gas. New purpose.', desktop: 'Landfill gas. New purpose.'},
+  {file: 'index.html', scene: 'discovery', explorer: true, heading: '#home-search-scope', mobile: 'Landfill gas. New purpose.', desktop: 'Landfill gas. New purpose.'},
   {file: 'energy-sites.html', scene: 'capital', heading: '#brief-title', mobile: 'Look beyond power.', desktop: 'Power is only part of the picture.'}
 ];
 const files = new Map();
@@ -78,6 +78,29 @@ async function open(spec, width, reducedMotion = 'no-preference', webglUnavailab
   await page.addStyleTag({content: 'html{scroll-behavior:auto!important}.reveal{opacity:1!important;transform:none!important}'});
   const figure = page.locator('figure.sourcing-render[data-sourcing-scene="' + spec.scene + '"]');
   assert.equal(await figure.count(), 1, 'Expected one ' + spec.scene + ' preview.');
+  if (spec.explorer) {
+    const explorer = page.locator('#home-energy-explorer');
+    await page.waitForFunction(() => document.querySelector('#home-energy-explorer')?.dataset.explorerReady === 'true' && document.querySelector('#home-research-preview')?.dataset.researchReady === 'true');
+    assert.equal(await explorer.getAttribute('data-view'), 'globe', 'The homepage should start with the globe.');
+    assert.equal(await page.locator(spec.heading).innerText(), 'A world of energy.');
+    assert.equal(await page.locator('.home-hero [data-sourcing-scene]').count(), 0, 'Homepage facilities should live in the explorer, outside the hero.');
+    assert.equal(await explorer.locator('[data-globe-back]').isVisible(), false, 'Back should remain hidden until a source is chosen.');
+    assert.equal(await explorer.locator('.home-facility-layer').getAttribute('aria-hidden'), 'true');
+    assert.equal(await figure.locator('canvas').count(), 0, 'A facility should mount only after a user choice.');
+    assert.equal(await page.locator('[data-research-source][data-energy-site-select]').count(), 8, 'Eight shared source controls should drive facilities and research.');
+    await page.locator('[data-energy-site-select="landfill"]').click();
+    await explorer.evaluate(element => element.scrollIntoView({block: 'center', behavior: 'instant'}));
+    await page.waitForFunction(() => document.querySelector('#home-energy-explorer')?.dataset.view === 'facility', {}, {timeout: 30000});
+    // Let the reveal finish so later screenshot differences measure scene
+    // animation, rather than the facility layer entering the explorer.
+    await explorer.locator('.home-facility-layer').evaluate(async layer => {
+      layer.getBoundingClientRect();
+      await Promise.all(layer.getAnimations().map(animation => animation.finished.catch(() => {})));
+    });
+    assert.equal(await explorer.locator('.home-facility-layer').getAttribute('aria-hidden'), 'false');
+    assert.equal(await explorer.getAttribute('aria-busy'), null);
+    assert.equal(await explorer.locator('[data-globe-back]').isVisible(), true);
+  }
   await figure.evaluate(element => element.scrollIntoView({block: 'center', behavior: 'instant'}));
   const img = figure.locator('img');
   await img.evaluate(image => image.decode());
@@ -85,8 +108,14 @@ async function open(spec, width, reducedMotion = 'no-preference', webglUnavailab
   assert.ok(await img.evaluate(image => image.complete && image.naturalWidth > 0), 'Fallback must be decoded.');
   assert.equal(normalize(await page.locator(spec.heading).innerText()), width < 641 ? spec.mobile : spec.desktop, 'Responsive heading copy must remain unchanged.');
   const size = await figure.boundingBox();
-  const maxHeight = spec.file === 'index.html' ? page.viewportSize().height * .6 : 280;
-  assert.ok(size.width > 200 && size.height > 70 && size.height < maxHeight, 'Preview should fit its hero or compact section layout.');
+  assert.ok(size && size.width > 200 && size.height > 70 && size.width <= width + 1, 'The preview should remain readable without overflowing the viewport.');
+  if (!spec.explorer) assert.ok(size.height < 280, 'The capital preview should retain its compact section height.');
+  if (spec.explorer) {
+    const stage = await page.locator('.home-explorer-stage').boundingBox();
+    // Desktop art can extend past the stage's horizontal edges while remaining
+    // centered; the viewport overflow assertion below covers the page boundary.
+    assert.ok(stage && Math.abs(size.x + size.width / 2 - stage.x - stage.width / 2) < 2 && size.y >= stage.y - 1 && size.y + size.height <= stage.y + stage.height + 1, 'The selected facility should be centered vertically inside the globe explorer stage.');
+  }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow.');
   assert.equal(await figure.locator('button').count(), 0, 'Decorative previews should have no corner controls.');
   return {context, page, figure, img};
@@ -140,7 +169,11 @@ async function checkMotion(spec, width) {
     await testBackground.evaluate(element => element.remove());
     await figure.locator('..').screenshot({path: path.join(out, prefix + '-widget.png')});
     await page.screenshot({path: path.join(out, prefix + '-page.png')});
-    pass(prefix + ': automatic motion, no controls, offscreen suspension, copy and layout', {width: Math.round((await figure.boundingBox()).width), poster: await img.getAttribute('src')});
+    if (spec.explorer) {
+      assert.equal(await figure.getAttribute('data-energy-site'), 'landfill', 'Animation and scrolling must not change the user-selected facility.');
+      assert.equal(await page.locator('#home-energy-explorer').getAttribute('data-view'), 'facility');
+    }
+    pass(prefix + ': scene animation, no corner controls, offscreen suspension, copy and layout', {width: Math.round((await figure.boundingBox()).width), poster: await img.getAttribute('src')});
     const contextLostSupported = await canvas.evaluate(element => {
       const gl = element.getContext('webgl2') || element.getContext('webgl');
       const extension = gl?.getExtension('WEBGL_lose_context');
