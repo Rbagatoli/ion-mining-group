@@ -32,19 +32,17 @@
 .mb-site-action:hover:not(:disabled) { filter: brightness(1.12); }
 .mb-site-action:disabled { cursor: default; opacity: .6; }
 .mb-site-action:focus-visible, .mb-panel button:focus-visible, .mb-panel summary:focus-visible { outline: 2px solid var(--btc-300); outline-offset: 3px; }
-/* The original comparison buttons become the viewer's header. Keeping
-   them in place retains the builder events, focus and progressive fallback. */
+/* Keep comparison controls with the open scene, preserving builder events. */
 @media (min-width: 701px) {
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) {
         --dg-w: min(var(--max-dg), 100vw - var(--gut) * 2);
         width: var(--dg-w); margin-left: calc(50% - var(--dg-w) / 2);
-        border: 1px solid rgba(229,228,226,.16); border-radius: 16px;
-        overflow: hidden; background: #0b0c0d;
+        border: 0; border-radius: 0; overflow: visible; background: none;
     }
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch {
         grid-template-columns: repeat(2,minmax(0,190px)); justify-content: center;
         margin: 0; padding: 12px 18px; gap: 8px; border: 0;
-        border-bottom: 1px solid rgba(229,228,226,.09); background: rgba(229,228,226,.025);
+        background: none;
     }
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch .mb-site-action {
         min-height: 44px; padding: 10px 16px; border: 1px solid rgba(229,228,226,.15); border-radius: 7px;
@@ -57,12 +55,10 @@
 }
 @media (max-width: 700px) {
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) {
-        border: 1px solid rgba(229,228,226,.14); border-radius: 14px;
-        overflow: hidden; background: #0b0c0d;
+        border: 0; border-radius: 0; overflow: visible; background: none;
     }
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch {
-        margin: 0; padding: 8px 12px; gap: 6px; border: 0;
-        border-bottom: 1px solid rgba(229,228,226,.09); background: rgba(229,228,226,.025);
+        margin: 0; padding: 8px 0; gap: 6px; border: 0; background: none;
     }
     .mb-site-preview > .dg-fuel-pane:has(> .dg-views.plant-ready) > .mb-site-switch .mb-site-action {
         min-height: 44px; padding: 8px 6px; border: 1px solid rgba(229,228,226,.12); border-radius: 7px;

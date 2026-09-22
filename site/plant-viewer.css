@@ -1,17 +1,17 @@
-/* Original composition: a black field, platinum models and two callout columns. */
+/* Open composition: platinum models on the page, with independent callouts. */
 .dg-views { position: relative; }
 /* The enhanced view owns its layout, including the mobile callout grid. */
-.dg-wrap.plant-ready { display: block; padding: 0; aspect-ratio: auto; overflow: hidden; background: #050505; border-bottom: 1px solid var(--line); }
+.dg-wrap.plant-ready { display: block; padding: 0; aspect-ratio: auto; overflow: visible; background: none; border: 0; }
 .dg-wrap.plant-ready::before { display: none; }
 .dg-wrap.plant-ready > :not(.plant-preview), .dg-views.plant-ready > .dg-wrap { display: none !important; }
-.dg-views.plant-ready { display: block; border: 1px solid var(--line); background: #050505; }
+.dg-views.plant-ready { display: block; border: 0; background: none; }
 .plant-ready ~ .dg-list { display: none !important; }
 .plant-preview { width: 100%; min-width: 0; position: relative; color: var(--plat-200); text-align: left; }
 .plant-preview--loading { position: absolute; inset: 0; opacity: 0; visibility: hidden; pointer-events: none; }
 .plant-preview [hidden] { display: none !important; }
 .plant-drawing { position: relative; }
-.plant-stage { position: relative; aspect-ratio: 1280 / 470; overflow: hidden; isolation: isolate;
-    background: radial-gradient(ellipse at 50% 36%,rgba(229,228,226,.045),transparent 65%),#050505; }
+.plant-stage { position: relative; aspect-ratio: 2.35; overflow: hidden; isolation: isolate; background: none; }
+.plant-stage .anim-field--plant { mask-image: radial-gradient(ellipse at 50% 48%,#000 28%,transparent 72%); }
 .plant-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: auto; }
 .plant-canvas canvas { display: block; width: 100%; height: 100%; pointer-events: auto; cursor: grab; touch-action: none; outline-offset: -3px; }
 .plant-canvas canvas:active { cursor: grabbing; }
@@ -74,14 +74,12 @@
 }
 @media (prefers-reduced-motion: reduce) { .plant-callout { transition: none; } }
 
-/* Desktop keeps its equipment cards and authored camera composition, with the
-   same contained frame and compact controls as the phone presentation. */
+/* Equipment cards stay readable; the scene itself has no enclosing surface. */
 @media (min-width: 701px) {
+    #inside, #the-pad, #inside-container { --max-dg: 1720px; }
     .dg-wrap.plant-ready, .dg-views.plant-ready {
-        border: 1px solid rgba(229,228,226,.16); border-radius: 16px; overflow: hidden;
-        background: #0b0c0d;
+        border: 0; border-radius: 0; overflow: visible; background: none;
     }
-    .plant-stage { background: radial-gradient(ellipse at 50% 46%,rgba(229,228,226,.065),transparent 72%),#070809; }
     .plant-callout {
         border-color: rgba(229,228,226,.18); border-radius: 9px;
         background: linear-gradient(135deg,rgba(229,228,226,.07),rgba(229,228,226,.015)),rgba(9,10,11,.94);
@@ -95,8 +93,7 @@
     .plant-caption { color: var(--plat-400); font: 11px/1.4 var(--sans); text-transform: none; letter-spacing: 0; }
     .plant-stage .scene-gesture-hint { background: transparent; color: var(--plat-400); font: 11px/1.4 var(--sans); }
     .plant-hint { display: none; }
-    .plant-toolbar { justify-content: center; gap: 8px; padding: 12px 18px;
-        border-top: 1px solid rgba(229,228,226,.09); background: rgba(229,228,226,.025); }
+    .plant-toolbar { justify-content: center; gap: 8px; padding: 12px 18px; border: 0; background: none; }
     .plant-toolbar button, .plant-toolbar [data-plant="inspect"],
     .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] {
         min-height: 44px; min-width: 44px; padding: 10px 16px; border-radius: 7px;
@@ -128,18 +125,17 @@
     .wrap > .dg-wrap.plant-ready, .wrap > .dg-views.plant-ready,
     .mb-site-preview > .dg-fuel-pane > .dg-views.plant-ready {
         --dg-w: 100%; width: 100%; margin-inline: 0;
-        border: 1px solid rgba(229,228,226,.14); border-radius: 14px; overflow: hidden;
-        background: #0b0c0d;
+        border: 0; border-radius: 0; overflow: visible; background: none;
     }
-    .plant-stage { height: auto; max-height: 380px; aspect-ratio: 4 / 3;
-        background: radial-gradient(ellipse at 50% 46%,rgba(229,228,226,.065),transparent 72%),#070809; }
+    .plant-stage { width: calc(100% + var(--gut) * 2); margin-inline: calc(-1 * var(--gut));
+        height: auto; max-height: 460px; aspect-ratio: 6 / 5; background: none; }
     .plant-caption { top: 12px; left: 14px; right: 14px; justify-content: flex-end;
         font: 11px/1.4 var(--sans); text-transform: none; letter-spacing: 0; }
     .plant-caption [data-plant="cooling"] { display: none; }
     .plant-stage .scene-gesture-hint { inset: auto 0 5px; max-width: none; padding: 4px;
         background: transparent; color: var(--plat-400); text-align: center; font: 11px/1.4 var(--sans); }
     .plant-callouts, .plant-hint { display: none; }
-    .plant-toolbar { gap: 6px; padding: 8px 12px; background: rgba(229,228,226,.025); }
+    .plant-toolbar { gap: 6px; padding: 8px 0; background: none; }
     .plant-toolbar button, .plant-toolbar [data-plant="inspect"],
     .plant-toolbar [data-plant="power"], .plant-toolbar [data-plant="xray"] {
         min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 7px;
@@ -160,7 +156,7 @@
     .plant-preview--tools .plant-tools { display: flex; flex-basis: 100%; gap: 6px; padding-top: 2px; }
     .plant-tools [data-plant="power"] { order: 0; margin-right: auto; }
     .plant-tools [data-plant="reset"] { flex: 1; }
-    .plant-equipment { display: block; order: 2; border-top: 1px solid rgba(229,228,226,.09); padding: 0 12px 5px; }
+    .plant-equipment { display: block; order: 2; border-top: 1px solid rgba(229,228,226,.09); padding: 0 2px 5px; }
     .plant-equipment select { display: block; width: 100%; min-width: 0; height: 48px;
         padding: 0 26px 0 2px; border: 0; border-radius: 0; color: var(--plat-200); background-color: transparent;
         font: 400 16px/1.4 var(--sans); cursor: pointer; color-scheme: dark; }
