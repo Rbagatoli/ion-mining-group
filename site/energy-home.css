@@ -14,7 +14,7 @@
   background: radial-gradient(ellipse at 50% 50%,rgba(229,228,226,.07),transparent 58%),radial-gradient(ellipse at 50% 73%,rgba(247,147,26,.10),transparent 45%); }
 .home-visual-kicker { position: relative; font: 10px/1.5 var(--mono); color: var(--plat-400); letter-spacing: .07em; }
 .home-hero-visual h3 { position: relative; margin: 9px 0 12px; font: 500 clamp(22px,2.2vw,31px)/1.2 var(--sans); letter-spacing: -.03em; }
-.home-hero-visual .sourcing-render { width: 118%; max-width: none; margin: 14px -9% 20px; }
+.home-hero-visual .sourcing-render { width: 108%; max-width: none; margin: 14px -4% 20px; }
 .home-energy-types { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; list-style: none; margin: 0 auto; padding: 0; max-width: 620px; }
 .home-energy-types li { padding: 0; }
 .home-energy-types button { appearance: none; min-height: 38px; padding: 8px 1px; border: 0; border-bottom: 1px solid transparent; border-radius: 0;
