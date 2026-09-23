@@ -355,11 +355,13 @@ export function mountHomeDiscoveryGlobe(host) {
                 const label = pins.find(item => item.id === id);
                 label.anchor = anchor; label.tip = anchor.clone().normalize().multiplyScalar(3.247);
             }
-            // One continuous geographic circuit connects every region. Selection
-            // highlights its adjacent links without hiding the rest of the network.
+            // The circuit gives each region two neighbors; four additional pairs
+            // give every pin exactly one more connection, for twelve unique links.
             const circuit = ['wind','hydro','landfill','grid','industrial','nuclear','flare','solar']
                 .map(id => markers.findIndex(marker => marker.id === id));
             const pairs = circuit.map((index,next) => [index,circuit[(next+1)%circuit.length]]);
+            [['wind','landfill'],['hydro','solar'],['grid','nuclear'],['industrial','flare']]
+                .forEach(pair => pairs.push(pair.map(id => markers.findIndex(marker => marker.id === id))));
             pairs.forEach(([a,b],index) => {
                 const start = markers[a].anchor.clone().normalize(), end = markers[b].anchor.clone().normalize();
                 const points = Array.from({length:49},(_,i) => {
