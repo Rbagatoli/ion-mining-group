@@ -1,5 +1,5 @@
-/* Alliance's original COBE globe and settings, adapted to Proton's illustrative
-   energy routes. Regions explain a source, not available sites. */
+/* Alliance's original dotted COBE globe with Proton's platinum/orange palette.
+   Illustrative energy regions explain a source, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
     landfill:{label:'Landfill gas',lat:41.8,lon:-87.5},
@@ -182,8 +182,11 @@ export function mountHomeDiscoveryGlobe(host) {
         try {
             renderer = createGlobe(canvas,{
                 devicePixelRatio:ratio,width:width*ratio,height:height*ratio,
-                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:3,
-                baseColor:[.08,.14,.25],markerColor:[.1,.8,1],glowColor:[.1,.3,.8],
+                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.5,
+                // Dark mode leaves oceans at one tenth of the base color.
+                // Softer map brightness gives the raised dots a platinum
+                // highlight without clipping to white; every neutral is warm.
+                baseColor:[.56,.56,.55],markerColor:[247/255,147/255,26/255],glowColor:[.26,.255,.245],
                 markers:pins.map(pin => ({location:[pin.lat,pin.lon],size:.03})),
                 onRender:state => {
                     state.phi = phi; state.theta = theta; state.scale = scale;

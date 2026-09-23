@@ -1,6 +1,6 @@
-/* The video hero and shared page-field guards. The homepage may theme its
+/* The Proton animation hero and shared page-field guards. The homepage may theme its
    headline while retaining the measurement and retired-animation protections.
-   Playback lifecycle is exercised in home-hero-video-suite.js. */
+   Animation lifecycle is exercised in home-power-scene-suite.js. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
@@ -41,9 +41,17 @@ if (heroClamp && baseClamp) {
        heroClamp[2] + 'vw, cap ' + heroClamp[3] + 'px');
 }
 
-/* ---------- 2. The requested decorative video replaces a hero-only field ---------- */
-ok(/<video\b[^>]*class="[^"]*\bhome-hero-video\b[^"]*"/.test(html),
-   'the hero carries the supplied decorative footage');
+/* ---------- 2. The original Proton animation and focused headline accent ---------- */
+const homeHeading = (html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || '';
+const headlineAccent = [...homeHeading.matchAll(/<span\b[^>]*class="[^"]*\bhome-hero-gradient\b[^"]*"[^>]*>([\s\S]*?)<\/span>/g)];
+ok(headlineAccent.length === 1 && headlineAccent[0][1].replace(/<[^>]+>/g,'').trim() === 'Bitcoin',
+   'only Bitcoin receives the orange headline accent');
+const platinumWords = [...homeHeading.matchAll(/<span\b[^>]*class="[^"]*\bhome-hero-platinum\b[^"]*"[^>]*>([\s\S]*?)<\/span>/g)]
+    .map(match => match[1].replace(/<[^>]+>/g,'').trim());
+ok(platinumWords.join(' ') === 'Power in. out.', 'the remaining headline words retain their platinum treatment');
+ok(/class="[^"]*\bhome-power-scene\b[^"]*"/.test(html), 'the hero carries the decorative Proton animation');
+ok(!/alliance-hero(?:-poster)?\.(?:mp4|webp)|home-hero-video\.js/.test(html),
+   'the homepage no longer loads Alliance freight footage or its playback controller');
 ok(html.indexOf('hero-atom') < 0 && css.indexOf('.ha-') < 0,
    'and nothing of the mark survives in the page or the stylesheet');
 
