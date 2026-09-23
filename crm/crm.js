@@ -67,9 +67,27 @@
   }
   const intakeInbox=ProtonCrmIntakeInbox.create({D,E,esc,model:ProtonSourcingModel,config:window.ProtonIntakeConfig});
   let stopWorkFreshness=()=>{};
+  let exchangeVisible=false,exchangeGeneration=0,exchangeView=null;
+  function syncAgentExchange(show){
+    if(show===exchangeVisible)return;
+    exchangeVisible=show;const generation=++exchangeGeneration,panel=$('agentExchangePanel');
+    exchangeView?.disconnect();exchangeView=null;panel.hidden=!show;
+    if(!show){panel.textContent='';return;}
+    panel.textContent='Opening agent connection…';
+    import('./agent-exchange/view.mjs').then(module=>{
+      if(generation!==exchangeGeneration||!exchangeVisible)return;
+      exchangeView=module.mountCrmAgentView({root:panel,data:D,auth:()=>typeof firebase==='undefined'?null:firebase.auth()});
+    }).catch(e=>{if(generation===exchangeGeneration)panel.textContent='Agent connection unavailable: '+(e.message||String(e));});
+  }
+  window.addEventListener('pagehide',()=>syncAgentExchange(false));
+  window.addEventListener('pageshow',e=>{if(e.persisted)queueRender();});
   function render(){
     stopWorkFreshness();stopWorkFreshness=()=>{};intakeInbox.dispose();
     discovery.unmount();$('content').classList.toggle('crm-discover',current==='discover');$('content').classList.toggle('crm-control',current==='control');nav();const status=D.status();
+    const showExchange=current==='team'&&selection?.kind==='exchange';
+    $('content').classList.toggle('crm-exchange',showExchange);
+    // Tear down the exchange before any route-specific early return.
+    syncAgentExchange(showExchange&&status.ready&&!status.error);
     if(isWorkbenchRoute()){
       // The route shell never projects a local or previous account's task data.
       // The mounted panel owns its draft and freezes itself on account changes.
@@ -78,6 +96,7 @@
     }
     if(!status.ready){$('content').innerHTML='<div class="loading">Opening your account…</div>';return;}
     if(status.error){$('content').innerHTML=head('Your data needs attention','Your original records have been retained.')+'<div class="banner">'+esc(status.error)+'</div>'+button('Export original backup','backup')+' '+button('Reload workspace','reload');return;}
+    if(showExchange){$('content').innerHTML=head('Agent connection','Lead saves and receipt recovery in the current Proton account.')+'<p><a class="link" href="#team">Back to team →</a></p>';releaseUpdates?.restore();return;}
     let html='';
     if(current==='control')html=ProtonCrmControl.render({sites:D.sites(),state:agent(),followups:D.followups(),contacts:D.contacts(),date:day(),connection:D.status()},{head,stat,esc,icon,row,tag,money,href,stageLabel,leadCard});else if(current==='today')html=renderToday();else if(current==='requests')html=intakeInbox.html();else if(current==='pipeline')html=renderPipeline();else if(current==='discover')html=renderDiscover();else if(current==='team')html=renderTeam();else if(current==='people')html=renderPeople();else html=renderSettings();
     $('content').innerHTML=(status.syncError?'<div class="banner" role="status">'+esc(status.syncError)+' · Local changes are retained.</div>':'')+syncNotice(status)+html;
@@ -128,7 +147,7 @@
   function renderPeople(){
     const contacts=D.contacts().filter(c=>[c.name,c.organization,c.email,c.phone].join(' ').toLowerCase().includes(peopleSearch.toLowerCase()));return head('People, not just companies.','Keep the people who can move a deal forward.','new-contact','Add person')+'<div class="toolbar">'+search('peopleSearch','Find a name, company or contact',peopleSearch)+'</div><section class="panel">'+(contacts.length?contacts.slice(0,100).map(c=>row({name:c.name||c.organization||'Saved contact',sub:[c.title,c.organization,c.email||c.phone].filter(Boolean).join(' · '),glyph:'people',action:'edit-contact',id:c.id})).join(''):empty('A relationship starts here.','Save a person, their role, and a phone or email. Published site contacts also appear inside each energy opportunity.','new-contact','Add a person','people'))+'</section>';
   }
-  function renderSettings(){const s=D.status();return head('Your workspace.','Proton CRM · independent app, connected records.')+'<section class="panel">'+row({name:s.uid?'Proton account':'On this device',sub:s.uid?'Agent register: '+s.agent.mode:'Local records stay in this browser until connected.',action:'account',glyph:'people'})+row({name:'People',sub:'Names, roles, phone numbers and email addresses.',url:'#people',glyph:'people'})+row({name:'Export a CRM backup',sub:'Prospects, contacts, follow-ups, evidence and the agent register.',action:'backup',glyph:'task'})+row({name:'Outbound email readiness',sub:'Sender test, reply path, company footer and authorized scope.',action:'email-readiness',glyph:'task'})+row({name:'Grok connection & setup',sub:'Team instructions, task handoffs and connection boundaries.',action:'setup',glyph:'team'})+row({name:'Open Proton software',sub:'Calculators, mining operations and the full map.',url:'../app/index.html',glyph:'site'})+'</section><section class="panel" style="margin-top:22px"><div class="panel-head"><h2>Made for the next conversation</h2></div><div class="panel-body"><p class="quiet-note">This app shares existing Proton records on the same domain. Your saved stages, contacts and capital evidence remain in their original stores. Installing or opening a different hostname does not transfer browser data.</p><p class="quiet-note">Add Proton CRM to your home screen from your browser’s Share or Install menu. It opens with its own name and navigation.</p></div></section>';}
+  function renderSettings(){const s=D.status();return head('Your workspace.','Proton CRM · independent app, connected records.')+'<section class="panel">'+row({name:s.uid?'Proton account':'On this device',sub:s.uid?'Agent register: '+s.agent.mode:'Local records stay in this browser until connected.',action:'account',glyph:'people'})+row({name:'People',sub:'Names, roles, phone numbers and email addresses.',url:'#people',glyph:'people'})+row({name:'Export a CRM backup',sub:'Prospects, contacts, follow-ups, evidence and the agent register.',action:'backup',glyph:'task'})+row({name:'Outbound email readiness',sub:'Sender test, reply path, company footer and authorized scope.',action:'email-readiness',glyph:'task'})+row({name:'Agent connection',sub:'Lead saves and exact server receipts.',url:'#team/exchange',glyph:'team'})+row({name:'Grok connection & setup',sub:'Team instructions, task handoffs and connection boundaries.',action:'setup',glyph:'team'})+row({name:'Open Proton software',sub:'Calculators, mining operations and the full map.',url:'../app/index.html',glyph:'site'})+'</section><section class="panel" style="margin-top:22px"><div class="panel-head"><h2>Made for the next conversation</h2></div><div class="panel-body"><p class="quiet-note">This app shares existing Proton records on the same domain. Your saved stages, contacts and capital evidence remain in their original stores. Installing or opening a different hostname does not transfer browser data.</p><p class="quiet-note">Add Proton CRM to your home screen from your browser’s Share or Install menu. It opens with its own name and navigation.</p></div></section>';}
   function role(id){return G.role(id);}
   function options(map,selected){return Object.entries(map).map(([v,l])=>'<option value="'+esc(v)+'"'+(String(selected)===v?' selected':'')+'>'+esc(l)+'</option>').join('');}
   // Detail panels and write forms are defined below; each form captures its original revision.
@@ -136,7 +155,7 @@
     agentWorkbench?.destroy();agentWorkbench=null;workbenchGate='';
     taskRequest=null;completedReviewSession=null;
     const parts=location.hash.replace(/^#/,'').split('/');current=['control','today','requests','pipeline','discover','team','people','settings'].includes(parts[0])?parts[0]:'control';
-    try{selection=parts.length>=3?{kind:parts[1],id:decodeURIComponent(parts.slice(2).join('/'))}:null;}catch(_){selection=null;}
+    try{selection=parts[0]==='team'&&parts[1]==='exchange'&&parts.length===2?{kind:'exchange'}:parts.length>=3?{kind:parts[1],id:decodeURIComponent(parts.slice(2).join('/'))}:null;}catch(_){selection=null;}
     if(sheet.open)sheet.close();modalForm=false;siteTab='overview';render();
     if(selection){if(selection.kind==='site')openSite(selection.id);else if(selection.kind==='lead')openLead(selection.id);else if(selection.kind==='task')openTask(selection.id);else if(selection.kind==='deal')dealForm(selection.id);}
   }
@@ -796,6 +815,8 @@
   });
   function safeToUpdate(){
     const status=D.status(),a=status.agent;
+    // The exchange owns an in-memory editor and may be awaiting an exact receipt.
+    if(exchangeVisible)return false;
     if(!status.ready||status.error||busy||activeActions||sheet.open||modalForm||completedReviewSession?.saving||completedReviewSession?.pending)return false;
     if(!D.reloadSafety?.().safe||!intakeInbox.reloadSafety?.().safe)return false;
     // A newer validator may read a rejected snapshot. Reloading never accepts it:
