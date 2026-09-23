@@ -111,7 +111,7 @@
         if (dest) {
             out.push('');
             var label = dest.options[dest.selectedIndex];
-            out.push('Destination: ' + (label ? label.textContent : dest.value));
+            out.push((dest.value === 'ion' ? 'Hosting preference: ' : 'Destination: ') + (label ? label.textContent : dest.value));
             /* Named in the copyable order too. This block is what a customer pastes into an
                email to their finance team, and a fleet's destination is the first thing that
                gets asked about. */
@@ -130,12 +130,11 @@
                 var termT = chosenTerm();
                 if (termT) {
                     out.push('  electricity: ' + termT.label + ' at ' +
-                             Prepay.rateLabel(pickedT, termT) + ' (indicative)');
+                             (Prepay.rateLabel(pickedT, termT) || 'rate to be confirmed') + ' (indicative)');
                 }
                 if (typeof Facilities !== 'undefined' && Facilities.isFull(pickedT)) {
-                    out.push('  NOTE: this site is fully occupied. Machines ordered now hold a ' +
-                             'place on its waitlist; a date is confirmed before shipping.');
-                }
+                    out.push('  NOTE: ' + Facilities.availabilityNote(pickedT));
+                } else if (Facilities.isComingSoon(pickedT)) out.push('  NOTE: ' + Facilities.availabilityNote(pickedT));
             }
             if (dest.value !== 'ion') {
                 ['facility', 'attention', 'street', 'city', 'region', 'postcode', 'country']
@@ -357,8 +356,8 @@
                        have to be kept in step by hand. */
                     html += '<div class="fac-prepay">' +
                         '<strong>' + esc(term.label) + '</strong> at ' +
-                        esc(Prepay.rateLabel(picked, term)) +
-                        ' &mdash; itemised with the order above' +
+                        esc(Prepay.rateLabel(picked, term) || 'rate to be confirmed') +
+                        (Facilities.isComingSoon(picked) ? ' &mdash; illustrative comparison only; availability and commissioning are unconfirmed' : ' &mdash; itemised with the order above') +
                         '<br><span class="fac-prepay-note">' +
                         esc(Prepay.INDICATIVE_NOTE) + '</span></div>';
                 }

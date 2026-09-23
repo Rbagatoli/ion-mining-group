@@ -56,7 +56,7 @@ function card(s) {
 
        What changes is the WORDING. "Start mining" over a site with no free racks is the kind of
        small lie that becomes a refund, so a full site asks for what it can actually give. */
-    const cta = open ? 'Start mining' : 'Join the waitlist';
+    const cta = Facilities.actionLabel(s);
     const href = './hardware.html?site=' + encodeURIComponent(s.id);
 
     return [
@@ -66,8 +66,8 @@ function card(s) {
         '          <p class="fac-fuel">' + esc(s.fuel) + '</p>',
         '          <p>' + esc(s.blurb) + '</p>',
         '          <dl class="fac-spec">',
-        '            <div class="fac-row"><dt>Capacity</dt><dd>' + esc(cap) + '</dd></div>',
-        '            <div class="fac-row"><dt>Power price</dt><dd>' + esc(pwr) + '</dd></div>',
+        '            <div class="fac-row"><dt>' + esc(Facilities.capacityTitle(s)) + '</dt><dd>' + esc(cap) + '</dd></div>',
+        '            <div class="fac-row"><dt>Est. hosting rate</dt><dd>' + esc(pwr) + '</dd></div>',
         '            <div class="fac-row"><dt>Status</dt><dd>' + esc(s.status) + '</dd></div>',
         '          </dl>',
         '          <span class="arrow-link fac-go">' + esc(cta) + '\n            ' + ARROW,
@@ -114,13 +114,16 @@ function prepayBar() {
 }
 
 function hostingExperience() {
-    const sites = Facilities.all(), first = sites[0];
-    const regions = sites.map((s,i) => '        <button type="button" data-region="' + esc(s.id) + '" aria-pressed="' + (i === 0) + '" disabled><span>' +
-        String(i+1).padStart(2,'0') + '</span><strong>' + esc(s.id === 'alberta' ? 'Western Basin' : s.name) + '</strong><small>' + esc(s.region) + '</small></button>').join('\n');
-    const options = sites.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
-    const details = '        <div class="hx-summary-head"><div class="hx-place"><span data-globe="region">' + esc(first.region) + '</span><h4 data-globe="name">' + esc(first.name) + '</h4><p data-globe="fuel">' + esc(first.fuel) + '</p></div><span class="hx-status" data-globe="status">' + esc(first.status) + '</span></div>\n' +
-        '        <dl class="hx-metrics"><div><dt>Site capacity</dt><dd data-globe="capacity">' + esc(Facilities.capacityLabel(first)) + '</dd></div><div><dt>Est. hosting rate</dt><dd data-globe="rate">' + esc(Facilities.powerLabel(first)) + '</dd></div></dl>\n' +
-        '        <a class="btn btn--primary" data-globe="cta" href="./hardware.html?site=' + esc(first.id) + '">' + (Facilities.acceptsMachines(first) ? 'Start mining here' : 'Join this waitlist') + '</a>';
+    const groups = Facilities.groups(), first = groups[0].sites[0];
+    const regions = groups.map((s,i) => '        <button type="button" data-region="' + esc(s.id) + '" aria-pressed="' + (i === 0) + '" disabled><span>' +
+        String(i+1).padStart(2,'0') + '</span><strong>' + esc(s.name) + '</strong><small>' + esc(s.region) + '</small></button>').join('\n');
+    const options = groups.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
+    const choices = groups.filter(g => g.sites.length > 1).map(g => g.sites.map((s,i) => '<button type="button" data-hosting-site="' + esc(s.id) + '" aria-pressed="false" disabled><span>' + (Facilities.isComingSoon(s) ? 'Proposed site ' + i : 'Operating site') + '</span><strong>' + esc(Facilities.capacityLabel(s)) + '</strong><small>' + esc(s.status) + '</small></button>').join('')).join('');
+    const details = '        <div class="hx-site-options" data-globe="sites" role="group" aria-label="Sites in this region" hidden>' + choices + '</div>\n' +
+        '        <div class="hx-summary-head"><div class="hx-place"><span data-globe="region">' + esc(first.region) + '</span><h4 data-globe="name">' + esc(first.name) + '</h4><p data-globe="fuel">' + esc(first.fuel) + '</p></div><span class="hx-status" data-globe="status">' + esc(first.status) + '</span></div>\n' +
+        '        <p class="hx-plan" data-globe="plan">' + (Facilities.isComingSoon(first) ? 'Exploring a future site here.' : 'Operating site · Fully occupied') + '</p>\n' +
+        '        <dl class="hx-metrics"><div><dt data-globe="capacity-title">' + esc(Facilities.capacityTitle(first)) + '</dt><dd data-globe="capacity">' + esc(Facilities.capacityLabel(first)) + '</dd></div><div><dt>Est. hosting rate</dt><dd data-globe="rate">' + esc(Facilities.powerLabel(first)) + '</dd></div></dl>\n' +
+        '        <a class="btn btn--primary" data-globe="cta" href="./hardware.html?site=' + esc(first.id) + '">' + esc(Facilities.actionLabel(first)) + '</a>';
     return fs.readFileSync(path.join(__dirname,'hosting-experience.html'),'utf8').replace(/\r\n/g,'\n').trimEnd()
         .replace('{{REGIONS}}',regions).replace('{{REGION_OPTIONS}}',options).replace('{{DETAILS}}',details).replace('{{INDICATIVE}}',esc(Facilities.INDICATIVE_NOTE));
 }

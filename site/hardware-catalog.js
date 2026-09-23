@@ -56,8 +56,8 @@
         : 'Order estimate: ' + new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0}).format(price) + ' USD / machine';
       const detail = el('hwCatalogPriceDetails');
       if (detail) detail.textContent = price === null
-        ? 'A confirmed hardware quote is required for this configuration. Review hosting and energy costs at checkout.'
-        : 'The order estimate is indicative as of ' + win.PriceList.ASOF + '. It is separate from the public hardware reference; your final hardware price is confirmed on quote. Hosting and energy costs are shown at checkout.';
+        ? 'A confirmed hardware quote is required for this configuration. Review indicative hosting estimates at checkout.'
+        : 'The order estimate is indicative as of ' + win.PriceList.ASOF + '. It is separate from the public hardware reference; your final hardware price is confirmed on quote. Indicative hosting estimates are shown at checkout.';
     }
     function syncCheckout() {
       const chosen = win.Facilities && win.Facilities.chosen();
@@ -89,7 +89,7 @@
     if (siteChoice && win.Facilities) {
       win.Facilities.all().forEach(site => {
         const option = doc.createElement('option'); option.value = site.id;
-        option.textContent = site.name + ' · ' + site.region;
+        option.textContent = site.name + ' · ' + site.status;
         siteChoice.append(option);
       });
       const chosen = win.Facilities.chosen(); siteChoice.value = chosen ? chosen.id : '';

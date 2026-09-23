@@ -1,29 +1,7 @@
-/* The sites a customer can choose to have their machines run at.
- *
- * ONE COPY, READ BY THREE PAGES. hosting.html renders the picker from this, hardware.html shows
- * the chosen site above the catalogue, and cart.html puts it on the order. A facility's capacity
- * written out by hand in three places is three numbers that agree until somebody edits one, and
- * this repo has already paid for that lesson once with miner prices — price-list.js exists
- * because the same cost was inherited into two files and drifted 5.8x apart.
- *
- * WHAT IS REAL HERE AND WHAT IS NOT.
- *
- * The regions and their energy are real. The Permian and the Bakken flare associated gas because
- * the pipelines were never built to take it; Alberta vents solution gas at oil batteries, and does
- * it in a cold climate. Dubai is the UAE hosting region; its power source is to be confirmed.
- *
- * FOUR OF THE FIVE ARE IN NORTH AMERICA, which is a commercial choice rather than an accident:
- * two jurisdictions, one border, one language of contract, and machines that can be moved between
- * sites by road if a site goes down.
- *
- * The FIGURES ARE INDICATIVE AND PROTON HAS NOT CONTRACTED THESE SITES. They are sized to what those
- * regions actually support rather than invented, so nothing here misleads about the shape of the
- * market — but a capacity or a rate becomes a promise the moment a customer pays against it, so
- * every surface that shows one also shows that it is indicative until contracted. `indicative`
- * below is not decoration: it is what stops this being a claim, and the tests assert it is
- * displayed wherever a figure is.
- *
- * When a site is contracted, set indicative:false and the wording changes everywhere at once.
+/* Shared hosting inventory for the map, catalogue and order flow.
+ * Alberta has one existing 160 kW site, fully occupied. Every other entry is a
+ * proposed site: capacity is a planning range and no ready date is confirmed.
+ * Rates remain estimates; a selected site records a preference, not reserved space.
  */
 
 var Facilities = (function () {
@@ -32,78 +10,108 @@ var Facilities = (function () {
     var SITES = [
         {
             id: 'permian',
+            groupId: 'permian', groupName: 'Permian Basin',
             region: 'Texas, USA',
             name: 'Permian Basin',
             fuel: 'Flared associated gas',
-            blurb: 'Gas that is burned at the wellhead because there is no pipeline to take it.',
-            capacityMw: 18,
+            blurb: 'Proposed hosting using associated gas in the Permian Basin; site and supply arrangements remain unconfirmed.',
+            capacityMinMw: .3, capacityMaxMw: .75,
             /* AN ALL-IN HOSTING RATE, not the cost of the energy. What a client pays covers
                power, cooling, network, security and hands on site, so it sits several cents
                above the raw stranded-gas cost — which is the margin the business runs on and
                is why 6-8c is the honest number to publish rather than 2-3c. */
             powerCents: 7.1,
-            status: 'Fully occupied',
-            statusKind: 'full',
-            leadTime: 'Waitlist is moving; next release expected as machines cycle out',
+            status: 'Coming soon',
+            statusKind: 'coming-soon',
+            leadTime: 'Proposed site. No commissioning date or available capacity is confirmed.',
             indicative: true
         },
         {
             id: 'bakken',
+            groupId: 'bakken', groupName: 'Bakken',
             region: 'North Dakota, USA',
             name: 'Bakken',
             fuel: 'Flared associated gas',
-            blurb: 'Oil came out faster than pipelines were built to take the gas with it.',
-            capacityMw: 14,
+            blurb: 'Proposed hosting using associated gas in the Bakken; site and supply arrangements remain unconfirmed.',
+            capacityMinMw: .3, capacityMaxMw: .75,
             powerCents: 6.8,
-            status: 'Fully occupied',
-            statusKind: 'full',
-            leadTime: 'Waitlist open; winter curtailment frees the most space',
+            status: 'Coming soon',
+            statusKind: 'coming-soon',
+            leadTime: 'Proposed site. No commissioning date or available capacity is confirmed.',
             indicative: true
         },
         {
             id: 'alberta',
+            groupId: 'alberta', groupName: 'Alberta',
             region: 'Alberta, Canada',
-            name: 'Western Sedimentary Basin',
+            name: 'Alberta · Existing site',
             fuel: 'Vented and flared gas',
-            blurb: 'Solution gas from oil batteries, and landfill gas from municipal sites nearby.',
-            capacityMw: 12,
+            blurb: 'The existing Alberta hosting site has 160 kW of capacity and is fully occupied.',
+            capacityMw: .16,
             powerCents: 7.4,
-            /* Cold climate is a real operational advantage here and it is why this site fills
-               first: less energy spent moving heat means more of the draw does work. */
             status: 'Fully occupied',
             statusKind: 'full',
-            leadTime: 'Waitlist open; the cold months free the most space',
+            leadTime: 'Waitlist open. No release date is confirmed.',
             indicative: true
         },
         {
             id: 'cold-lake',
+            groupId: 'alberta', groupName: 'Alberta',
             region: 'Alberta, Canada',
-            name: 'Cold Lake',
+            name: 'Alberta · Proposed site 1',
             fuel: 'Solution gas',
-            blurb: 'Heavy oil batteries making gas with no line to take it, in a climate that does the cooling.',
-            capacityMw: 9,
+            blurb: 'A proposed Alberta site, planned at 400–600 kW. The location and supply arrangements remain unconfirmed.',
+            capacityMinMw: .4, capacityMaxMw: .6,
             powerCents: 7.7,
-            status: 'Fully occupied',
-            statusKind: 'full',
-            leadTime: 'Waitlist open; the shortest of the four',
+            status: 'Coming soon',
+            statusKind: 'coming-soon',
+            leadTime: 'Proposed site. No commissioning date or available capacity is confirmed.',
+            indicative: true
+        },
+        {
+            id: 'alberta-expansion',
+            groupId: 'alberta', groupName: 'Alberta',
+            region: 'Alberta, Canada',
+            name: 'Alberta · Proposed site 2',
+            fuel: 'Power source to be confirmed',
+            blurb: 'A second proposed Alberta site, planned at 400–600 kW. The location and supply arrangements remain unconfirmed.',
+            capacityMinMw: .4, capacityMaxMw: .6,
+            powerCents: null,
+            status: 'Coming soon',
+            statusKind: 'coming-soon',
+            leadTime: 'Proposed site. No commissioning date or available capacity is confirmed.',
             indicative: true
         },
         {
             id: 'dubai',
+            groupId: 'dubai', groupName: 'Dubai',
             region: 'United Arab Emirates',
             name: 'Dubai',
             fuel: 'Power source to be confirmed',
-            blurb: 'Hosting in Dubai, with site specifications confirmed on your hosting agreement.',
-            capacityMw: 8,
+            blurb: 'Proposed hosting in Dubai; location, power supply and site specifications remain unconfirmed.',
+            capacityMinMw: .3, capacityMaxMw: .75,
             powerCents: 6.5,
-            status: 'Fully occupied',
-            statusKind: 'full',
-            leadTime: 'Waitlist open; placement timing confirmed individually',
+            status: 'Coming soon',
+            statusKind: 'coming-soon',
+            leadTime: 'Proposed site. No commissioning date or available capacity is confirmed.',
             indicative: true
         }
     ];
 
     function all() { return SITES.slice(); }
+    function groups() {
+        var result = [];
+        SITES.forEach(function (site) {
+            var group = result.find(function (item) { return item.id === site.groupId; });
+            if (!group) { group = {id:site.groupId,name:site.groupName,region:site.region,sites:[]}; result.push(group); }
+            group.sites.push(site);
+        });
+        return result;
+    }
+    function groupFor(site) {
+        if (typeof site === 'string') site = byId(site);
+        return site ? groups().find(function (group) { return group.id === site.groupId; }) || null : null;
+    }
 
     /* Returns null for anything that is not a known id. EVERY CALLER HAS TO HANDLE THAT, because
        the id arrives in a query string that a customer can edit, and a page that renders
@@ -114,18 +122,8 @@ var Facilities = (function () {
         return null;
     }
 
-    /* Can this site take machines TODAY?
-     *
-     * Every site is currently FULL. They are built, energised and running, and every rack in them
-     * is occupied — which is a better problem than an empty pad and is also the state a growing
-     * host is in most of the time.
-     *
-     * "Full" is NOT the same as "unavailable", and the difference is the whole flow: a customer
-     * can still buy machines and name the site they want, and they join that site's waitlist. So
-     * an order against a full site is ACCEPTED and flagged, never refused. Refusing would send
-     * somebody away who is trying to give us money for hardware we are happy to sell them.
-     *
-     * The card, the catalogue banner and the checkout all say so before anything is paid. */
+    /* An existing full site and a proposed site both lack available space, but
+       only the former has an operating capacity to wait for. */
     function acceptsMachines(site) {
         return !!site && site.statusKind === 'open';
     }
@@ -135,20 +133,36 @@ var Facilities = (function () {
     function isFull(site) {
         return !!site && site.statusKind === 'full';
     }
+    function isComingSoon(site) {
+        return !!site && site.statusKind === 'coming-soon';
+    }
+    function capacityTitle(site) { return isComingSoon(site) ? 'Planned capacity' : 'Site capacity'; }
+    function actionLabel(site) {
+        return acceptsMachines(site) ? 'Start mining here' : isFull(site) ? 'Join waitlist' : 'Register interest';
+    }
+    function availabilityNote(site) {
+        if (isComingSoon(site)) return 'This is a proposed site. Capacity and timing are unconfirmed; registering interest does not reserve space or a commissioning date.';
+        if (isFull(site)) return 'This site is fully occupied. Join the waitlist; space and timing must be confirmed before hosting or shipment.';
+        return 'Availability and placement timing are confirmed on your hosting agreement.';
+    }
 
     function powerLabel(site) {
-        if (!site || typeof site.powerCents !== 'number') return null;
+        if (!site) return null;
+        if (typeof site.powerCents !== 'number' || !isFinite(site.powerCents)) return 'To be confirmed';
         return site.powerCents.toFixed(1) + '¢/kWh';
     }
     function capacityLabel(site) {
-        if (!site || typeof site.capacityMw !== 'number') return null;
-        return site.capacityMw + ' MW';
+        if (!site) return null;
+        if (typeof site.capacityMinMw === 'number' && typeof site.capacityMaxMw === 'number')
+            return Math.round(site.capacityMinMw * 1000) + '–' + Math.round(site.capacityMaxMw * 1000) + ' kW';
+        if (typeof site.capacityMw !== 'number') return null;
+        return Math.round(site.capacityMw * 1000) + ' kW';
     }
 
     /* The one sentence that has to travel with any figure from this file. Kept here rather than
        written into each page, so it cannot be shown on two surfaces and forgotten on the third. */
-    var INDICATIVE_NOTE = 'Capacity, power price and availability are indicative and are ' +
-        'confirmed on your hosting agreement.';
+    var INDICATIVE_NOTE = 'Proposed capacities and hosting rates are indicative. Availability, final capacity, ' +
+        'rate and timing must be confirmed on your hosting agreement.';
 
     /* ---- which site the customer picked ----
 
@@ -244,27 +258,22 @@ var Facilities = (function () {
         /* SAID BEFORE ANYTHING IS PAID, and said on every surface that shows the site rather than
            only at the end. A customer who reaches a confirmation page and finds out there is no
            room has been let down by the three screens before it. */
-        var full = isFull(site)
-            ? '<p class="fac-full"><strong>' + esc(site.name) + ' is fully occupied.</strong> ' +
-              'Every rack here is running. You can still order your machines now and hold a ' +
-              'place on this site&rsquo;s waitlist &mdash; we will confirm a date before anything ' +
-              'ships, and nothing is charged until you have one.</p>'
-            : '';
+        var availability = '<p class="fac-full">' + esc(availabilityNote(site)) + '</p>';
         return '<div class="fac-chosen' + (acceptsMachines(site) ? '' : ' fac-chosen--wait') + '">' +
             '<div class="fac-chosen-head">' +
               '<div>' +
                 '<div class="fac-chosen-eyebrow">' +
-                  esc(where === 'cart' ? 'Shipping to' : 'Your machines will run at') + '</div>' +
+                  esc(isComingSoon(site) ? 'Proposed hosting preference' : 'Preferred hosting site') + '</div>' +
                 '<div class="fac-chosen-name">' + esc(site.name) +
                   ' <span class="fac-chosen-region">' + esc(site.region) + '</span></div>' +
               '</div>' + change +
             '</div>' +
             '<dl class="fac-chosen-spec">' +
-              '<div class="fac-row"><dt>Site capacity</dt><dd>' + esc(capacityLabel(site)) + '</dd></div>' +
-              '<div class="fac-row"><dt>Power price</dt><dd>' + powerCell + '</dd></div>' +
+              '<div class="fac-row"><dt>' + esc(capacityTitle(site)) + '</dt><dd>' + esc(capacityLabel(site)) + '</dd></div>' +
+              '<div class="fac-row"><dt>Est. hosting rate</dt><dd>' + powerCell + '</dd></div>' +
               '<div class="fac-row"><dt>Status</dt><dd>' + esc(site.status) + '</dd></div>' +
               '<div class="fac-row"><dt>Energy</dt><dd>' + esc(site.fuel) + '</dd></div>' +
-            '</dl>' + full + lead +
+            '</dl>' + availability + lead +
             /* Travels with the figures, every time, from the one string above. */
             (site.indicative ? '<p class="fac-chosen-note">' + esc(INDICATIVE_NOTE) + '</p>' : '') +
         '</div>';
@@ -279,9 +288,15 @@ var Facilities = (function () {
         bannerHtml: bannerHtml,
         esc: esc,
         all: all,
+        groups: groups,
+        groupFor: groupFor,
         byId: byId,
         acceptsMachines: acceptsMachines,
         isFull: isFull,
+        isComingSoon: isComingSoon,
+        capacityTitle: capacityTitle,
+        actionLabel: actionLabel,
+        availabilityNote: availabilityNote,
         powerLabel: powerLabel,
         capacityLabel: capacityLabel,
         INDICATIVE_NOTE: INDICATIVE_NOTE

@@ -19,7 +19,8 @@ for (const id of ['hwFacility', 'hwSiteChoice', 'hwPrepay', 'hwUnits', 'hwHash',
   'brCatalogPrev', 'brCatalogNext', 'brCatalogPosition', 'brCatalogRail', 'brMinerCanvas', 'hwCatalogQuantity', 'brCatalogRequest', 'hwCatalogCheckout']) {
   assert.match(html, new RegExp('id="' + id + '"'), 'Preserve ' + id);
 }
-assert.match(html, /Buy the machines<br>and the place to run them\./);
+assert.match(html, />Choose your miners\.<\/h1>/);
+assert.match(html, /site readiness, capacity and terms must be confirmed separately/);
 assert.doesNotMatch(html, /Send it as a quote request|id="(?:quote|mobile-quote|hwOrderPreview|hwOrderText|hwSubmit|hwCopy|brCatalogSlider)"|href="#quote"|type="range"/);
 assert.match(html, /href="#hwOrder">Review order/);
 assert.match(html, /id="brCatalogRail"[^>]*data-orientation="vertical"[^>]*role="group"[^>]*aria-label="Choose miner family"/);

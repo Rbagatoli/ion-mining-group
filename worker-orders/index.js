@@ -16,7 +16,7 @@
 // purchase order is a person, and the lifecycle says so rather than pretending
 // otherwise.
 
-import { CATALOGUE, DEPOSIT_RATE, ASOF, SITE_IDS, SITE_OPEN, PREPAY_TERMS }
+import { CATALOGUE, DEPOSIT_RATE, ASOF, SITE_IDS, SITE_OPEN, SITE_FULL, SITE_PLANNED, PREPAY_TERMS }
     from './catalogue.js';
 import * as Strike from './strike.js';
 import * as Stripe from './stripe.js';
@@ -172,25 +172,22 @@ function readDestination(raw) {
     if (kind !== 'ion' && kind !== 'own' && kind !== 'third') kind = 'ion';
     var d = { kind: kind };
 
-    /* WHICH Proton site. Checked against the Worker's own list, never taken on the browser's word:
-       this is a shipping instruction, and an unrecognised id here means a pallet of ASICs with
-       nowhere to go. Absent is fine — most orders arrive without one and ops assigns a site
-       — but a value that is present and wrong is refused rather than dropped, because silently
-       discarding it would let a customer pay believing they had chosen Texas. */
+    /* The hosting preference is checked against the Worker's own list. A proposed site is
+       recorded as interest only, not a confirmed shipping destination. Absent is fine, but an
+       unknown id is refused rather than silently changing the customer's selection. */
     if (kind === 'ion' && raw.site_id !== undefined && raw.site_id !== null && raw.site_id !== '') {
         var sid = text(raw.site_id, 32);
         if (SITE_IDS.indexOf(sid) < 0) return { error: 'unknown site' };
         d.site_id = sid;
 
-        /* FULL IS NOT A REFUSAL. Every site is currently at capacity, and refusing the order
-           would turn somebody trying to buy hardware into somebody who cannot. They are buying
-           machines; the site is a preference, and a full one means a place on that site's
-           waitlist rather than a truck next week.
-
-           The flag is set HERE, from the Worker's own list, and never from anything the browser
-           sent — same rule as the prices. Ops needs to know which orders are waiting on space
-           before they are shipped, and a customer-supplied boolean is not that. */
-        d.waitlisted = SITE_OPEN.indexOf(sid) < 0;
+        /* Only an operating full site has a capacity waitlist. Proposed sites record interest
+           without promising space or a commissioning date. These fields come from the server's
+           catalogue, never from client-supplied status flags. Existing stored orders are unchanged. */
+        d.waitlisted = SITE_FULL.indexOf(sid) >= 0 && SITE_OPEN.indexOf(sid) < 0;
+        if (SITE_PLANNED.indexOf(sid) >= 0) {
+            d.waitlisted = false;
+            d.hosting_status = 'planned';
+        }
 
         /* The prepaid electricity term, if one was chosen. Checked against the Worker's own list
            for the same reason the site is: this is a commitment of years and five figures, and

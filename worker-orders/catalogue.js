@@ -45,7 +45,7 @@ export const CATALOGUE = {
     "Whatsminer M66S++": { hashrate: 348, power: 5.394, efficiency: 15.5, usd: 12500 }
 };
 
-/* The sites a customer may have machines shipped to.
+/* Known hosting preferences, including proposed sites that cannot receive machines.
 
    IDS ONLY, and that is the point. The browser names a site; the Worker decides what that
    site IS. Capacity and power price are never sent by the browser and never stored from it
@@ -53,13 +53,19 @@ export const CATALOGUE = {
    not a figure anyone can be held to.
 
    A site absent from this list is refused rather than accepted-and-ignored, so a mistyped
-   or stale link cannot produce a paid order with no destination on it. */
-export const SITE_IDS = ["permian","bakken","alberta","cold-lake","dubai"];
+   or stale link cannot silently change the selected hosting preference. */
+export const SITE_IDS = ["permian","bakken","alberta","cold-lake","alberta-expansion","dubai"];
 
 /* Sites that can actually receive machines today. A customer may hold a link to a site that
    has since filled up or has not been energised yet, and taking money against it would be
    selling space that does not exist. */
 export const SITE_OPEN = [];
+
+/* Operating sites at capacity. Only these sites have an operational waitlist. */
+export const SITE_FULL = ["alberta"];
+
+/* Proposed sites record interest only; capacity and commissioning dates are unconfirmed. */
+export const SITE_PLANNED = ["permian","bakken","cold-lake","alberta-expansion","dubai"];
 
 /* Prepaid electricity terms a customer may commit to.
 

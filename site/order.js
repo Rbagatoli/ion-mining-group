@@ -128,13 +128,13 @@
             var site = (typeof Facilities !== 'undefined' && d.site_id)
                 ? Facilities.byId(d.site_id) : null;
             if (site) {
-                el.textContent = 'A Proton facility ' + String.fromCharCode(8212) + ' ' +
-                    site.name + ', ' + site.region + '. Power ' + Facilities.powerLabel(site) +
-                    ', indicative and confirmed on your hosting agreement. ' +
-                    'Your machines are delivered straight to the site that will run them.';
+                el.textContent = 'Hosting preference ' + String.fromCharCode(8212) + ' ' +
+                    site.name + ', ' + site.region + '. ' + site.status + '. Estimated hosting rate: ' + Facilities.powerLabel(site) +
+                    '. ' + Facilities.availabilityNote(site) +
+                    ' A commissioned site, capacity and delivery instructions must be confirmed before shipping.';
                 return;
             }
-            el.textContent = 'A Proton facility — we host them for you. We will confirm which site has capacity for a fleet this size.';
+            el.textContent = 'Proton hosting requested. A commissioned site, capacity and delivery instructions must be confirmed before shipping.';
             return;
         }
         var parts = [d.facility, d.street, d.city, d.region, d.postcode, d.country]

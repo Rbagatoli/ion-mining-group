@@ -3,12 +3,13 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(path.join(__dirname,'../../site/order.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../../site/order.html'),'utf8');
+const Facilities=require('../../site/facilities.js');
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
 async function load({ref='',base='https://orders.example',response,error}={}){
  const elements=Object.fromEntries(ids.map(id=>[id,{hidden:true,textContent:'',innerHTML:'',href:''}]));
  elements.ordLoading.hidden=false;const requests=[];
  const OrdersAPI={base:()=>base,isLocal:()=>false,explain:e=>e.message,get:p=>{requests.push(p);return error?Promise.reject(error):Promise.resolve(response);}};
- vm.runInNewContext(source,{document:{readyState:'complete',getElementById:id=>elements[id]||null},window:{location:{search:ref?'?ref='+encodeURIComponent(ref):''}},OrdersAPI});
+ vm.runInNewContext(source,{document:{readyState:'complete',getElementById:id=>elements[id]||null},window:{location:{search:ref?'?ref='+encodeURIComponent(ref):''}},OrdersAPI,Facilities});
  await new Promise(resolve=>setImmediate(resolve));return {elements,requests};
 }
 function failed(result,text){
@@ -32,4 +33,13 @@ function failed(result,text){
   assert.equal(e.demoFlag.hidden,!demo);assert.equal(e.ordPay.href,'./pay.html?ref=PM-A%2FB&leg=deposit');
   console.log('ok '+(demo?'demo':'real')+' order renders with the correct badge and payment reference');
  }
+ for(const site of Facilities.all()){
+  const reference='PM-SITE',order={reference,status:'quote_requested',totals:{units:1,th:200,kw:3.5,usd:1000,deposit:250,balance:750},destination:{kind:'ion',site_id:site.id},lines:[],history:[]};
+  r=await load({ref:reference,response:{ok:true,body:order}});const text=r.elements.ordDest.textContent;
+  assert.match(text,/Hosting preference/);assert.ok(text.includes(site.name));assert.ok(text.includes(Facilities.powerLabel(site)));
+  assert.doesNotMatch(text,/delivered straight|null|undefined|NaN/);
+  if(Facilities.isComingSoon(site))assert.match(text,/Coming soon.*proposed site.*does not reserve space or a commissioning date/);
+  else assert.match(text,/fully occupied.*waitlist/);
+ }
+ console.log('ok existing and proposed hosting preferences state availability without promising shipment');
 })().catch(error=>{console.error(error);process.exitCode=1;});

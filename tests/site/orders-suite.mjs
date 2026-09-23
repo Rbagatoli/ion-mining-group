@@ -28,6 +28,7 @@ const { createRequire } = await import('module');
 const require = createRequire(import.meta.url);
 const MinerDB = require(ROOT + 'site/miner-db.js');
 const PriceList = require(ROOT + 'site/price-list.js');
+const Facilities = require(ROOT + 'site/facilities.js');
 
 let fail = 0;
 function ok(cond, label, detail) {
@@ -112,6 +113,13 @@ const GOOD_BODY = {
        catalogue.ASOF + ' vs ' + PriceList.ASOF);
     ok(catalogue.DEPOSIT_RATE === PriceList.DEPOSIT_RATE,
        'and the same deposit rate', catalogue.DEPOSIT_RATE + ' vs ' + PriceList.DEPOSIT_RATE);
+
+    for (const [name, predicate] of [['SITE_OPEN', Facilities.acceptsMachines],
+        ['SITE_FULL', Facilities.isFull], ['SITE_PLANNED', Facilities.isComingSoon]]) {
+        const expected = Facilities.all().filter(predicate).map(site => site.id);
+        ok(JSON.stringify(catalogue[name]) === JSON.stringify(expected),
+           name + ' matches the published facility states');
+    }
 
     /* A machine with no price on file must be null, never 0 — a zero would let
        it be ordered for nothing, and the deposit taken against nothing. */
@@ -322,7 +330,60 @@ for (const [label, lines] of BAD_LINES) {
        address — it falls back to Proton, which is the one that needs nothing. */
     const junk = T.readDestination({ kind: 'somewhere-else' });
     ok(junk.kind === 'ion', 'an unknown destination kind falls back to Proton', junk.kind);
+
+    for (const sid of catalogue.SITE_FULL) {
+        const full = T.readDestination({ kind: 'ion', site_id: sid, waitlisted: false,
+            hosting_status: 'planned', interest_only: true });
+        ok(full.waitlisted === true && full.hosting_status === undefined && full.interest_only === undefined,
+           sid + ': a full site stays waitlisted despite client status flags', JSON.stringify(full));
+    }
+    for (const sid of catalogue.SITE_PLANNED) {
+        const planned = T.readDestination({ kind: 'ion', site_id: sid, waitlisted: true,
+            hosting_status: 'open', interest_only: false, commissioning_date: '2026-10-01' });
+        ok(planned.waitlisted === false && planned.hosting_status === 'planned',
+           sid + ': a proposed site records interest without an operational waitlist', JSON.stringify(planned));
+        ok(Object.keys(planned).sort().join(',') === 'hosting_status,kind,site_id,waitlisted',
+           sid + ': the server discards forged availability and commissioning details');
+    }
+    const fullId = catalogue.SITE_FULL[0];
+    if (fullId) {
+        catalogue.SITE_OPEN.push(fullId);
+        try {
+            const open = T.readDestination({ kind: 'ion', site_id: fullId, waitlisted: true,
+                hosting_status: 'planned' });
+            ok(open.waitlisted === false && open.hosting_status === undefined,
+               'an opened site keeps the existing non-waitlisted order contract', JSON.stringify(open));
+        } finally { catalogue.SITE_OPEN.pop(); }
+    }
+    ok(T.readDestination({ kind: 'ion', site_id: 'unknown', hosting_status: 'open' }).error === 'unknown site',
+       'a client status cannot make an unknown site orderable');
+    const unselected = T.readDestination({ kind: 'ion', waitlisted: true, hosting_status: 'planned' });
+    ok(Object.keys(unselected).join(',') === 'kind',
+       'status flags without a selected site are discarded');
 })();
+
+for (const sid of [...catalogue.SITE_FULL, ...catalogue.SITE_PLANNED]) {
+    const env = newEnv();
+    const created = await call(env, 'POST', '/orders', { ...GOOD_BODY,
+        destination: { kind: 'ion', site_id: sid, waitlisted: true, hosting_status: 'open' } });
+    ok(created.status === 201, sid + ': a hosting preference remains a valid hardware order');
+    if (created.status !== 201) continue;
+    const back = await call(env, 'GET', '/orders/' + created.body.reference);
+    const planned = catalogue.SITE_PLANNED.includes(sid);
+    ok(back.status === 200 && back.body.destination.waitlisted === !planned &&
+        back.body.destination.hosting_status === (planned ? 'planned' : undefined),
+       sid + ': server-derived availability survives order storage and retrieval');
+
+    if (planned) {
+        const key = 'order:' + created.body.reference;
+        const legacy = await env.ORDERS.get(key, 'json');
+        legacy.destination = { kind: 'ion', site_id: sid, waitlisted: true };
+        await env.ORDERS.put(key, JSON.stringify(legacy));
+        const prior = await call(env, 'GET', '/orders/' + created.body.reference);
+        ok(prior.body.destination.waitlisted === true && prior.body.destination.hosting_status === undefined,
+           sid + ': reading a legacy order preserves its recorded destination fields');
+    }
+}
 
 (function () {
     ok(T.readContact({ email: 'a@b.co' }).email === 'a@b.co', 'a contact email is kept');

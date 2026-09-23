@@ -4,10 +4,13 @@ import {buildGlobeSurface,globePoint} from './globe-surface.js?v=2';
 export {globePoint} from './globe-surface.js?v=2';
 
 export const REGIONS=Object.freeze({
-    permian:{lat:31.9,lon:-103.0},bakken:{lat:48.1,lon:-103.5},alberta:{lat:54.8,lon:-116.0},
-    'cold-lake':{lat:54.5,lon:-110.2},dubai:{lat:25.2,lon:55.3}
+    permian:{lat:31.9,lon:-103.0},bakken:{lat:48.1,lon:-103.5},alberta:{lat:54.8,lon:-116.0},dubai:{lat:25.2,lon:55.3}
 });
-export function cameraDistance(aspect){return 3.35/Math.sin(Math.atan(Math.tan(48*Math.PI/360)*Math.min(1,aspect)))*1.12;}
+export function cameraDistance(aspect){
+    // Fill the widget width with a close regional view, cropping the globe vertically.
+    const span=Math.min(1.85,Math.max(.5,aspect)*1.08);
+    return 3.24*Math.sqrt(1+1/Math.pow(Math.tan(48*Math.PI/360)*span,2));
+}
 export function buildCountryBorders(borders=[]){
     const vertices=[],point=new T.Vector3(),radius=3.212;
     for(const line of borders)for(let i=1;i<line.length;i++){
@@ -91,7 +94,7 @@ export function mountGlobe(host,land,runtime,callbacks={}){
     },undefined,()=>{}); // The detailed coastlines remain usable if the relief texture is unavailable.
     function fit(instant){
         const p=REGIONS[selected],distance=cameraDistance(stage.camera.aspect);
-        stage.controls.minDistance=4.5;stage.controls.maxDistance=distance*1.8;
+        stage.controls.minDistance=4.1;stage.controls.maxDistance=Math.max(14,distance*2.5);
         stage.move(globePoint(p.lat,p.lon,distance).toArray(),[0,0,0],{instant,arc:true,duration:1.65});
     }
     function select(id,instant=false){

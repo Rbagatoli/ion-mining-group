@@ -280,12 +280,12 @@
     {
       "file": "site/hosting.html",
       "tag": "p",
-      "html": "You buy the machines from us and we handle everything from the pad to the pool: metered power, cooling, network, security, and hands on site. Your hashrate points where you tell it to, and payouts never touch our wallet."
+      "html": "Once hosting capacity and timing are confirmed, you buy the machines from us and we handle everything from the pad to the pool: metered power, cooling, network, security, and hands on site. Your hashrate points where you tell it to, and payouts never touch our wallet."
     },
     {
       "file": "site/hosting.html",
       "tag": "p",
-      "html": "Compare our hosting regions, capacity and pricing. You choose the location; we handle the pad, the power and the hands on site."
+      "html": "Our 160 kW Alberta site is fully occupied. Explore the locations we’re considering next."
     },
     {
       "file": "site/hosting.html",
@@ -310,7 +310,7 @@
     {
       "file": "site/hosting.html",
       "tag": "p",
-      "html": "Do not have the machines yet? <a href=\"./hardware.html\">Pick them from our catalogue</a> and we will source and host them on one agreement."
+      "html": "Do not have the machines yet? <a href=\"./hardware.html\">Pick them from our catalogue</a> and enquire about hardware and future hosting together. Hosting depends on confirmed capacity and site readiness."
     },
     {
       "file": "site/hosting.html",
@@ -320,7 +320,7 @@
     {
       "file": "site/hosting.html",
       "tag": "p",
-      "html": "You choose the machines and a target start date. We come back with the site, the rate, the available slot, and a term sheet &mdash; usually within <span class=\"ph\">[X]</span> business days."
+      "html": "You choose the machines and a preferred start date. We review future availability and site readiness, then confirm whether we can offer capacity and terms. An enquiry about a proposed location does not reserve a slot or establish a start date."
     },
     {
       "file": "site/hosting.html",
@@ -345,7 +345,7 @@
     {
       "file": "site/hosting.html",
       "tag": "p",
-      "html": "Pick them from the catalogue and tell us when you want them running. We will come back with a site, a rate, and a date."
+      "html": "Pick them from the catalogue and tell us your preferred timing. We will review future hosting availability with you; capacity, rates and start dates depend on site readiness and a confirmed offer."
     },
     {
       "file": "site/contact.html",
@@ -375,7 +375,7 @@
     {
       "file": "site/hardware.html",
       "tag": "h1",
-      "html": "Buy the machines<br>and the place to run them."
+      "html": "Choose your miners."
     },
     {
       "file": "site/hardware.html",
@@ -385,7 +385,7 @@
     {
       "file": "site/hardware.html",
       "tag": "p",
-      "html": "You do not have to arrive with a container of miners. Pick what you want below, set the quantities, and we will source it &mdash; and host it on the same agreement if you want us to."
+      "html": "Pick your miners and quantities, then request a hardware quote. You can also register a hosting preference; site readiness, capacity and terms must be confirmed separately."
     },
     {
       "file": "site/hardware.html",
@@ -520,7 +520,7 @@
     {
       "file": "site/cart.html",
       "tag": "p",
-      "html": "We will confirm which of our sites has capacity for a fleet this size, and quote hosting on the same order. You do not arrange freight &mdash; the machines are delivered straight to the facility that will run them."
+      "html": "Request hosting with your hardware quote. We will confirm site readiness, capacity and delivery arrangements before shipping. Selecting a proposed location does not reserve hosting space or confirm a commissioning date."
     },
     {
       "file": "site/cart.html",

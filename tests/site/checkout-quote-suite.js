@@ -8,12 +8,12 @@ const HardwareOrderCatalog=require(path.join(site,'hardware-order-catalog.js')),
 const checkoutSource=fs.readFileSync(path.join(site,'checkout.js'),'utf8');
 let checks=0;
 function check(label,fn){fn();checks++;console.log('  ok    '+label);}
-function harness(held){
+function harness(held,siteId='permian'){
  const nodes={},calls=[];
  function element(id){return nodes[id]||(nodes[id]={value:'',textContent:'',innerHTML:'',hidden:false,disabled:false,options:[],listeners:{},addEventListener(name,fn){this.listeners[name]=fn;},scrollIntoView(){},reportValidity(){return true;}});}
  const dest=element('ck-dest');dest.value='ion';dest.selectedIndex=0;dest.options=[{textContent:'A Proton facility'}];
  const context={window:{addEventListener(){}},document:{readyState:'loading',getElementById:element,addEventListener(){},querySelector(){return null;}},MinerDB,PriceList,HardwareOrderCatalog,
-  Prepay:{...Prepay,chosen:()=>Prepay.byId('24m')},Facilities:{...Facilities,chosen:()=>Facilities.byId('permian')},
+  Prepay:{...Prepay,chosen:()=>Prepay.byId('24m')},Facilities:{...Facilities,chosen:()=>Facilities.byId(siteId)},
   OrdersAPI:{post(route,payload){calls.push({route,payload});return {then(){return {catch(){}};}};}}};
  vm.runInNewContext(fs.readFileSync(path.join(site,'cart.js'),'utf8'),context);
  Object.entries(held).forEach(([key,qty])=>context.Cart.set(key,qty));
@@ -68,5 +68,16 @@ check('unknown specifications stay text and mobile metrics have explicit labels'
  const h=harness({'catalogue:s23-air':1}),html=h.element('ckLines').innerHTML;
  assert.match(html,/To confirm/);assert.doesNotMatch(html,/NaN|null|undefined/);
  for(const label of ['Hashrate','Power draw','Each','Line total'])assert(html.includes('data-label="'+label+'"'));
+});
+check('proposed hosting is an unconfirmed preference and unknown rates never become zero power costs',()=>{
+ for(const id of ['permian','alberta-expansion']){
+  const h=harness({'Antminer S21 Pro':1},id),summary=h.element('ckPreview').textContent,itemised=h.element('ckItemised').innerHTML;
+  assert.match(summary,/Hosting preference:.*\n.*site:/);assert.match(summary,/Coming soon/);assert.match(summary,/does not reserve space or a commissioning date/);
+  assert.doesNotMatch(summary,/Machines ordered now hold a place|rate: null|at null|NaN|undefined/);
+  if(id==='alberta-expansion'){
+   assert.match(summary,/rate to be confirmed/);assert.match(itemised,/Rate to confirm/);
+   assert.doesNotMatch(itemised,/Both together|it-val">\$0(?:\.00)?<|null|NaN/);
+  }
+ }
 });
 console.log('\n'+checks+' checkout quote checks passed.');

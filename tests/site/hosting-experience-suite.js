@@ -51,14 +51,15 @@ function rendererFixture(globe,T,aspect){
         assert.ok(sw.includes("'./map-globe-style.js'"));
     });
     check('every listed region has a finite, approximate globe marker',()=>{
-        assert.deepEqual(Object.keys(globe.REGIONS),F.all().map(s=>s.id));
+        assert.deepEqual(Object.keys(globe.REGIONS),F.groups().map(s=>s.id));
         for(const point of Object.values(globe.REGIONS))assert.ok(Math.abs(globe.globePoint(point.lat,point.lon).length()-3.2)<1e-10);
         assert.ok(globe.globePoint(0,0).distanceTo(new T.Vector3(0,0,3.2))<1e-10);
     });
-    check('globe framing fits narrow and wide viewports without clipping the earth',()=>{
+    check('globe starts in a close regional view while keeping the camera outside its surface',()=>{
         for(const aspect of [.55,.73,1,1.8,2.4]){
-            const distance=globe.cameraDistance(aspect),halfFov=Math.atan(Math.tan(48*Math.PI/360)*Math.min(1,aspect));
-            assert.ok(Math.asin(3.31/distance)<halfFov*.94);
+            const distance=globe.cameraDistance(aspect),span=3.24/Math.sqrt(distance*distance-3.24*3.24)/Math.tan(48*Math.PI/360);
+            assert.ok(distance>4.1,'camera remains outside the globe and above the zoom limit');
+            assert.ok(Math.abs(span/aspect-Math.min(1.08,1.85/aspect))<1e-10,'close globe fills the width, with intentional vertical cropping');
         }
         assert.ok(world.LAND.length>100);let count=0;
         for(const polygon of world.LAND)for(const ring of polygon)for(const p of ring){assert.ok(Math.abs(p[0])<=180&&Math.abs(p[1])<=90);count++;}
@@ -100,7 +101,10 @@ function rendererFixture(globe,T,aspect){
             f.scene.zoom(.8);assert.equal(f.stage.zoomFactor,.8);f.scene.setActive(false);assert.equal(f.stage.active,false);
             f.options.tick(0,10,true);const cap=root.getObjectByName('region-pin-'+selected).getObjectByName('orange-pin-head'),still=cap.material.emissiveIntensity;
             f.options.tick(0,20,true);assert.equal(cap.material.emissiveIntensity,still,'reduced motion holds marker brightness steady');
-            f.scene.setActive(true);f.scene.select('permian',true);f.options.tick(0,20,true);root.updateMatrixWorld(true);
+            f.scene.setActive(true);f.scene.select('permian',true);
+            // A close regional view can crop another region; turn toward its pin before tapping.
+            f.stage.move(globe.globePoint(globe.REGIONS.bakken.lat,globe.REGIONS.bakken.lon,globe.cameraDistance(aspect)).toArray());
+            f.options.tick(0,20,true);root.updateMatrixWorld(true);
             const target=f.points.find(point=>point.id==='bakken'),bounds=f.stage.canvas.getBoundingClientRect();
             assert.ok(target.visible);
             const click={pointerId:1,button:0,clientX:bounds.left+target.x*bounds.width,clientY:bounds.top+target.y*bounds.height};
@@ -112,7 +116,7 @@ function rendererFixture(globe,T,aspect){
     check('generated globe preserves commercial disclosures, destinations and stamped modules',()=>{
         assert.ok(!html.includes('hosting-tour'));assert.ok(!html.includes('data-tour'));assert.ok(!fs.existsSync(__dirname+'/../../site/hosting-tour-scene.js'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
         for(const asset of ['hosting-experience.js','hosting-stage.js','hosting-globe-scene.js','hosting-earth-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));
-        assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.all().length);
+        assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.groups().length);
         assert.equal(parse(html).querySelector('[data-globe="markers"]'),null);assert.equal(parse(html).querySelector('[data-globe="leaders"]'),null);
         assert.ok(!html.includes('hosting-terrain.js'));assert.ok(!html.includes('ht-stage'));
     });
@@ -129,24 +133,44 @@ function rendererFixture(globe,T,aspect){
     });
     check('mobile location choices, surface pins and region controls share the same selection',()=>{
         const location=early.ref('globe','location');
-        assert.deepEqual(location.querySelectorAll('option').map(option=>option.value),F.all().map(site=>site.id));
-        location.value='cold-lake';location.fire('change');
-        assert.equal(gs.current,'cold-lake');assert.equal(early.ref('globe','name').textContent,F.byId('cold-lake').name);
-        assert.equal(early.ref('region','cold-lake').getAttribute('aria-pressed'),'true');
+        assert.deepEqual(location.querySelectorAll('option').map(option=>option.value),F.groups().map(group=>group.id));
+        location.value='alberta';location.fire('change');
+        early.click('[data-hosting-site="cold-lake"]');
+        assert.equal(gs.current,'alberta');assert.equal(early.ref('globe','name').textContent,F.byId('cold-lake').name);
+        assert.equal(early.ref('region','alberta').getAttribute('aria-pressed'),'true');
         assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=cold-lake');
+        assert.equal(early.ref('globe','capacity').textContent,'400–600 kW');
+        assert.equal(early.ref('globe','status').textContent,'Coming soon');
         early.click('[data-region="permian"]');assert.equal(location.value,'permian');assert.equal(gs.current,'permian');
+        assert.equal(early.ref('globe','sites').hidden,true);
         gs.cb.onSelect('alberta');assert.equal(location.value,'alberta');assert.equal(early.ref('region','alberta').getAttribute('aria-pressed'),'true');
+        assert.equal(early.ref('globe','name').textContent,F.byId('cold-lake').name,'returning to Alberta preserves the selected proposed site');
+        assert.equal(early.ref('globe','sites').hidden,false);
+        early.click('[data-hosting-site="alberta"]');
         assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=alberta');
+        assert.equal(early.ref('globe','capacity').textContent,'160 kW');
+        assert.equal(early.ref('globe','status').textContent,'Fully occupied');
         assert.equal(early.document.querySelectorAll('[data-marker]').length,0,'the controller creates no floating callout buttons');
+    });
+    const deepLink=fixture({search:'?site=alberta-expansion'});deepLink.approach();await settle();await settle();
+    check('direct links to an Alberta proposal survive loading and restoration',()=>{
+        const scene=deepLink.scenes[0];
+        assert.equal(scene.current,'alberta');
+        assert.equal(deepLink.ref('globe','name').textContent,F.byId('alberta-expansion').name);
+        assert.equal(deepLink.ref('globe','rate').textContent,'To be confirmed');
+        scene.cb.onError();scene.cb.onRestore();scene.cb.onReady();
+        assert.equal(deepLink.ref('globe','cta').getAttribute('href'),'./hardware.html?site=alberta-expansion');
     });
     const offline=fixture({fail:true});offline.approach();await settle();await settle();
     check('import failure leaves all regional pricing usable',()=>{
         for(const site of F.all()){
-            const location=offline.ref('globe','location');location.value=site.id;location.fire('change');
-            assert.equal(offline.ref('region',site.id).getAttribute('aria-pressed'),'true');
+            const group=F.groupFor(site),location=offline.ref('globe','location');location.value=group.id;location.fire('change');
+            if(group.sites.length>1)offline.click('[data-hosting-site="'+site.id+'"]');
+            assert.equal(offline.ref('region',group.id).getAttribute('aria-pressed'),'true');
             assert.equal(offline.ref('globe','capacity').textContent,F.capacityLabel(site));assert.equal(offline.ref('globe','rate').textContent,F.powerLabel(site));assert.equal(offline.ref('globe','cta').getAttribute('href'),'./hardware.html?site='+site.id);
+            assert.equal(offline.ref('globe','capacity-title').textContent,F.capacityTitle(site));
             assert.equal(offline.ref('globe','status').getAttribute('data-available'),String(F.acceptsMachines(site)));
-            offline.click('[data-region="'+site.id+'"]');assert.equal(location.value,site.id);
+            offline.click('[data-region="'+group.id+'"]');assert.equal(location.value,group.id);
         }
     });
     check('back-forward cache preserves scenes while final navigation disposes the globe and its field',()=>{

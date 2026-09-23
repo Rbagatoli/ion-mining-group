@@ -194,6 +194,7 @@ var Prepay = (function () {
     function itemisedHtml(opts) {
         var site = opts.site, term = opts.term;
         var hardware = opts.hardwareUsd, kw = opts.kw, depositRate = opts.depositRate;
+        var planned = !!site && site.statusKind === 'coming-soon', rateKnown = !!site && isNum(site.powerCents);
 
         var hardwareKnown = typeof hardware === 'number' && isFinite(hardware) && !opts.unpriced;
         if (!hardwareKnown && !opts.units) return '';
@@ -213,7 +214,7 @@ var Prepay = (function () {
         var power = (site && term && !opts.unknownPower) ? totalFor(site, term, kw) : null;
         if (power !== null) {
             rows.push({
-                label: 'Electricity, ' + term.label.toLowerCase(),
+                label: (planned ? 'Illustrative electricity estimate, ' : 'Electricity, ') + term.label.toLowerCase(),
                 /* AT TODAY'S RATE, said out loud. The rate floats with gas and CPI and only the
                    discount is fixed, so this sum is a projection rather than a price. It is the
                    number a customer plans against, and leaving it looking like a quote would be
@@ -221,25 +222,25 @@ var Prepay = (function () {
                 sub: rateLabel(site, term) + ' at ' + site.name +
                      ', ' + term.months + ' months at continuous draw, at today' + APOS + 's rate',
                 value: power,
-                when: 'due when the hosting agreement is signed'
+                when: planned ? 'planning estimate only; commissioning, capacity and hosting terms are unconfirmed' : 'due when the hosting agreement is signed'
             });
-        } else if (site && term && opts.units && (opts.unknownPower || !isNum(kw))) {
+        } else if (site && term && opts.units && (!rateKnown || opts.unknownPower || !isNum(kw))) {
             rows.push({
                 label: 'Electricity, ' + term.label.toLowerCase(),
-                sub: rateLabel(site, term) + ' at ' + site.name + '; full fleet power must be confirmed',
+                sub: (rateLabel(site, term) || 'Rate to be confirmed') + ' at ' + site.name + '; hosting rate and full fleet power must be confirmed',
                 value: null,
-                display: 'Power to confirm',
-                when: 'confirmed on the hosting agreement'
+                display: rateKnown ? 'Power to confirm' : 'Rate to confirm',
+                when: planned ? 'commissioning, capacity and hosting terms are unconfirmed' : 'confirmed on the hosting agreement'
             });
         } else if (site && !term && opts.units) {
             var monthly = !opts.unknownPower && isNum(kw) && kw > 0 && isNum(site.powerCents)
                 ? Math.round(kw * HOURS_PER_YEAR / 12 * site.powerCents / 100 * 100) / 100 : null;
             rows.push({
-                label: 'Hosting & power, monthly estimate',
-                sub: site.name + ', ' + site.powerCents + ' cents/kWh; 730 hours at continuous miner draw, excluding additional facility loads',
+                label: (planned ? 'Illustrative hosting & power, monthly estimate' : 'Hosting & power, monthly estimate'),
+                sub: site.name + ', ' + (rateKnown ? site.powerCents + ' cents/kWh estimated; 730 hours at continuous miner draw, excluding additional facility loads' : 'hosting rate to be confirmed'),
                 value: monthly,
-                display: monthly === null ? 'Power to confirm' : null,
-                when: 'monthly billing; final scope and rate confirmed on the hosting agreement'
+                display: monthly === null ? rateKnown ? 'Power to confirm' : 'Rate to confirm' : null,
+                when: planned ? 'planning estimate only; commissioning, capacity and hosting terms are unconfirmed' : 'monthly billing; final scope and rate confirmed on the hosting agreement'
             });
         }
 

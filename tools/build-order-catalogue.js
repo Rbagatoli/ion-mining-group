@@ -28,8 +28,8 @@ const SITE = path.join(ROOT, 'site');
 */
 const DB_PATH = process.argv[2] || path.join(SITE, 'miner-db.js');
 const PRICE_PATH = process.argv[3] || path.join(SITE, 'price-list.js');
-/* Not overridable: there is one facility list and the Worker must not be pointed at
-   a different one, because this is what decides where a paid-for pallet is sent. */
+/* Not overridable: the Worker classifies each hosting preference from the same
+   facility list the customer sees. */
 const Facilities = require(path.join(SITE, 'facilities.js'));
 const Prepay = require(path.join(SITE, 'prepay.js'));
 const OUT = process.argv[4] || path.join(ROOT, 'worker-orders', 'catalogue.js');
@@ -83,7 +83,7 @@ const out = [
     entries.join(',\n'),
     '};',
     '',
-    '/* The sites a customer may have machines shipped to.',
+    '/* Known hosting preferences, including proposed sites that cannot receive machines.',
     '',
     '   IDS ONLY, and that is the point. The browser names a site; the Worker decides what that',
     '   site IS. Capacity and power price are never sent by the browser and never stored from it',
@@ -91,7 +91,7 @@ const out = [
     '   not a figure anyone can be held to.',
     '',
     '   A site absent from this list is refused rather than accepted-and-ignored, so a mistyped',
-    '   or stale link cannot produce a paid order with no destination on it. */',
+    '   or stale link cannot silently change the selected hosting preference. */',
     'export const SITE_IDS = ' + JSON.stringify(Facilities.all().map(s => s.id)) + ';',
     '',
     '/* Sites that can actually receive machines today. A customer may hold a link to a site that',
@@ -99,6 +99,14 @@ const out = [
     '   selling space that does not exist. */',
     'export const SITE_OPEN = ' +
         JSON.stringify(Facilities.all().filter(Facilities.acceptsMachines).map(s => s.id)) + ';',
+    '',
+    '/* Operating sites at capacity. Only these sites have an operational waitlist. */',
+    'export const SITE_FULL = ' +
+        JSON.stringify(Facilities.all().filter(Facilities.isFull).map(s => s.id)) + ';',
+    '',
+    '/* Proposed sites record interest only; capacity and commissioning dates are unconfirmed. */',
+    'export const SITE_PLANNED = ' +
+        JSON.stringify(Facilities.all().filter(Facilities.isComingSoon).map(s => s.id)) + ';',
     '',
     '/* Prepaid electricity terms a customer may commit to.',
     '',

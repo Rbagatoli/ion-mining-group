@@ -312,7 +312,8 @@
         var site = Facilities.chosen();
         if (!site) return '';
 
-        var out = ['Destination: ' + site.name + ', ' + site.region];
+        var planned = Facilities.isComingSoon(site);
+        var out = ['Hosting preference: ' + site.name + ', ' + site.region];
         var term = (typeof Prepay !== 'undefined') ? Prepay.chosen() : null;
 
         /* THE LIST RATE IS LABELLED AS ONE once a term is discounting it. Printing "6.8c/kWh"
@@ -324,25 +325,24 @@
 
         if (term) {
             var power = Prepay.totalFor(site, term, t.unknownPower ? null : t.kw);
-            out.push('  electricity: ' + term.label + ' at ' + Prepay.rateLabel(site, term) +
+            out.push('  electricity: ' + term.label + ' at ' + (Prepay.rateLabel(site, term) || 'rate to be confirmed') +
                      ' (indicative)');
             if (power !== null) {
                 out.push('  electricity total: ' + money(power) +
-                         ', due when the hosting agreement is signed');
+                         (planned ? ', planning estimate only; subject to commissioning and a hosting agreement' : ', due when the hosting agreement is signed'));
                 /* Stated the same way it is on screen. A pasted order that adds the two up
                    without saying they are paid apart is the one place the breakdown could still
                    mislead somebody. */
                 if (!t.unpriced) out.push('  both together: ' + money(t.usd + power) +
                          ' (not a single payment)');
-            } else if (t.unknownPower || !known(t.kw)) {
-                out.push('  electricity total: confirm miner power before pricing the term');
+            } else {
+                out.push('  electricity total: confirm hosting rate and miner power before pricing the term');
             }
         }
 
         if (Facilities.isFull(site)) {
-            out.push('  NOTE: this site is fully occupied. Machines ordered now hold a place ' +
-                     'on its waitlist; a date is confirmed before shipping.');
-        }
+            out.push('  NOTE: ' + Facilities.availabilityNote(site));
+        } else if (planned) out.push('  NOTE: ' + Facilities.availabilityNote(site));
         return out.join('\n') + '\n';
     }
 
@@ -618,7 +618,12 @@
         }
 
         var cents = term ? Prepay.rateFor(site, term) : site.powerCents;
-        if (typeof cents !== 'number' || !isFinite(cents)) return;
+        if (typeof cents !== 'number' || !isFinite(cents)) {
+            if (autoElec !== null && f.value === autoElec) f.value = '';
+            autoElec = null;
+            if (note) note.innerHTML = 'The hosting rate for <strong>' + esc(site.name) + '</strong> is to be confirmed. Enter your own rate to model costs.';
+            return;
+        }
         var usd = Math.round(cents / 100 * 1e6) / 1e6;
         var next = String(usd);
 
@@ -659,6 +664,11 @@
 
         var site = Facilities.chosen();
         if (!site) { slot.innerHTML = ''; return; }
+        var planned = Facilities.isComingSoon(site);
+        if (!known(site.powerCents)) {
+            slot.innerHTML = '<div class="pp-sec"><p class="pp-note">Hosting rate to be confirmed. Prepaid estimates are unavailable until a rate is provided. ' + esc(Facilities.availabilityNote(site)) + '</p></div>';
+            return;
+        }
 
         var picked = Prepay.chosen();
         /* The draw the customer is actually buying, so the prepaid sum is THEIR number rather
@@ -688,11 +698,11 @@
                     '<span class="pp-from">at ' + esc(site.name) + '</span>' +
                     (total !== null
                         ? '<span class="pp-total">' + money(total) +
-                          ' up front<br><span class="pp-saved">saves ' + money(saved) +
+                          (planned ? ' illustrative prepayment<br><span class="pp-saved">estimated saving ' : ' up front<br><span class="pp-saved">saves ') + money(saved) +
                           ' over ' + t.months + ' months at today&rsquo;s rate</span></span>'
                         : '<span class="pp-total pp-total--empty">' + (unknownPower ? 'Confirm miner power to price the term' : 'Add machines to price the term') + '</span>') +
                 '</span>' +
-                '<span class="pp-pick">' + (on ? 'Selected' : 'Choose this term') + '</span>' +
+                '<span class="pp-pick">' + (on ? 'Selected' : planned ? 'Compare this term' : 'Choose this term') + '</span>' +
             '</button>';
         }).join('');
 
@@ -701,14 +711,14 @@
               '<div class="pp-sec-head">' +
                 '<div>' +
                   '<div class="pp-sec-eyebrow">Prepaid electricity</div>' +
-                  '<div class="pp-sec-title">Pay for power up front, pay less for it</div>' +
+                  '<div class="pp-sec-title">' + (planned ? 'Compare indicative prepaid estimates' : 'Pay for power up front, pay less for it') + '</div>' +
                 '</div>' +
                 (picked
                     ? '<button type="button" class="pp-clear">Pay monthly instead</button>'
                     : '') +
               '</div>' +
               '<div class="pp-grid">' + cards + '</div>' +
-              '<p class="pp-note">' + esc(Prepay.INDICATIVE_NOTE) + '</p>' +
+              '<p class="pp-note">' + esc(Prepay.INDICATIVE_NOTE) + (planned ? ' ' + esc(Facilities.availabilityNote(site)) : '') + '</p>' +
             '</div>';
     }
 

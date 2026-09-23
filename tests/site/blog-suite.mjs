@@ -937,7 +937,7 @@ console.log('=== the drawings are visible on a phone ===');
     /* And the thing that replaced it is actually said somewhere, or the rule reads as an
        omission rather than a position. */
     const hostingPage = fs.readFileSync(path.join(SITE, 'hosting.html'), 'utf8');
-    ok(/You buy the machines from us/.test(hostingPage),
+    ok(/You buy the machines from us/i.test(hostingPage),
        '  and the hosting page says where the machines come from');
 
     /* ONE VIEW'S LABELS AT A TIME. Two wraps share a grid cell and crossfade on opacity; with

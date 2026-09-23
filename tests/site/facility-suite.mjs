@@ -90,8 +90,10 @@ console.log('\n=== the facility data itself ===');
     eq(new Set(ids).size, ids.length, 'every id is unique');
 
     all.forEach(s => {
-        ok(typeof s.capacityMw === 'number' && s.capacityMw > 0, s.id + ' has a capacity');
-        ok(typeof s.powerCents === 'number' && s.powerCents > 0, s.id + ' has a power price');
+        ok(Facilities.isComingSoon(s)
+            ? typeof s.capacityMinMw === 'number' && s.capacityMaxMw > s.capacityMinMw && s.capacityMw === undefined
+            : typeof s.capacityMw === 'number' && s.capacityMw > 0, s.id + ' distinguishes a planning range from existing capacity');
+        ok(s.powerCents === null || typeof s.powerCents === 'number' && s.powerCents > 0, s.id + ' has an estimate or an explicitly unconfirmed rate');
         ok(!!s.status && !!s.region && !!s.fuel, s.id + ' has a status, a region and a fuel');
         /* THE HONESTY FLAG. These sites are not contracted, and every figure above is shown to a
            customer who may pay against it. The moment one becomes real this flips to false and
@@ -109,9 +111,28 @@ console.log('\n=== the facility data itself ===');
        ceiling is roughly where a stranded-gas host stops being cheap, so a change that breaks it
        is a change worth looking at twice rather than a test to edit around. */
     all.forEach(s => {
-        ok(s.powerCents >= 1 && s.powerCents <= 8, s.id + ' power price is plausible for stranded energy',
+        ok(s.powerCents === null || s.powerCents >= 1 && s.powerCents <= 8, s.id + ' power estimate stays in its existing range or is unconfirmed',
            s.powerCents + 'c/kWh');
-        ok(s.capacityMw >= 1 && s.capacityMw <= 500, s.id + ' capacity is plausible', s.capacityMw + ' MW');
+        ok(Facilities.capacityLabel(s).endsWith(' kW'), s.id + ' capacity is shown in kW');
+    });
+    eq(all.length, 6, 'one existing and five proposed sites are listed');
+    eq(all.filter(Facilities.isFull).map(s => s.id).join(','), 'alberta', 'only the existing Alberta site is full');
+    eq(Facilities.capacityLabel(Facilities.byId('alberta')), '160 kW', 'the existing Alberta capacity is 160 kW');
+    for (const id of ['cold-lake','alberta-expansion']) {
+        eq(Facilities.capacityLabel(Facilities.byId(id)), '400–600 kW', id + ' retains its own proposed capacity range');
+        eq(Facilities.groupFor(Facilities.byId(id)).id, 'alberta', id + ' belongs to the Alberta group');
+    }
+    for (const id of ['permian','bakken','dubai'])
+        eq(Facilities.capacityLabel(Facilities.byId(id)), '300–750 kW', id + ' retains its proposed capacity range');
+    eq(all.filter(Facilities.isComingSoon).length, 5, 'all five proposed sites are Coming soon');
+    eq(all.filter(Facilities.acceptsMachines).length, 0, 'no site advertises ready hosting capacity');
+    eq(Facilities.groups().map(g => g.id).join(','), 'permian,bakken,alberta,dubai', 'the picker has four regional groups');
+    eq(Facilities.groupFor('cold-lake').sites.map(s => s.id).join(','), 'alberta,cold-lake,alberta-expansion', 'all three Alberta sites share one group');
+    eq(Facilities.groupFor('unknown'), null, 'an unknown site has no group');
+    eq(Facilities.powerLabel(Facilities.byId('alberta-expansion')), 'To be confirmed', 'the new proposal does not invent a rate');
+    all.forEach(s => {
+        eq(Facilities.capacityTitle(s), Facilities.isComingSoon(s) ? 'Planned capacity' : 'Site capacity', s.id + ' labels the capacity correctly');
+        eq(Facilities.actionLabel(s), Facilities.isFull(s) ? 'Join waitlist' : 'Register interest', s.id + ' offers only the available next step');
     });
 }
 
@@ -148,6 +169,10 @@ console.log('\n=== the figures have exactly one home ===');
     eq(JSON.stringify(catalogue.SITE_OPEN),
        JSON.stringify(Facilities.all().filter(Facilities.acceptsMachines).map(s => s.id)),
        '...and the same ones as open');
+    eq(JSON.stringify(catalogue.SITE_FULL), JSON.stringify(Facilities.all().filter(Facilities.isFull).map(s => s.id)),
+       'the Worker distinguishes the existing full site');
+    eq(JSON.stringify(catalogue.SITE_PLANNED), JSON.stringify(Facilities.all().filter(Facilities.isComingSoon).map(s => s.id)),
+       'the Worker distinguishes proposed sites');
 }
 
 console.log(CHR + '=== prepaid electricity: longer term, better rate ===');
@@ -167,6 +192,14 @@ console.log(CHR + '=== prepaid electricity: longer term, better rate ===');
     }
 
     Facilities.all().forEach(site => {
+        if (site.powerCents === null) {
+            terms.forEach(t => {
+                eq(Prepay.rateFor(site, t), null, site.id + ' has no invented ' + t.id + ' rate');
+                eq(Prepay.totalFor(site, t, 10), null, site.id + ' has no invented ' + t.id + ' total');
+                eq(Prepay.savingFor(site, t, 10), null, site.id + ' has no invented ' + t.id + ' saving');
+            });
+            return;
+        }
         let last = null;
         terms.forEach(t => {
             const r = Prepay.rateFor(site, t);
@@ -396,6 +429,11 @@ console.log('\n=== a figure never travels without the sentence that qualifies it
         const hasFigure = html.indexOf(Facilities.powerLabel(s)) >= 0;
         ok(hasFigure, s.id + ' banner shows the power price');
         ok(html.indexOf('indicative') >= 0, s.id + ' banner also carries the qualifier');
+        ok(!/Shipping to|Your machines will run at|Every rack here is running/.test(html), s.id + ' banner does not promise delivery or invented occupancy');
+        if (Facilities.isComingSoon(s)) {
+            ok(html.includes('Proposed hosting preference') && html.includes('Planned capacity') && html.includes('Coming soon'), s.id + ' banner identifies a proposed site');
+            ok(html.includes('does not reserve space or a commissioning date'), s.id + ' banner does not promise a ready date');
+        }
     });
     eq(Facilities.bannerHtml(null, 'cart'), '', 'no site chosen renders nothing at all');
 }
@@ -404,11 +442,8 @@ console.log(CHR + '=== the order carries the site, and a full one is not a refus
 {
     const env = { ORDERS: kv() };
 
-    /* EVERY SITE IS CURRENTLY FULL, and that is a state to sell into rather than a wall. A
-       customer buying machines for a site with no free racks is buying machines and a place on
-       that site's waitlist — refusing the order would turn somebody handing us money for
-       hardware into somebody who cannot give us any. */
-    const site = Facilities.all()[0];
+    /* Existing full capacity supports a waitlist; a proposed site records interest. */
+    const site = Facilities.byId('alberta');
     ok(Facilities.isFull(site), 'the sample site is full', site.status);
 
     const good = await post(env, '/orders', {
@@ -422,6 +457,13 @@ console.log(CHR + '=== the order carries the site, and a full one is not a refus
     /* The flag ops needs before anything ships. Set from the WORKER'S list, never from the
        browser, for the same reason prices are. */
     eq(back.body.destination.waitlisted, true, '...and marked as waiting on space');
+    for (const proposal of Facilities.all().filter(Facilities.isComingSoon)) {
+        const created = await post(env, '/orders', {lines:LINES,contact:CONTACT,destination:{kind:'ion',site_id:proposal.id,waitlisted:true,hosting_status:'open'}});
+        eq(created.status, 201, proposal.id + ' can be recorded as a hosting preference');
+        const stored = (await get(env, '/orders/' + created.body.reference)).body.destination;
+        eq(stored.waitlisted, false, proposal.id + ' is not an operating-site waitlist');
+        eq(stored.hosting_status, 'planned', proposal.id + ' requires hosting confirmation despite forged client status');
+    }
 
     /* A site with room behaves differently, and the difference has to be visible — otherwise
        the flag is decoration that happens to be true today. SITE_OPEN is a const binding whose
@@ -480,7 +522,7 @@ console.log(CHR + '=== a full site says so before anything is paid ===');
        is. The rule is about a card promising something a specific site cannot give. */
     const cards = page.slice(page.indexOf('<!-- facilities:begin -->'),
                              page.indexOf('<!-- facilities:end -->'));
-    ok(cards.indexOf('Join the waitlist') >= 0,
+    ok(cards.indexOf(Facilities.actionLabel(Facilities.byId('alberta'))) >= 0,
        'a full site asks for what it can give');
     const overpromising = Facilities.all().filter(
         s2 => Facilities.isFull(s2) && cards.indexOf('>Start mining') >= 0
@@ -545,7 +587,7 @@ console.log(CHR + '=== the prepaid term reaches the order ===');
     ok(fd.discount === undefined, 'a discount it sent is not');
     ok(fd.years === undefined, 'nor a term length');
     ok(fd.prepay_rate === undefined, 'nor a rate');
-    eq(Object.keys(fd).sort().join(','), 'kind,prepay_term,site_id,waitlisted',
+    eq(Object.keys(fd).sort().join(','), 'hosting_status,kind,prepay_term,site_id,waitlisted',
        'the destination holds only what it should');
 }
 
@@ -563,7 +605,7 @@ console.log('\n=== the browser names a site, never what it costs ===');
     const d = (await get(env, '/orders/' + r.body.reference)).body.destination;
     ok(d.powerCents === undefined, 'a power price sent by the browser is not stored');
     ok(d.capacityMw === undefined, 'nor a capacity');
-    eq(Object.keys(d).sort().join(','), 'kind,site_id,waitlisted',
+    eq(Object.keys(d).sort().join(','), 'hosting_status,kind,site_id,waitlisted',
        'the destination holds only what it should');
 }
 
@@ -574,7 +616,7 @@ console.log('=== machines and electricity are two costs, and stay two ===');
        twice the hardware. A customer who reads one number and believes it covers both has been
        misled by arithmetic nobody performed on purpose — which is exactly what a single
        "total" would do. */
-    const site = Facilities.byId('permian');
+    const site = Facilities.byId('alberta');
     const term = Prepay.byId('36m');
     const KW = 36.45, UNITS = 10, HW = 30100;
     const money = v => '$' + Math.round(v).toLocaleString('en-US');
@@ -683,7 +725,7 @@ console.log('\n=== request-only variants do not fabricate complete costs ===');
     const noHardware = Prepay.itemisedHtml({site, term, hardwareUsd: null, kw: 30, units: 5, unpriced: 5, depositRate: 0.25});
     ok(/Machines/.test(noHardware) && /quote required|on request/i.test(noHardware),
        'unpriced machines remain visible with their quote requirement');
-    ok(/Electricity/.test(noHardware), 'known fleet power can still show its own electricity cost');
+    ok(/electricity/i.test(noHardware), 'known fleet power can still show its own electricity estimate');
     ok(!/Both together|it-row--total/.test(noHardware), 'unknown hardware prevents a fabricated combined cost');
     ok(!/deposit now/.test(noHardware), 'unpriced hardware does not invent a deposit due now');
 
@@ -711,6 +753,34 @@ console.log('\n=== monthly site costs stay separate from hardware capital ===');
     const partial = Prepay.itemisedHtml({site, term: null, hardwareUsd: 25000, kw, units: 5, unknownPower: 1});
     ok(partial.includes('Power to confirm') && !partial.includes('class="it-val">' + expected + '<'),
        'unknown power blocks a monthly estimate from a known fleet subtotal');
+}
+
+console.log('\n=== proposed site estimates never imply confirmed power or free hosting ===');
+{
+    const proposal = Facilities.byId('cold-lake'), unknown = Facilities.byId('alberta-expansion');
+    for (const term of [null, Prepay.byId('24m')]) {
+        const options = {term, hardwareUsd:25000, kw:30, units:5, depositRate:.25};
+        const estimated = Prepay.itemisedHtml({...options,site:proposal});
+        ok(/illustrative/i.test(estimated) && estimated.includes('commissioning, capacity and hosting terms are unconfirmed'), 'a planned site estimate states what remains unconfirmed');
+        const missing = Prepay.itemisedHtml({...options,site:unknown});
+        ok(missing.includes('Rate to confirm'), 'an unprovided hosting rate remains unknown');
+        ok(!/NaN|null|undefined|it-val">\$0(?:\.00)?<|Both together/.test(missing), 'an unknown rate does not become free electricity or a complete total');
+    }
+}
+
+console.log('\n=== an unknown site rate clears only the previous automatic rate ===');
+{
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
+    const fields = {hwElec:{value:''},hwEconNote:{innerHTML:'Enter a rate.'}};
+    const context = {$:id => fields[id] || null,Prepay,esc:Facilities.esc};
+    runInNewContext(source.slice(source.indexOf('var autoElec ='),source.indexOf('/* ---- prepaid electricity')),context);
+    context.fillPowerPrice(Facilities.byId('permian'),null);
+    eq(fields.hwElec.value, '0.071', 'a known estimate populates the modelling field');
+    context.fillPowerPrice(Facilities.byId('alberta-expansion'),null);
+    eq(fields.hwElec.value, '', 'an unknown rate cannot retain the previous site estimate');
+    ok(fields.hwEconNote.innerHTML.includes('to be confirmed'), 'the field explains the missing rate');
+    fields.hwElec.value = '0.11';context.fillPowerPrice(Facilities.byId('alberta-expansion'),null);
+    eq(fields.hwElec.value, '0.11', 'a modelling rate entered by the visitor remains theirs');
 }
 
 console.log('\n=== Hardware retains full saved orders without the old table ===');
@@ -938,7 +1008,7 @@ console.log('\n=== the pasted order says where it goes and what power costs ==='
        team ends up asking which one is real. */
     const hw = fs.readFileSync(path.join(REPO_ROOT, 'site', 'hardware.js'), 'utf8');
     const ex = hw.slice(hw.indexOf('function orderExtras'), hw.indexOf('function renderOrder'));
-    ok(ex.indexOf('Destination: ') >= 0, 'the pasted order names the site');
+    ok(ex.indexOf('Hosting preference: ') >= 0, 'the pasted order names a preference without guaranteeing a shipping destination');
     ok(ex.indexOf('status: ') >= 0, 'and whether it can take machines');
     ok(ex.indexOf('electricity: ') >= 0, 'and the term with its rate');
     ok(ex.indexOf('electricity total: ') >= 0, 'and what that term costs');
