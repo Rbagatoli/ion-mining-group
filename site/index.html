@@ -13,9 +13,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./styles.css?v=1b7e37e6">
+<link rel="stylesheet" href="./styles.css?v=de2f6fc5">
 <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
-<link rel="stylesheet" href="./energy-home.css?v=1b7e37e6">
+<link rel="stylesheet" href="./energy-home.css?v=de2f6fc5">
 
 <!-- ===== STRUCTURED DATA ===== -->
 <script type="application/ld+json">
@@ -37,7 +37,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://protonminingco.com/og/home.png">
 <!-- ===== /SHARE CARD ===== -->
-<link rel="stylesheet" href="./plant-viewer.css?v=1b7e37e6">
+<link rel="stylesheet" href="./plant-viewer.css?v=de2f6fc5">
 </head>
 <body>
 <canvas class="anim-field anim-field--page anim-field--hero" data-w="1440" data-h="900" aria-hidden="true"></canvas>
@@ -145,8 +145,20 @@
       </div>
     <div class="research-slot">
     <aside class="research-card" aria-labelledby="research-site-title">
-      <span class="research-example" id="research-source-label">Illustrative example</span>
-      <h3 id="research-site-title">Landfill gas</h3>
+      <div class="research-card-heading">
+        <svg class="research-source-symbol" data-research-symbol="landfill" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="research-landfill-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-landfill-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 36 15 26l8 5 8-10 12 15M5 41h38M15 26V16h12v-5"/><path class="source-accent" d="M24 11c-5-4 5-5 0-9M33 16c-5-4 5-5 0-9"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="flare" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-flare-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-flare-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M25 4c3 9-6 12-5 19-3-1-5-4-5-8-7 7-10 15-5 22 5 8 18 9 25 2 8-9 2-19-4-23 1 7-3 10-5 11 2-8 3-15-1-23Z"/><path class="source-accent" d="M24 27c0 5-7 6-6 11a7 7 0 0 0 13-1c0-5-4-7-7-10Z"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="hydro" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-hydro-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-hydro-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 10h26l-4 20H15ZM19 10l2 20M29 10l-2 20M6 15h6M36 15h6"/><path class="source-accent" d="M4 36q5-5 10 0t10 0t10 0t10 0M4 42q5-5 10 0t10 0t10 0t10 0"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="nuclear" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-nuclear-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-nuclear-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="24" cy="24" rx="20" ry="8"/><ellipse cx="24" cy="24" rx="20" ry="8" transform="rotate(60 24 24)"/><ellipse cx="24" cy="24" rx="20" ry="8" transform="rotate(120 24 24)"/><circle class="source-accent" cx="24" cy="24" r="3"/><circle class="source-accent" cx="41" cy="20" r="2"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="wind" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-wind-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-wind-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="34" cy="12" r="6"/><path d="M34 2v2M44 12h2M42 4l-2 2M34 20v2M17 26v17M10 43h14"/><circle class="source-accent" cx="17" cy="24" r="2"/><path class="source-accent" d="M17 22 10 7M19 24l17 2M16 26 7 37"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="solar" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-solar-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-solar-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 24h28l5 15H5ZM19 24l-2 15M29 24l2 15M8 31h32M24 39v5M17 44h14"/><circle class="source-accent" cx="24" cy="11" r="5"/><path class="source-accent" d="M24 2v2M24 18v2M15 11h2M31 11h2M17 4l2 2M29 16l2 2M31 4l-2 2M19 16l-2 2"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="industrial" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-industrial-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-industrial-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 41V22l11-7v10l11-7v23ZM28 28h14v13H28M32 28l1-21h6l1 21M11 30h2M20 30h2M11 36h2M20 36h2"/><path class="source-accent" d="m35 31-4 5h4l-1 4 6-7h-5Z"/></g></svg>
+        <svg class="research-source-symbol" data-research-symbol="grid" viewBox="0 0 48 48" aria-hidden="true" focusable="false" hidden><defs><linearGradient id="research-grid-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f0e9"/><stop offset=".5" stop-color="#929da3"/><stop offset="1" stop-color="#e5e7e4"/></linearGradient></defs><g fill="none" stroke="url(#research-grid-metal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 5v11M29 5v11M12 16h22v5a11 11 0 0 1-22 0ZM23 32v5a6 6 0 0 0 12 0v-2"/><path class="source-accent" d="m24 19-6 7h6l-2 5 7-8h-6Z"/></g></svg>
+        <div>
+          <span class="research-example" id="research-source-label">Illustrative example</span>
+          <h3 id="research-site-title">Landfill gas</h3>
+        </div>
+      </div>
       <details class="research-details">
         <summary>Infrastructure, capital &amp; contacts <span aria-hidden="true">+</span></summary>
       <div class="research-tabs" role="tablist" aria-label="Site research details">
@@ -546,15 +558,15 @@
   </div>
 </footer>
 
-<script src="./site.js?v=1b7e37e6"></script>
-<script src="./home-research-preview.js?v=1b7e37e6" defer></script>
-<script src="./home-energy-explorer.js?v=1b7e37e6" data-globe-src="./home-discovery-globe.js?v=1b7e37e6" defer></script>
-<script src="./cart.js?v=1b7e37e6"></script>
-<script src="./diagram-engine.js?v=1b7e37e6"></script>
-<script src="./hero-anim.js?v=1b7e37e6"></script>
-<script src="./site-kit.js?v=1b7e37e6"></script>
-<script src="./scene-site.js?v=1b7e37e6"></script>
-<script src="./plant-viewer.js?v=1b7e37e6" data-module-src="./mine-builder-scene.js?v=1b7e37e6"></script>
+<script src="./site.js?v=de2f6fc5"></script>
+<script src="./home-research-preview.js?v=de2f6fc5" defer></script>
+<script src="./home-energy-explorer.js?v=de2f6fc5" data-globe-src="./home-discovery-globe.js?v=de2f6fc5" defer></script>
+<script src="./cart.js?v=de2f6fc5"></script>
+<script src="./diagram-engine.js?v=de2f6fc5"></script>
+<script src="./hero-anim.js?v=de2f6fc5"></script>
+<script src="./site-kit.js?v=de2f6fc5"></script>
+<script src="./scene-site.js?v=de2f6fc5"></script>
+<script src="./plant-viewer.js?v=de2f6fc5" data-module-src="./mine-builder-scene.js?v=de2f6fc5"></script>
 
 
 

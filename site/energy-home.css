@@ -35,6 +35,11 @@
 .research-card { position: relative; display: flex; flex-direction: column; max-height: 100%; max-width: 520px; margin: 0; padding: 16px 22px 0; background: rgba(8,9,10,.42); border: 1px solid rgba(229,228,226,.18); border-top-color: rgba(229,228,226,.3); border-radius: 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
 .research-example { flex: none; display: block; margin: 0; color: #ffc681; font: 400 9px/1.5 var(--home-body); letter-spacing: .13em; text-transform: uppercase; }
 .research-card h3 { flex: none; margin: 7px 0 0; color: #fff; font: 600 24px/1.2 var(--home-body); letter-spacing: -.025em; }
+.research-card-heading { display: flex; flex: none; align-items: center; gap: 13px; min-height: 52px; }
+.research-card-heading > div { min-width: 0; }
+.research-source-symbol { display: block; flex: 0 0 42px; width: 42px; height: 42px; }
+.research-source-symbol[hidden] { display: none; }
+.research-source-symbol .source-accent { stroke: #f5a536; }
 .research-card-intro { margin: 6px 0 0; color: rgba(255,255,255,.64); font: 300 13px/1.5 var(--home-body); }
 .research-details { min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(229,228,226,.3) transparent; border: 0; margin-top: 12px; }
 .research-card:has(.research-details[open]) { height: 100%; }
@@ -70,8 +75,13 @@
 .home-discovery-canvas:active { cursor: grabbing; }
 .home-globe-labels, .home-globe-lines { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .home-globe-label { position: absolute; width: max-content; max-width: 150px; border: 1px solid rgba(229,228,226,.25); border-radius: 6px; padding: 6px 10px; background: rgba(22,22,22,.88); backdrop-filter: blur(6px); color: #e5e4e2; font: 500 11px/1.4 var(--home-body); opacity: 0; pointer-events: none; transition: opacity .4s ease; cursor: pointer; }
-.home-globe-label.is-visible { opacity: 1; pointer-events: auto; }
+.home-globe-label.is-visible { opacity: 1; pointer-events: none; }
 .home-globe-label.is-selected { border-color: rgba(247,147,26,.5); color: #ffc681; }
+.home-globe-pin { position: absolute; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #f8b257; pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+.home-globe-pin[hidden] { display: none; }
+.home-globe-pin-glyph { display: block; width: 21px; height: 21px; border: 1px solid transparent; border-radius: 50%; transition: border-color .2s,box-shadow .2s; }
+.home-globe-pin:hover .home-globe-pin-glyph, .home-globe-pin:focus-visible .home-globe-pin-glyph { border-color: rgba(249,187,103,.9); box-shadow: 0 0 12px rgba(247,147,26,.2); }
+.home-globe-pin:focus-visible { outline: 1px solid #f7b765; outline-offset: -4px; }
 .home-globe-lines line { stroke: rgba(247,147,26,.36); stroke-width: 1; }
 .home-explorer-top { position: relative; order: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-top: 4px; }
 .home-explorer-top h3 { margin: 0; color: #f1f0ee; font: 500 clamp(20px,2vw,27px)/1.2 var(--home-display); letter-spacing: -.03em; }
@@ -130,46 +140,55 @@
   .home-hero-scroll { bottom: 17px; font-size: 8px; }
   .home-hero-scroll span { height: 22px; }
 }
+/* On phones the globe is the backdrop, as in the network composition, while
+   remaining anchored at the right edge. Content stays in normal reading order. */
 @media (max-width: 900px) {
-  .home-sourcing { padding: 32px 16px; }
-  .home-discovery-grid { grid-template-columns: minmax(0,1fr); gap: 0; height: auto; min-height: 0; border-radius: 16px; }
+  .home-sourcing { padding: 24px 12px; scroll-margin-top: 64px; }
+  .home-discovery-grid { grid-template-columns: minmax(0,1fr); gap: 0; height: auto; min-height: 0; border-radius: 22px; background: linear-gradient(145deg,rgba(25,26,27,.7),rgba(8,9,10,.3)); }
   .home-sourcing-copy { display: contents; }
-  .home-sourcing-intro { grid-row: 1; padding: 26px 22px 0; text-align: center; }
-  .home-sourcing .eyebrow { margin-bottom: 12px; font-size: 9px; }
-  .home-sourcing-copy h2 { font-size: clamp(30px,8vw,44px); margin-bottom: 14px; }
-  .home-sourcing-subtitle { font-size: 13px; line-height: 1.6; margin: 0 auto 18px; }
-  .home-sourcing-stats { justify-content: center; gap: 30px; margin-bottom: 4px; }
-  .home-sourcing-stats strong { font-size: 28px; }
+  .home-sourcing-intro { position: relative; z-index: 2; grid-row: 1; padding: 34px 26px 0; text-align: left; pointer-events: none; }
+  .home-sourcing .eyebrow { margin-bottom: 18px; font-size: 9px; }
+  .home-sourcing-copy h2 { max-width: 340px; font-size: clamp(32px,8.8vw,44px); line-height: 1.05; margin-bottom: 20px; }
+  .home-sourcing-subtitle { max-width: 350px; font-size: 14px; line-height: 1.7; margin: 0 0 22px; }
+  .home-sourcing-stats { justify-content: flex-start; gap: 27px; margin-bottom: 24px; }
+  .home-sourcing-stats strong { font-size: 26px; }
   .home-sourcing-stats span { font-size: 8px; letter-spacing: .06em; }
-  .home-energy-explorer { grid-row: 2; padding: 0 18px 16px; }
-  .home-explorer-stage { order: 0; flex: none; min-height: 0; height: clamp(250px,85vw,380px); margin: 0 -18px; overflow: hidden; }
-  /* Keep the desktop corner crop without horizontal page overflow. */
-  .home-discovery-globe { width: min(145%,700px); height: auto; aspect-ratio: 1; inset: 16px clamp(-160px,-36vw,-108px) auto auto; }
-  .home-globe-labels, .home-globe-lines { display: none; }
-  .home-explorer-top { order: 1; height: 58px; min-height: 58px; gap: 7px; }
-  .home-explorer-top h3 { font-size: 22px; }
-  .home-research-sources { order: 2; margin-top: 4px; gap: 0 9px; }
-  .home-research-sources button { font-size: 11px; min-height: 44px; }
-  .home-explorer-status { order: 3; margin-top: 10px; font-size: 10px; text-align: center; }
-  .research-slot { grid-row: 3; height: 380px; margin: 0 18px 14px; min-width: 0; }
-  .research-card { max-width: none; margin: 0; padding: 15px 15px 0; }
+  .home-energy-explorer { position: static; grid-row: 2; padding: 0 26px 18px; }
+  .home-explorer-stage { position: absolute; z-index: 0; inset: 0; height: auto; min-height: 0; margin: 0; overflow: hidden; pointer-events: none; }
+  .home-explorer-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg,rgba(5,7,9,.38),rgba(5,7,9,.08) 72%,transparent); }
+  .home-discovery-globe { --mobile-globe-size: clamp(640px,190vw,1040px); width: var(--mobile-globe-size); height: var(--mobile-globe-size); aspect-ratio: 1; inset: auto calc(var(--mobile-globe-size) * -.5 + 14%) -50px auto; pointer-events: auto; }
+  .home-globe-lines { display: none; }
+  .home-globe-labels { display: block; }
+  .home-globe-label { display: none; }
+  .home-explorer-top { display: none; }
+  .home-research-sources { order: 2; margin-top: 0; gap: 0 9px; background: linear-gradient(90deg,rgba(7,9,11,.84),rgba(7,9,11,.45)); }
+  .home-research-sources button { font-size: 11px; min-height: 44px; text-shadow: 0 1px 8px #000; }
+  .home-explorer-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .research-slot { position: relative; z-index: 3; grid-row: 3; height: 340px; margin: 0 26px 20px; max-width: 430px; min-width: 0; }
+  .research-card { max-width: none; margin: 0; padding: 15px 15px 0; border-left: 2px solid #e99737; background: linear-gradient(140deg,rgba(34,36,38,.92),rgba(8,10,12,.94)); box-shadow: 0 16px 40px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05); }
   [data-research-ready="true"] .research-card { height: 100%; }
   [data-research-ready="true"] .research-details > summary { display: none; }
   .research-card h3 { font-size: 19px; }
-  .research-card-intro { font-size: 12px; }
   .research-details > summary { font-size: 11px; }
   .research-content { column-gap: 14px; }
+  .research-row { padding-block: 12px; }
   .research-row-label { font-size: 9px; }
   .research-row-value { font-size: 13px; }
-  .home-sourcing-actions { grid-row: 4; padding: 0 18px 20px; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; }
+  .home-sourcing-actions { position: relative; z-index: 3; grid-row: 4; padding: 0 26px 30px; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 6px 14px; }
   .home-sourcing-actions .research-cta { min-height: 44px; padding: 11px 15px; }
   .research-workspace-link { font-size: 11px; }
   .home-map-credit { font-size: 9px; }
 }
-@media (max-width: 380px) { .research-slot { height: 410px; } }
+@media (max-width: 380px) {
+  .home-sourcing-intro { padding-inline: 20px; }
+  .home-sourcing-stats { gap: 20px; }
+  .home-energy-explorer { padding-inline: 20px; }
+  .research-slot { height: 370px; margin-inline: 20px; }
+  .home-sourcing-actions { padding-inline: 20px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .home-hero-scroll span, .research-details[open] .research-content { animation: none; }
-  .home-research-sources button, .home-discovery-globe, .home-globe-label { transition: none; }
+  .home-research-sources button, .home-discovery-globe, .home-globe-label, .home-globe-pin-glyph { transition: none; }
 }
 @media print {
   .home-hero-scroll, .home-energy-explorer { display: none; }
@@ -181,4 +200,7 @@
 }
 @media (forced-colors: active) {
   .home-sourcing :is(h2,h3,p,a,button,summary,strong) { background-image: none; color: CanvasText; -webkit-text-fill-color: currentColor; }
+  .research-source-symbol g { stroke: CanvasText; }
+  .research-source-symbol .source-accent { stroke: Highlight; }
+  .home-globe-pin-glyph { border-color: Highlight; }
 }

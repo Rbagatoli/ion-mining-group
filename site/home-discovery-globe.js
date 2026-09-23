@@ -2,14 +2,15 @@
    orange energy routes. Regions illustrate sources, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
-    landfill:{label:'Landfill gas',lat:41.8,lon:-87.5},
-    flare:{label:'Flare gas',lat:31.8,lon:-103},
-    hydro:{label:'Hydro',lat:47.2,lon:-120.7},
-    nuclear:{label:'Nuclear',lat:35.2,lon:-80.8},
-    wind:{label:'Wind',lat:42,lon:-101},
-    solar:{label:'Solar',lat:33.4,lon:-112.2},
-    industrial:{label:'Industrial surplus',lat:40.7,lon:-80.4},
-    grid:{label:'Grid supply',lat:34,lon:-84.4}
+    landfill:{label:'Landfill gas',lat:46,lon:-93},
+    flare:{label:'Flare gas',lat:31,lon:-106},
+    hydro:{label:'Hydro',lat:54,lon:-126},
+    nuclear:{label:'Nuclear',lat:36,lon:-79},
+    // Across the date line, 170°E is geographically west of Alaska.
+    wind:{label:'Wind',lat:65,lon:170},
+    solar:{label:'Solar',lat:24,lon:-112},
+    industrial:{label:'Industrial surplus',lat:49,lon:-67},
+    grid:{label:'Grid supply',lat:59,lon:-106}
 };
 const radians = degrees => degrees*Math.PI/180;
 // Solve the perspective projection for 40°N, 100°W at 70% of the
@@ -52,13 +53,23 @@ export function mountHomeDiscoveryGlobe(host) {
     lines.classList.add('home-globe-lines'); lines.setAttribute('aria-hidden','true');
     const pins = Object.entries(SOURCES).map(([id,region]) => {
         const button = document.createElement('button');
-        button.type = 'button'; button.className = 'home-globe-label'; button.hidden = true;
-        button.dataset.globeSource = id; button.textContent = region.label;
+        button.type = 'button'; button.className = 'home-globe-pin'; button.hidden = true;
+        button.dataset.globeSource = id;
+        Object.assign(button.style,{width:'44px',height:'44px',minWidth:'44px',minHeight:'44px'});
         button.setAttribute('aria-label','Explore '+region.label+' — illustrative region');
+        button.setAttribute('aria-pressed',String(id === 'landfill'));
+        const glyph = document.createElement('span'); glyph.className = 'home-globe-pin-glyph';
+        glyph.setAttribute('aria-hidden','true'); button.appendChild(glyph);
+        const caption = document.createElement('span'); caption.className = 'home-globe-label'; caption.hidden = true;
+        caption.textContent = region.label; caption.setAttribute('aria-hidden','true');
         const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.style.display = 'none'; lines.appendChild(line); labels.appendChild(button);
-        return {id,...region,button,line};
+        line.style.display = 'none'; lines.appendChild(line); labels.append(button,caption);
+        return {id,...region,button,caption,line};
     });
+    const frameHost = host.closest('.home-discovery-grid');
+    const stageHost = host.closest('.home-explorer-stage');
+    const overlayElements = ['.home-sourcing-intro','.research-slot','.home-research-sources','.home-sourcing-actions','.home-explorer-top']
+        .map(selector => frameHost?.querySelector(selector)).filter(Boolean);
     host.append(canvas,lines,labels);
     host.dataset.discoverySource = 'landfill';
     let selected = 'landfill', phi = HOME.phi, theta = HOME.theta, scale = HOME.scale;
@@ -67,7 +78,8 @@ export function mountHomeDiscoveryGlobe(host) {
     let homeDistance = 0, markers = [], routes = [];
     const textureSet = new Set();
     let active = true, visible = false, suspended = false, frame = 0, last = 0, elapsed = 0;
-    let width = 0, height = 0, ratio = 1, flight = null, drag = null, ignoreClick = false;
+    let width = 0, height = 0, ratio = 1, flight = null, drag = null, ignoreClick = false, hoveredPin = null;
+    let overlayCache = null;
     let resizeObserver, loadObserver, viewObserver;
 
     function available() { return active && visible && !document.hidden && !suspended && !failed && !disposed; }
@@ -79,9 +91,6 @@ export function mountHomeDiscoveryGlobe(host) {
         const previous = flight; flight = null;
         clearTimeout(previous.timeout); previous.resolve(success);
     }
-    function visibleMarkerIDs() {
-        return ['landfill','flare','hydro'].includes(selected) ? ['landfill','flare','hydro'] : ['landfill','hydro',selected];
-    }
     function project(region) {
         if (!camera || !region.anchor || !earth) return null;
         // A perspective globe hides points beyond its actual sphere horizon.
@@ -89,22 +98,43 @@ export function mountHomeDiscoveryGlobe(host) {
         const point = region.tip.clone().project(camera);
         return {x:(point.x+1)*width/2,y:(1-point.y)*height/2};
     }
+    function targetLayout() {
+        // Rectangles are local to the globe, so ordinary page scrolling does not
+        // invalidate them. Throttle layout reads while the sphere is rotating.
+        if (overlayCache && Date.now()-overlayCache.updated < 250) return overlayCache;
+        const origin = host.getBoundingClientRect();
+        const localRect = element => {
+            const rect = element.getBoundingClientRect();
+            return {left:rect.left-origin.left,top:rect.top-origin.top,
+                right:rect.right-origin.left,bottom:rect.bottom-origin.top,width:rect.width,height:rect.height};
+        };
+        const clips = [stageHost,frameHost].filter(Boolean).map(localRect);
+        return overlayCache = {updated:Date.now(),overlays:overlayElements.map(localRect).filter(rect => rect.width && rect.height),
+            left:Math.max(0,...clips.map(rect => rect.left)),top:Math.max(0,...clips.map(rect => rect.top)),
+            right:Math.min(width,...clips.map(rect => rect.right)),bottom:Math.min(height,...clips.map(rect => rect.bottom))};
+    }
     function updateLabels() {
-        const visibleIDs = visibleMarkerIDs();
-        const candidates = pins.filter(pin => visibleIDs.includes(pin.id) && project(pin));
-        const primary = candidates.find(pin => pin.id === selected) || candidates[0];
-        const others = candidates.filter(pin => pin !== primary);
-        const secondary = others.length ? others[Math.floor(elapsed/3)%others.length] : null;
-        const shown = available() && ready && !flight && scale < 1.08 ? [primary,secondary].filter(Boolean) : [];
+        const interactive = available() && ready && !flight && scale < 1.08;
+        const layout = interactive ? targetLayout() : null;
         for (const pin of pins) {
-            const position = project(pin), index = shown.indexOf(pin), show = index >= 0 && !!position;
-            pin.button.hidden = !show; pin.line.style.display = show ? '' : 'none';
+            const position = project(pin);
+            const show = interactive && !!position && position.x >= layout.left && position.x <= layout.right && position.y >= layout.top && position.y <= layout.bottom &&
+                !layout.overlays.some(rect => position.x >= rect.left && position.x <= rect.right && position.y >= rect.top && position.y <= rect.bottom);
+            const captionShown = show && pin.id === selected;
+            if (!show && hoveredPin === pin.button) hoveredPin = null;
+            pin.button.hidden = !show; pin.caption.hidden = !captionShown;
+            pin.line.style.display = captionShown ? '' : 'none';
             pin.button.classList.toggle('is-visible',show);
             pin.button.classList.toggle('is-selected',pin.id === selected);
+            pin.button.setAttribute('aria-pressed',String(pin.id === selected));
+            pin.caption.classList.toggle('is-visible',captionShown);
+            pin.caption.classList.toggle('is-selected',pin.id === selected);
             if (!show) continue;
-            const x = position.x+(index === 0 ? 40 : -40), y = position.y+(index === 0 ? -58 : 40);
-            pin.button.style.left = x+'px'; pin.button.style.top = y+'px';
-            pin.button.style.transform = index === 0 ? '' : 'translateX(-100%)';
+            pin.button.style.left = position.x+'px'; pin.button.style.top = position.y+'px';
+            pin.button.style.transform = 'translate(-50%,-50%)';
+            if (!captionShown) continue;
+            const x = Math.max(8,Math.min(width-154,position.x+30)), y = Math.max(8,position.y-42);
+            pin.caption.style.left = x+'px'; pin.caption.style.top = y+'px';
             pin.line.setAttribute('x1',position.x); pin.line.setAttribute('y1',position.y);
             pin.line.setAttribute('x2',x); pin.line.setAttribute('y2',y+12);
         }
@@ -131,20 +161,19 @@ export function mountHomeDiscoveryGlobe(host) {
         return true;
     }
     function setVisuals() {
-        const ids = visibleMarkerIDs(), animated = !motion.matches;
+        const animated = !motion.matches;
         markers.forEach((marker,index) => {
-            marker.pin.visible = ids.includes(marker.id);
             const focused = marker.id === selected, pulse = animated ? .5+.5*Math.sin(elapsed*1.1-index*.6) : .5;
-            marker.material.emissiveIntensity = focused ? .26+pulse*.08 : .09;
-            marker.cap.scale.setScalar(focused ? 1.12 : 1);
-            marker.halo.material.opacity = focused ? .17+pulse*.07 : .07;
-            marker.halo.scale.setScalar(focused ? .94+pulse*.08 : .82);
-            marker.ring.material.opacity = focused ? .55 : .20;
+            marker.material.emissiveIntensity = focused ? .16+pulse*.045 : .055;
+            marker.cap.scale.setScalar(focused ? 1.08 : 1);
+            marker.halo.material.opacity = focused ? .10+pulse*.03 : .035;
+            marker.halo.scale.setScalar(focused ? .97+pulse*.04 : .86);
+            marker.ring.material.opacity = focused ? .48 : .22;
         });
         routes.forEach(route => {
-            const show = route.ids.every(id => ids.includes(id)), focused = route.ids.includes(selected);
-            route.line.visible = show; route.pulse.visible = show && focused;
-            route.line.material.opacity = focused ? .22 : .07;
+            const focused = route.ids.includes(selected);
+            route.line.visible = focused; route.pulse.visible = focused;
+            route.line.material.opacity = .16;
             route.pulse.position.copy(route.curve.getPointAt(animated ? (elapsed*.055+route.phase)%1 : .55));
         });
     }
@@ -195,13 +224,14 @@ export function mountHomeDiscoveryGlobe(host) {
         // Keep the focused label and its geographic anchor still while a
         // keyboard user reads it or tabs between the visible source labels.
         const labelFocused = labels.contains(document.activeElement);
-        if (!labelFocused) elapsed += delta;
+        const pinEngaged = labelFocused || hoveredPin;
+        if (!pinEngaged) elapsed += delta;
         let complete = false;
         if (flight?.started) {
             flight.elapsed += delta;
             const progress = Math.min(1,flight.elapsed/flight.duration);
             animateFlight(progress); complete = progress >= 1;
-        } else if (!drag && scale === 1 && !labelFocused) {
+        } else if (!drag && scale === 1 && !pinEngaged) {
             phi += delta*ROTATION_SPEED;
         }
         draw(complete); if (complete) finishFlight(true); wake();
@@ -243,6 +273,7 @@ export function mountHomeDiscoveryGlobe(host) {
         updateLabels();
     }
     function resize() {
+        overlayCache = null;
         if (!disposed && !failed && renderer && active) { draw(); startFlight(); wake(); }
     }
     function fallback() {
@@ -304,25 +335,30 @@ export function mountHomeDiscoveryGlobe(host) {
                 fragmentShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){float e=pow(1.-abs(dot(normalize(n),normalize(v))),3.4);float left=1.-smoothstep(-2.8,1.2,p.x);float bottom=1.-smoothstep(-2.5,.5,p.y);float warm=max(left,bottom*.65);gl_FragColor=vec4(1.,.40,.055,e*(.08+.34*warm));}'
             })));
 
-            const stemMaterial = new T.MeshStandardMaterial({color:0xc9c6bf,metalness:.82,roughness:.27});
+            const bezelMaterial = new T.MeshStandardMaterial({color:0xd9d8d4,metalness:1,roughness:.24});
             for (const [id,region] of Object.entries(SOURCES)) {
                 const anchor = surface.globePoint(region.lat,region.lon,3.218);
                 const pin = new T.Group(); pin.name = 'illustrative-region-'+id;
                 pin.position.copy(anchor); pin.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),anchor.clone().normalize());
                 earth.root.add(pin);
-                const material = new T.MeshStandardMaterial({color:0xf7931a,metalness:.38,roughness:.4,emissive:0xdb730d,emissiveIntensity:.12});
-                const stem = new T.Mesh(new T.CylinderGeometry(.014,.014,.16,10),stemMaterial);
-                stem.rotation.x = Math.PI/2; stem.position.z = .08; pin.add(stem);
-                const cap = new T.Mesh(new T.SphereGeometry(.036,18,12),material); cap.position.z = .18; pin.add(cap);
-                const ring = new T.Mesh(new T.RingGeometry(.055,.066,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
-                ring.position.z = .006; pin.add(ring);
-                const halo = new T.Mesh(new T.RingGeometry(.085,.112,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.10,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
-                halo.position.z = .009; pin.add(halo);
+                const material = new T.MeshStandardMaterial({color:0xf7931a,metalness:.72,roughness:.25,emissive:0xdb730d,emissiveIntensity:.08});
+                // Shallow machined bezels sit on the metallic globe, rather than
+                // tall toy-like map tacks. The faceted orange center catches light.
+                const bezel = new T.Mesh(new T.TorusGeometry(.059,.008,8,40),bezelMaterial);
+                bezel.position.z = .015; pin.add(bezel);
+                const cap = new T.Mesh(new T.OctahedronGeometry(.038,0),material);
+                cap.rotation.z = Math.PI/4; cap.position.z = .029; pin.add(cap);
+                const ring = new T.Mesh(new T.RingGeometry(.074,.079,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.22,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
+                ring.position.z = .012; pin.add(ring);
+                const halo = new T.Mesh(new T.RingGeometry(.095,.104,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.035,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
+                halo.position.z = .012; pin.add(halo);
                 markers.push({id,pin,material,cap,ring,halo,anchor});
                 const label = pins.find(item => item.id === id);
-                label.anchor = anchor; label.tip = anchor.clone().normalize().multiplyScalar(3.41);
+                label.anchor = anchor; label.tip = anchor.clone().normalize().multiplyScalar(3.247);
             }
-            const pairs = markers.flatMap((_,a) => markers.slice(a+1).map((__,offset) => [a,a+1+offset]));
+            // A sparse circuit provides context without covering the globe with
+            // every possible connection. Only the selected source's two arcs show.
+            const pairs = markers.map((_,index) => [index,(index+1)%markers.length]);
             pairs.forEach(([a,b],index) => {
                 const start = markers[a].anchor.clone().normalize(), end = markers[b].anchor.clone().normalize();
                 const points = Array.from({length:49},(_,i) => {
@@ -355,14 +391,17 @@ export function mountHomeDiscoveryGlobe(host) {
     function chooseSource(source) {
         if (disposed || !available()) return;
         const button = document.querySelector('[data-energy-site-select="'+source+'"]');
-        // The globe labels disappear during the flight; retain focus on the
-        // permanent source control before its click starts that transition.
+        // Canvas hit-testing is a fallback to the permanent source controls;
+        // projected DOM pins themselves use the research controller's delegation.
         button?.focus({preventScroll:true});
         button?.click();
     }
-    function labelClick(event) {
+    function pinOver(event) {
         const button = event.target.closest('[data-globe-source]');
-        if (button && labels.contains(button)) chooseSource(button.dataset.globeSource);
+        if (button && labels.contains(button) && event.pointerType !== 'touch') hoveredPin = button;
+    }
+    function pinOut(event) {
+        if (hoveredPin && !hoveredPin.contains(event.relatedTarget)) hoveredPin = null;
     }
     function pointerDown(event) {
         if (!available() || !ready || flight || event.button > 0 || !event.isPrimary) return;
@@ -393,9 +432,7 @@ export function mountHomeDiscoveryGlobe(host) {
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX-rect.left, y = event.clientY-rect.top;
         let nearest = null, distance = 44;
-        const visibleIDs = visibleMarkerIDs();
         for (const pin of pins) {
-            if (!visibleIDs.includes(pin.id)) continue;
             const position = project(pin); if (!position) continue;
             const next = Math.hypot(position.x-x,position.y-y);
             if (next < distance) { nearest = pin; distance = next; }
@@ -430,7 +467,8 @@ export function mountHomeDiscoveryGlobe(host) {
         canvas.removeEventListener('pointerdown',pointerDown); canvas.removeEventListener('pointermove',pointerMove);
         canvas.removeEventListener('pointerup',pointerEnd); canvas.removeEventListener('pointercancel',pointerEnd);
         canvas.removeEventListener('lostpointercapture',pointerEnd); canvas.removeEventListener('click',canvasClick);
-        labels.removeEventListener('click',labelClick);
+        labels.removeEventListener('pointerover',pinOver); labels.removeEventListener('pointerout',pinOut);
+        hoveredPin = null;
         releaseResources(); canvas.remove(); lines.remove(); labels.remove();
         host.dataset.renderState = 'poster'; mounted.delete(host);
     }
@@ -438,7 +476,7 @@ export function mountHomeDiscoveryGlobe(host) {
     canvas.addEventListener('pointerdown',pointerDown); canvas.addEventListener('pointermove',pointerMove);
     canvas.addEventListener('pointerup',pointerEnd); canvas.addEventListener('pointercancel',pointerEnd);
     canvas.addEventListener('lostpointercapture',pointerEnd); canvas.addEventListener('click',canvasClick);
-    canvas.style.cursor = 'grab'; labels.addEventListener('click',labelClick);
+    canvas.style.cursor = 'grab'; labels.addEventListener('pointerover',pinOver); labels.addEventListener('pointerout',pinOut);
     document.addEventListener('visibilitychange',visibilityChanged);
     motion.addEventListener('change',motionChanged);
     window.addEventListener('pagehide',pageHide); window.addEventListener('pageshow',pageShow);

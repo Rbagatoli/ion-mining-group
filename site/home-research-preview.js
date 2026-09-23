@@ -228,6 +228,7 @@
 
     const title = root.querySelector('#research-site-title');
     const label = root.querySelector('#research-source-label');
+    const symbols = Array.from(root.querySelectorAll('[data-research-symbol]'));
     const panel = root.querySelector('#research-content');
     const sourceButtons = Array.from(root.querySelectorAll('[data-research-source]'))
       .filter(button => Object.prototype.hasOwnProperty.call(examples, button.dataset.researchSource));
@@ -285,6 +286,10 @@
 
       title.textContent = example.title;
       label.textContent = 'Illustrative example';
+      symbols.forEach(symbol => {
+        if (symbol.dataset.researchSymbol === source) symbol.removeAttribute('hidden');
+        else symbol.setAttribute('hidden', '');
+      });
       root.dataset.researchActiveSource = source;
       root.dataset.researchActiveTab = activeTab;
       sourceButtons.forEach(button => {

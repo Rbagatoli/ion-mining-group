@@ -49,6 +49,7 @@ Element.prototype.replaceChildren = function (...nodes) {
 
 function fixture({loading = false, compact = false, markup = html} = {}) {
   const document = parse(markup), events = [], eventViews = [];
+  const timers = new Map(); let timerID = 0;
   const windows = new Element('window'), hover = new Element('media'), mobile = new Element('media');
   hover.matches = true;
   mobile.matches = compact;
@@ -64,13 +65,16 @@ function fixture({loading = false, compact = false, markup = html} = {}) {
       selected: document.querySelector('[data-research-source="' + event.detail.source + '"]').getAttribute('aria-pressed')
     });
   });
-  const sandbox = vm.createContext({document, window:windows, matchMedia:query => query === '(max-width: 900px)' ? mobile : hover, setTimeout, clearTimeout, CustomEvent: class {
+  const sandbox = vm.createContext({document, window:windows, matchMedia:query => query === '(max-width: 900px)' ? mobile : hover,
+    setTimeout: handler => { timers.set(++timerID, handler); return timerID; },
+    clearTimeout: id => timers.delete(id), CustomEvent: class {
     constructor(type, options) { this.type = type; this.detail = options.detail; }
   }});
   const run = () => script.runInContext(sandbox);
   run();
   return {
     document, events, eventViews, run, mobile,
+    flushHover: () => { const pending = [...timers.values()]; timers.clear(); pending.forEach(handler => handler()); },
     root: document.getElementById('home-research-preview'),
     panel: document.getElementById('research-content'),
     source: name => document.querySelector('[data-research-source="' + name + '"]'),
@@ -143,6 +147,42 @@ check('deferred initialization preserves the fallback until DOM readiness', () =
     'Only tab controls may carry data-research-tab.');
   assertTabState(test, 'overview');
   assert.deepEqual(test.events, [], 'Initialization must not act like a user source change.');
+});
+
+check('source symbols have a decorative landfill fallback and stay aligned with the research', () => {
+  const authored = parse(html).querySelectorAll('[data-research-symbol]');
+  assert.deepEqual(authored.map(symbol => symbol.getAttribute('data-research-symbol')), sources);
+  assert.deepEqual(authored.filter(symbol => !symbol.hasAttribute('hidden')).map(symbol => symbol.getAttribute('data-research-symbol')), ['landfill']);
+  for (const symbol of authored) {
+    assert.equal(symbol.tagName, 'svg');
+    assert.equal(symbol.getAttribute('aria-hidden'), 'true');
+    assert.equal(symbol.getAttribute('focusable'), 'false');
+  }
+  const test = fixture();
+  test.tab('contacts').fire('click');
+  for (const source of sources) {
+    test.source(source).fire('click');
+    const visible = test.root.querySelectorAll('[data-research-symbol]').filter(symbol => !symbol.hasAttribute('hidden'));
+    assert.equal(visible.length, 1);
+    assert.equal(visible[0].dataset.researchSymbol, source);
+    assert.equal(test.document.getElementById('research-site-title').textContent, sourceTitles[source]);
+    assertTabState(test, 'contacts');
+  }
+});
+
+check('hover and keyboard focus synchronize the symbol before showing that source research', () => {
+  const test = fixture();
+  const visibleSymbol = () => test.root.querySelectorAll('[data-research-symbol]').find(symbol => !symbol.hasAttribute('hidden')).dataset.researchSymbol;
+  test.source('nuclear').fire('pointerover', {pointerType:'mouse'});
+  assert.equal(visibleSymbol(), 'landfill', 'Hover intent must not update only the symbol early.');
+  test.flushHover();
+  assert.equal(visibleSymbol(), 'nuclear');
+  assert.equal(test.document.getElementById('research-site-title').textContent, 'Nuclear power');
+  assert.ok(test.root.querySelector('.research-details').hasAttribute('open'));
+  test.source('hydro').focus();
+  assert.equal(visibleSymbol(), 'hydro');
+  assert.equal(test.document.getElementById('research-site-title').textContent, 'Operating hydro');
+  assert.deepEqual(test.events, ['nuclear', 'hydro']);
 });
 
 check('even the initial selected source updates its research on every click', () => {
