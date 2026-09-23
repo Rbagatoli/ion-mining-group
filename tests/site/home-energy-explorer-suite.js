@@ -134,7 +134,7 @@ function assertResearch(test, id) {
   await check('hover intent reveals research while the globe stays visible and active', async () => {
     const test = fixture(); await settle(); test.visible(true);
     test.hover('nuclear'); test.tick(119);
-    assert.equal(test.details.hasAttribute('open'), false);
+    assertResearch(test, 'landfill');
     test.tick(1); assertResearch(test, 'nuclear');
     assert.equal(test.document.getElementById('research-site-title').textContent, 'Nuclear power');
     assert.match(test.document.getElementById('home-search-scope').textContent, /Nuclear/);
@@ -146,11 +146,11 @@ function assertResearch(test, id) {
   });
   await check('passing hover cancels, coarse pointers wait for activation, and keyboard focus selects', async () => {
     const passing = fixture(); await settle(); passing.hover('solar'); passing.tick(119); passing.leave('solar'); passing.tick(500);
-    assert.equal(passing.details.hasAttribute('open'), false);
+    assertResearch(passing, 'landfill');
     const touch = fixture({coarse:true}); await settle();
     touch.hover('nuclear', 'touch'); touch.tick(500);
     touch.button('nuclear').fire('pointerdown', {pointerType:'touch'}); touch.button('nuclear').focus();
-    assert.equal(touch.details.hasAttribute('open'), false, 'Touch focus must wait for activation.');
+    assertResearch(touch, 'landfill'); // Touch focus must wait for activation.
     touch.button('nuclear').fire('pointerup'); touch.choose('nuclear'); assertResearch(touch, 'nuclear');
     touch.button('wind').focus(); assertResearch(touch, 'wind');
     assert.equal(touch.document.activeElement, touch.button('wind'));
