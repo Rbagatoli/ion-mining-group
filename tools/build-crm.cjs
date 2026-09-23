@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'..');
 const shell=['index.html','crm.css','crm.js','lead-entry.js','release-update.js','crm-model.js','outreach-model.js','control-center.js','control-center.css','workflow.js','workflow.css','crm-data.js','agent-workbench.js','contacts.js','public-infrastructure.js','public-infrastructure.css','discovery.css','discovery-model.js','discovery.js','discovery-globe.js','grok-managed-hosting.js','sourcing.js','energy-scouting.js','sourcing-model.js','intake-inbox.js','intake-inbox.css','grok-team.js','manifest.webmanifest','icon.svg'];
-const exchange=['client.mjs','journal.mjs','exchange-controller.mjs','exchange-page.mjs','crm-host.mjs','view.mjs','config.mjs','exchange.css'];
+const exchange=['client.mjs','journal.mjs','exchange-controller.mjs','exchange-page.mjs','crm-host.mjs','view.mjs','config.mjs','exchange.css','review-client.mjs','review-host.mjs','review-view.mjs','review-config.mjs'];
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 function packageBytes(rel,bytes){
   // Identical releases on Windows checkouts and Linux CI. Binary assets retain
