@@ -16,12 +16,12 @@ export function createStage(host, options = {}) {
     const world = new T.Scene(), camera = new T.PerspectiveCamera(48,1,.06,600);
     const room = new RoomEnvironment(), pmrem = new T.PMREMGenerator(renderer), environment = pmrem.fromScene(room,.03);
     world.environment = environment.texture; world.environmentIntensity = 1.05; room.dispose(); pmrem.dispose();
-    world.add(new T.HemisphereLight(0xf2f1ee,0x292723,options.fillIntensity ?? 1.6));
+    if (options.lighting !== false) world.add(new T.HemisphereLight(0xf2f1ee,0x292723,options.fillIntensity ?? 1.6));
     const sun = new T.DirectionalLight(0xfffaf2,3.0); sun.position.set(0,35,22); sun.castShadow = !!options.shadows;
     sun.shadow.mapSize.set(1024,1024); sun.shadow.bias = -.0004; sun.shadow.normalBias = .04;
     Object.assign(sun.shadow.camera,{left:-36,right:36,top:36,bottom:-36,near:.1,far:110});
-    world.add(sun,sun.target);
-    const rim = new T.DirectionalLight(0xdde4ec,2.6); rim.position.set(-24,16,-12); world.add(rim);
+    if (options.lighting !== false) world.add(sun,sun.target);
+    const rim = new T.DirectionalLight(0xdde4ec,2.6); rim.position.set(-24,16,-12); if (options.lighting !== false) world.add(rim);
     const controls = new OrbitControls(camera,canvas);
     controls.enableDamping = false;
     const navigation = enableScenePan(controls,canvas,{pan:options.pan ?? true});
@@ -68,7 +68,7 @@ export function createStage(host, options = {}) {
             if (t===1) travel=null;
         } else if (!reduced && !dragging && time>=resume) {
             let angle;
-            if (options.spin) angle=-dt*.045;
+            if (options.spin) angle=-dt*(options.spinSpeed ?? .045);
             else { const before=Math.sin(phase); phase+=dt*.28; angle=(Math.sin(phase)-before)*.09; }
             camera.position.sub(controls.target).applyAxisAngle(up,angle).add(controls.target);
         }

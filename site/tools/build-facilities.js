@@ -117,11 +117,12 @@ function hostingExperience() {
     const sites = Facilities.all(), first = sites[0];
     const regions = sites.map((s,i) => '        <button type="button" data-region="' + esc(s.id) + '" aria-pressed="' + (i === 0) + '" disabled><span>' +
         String(i+1).padStart(2,'0') + '</span><strong>' + esc(s.id === 'alberta' ? 'Western Basin' : s.name) + '</strong><small>' + esc(s.region) + '</small></button>').join('\n');
-    const details = '        <div class="hx-place"><span data-globe="region">' + esc(first.region) + '</span><h4 data-globe="name">' + esc(first.name) + '</h4><p data-globe="fuel">' + esc(first.fuel) + '</p></div>\n' +
-        '        <dl class="hx-metrics"><div><dt>Site capacity</dt><dd data-globe="capacity">' + esc(Facilities.capacityLabel(first)) + '</dd></div><div><dt>Est. hosting rate</dt><dd data-globe="rate">' + esc(Facilities.powerLabel(first)) + '</dd></div><div><dt>Availability</dt><dd class="hx-status" data-globe="status">' + esc(first.status) + '</dd></div></dl>\n' +
+    const options = sites.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
+    const details = '        <div class="hx-summary-head"><div class="hx-place"><span data-globe="region">' + esc(first.region) + '</span><h4 data-globe="name">' + esc(first.name) + '</h4><p data-globe="fuel">' + esc(first.fuel) + '</p></div><span class="hx-status" data-globe="status">' + esc(first.status) + '</span></div>\n' +
+        '        <dl class="hx-metrics"><div><dt>Site capacity</dt><dd data-globe="capacity">' + esc(Facilities.capacityLabel(first)) + '</dd></div><div><dt>Est. hosting rate</dt><dd data-globe="rate">' + esc(Facilities.powerLabel(first)) + '</dd></div></dl>\n' +
         '        <a class="btn btn--primary" data-globe="cta" href="./hardware.html?site=' + esc(first.id) + '">' + (Facilities.acceptsMachines(first) ? 'Start mining here' : 'Join this waitlist') + '</a>';
     return fs.readFileSync(path.join(__dirname,'hosting-experience.html'),'utf8').replace(/\r\n/g,'\n').trimEnd()
-        .replace('{{REGIONS}}',regions).replace('{{DETAILS}}',details).replace('{{INDICATIVE}}',esc(Facilities.INDICATIVE_NOTE));
+        .replace('{{REGIONS}}',regions).replace('{{REGION_OPTIONS}}',options).replace('{{DETAILS}}',details).replace('{{INDICATIVE}}',esc(Facilities.INDICATIVE_NOTE));
 }
 
 function build() {

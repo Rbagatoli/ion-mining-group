@@ -1,6 +1,7 @@
     <div class="hx-experience" id="hosting-experience">
       <span id="hosting-terrain" aria-hidden="true"></span>
       <section class="hx-panel hx-globe-panel" id="hosting-globe" aria-label="Explore hosting regions on the globe">
+        <label class="hx-location-select"><span>Hosting location</span><select data-globe="location" disabled>{{REGION_OPTIONS}}</select></label>
         <div class="hx-regions" data-globe="regions" role="group" aria-label="Choose a hosting region">
 {{REGIONS}}
         </div>
@@ -10,10 +11,9 @@
           <div class="hx-fallback" data-globe="fallback"><span class="hx-fallback-mark" aria-hidden="true">◎</span><p data-globe="message">Explore the hosting regions below. The globe loads as you approach.</p></div>
           <svg class="hx-globe-leaders" data-globe="leaders" aria-hidden="true"></svg>
           <div class="hx-globe-markers" data-globe="markers" aria-label="Regions visible on the globe"></div>
-          <div class="hx-globe-place"><span data-globe="place-region">Texas, USA</span><strong data-globe="place-name">Permian Basin</strong></div>
           <p class="scene-gesture-hint"><span class="scene-gesture-mouse">Left-drag rotate · Scroll zoom</span><span class="scene-gesture-touch">Drag rotate · Pinch zoom</span></p>
+          <div class="hx-toolbar" data-globe="toolbar"><button type="button" data-globe="out" aria-label="Zoom out of the globe" disabled>−</button><button type="button" data-globe="in" aria-label="Zoom into the globe" disabled>+</button><button type="button" data-globe="reset" aria-label="Reset globe" title="Reset globe" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1.2 7M4 4v6h6"/></svg></button></div>
         </div>
-        <div class="hx-toolbar" data-globe="toolbar"><button type="button" data-globe="out" aria-label="Zoom out of the globe" disabled>−</button><button type="button" data-globe="in" aria-label="Zoom into the globe" disabled>+</button><button type="button" data-globe="reset" disabled>Reset globe</button></div>
         <div class="hx-summary" aria-live="polite" aria-atomic="true">
 {{DETAILS}}
         </div>
