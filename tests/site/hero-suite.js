@@ -1,6 +1,6 @@
-/* The Proton animation hero and shared page-field guards. The homepage may theme its
-   headline while retaining the measurement and retired-animation protections.
-   Animation lifecycle is exercised in home-power-scene-suite.js. */
+/* The hero reuses the shared page field. Headline accents must preserve its copy,
+   and retired hero engines must not add a second background renderer.
+   The existing field lifecycle is exercised in field-suite.js. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
@@ -41,7 +41,7 @@ if (heroClamp && baseClamp) {
        heroClamp[2] + 'vw, cap ' + heroClamp[3] + 'px');
 }
 
-/* ---------- 2. The original Proton animation and focused headline accent ---------- */
+/* ---------- 2. One shared background and a focused headline accent ---------- */
 const homeHeading = (html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/) || [])[1] || '';
 const headlineAccent = [...homeHeading.matchAll(/<span\b[^>]*class="[^"]*\bhome-hero-gradient\b[^"]*"[^>]*>([\s\S]*?)<\/span>/g)];
 ok(headlineAccent.length === 1 && headlineAccent[0][1].replace(/<[^>]+>/g,'').trim() === 'Bitcoin',
@@ -49,7 +49,14 @@ ok(headlineAccent.length === 1 && headlineAccent[0][1].replace(/<[^>]+>/g,'').tr
 const platinumWords = [...homeHeading.matchAll(/<span\b[^>]*class="[^"]*\bhome-hero-platinum\b[^"]*"[^>]*>([\s\S]*?)<\/span>/g)]
     .map(match => match[1].replace(/<[^>]+>/g,'').trim());
 ok(platinumWords.join(' ') === 'Power in. out.', 'the remaining headline words retain their platinum treatment');
-ok(/class="[^"]*\bhome-power-scene\b[^"]*"/.test(html), 'the hero carries the decorative Proton animation');
+ok(!/home-power-(?:scene|stage|fallback)/.test(html),
+   'the homepage has no retired hero animation host or separate engine');
+const heroMarkup = (html.match(/<div class="hero-zone">([\s\S]*?)<section\b/) || [])[1] || '';
+ok(heroMarkup.length > 0 && !/<canvas\b/.test(heroMarkup),
+   'the hero adds no canvas over the existing page field');
+ok((html.match(/<canvas\b[^>]*class="[^"]*\banim-field--page\b[^\"]*"/g) || []).length === 1 &&
+   (html.match(/<script\b[^>]*src="[^\"]*\bhero-anim\.js(?:\?[^\"]*)?"/g) || []).length === 1,
+   'one page field and one shared field driver provide the hero background');
 ok(!/alliance-hero(?:-poster)?\.(?:mp4|webp)|home-hero-video\.js/.test(html),
    'the homepage no longer loads Alliance freight footage or its playback controller');
 ok(html.indexOf('hero-atom') < 0 && css.indexOf('.ha-') < 0,

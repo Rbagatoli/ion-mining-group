@@ -1,4 +1,4 @@
-/* Alliance's original dotted COBE globe with Proton's platinum/orange palette.
+/* Alliance's original dotted COBE globe with Proton's amber/orange palette.
    Illustrative energy regions explain a source, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
@@ -11,8 +11,12 @@ const SOURCES = {
     industrial:{label:'Industrial surplus',lat:40.7,lon:-80.4},
     grid:{label:'Grid supply',lat:34,lon:-84.4}
 };
-const HOME = {phi:0,theta:.3,scale:1};
 const radians = degrees => degrees*Math.PI/180;
+// COBE projects x/radius = cos(latitude) * cos(longitude + phi).
+// Put 40°N, 100°W at -0.70 on the left; the negative arccos branch
+// makes increasing phi carry North America into the center and then right.
+const HOME = {phi:-Math.acos(-.70/Math.cos(radians(40)))-radians(-100),theta:.3,scale:1};
+const ROTATION_SPEED = Math.PI/180; // One revolution per six visible minutes.
 const ease = value => value*value*(3-2*value);
 const mix = (a,b,t) => a+(b-a)*t;
 const angleTo = (from,to) => from+Math.atan2(Math.sin(to-from),Math.cos(to-from));
@@ -119,8 +123,7 @@ export function mountHomeDiscoveryGlobe(host) {
             const progress = Math.min(1,flight.elapsed/flight.duration);
             animateFlight(progress); complete = progress >= 1;
         } else if (!drag && scale === 1 && !labelFocused) {
-            // Alliance advances phi by .001 per frame at 60 Hz.
-            phi += delta*.06;
+            phi += delta*ROTATION_SPEED;
         }
         draw(complete); if (complete) finishFlight(true); wake();
     }
@@ -182,11 +185,10 @@ export function mountHomeDiscoveryGlobe(host) {
         try {
             renderer = createGlobe(canvas,{
                 devicePixelRatio:ratio,width:width*ratio,height:height*ratio,
-                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.5,
-                // Dark mode leaves oceans at one tenth of the base color.
-                // Softer map brightness gives the raised dots a platinum
-                // highlight without clipping to white; every neutral is warm.
-                baseColor:[.56,.56,.55],markerColor:[247/255,147/255,26/255],glowColor:[.26,.255,.245],
+                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.6,
+                // Pale amber dots over a deep warm surface, with a brighter
+                // orange edge. The center highlights stay below white clipping.
+                baseColor:[.56,.50,.40],markerColor:[247/255,147/255,26/255],glowColor:[.72,.30,.055],
                 markers:pins.map(pin => ({location:[pin.lat,pin.lon],size:.03})),
                 onRender:state => {
                     state.phi = phi; state.theta = theta; state.scale = scale;
