@@ -2,15 +2,14 @@
    orange energy routes. Regions illustrate sources, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
-    landfill:{label:'Landfill gas',lat:46,lon:-93},
-    flare:{label:'Flare gas',lat:31,lon:-106},
-    hydro:{label:'Hydro',lat:54,lon:-126},
-    nuclear:{label:'Nuclear',lat:36,lon:-79},
-    // Across the date line, 170°E is geographically west of Alaska.
-    wind:{label:'Wind',lat:65,lon:170},
-    solar:{label:'Solar',lat:24,lon:-112},
-    industrial:{label:'Industrial surplus',lat:49,lon:-67},
-    grid:{label:'Grid supply',lat:59,lon:-106}
+    landfill:{label:'Landfill gas',region:'Midwest, USA',lat:41.8,lon:-93.6},
+    flare:{label:'Flare gas',region:'Texas, USA',lat:31.8,lon:-102.4},
+    hydro:{label:'Hydro',region:'Alberta, Canada',lat:54.5,lon:-115.5},
+    nuclear:{label:'Nuclear',region:'Georgia, USA',lat:32.6,lon:-83.4},
+    wind:{label:'Wind',region:'Western Alaska, USA',lat:65,lon:-164.5},
+    solar:{label:'Solar',region:'California, USA',lat:35,lon:-119.7},
+    industrial:{label:'Industrial surplus',region:'New York, USA',lat:42.9,lon:-75.3},
+    grid:{label:'Grid supply',region:'Michigan, USA',lat:44.3,lon:-85.5}
 };
 const radians = degrees => degrees*Math.PI/180;
 // Solve the perspective projection for 40°N, 100°W at 70% of the
@@ -56,7 +55,7 @@ export function mountHomeDiscoveryGlobe(host) {
         button.type = 'button'; button.className = 'home-globe-pin'; button.hidden = true;
         button.dataset.globeSource = id;
         Object.assign(button.style,{width:'44px',height:'44px',minWidth:'44px',minHeight:'44px'});
-        button.setAttribute('aria-label','Explore '+region.label+' — illustrative region');
+        button.setAttribute('aria-label','Explore '+region.label+' — '+region.region+' (illustrative)');
         button.setAttribute('aria-pressed',String(id === 'landfill'));
         const glyph = document.createElement('span'); glyph.className = 'home-globe-pin-glyph';
         glyph.setAttribute('aria-hidden','true'); button.appendChild(glyph);
