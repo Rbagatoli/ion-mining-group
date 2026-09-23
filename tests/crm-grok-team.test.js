@@ -12,6 +12,22 @@ test('copied CRM assignment preserves routing, pause, original result and revisi
  let s=reviewed();s=apply(s,'task.revise',{id:'source',note:'Find the actual service buyer.'});s=apply(s,'pause',{});const before=JSON.stringify(s),p=G.packet(s,s.tasks[0],'https://protonminingco.com/crm/');
  assert.match(p,/Proton Lead Intelligence/);assert.match(p,/CRM task: https:\/\/protonminingco.com\/crm\/#team\/task\/source/);assert.match(p,/PAUSED/);assert.match(p,/Find the actual service buyer/);assert.match(p,/Original finding/);assert.equal(JSON.stringify(s),before);
 });
+test('copied buyer guidance separates research from eligible active buyers and keeps outreach held',()=>{
+ const s=reviewed(),page='https://protonminingco.com/crm/';
+ const copies=[G.briefing(page),G.packet(s,s.tasks[0],page),G.workflows.revenue.brief,G.qualityAssignment(s.tasks[0],page).brief,...['intelligence','revenue','review'].map(id=>G.role(id).instructions)];
+ for(const copy of copies){
+  assert.match(copy,/current unmet demand/);assert.match(copy,/relevant reachable contact/);assert.match(copy,/realistic Proton sourcing role/);
+  assert.match(copy,/Hut 8 and American Bitcoin \/ ABTC/);assert.match(copy,/captive procurement/);assert.match(copy,/ticker alone does not (exclude|disqualify) every smaller public company/);
+  assert.match(copy,/research notes/);assert.match(copy,/Not a fit/);assert.match(copy,/material-change trigger/);assert.match(copy,/exact saved source version/);
+  assert.match(copy,/Unknown model, quantity, budget, condition or timing/);assert.match(copy,/Revenue remains the sole CRM writer/);assert.match(copy,/Real outreach remains HOLD/);
+  assert.doesNotMatch(copy,/Keep (weak-fit accounts|an unproven fit) in Discovered|Keep weak leads in research/);
+ }
+ assert.equal(G.workflows.revenue.title,'Find buyers for ASIC sourcing');assert.match(G.workflows.revenue.brief,/buyer-side demand for new or used Bitcoin ASICs/);
+ assert.match(G.workflows.revenue.brief,/existing coordinator-admitted candidate and time limits/);assert.match(G.workflows.revenue.brief,/does not start an extra batch/);assert.match(G.workflows.revenue.brief,/Zero eligible candidates is a valid result/);
+ assert.match(G.workflows.revenue.brief,/source URL\/reference, publication\/effective date and check date separately/);assert.doesNotMatch(G.workflows.revenue.brief,/Research five accounts|Quote & Cost Review|Supplier Prospect Research/);
+ assert.match(G.role('revenue').instructions,/Reuse the existing owner-approved native schedule and current pilot limits/);assert.doesNotMatch(G.role('revenue').instructions,/four-hour native schedule/);
+ const energy=G.qualityAssignment({...s.tasks[0],brief:'[ENERGY SCOUTING]'},page).brief;assert.match(energy,/CURRENT ENERGY-SCOUTING SCOPE/);assert.doesNotMatch(energy,/ASIC buyer-fit review/);
+});
 test('linked Quality Review drafts keep their source intact and prevent duplicate open reviews',()=>{
  const s=reviewed(),p=G.qualityAssignment(s.tasks[0],'https://protonminingco.com/crm/');const next=apply(s,'task.add',Object.assign({id:'quality'},p));assert.equal(next.tasks[1].parentTaskId,'source');assert.equal(next.tasks[1].role,'review');assert.equal(next.tasks[1].status,'draft');assert.deepEqual(next.tasks[0],s.tasks[0]);
  assert.throws(()=>apply(next,'task.add',Object.assign({id:'duplicate'},p)),/already exists/);assert.throws(()=>apply(s,'task.add',{id:'lost',role:'review',title:'Lost',brief:'Missing parent',parentTaskId:'missing'}),/source task/);
@@ -25,7 +41,7 @@ test('review round trips retain each reviewed result, evidence and feedback',()=
 });
 test('large source results still produce a saveable Quality Review draft with a full-record link',()=>{
  const s=reviewed(),source=s.tasks[0];source.result='Evidence '.repeat(2000);source.sources=Array.from({length:12},(_,i)=>'https://example.test/'+i+'?detail='+'x'.repeat(1700));
- const draft=G.qualityAssignment(source,'https://protonminingco.com/crm/');assert(draft.brief.length<=9000);assert.match(draft.brief,/Read the full current brief/);assert.match(draft.brief,/\/crm\/#team\/task\/source/);assert.doesNotThrow(()=>apply(s,'task.add',{id:'long_review',...draft}));
+ for(const brief of [source.brief,'[ASIC SOURCING: requirements]']){const draft=G.qualityAssignment({...source,brief},'https://protonminingco.com/crm/');assert(draft.brief.length<=9000);assert.match(draft.brief,/Read the full current brief/);assert.match(draft.brief,/\/crm\/#team\/task\/source/);assert.match(draft.brief,/Hut 8 and American Bitcoin \/ ABTC/);assert.doesNotThrow(()=>apply(s,'task.add',{id:'long_review',...draft}));}
 });
 test('owner acceptance requires explicit passing or not-applicable review criteria',()=>{
  const good={decision:'accept',evidence:'pass',arithmetic:'na',fit:'pass',note:'No arithmetic in this draft.',lesson:'Require service-fit evidence.'};assert.match(G.feedback(good),/Feedback for the next assignment/);
@@ -34,6 +50,8 @@ test('owner acceptance requires explicit passing or not-applicable review criter
 });
 test('CRM qualification requires a service-buying rationale and legacy edits preserve it',()=>{
  assert.doesNotThrow(()=>G.validateLead({stage:'discovered',serviceFit:''}));assert.throws(()=>G.validateLead({stage:'qualified',serviceFit:''}),/specific reason/);
+ for(const stage of ['qualified','contacted','replied','meeting'])assert.throws(()=>G.validateLead({stage,serviceFit:' '}),/research notes; mark saved ineligible ASIC buyers Not a fit/);
+ assert.doesNotThrow(()=>G.validateLead({stage:'qualified',company:'Hut 8',serviceFit:'Existing rationale: qualification validation remains a presence check.'}));
  const lead={id:'lead',company:'Synthetic vendor',website:'https://example.test',offer:'research',channel:'direct',stage:'discovered',serviceFit:'New territory requires account research.'};let s=apply(A.initial(),'lead.save',lead);
  s=apply(s,'lead.save',{...lead,serviceFit:undefined,company:'Renamed vendor'});assert.equal(s.leads[0].serviceFit,lead.serviceFit);
 });
