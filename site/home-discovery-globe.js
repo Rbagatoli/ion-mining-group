@@ -1,4 +1,4 @@
-/* Alliance's original dotted COBE globe with Proton's amber/orange palette.
+/* Alliance's original dotted COBE globe with platinum land and an orange glow.
    Illustrative energy regions explain a source, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
@@ -185,10 +185,10 @@ export function mountHomeDiscoveryGlobe(host) {
         try {
             renderer = createGlobe(canvas,{
                 devicePixelRatio:ratio,width:width*ratio,height:height*ratio,
-                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.6,
-                // Pale amber dots over a deep warm surface, with a brighter
-                // orange edge. The center highlights stay below white clipping.
-                baseColor:[.56,.50,.40],markerColor:[247/255,147/255,26/255],glowColor:[.72,.30,.055],
+                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.5,
+                // Neutral graphite and platinum retain their grey finish;
+                // only the atmosphere and source markers carry orange.
+                baseColor:[.56,.56,.56],markerColor:[247/255,147/255,26/255],glowColor:[.72,.30,.055],
                 markers:pins.map(pin => ({location:[pin.lat,pin.lon],size:.03})),
                 onRender:state => {
                     state.phi = phi; state.theta = theta; state.scale = scale;

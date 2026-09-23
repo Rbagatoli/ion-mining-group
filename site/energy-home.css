@@ -21,7 +21,7 @@
 
 .home-sourcing { position: relative; padding: clamp(60px,8vw,100px) clamp(16px,3vw,40px); background: #080808; overflow: clip; }
 .home-sourcing::before, .home-sourcing::after { display: none; }
-.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; max-width: 1800px; min-height: 620px; margin: 0 auto; background: radial-gradient(ellipse at 100% 100%,rgba(247,147,26,.18),transparent 64%),linear-gradient(128deg,#24190f,#170e08 48%,#100b06); border: 1px solid rgba(247,147,26,.27); border-radius: 24px; overflow: hidden; }
+.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; max-width: 1800px; min-height: 620px; margin: 0 auto; background: linear-gradient(128deg,#242424,#161616 48%,#0c0c0c); border: 1px solid rgba(229,228,226,.2); border-radius: 24px; overflow: hidden; }
 .home-sourcing-copy { position: relative; z-index: 2; padding: clamp(32px,4.2vw,64px); padding-right: clamp(24px,3vw,44px); min-width: 0; }
 .home-sourcing .eyebrow { display: block; margin-bottom: 16px; color: #ffb55c; font: 500 11px/1.6 var(--home-body); letter-spacing: .22em; }
 .home-sourcing .eyebrow::before { display: none; }
@@ -63,7 +63,7 @@
 .home-discovery-canvas { cursor: grab; touch-action: pan-y pinch-zoom; }
 .home-discovery-canvas:active { cursor: grabbing; }
 .home-globe-labels, .home-globe-lines { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.home-globe-label { position: absolute; width: max-content; max-width: 150px; border: 1px solid rgba(247,147,26,.32); border-radius: 6px; padding: 6px 10px; background: rgba(35,21,10,.88); backdrop-filter: blur(6px); color: #ffdab0; font: 500 11px/1.4 var(--home-body); opacity: 0; pointer-events: none; transition: opacity .4s ease; cursor: pointer; }
+.home-globe-label { position: absolute; width: max-content; max-width: 150px; border: 1px solid rgba(229,228,226,.25); border-radius: 6px; padding: 6px 10px; background: rgba(22,22,22,.88); backdrop-filter: blur(6px); color: #e5e4e2; font: 500 11px/1.4 var(--home-body); opacity: 0; pointer-events: none; transition: opacity .4s ease; cursor: pointer; }
 .home-globe-label.is-visible { opacity: 1; pointer-events: auto; }
 .home-globe-label.is-selected { border-color: rgba(247,147,26,.5); color: #ffc681; }
 .home-globe-lines line { stroke: rgba(247,147,26,.36); stroke-width: 1; }
