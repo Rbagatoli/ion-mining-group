@@ -56,17 +56,18 @@ export function buildGlobe(land,lakes=[],borders=[]){
 }
 export function mountGlobe(host,land,runtime,callbacks={}){
     const model=buildGlobe(land,callbacks.lakes,callbacks.borders);let selected='permian',down=null,stage,multi=false,disposed=false;
-    const pointers=new Set(),front=new T.Vector3(),right=new T.Vector3(),up=new T.Vector3(0,1,0);
+    const pointers=new Set(),front=new T.Vector3(),right=new T.Vector3(),viewUp=new T.Vector3(),up=new T.Vector3(0,1,0);
     stage=runtime.createStage(host,{spin:true,spinSpeed:Math.PI/180,pan:false,lighting:false,surface:callbacks.surface,minPixelRatio:1.5,maxPixelRatio:2,exposure:.86,
         label:'Interactive hosting globe. Left-drag rotates. Scroll to zoom. Touch: drag to rotate, pinch to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
         onReady:callbacks.onReady,onError:callbacks.onError,onRestore:callbacks.onRestore,
         onResize:()=>{if(stage)fit(true);},onReset:()=>fit(false),
         tick(dt,time,reduced){
             const camera=stage.camera.position;
-            front.copy(camera).normalize();right.crossVectors(up,front).normalize();
+            front.copy(camera).normalize();right.crossVectors(up,front).normalize();viewUp.crossVectors(front,right).normalize();
             model.lightingRig.key.position.copy(front).multiplyScalar(9).addScaledVector(right,-7).addScaledVector(up,8);
             model.lightingRig.fill.position.copy(front).multiplyScalar(4).addScaledVector(right,9);
-            model.lightingRig.rim.position.copy(front).multiplyScalar(-8).addScaledVector(right,7).addScaledVector(up,-1);
+            // Keep the orange reflection at the upper-left edge as the globe turns.
+            model.lightingRig.rim.position.copy(front).multiplyScalar(-8).addScaledVector(right,-7).addScaledVector(viewUp,6);
             model.pins.forEach((pin,index)=>{
                 const focused=pin.id===selected,pulse=reduced?.5:.5+.5*Math.sin(time*1.1-index*.6);
                 pin.group.visible=pin.normal.dot(camera)>3.218;
