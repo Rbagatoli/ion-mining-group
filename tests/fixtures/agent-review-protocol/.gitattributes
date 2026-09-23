@@ -1,0 +1,3 @@
+# Preserve the sealed source bytes across platforms and core.autocrlf settings.
+*.js -text
+*.mjs -text

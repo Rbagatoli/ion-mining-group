@@ -1,0 +1,68 @@
+{
+  "schema": "proton-agent-review-protocol-test-fixture-v1",
+  "sourceBundle": "reports/grok-agent-interface-redirect-fix-20260923",
+  "sourceManifest": {
+    "path": "release-manifest.json",
+    "schema": "proton-agent-interface-release-v1",
+    "createdAt": "2026-09-23T04:44:05.065Z",
+    "sha256": "eb930f4d6377ff30f0583ac2cdd30a89695fd95fd4b21ef8e966dac9c593b2ef"
+  },
+  "purpose": "Immutable test-only minimum dependency closure for createHandler; no production deployment or configuration.",
+  "files": [
+    {
+      "path": "agent-control-model.js",
+      "sha256": "4692420dba7db9ec2991655e9bc2e19fa57701813b837a4568dee2e1e4d32b58",
+      "bytes": 49010
+    },
+    {
+      "path": "crm/energy-scouting.js",
+      "sha256": "c62b993bfd2d3b9273976f48f7171c6fa4af7f0a613f49d0be999f2051f9d4fc",
+      "bytes": 18557
+    },
+    {
+      "path": "crm/grok-managed-hosting.js",
+      "sha256": "e14a82d24c7b3fc15a92c5b9f99fddda0b56f770491cf93a40be36d52d93921c",
+      "bytes": 20390
+    },
+    {
+      "path": "crm/grok-team.js",
+      "sha256": "38848f3387635f97a0a142641f8143f6ce2d974a54768d5aac4da83ae818e031",
+      "bytes": 20993
+    },
+    {
+      "path": "crm/outreach-model.js",
+      "sha256": "091c3d89f728908e338047b39ad88f0a243e278acd1936f477881acbc48320a7",
+      "bytes": 28772
+    },
+    {
+      "path": "crm/sourcing.js",
+      "sha256": "06642f5db32a2623dad94239b0e0b52f91ba52d5f57456cbb71c7c9e16482917",
+      "bytes": 14132
+    },
+    {
+      "path": "energy-opportunity-matching.js",
+      "sha256": "e8abc61cf57552067781750ced176d217e2b50e50e7133611869517eb2f33ed6",
+      "bytes": 38809
+    },
+    {
+      "path": "worker-agent-interface/firestore.mjs",
+      "sha256": "e389289d32a7bc5fdb9fc639065a8001f46830c75b21bf97ebf4c9d931b696bd",
+      "bytes": 8992
+    },
+    {
+      "path": "worker-agent-interface/index.mjs",
+      "sha256": "6e0d22510d418d7cd786ab5edcbcad21eda8af37786875195ded680900a081ef",
+      "bytes": 19797
+    },
+    {
+      "path": "worker-agent-interface/security.mjs",
+      "sha256": "b0590667b72d6636204baf7c51102f648d9eec6bcaf0b303a27b3fc978cf5234",
+      "bytes": 8443
+    },
+    {
+      "path": "worker-portal/identity.js",
+      "sha256": "d00a0b74b022a54a0aaf7a3319b9f2ffe8b644951bda0d663b4662f36f1c44f7",
+      "bytes": 8751
+    }
+  ]
+}

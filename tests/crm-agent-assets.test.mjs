@@ -10,7 +10,7 @@ import { finished } from 'node:stream/promises';
 
 const require=createRequire(import.meta.url),root=fileURLToPath(new URL('../',import.meta.url));
 const builder=require('../tools/build-crm.cjs');
-const frontend=['client.mjs','journal.mjs','exchange-controller.mjs','exchange-page.mjs','crm-host.mjs','view.mjs','config.mjs','exchange.css'];
+const frontend=['client.mjs','journal.mjs','exchange-controller.mjs','exchange-page.mjs','crm-host.mjs','view.mjs','config.mjs','exchange.css','review-client.mjs','review-host.mjs','review-view.mjs','review-config.mjs'];
 const approvedConfig={enabled:true,endpoint:'https://proton-agent-interface.renzo-539.workers.dev',approvedOrigin:'https://proton-agent-interface.renzo-539.workers.dev',ownerUid:'15nXwDeq9pVS6iRkT7G4Jzhz2y32',policyId:'PROTON-CRM-LEAD-ONLY-20260923'};
 const disabledConfig={enabled:false,endpoint:'',ownerUid:'',policyId:''};
 const read=file=>fs.readFileSync(file,'utf8');
@@ -72,6 +72,10 @@ test('CRM agent assets remain explicit, closed, versioned and public-only',async
     assert.ok(!inventory(out).some(name=>/(?:^|\/)(?:worker[^/]*|reports|operations|\.dev\.vars|\.env)(?:\/|$)/.test(name)));
     const config=(await import(pathToFileURL(path.join(out,'agent-exchange/config.mjs')))).default;
     assert.deepEqual(config,approvedConfig);
+    const reviewConfig=(await import(pathToFileURL(path.join(out,'agent-exchange/review-config.mjs')))).default;
+    assert.equal(reviewConfig.enabled,false);
+    assert.ok(Object.entries(reviewConfig).every(([key,value])=>key==='enabled'||value===''),'unactivated review has no endpoint or principal pins');
+    assert.ok(!read(path.join(out,'crm.js')).includes('review-view.mjs'),'staged review is not mounted into the live CRM route');
     assert.ok(!fs.existsSync(path.join(out,'agent-exchange/exchange.html')));
   });
 

@@ -78,6 +78,9 @@ jobs:
       - name: CRM agent connection asset contracts
         run: node --test tests/crm-agent-assets.test.mjs
 
+      - name: Staged independent review protocol and account isolation
+        run: node --test tests/agent-review-client.test.mjs tests/crm-review-host.test.mjs tests/crm-closeout-exchange.test.mjs
+
       - name: Standalone CRM and shared storage checks
         run: node --test tests/crm-app.test.js tests/crm-discovery.test.js tests/crm-grok-team.test.js tests/crm-save-integrity.test.js tests/sync-lifecycle.test.js tests/sync-pull.test.js tests/sync-union.test.js tests/crm-qualification.test.js tests/crm-control-center.test.js tests/crm-workflow.test.js tests/managed-hosting.test.js tests/crm-managed-hosting-team.test.js tests/generated-write.test.js tests/crm-public-infrastructure.test.js tests/crm-sourcing.test.js tests/crm-autonomy.test.js tests/crm-outreach.test.js tests/crm-outreach-integration.test.js
 
