@@ -171,8 +171,8 @@ export function mountHomeDiscoveryGlobe(host) {
         });
         routes.forEach(route => {
             const focused = route.ids.includes(selected);
-            route.line.visible = focused; route.pulse.visible = focused;
-            route.line.material.opacity = .16;
+            route.line.visible = true; route.pulse.visible = focused;
+            route.line.material.opacity = focused ? .38 : .26;
             route.pulse.position.copy(route.curve.getPointAt(animated ? (elapsed*.055+route.phase)%1 : .55));
         });
     }
@@ -355,9 +355,11 @@ export function mountHomeDiscoveryGlobe(host) {
                 const label = pins.find(item => item.id === id);
                 label.anchor = anchor; label.tip = anchor.clone().normalize().multiplyScalar(3.247);
             }
-            // A sparse circuit provides context without covering the globe with
-            // every possible connection. Only the selected source's two arcs show.
-            const pairs = markers.map((_,index) => [index,(index+1)%markers.length]);
+            // One continuous geographic circuit connects every region. Selection
+            // highlights its adjacent links without hiding the rest of the network.
+            const circuit = ['wind','hydro','landfill','grid','industrial','nuclear','flare','solar']
+                .map(id => markers.findIndex(marker => marker.id === id));
+            const pairs = circuit.map((index,next) => [index,circuit[(next+1)%circuit.length]]);
             pairs.forEach(([a,b],index) => {
                 const start = markers[a].anchor.clone().normalize(), end = markers[b].anchor.clone().normalize();
                 const points = Array.from({length:49},(_,i) => {
