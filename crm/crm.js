@@ -348,12 +348,39 @@
     },refreshSite);
   }
   function leadForm(id){
-    const l=(agent().leads||[]).find(x=>x.id===id)||{},rev=agent().revision;
-    form(id?'Update revenue lead':'New revenue lead',field('company','Company',l.company,'text','required maxlength="180"')+field('website','Company website',l.website,'url','required')+pair(select('offer','Service',A.OFFERS,l.offer||'custom_search'),select('stage','Lead stage',A.LEAD_STAGES,l.stage||'discovered'))+
+    const l=(agent().leads||[]).find(x=>x.id===id)||{},rev=agent().revision,session=D.status();
+    if(id&&!l.id)throw Error('This lead is no longer in the register. Refresh before editing.');
+    const owner={uid:session.uid,epoch:session.epoch};
+    function sameOwner(){const now=D.status();if(now.uid!==owner.uid||now.epoch!==owner.epoch)throw Error('The account changed. Reopen this lead in the intended workspace before saving.');}
+    const prepared='<details id="preparedLeadPanel"><summary>Paste prepared lead</summary><div><p class="quiet-note" id="preparedLeadHelp">Paste one JSON object using this form’s field names. For ASIC brokerage, set offer to sourcing. Review the filled fields before saving; unprovided fields stay as they are.</p><label class="field" for="preparedLeadJson">Prepared lead JSON<textarea id="preparedLeadJson" aria-describedby="preparedLeadHelp" maxlength="30000" rows="5" spellcheck="false"></textarea></label><button type="button" class="button" id="applyPreparedLead">Fill form for review</button></div></details><p id="preparedLeadStatus" class="quiet-note" role="status" hidden></p>';
+    form(id?'Update revenue lead':'New revenue lead',prepared+field('company','Company',l.company,'text','required maxlength="180"')+field('website','Company website',l.website,'url','required')+pair(select('offer','Service',Object.assign({'':'Choose a service'},A.OFFERS),l.offer||''),select('stage','Lead stage',A.LEAD_STAGES,l.stage||'discovered'))+
       disclosure('Buying signal & contact',area('signal','Why this company, now?',l.signal||'')+field('source','Signal source URL',l.source,'url')+field('checked','Evidence checked on',l.checked,'date','max="'+day()+'"')+field('buyer','Decision-maker / buyer role',l.buyer)+field('contact','Business email, phone or contact page',l.contact)+select('channel','Lead source',A.CHANNELS,l.channel||'direct'),!!id)+
       area('serviceFit','Why would they buy this service?',l.serviceFit||'','maxlength="2000"')+'<p class="quiet-note">State the business problem this offer addresses. Keep weak-fit accounts in Discovered and record what needs checking next.</p>'+field('nextAction','Next action',l.nextAction)+field('due','Next action due',l.due,'date')+
       disclosure('Actual contact & notes',field('lastTouch','Contact / outcome date',l.lastTouch,'date','max="'+day()+'"')+area('lastNote','What actually happened?',l.lastNote||'')+area('notes','Notes / closure or do-not-contact reason',l.notes||''),['contacted','replied','meeting','dnc','disqualified'].includes(l.stage)),
-      'Save lead',async v=>{G.validateLead(v);await D.dispatch('lead.save',Object.assign(v,{id:id||uid('lead')}),rev);close();note('Lead saved.');},id?()=>openLead(id):null);
+      'Save lead',async v=>{sameOwner();G.validateLead(v);await D.dispatch('lead.save',Object.assign(v,{id:id||uid('lead')}),rev);close();note('Lead saved.');},id?()=>openLead(id):null);
+    $('f_offer').required=true;
+    $('applyPreparedLead').addEventListener('click',()=>{
+      if(busy)return;
+      $('sheetError').hidden=true;$('preparedLeadStatus').hidden=true;
+      try{
+        sameOwner();
+        const values=ProtonCrmLeadEntry.parse($('preparedLeadJson').value,{mode:id?'update':'new',offers:A.OFFERS,stages:A.LEAD_STAGES,channels:A.CHANNELS,today:day()});
+        // Validate every target before filling any field. This helper never dispatches a save.
+        const fields=Object.entries(values).map(([name,value])=>{
+          const control=$('editForm').elements.namedItem(name);
+          if(!control||!['INPUT','SELECT','TEXTAREA'].includes(control.tagName))throw Error('A prepared field is unavailable. Reopen the lead form.');
+          if(control.tagName==='SELECT'&&!Array.from(control.options).some(option=>option.value===value))throw Error('A prepared option is unavailable. Review the selected service and stage.');
+          const probe=control.cloneNode(true),expected=control.tagName==='TEXTAREA'?value.replace(/\r\n?/g,'\n'):value;
+          probe.value=value;
+          if(probe.value!==expected)throw Error('The '+name+' field cannot represent that value. Use a single line for text fields and a valid date for date fields. Nothing was filled.');
+          return [control,value];
+        });
+        fields.forEach(([control,value])=>{control.value=value;const section=control.closest('details');if(section)section.open=true;});
+        $('preparedLeadPanel').open=false;
+        $('preparedLeadStatus').textContent='Prepared details filled. Review the fields, then select Save lead. Nothing has been saved yet.';
+        $('preparedLeadStatus').hidden=false;$('f_offer').focus();
+      }catch(e){error(e);}
+    });
   }
   function leadSection(lead,key,label,content){
     return '<details class="wf-lead-section" data-lead-section="'+key+'"'+(expandedLeadSections.has(lead.id+'/'+key)?' open':'')+'><summary>'+esc(label)+'</summary><div>'+content+'</div></details>';
