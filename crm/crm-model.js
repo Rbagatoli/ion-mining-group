@@ -1,7 +1,7 @@
 /* Presentation rules only. Original records, stages and evidence remain authoritative. */
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('../agent-control-model'):root.AgentControlModel);if(typeof module==='object'&&module.exports)module.exports=api;else root.ProtonCrmModel=api;}(typeof window!=='undefined'?window:globalThis,function(A){
   'use strict';
-  const groups=[{id:'all',label:'All'},{id:'research',label:'Research'},{id:'conversation',label:'Conversations'},{id:'agreement',label:'Agreements'},{id:'closed',label:'Closed'}];
+  const groups=[{id:'active',label:'Active'},{id:'all',label:'All records'},{id:'research',label:'Research'},{id:'conversation',label:'Conversations'},{id:'agreement',label:'Agreements'},{id:'closed',label:'Closed'}];
   function group(kind,stage){
     if(kind==='site')return ['dead','closed_won'].includes(stage)?'closed':['contacted','in_discussion'].includes(stage)?'conversation':['term_sheet','diligence','agreement'].includes(stage)?'agreement':'research';
     if(kind==='lead')return ['dnc','disqualified'].includes(stage)?'closed':['contacted','replied','meeting'].includes(stage)?'conversation':'research';

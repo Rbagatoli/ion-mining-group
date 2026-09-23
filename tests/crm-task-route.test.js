@@ -51,6 +51,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
   }
   const document={body:element('body'),activeElement:null,getElementById:element,contains:el=>el?.isConnected,
     addEventListener(name,fn){if(!documentEvents.has(name))documentEvents.set(name,[]);documentEvents.get(name).push(fn);}};
+  element('sheetError').hidden=true;
   let currentHash=hash;
   const location={hostname:'synthetic.example.test',get hash(){return currentHash;},set hash(value){if(value===currentHash)return;currentHash=value;queue.push(()=>{for(const fn of windowEvents.get('hashchange')||[])fn();});},get href(){return 'https://synthetic.example.test/crm/'+currentHash;}};
   const noRecords={reset(){},list(){return[];},pending(){return[];}};
@@ -60,7 +61,7 @@ function harness({hash='#team/task/source',local=A.initial(),firebase=true,holdT
       await fn({get(){transactionReads++;return new Promise(resolve=>{releaseRead=state=>resolve({exists:true,data:()=>({data:state})});});},set(ref,value){writes.push({uid:ref.uid,value});}});
       if(holdSettlement)await new Promise((resolve,reject)=>{settleTransaction=error=>error?reject(error):resolve();});
     }};
-  const box={console,URL,TextEncoder,Date:TestDate,Map,Set,crypto:require('node:crypto').webcrypto,navigator:{},document,location,HTMLElement:class {},
+  const box={console,URL,TextEncoder,Date:TestDate,Map,Set,CSS:{escape:value=>String(value)},crypto:require('node:crypto').webcrypto,navigator:{},document,location,HTMLElement:class {},
     fetch:async()=>{throw Error('Unexpected network request from the task-route harness.');},
     requestAnimationFrame:fn=>queue.push(fn),setTimeout:()=>1,clearTimeout(){},
     localStorage:{getItem:key=>storage.has(key)?storage.get(key):null,setItem:(key,value)=>storage.set(key,String(value))},
@@ -113,6 +114,68 @@ function renderedSelect(html,name){
   return {attributes:Object.fromEntries([...attributes.matchAll(/([\w-]+)="([^"]*)"/g)].map(match=>[match[1],match[2]])),
     options:[...body.matchAll(/<option value="([^"]*)"([^>]*)>([^<]*)<\/option>/g)].map(match=>({value:match[1],label:match[3],selected:/\bselected\b/.test(match[2])}))};
 }
+
+function pipelineFixture(){
+  let state=A.initial();
+  for(const [id,company,stage] of [['active','Synthetic active buyer','discovered'],['notfit','Synthetic ineligible history','disqualified'],['dnc','Synthetic opt-out history','dnc']]){
+    state=apply(state,'lead.save',{id,company,stage,offer:'sourcing',channel:'direct',website:'https://'+id+'.example.test',notes:stage==='discovered'?'Synthetic evidence retained.':'Synthetic closure reason and original evidence.'});
+  }
+  return state;
+}
+function pipelineIds(h){return [...h.el('content').innerHTML.matchAll(/class="wf-lead-card" data-lead-id="([^"]+)"/g)].map(match=>match[1]).sort();}
+
+test('Pipeline initially shows active leads and retains explicit All records and Closed history without writes',async()=>{
+  const h=harness({firebase:false,local:pipelineFixture(),hash:'#pipeline'}),before=h.storage.get(LOCAL);
+  assert.deepEqual(pipelineIds(h),['active']);
+  assert.match(h.el('content').innerHTML,/data-action="pipeline-group" data-id="active" aria-pressed="true"/);
+  assert.match(h.el('content').innerHTML,/All records or Closed/);
+  await h.click('pipeline-kind','lead');assert.deepEqual(pipelineIds(h),['active']);
+  await h.click('pipeline-group','all');assert.deepEqual(pipelineIds(h),['active','dnc','notfit']);
+  await h.click('pipeline-group','closed');assert.deepEqual(pipelineIds(h),['dnc','notfit']);
+  await h.click('pipeline-group','research');assert.deepEqual(pipelineIds(h),['active']);
+  await h.click('pipeline-group','active');assert.deepEqual(pipelineIds(h),['active']);
+  assert.equal(h.storage.get(LOCAL),before);assert.equal(h.writes.length,0);
+});
+
+test('closed record links retain history while active dashboard links reset the Pipeline filter',async()=>{
+  const h=harness({firebase:false,local:pipelineFixture(),hash:'#pipeline/lead/notfit'}),before=h.storage.get(LOCAL);
+  assert.deepEqual(pipelineIds(h),['active','dnc','notfit']);
+  assert.match(h.el('content').innerHTML,/data-lead-id="notfit" open/);
+  assert.match(h.el('content').innerHTML,/No active follow-up\. Preserve the closure reason and evidence/);
+  assert.doesNotMatch(h.el('content').innerHTML,/Research a buying signal and the right contact/);
+  h.go('#pipeline/lead/dnc');assert.deepEqual(pipelineIds(h),['active','dnc','notfit']);
+  assert.match(h.el('content').innerHTML,/data-lead-id="dnc" open/);
+  assert.match(h.el('content').innerHTML,/Proactive contact is suppressed\. Preserve the recorded opt-out/);
+  await h.click('cc-pipeline','lead');assert.deepEqual(pipelineIds(h),['active']);
+  await h.click('pipeline-group','closed');assert.deepEqual(pipelineIds(h),['dnc','notfit']);
+  h.go('#today');await h.click('go-pipeline');assert.deepEqual(pipelineIds(h),['active']);
+  await h.click('workflow-stage','all');assert.deepEqual(pipelineIds(h),['active','dnc','notfit']);
+  assert.equal(h.storage.get(LOCAL),before);assert.equal(h.writes.length,0);
+});
+
+test('lead form explains ASIC admission and preserves existing ineligible evidence without saving',async()=>{
+  const h=harness({firebase:false,local:pipelineFixture(),hash:'#pipeline'}),before=h.storage.get(LOCAL);
+  await h.click('edit-lead','notfit');
+  assert.match(h.body(),/dated evidence of current unmet equipment demand/);
+  assert.match(h.body(),/Hut 8 and American Bitcoin \/ ABTC/);
+  assert.match(h.body(),/unsupported candidates in assignment research notes/);
+  assert.match(h.body(),/select Not a fit.*material-change trigger/);
+  assert.doesNotMatch(h.body(),/Keep weak-fit accounts in Discovered/);
+  assert.equal(h.el('f_notes').value,'Synthetic closure reason and original evidence.');
+  assert.equal(h.storage.get(LOCAL),before);assert.equal(h.writes.length,0);
+});
+
+for(const id of ['notfit','dnc'])test('a delayed account snapshot reveals a closed direct link beyond the first page: '+id,()=>{
+  let state=pipelineFixture();
+  for(let i=0;i<65;i++)state=apply(state,'lead.save',{id:'extra_'+i,company:'AAA synthetic buyer '+i,stage:'discovered',offer:'sourcing',channel:'direct',website:'https://extra-'+i+'.example.test'});
+  const before=JSON.stringify(state),h=harness({hash:'#pipeline/lead/'+id});
+  h.auth('owner_a');assert.deepEqual(pipelineIds(h),[]);
+  h.snapshot('owner_a',state);
+  assert.equal(pipelineIds(h).length,68);assert(pipelineIds(h).includes(id));
+  assert.match(h.el('content').innerHTML,new RegExp('data-lead-id="'+id+'" open'));
+  assert.match(h.el('content').innerHTML,/data-action="pipeline-group" data-id="all" aria-pressed="true"/);
+  assert.equal(JSON.stringify(h.data.agent()),before);assert.equal(h.writes.length,0);
+});
 
 for(const quality of [false,true])test((quality?'Quality':'Source')+' review labels retain the exact field contract and unchecked defaults without mutating records',async()=>{
   const state=apply(reviewFixture(),'task.result',{id:'qa',result:'Synthetic independent review requests correction.',sources:['https://example.test/qa'],qualityVerdict:'revise',confirmCurrentSource:true});

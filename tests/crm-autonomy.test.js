@@ -65,7 +65,7 @@ test('email readiness needs evidence, retains history and never records a prospe
 });
 test('changed source cannot use the prior Quality version and projection never mutates records',()=>{
  let s=withQA();s=accept(s,'quality');const original=JSON.stringify(s);F.overview(s);F.taskMeaning(s.tasks[0],s);assert.equal(JSON.stringify(s),original);assert.equal(s.tasks[0].status,'review');
- const packet=G.packet(s,s.tasks[0],'https://example.test/crm/');assert.match(packet,/existing four-hour native schedule/);assert.match(packet,/specific.*owner decision|Owner decisions|owner decision/);assert.match(packet,/never bulk accept/i);
+ const packet=G.packet(s,s.tasks[0],'https://example.test/crm/');assert.match(packet,/existing owner-approved native schedule/);assert.doesNotMatch(packet,/four-hour native schedule/);assert.match(packet,/specific.*owner decision|Owner decisions|owner decision/);assert.match(packet,/never bulk accept/i);
 });
 
 const todayTasks=s=>M.today({sites:[],leads:[],tasks:s.tasks,followups:[],date:'2026-09-18'});
