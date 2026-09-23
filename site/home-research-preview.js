@@ -241,9 +241,9 @@
     let activeTab = initialTab.dataset.researchTab;
     const details = root.querySelector('.research-details');
     const hoverPreference = matchMedia('(hover: hover) and (pointer: fine)');
+    const compactLayout = matchMedia('(max-width: 900px)');
     const listeners = [];
-    let hoverTimer = 0, hoverButton = null, pointerSource = null, pointerFocus = null, restoringFocus = false;
-    let blockedHoverSource = null, suspended = false;
+    let hoverTimer = 0, hoverButton = null, pointerFocus = null, suspended = false;
     function listen(target, type, handler, options) {
       target.addEventListener(type, handler, options);
       listeners.push(() => target.removeEventListener(type, handler, options));
@@ -307,6 +307,10 @@
       return button && root.contains(button) ? button : null;
     }
     function sourceID(button) { return button?.dataset.researchSource || button?.dataset.globeSource; }
+    // Mobile uses a fixed, readable research area instead of an expanding drawer.
+    function syncCompactLayout() {
+      if (compactLayout.matches) details?.setAttribute('open', '');
+    }
     function activate(button) {
       const nextSource = sourceID(button);
       if (suspended || !Object.hasOwn(examples, nextSource)) return;
@@ -318,9 +322,7 @@
     function pointerOver(event) {
       const button = sourceButton(event.target);
       if (!button || button.contains(event.relatedTarget) || !hoverPreference.matches || event.pointerType === 'touch') return;
-      pointerSource = button;
       cancelHover();
-      if (sourceID(button) === blockedHoverSource) return;
       hoverButton = button;
       hoverTimer = setTimeout(() => {
         if (hoverButton === button && hoverPreference.matches && !document.hidden) activate(button);
@@ -329,9 +331,7 @@
     function pointerOut(event) {
       const button = sourceButton(event.target);
       if (!button || button.contains(event.relatedTarget)) return;
-      if (pointerSource === button) pointerSource = null;
       if (hoverButton === button) cancelHover();
-      if (sourceID(button) === blockedHoverSource) blockedHoverSource = null;
     }
     listen(root, 'pointerover', pointerOver);
     listen(root, 'pointerout', pointerOut);
@@ -341,34 +341,16 @@
     listen(document, 'keydown', () => { pointerFocus = null; }, true);
     listen(root, 'focus', event => {
       const button = sourceButton(event.target);
-      if (!button || restoringFocus || pointerFocus === button) return;
-      // Globe tags disappear with the globe. Keep keyboard focus on the
-      // equivalent permanent control before revealing the sculpture.
-      if (button.dataset.globeSource) {
-        restoringFocus = true;
-        sourceButtons.find(item => item.dataset.researchSource === sourceID(button))?.focus({preventScroll:true});
-        restoringFocus = false;
-      }
+      if (!button || pointerFocus === button) return;
       activate(button);
     }, true);
     listen(root, 'click', event => {
       const button = sourceButton(event.target);
-      if (button) { blockedHoverSource = null; activate(button); }
-    });
-    listen(document, 'proton:discovery-back', event => {
-      cancelHover(); pointerFocus = null;
-      details?.removeAttribute('open');
-      // Only a pointer already resting over a source needs suppression. A fresh
-      // hover after pressing Back should reopen that source on the first try.
-      blockedHoverSource = sourceID(pointerSource) || null;
-      const selected = event.detail?.source || source;
-      const button = sourceButtons.find(item => item.dataset.researchSource === selected);
-      restoringFocus = true;
-      button?.focus({preventScroll:true});
-      restoringFocus = false;
+      if (button) activate(button);
     });
     listen(document, 'visibilitychange', () => { if (document.hidden) cancelHover(); });
     listen(hoverPreference, 'change', cancelHover);
+    listen(compactLayout, 'change', syncCompactLayout);
     listen(window, 'pagehide', event => {
       suspended = true; cancelHover();
       if (!event.persisted) listeners.splice(0).forEach(remove => remove());
@@ -396,6 +378,7 @@
     });
 
     render();
+    syncCompactLayout();
     root.dataset.researchReady = 'true';
   }
 

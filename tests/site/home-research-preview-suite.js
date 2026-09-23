@@ -47,10 +47,11 @@ Element.prototype.replaceChildren = function (...nodes) {
   this.children = []; this._text = ''; this.append(...nodes);
 };
 
-function fixture({loading = false, markup = html} = {}) {
+function fixture({loading = false, compact = false, markup = html} = {}) {
   const document = parse(markup), events = [], eventViews = [];
-  const windows = new Element('window'), hover = new Element('media');
+  const windows = new Element('window'), hover = new Element('media'), mobile = new Element('media');
   hover.matches = true;
+  mobile.matches = compact;
   document.readyState = loading ? 'loading' : 'complete';
   document.getElementById = id => document.querySelector('#' + id);
   document.createElement = tag => new Element(tag);
@@ -63,13 +64,13 @@ function fixture({loading = false, markup = html} = {}) {
       selected: document.querySelector('[data-research-source="' + event.detail.source + '"]').getAttribute('aria-pressed')
     });
   });
-  const sandbox = vm.createContext({document, window:windows, matchMedia:() => hover, setTimeout, clearTimeout, CustomEvent: class {
+  const sandbox = vm.createContext({document, window:windows, matchMedia:query => query === '(max-width: 900px)' ? mobile : hover, setTimeout, clearTimeout, CustomEvent: class {
     constructor(type, options) { this.type = type; this.detail = options.detail; }
   }});
   const run = () => script.runInContext(sandbox);
   run();
   return {
-    document, events, eventViews, run,
+    document, events, eventViews, run, mobile,
     root: document.getElementById('home-research-preview'),
     panel: document.getElementById('research-content'),
     source: name => document.querySelector('[data-research-source="' + name + '"]'),
@@ -98,7 +99,7 @@ check('the authored homepage remains useful before JavaScript runs', () => {
   const choices = root.querySelectorAll('[data-research-source]');
   assert.deepEqual(choices.map(button => button.dataset.researchSource), sources);
   assert.equal(document.querySelectorAll('[data-energy-site-select]').length, sources.length,
-    'One set of source controls should serve both research and facility selection.');
+    'One set of source controls should serve both research and globe selection.');
   for (const button of choices) {
     assert.equal(button.tagName, 'button');
     assert.equal(button.dataset.energySiteSelect, button.dataset.researchSource);
@@ -118,6 +119,18 @@ check('native research disclosure keeps its tabs together and leaves both servic
   assert.equal(details.contains(root.querySelector('.research-workspace-link')), false);
 });
 
+check('compact layouts expose research immediately without a source-change event', () => {
+  const test = fixture({compact: true});
+  assert.ok(test.root.querySelector('.research-details').hasAttribute('open'));
+  assert.deepEqual(test.events, []);
+  const desktop = fixture();
+  assert.equal(desktop.root.querySelector('.research-details').hasAttribute('open'), false);
+  desktop.mobile.matches = true;
+  desktop.mobile.fire('change');
+  assert.ok(desktop.root.querySelector('.research-details').hasAttribute('open'));
+  assert.deepEqual(desktop.events, []);
+});
+
 check('deferred initialization preserves the fallback until DOM readiness', () => {
   const test = fixture({loading: true});
   assert.equal(test.root.dataset.researchReady, undefined);
@@ -132,7 +145,7 @@ check('deferred initialization preserves the fallback until DOM readiness', () =
   assert.deepEqual(test.events, [], 'Initialization must not act like a user source change.');
 });
 
-check('even the initial selected source opens its facility on every click', () => {
+check('even the initial selected source updates its research on every click', () => {
   const test = fixture(), initialContent = test.panel.textContent;
   test.source('landfill').fire('click');
   test.source('landfill').fire('click');
@@ -154,7 +167,7 @@ check('changing the source retains the tab and updates research before the globe
   assert.deepEqual(test.events, ['industrial']);
   assert.deepEqual(test.eventViews, [{source: 'industrial', title: 'Industrial surplus', selected: 'true'}]);
   test.source('industrial').fire('click');
-  assert.deepEqual(test.events, ['industrial', 'industrial'], 'Each explicit choice must be able to open its facility again.');
+  assert.deepEqual(test.events, ['industrial', 'industrial'], 'Each explicit choice must be able to select its research again.');
   assert.equal(test.root.querySelectorAll('[data-research-source]').filter(button => button.getAttribute('aria-pressed') === 'true').length, 1);
   assert.equal(test.source('industrial').getAttribute('aria-pressed'), 'true');
 });
