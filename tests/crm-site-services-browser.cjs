@@ -39,7 +39,8 @@ let origin;
   for(const [offer,label] of offers){
    await page.getByRole('button',{name:'Add new',exact:true}).click();await page.locator('#sheet [data-action="new-lead"]').click();
    await page.getByRole('heading',{name:'New revenue lead',exact:true}).waitFor();
-   assert.equal(await page.getByLabel('Service',{exact:true}).inputValue(),'custom_search');
+   assert.equal(await page.getByLabel('Service',{exact:true}).inputValue(),'');
+   assert.equal(await page.getByLabel('Service',{exact:true}).getAttribute('required'),'');
    assert.equal(await page.getByLabel('Lead stage',{exact:true}).inputValue(),'discovered');
    for(const [id,name] of offers)assert.equal(await page.locator('#sheet select[name=offer] option[value="'+id+'"]').innerText(),name);
    const company='Synthetic UI '+label;
