@@ -19,7 +19,7 @@
 
 .home-sourcing { position: relative; padding: clamp(60px,8vw,100px) clamp(16px,3vw,40px); background: transparent; overflow: clip; }
 .home-sourcing::before, .home-sourcing::after { display: none; }
-.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: start; max-width: 1800px; min-height: 740px; margin: 0 auto; background: transparent; border: 0; overflow: clip; }
+.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: start; max-width: 1800px; min-height: 740px; margin: 0 auto; background: linear-gradient(128deg,rgba(42,42,42,.34),rgba(17,17,17,.18) 48%,rgba(5,5,5,.32)); border: 1px solid rgba(229,228,226,.26); border-radius: 24px; box-shadow: inset 0 1px 0 rgba(255,255,255,.045); overflow: clip; }
 .home-sourcing-copy { position: relative; z-index: 2; padding: clamp(32px,4.2vw,64px); padding-right: clamp(24px,3vw,44px); min-width: 0; }
 .home-sourcing .eyebrow { display: block; margin-bottom: 16px; color: #ffb55c; font: 400 11px/1.6 var(--mono); letter-spacing: .22em; }
 .home-sourcing .eyebrow::before { display: none; }
@@ -142,7 +142,9 @@
   .home-sourcing-stats span { font-size: 8px; letter-spacing: .06em; }
   .home-energy-explorer { grid-row: 2; padding: 0 18px 16px; }
   .home-explorer-stage { order: 0; flex: none; min-height: 0; height: clamp(250px,85vw,380px); margin: 0 -18px; overflow: hidden; }
-  .home-discovery-globe { width: 100%; height: 100%; inset: 0; }
+  /* Match the desktop crop without enlarging the facility sculptures. The cap
+     keeps a useful hemisphere visible through the shorter tablet art window. */
+  .home-discovery-globe { width: min(145%,700px); height: auto; aspect-ratio: 1; inset: 16px clamp(-160px,-36vw,-108px) auto auto; }
   .home-globe-labels, .home-globe-lines { display: none; }
   .home-facility-layer { inset: 0; }
   .home-explorer-top { order: 1; min-height: 44px; gap: 7px; }
