@@ -116,19 +116,20 @@ check('native research disclosure keeps its tabs together and leaves both servic
   assert.equal(details.tagName, 'details');
   assert.equal(details.children[0].tagName, 'summary');
   assert.match(details.children[0].textContent.replace(/&amp;/g, '&'), /Infrastructure, capital & contacts/);
-  assert.equal(details.getAttribute('open'), null);
+  assert.ok(details.hasAttribute('open'));
   assert.ok(details.contains(root.querySelector('[role="tablist"]')));
   assert.ok(details.contains(root.querySelector('#research-content')));
   assert.equal(details.contains(root.querySelector('.research-cta')), false);
   assert.equal(details.contains(root.querySelector('.research-workspace-link')), false);
 });
 
-check('compact layouts expose research immediately without a source-change event', () => {
+check('all layouts expose research immediately without a source-change event', () => {
   const test = fixture({compact: true});
   assert.ok(test.root.querySelector('.research-details').hasAttribute('open'));
   assert.deepEqual(test.events, []);
   const desktop = fixture();
-  assert.equal(desktop.root.querySelector('.research-details').hasAttribute('open'), false);
+  assert.ok(desktop.root.querySelector('.research-details').hasAttribute('open'));
+  desktop.root.querySelector('.research-details').removeAttribute('open');
   desktop.mobile.matches = true;
   desktop.mobile.fire('change');
   assert.ok(desktop.root.querySelector('.research-details').hasAttribute('open'));
