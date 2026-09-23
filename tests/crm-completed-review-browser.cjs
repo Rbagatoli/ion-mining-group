@@ -159,6 +159,28 @@ async function draft(){return page.locator('#editForm').evaluate(el=>Object.from
       const state=await store();assert.equal(state.tasks[0].status,'blocked');assert.equal(state.tasks[0].blockerKind,'correction');assert.equal(state.tasks[1].status,'done');assert.equal(state.tasks[1].result,initial.tasks[1].result);
     }
   });
+  await check('source checks record actual failures while the accurate QA finding is accepted',async()=>{
+    for(const verdict of ['revise','blocked']){
+      const before=fixture();await seed(before);await open();
+      for(const part of ['Evidence','Arithmetic','Fit']){
+        assert.deepEqual(await page.locator('#f_source'+part+' option').evaluateAll(options=>options.map(o=>o.value)),['unchecked','pass','na','revise','blocked']);
+        assert.deepEqual(await page.locator('#f_qa'+part+' option').evaluateAll(options=>options.map(o=>o.value)),['unchecked','pass','na']);
+      }
+      assert.match(await page.locator('[data-completed-review-correction-guidance]').innerText(),/accepts the Quality review, not the source.*Return source for correction.*submit the corrected source result/);
+      await fill({verdict,decision:'revise'});await page.locator('#f_sourceEvidence').selectOption(verdict);
+      await page.getByRole('button',{name:'Save completed team review',exact:true}).click();await saved();
+      const state=await store();assert.equal(state.tasks.length,before.tasks.length);assert.equal(state.tasks[0].status,'blocked');assert.equal(state.tasks[1].status,'done');assert.equal(state.tasks[1].qualityVerdict,verdict);
+      assert.equal(state.tasks[0].reviewHistory[0].review.checks.evidence,verdict);assert.equal(state.tasks[0].reviewHistory[0].result,before.tasks[0].result);
+      await page.getByRole('button',{name:'Open source assignment',exact:true}).click();assert(await page.getByRole('button',{name:'Submit result',exact:true}).isVisible());
+    }
+  });
+  await check('failed source checks cannot be accepted even with a PASS Quality finding',async()=>{
+    for(const check of ['revise','blocked']){
+      const before=fixture();await seed(before);await open();await fill();await page.locator('#f_sourceEvidence').selectOption(check);
+      await page.getByRole('button',{name:'Save completed team review',exact:true}).click();assert.match(await page.locator('#sheetError').innerText(),/Resolve failed or unchecked criteria before accepting/);
+      assert.equal(await page.evaluate(()=>__reviewHarness.calls.length),0);assert.deepEqual(await store(),before);
+    }
+  });
   await check('cross-tab stale revision preserves the full dirty draft and never retargets',async()=>{
     const before=fixture();await seed(before);await open();await fill();await page.locator('#f_sourceNote').fill('My complete unsaved decision stays here.');const fields=await draft();
     const second=await context.newPage();await second.goto(origin+'/crm/');await second.getByRole('heading',{name:'Control Center',exact:true}).waitFor();

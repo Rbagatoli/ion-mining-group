@@ -81,6 +81,16 @@ test('REVISE and BLOCKED accept the QA finding but preserve the source as a corr
 test('PASS can receive an explicit justified coordinator revision without changing the independent finding',()=>{
  const s=fixture('review'),next=close(s,payload(s,{decision:'revise'}));assert.equal(next.tasks[1].qualityVerdict,'pass');assert.equal(next.tasks[1].status,'done');assert.equal(next.tasks[0].status,'blocked');assert.equal(next.tasks[0].blockerKind,'correction');
 });
+test('failed source checks support correction and resubmission but never source acceptance',()=>{
+ for(const check of ['revise','blocked']){
+  const s=fixture(),p=payload(s,{verdict:'revise',decision:'revise'});p.sourceDecision.review.checks.evidence=check;
+  const corrected=close(s,p);assert.equal(corrected.tasks[0].status,'blocked');assert.equal(corrected.tasks[1].status,'done');assert.equal(corrected.tasks[1].qualityVerdict,'revise');assert.equal(corrected.tasks.length,s.tasks.length);
+  assert.equal(corrected.tasks[0].reviewHistory[0].review.checks.evidence,check);assert.equal(corrected.tasks[0].reviewHistory[0].result,s.tasks[0].result);
+  const resubmitted=apply(corrected,'task.result',{id:'source',result:'Synthetic corrected source v2.',sources:[]});assert.equal(resubmitted.tasks[0].resultVersion,2);assert.equal(resubmitted.tasks[0].status,'review');assert.equal(resubmitted.tasks[0].reviewHistory[0].result,s.tasks[0].result);
+  assert.equal(A.completedReviewEligibility(resubmitted,resubmitted.tasks[0],resubmitted.tasks[1]).eligible,false,'The v1 finding must not certify v2');
+  const accepted=payload(s);accepted.sourceDecision.review.checks.evidence=check;unchangedRejection(s,accepted,/Resolve failed/);
+ }
+});
 test('changed source, QA and board revisions reject without partial changes or retargeting',()=>{
  const s=fixture('review');for(const field of ['expectedSourceVersion','expectedQaVersion']){const p=payload(s);p[field]++;unchangedRejection(s,p,/version changed/);}
  const p=payload(s),a=action(s,'task.completed-review',p),before=JSON.stringify(s);a.revision--;assert.throws(()=>A.reduce(s,a),/another window/);assert.equal(JSON.stringify(s),before);assert.equal(p.expectedSourceVersion,1);
