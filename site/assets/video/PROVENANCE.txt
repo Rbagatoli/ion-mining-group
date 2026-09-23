@@ -1,0 +1,21 @@
+Alliance hero media
+Transferred: 2026-09-22
+
+Source supplied by the user:
+alliance-freight-tms/website/public/assets/video/hero2.mp4
+Referenced by that project's website/public/index.html hero section.
+
+alliance-hero.mp4 is an unchanged, byte-for-byte copy of the supplied video.
+SHA-256: c6ec50ddecb50c156ccd7984eb1b52152a9ce1c78a978515e9d8eec8212fc7bc
+Size: 7,722,426 bytes
+Format: H.264, 1920 x 1080, 24 fps, 27.875 seconds, no audio stream
+Visual content: aerial container-port footage with cargo ships, container stacks,
+blue gantry cranes and harbor water. It is decorative freight footage, not a
+depiction of a Proton mining site.
+
+alliance-hero-poster.webp is the source video's frame at 1.000 seconds.
+No content was generated, retouched, cropped or composited.
+SHA-256: 5912bb1ca467cf0698790ddba23bc4520cb228b5af7749870a603b378a500cce
+Extraction: FFmpeg 8.1, libwebp quality 82, compression_level 6, 1920 x 1080.
+Command:
+ffmpeg -ss 1 -i alliance-hero.mp4 -frames:v 1 -c:v libwebp -quality 82 -compression_level 6 alliance-hero-poster.webp

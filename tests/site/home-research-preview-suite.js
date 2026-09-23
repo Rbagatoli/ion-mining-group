@@ -103,6 +103,19 @@ check('the authored homepage remains useful before JavaScript runs', () => {
   }
 });
 
+check('native research disclosure keeps its tabs together and leaves both service links available', () => {
+  const document = parse(html), root = document.querySelector('#home-research-preview');
+  const details = root.querySelector('.research-details');
+  assert.equal(details.tagName, 'details');
+  assert.equal(details.children[0].tagName, 'summary');
+  assert.match(details.children[0].textContent.replace(/&amp;/g, '&'), /Infrastructure, capital & contacts/);
+  assert.equal(details.getAttribute('open'), null);
+  assert.ok(details.contains(root.querySelector('[role="tablist"]')));
+  assert.ok(details.contains(root.querySelector('#research-content')));
+  assert.equal(details.contains(root.querySelector('.research-cta')), false);
+  assert.equal(details.contains(root.querySelector('.research-workspace-link')), false);
+});
+
 check('deferred initialization preserves the fallback until DOM readiness', () => {
   const test = fixture({loading: true});
   assert.equal(test.root.dataset.researchReady, undefined);

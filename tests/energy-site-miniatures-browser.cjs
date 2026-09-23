@@ -37,7 +37,7 @@ function snapshot(dir){
 assert.ok(fs.existsSync(path.join(root,'index.html')),'Build _site before running these browser checks.');
 snapshot(root);fs.mkdirSync(out,{recursive:true});
 for(const id of ids)for(const width of [960,1920])assert.ok(files.has('/assets/visuals/energy-site-'+id+'-'+width+'.webp'),'Missing responsive poster for '+id+' at '+width+'.');
-const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.woff2':'font/woff2','.mp4':'video/mp4'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.woff2':'font/woff2','.mp4':'video/mp4'};
 const server=http.createServer((req,res)=>{
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   let name;try{name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{res.writeHead(400);return res.end();}
@@ -91,6 +91,10 @@ async function open(width,reducedMotion='no-preference',noWebGL=false){
   assert.equal(await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.every(button=>button.tagName==='BUTTON')),true,'Choices should be keyboard-accessible native buttons.');
   assert.equal(await page.locator('[data-research-source]').count(),8,'Research and facility selection should share the same eight controls.');
   assert.equal(await page.locator('[data-energy-site-select]').evaluateAll(buttons=>buttons.every(button=>button.dataset.researchSource===button.dataset.energySiteSelect&&['home-energy-explorer','research-content'].every(id=>(button.getAttribute('aria-controls')||'').split(/\s+/).includes(id)))),true,'Every source should control both the explorer and research panel.');
+  const details=page.locator('#home-research-preview details.research-details');
+  assert.equal(await details.count(),1,'Research tabs should have one native disclosure.');
+  assert.equal(await details.getAttribute('open'),null,'Research details should start collapsed.');
+  assert.equal(await details.locator('[data-research-tab="contacts"]').isVisible(),false,'Collapsed research should keep its tabs out of the visible controls.');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No horizontal overflow at '+width+'.');
   const bounds=await explorer.locator('.home-explorer-stage').boundingBox();
   assert.ok(bounds&&bounds.width>190&&bounds.height>70&&bounds.width<=width+1,'The globe and facility stage should have usable dimensions without horizontal overflow.');
@@ -187,8 +191,12 @@ async function checkLive(width){
 
 async function checkReturnToGlobe(test,live){
   const {page,explorer}=test;
+  const details=page.locator('#home-research-preview details.research-details');
+  if(await details.getAttribute('open')===null)await details.locator('summary').click();
+  assert.equal(await details.locator('[data-research-tab="contacts"]').isVisible(),true,'Opening the disclosure should expose the research tabs.');
   await page.locator('[data-research-tab="contacts"]').click();
   await verifyChoice(test,'wind',{live});
+  assert.notEqual(await details.getAttribute('open'),null,'Changing sources should preserve the open research disclosure.');
   assert.equal(await page.locator('[data-research-tab="contacts"]').getAttribute('aria-selected'),'true','Changing sources should preserve the research tab.');
   assert.equal(await page.locator('#research-content').getAttribute('aria-labelledby'),'research-tab-contacts');
   await explorer.locator('[data-globe-back]').click();

@@ -28,7 +28,9 @@ for(const f of fs.readdirSync(path.join(root,'site')).filter(f=>f.endsWith('.htm
  }
 }
 assert.ok(variants>=126,'Expected mobile variants outside the replaced Hardware catalogue');
-assert.match(read('site/index.html'),/<h1[^>]*>Power in\.<br>Bitcoin out\.<\/h1>/);
+const homeHeading=(read('site/index.html').match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/)||[])[1]||'';
+assert.equal(homeHeading.replace(/<br\s*\/?\s*>/gi,' ').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim(),'Power in. Bitcoin out.',
+ 'The headline wording must survive presentational spans and responsive styling');
 assert.match(read('site/site.js'),/max-width: 640px/);
 assert.match(read('site/site.js'),/replacement\.replaceWith\(node\)/,'Live price and order-link nodes must survive a layout switch');
 console.log('ok 107 approved desktop copy blocks retained outside the replaced Hardware, service-introduction and energy-source sections');

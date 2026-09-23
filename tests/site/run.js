@@ -29,7 +29,7 @@ const HERE = __dirname;
 /* Ordered roughly cheapest-first, so a broken checkout fails fast. */
 const SUITES = [
     'launch-policy-suite.js', 'checklist-suite.js', 'seo-suite.js', 'og-suite.js', 'hero-suite.js', 'field-suite.js', 'dg-suite.js', 'home-scene-suite.js', 'focus-suite.js',
-    'home-research-preview-suite.js', 'home-energy-explorer-suite.js', 'dupe-ids.js', 'cascade.js', 'contrast.js', 'modifier-suite.js', 'verify.js',
+    'home-research-preview-suite.js', 'home-energy-explorer-suite.js', 'home-hero-video-suite.js', 'dupe-ids.js', 'cascade.js', 'contrast.js', 'modifier-suite.js', 'verify.js',
     'calc-suite.js', 'mine-builder-suite.js', 'mine-builder-ui-suite.js', 'plant-scene-suite.js', 'plant-viewer-suite.js', 'hosting-experience-suite.js', 'asic-suite.js', 'host-suite.js', 'dg-regress.js',
     'pad-suite.js', 'landfill-copy-suite.js', 'dg-crop.js',
     'hardware-suite.js', 'brokerage-catalog-data-suite.js', 'brokerage-catalog-ui-suite.js', 'brokerage-models-suite.js', 'hardware-order-catalog-suite.js', 'checkout-quote-suite.js', 'cart-suite.js', 'paypage-suite.js', 'demo-suite.js', 'order-status-suite.js', 'mobile-layout-suite.js',

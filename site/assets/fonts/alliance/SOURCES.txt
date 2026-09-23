@@ -1,0 +1,33 @@
+Alliance typography: local Google Fonts files
+Retrieved: 2026-09-22
+
+The user-supplied Alliance website uses Bebas Neue for display text and DM Sans
+for body text. These are the normal-style Latin subsets required by its first
+two sections. The original source does not bundle font binaries locally.
+
+Official stylesheet used to identify the files:
+https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300..600&display=swap
+
+bebas-neue-latin-400.woff2
+Family: Bebas Neue
+Style: normal
+Weight: 400
+Size: 13,768 bytes
+Source: https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2
+SHA-256: a7c90c89240c134f7fdd33d40c000ec90b79d675ea53e8cc5a6d423c073de412
+License: Bebas-Neue-OFL.txt (SIL Open Font License 1.1)
+License source: https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/OFL.txt
+
+dm-sans-latin-300-600.woff2
+Family: DM Sans
+Style: normal
+Weight: 300 600 (variable)
+Optical-size request: 9..40
+Size: 62,724 bytes
+Source: https://fonts.gstatic.com/s/dmsans/v17/rP2Hp2ywxg089UriCZOIHQ.woff2
+SHA-256: ca72d2bcea8f4daa783dbdfaf2d9b46068c3ce38168e05918fb867aa453b4f890
+License: DM-Sans-OFL.txt (SIL Open Font License 1.1)
+License source: https://raw.githubusercontent.com/google/fonts/main/ofl/dmsans/OFL.txt
+
+Use format('woff2') and font-display: swap in the local @font-face declarations.
+The original font software and licenses are included unchanged.

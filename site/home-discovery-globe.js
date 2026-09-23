@@ -1,200 +1,279 @@
-/* Decorative regional research globe. Pins illustrate a search area; they are
-   never facility coordinates, available inventory or an energy-access claim. */
+/* Alliance's original COBE globe and settings, adapted to Proton's illustrative
+   energy routes. Regions explain a source, not available sites. */
 const mounted = new WeakMap();
-const SOURCES = Object.freeze({
-    landfill: {lat:41.8,lon:-87.5},
-    flare: {lat:31.8,lon:-103.0},
-    hydro: {lat:47.2,lon:-120.7},
-    nuclear: {lat:35.2,lon:-80.8},
-    wind: {lat:42.0,lon:-101.0},
-    solar: {lat:33.4,lon:-112.2},
-    industrial: {lat:40.7,lon:-80.4},
-    grid: {lat:34.0,lon:-84.4}
-});
-const sourceID = source => source === 'powered' ? 'grid' : source;
+const SOURCES = {
+    landfill:{label:'Landfill gas',lat:41.8,lon:-87.5},
+    flare:{label:'Flare gas',lat:31.8,lon:-103},
+    hydro:{label:'Hydro',lat:47.2,lon:-120.7},
+    nuclear:{label:'Nuclear',lat:35.2,lon:-80.8},
+    wind:{label:'Wind',lat:42,lon:-101},
+    solar:{label:'Solar',lat:33.4,lon:-112.2},
+    industrial:{label:'Industrial surplus',lat:40.7,lon:-80.4},
+    grid:{label:'Grid supply',lat:34,lon:-84.4}
+};
+const HOME = {phi:0,theta:.3,scale:1};
+const radians = degrees => degrees*Math.PI/180;
 const ease = value => value*value*(3-2*value);
+const mix = (a,b,t) => a+(b-a)*t;
+const angleTo = (from,to) => from+Math.atan2(Math.sin(to-from),Math.cos(to-from));
+const sourceID = value => value === 'powered' ? 'grid' : value;
 
 export function mountHomeDiscoveryGlobe(host) {
     if (!host) return null;
     if (mounted.has(host)) return mounted.get(host);
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let selected = Object.hasOwn(SOURCES,sourceID(host.dataset.discoverySource)) ? sourceID(host.dataset.discoverySource) : 'landfill';
-    let visible = false, active = true, suspended = false, disposed = false, failed = false, loading = false, ready = false;
-    let frame = 0, last = 0, time = 0, width = 0, height = 0;
-    let direction = null, homeDistance = 0, zoom = 1, flight = null;
-    let T, renderer, world, camera, earth, environment, resizeObserver, loadObserver, viewObserver;
-    let markers = [], routes = [];
-    const textureSet = new Set();
-    host.dataset.discoverySource = selected;
-    host.dataset.renderState = 'poster';
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    const canvas = document.createElement('canvas');
+    canvas.className = 'home-discovery-canvas';
+    canvas.setAttribute('aria-hidden','true');
+    canvas.style.touchAction = 'pan-y pinch-zoom';
+    const labels = document.createElement('div'); labels.className = 'home-globe-labels';
+    const lines = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    lines.classList.add('home-globe-lines'); lines.setAttribute('aria-hidden','true');
+    const pins = Object.entries(SOURCES).map(([id,region]) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'home-globe-label'; button.hidden = true;
+        button.dataset.globeSource = id; button.textContent = region.label;
+        button.setAttribute('aria-label','Explore '+region.label+' — illustrative region');
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.style.display = 'none'; lines.appendChild(line); labels.appendChild(button);
+        return {id,...region,button,line};
+    });
+    host.append(canvas,lines,labels);
+    host.dataset.discoverySource = 'landfill';
+    let selected = 'landfill', phi = HOME.phi, theta = HOME.theta, scale = HOME.scale;
+    let renderer = null, createGlobe = null, ready = false, loading = false, failed = false, disposed = false;
+    let active = true, visible = false, suspended = false, frame = 0, last = 0, elapsed = 0;
+    let width = 0, height = 0, ratio = 1, flight = null, drag = null, ignoreClick = false;
+    let resizeObserver, loadObserver, viewObserver;
 
-    function stop() { if (frame) cancelAnimationFrame(frame); frame = 0; last = 0; }
-    function canAnimate() { return ready && active && visible && !suspended && !document.hidden && (!motion.matches || !!flight) && !disposed && !failed; }
-    function wake() { if (canAnimate() && !frame) frame = requestAnimationFrame(tick); }
-    function releaseResources() {
-        if (renderer) renderer.domElement.removeEventListener('webglcontextlost',contextLost);
-        const geometries = new Set(), materials = new Set();
-        world?.traverse(object => {
-            if (object.geometry) geometries.add(object.geometry);
-            if (object.material) (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => materials.add(material));
-        });
-        for (const material of materials) {
-            for (const value of Object.values(material)) if (value?.isTexture) textureSet.add(value);
-            material.dispose();
-        }
-        geometries.forEach(geometry => geometry.dispose());
-        textureSet.forEach(texture => texture.dispose()); textureSet.clear();
-        environment?.dispose(); environment = null;
-        renderer?.dispose(); renderer?.domElement.remove(); renderer = null;
-        world = null; earth = null; markers = []; routes = [];
-    }
-    function fallback() {
-        failed = true; ready = false; stop();
-        finishFlight(false);
-        releaseResources(); host.dataset.renderState = 'fallback';
-    }
-    function contextLost(event) { event.preventDefault(); fallback(); }
-    function fit() {
-        if (!renderer || !camera) return false;
-        const w = host.clientWidth, h = host.clientHeight;
-        if (!w || !h) return false;
-        if (w !== width || h !== height) {
-            width = w; height = h;
-            renderer.setSize(w,h,false);
-            camera.aspect = w/h;
-            // The sphere fills the short edge. The surrounding layout may crop
-            // its lower edge, but a wide host never reduces it to a tiny globe.
-            const halfAngle = Math.atan(Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));
-            homeDistance = 3.39/Math.sin(halfAngle)*1.025;
-            camera.updateProjectionMatrix();
-        }
-        direction ||= earth.front.clone();
-        camera.position.copy(direction).multiplyScalar(3.2+(homeDistance-3.2)*zoom);
-        camera.lookAt(0,0,0);
-        return true;
-    }
-    function setVisuals() {
-        if (!earth) return;
-        const animated = !motion.matches;
-        const drifting = animated && !flight && zoom > .999;
-        earth.root.rotation.y = drifting ? Math.sin(time*.12)*.018 : 0;
-        earth.root.rotation.z = drifting ? Math.sin(time*.08)*.004 : 0;
-        markers.forEach((marker,index) => {
-            const active = marker.id === selected;
-            const pulse = animated ? .5+.5*Math.sin(time*1.1-index*.6) : .5;
-            marker.material.emissiveIntensity = active ? .26+pulse*.08 : .09;
-            marker.cap.scale.setScalar(active ? 1.12 : 1);
-            marker.halo.material.opacity = active ? .17+pulse*.07 : .07;
-            marker.halo.scale.setScalar(active ? .94+pulse*.08 : .82);
-            marker.ring.material.opacity = active ? .55 : .20;
-        });
-        routes.forEach(route => {
-            const active = route.ids.includes(selected);
-            route.line.material.opacity = active ? .22 : .07;
-            route.pulse.visible = active;
-            route.pulse.position.copy(route.curve.getPointAt(animated ? (time*.055+route.phase)%1 : .55));
-        });
-    }
-    function render() {
-        if (!renderer || disposed || failed || !fit()) return;
-        try {
-            setVisuals(); renderer.render(world,camera);
-            if (!ready) { ready = true; host.dataset.renderState = 'ready'; startFlight(); }
-        } catch { fallback(); }
-    }
-    function tick(now) {
-        frame = 0;
-        if (!canAnimate()) return;
-        if (!last) last = now;
-        const elapsed = (now-last)/1000;
-        if (elapsed >= 1/30) {
-            const dt = Math.min(elapsed,.1); time += dt; last = now;
-            let completed = false;
-            if (flight?.started) {
-                flight.elapsed = Math.min(flight.duration,flight.elapsed+dt);
-                animateFlight(flight.elapsed/flight.duration);
-                completed = flight.elapsed >= flight.duration;
-            }
-            render();
-            if (completed && flight) finishFlight(true);
-        }
-        wake();
-    }
-    function resize() {
-        if (!disposed && !failed && renderer && active) { render(); startFlight(); wake(); }
-    }
-    function select(source) {
-        source = sourceID(source);
-        if (!Object.hasOwn(SOURCES,source) || disposed || selected === source) return;
-        selected = source; host.dataset.discoverySource = source;
-        if (active && visible && !document.hidden) render();
-        wake();
-    }
+    function available() { return active && visible && !document.hidden && !suspended && !failed && !disposed; }
+    function animating() { return ready && available() && (!motion.matches || !!flight); }
+    function stop() { cancelAnimationFrame(frame); frame = 0; last = 0; }
+    function wake() { if (!frame && animating()) frame = requestAnimationFrame(tick); }
     function finishFlight(success) {
         if (!flight) return;
         const previous = flight; flight = null;
         clearTimeout(previous.timeout); previous.resolve(success);
     }
+    // Alliance's original floating-tag projection, with a responsive aspect correction.
+    function project(region) {
+        const lat = radians(region.lat), lon = radians(region.lon), c = Math.cos(lat);
+        const x = c*Math.cos(lon), y = Math.sin(lat), z = -c*Math.sin(lon);
+        const x1 = x*Math.cos(phi)+z*Math.sin(phi), z1 = -x*Math.sin(phi)+z*Math.cos(phi);
+        const y1 = y*Math.cos(theta)-z1*Math.sin(theta), z2 = y*Math.sin(theta)+z1*Math.cos(theta);
+        if (z2 < .12) return null;
+        return {x:width/2+x1*.4*height*scale,y:height/2-y1*.4*height*scale};
+    }
+    function updateLabels() {
+        const candidates = pins.filter(pin => project(pin));
+        const primary = candidates.find(pin => pin.id === selected) || candidates[0];
+        const others = candidates.filter(pin => pin !== primary);
+        const secondary = others.length ? others[Math.floor(elapsed/3)%others.length] : null;
+        const shown = available() && ready && !flight && scale < 1.08 ? [primary,secondary].filter(Boolean) : [];
+        for (const pin of pins) {
+            const position = project(pin), index = shown.indexOf(pin), show = index >= 0 && !!position;
+            pin.button.hidden = !show; pin.line.style.display = show ? '' : 'none';
+            pin.button.classList.toggle('is-visible',show);
+            pin.button.classList.toggle('is-selected',pin.id === selected);
+            if (!show) continue;
+            const x = position.x+(index === 0 ? 40 : -40), y = position.y+(index === 0 ? -58 : 40);
+            pin.button.style.left = x+'px'; pin.button.style.top = y+'px';
+            pin.button.style.transform = index === 0 ? '' : 'translateX(-100%)';
+            pin.line.setAttribute('x1',position.x); pin.line.setAttribute('y1',position.y);
+            pin.line.setAttribute('x2',x); pin.line.setAttribute('y2',y+12);
+        }
+    }
+    function draw(still = false) {
+        if (!renderer || failed || disposed) return;
+        try {
+            // COBE changes uniforms after drawing. A static frame needs the
+            // second draw to make its requested state visible immediately.
+            renderer.render(); if (still) renderer.render();
+            updateLabels();
+        } catch { fallback(); }
+    }
     function animateFlight(progress) {
         if (!flight?.started) return;
         if (flight.kind === 'reset') {
             const t = ease(progress);
-            direction.copy(flight.from).applyQuaternion(new T.Quaternion().slerp(flight.rotation,t));
-            zoom = T.MathUtils.lerp(flight.zoom,1,t);
+            phi = mix(flight.from.phi,flight.to.phi,t);
+            theta = mix(flight.from.theta,flight.to.theta,t);
+            scale = mix(flight.from.scale,1,t);
         } else {
-            // First turn the geography toward the chosen region, then approach
-            // its surface. The second phase is deliberately a distinct zoom.
-            const turn = ease(Math.min(1,progress/.60));
-            direction.copy(flight.from).applyQuaternion(new T.Quaternion().slerp(flight.rotation,turn));
-            const approach = ease(Math.max(0,(progress-.60)/.40));
-            zoom = progress < .60 ? T.MathUtils.lerp(flight.zoom,1,turn) : T.MathUtils.lerp(1,.24,approach);
+            const turn = ease(Math.min(1,progress/.6));
+            phi = mix(flight.from.phi,flight.to.phi,turn);
+            theta = mix(flight.from.theta,flight.to.theta,turn);
+            scale = progress < .6 ? mix(flight.from.scale,1,turn) : mix(1,2.5,ease((progress-.6)/.4));
         }
-        if (progress >= 1) direction.copy(flight.to);
+    }
+    function tick(now) {
+        frame = 0; if (!animating()) return;
+        const delta = last ? Math.min((now-last)/1000,.1) : 0; last = now;
+        // Keep the focused label and its geographic anchor still while a
+        // keyboard user reads it or tabs between the visible source labels.
+        const labelFocused = labels.contains(document.activeElement);
+        if (!labelFocused) elapsed += delta;
+        let complete = false;
+        if (flight?.started) {
+            flight.elapsed += delta;
+            const progress = Math.min(1,flight.elapsed/flight.duration);
+            animateFlight(progress); complete = progress >= 1;
+        } else if (!drag && scale === 1 && !labelFocused) {
+            // Alliance advances phi by .001 per frame at 60 Hz.
+            phi += delta*.06;
+        }
+        draw(complete); if (complete) finishFlight(true); wake();
     }
     function startFlight() {
-        if (!flight || flight.started || !ready || !active || !visible || suspended || document.hidden || !fit()) return;
-        const destination = flight.kind === 'reset' ? earth.front.clone() : markers.find(marker => marker.id === flight.source).anchor.clone().normalize();
-        Object.assign(flight,{started:true,elapsed:0,from:direction.clone(),to:destination,zoom,
-            rotation:new T.Quaternion().setFromUnitVectors(direction,destination)});
-        if (motion.matches) { animateFlight(1); render(); finishFlight(true); }
+        if (!flight || flight.started || !ready || !available() || !width || !height) return;
+        const region = SOURCES[flight.source];
+        const targetPhi = flight.kind === 'reset' ? HOME.phi : -radians(region.lon)-Math.PI/2;
+        Object.assign(flight,{started:true,elapsed:0,from:{phi,theta,scale},
+            to:{phi:angleTo(phi,targetPhi),theta:flight.kind === 'reset' ? HOME.theta : radians(region.lat)}});
+        if (motion.matches) { animateFlight(1); draw(true); finishFlight(true); updateLabels(); }
         else wake();
     }
-    function travel(kind,source) {
-        source = sourceID(source);
+    function select(value) {
+        const source = sourceID(value);
+        if (!Object.hasOwn(SOURCES,source) || disposed) return;
+        selected = source; host.dataset.discoverySource = source; updateLabels();
+    }
+    function travel(kind,value) {
+        const source = sourceID(value);
         if (kind === 'fly' && !Object.hasOwn(SOURCES,source)) return Promise.resolve(false);
         finishFlight(false);
         if (disposed || failed || !active || suspended || document.hidden) return Promise.resolve(false);
-        if (kind === 'fly') select(source);
+        drag = null; if (kind === 'fly') select(source);
         return new Promise(resolve => {
-            const request = {kind,source,resolve,started:false,duration:kind === 'reset' ? .70 : 1.30};
+            const request = {kind,source,resolve,started:false,duration:kind === 'reset' ? .7 : 1.3};
             flight = request;
-            // A failed import, zero-size host or absent visibility notification
-            // must not leave the caller waiting indefinitely for a transition.
             request.timeout = setTimeout(() => { if (flight === request) finishFlight(false); },15000);
-            if (!renderer) load();
-            startFlight(); wake();
+            if (!renderer) load(); startFlight(); updateLabels(); wake();
         });
     }
     function setActive(value) {
         active = !!value;
-        if (!active) { finishFlight(false); stop(); }
-        else if (!disposed && !failed && visible) { if (!renderer) load(); else { render(); startFlight(); wake(); } }
+        if (!active) { finishFlight(false); stop(); drag = null; }
+        else if (!disposed && !failed && visible) {
+            if (!renderer) load(); else { draw(true); startFlight(); wake(); }
+        }
+        updateLabels();
+    }
+    function measure() {
+        width = host.clientWidth; height = host.clientHeight;
+        ratio = Math.min(window.devicePixelRatio || 1,2);
+        return width > 0 && height > 0;
+    }
+    function resize() {
+        if (disposed || failed || !measure()) return;
+        if (!renderer) { if (createGlobe) build(); return; }
+        renderer.devicePixelRatio = ratio; renderer.resize();
+        if (available()) { draw(true); startFlight(); wake(); }
+    }
+    function fallback() {
+        if (failed || disposed) return;
+        failed = true; ready = false; finishFlight(false); stop();
+        renderer?.destroy(); renderer = null; canvas.style.opacity = '0';
+        host.dataset.renderState = 'fallback'; updateLabels();
+    }
+    function contextLost(event) { event.preventDefault(); fallback(); }
+    function build() {
+        if (!createGlobe || renderer || disposed || failed || !measure()) return;
+        try {
+            renderer = createGlobe(canvas,{
+                devicePixelRatio:ratio,width:width*ratio,height:height*ratio,
+                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:3,
+                baseColor:[.08,.14,.25],markerColor:[.1,.8,1],glowColor:[.1,.3,.8],
+                markers:pins.map(pin => ({location:[pin.lat,pin.lon],size:.03})),
+                onRender:state => {
+                    state.phi = phi; state.theta = theta; state.scale = scale;
+                    state.width = width*ratio; state.height = height*ratio;
+                },
+                onReady:() => {
+                    if (disposed || failed) return;
+                    ready = true; host.dataset.renderState = 'ready'; canvas.style.opacity = '1';
+                    draw(true); startFlight(); wake();
+                },
+                onError:fallback
+            });
+            // The wrapper owns the loop so hidden scenes and reduced-motion
+            // views do not keep the original library running in the background.
+            renderer.toggle(false);
+        } catch { fallback(); }
+    }
+    async function load() {
+        if (loading || renderer || disposed || failed) return;
+        loading = true; host.dataset.renderState = 'loading';
+        try {
+            createGlobe = (await import('./vendor/alliance/cobe.esm.js')).default;
+            if (!disposed && !failed) build();
+        } catch { fallback(); }
+        finally { loading = false; }
+    }
+    function chooseSource(source) {
+        if (disposed || !available()) return;
+        const button = document.querySelector('[data-energy-site-select="'+source+'"]');
+        // The globe labels disappear during the flight; retain focus on the
+        // permanent source control before its click starts that transition.
+        button?.focus({preventScroll:true});
+        button?.click();
+    }
+    function labelClick(event) {
+        const button = event.target.closest('[data-globe-source]');
+        if (button && labels.contains(button)) chooseSource(button.dataset.globeSource);
+    }
+    function pointerDown(event) {
+        if (!available() || !ready || flight || event.button > 0 || !event.isPrimary) return;
+        ignoreClick = false;
+        drag = {id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,axis:null,touch:event.pointerType !== 'mouse'};
+        if (!drag.touch) { drag.axis = 'x'; canvas.setPointerCapture?.(event.pointerId); }
+        canvas.style.cursor = 'grabbing';
+    }
+    function pointerMove(event) {
+        if (!drag || drag.id !== event.pointerId) return;
+        const dx = event.clientX-drag.x, dy = event.clientY-drag.y;
+        if (!drag.axis && Math.hypot(dx,dy) > 6) {
+            drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            if (drag.axis === 'x') canvas.setPointerCapture?.(event.pointerId);
+        }
+        if (Math.hypot(dx,dy) > 5) ignoreClick = true;
+        if (drag.axis === 'x') { phi -= (event.clientX-drag.lastX)*.005; draw(true); }
+        drag.lastX = event.clientX;
+    }
+    function pointerEnd(event) {
+        if (!drag || drag.id !== event.pointerId) return;
+        const id = drag.id; drag = null;
+        if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id);
+        canvas.style.cursor = 'grab'; wake();
+    }
+    function canvasClick(event) {
+        if (ignoreClick || flight || !available() || !ready) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX-rect.left, y = event.clientY-rect.top;
+        let nearest = null, distance = 44;
+        for (const pin of pins) {
+            const position = project(pin); if (!position) continue;
+            const next = Math.hypot(position.x-x,position.y-y);
+            if (next < distance) { nearest = pin; distance = next; }
+        }
+        if (nearest) chooseSource(nearest.id);
     }
     function visibilityChanged() {
-        if (document.hidden) { finishFlight(false); stop(); }
-        else if (active && visible) { render(); startFlight(); wake(); }
+        if (document.hidden) { finishFlight(false); stop(); drag = null; }
+        else if (active && visible) { draw(true); startFlight(); wake(); }
+        updateLabels();
     }
     function motionChanged() {
         stop();
-        if (motion.matches && flight?.started) { animateFlight(1); render(); finishFlight(true); }
-        else if (active && visible) render();
+        if (motion.matches && flight?.started) { animateFlight(1); draw(true); finishFlight(true); }
+        else if (available()) draw(true);
         startFlight(); wake();
     }
     function pageHide(event) {
-        suspended = true; finishFlight(false); stop();
+        suspended = true; finishFlight(false); stop(); drag = null;
         if (!event.persisted) dispose();
     }
-    function pageShow() { suspended = false; if (active && visible) { render(); wake(); } }
+    function pageShow() { suspended = false; if (available()) { draw(true); startFlight(); wake(); } }
     function dispose() {
         if (disposed) return;
         disposed = true; finishFlight(false); stop();
@@ -203,110 +282,19 @@ export function mountHomeDiscoveryGlobe(host) {
         motion.removeEventListener('change',motionChanged);
         window.removeEventListener('pagehide',pageHide); window.removeEventListener('pageshow',pageShow);
         window.removeEventListener('resize',resize);
-        releaseResources(); host.dataset.renderState = 'poster'; mounted.delete(host);
+        canvas.removeEventListener('webglcontextlost',contextLost);
+        canvas.removeEventListener('pointerdown',pointerDown); canvas.removeEventListener('pointermove',pointerMove);
+        canvas.removeEventListener('pointerup',pointerEnd); canvas.removeEventListener('pointercancel',pointerEnd);
+        canvas.removeEventListener('lostpointercapture',pointerEnd); canvas.removeEventListener('click',canvasClick);
+        labels.removeEventListener('click',labelClick);
+        renderer?.destroy(); renderer = null; canvas.remove(); lines.remove(); labels.remove();
+        host.dataset.renderState = 'poster'; mounted.delete(host);
     }
-
-    async function load() {
-        if (loading || renderer || disposed || failed) return;
-        loading = true; host.dataset.renderState = 'loading';
-        try {
-            const [three,surface,geography,lighting,borders] = await Promise.all([
-                import('./vendor/three-0.185.1/three.module.min.js'),
-                import('./globe-surface.js'),
-                import('./hosting-earth-data.js'),
-                import('./vendor/three-0.185.1/RoomEnvironment.js'),
-                import('./hosting-globe-scene.js')
-            ]);
-            if (disposed) return;
-            T = three;
-            renderer = new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,1.75));
-            renderer.setClearColor(0x000000,0);
-            renderer.outputColorSpace = T.SRGBColorSpace;
-            renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = .86;
-            const canvas = renderer.domElement;
-            canvas.className = 'home-discovery-canvas'; canvas.setAttribute('aria-hidden','true');
-            canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
-            canvas.addEventListener('webglcontextlost',contextLost); host.appendChild(canvas);
-            world = new T.Scene(); camera = new T.PerspectiveCamera(39,1,.1,80);
-            const room = new lighting.RoomEnvironment(), pmrem = new T.PMREMGenerator(renderer);
-            try { environment = pmrem.fromScene(room,.035); }
-            finally { room.dispose(); pmrem.dispose(); }
-            world.environment = environment.texture; world.environmentIntensity = .55;
-            const model = surface.buildGlobeSurface(geography.LAND,{detail:true,lakes:geography.LAKES});
-            earth = {...model,front:surface.globePoint(36,-99,1)};
-            world.add(earth.root); earth.textures.forEach(texture => textureSet.add(texture));
-            earth.surface.material.color.setHex(0x858b8e);
-            earth.surface.material.metalness = .78;
-            earth.surface.material.roughness = .75;
-            earth.surface.material.clearcoat = .12;
-            const divisions = borders.buildCountryBorders(geography.BORDERS);
-            divisions.material.color.setHex(0x20252a); divisions.material.transparent = true; divisions.material.opacity = .7;
-            earth.root.add(divisions);
-            world.add(new T.HemisphereLight(0xf7f5ef,0x111318,.48));
-            const right = new T.Vector3().crossVectors(new T.Vector3(0,1,0),earth.front).normalize();
-            const key = new T.DirectionalLight(0xffffff,2.0);
-            key.position.copy(earth.front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0)); world.add(key);
-            const fill = new T.DirectionalLight(0xd7e0e8,.55);
-            fill.position.copy(earth.front).multiplyScalar(4).addScaledVector(right,9); world.add(fill);
-            const rim = new T.DirectionalLight(0xf7931a,.7);
-            rim.position.copy(earth.front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0)); world.add(rim);
-
-            // A restrained warm edge joins the orange routes to the metal globe.
-            earth.root.add(new T.Mesh(new T.SphereGeometry(3.24,80,56),new T.ShaderMaterial({
-                transparent:true,depthWrite:false,side:T.BackSide,blending:T.AdditiveBlending,
-                vertexShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){vec4 q=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=normalize(-q.xyz);p=q.xyz;gl_Position=projectionMatrix*q;}',
-                fragmentShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){float e=pow(1.-abs(dot(normalize(n),normalize(v))),3.4);float warm=smoothstep(-2.8,2.8,p.x);gl_FragColor=vec4(1.,.36,.035,e*(.035+.14*warm));}'
-            })));
-
-            const stemMaterial = new T.MeshStandardMaterial({color:0xc9c6bf,metalness:.82,roughness:.27});
-            for (const [id,region] of Object.entries(SOURCES)) {
-                const anchor = surface.globePoint(region.lat,region.lon,3.218);
-                const pin = new T.Group(); pin.name = 'illustrative-region-'+id;
-                pin.position.copy(anchor); pin.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),anchor.clone().normalize());
-                earth.root.add(pin);
-                const material = new T.MeshStandardMaterial({color:0xf7931a,metalness:.38,roughness:.4,emissive:0xdb730d,emissiveIntensity:.12});
-                const stem = new T.Mesh(new T.CylinderGeometry(.014,.014,.16,10),stemMaterial);
-                stem.rotation.x = Math.PI/2; stem.position.z = .08; pin.add(stem);
-                const cap = new T.Mesh(new T.SphereGeometry(.036,18,12),material); cap.position.z = .18; pin.add(cap);
-                const ring = new T.Mesh(new T.RingGeometry(.055,.066,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
-                ring.position.z = .006; pin.add(ring);
-                const halo = new T.Mesh(new T.RingGeometry(.085,.112,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.10,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
-                halo.position.z = .009; pin.add(halo);
-                markers.push({id,material,cap,ring,halo,anchor});
-            }
-            const pairs = [[0,1],[0,2],[1,2]];
-            pairs.forEach(([a,b],index) => {
-                const start = markers[a].anchor.clone().normalize(), end = markers[b].anchor.clone().normalize();
-                const points = Array.from({length:49},(_,i) => {
-                    const t = i/48;
-                    return new T.Vector3().lerpVectors(start,end,t).normalize().multiplyScalar(3.24+Math.sin(t*Math.PI)*.19);
-                });
-                const curve = new T.CatmullRomCurve3(points);
-                const line = new T.Mesh(new T.TubeGeometry(curve,64,.006,5,false),new T.MeshBasicMaterial({color:0xf7a536,transparent:true,opacity:.2,depthWrite:false,toneMapped:false}));
-                earth.root.add(line);
-                const pulse = new T.Mesh(new T.SphereGeometry(.016,10,8),new T.MeshBasicMaterial({color:0xffae46,toneMapped:false})); earth.root.add(pulse);
-                routes.push({ids:[markers[a].id,markers[b].id],curve,line,pulse,phase:index*.28});
-            });
-            const anisotropy = Math.min(8,renderer.capabilities.getMaxAnisotropy());
-            textureSet.forEach(texture => {texture.anisotropy = anisotropy; texture.needsUpdate = true;});
-            // Relief enhances the silhouette, but vector coastlines are complete
-            // and the globe stays usable if this optional local texture fails.
-            new T.TextureLoader().load(new URL('./textures/earth-normal.png',import.meta.url).href,texture => {
-                if (disposed || failed || !earth) { texture.dispose(); return; }
-                texture.anisotropy = anisotropy; textureSet.add(texture);
-                earth.surface.material.normalMap = texture; earth.surface.material.normalScale.set(6,6);
-                earth.surface.material.needsUpdate = true;
-                if (active && visible && !document.hidden) render();
-            },undefined,() => {});
-            if (!fit()) { host.dataset.renderState = 'loading'; return; }
-            if (renderer.compileAsync) await renderer.compileAsync(world,camera);
-            if (disposed || failed) return;
-            render(); wake();
-        } catch { if (!disposed) fallback(); }
-        finally { loading = false; }
-    }
-
+    canvas.addEventListener('webglcontextlost',contextLost);
+    canvas.addEventListener('pointerdown',pointerDown); canvas.addEventListener('pointermove',pointerMove);
+    canvas.addEventListener('pointerup',pointerEnd); canvas.addEventListener('pointercancel',pointerEnd);
+    canvas.addEventListener('lostpointercapture',pointerEnd); canvas.addEventListener('click',canvasClick);
+    canvas.style.cursor = 'grab'; labels.addEventListener('click',labelClick);
     document.addEventListener('visibilitychange',visibilityChanged);
     motion.addEventListener('change',motionChanged);
     window.addEventListener('pagehide',pageHide); window.addEventListener('pageshow',pageShow);
@@ -315,15 +303,15 @@ export function mountHomeDiscoveryGlobe(host) {
     if (typeof IntersectionObserver === 'function') {
         viewObserver = new IntersectionObserver(entries => {
             visible = entries.some(entry => entry.isIntersecting);
-            if (visible && active) { if (!renderer) load(); else { render(); startFlight(); wake(); } }
-            else { finishFlight(false); stop(); }
+            if (visible && active) { if (!renderer) load(); else { draw(true); startFlight(); wake(); } }
+            else { finishFlight(false); stop(); drag = null; updateLabels(); }
         }); viewObserver.observe(host);
         loadObserver = new IntersectionObserver(entries => {
             if (entries.some(entry => entry.isIntersecting)) { loadObserver.disconnect(); load(); }
         },{rootMargin:'240px'}); loadObserver.observe(host);
     } else { visible = true; load(); }
-    const api = {select,flyTo:source => travel('fly',source),reset:() => travel('reset'),setActive,dispose}; mounted.set(host,api);
-    return api;
+    const api = {select,flyTo:source => travel('fly',source),reset:() => travel('reset'),setActive,dispose};
+    mounted.set(host,api); return api;
 }
 
 const homeGlobe = document.getElementById('home-discovery-globe');

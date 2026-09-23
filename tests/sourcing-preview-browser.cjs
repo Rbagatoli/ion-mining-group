@@ -30,7 +30,7 @@ function snapshot(dir) {
 assert.ok(fs.existsSync(path.join(root, 'index.html')), 'Build _site before running the browser checks.');
 snapshot(root);
 fs.mkdirSync(out, {recursive: true});
-const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.woff2': 'font/woff2', '.mp4': 'video/mp4'};
+const types = {'.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.woff2': 'font/woff2', '.mp4': 'video/mp4'};
 const server = http.createServer((req, res) => {
   if (req.method !== 'GET') { res.writeHead(405); return res.end(); }
   let name;
@@ -112,9 +112,10 @@ async function open(spec, width, reducedMotion = 'no-preference', webglUnavailab
   if (!spec.explorer) assert.ok(size.height < 280, 'The capital preview should retain its compact section height.');
   if (spec.explorer) {
     const stage = await page.locator('.home-explorer-stage').boundingBox();
-    // Desktop art can extend past the stage's horizontal edges while remaining
-    // centered; the viewport overflow assertion below covers the page boundary.
-    assert.ok(stage && Math.abs(size.x + size.width / 2 - stage.x - stage.width / 2) < 2 && size.y >= stage.y - 1 && size.y + size.height <= stage.y + stage.height + 1, 'The selected facility should be centered vertically inside the globe explorer stage.');
+    const card = await page.locator('#home-research-preview').boundingBox();
+    // Alliance's composition allows asymmetric artwork overhang within its
+    // clipped card, while the facility should still fit the stage vertically.
+    assert.ok(stage && card && size.x >= card.x - 1 && size.x + size.width <= card.x + card.width + 1 && size.y >= stage.y - 1 && size.y + size.height <= stage.y + stage.height + 1, 'The selected facility should fit inside the sourcing card and the explorer stage height.');
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow.');
   assert.equal(await figure.locator('button').count(), 0, 'Decorative previews should have no corner controls.');

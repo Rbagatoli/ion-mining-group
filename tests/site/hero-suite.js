@@ -1,11 +1,6 @@
-/* The hero: a plain chrome headline, and the mark turning behind it.
-
-   Replaces backfeed-suite.js. The scroll-lit headline it tested is gone —
-   reverted to the platinum it was before — and this file keeps the two things
-   from it that were never about the backfeed: the measure-nothing guard, and
-   the check that dead instruments have really left the building.
-
-   The field itself is heroanim.js. This file is about the hero as a page. */
+/* The video hero and shared page-field guards. The homepage may theme its
+   headline while retaining the measurement and retired-animation protections.
+   Playback lifecycle is exercised in home-hero-video-suite.js. */
 /* Repo-relative, so this runs wherever the checkout is. Was an absolute
    c:/Users/rbaga/... path that worked on one machine. */
 const REPO_ROOT = require('path').join(__dirname, '..', '..').replace(/\\/g, '/') + '/';
@@ -21,9 +16,9 @@ const ok = (cond, label, detail) => {
     if (!cond) fail++;
 };
 
-/* ---------- 1. The headline is platinum again ---------- */
-ok(html.indexOf('<h1 class="h-display">') >= 0,
-   'the headline is a plain .h-display, sharing the site\'s chrome');
+/* ---------- 1. The shared display headline remains present ---------- */
+ok(/<h1\b[^>]*class="[^"]*\bh-display\b[^"]*"[^>]*>/.test(html),
+   'the headline retains the shared display class with themed accent markup');
 ['h-backfeed', 'h-line', '--drift', '--lp', 'HEAD_RUN'].forEach(n => {
     const where = ['index.html', 'styles.css', 'site.js']
         .filter((f, i) => [html, css, js][i].indexOf(n) >= 0);
@@ -46,14 +41,9 @@ if (heroClamp && baseClamp) {
        heroClamp[2] + 'vw, cap ' + heroClamp[3] + 'px');
 }
 
-/* ---------- 2. The mark ---------- */
-/* The hero carries the energy field again. Five attempts at a mark in this slot
-   were rejected; the field is the one that was ever called right, and it was
-   never broken — it has been driving the three engineering drawings the whole
-   time. heroanim.js owns the field itself: its density, its self-disabling
-   paths, and that it measures nothing. This file only checks it is HERE, and
-   that nothing of the mark is left behind it. */
-ok(html.indexOf('anim-field--hero') >= 0, 'the hero carries the energy field');
+/* ---------- 2. The requested decorative video replaces a hero-only field ---------- */
+ok(/<video\b[^>]*class="[^"]*\bhome-hero-video\b[^"]*"/.test(html),
+   'the hero carries the supplied decorative footage');
 ok(html.indexOf('hero-atom') < 0 && css.indexOf('.ha-') < 0,
    'and nothing of the mark survives in the page or the stylesheet');
 
