@@ -15,7 +15,7 @@
     var globe=document.getElementById('hosting-globe'),F=window.Facilities;
     if(globe&&F){
         var g=refs(globe,'data-globe'),groups=F.groups(),selected=F.byId(F.idFromQuery(location.search))||groups[0].sites[0],choices={};
-        var globeScene=null,globeFailed=false,regionButtons=Array.from(globe.querySelectorAll('[data-region]')),siteButtons=Array.from(globe.querySelectorAll('[data-hosting-site]'));
+        var globeScene=null,globeFailed=false,focusRequested=false,regionButtons=Array.from(globe.querySelectorAll('[data-region]')),siteButtons=Array.from(globe.querySelectorAll('[data-hosting-site]'));
         function regionDetails(){
             var group=F.groupFor(selected);choices[group.id]=selected.id;
             regionButtons.forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-region')===group.id));});
@@ -33,8 +33,8 @@
             align(g.regions,regionButtons.find(function(b){return b.getAttribute('data-region')===group.id;}));
         }
         function chooseGroup(id){var group=groups.find(function(item){return item.id===id;});if(!group)return false;selected=F.byId(choices[id])||group.sites[0];regionDetails();return true;}
-        function selectRegion(id){if(chooseGroup(id)&&globeScene&&!globeFailed)globeScene.select(id);}
-        siteButtons.forEach(function(button){button.disabled=false;button.addEventListener('click',function(){var next=F.byId(button.getAttribute('data-hosting-site'));if(!next)return;selected=next;regionDetails();});});
+        function selectRegion(id){if(!chooseGroup(id))return;focusRequested=true;if(globeScene&&!globeFailed)globeScene.select(id);}
+        siteButtons.forEach(function(button){button.disabled=false;button.addEventListener('click',function(){var next=F.byId(button.getAttribute('data-hosting-site'));if(!next)return;selected=next;regionDetails();focusRequested=true;if(globeScene&&!globeFailed)globeScene.select(F.groupFor(selected).id);});});
         function globeControls(value){['in','out','reset'].forEach(function(key){g[key].disabled=!value;});}
         function globeFailure(){globeFailed=true;globe.classList.remove('hx-ready');g.fallback.hidden=false;g.message.textContent='The globe is unavailable. Choose a region above to compare its details below.';globeControls(false);}
         regionButtons.forEach(function(button,i){button.disabled=false;button.addEventListener('click',function(){selectRegion(button.getAttribute('data-region'));});
@@ -50,8 +50,9 @@
                 var pending=selected.id;
                 globeScene=m[0].mountGlobe(g.canvas,m[1].LAND,m[2],{surface:g.surface,lakes:m[1].LAKES,borders:m[1].BORDERS,
                     onReady:function(){globeFailed=false;globe.classList.add('hx-ready');g.fallback.hidden=true;globeControls(true);},onError:globeFailure,
-                    onRestore:function(){globeScene.select(F.groupFor(selected).id,true);},onSelect:chooseGroup
-                });selected=F.byId(pending);regionDetails();globeScene.select(F.groupFor(selected).id,true);disposables.push(globeScene);
+                    onRestore:function(){globeScene.select(F.groupFor(selected).id,true,{focus:focusRequested});},onSelect:chooseGroup,
+                    onFocus:function(){focusRequested=true;},onOverview:function(){focusRequested=false;}
+                });selected=F.byId(pending);regionDetails();globeScene.select(F.groupFor(selected).id,true,{focus:focusRequested});disposables.push(globeScene);
             }catch(error){if(globeScene){globeScene.dispose();globeScene=null;}globeFailure();}
         });
         var globeField=window.ProtonField&&window.ProtonField.mount(g.field);if(globeField)disposables.push(globeField);

@@ -41,14 +41,14 @@ export function createStage(host, options = {}) {
         width=w; height=h; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
         options.onResize?.(w/h); wake();
     }
-    function move(position,target,{instant=false,lift=0,duration=2.2,arc=false}={}) {
+    function move(position,target,{instant=false,lift=0,duration=2.2,arc=false,pullback=0}={}) {
         const end=new T.Vector3(...position), aim=new T.Vector3(...target);
         if (instant || reduced) { camera.position.copy(end); controls.target.copy(aim); travel=null; controls.update(); }
         else {
             const start=camera.position.clone();
             travel={curve:new T.CubicBezierCurve3(start,start.clone().addScaledVector(up,lift),end.clone().addScaledVector(up,lift),end),
                 target:controls.target.clone(),aim,start:time,duration,
-                arc:arc?{direction:start.clone().normalize(),rotation:new T.Quaternion().setFromUnitVectors(start.clone().normalize(),end.clone().normalize()),near:start.length(),far:end.length()}:null};
+                arc:arc?{direction:start.clone().normalize(),rotation:new T.Quaternion().setFromUnitVectors(start.clone().normalize(),end.clone().normalize()),near:start.length(),far:end.length(),pullback:Math.max(0,pullback)}:null};
         }
         resume=time+duration+1; wake();
     }
@@ -62,7 +62,7 @@ export function createStage(host, options = {}) {
         const elapsed=last ? (ms-last)/1000 : 0, dt=Math.min(elapsed,.1); last=ms; time+=elapsed;
         if (travel) {
             const t=Math.min(1,(time-travel.start)/travel.duration), s=ease(t);
-            if(travel.arc)camera.position.copy(travel.arc.direction).applyQuaternion(new T.Quaternion().slerp(travel.arc.rotation,s)).multiplyScalar(T.MathUtils.lerp(travel.arc.near,travel.arc.far,s));
+            if(travel.arc)camera.position.copy(travel.arc.direction).applyQuaternion(new T.Quaternion().slerp(travel.arc.rotation,s)).multiplyScalar(T.MathUtils.lerp(travel.arc.near,travel.arc.far,s)+Math.sin(Math.PI*s)*travel.arc.pullback);
             else camera.position.copy(travel.curve.getPoint(s));
             controls.target.lerpVectors(travel.target,travel.aim,s);
             if (t===1) travel=null;

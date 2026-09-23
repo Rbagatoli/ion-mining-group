@@ -7,6 +7,10 @@ export const REGIONS=Object.freeze({
     permian:{lat:31.9,lon:-103.0},bakken:{lat:48.1,lon:-103.5},alberta:{lat:54.8,lon:-116.0},dubai:{lat:25.2,lon:55.3}
 });
 export function cameraDistance(aspect){
+    const halfAngle=Math.atan(Math.tan(48*Math.PI/360)*Math.min(1,aspect));
+    return 3.31/Math.sin(halfAngle)*1.06;
+}
+export function focusDistance(aspect){
     // Fill the widget width with a close regional view, cropping the globe vertically.
     const span=Math.min(1.85,Math.max(.5,aspect)*1.08);
     return 3.24*Math.sqrt(1+1/Math.pow(Math.tan(48*Math.PI/360)*span,2));
@@ -58,12 +62,12 @@ export function buildGlobe(land,lakes=[],borders=[]){
     return {root,pins,surface,texture,textures,lightingRig:{key,fill,rim}};
 }
 export function mountGlobe(host,land,runtime,callbacks={}){
-    const model=buildGlobe(land,callbacks.lakes,callbacks.borders);let selected='permian',down=null,stage,multi=false,disposed=false;
+    const model=buildGlobe(land,callbacks.lakes,callbacks.borders);let selected='permian',focused=false,down=null,stage,multi=false,disposed=false;
     const pointers=new Set(),front=new T.Vector3(),right=new T.Vector3(),viewUp=new T.Vector3(),up=new T.Vector3(0,1,0);
     stage=runtime.createStage(host,{spin:true,spinSpeed:Math.PI/180,pan:false,lighting:false,surface:callbacks.surface,minPixelRatio:1.5,maxPixelRatio:2,exposure:.86,
         label:'Interactive hosting globe. Left-drag rotates. Scroll to zoom. Touch: drag to rotate, pinch to zoom. Select an orange marker or use the region buttons. Arrow keys rotate, plus and minus zoom, Escape resets.',
         onReady:callbacks.onReady,onError:callbacks.onError,onRestore:callbacks.onRestore,
-        onResize:()=>{if(stage)fit(true);},onReset:()=>fit(false),
+        onResize:()=>{if(stage)fit(true);},onReset:reset,
         tick(dt,time,reduced){
             const camera=stage.camera.position;
             front.copy(camera).normalize();right.crossVectors(up,front).normalize();viewUp.crossVectors(front,right).normalize();
@@ -92,15 +96,16 @@ export function mountGlobe(host,land,runtime,callbacks={}){
         model.surface.material.normalMap=texture;model.surface.material.normalScale.set(6,6);
         model.surface.material.needsUpdate=true;stage.wake();
     },undefined,()=>{}); // The detailed coastlines remain usable if the relief texture is unavailable.
-    function fit(instant){
-        const p=REGIONS[selected],distance=cameraDistance(stage.camera.aspect);
-        stage.controls.minDistance=4.1;stage.controls.maxDistance=Math.max(14,distance*2.5);
-        stage.move(globePoint(p.lat,p.lon,distance).toArray(),[0,0,0],{instant,arc:true,duration:1.65});
+    function fit(instant,pullback=false){
+        const p=REGIONS[selected],overview=cameraDistance(stage.camera.aspect),distance=focused?focusDistance(stage.camera.aspect):overview;
+        stage.controls.minDistance=4.1;stage.controls.maxDistance=Math.max(14,overview*1.8);
+        stage.move(globePoint(p.lat,p.lon,distance).toArray(),[0,0,0],{instant,arc:true,duration:1.65,pullback:pullback?Math.min(2,overview-distance):0});
     }
-    function select(id,instant=false){
-        if(!REGIONS[id])return;selected=id;
-        fit(instant);callbacks.onSelect?.(id);stage.wake();
+    function select(id,instant=false,{focus=true}={}){
+        if(!REGIONS[id])return;const wasFocused=focused;selected=id;focused=focus;
+        fit(instant,wasFocused&&focus);callbacks.onSelect?.(id);if(focus)callbacks.onFocus?.();stage.wake();
     }
+    function reset(){focused=false;fit(false);callbacks.onOverview?.();}
     function pointerDown(e){pointers.add(e.pointerId);if(pointers.size>1)multi=true;down={x:e.clientX,y:e.clientY,id:e.pointerId};}
     function pointerUp(e){
         pointers.delete(e.pointerId);if(multi){if(!pointers.size)multi=false;down=null;return;}
@@ -112,8 +117,8 @@ export function mountGlobe(host,land,runtime,callbacks={}){
     }
     function cancel(){down=null;multi=false;pointers.clear();}
     stage.canvas.addEventListener('pointerdown',pointerDown);stage.canvas.addEventListener('pointerup',pointerUp);stage.canvas.addEventListener('pointercancel',cancel);
-    select(selected,true);
-    return {select,zoom:stage.zoom,reset:()=>fit(false),setActive:stage.setActive,
+    select(selected,true,{focus:false});
+    return {select,zoom:stage.zoom,reset,setActive:stage.setActive,
         dispose(){disposed=true;stage.canvas.removeEventListener('pointerdown',pointerDown);stage.canvas.removeEventListener('pointerup',pointerUp);stage.canvas.removeEventListener('pointercancel',cancel);
             stage.dispose();const geometries=new Set(),materials=new Set();model.root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material);});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());model.textures.forEach(texture=>texture.dispose());}
     };
