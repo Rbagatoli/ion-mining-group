@@ -104,3 +104,17 @@ test('queue dispatch is in-flight before the linking POST and lost links reconci
 test('account changes after POST preserve original uncertainty and drafts in the new account',async()=>{
  const h=inboxHarness(),gate=h.postGate(),pending=h.inbox.mutate('qualify',{note:'Original account decision'});await new Promise(resolve=>setImmediate(resolve));h.switchAccount('ownerB');gate.resolve();await assert.rejects(pending,/account changed/);assert.equal(h.inbox.reloadSafety().safe,false);assert.equal(h.inbox.reloadSafety().uncertain,1);assert.equal(h.inbox.reloadSafety().dirtyDrafts,1);assert.equal(h.inbox.state().selected,null);
 });
+
+
+test('CRM release reload remains blocked for the entire visible exchange session',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../crm/crm.js'),'utf8');
+ const start=source.indexOf('  function safeToUpdate(){'),end=source.indexOf('  function updatePending(',start);
+ assert(start>=0&&end>start);
+ const state={exchangeVisible:true,ready:true,dataSafe:true,inboxSafe:true};
+ const box={get exchangeVisible(){return state.exchangeVisible;},D:{status:()=>({ready:state.ready,uid:'ownerA',agent:{uid:'ownerA',mode:'cloud',serverConfirmed:true}}),reloadSafety:()=>({safe:state.dataSafe})},intakeInbox:{reloadSafety:()=>({safe:state.inboxSafe})},busy:false,activeActions:0,sheet:{open:false},modalForm:false,completedReviewSession:null,registerConfirmed:()=>true,document:{activeElement:null},discovery:{brief:()=>null},outreachPlans:new Map()};
+ vm.createContext(box);vm.runInContext(source.slice(start,end)+'this.check=safeToUpdate;',box);
+ assert.equal(box.check(),false,'An untouched visible editor still prevents automatic reload.');
+ state.exchangeVisible=false;assert.equal(box.check(),true);
+ state.dataSafe=false;assert.equal(box.check(),false,'Existing save guards still apply after leaving the exchange.');
+ state.dataSafe=true;state.inboxSafe=false;assert.equal(box.check(),false);
+});

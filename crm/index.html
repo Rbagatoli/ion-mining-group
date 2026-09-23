@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="./workflow.css?v=1">
   <link rel="stylesheet" href="./intake-inbox.css?v=1">
   <link rel="stylesheet" href="./public-infrastructure.css?v=1">
+  <link rel="stylesheet" href="./agent-exchange/exchange.css?v=1">
   <link rel="stylesheet" href="./runtime/managed-hosting.css?v=1">
   <script src="./runtime/managed-hosting.js?v=1" defer></script>
   <script src="./runtime/managed-hosting-ui.js?v=1" defer></script>
@@ -38,6 +39,7 @@
   <div class="workspace">
     <header class="topbar"><span class="mobile-brand">proton <b>CRM</b></span><span class="workspace-label">YOUR WORKSPACE</span><div class="topbar-actions"><button class="connection-button" id="accountButton" data-action="account"><span class="status-dot"></span><span id="connectionLabel">On this device</span></button><a href="#settings" class="mobile-settings" aria-label="Settings">⋯</a></div></header>
     <main id="content" tabindex="-1"><div class="loading">Opening your workspace…</div></main>
+    <section id="agentExchangePanel" aria-label="Agent connection" hidden></section>
     <p id="notice" class="toast" role="status" hidden></p>
   </div>
   <dialog id="sheet" aria-labelledby="sheetTitle"><header class="sheet-header"><button class="text-button" id="sheetBack" hidden>Back</button><h2 id="sheetTitle"></h2><button id="sheetClose" class="icon-button" aria-label="Close panel">×</button></header><div id="sheetBody"></div><p id="sheetError" class="form-error" role="alert" hidden></p></dialog>
