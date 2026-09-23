@@ -1,8 +1,6 @@
 /* Alliance's spacious composition, expressed in Proton's platinum and Bitcoin
    orange. The transparent hero shares the site's existing rising gas field. */
-@font-face { font-family: 'Proton Bebas'; src: url('./assets/fonts/alliance/bebas-neue-latin-400.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Proton DM'; src: url('./assets/fonts/alliance/dm-sans-latin-300-600.woff2') format('woff2'); font-style: normal; font-weight: 300 600; font-display: swap; }
-.home-hero, .home-sourcing { --home-display: 'Proton Bebas', 'Arial Narrow', sans-serif; --home-body: 'Proton DM', var(--sans); font-family: var(--home-body); }
+.home-hero, .home-sourcing { --home-display: var(--sans); --home-body: var(--sans); font-family: var(--home-body); }
 .home-hero { position: relative; isolation: isolate; min-height: calc(100vh - 64px); min-height: calc(100svh - 64px); display: flex; align-items: center; overflow: hidden; padding: 80px 0 110px; background: transparent; }
 .home-hero .home-hero-grid { width: 100%; max-width: 1080px; margin: 0; padding-left: clamp(20px,8vw,120px); padding-right: 24px; }
 .home-hero-copy { position: relative; z-index: 2; }
@@ -23,12 +21,12 @@
 .home-sourcing::before, .home-sourcing::after { display: none; }
 .home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; max-width: 1800px; min-height: 620px; margin: 0 auto; background: linear-gradient(128deg,#242424,#161616 48%,#0c0c0c); border: 1px solid rgba(229,228,226,.2); border-radius: 24px; overflow: hidden; }
 .home-sourcing-copy { position: relative; z-index: 2; padding: clamp(32px,4.2vw,64px); padding-right: clamp(24px,3vw,44px); min-width: 0; }
-.home-sourcing .eyebrow { display: block; margin-bottom: 16px; color: #ffb55c; font: 500 11px/1.6 var(--home-body); letter-spacing: .22em; }
+.home-sourcing .eyebrow { display: block; margin-bottom: 16px; color: #ffb55c; font: 400 11px/1.6 var(--mono); letter-spacing: .22em; }
 .home-sourcing .eyebrow::before { display: none; }
-.home-sourcing-copy h2 { margin: 0 0 16px; font: 400 clamp(32px,4vw,52px)/1.05 var(--home-display); letter-spacing: .04em; text-transform: uppercase; color: #fff; }
+.home-sourcing-copy h2 { margin: 0 0 16px; font: 500 clamp(42px,4.8vw,72px)/1.02 var(--home-display); letter-spacing: -.05em; text-transform: none; color: #f1f0ee; }
 .home-sourcing-subtitle { max-width: 470px; margin: 0 0 28px; font: 300 15px/1.75 var(--home-body); color: rgba(255,255,255,.64); }
 .home-sourcing-stats { display: flex; gap: clamp(24px,3vw,44px); margin: 0 0 28px; }
-.home-sourcing-stats strong { display: block; font: 400 clamp(28px,3vw,39px)/1.1 var(--home-display); letter-spacing: .02em; color: #ffb55c; }
+.home-sourcing-stats strong { display: block; font: 600 clamp(28px,2.5vw,34px)/1.1 var(--home-display); letter-spacing: -.035em; color: #ffb55c; }
 .home-sourcing-stats span { display: block; margin-top: 4px; font: 400 10px/1.5 var(--home-body); color: rgba(255,255,255,.6); letter-spacing: .1em; text-transform: uppercase; }
 .research-card { position: relative; max-width: 480px; margin: 0 0 24px; padding: 18px 20px 0; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.12); border-left: 3px solid #f7931a; border-radius: 8px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 .research-example { display: block; margin: 0; color: #ffc681; font: 400 9px/1.5 var(--home-body); letter-spacing: .13em; text-transform: uppercase; }
@@ -56,7 +54,7 @@
    edge; facility models remain fully framed when a source is selected. */
 .home-energy-explorer { position: relative; align-self: stretch; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 26px 34px 24px 0; }
 .home-explorer-stage { position: relative; order: 3; flex: 1; min-height: 430px; isolation: isolate; }
-.home-discovery-globe { position: absolute; width: 900px; height: 900px; right: -225px; bottom: -330px; opacity: 1; transition: opacity .5s ease; pointer-events: auto; }
+.home-discovery-globe { position: absolute; width: 900px; height: 900px; top: 0; right: -225px; opacity: 1; transition: opacity .5s ease; pointer-events: auto; }
 .home-discovery-globe > img, .home-discovery-globe > canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .home-discovery-globe > img { object-fit: cover; opacity: .5; mix-blend-mode: luminosity; }
 .home-discovery-globe[data-render-state="ready"] > img { opacity: 0; }
@@ -72,7 +70,7 @@
 .home-energy-explorer[data-view="facility"] .home-discovery-globe { opacity: 0; visibility: hidden; pointer-events: none; }
 .home-energy-explorer[data-view="facility"] .home-facility-layer { opacity: 1; transform: none; }
 .home-explorer-top { position: relative; order: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-top: 4px; }
-.home-explorer-top h3 { margin: 0; color: #fff; font: 400 clamp(22px,2.2vw,32px)/1.1 var(--home-display); letter-spacing: .025em; }
+.home-explorer-top h3 { margin: 0; color: #f1f0ee; font: 500 clamp(20px,2vw,27px)/1.2 var(--home-display); letter-spacing: -.03em; }
 .home-globe-back { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 0 8px 8px; border: 0; background: none; color: #ffc681; font: 400 12px/1.4 var(--home-body); cursor: pointer; touch-action: manipulation; }
 .home-globe-back[hidden] { display: none; }
 .home-globe-back span { font-size: 20px; }
@@ -87,11 +85,11 @@
 .home-map-credit a { color: inherit; }
 .home-globe-back:focus-visible, .home-globe-label:focus-visible, .home-research-sources button:focus-visible, .research-tabs button:focus-visible, .research-details > summary:focus-visible, .research-content:focus-visible, .research-workspace-link:focus-visible { outline: 2px solid #ffc681; outline-offset: 3px; }
 
-@media (min-width: 1700px) { .home-discovery-globe { width: 1000px; height: 1000px; right: -210px; bottom: -365px; } }
+@media (min-width: 1700px) { .home-discovery-globe { width: 1000px; height: 1000px; right: -210px; } }
 @media (max-width: 1100px) {
   .home-sourcing-copy { padding: 34px 26px; }
   .home-energy-explorer { padding-right: 24px; }
-  .home-discovery-globe { width: 740px; height: 740px; right: -230px; bottom: -270px; }
+  .home-discovery-globe { width: 740px; height: 740px; right: -230px; }
   .home-sourcing-actions { flex-direction: column; align-items: flex-start; gap: 6px; }
   .research-card { padding-inline: 14px; }
   .research-tabs { gap: 7px; }

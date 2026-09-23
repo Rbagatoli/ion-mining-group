@@ -1,5 +1,5 @@
-/* Alliance's original dotted COBE globe with platinum land and an orange glow.
-   Illustrative energy regions explain a source, not available sites. */
+/* Textured platinum globe with raised continental relief, dark oceans and
+   orange energy routes. Regions illustrate sources, not available sites. */
 const mounted = new WeakMap();
 const SOURCES = {
     landfill:{label:'Landfill gas',lat:41.8,lon:-87.5},
@@ -12,10 +12,27 @@ const SOURCES = {
     grid:{label:'Grid supply',lat:34,lon:-84.4}
 };
 const radians = degrees => degrees*Math.PI/180;
-// COBE projects x/radius = cos(latitude) * cos(longitude + phi).
-// Put 40°N, 100°W at -0.70 on the left; the negative arccos branch
-// makes increasing phi carry North America into the center and then right.
-const HOME = {phi:-Math.acos(-.70/Math.cos(radians(40)))-radians(-100),theta:.3,scale:1};
+// Solve the perspective projection for 40°N, 100°W at 70% of the
+// visible globe radius to the left. Positive phi moves America toward center.
+function overviewPhi() {
+    const distance = 3.39/Math.sin(radians(39/2))*1.025/3.2;
+    let left = -1.2, right = 0;
+    for (let i=0;i<48;i++) {
+        const phi = (left+right)/2, lat = radians(40), lon = radians(-100)+phi;
+        const x = Math.cos(lat)*Math.cos(lon);
+        const z = Math.sin(lat)*Math.sin(.3)-Math.cos(lat)*Math.sin(lon)*Math.cos(.3);
+        const projected = x*Math.sqrt(distance*distance-1)/(distance-z);
+        if (projected < -.70) left = phi; else right = phi;
+    }
+    return (left+right)/2;
+}
+const HOME = {phi:overviewPhi(),theta:.3,scale:1};
+const version = new URL(import.meta.url).searchParams.get('v');
+const assetURL = path => {
+    const url = new URL(path,import.meta.url);
+    if (version) url.searchParams.set('v',version);
+    return url.href;
+};
 const ROTATION_SPEED = Math.PI/180; // One revolution per six visible minutes.
 const ease = value => value*value*(3-2*value);
 const mix = (a,b,t) => a+(b-a)*t;
@@ -45,7 +62,10 @@ export function mountHomeDiscoveryGlobe(host) {
     host.append(canvas,lines,labels);
     host.dataset.discoverySource = 'landfill';
     let selected = 'landfill', phi = HOME.phi, theta = HOME.theta, scale = HOME.scale;
-    let renderer = null, createGlobe = null, ready = false, loading = false, failed = false, disposed = false;
+    let T, renderer = null, world, camera, earth, environment, lightingRig;
+    let ready = false, prepared = false, loading = false, failed = false, disposed = false;
+    let homeDistance = 0, markers = [], routes = [];
+    const textureSet = new Set();
     let active = true, visible = false, suspended = false, frame = 0, last = 0, elapsed = 0;
     let width = 0, height = 0, ratio = 1, flight = null, drag = null, ignoreClick = false;
     let resizeObserver, loadObserver, viewObserver;
@@ -59,17 +79,19 @@ export function mountHomeDiscoveryGlobe(host) {
         const previous = flight; flight = null;
         clearTimeout(previous.timeout); previous.resolve(success);
     }
-    // Alliance's original floating-tag projection, with a responsive aspect correction.
+    function visibleMarkerIDs() {
+        return ['landfill','flare','hydro'].includes(selected) ? ['landfill','flare','hydro'] : ['landfill','hydro',selected];
+    }
     function project(region) {
-        const lat = radians(region.lat), lon = radians(region.lon), c = Math.cos(lat);
-        const x = c*Math.cos(lon), y = Math.sin(lat), z = -c*Math.sin(lon);
-        const x1 = x*Math.cos(phi)+z*Math.sin(phi), z1 = -x*Math.sin(phi)+z*Math.cos(phi);
-        const y1 = y*Math.cos(theta)-z1*Math.sin(theta), z2 = y*Math.sin(theta)+z1*Math.cos(theta);
-        if (z2 < .12) return null;
-        return {x:width/2+x1*.4*height*scale,y:height/2-y1*.4*height*scale};
+        if (!camera || !region.anchor || !earth) return null;
+        // A perspective globe hides points beyond its actual sphere horizon.
+        if (region.anchor.clone().normalize().dot(camera.position) <= 3.215) return null;
+        const point = region.tip.clone().project(camera);
+        return {x:(point.x+1)*width/2,y:(1-point.y)*height/2};
     }
     function updateLabels() {
-        const candidates = pins.filter(pin => project(pin));
+        const visibleIDs = visibleMarkerIDs();
+        const candidates = pins.filter(pin => visibleIDs.includes(pin.id) && project(pin));
         const primary = candidates.find(pin => pin.id === selected) || candidates[0];
         const others = candidates.filter(pin => pin !== primary);
         const secondary = others.length ? others[Math.floor(elapsed/3)%others.length] : null;
@@ -87,14 +109,71 @@ export function mountHomeDiscoveryGlobe(host) {
             pin.line.setAttribute('x2',x); pin.line.setAttribute('y2',y+12);
         }
     }
-    function draw(still = false) {
-        if (!renderer || failed || disposed) return;
+    function fit() {
+        if (!renderer || !camera) return false;
+        const w = host.clientWidth, h = host.clientHeight;
+        if (!w || !h) return false;
+        if (w !== width || h !== height) {
+            width = w; height = h; ratio = Math.min(window.devicePixelRatio || 1,1.75);
+            renderer.setPixelRatio(ratio); renderer.setSize(w,h,false); camera.aspect = w/h;
+            const halfAngle = Math.atan(Math.tan(radians(camera.fov/2))*Math.min(1,camera.aspect));
+            homeDistance = 3.39/Math.sin(halfAngle)*1.025; camera.updateProjectionMatrix();
+        }
+        const distance = 3.2*Math.sqrt(1+(Math.pow(homeDistance/3.2,2)-1)/(scale*scale));
+        const longitude = -phi-Math.PI/2, cosine = Math.cos(theta);
+        camera.position.set(Math.sin(longitude)*cosine,Math.sin(theta),Math.cos(longitude)*cosine).multiplyScalar(distance);
+        camera.lookAt(0,0,0); camera.updateMatrixWorld();
+        const front = camera.position.clone().normalize();
+        const right = new T.Vector3().crossVectors(new T.Vector3(0,1,0),front).normalize();
+        lightingRig.key.position.copy(front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0));
+        lightingRig.fill.position.copy(front).multiplyScalar(4).addScaledVector(right,9);
+        lightingRig.rim.position.copy(front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0));
+        return true;
+    }
+    function setVisuals() {
+        const ids = visibleMarkerIDs(), animated = !motion.matches;
+        markers.forEach((marker,index) => {
+            marker.pin.visible = ids.includes(marker.id);
+            const focused = marker.id === selected, pulse = animated ? .5+.5*Math.sin(elapsed*1.1-index*.6) : .5;
+            marker.material.emissiveIntensity = focused ? .26+pulse*.08 : .09;
+            marker.cap.scale.setScalar(focused ? 1.12 : 1);
+            marker.halo.material.opacity = focused ? .17+pulse*.07 : .07;
+            marker.halo.scale.setScalar(focused ? .94+pulse*.08 : .82);
+            marker.ring.material.opacity = focused ? .55 : .20;
+        });
+        routes.forEach(route => {
+            const show = route.ids.every(id => ids.includes(id)), focused = route.ids.includes(selected);
+            route.line.visible = show; route.pulse.visible = show && focused;
+            route.line.material.opacity = focused ? .22 : .07;
+            route.pulse.position.copy(route.curve.getPointAt(animated ? (elapsed*.055+route.phase)%1 : .55));
+        });
+    }
+    function draw() {
+        if (!renderer || !prepared || failed || disposed || !fit()) return;
         try {
-            // COBE changes uniforms after drawing. A static frame needs the
-            // second draw to make its requested state visible immediately.
-            renderer.render(); if (still) renderer.render();
+            setVisuals(); renderer.render(world,camera);
+            if (!ready) {
+                ready = true; host.dataset.renderState = 'ready'; canvas.style.opacity = '1'; startFlight();
+            }
             updateLabels();
         } catch { fallback(); }
+    }
+    function releaseResources() {
+        const geometries = new Set(), materials = new Set();
+        world?.traverse(object => {
+            if (object.geometry) geometries.add(object.geometry);
+            if (object.material) (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => materials.add(material));
+        });
+        for (const material of materials) {
+            for (const value of Object.values(material)) if (value?.isTexture) textureSet.add(value);
+            material.dispose();
+        }
+        geometries.forEach(geometry => geometry.dispose());
+        textureSet.forEach(texture => texture.dispose()); textureSet.clear();
+        environment?.dispose(); environment = null;
+        renderer?.dispose(); renderer = null; world = null; earth = null; camera = null;
+        markers = []; routes = []; prepared = false; ready = false;
+        pins.forEach(pin => { pin.anchor = null; pin.tip = null; });
     }
     function animateFlight(progress) {
         if (!flight?.started) return;
@@ -139,7 +218,8 @@ export function mountHomeDiscoveryGlobe(host) {
     function select(value) {
         const source = sourceID(value);
         if (!Object.hasOwn(SOURCES,source) || disposed) return;
-        selected = source; host.dataset.discoverySource = source; updateLabels();
+        selected = source; host.dataset.discoverySource = source;
+        if (available()) draw(); else updateLabels();
     }
     function travel(kind,value) {
         const source = sourceID(value);
@@ -162,57 +242,114 @@ export function mountHomeDiscoveryGlobe(host) {
         }
         updateLabels();
     }
-    function measure() {
-        width = host.clientWidth; height = host.clientHeight;
-        ratio = Math.min(window.devicePixelRatio || 1,2);
-        return width > 0 && height > 0;
-    }
     function resize() {
-        if (disposed || failed || !measure()) return;
-        if (!renderer) { if (createGlobe) build(); return; }
-        renderer.devicePixelRatio = ratio; renderer.resize();
-        if (available()) { draw(true); startFlight(); wake(); }
+        if (!disposed && !failed && renderer && active) { draw(); startFlight(); wake(); }
     }
     function fallback() {
         if (failed || disposed) return;
-        failed = true; ready = false; finishFlight(false); stop();
-        renderer?.destroy(); renderer = null; canvas.style.opacity = '0';
+        failed = true; finishFlight(false); stop(); releaseResources(); canvas.style.opacity = '0';
         host.dataset.renderState = 'fallback'; updateLabels();
     }
     function contextLost(event) { event.preventDefault(); fallback(); }
-    function build() {
-        if (!createGlobe || renderer || disposed || failed || !measure()) return;
-        try {
-            renderer = createGlobe(canvas,{
-                devicePixelRatio:ratio,width:width*ratio,height:height*ratio,
-                phi,theta,dark:1,diffuse:.4,mapSamples:20000,mapBrightness:1.5,
-                // Neutral graphite and platinum retain their grey finish;
-                // only the atmosphere and source markers carry orange.
-                baseColor:[.56,.56,.56],markerColor:[247/255,147/255,26/255],glowColor:[.72,.30,.055],
-                markers:pins.map(pin => ({location:[pin.lat,pin.lon],size:.03})),
-                onRender:state => {
-                    state.phi = phi; state.theta = theta; state.scale = scale;
-                    state.width = width*ratio; state.height = height*ratio;
-                },
-                onReady:() => {
-                    if (disposed || failed) return;
-                    ready = true; host.dataset.renderState = 'ready'; canvas.style.opacity = '1';
-                    draw(true); startFlight(); wake();
-                },
-                onError:fallback
-            });
-            // The wrapper owns the loop so hidden scenes and reduced-motion
-            // views do not keep the original library running in the background.
-            renderer.toggle(false);
-        } catch { fallback(); }
-    }
     async function load() {
         if (loading || renderer || disposed || failed) return;
         loading = true; host.dataset.renderState = 'loading';
         try {
-            createGlobe = (await import('./vendor/alliance/cobe.esm.js')).default;
-            if (!disposed && !failed) build();
-        } catch { fallback(); }
+            const [three,surface,geography,lighting,borders] = await Promise.all([
+                import('./vendor/three-0.185.1/three.module.min.js'),
+                import(assetURL('./globe-surface.js')),
+                import(assetURL('./hosting-earth-data.js')),
+                import('./vendor/three-0.185.1/RoomEnvironment.js'),
+                import(assetURL('./hosting-globe-scene.js'))
+            ]);
+            if (disposed || failed) return;
+            T = three;
+            renderer = new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,1.75));
+            renderer.setClearColor(0x000000,0);
+            renderer.outputColorSpace = T.SRGBColorSpace;
+            renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = .86;
+            world = new T.Scene(); camera = new T.PerspectiveCamera(39,1,.1,80);
+            const room = new lighting.RoomEnvironment(), pmrem = new T.PMREMGenerator(renderer);
+            try { environment = pmrem.fromScene(room,.035); }
+            finally { room.dispose(); pmrem.dispose(); }
+            world.environment = environment.texture; world.environmentIntensity = .55;
+            const model = surface.buildGlobeSurface(geography.LAND,{detail:true,lakes:geography.LAKES});
+            earth = {...model,front:surface.globePoint(36,-99,1)};
+            world.add(earth.root); earth.textures.forEach(texture => textureSet.add(texture));
+            earth.surface.material.color.setHex(0x858b8e);
+            earth.surface.material.metalness = .78;
+            earth.surface.material.roughness = .75;
+            earth.surface.material.clearcoat = .12;
+            const divisions = borders.buildCountryBorders(geography.BORDERS);
+            divisions.material.color.setHex(0x20252a); divisions.material.transparent = true; divisions.material.opacity = .7;
+            earth.root.add(divisions);
+            world.add(new T.HemisphereLight(0xf7f5ef,0x111318,.48));
+            const right = new T.Vector3().crossVectors(new T.Vector3(0,1,0),earth.front).normalize();
+            const key = new T.DirectionalLight(0xffffff,2.0);
+            key.position.copy(earth.front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0)); world.add(key);
+            const fill = new T.DirectionalLight(0xd7e0e8,.55);
+            fill.position.copy(earth.front).multiplyScalar(4).addScaledVector(right,9); world.add(fill);
+            const rim = new T.DirectionalLight(0xf7931a,.7);
+            rim.position.copy(earth.front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0)); world.add(rim);
+
+            lightingRig = {key,fill,rim};
+
+            // Keep the warm atmosphere on the exposed left/lower perimeter;
+            // the page crops the opposite side. This shell leaves the neutral
+            // land and ocean materials unchanged.
+            earth.root.add(new T.Mesh(new T.SphereGeometry(3.24,80,56),new T.ShaderMaterial({
+                transparent:true,depthWrite:false,side:T.BackSide,blending:T.AdditiveBlending,
+                vertexShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){vec4 q=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=normalize(-q.xyz);p=q.xyz;gl_Position=projectionMatrix*q;}',
+                fragmentShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){float e=pow(1.-abs(dot(normalize(n),normalize(v))),3.4);float left=1.-smoothstep(-2.8,1.2,p.x);float bottom=1.-smoothstep(-2.5,.5,p.y);float warm=max(left,bottom*.65);gl_FragColor=vec4(1.,.36,.035,e*(.035+.18*warm));}'
+            })));
+
+            const stemMaterial = new T.MeshStandardMaterial({color:0xc9c6bf,metalness:.82,roughness:.27});
+            for (const [id,region] of Object.entries(SOURCES)) {
+                const anchor = surface.globePoint(region.lat,region.lon,3.218);
+                const pin = new T.Group(); pin.name = 'illustrative-region-'+id;
+                pin.position.copy(anchor); pin.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),anchor.clone().normalize());
+                earth.root.add(pin);
+                const material = new T.MeshStandardMaterial({color:0xf7931a,metalness:.38,roughness:.4,emissive:0xdb730d,emissiveIntensity:.12});
+                const stem = new T.Mesh(new T.CylinderGeometry(.014,.014,.16,10),stemMaterial);
+                stem.rotation.x = Math.PI/2; stem.position.z = .08; pin.add(stem);
+                const cap = new T.Mesh(new T.SphereGeometry(.036,18,12),material); cap.position.z = .18; pin.add(cap);
+                const ring = new T.Mesh(new T.RingGeometry(.055,.066,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
+                ring.position.z = .006; pin.add(ring);
+                const halo = new T.Mesh(new T.RingGeometry(.085,.112,48),new T.MeshBasicMaterial({color:0xf7931a,transparent:true,opacity:.10,side:T.DoubleSide,depthWrite:false,toneMapped:false}));
+                halo.position.z = .009; pin.add(halo);
+                markers.push({id,pin,material,cap,ring,halo,anchor});
+                const label = pins.find(item => item.id === id);
+                label.anchor = anchor; label.tip = anchor.clone().normalize().multiplyScalar(3.41);
+            }
+            const pairs = markers.flatMap((_,a) => markers.slice(a+1).map((__,offset) => [a,a+1+offset]));
+            pairs.forEach(([a,b],index) => {
+                const start = markers[a].anchor.clone().normalize(), end = markers[b].anchor.clone().normalize();
+                const points = Array.from({length:49},(_,i) => {
+                    const t = i/48;
+                    return new T.Vector3().lerpVectors(start,end,t).normalize().multiplyScalar(3.24+Math.sin(t*Math.PI)*.19);
+                });
+                const curve = new T.CatmullRomCurve3(points);
+                const line = new T.Mesh(new T.TubeGeometry(curve,64,.006,5,false),new T.MeshBasicMaterial({color:0xf7a536,transparent:true,opacity:.2,depthWrite:false,toneMapped:false}));
+                earth.root.add(line);
+                const pulse = new T.Mesh(new T.SphereGeometry(.016,10,8),new T.MeshBasicMaterial({color:0xffae46,toneMapped:false})); earth.root.add(pulse);
+                routes.push({ids:[markers[a].id,markers[b].id],curve,line,pulse,phase:index*.28});
+            });
+            const anisotropy = Math.min(8,renderer.capabilities.getMaxAnisotropy());
+            textureSet.forEach(texture => {texture.anisotropy = anisotropy; texture.needsUpdate = true;});
+            // Relief enhances the silhouette, but vector coastlines are complete
+            // and the globe stays usable if this optional local texture fails.
+            new T.TextureLoader().load(assetURL('./textures/earth-normal.png'),texture => {
+                if (disposed || failed || !earth) { texture.dispose(); return; }
+                texture.anisotropy = anisotropy; textureSet.add(texture);
+                earth.surface.material.normalMap = texture; earth.surface.material.normalScale.set(6,6);
+                earth.surface.material.needsUpdate = true;
+                if (active && visible && !document.hidden) draw();
+            },undefined,() => {});
+            if (renderer.compileAsync) await renderer.compileAsync(world,camera);
+            if (disposed || failed) return;
+            prepared = true; draw(); startFlight(); wake();
+        } catch { if (!disposed) fallback(); }
         finally { loading = false; }
     }
     function chooseSource(source) {
@@ -256,7 +393,9 @@ export function mountHomeDiscoveryGlobe(host) {
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX-rect.left, y = event.clientY-rect.top;
         let nearest = null, distance = 44;
+        const visibleIDs = visibleMarkerIDs();
         for (const pin of pins) {
+            if (!visibleIDs.includes(pin.id)) continue;
             const position = project(pin); if (!position) continue;
             const next = Math.hypot(position.x-x,position.y-y);
             if (next < distance) { nearest = pin; distance = next; }
@@ -292,7 +431,7 @@ export function mountHomeDiscoveryGlobe(host) {
         canvas.removeEventListener('pointerup',pointerEnd); canvas.removeEventListener('pointercancel',pointerEnd);
         canvas.removeEventListener('lostpointercapture',pointerEnd); canvas.removeEventListener('click',canvasClick);
         labels.removeEventListener('click',labelClick);
-        renderer?.destroy(); renderer = null; canvas.remove(); lines.remove(); labels.remove();
+        releaseResources(); canvas.remove(); lines.remove(); labels.remove();
         host.dataset.renderState = 'poster'; mounted.delete(host);
     }
     canvas.addEventListener('webglcontextlost',contextLost);
