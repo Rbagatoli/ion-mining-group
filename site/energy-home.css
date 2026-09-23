@@ -17,9 +17,9 @@
 .home-hero-scroll span { width: 1px; height: 32px; background: linear-gradient(#f7931a,transparent); animation: home-scroll-pulse 2s ease-in-out infinite; }
 @keyframes home-scroll-pulse { 0%,100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(8px); } }
 
-.home-sourcing { position: relative; padding: clamp(60px,8vw,100px) clamp(16px,3vw,40px); background: #080808; overflow: clip; }
+.home-sourcing { position: relative; padding: clamp(60px,8vw,100px) clamp(16px,3vw,40px); background: transparent; overflow: clip; }
 .home-sourcing::before, .home-sourcing::after { display: none; }
-.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; max-width: 1800px; min-height: 620px; margin: 0 auto; background: linear-gradient(128deg,#242424,#161616 48%,#0c0c0c); border: 1px solid rgba(229,228,226,.2); border-radius: 24px; overflow: hidden; }
+.home-discovery-grid { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; align-items: start; max-width: 1800px; min-height: 740px; margin: 0 auto; background: transparent; border: 0; overflow: clip; }
 .home-sourcing-copy { position: relative; z-index: 2; padding: clamp(32px,4.2vw,64px); padding-right: clamp(24px,3vw,44px); min-width: 0; }
 .home-sourcing .eyebrow { display: block; margin-bottom: 16px; color: #ffb55c; font: 400 11px/1.6 var(--mono); letter-spacing: .22em; }
 .home-sourcing .eyebrow::before { display: none; }
@@ -28,23 +28,25 @@
 .home-sourcing-stats { display: flex; gap: clamp(24px,3vw,44px); margin: 0 0 28px; }
 .home-sourcing-stats strong { display: block; font: 600 clamp(28px,2.5vw,34px)/1.1 var(--home-display); letter-spacing: -.035em; color: #ffb55c; }
 .home-sourcing-stats span { display: block; margin-top: 4px; font: 400 10px/1.5 var(--home-body); color: rgba(255,255,255,.6); letter-spacing: .1em; text-transform: uppercase; }
-.research-card { position: relative; max-width: 480px; margin: 0 0 24px; padding: 18px 20px 0; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.12); border-left: 3px solid #f7931a; border-radius: 8px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.research-card { position: relative; max-width: 520px; margin: 0 0 24px; padding: 20px 22px 0; background: rgba(8,9,10,.42); border: 1px solid rgba(229,228,226,.18); border-top-color: rgba(229,228,226,.3); border-radius: 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
 .research-example { display: block; margin: 0; color: #ffc681; font: 400 9px/1.5 var(--home-body); letter-spacing: .13em; text-transform: uppercase; }
-.research-card h3 { margin: 7px 0 0; color: #fff; font: 600 20px/1.2 var(--home-body); letter-spacing: -.015em; }
+.research-card h3 { margin: 7px 0 0; color: #fff; font: 600 24px/1.2 var(--home-body); letter-spacing: -.025em; }
 .research-card-intro { margin: 6px 0 0; color: rgba(255,255,255,.64); font: 300 13px/1.5 var(--home-body); }
 .research-details { border: 0; margin-top: 12px; }
 .research-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; min-height: 44px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.1); font: 400 12px/1.4 var(--home-body); color: #eee; cursor: pointer; }
 .research-details > summary::-webkit-details-marker { display: none; }
 .research-details > summary span { font-size: 18px; color: #ffb55c; }
 .research-details[open] > summary span { transform: rotate(45deg); }
+.research-details[open] .research-content { animation: research-detail-reveal .28s ease-out both; }
+@keyframes research-detail-reveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 .research-tabs { display: flex; justify-content: space-between; gap: 9px; border-bottom: 1px solid rgba(255,255,255,.16); }
-.research-tabs button { position: relative; min-height: 44px; padding: 10px 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: rgba(255,255,255,.62); font: 400 12px/1.4 var(--home-body); cursor: pointer; touch-action: manipulation; }
+.research-tabs button { position: relative; min-height: 44px; padding: 10px 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: rgba(255,255,255,.62); font: 400 13px/1.4 var(--home-body); cursor: pointer; touch-action: manipulation; }
 .research-tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #f7931a; }
 .research-content { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; min-height: 230px; }
 .research-row { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,.09); }
 .research-row:nth-last-child(-n+2) { border-bottom: 0; }
-.research-row-label { display: block; color: rgba(255,255,255,.5); font: 400 9px/1.5 var(--home-body); text-transform: uppercase; letter-spacing: .06em; }
-.research-row-value { margin: 7px 0 0; color: #ededed; font: 300 13px/1.5 var(--home-body); }
+.research-row-label { display: block; color: var(--plat-400); font: 400 10px/1.5 var(--home-body); text-transform: uppercase; letter-spacing: .06em; }
+.research-row-value { margin: 7px 0 0; color: #ededed; font: 400 15px/1.5 var(--home-body); }
 .home-sourcing-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .home-sourcing-actions .research-cta { min-height: 46px; padding: 13px 20px; font-size: 11px; }
 .research-workspace-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 9px 0; color: rgba(255,255,255,.8); text-decoration: none; font: 400 12px/1.5 var(--home-body); }
@@ -52,9 +54,10 @@
 
 /* The controls sit above the art. The globe extends beyond the lower-right
    edge; facility models remain fully framed when a source is selected. */
-.home-energy-explorer { position: relative; align-self: stretch; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 26px 34px 24px 0; }
-.home-explorer-stage { position: relative; order: 3; flex: 1; min-height: 430px; isolation: isolate; }
-.home-discovery-globe { position: absolute; width: 900px; height: 900px; top: 0; right: -225px; opacity: 1; transition: opacity .5s ease; pointer-events: auto; }
+.home-energy-explorer { position: relative; align-self: stretch; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; padding: 26px 34px 24px 0; }
+.home-explorer-stage { position: relative; order: 3; flex: none; height: clamp(460px,39vw,620px); min-height: 0; isolation: isolate; }
+.home-discovery-globe { position: absolute; width: 900px; height: 900px; top: 0; right: -225px; opacity: 1; visibility: visible; transition: opacity .4s ease,visibility .4s; pointer-events: auto; }
+.home-discovery-globe::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,transparent 61%,rgba(247,147,26,.25) 65%,rgba(247,147,26,.11) 70%,transparent 76%); filter: blur(15px); pointer-events: none; }
 .home-discovery-globe > img, .home-discovery-globe > canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .home-discovery-globe > img { object-fit: cover; opacity: .5; mix-blend-mode: luminosity; }
 .home-discovery-globe[data-render-state="ready"] > img { opacity: 0; }
@@ -65,10 +68,15 @@
 .home-globe-label.is-visible { opacity: 1; pointer-events: auto; }
 .home-globe-label.is-selected { border-color: rgba(247,147,26,.5); color: #ffc681; }
 .home-globe-lines line { stroke: rgba(247,147,26,.36); stroke-width: 1; }
-.home-facility-layer { position: absolute; inset: 0 -24px 0 -32px; display: flex; align-items: center; opacity: 0; transform: translateY(16px) scale(.84); pointer-events: none; transition: opacity .6s ease,transform .85s cubic-bezier(.16,1,.3,1); }
-.home-facility-layer .sourcing-render { width: 100%; margin: 0; }
+.home-facility-layer { position: absolute; inset: 0 -24px 0 -32px; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+.home-facility-monument { position: relative; width: 100%; height: 100%; }
+.home-facility-monument > canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.home-monument-fallback { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 32px; color: var(--plat-300); text-align: center; font: 400 13px/1.5 var(--sans); }
+.home-facility-monument[data-render-state="ready"] .home-monument-fallback { display: none; }
+.home-facility-monument[data-selection-pending="true"] > canvas { opacity: 0; }
+.home-facility-monument[data-selection-pending="true"] .home-monument-fallback { display: grid; }
 .home-energy-explorer[data-view="facility"] .home-discovery-globe { opacity: 0; visibility: hidden; pointer-events: none; }
-.home-energy-explorer[data-view="facility"] .home-facility-layer { opacity: 1; transform: none; }
+.home-energy-explorer[data-view="facility"] .home-facility-layer { opacity: 1; }
 .home-explorer-top { position: relative; order: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding-top: 4px; }
 .home-explorer-top h3 { margin: 0; color: #f1f0ee; font: 500 clamp(20px,2vw,27px)/1.2 var(--home-display); letter-spacing: -.03em; }
 .home-globe-back { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 0 8px 8px; border: 0; background: none; color: #ffc681; font: 400 12px/1.4 var(--home-body); cursor: pointer; touch-action: manipulation; }
@@ -84,6 +92,19 @@
 .home-map-credit p { margin: 6px 0 0; }
 .home-map-credit a { color: inherit; }
 .home-globe-back:focus-visible, .home-globe-label:focus-visible, .home-research-sources button:focus-visible, .research-tabs button:focus-visible, .research-details > summary:focus-visible, .research-content:focus-visible, .research-workspace-link:focus-visible { outline: 2px solid #ffc681; outline-offset: 3px; }
+
+/* Full chrome on display type; a softer finish keeps small text readable. */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .home-sourcing-copy h2, .home-explorer-top h3, .research-card h3 {
+    background-image: var(--metal-plat); background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  }
+  .home-sourcing-subtitle, .research-card-intro, .research-row-value, .research-workspace-link, .home-research-sources button:not([aria-pressed="true"]), .research-tabs button, .research-details > summary {
+    background-image: var(--metal-plat-soft); background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  }
+  .home-research-sources button[aria-pressed="true"], .home-sourcing-stats strong {
+    background-image: var(--metal-btc-lit); background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  }
+}
 
 @media (min-width: 1700px) { .home-discovery-globe { width: 1000px; height: 1000px; right: -210px; } }
 @media (max-width: 1100px) {
@@ -135,15 +156,15 @@
   .research-card-intro { font-size: 12px; }
   .research-details > summary { font-size: 11px; }
   .research-content { column-gap: 14px; }
-  .research-row-label { font-size: 8px; }
-  .research-row-value { font-size: 12px; }
+  .research-row-label { font-size: 9px; }
+  .research-row-value { font-size: 13px; }
   .home-sourcing-actions { grid-row: 4; padding: 0 18px 20px; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; }
   .home-sourcing-actions .research-cta { min-height: 44px; padding: 11px 15px; }
   .research-workspace-link { font-size: 11px; }
   .home-map-credit { font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-hero-scroll span { animation: none; }
+  .home-hero-scroll span, .research-details[open] .research-content { animation: none; }
   .home-research-sources button, .home-discovery-globe, .home-facility-layer, .home-globe-label { transition: none; }
 }
 @media print {
@@ -151,4 +172,7 @@
   .home-hero { min-height: 0; padding: 30px 0; }
   .home-discovery-grid { display: block; min-height: 0; }
   .research-card { break-inside: avoid; }
+}
+@media (forced-colors: active) {
+  .home-sourcing :is(h2,h3,p,a,button,summary,strong) { background-image: none; color: CanvasText; -webkit-text-fill-color: currentColor; }
 }

@@ -46,66 +46,65 @@ function deferred() {
 }
 
 function fixture(options = {}) {
-  const document = parse(html), windows = new Element('window'), media = new Element('media');
+  const document = parse(html), windows = new Element('window');
+  const motion = new Element('media'), hover = new Element('media');
+  motion.matches = !!options.reduced; hover.matches = !options.coarse;
   document.readyState = 'complete'; document.hidden = false;
   document.getElementById = id => document.querySelector('#' + id);
   document.createElement = tag => new Element(tag);
   document.createDocumentFragment = () => new Element('#fragment');
   const tag = html.match(/<script\b[^>]*src="\.\/home-energy-explorer\.js[^>]*>/)?.[0];
-  assert.ok(tag, 'The actual homepage must load the explorer controller.');
+  assert.ok(tag, 'The homepage must load the explorer controller.');
   const attrs = Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(match => [match[1], match[2]]));
   document.currentScript = new Element('script', attrs);
   document.currentScript.src = new URL(attrs.src, 'https://preview.test/').href;
   const root = document.getElementById('home-energy-explorer');
-  const host = root.querySelector('[data-energy-site]'), image = host.querySelector('img');
-  const back = root.querySelector('[data-globe-back]');
-  const observers = [], imports = [], stages = [], flights = [], resets = [], posters = [];
-  const pendingModules = new Map(), mountGate = options.holdMount ? deferred() : null;
-  const posterGates = new Map((options.holdPosters || []).map(id => [id, deferred()]));
+  const host = root.querySelector('[data-facility-monument]'), back = root.querySelector('[data-globe-back]');
+  assert.ok(host, 'The authored page must contain the new sculpture host.');
+  const details = document.querySelector('.research-details');
+  const observers = [], imports = [], stages = [], pendingModules = new Map(), timers = new Map();
+  const mountGate = options.holdMount ? deferred() : null;
+  const swapGates = new Map((options.holdSwaps || []).map(id => [id, deferred()]));
+  let clock = 0, timerID = 0;
   const globe = {
-    active: true, disposed: false,
+    active:true, disposed:false, selections:[],
+    select(id) { this.selections.push(id); },
     setActive(value) { this.active = value; },
-    flyTo(source) {
-      const request = {source, ...deferred()}; flights.push(request);
-      if (!options.holdFlights) request.resolve(true);
-      return request.promise;
-    },
-    reset() { resets.push(true); return Promise.resolve(true); },
+    flyTo() { assert.fail('Source choices must never start a globe flight.'); },
+    reset() { assert.fail('Back must not zoom or rotate the globe.'); },
     dispose() { this.disposed = true; this.active = false; }
   };
   const modules = {
     globeSrc: {mountHomeDiscoveryGlobe() { return globe; }},
-    kitSrc: {createSiteKit() { return {}; }},
-    moduleSrc: {async mountSourcingScene(_host, builder, callbacks) {
+    monumentSrc: {async mountFacilityMonument(_host, callbacks) {
+      assert.equal(callbacks.modelsUrl, document.currentScript.dataset.monumentModelsSrc);
+      let version = 0;
       const stage = {
-        context: stages.length + 1, model: builder({}).id, installs: [], active: false, disposed: false,
+        model:callbacks.source, requests:[], active:false, disposed:false, disposals:0,
         setActive(value) { this.active = value; },
         setMotion(value) { this.moving = value; },
-        async setScene(nextBuilder) { this.model = nextBuilder({}).id; this.installs.push(this.model); },
-        dispose() { this.disposed = true; this.active = false; },
+        async setSource(id) {
+          const token = ++version; this.requests.push(id);
+          if (swapGates.has(id)) await swapGates.get(id).promise;
+          if (this.disposed || token !== version) return false;
+          this.model = id; host.dataset.monumentSource = id; host.dataset.renderState = 'ready';
+          return true;
+        },
+        dispose() { this.disposed = true; this.disposals++; this.active = false; version++; },
         fail() { callbacks.onError(); }
       };
       stages.push(stage);
       if (mountGate) await mountGate.promise;
+      host.dataset.monumentSource = callbacks.source; host.dataset.renderState = 'ready';
       return stage;
-    }},
-    gasSrc: {buildLandfillScene: () => ({id:'landfill'}), buildFlareScene: () => ({id:'flare'})},
-    waterSrc: {buildHydroScene: () => ({id:'hydro'}), buildNuclearScene: () => ({id:'nuclear'})},
-    renewablesSrc: {buildWindScene: () => ({id:'wind'}), buildSolarScene: () => ({id:'solar'})},
-    industrySrc: {buildIndustrialScene: () => ({id:'industrial'}), buildGridScene: () => ({id:'grid'})}
+    }}
   };
-  media.matches = !!options.reduced;
   const sandbox = {
     document, URL, console,
     CustomEvent: class { constructor(type, values) { this.type = type; this.detail = values.detail; } },
-    matchMedia: () => media,
-    Image: class {
-      decode() {
-        const id = this.src.match(/energy-site-([a-z]+)-960\.webp/)[1]; posters.push(id);
-        return posterGates.get(id)?.promise || Promise.resolve();
-      }
-    },
-    ResizeObserver: options.noResizeObserver ? undefined : class {},
+    matchMedia: query => query.includes('reduced-motion') ? motion : hover,
+    setTimeout(fn, delay) { const id = ++timerID; timers.set(id, {fn, at:clock + delay}); return id; },
+    clearTimeout(id) { timers.delete(id); },
     IntersectionObserver: class {
       constructor(callback) { this.callback = callback; observers.push(this); }
       observe(target) { this.target = target; }
@@ -127,17 +126,24 @@ function fixture(options = {}) {
   vm.createContext(sandbox);
   new vm.Script(researchSource).runInContext(sandbox);
   new vm.Script(explorerSource.replace('import(url)', 'testImport(url)')).runInContext(sandbox);
+  const button = id => document.querySelector('[data-research-source="' + id + '"]');
   return {
-    document, root, host, image, back, globe, stages, flights, resets, posters, imports, observers, media,
-    choose(id) { document.querySelector('[data-research-source="' + id + '"]').fire('click'); },
+    document, root, host, back, details, globe, stages, imports, observers, button,
+    choose(id) { button(id).fire('click'); },
+    hover(id, pointerType = 'mouse') { button(id).fire('pointerover', {pointerType}); },
+    leave(id) { button(id).fire('pointerout', {relatedTarget:details}); },
+    tick(ms) {
+      clock += ms;
+      for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); }
+    },
     visible(value) { observers.forEach(observer => observer.callback([{isIntersecting:value}])); },
     hidden(value) { document.hidden = value; document.fire('visibilitychange'); },
-    motion(value) { media.matches = value; media.fire('change'); },
+    motion(value) { motion.matches = value; motion.fire('change'); },
     page(type, persisted) { windows.fire(type, {persisted}); },
     resolveModule(key) { pendingModules.get(key).resolve(modules[key]); },
-    rejectModule(key) { pendingModules.get(key).reject(new Error('late module failure')); },
-    resolvePoster(id) { posterGates.get(id).resolve(); },
-    releaseMount() { mountGate.resolve(); }
+    releaseMount() { mountGate.resolve(); },
+    releaseSwap(id) { swapGates.get(id).resolve(); },
+    rejectSwap(id) { swapGates.get(id).reject(new Error('old swap failed')); }
   };
 }
 
@@ -146,188 +152,151 @@ async function check(name, run) {
   try { await run(); passed++; console.log('  ok    ' + name); }
   catch (error) { failed++; console.error('  FAIL  ' + name + '\n' + error.stack); }
 }
-function assertFacility(test, id) {
+function assertFacility(test, id, state = 'ready') {
   assert.equal(test.root.dataset.view, 'facility');
-  assert.equal(test.host.dataset.energySite, id);
+  assert.equal(test.host.dataset.monumentSource, id);
+  assert.equal(test.host.dataset.renderState, state);
   assert.equal(test.root.getAttribute('aria-busy'), null);
+  assert.equal(test.host.hasAttribute('data-selection-pending'), false);
   assert.equal(test.root.querySelector('.home-facility-layer').getAttribute('aria-hidden'), 'false');
-  assert.match(test.image.src, new RegExp('energy-site-' + id + '-960\\.webp$'));
-  assert.match(test.image.alt, /^Illustrative miniature\./);
+  assert.equal(test.details.hasAttribute('open'), true);
+  assert.equal(test.document.getElementById('home-research-preview').dataset.researchActiveSource, id);
 }
 
 (async () => {
-  await check('the globe waits for a source choice before creating any facility stage', async () => {
-    const test = fixture(); await settle(); test.visible(true);
-    assert.equal(test.root.dataset.view, 'globe');
-    assert.equal(test.back.hidden, true);
+  await check('hover intent opens research and switches immediately without a globe flight or old poster', async () => {
+    const test = fixture({holdModules:['monumentSrc']}); await settle(); test.visible(true);
+    assert.equal(test.root.dataset.view, 'globe'); assert.equal(test.stages.length, 0);
+    assert.equal(test.host.querySelector('img'), null);
     assert.deepEqual(test.imports, ['globeSrc']);
-    assert.equal(test.stages.length, 0);
-    test.choose('landfill'); await settle();
-    assertFacility(test, 'landfill');
-    assert.equal(test.stages.length, 1);
-    assert.equal(test.stages[0].active, true);
+    test.hover('nuclear'); test.tick(119);
+    assert.equal(test.root.dataset.view, 'globe');
+    test.tick(1);
+    assert.equal(test.root.dataset.view, 'facility');
+    assert.equal(test.host.dataset.selectionPending, 'true');
+    assert.equal(test.root.getAttribute('aria-busy'), 'true');
+    assert.equal(test.details.hasAttribute('open'), true);
+    assert.equal(test.document.getElementById('research-site-title').textContent, 'Nuclear power');
+    assert.equal(test.document.activeElement, undefined, 'Hover must not move keyboard focus.');
     assert.equal(test.globe.active, false);
+    test.resolveModule('monumentSrc'); await settle(); assertFacility(test, 'nuclear');
+    test.leave('nuclear'); test.tick(1000);
+    assertFacility(test, 'nuclear');
   });
-
-  await check('a newer choice wins while an older poster is still decoding', async () => {
-    const test = fixture({holdPosters:['landfill']}); await settle(); test.visible(true);
-    test.choose('landfill'); await settle();
-    test.choose('wind'); await settle();
-    assert.equal(test.root.dataset.view, 'travel');
-    test.resolvePoster('landfill'); await settle();
-    assertFacility(test, 'wind');
-    assert.deepEqual(test.stages.map(stage => stage.model), ['wind']);
-    assert.equal(test.document.getElementById('research-site-title').textContent, 'Wind power');
+  await check('passing hover cancels, coarse pointers wait for click, and keyboard focus selects', async () => {
+    const passing = fixture(); await settle(); passing.hover('solar'); passing.tick(119); passing.leave('solar'); passing.tick(500);
+    assert.equal(passing.root.dataset.view, 'globe'); assert.equal(passing.stages.length, 0);
+    const touch = fixture({coarse:true}); await settle();
+    touch.hover('nuclear', 'touch'); touch.tick(500);
+    touch.button('nuclear').fire('pointerdown', {pointerType:'touch'}); touch.button('nuclear').focus();
+    assert.equal(touch.root.dataset.view, 'globe', 'Touch focus must not reveal before activation.');
+    touch.button('nuclear').fire('pointerup'); touch.choose('nuclear'); await settle(); assertFacility(touch, 'nuclear');
+    touch.button('wind').focus(); await settle(); assertFacility(touch, 'wind');
+    assert.equal(touch.document.activeElement, touch.button('wind'));
   });
-
-  await check('rapid choices during stage creation reuse one context and install the latest source', async () => {
-    const test = fixture({holdMount:true}); await settle(); test.visible(true);
-    test.choose('landfill'); await settle();
-    assert.equal(test.stages.length, 1);
-    test.choose('hydro'); test.choose('solar'); await settle();
-    test.releaseMount(); await settle();
-    assertFacility(test, 'solar');
-    assert.equal(test.stages.length, 1);
-    assert.equal(test.stages[0].model, 'solar');
-    assert.deepEqual(test.stages[0].installs, ['solar']);
-    assert.equal(test.stages[0].active, true);
-  });
-
-  await check('Back cancels pending selection, restores source focus and ignores a late flight', async () => {
-    const test = fixture({holdPosters:['hydro'],holdFlights:true}); await settle(); test.visible(true);
-    test.choose('hydro'); await settle();
-    test.back.focus(); test.back.fire('click'); await settle();
-    assert.equal(test.root.dataset.view, 'globe');
-    assert.equal(test.back.hidden, true);
-    assert.equal(test.root.getAttribute('aria-busy'), null);
-    assert.equal(test.document.activeElement.dataset.researchSource, 'hydro');
-    test.resolvePoster('hydro'); test.flights.forEach(flight => flight.resolve(true)); await settle();
-    assert.equal(test.root.dataset.view, 'globe');
-    assert.equal(test.stages.length, 0);
-    assert.equal(test.root.querySelector('.home-facility-layer').getAttribute('aria-hidden'), 'true');
-    assert.equal(test.root.querySelector('#home-search-scope').textContent, 'A world of energy.');
-  });
-
-  await check('all eight choices keep one facility context and returning permits the same source again', async () => {
+  await check('all eight sources preserve the research tab and use one renderer', async () => {
     const test = fixture(); await settle(); test.visible(true);
+    test.document.querySelector('[data-research-tab="capital"]').fire('click');
     for (const id of sourceNames) {
       test.choose(id); await settle(); assertFacility(test, id);
       assert.equal(test.stages.length, 1); assert.equal(test.stages[0].model, id);
+      assert.equal(test.document.querySelector('[data-research-tab="capital"]').getAttribute('aria-selected'), 'true');
     }
-    assert.equal(new Set(test.imports).size, test.imports.length, 'Cached modules should not be requested again.');
-    const flights = test.flights.length;
-    test.back.fire('click'); await settle();
-    assert.equal(test.stages[0].active, false);
-    test.choose('grid'); await settle(); assertFacility(test, 'grid');
-    assert.equal(test.flights.length, flights + 1);
+    assert.deepEqual(test.imports, ['globeSrc', 'monumentSrc']);
+  });
+  await check('late-created globe labels share source intent and leave keyboard focus on a visible control', async () => {
+    const test = fixture(); await settle();
+    const label = new Element('button', {'data-globe-source':'nuclear'});
+    test.root.querySelector('#home-discovery-globe').appendChild(label);
+    label.fire('pointerover', {pointerType:'mouse'}); test.tick(120); await settle();
+    assertFacility(test, 'nuclear'); assert.equal(test.document.activeElement, undefined);
+    test.back.fire('click'); label.focus(); await settle();
+    assertFacility(test, 'nuclear'); assert.equal(test.document.activeElement, test.button('nuclear'));
+  });
+  await check('Back collapses research and restores focus without hover or focus reopening it', async () => {
+    const test = fixture(); await settle(); test.visible(true); test.choose('nuclear'); await settle();
+    test.back.focus(); test.back.fire('click'); await settle();
+    assert.equal(test.root.dataset.view, 'globe'); assert.equal(test.details.hasAttribute('open'), false);
+    assert.equal(test.document.activeElement, test.button('nuclear')); assert.equal(test.back.hidden, true);
+    assert.equal(test.stages[0].active, false); assert.equal(test.globe.active, true);
+    test.hover('nuclear'); test.tick(120); await settle(); assertFacility(test, 'nuclear');
+    // A keyboard Back can leave the pointer resting over the old source.
+    test.back.fire('click'); test.hover('nuclear'); test.tick(500); assert.equal(test.root.dataset.view, 'globe');
+    test.leave('nuclear'); test.hover('nuclear'); test.tick(120); await settle(); assertFacility(test, 'nuclear');
+    test.back.fire('click'); test.choose('nuclear'); await settle(); assertFacility(test, 'nuclear');
     assert.equal(test.stages.length, 1);
   });
-
-  await check('reduced motion keeps selected posters usable and can later enable the same facility', async () => {
-    const test = fixture({reduced:true}); await settle(); test.visible(true);
-    for (const id of ['landfill','nuclear','industrial']) {
-      test.choose(id); await settle(); assertFacility(test, id);
-      assert.equal(test.host.dataset.renderState, 'reduced');
-      assert.equal(test.stages.length, 0);
-    }
-    assert.deepEqual(test.imports, ['globeSrc']);
-    test.motion(false); await settle();
-    assert.equal(test.host.dataset.renderState, 'ready');
-    assert.equal(test.stages[0].model, 'industrial');
-    assert.equal(test.stages[0].moving, true);
-    test.motion(true); await settle();
-    assert.equal(test.host.dataset.renderState, 'reduced');
-    assert.equal(test.stages[0].moving, false);
+  await check('rapid source choices during download mount only the latest selection', async () => {
+    const test = fixture({holdModules:['monumentSrc']}); await settle();
+    test.choose('landfill'); test.choose('hydro'); test.choose('wind');
+    test.resolveModule('monumentSrc'); await settle();
+    assertFacility(test, 'wind'); assert.equal(test.stages.length, 1); assert.equal(test.stages[0].model, 'wind');
   });
-
-  await check('motion changes and Back during stage creation cannot leave an unwanted active scene', async () => {
-    const reduced = fixture({holdMount:true}); await settle(); reduced.visible(true);
-    reduced.choose('wind'); await settle(); reduced.motion(true);
-    reduced.releaseMount(); await settle();
-    assertFacility(reduced, 'wind');
-    assert.equal(reduced.host.dataset.renderState, 'reduced');
-    assert.equal(reduced.stages[0].moving, false);
-
-    const returning = fixture({holdMount:true}); await settle(); returning.visible(true);
-    returning.choose('hydro'); await settle(); returning.back.fire('click'); await settle();
-    returning.releaseMount(); await settle();
-    assert.equal(returning.root.dataset.view, 'globe');
-    assert.equal(returning.stages[0].active, false);
-    assert.equal(returning.root.querySelector('.home-facility-layer').getAttribute('aria-hidden'), 'true');
-  });
-
-  await check('offscreen, hidden and cached-page states pause motion without losing the choice', async () => {
-    const test = fixture(); await settle(); test.visible(true);
-    test.choose('flare'); await settle(); const stage = test.stages[0];
-    assert.equal(stage.active, true);
-    test.visible(false); assert.equal(stage.active, false);
-    test.visible(true); assert.equal(stage.active, true);
-    test.hidden(true); assert.equal(stage.active, false);
-    test.hidden(false); assert.equal(stage.active, true);
-    test.page('pagehide', true); assert.equal(stage.active, false); assert.equal(stage.disposed, false);
-    test.page('pageshow', true); assert.equal(stage.active, true);
-    assertFacility(test, 'flare');
-    test.page('pagehide', false);
-    assert.equal(stage.disposed, true); assert.equal(test.globe.disposed, true);
-    assert.equal(test.observers[0].disconnected, true);
-    test.choose('solar'); await settle();
-    assert.equal(test.stages.length, 1);
-    assert.equal(test.host.dataset.energySite, 'flare');
-  });
-
-  await check('missing modules or ResizeObserver retain posters, accessible descriptions and Back', async () => {
-    for (const options of [{failModules:['moduleSrc']},{noResizeObserver:true}]) {
-      const test = fixture(options); await settle(); test.visible(true);
-      test.choose('hydro'); await settle(); assertFacility(test, 'hydro');
-      assert.equal(test.host.dataset.renderState, 'fallback');
-      test.choose('grid'); await settle(); assertFacility(test, 'grid');
-      assert.equal(test.host.dataset.renderState, 'fallback');
-      test.back.fire('click'); await settle(); assert.equal(test.root.dataset.view, 'globe');
-    }
-  });
-
-  await check('globe download failure cannot block facility selection or leave the explorer busy', async () => {
-    const test = fixture({failModules:['globeSrc']}); await settle(); test.visible(true);
-    assert.equal(test.root.querySelector('#home-discovery-globe').dataset.renderState, 'fallback');
-    test.choose('nuclear'); await settle(); assertFacility(test, 'nuclear');
-    assert.equal(test.stages[0].model, 'nuclear');
-    test.back.fire('click'); await settle();
-    assert.equal(test.root.dataset.view, 'globe');
-    assert.equal(test.back.hidden, true);
-  });
-
-  await check('a lost facility context is disposed and later choices retain their own posters', async () => {
-    const test = fixture(); await settle(); test.visible(true);
-    test.choose('hydro'); await settle();
-    test.stages[0].fail();
-    assert.equal(test.stages[0].disposed, true);
-    assert.equal(test.host.dataset.renderState, 'fallback');
-    test.choose('solar'); await settle(); assertFacility(test, 'solar');
-    assert.equal(test.host.dataset.renderState, 'fallback');
-    assert.equal(test.stages.length, 1, 'A context loss must not create successive replacement contexts.');
-  });
-
-  await check('a failed old family download cannot disable a newer healthy choice', async () => {
-    const test = fixture({holdModules:['gasSrc']}); await settle(); test.visible(true);
-    test.choose('landfill'); await settle();
-    test.choose('wind'); await settle();
-    test.rejectModule('gasSrc'); await settle();
-    assertFacility(test, 'wind');
-    assert.equal(test.host.dataset.renderState, 'ready');
-    assert.equal(test.stages.length, 1);
-    assert.equal(test.stages[0].model, 'wind');
-  });
-
-  await check('late stage creation is disposed after final navigation', async () => {
+  await check('a slow initial mount is reused and cannot expose the superseded source', async () => {
     const test = fixture({holdMount:true}); await settle(); test.visible(true);
-    test.choose('solar'); await settle();
-    test.page('pagehide', false); test.releaseMount(); await settle();
-    assert.equal(test.stages.length, 1);
-    assert.equal(test.stages[0].disposed, true);
-    assert.equal(test.stages[0].active, false);
-    assert.notEqual(test.root.dataset.view, 'facility');
+    test.choose('landfill'); await settle(); test.choose('solar'); await settle();
+    assert.equal(test.stages.length, 1); assert.equal(test.host.dataset.selectionPending, 'true');
+    test.releaseMount(); await settle(); assertFacility(test, 'solar');
+    assert.equal(test.stages[0].model, 'solar'); assert.equal(test.stages[0].active, true);
   });
-
+  await check('returning to the already rendered source cancels an intervening asynchronous swap', async () => {
+    const test = fixture({holdSwaps:['solar']}); await settle(); test.choose('nuclear'); await settle();
+    test.choose('solar'); await settle(); test.choose('nuclear'); await settle(); assertFacility(test, 'nuclear');
+    test.releaseSwap('solar'); await settle(); assertFacility(test, 'nuclear');
+    assert.equal(test.stages[0].model, 'nuclear');
+  });
+  await check('a failed old swap cannot disable the newer selected sculpture', async () => {
+    const test = fixture({holdSwaps:['solar']}); await settle(); test.choose('nuclear'); await settle();
+    test.choose('solar'); await settle(); test.choose('grid'); await settle();
+    test.rejectSwap('solar'); await settle(); assertFacility(test, 'grid');
+    assert.equal(test.stages[0].disposed, false);
+  });
+  await check('Back during download or model installation ignores late work', async () => {
+    const loading = fixture({holdModules:['monumentSrc']}); await settle(); loading.choose('hydro'); loading.back.fire('click');
+    loading.resolveModule('monumentSrc'); await settle();
+    assert.equal(loading.root.dataset.view, 'globe'); assert.equal(loading.stages.length, 0);
+    const mounting = fixture({holdMount:true}); await settle(); mounting.choose('hydro'); await settle(); mounting.back.fire('click');
+    mounting.releaseMount(); await settle();
+    assert.equal(mounting.root.dataset.view, 'globe'); assert.equal(mounting.stages[0].active, false);
+    assert.equal(mounting.details.hasAttribute('open'), false);
+  });
+  await check('reduced motion renders the same sculpture as a still and responds to preference changes', async () => {
+    const test = fixture({reduced:true}); await settle(); test.visible(true); test.choose('nuclear'); await settle();
+    assertFacility(test, 'nuclear'); assert.equal(test.stages.length, 1); assert.equal(test.stages[0].moving, false);
+    test.motion(false); assert.equal(test.stages[0].moving, true);
+    test.motion(true); assert.equal(test.stages[0].moving, false); assert.equal(test.stages.length, 1);
+  });
+  await check('offscreen, hidden and cached pages pause without losing selection and cancel pending hover', async () => {
+    const test = fixture(); await settle(); test.visible(true); test.choose('flare'); await settle(); const stage = test.stages[0];
+    assert.equal(stage.active, true); test.visible(false); assert.equal(stage.active, false);
+    test.visible(true); test.hidden(true); assert.equal(stage.active, false); test.hidden(false); assert.equal(stage.active, true);
+    test.hover('solar'); test.page('pagehide', true); test.tick(500); await settle();
+    assert.equal(stage.active, false); assert.equal(stage.disposed, false); assertFacility(test, 'flare');
+    test.page('pageshow', true); assert.equal(stage.active, true);
+    test.page('pagehide', false); assert.equal(stage.disposed, true); assert.equal(test.globe.disposed, true);
+    assert.equal(test.observers[0].disconnected, true);
+    test.choose('grid'); test.button('wind').focus(); await settle(); assert.equal(test.host.dataset.monumentSource, 'flare');
+  });
+  await check('a missing renderer preserves research and descriptive fallback without miniature posters', async () => {
+    const test = fixture({failModules:['monumentSrc']}); await settle(); test.choose('nuclear'); await settle();
+    assertFacility(test, 'nuclear', 'fallback'); assert.equal(test.host.querySelector('img'), null);
+    assert.match(test.host.querySelector('[data-monument-fallback]').textContent, /preview unavailable/);
+    assert.match(test.host.getAttribute('aria-label'), /nuclear/);
+    test.choose('grid'); await settle(); assertFacility(test, 'grid', 'fallback');
+    test.back.fire('click'); assert.equal(test.root.dataset.view, 'globe');
+  });
+  await check('globe failure does not block sculptures and a lost sculpture context is released once', async () => {
+    const test = fixture({failModules:['globeSrc']}); await settle(); test.choose('nuclear'); await settle();
+    assertFacility(test, 'nuclear'); assert.equal(test.root.querySelector('#home-discovery-globe').dataset.renderState, 'fallback');
+    const stage = test.stages[0]; stage.fail(); assertFacility(test, 'nuclear', 'fallback');
+    assert.equal(stage.disposals, 1); stage.fail(); assert.equal(stage.disposals, 1);
+    test.choose('solar'); await settle(); assertFacility(test, 'solar', 'fallback'); assert.equal(test.stages.length, 1);
+  });
+  await check('late mount completion after final navigation is disposed without reactivating', async () => {
+    const test = fixture({holdMount:true}); await settle(); test.choose('nuclear'); await settle();
+    test.page('pagehide', false); test.releaseMount(); await settle();
+    assert.equal(test.stages[0].disposed, true); assert.equal(test.stages[0].disposals, 1); assert.equal(test.stages[0].active, false);
+  });
   console.log('\n' + passed + ' homepage explorer checks passed' + (failed ? '; ' + failed + ' failed.' : '.'));
   if (failed) process.exitCode = 1;
 })();

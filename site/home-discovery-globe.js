@@ -290,7 +290,7 @@ export function mountHomeDiscoveryGlobe(host) {
             key.position.copy(earth.front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0)); world.add(key);
             const fill = new T.DirectionalLight(0xd7e0e8,.55);
             fill.position.copy(earth.front).multiplyScalar(4).addScaledVector(right,9); world.add(fill);
-            const rim = new T.DirectionalLight(0xf7931a,.7);
+            const rim = new T.DirectionalLight(0xf7931a,1.05);
             rim.position.copy(earth.front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0)); world.add(rim);
 
             lightingRig = {key,fill,rim};
@@ -301,7 +301,7 @@ export function mountHomeDiscoveryGlobe(host) {
             earth.root.add(new T.Mesh(new T.SphereGeometry(3.24,80,56),new T.ShaderMaterial({
                 transparent:true,depthWrite:false,side:T.BackSide,blending:T.AdditiveBlending,
                 vertexShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){vec4 q=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=normalize(-q.xyz);p=q.xyz;gl_Position=projectionMatrix*q;}',
-                fragmentShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){float e=pow(1.-abs(dot(normalize(n),normalize(v))),3.4);float left=1.-smoothstep(-2.8,1.2,p.x);float bottom=1.-smoothstep(-2.5,.5,p.y);float warm=max(left,bottom*.65);gl_FragColor=vec4(1.,.36,.035,e*(.035+.18*warm));}'
+                fragmentShader:'varying vec3 n; varying vec3 v; varying vec3 p; void main(){float e=pow(1.-abs(dot(normalize(n),normalize(v))),3.4);float left=1.-smoothstep(-2.8,1.2,p.x);float bottom=1.-smoothstep(-2.5,.5,p.y);float warm=max(left,bottom*.65);gl_FragColor=vec4(1.,.40,.055,e*(.08+.34*warm));}'
             })));
 
             const stemMaterial = new T.MeshStandardMaterial({color:0xc9c6bf,metalness:.82,roughness:.27});

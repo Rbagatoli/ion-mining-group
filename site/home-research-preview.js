@@ -239,6 +239,15 @@
     const initialTab = tabs.find(button => button.getAttribute('aria-selected') === 'true') || tabs[0];
     let source = initialSource.dataset.researchSource;
     let activeTab = initialTab.dataset.researchTab;
+    const details = root.querySelector('.research-details');
+    const hoverPreference = matchMedia('(hover: hover) and (pointer: fine)');
+    const listeners = [];
+    let hoverTimer = 0, hoverButton = null, pointerSource = null, pointerFocus = null, restoringFocus = false;
+    let blockedHoverSource = null, suspended = false;
+    function listen(target, type, handler, options) {
+      target.addEventListener(type, handler, options);
+      listeners.push(() => target.removeEventListener(type, handler, options));
+    }
 
     const tablist = tabs[0].closest('[role="tablist"]') || tabs[0].parentElement;
     if (tablist && tablist !== root && tabs.every(button => tablist.contains(button))) {
@@ -290,24 +299,88 @@
       panel.replaceChildren(fragment);
     }
 
-    sourceButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const nextSource = button.dataset.researchSource;
-        if (nextSource !== source) {
-          source = nextSource;
-          render();
-        }
-        // Re-selecting a source still opens its facility from the globe view.
-        document.dispatchEvent(new CustomEvent('proton:discovery-source', { detail: { source } }));
-      });
+    function cancelHover() {
+      clearTimeout(hoverTimer); hoverTimer = 0; hoverButton = null;
+    }
+    function sourceButton(target) {
+      const button = target?.closest?.('[data-research-source]') || target?.closest?.('[data-globe-source]');
+      return button && root.contains(button) ? button : null;
+    }
+    function sourceID(button) { return button?.dataset.researchSource || button?.dataset.globeSource; }
+    function activate(button) {
+      const nextSource = sourceID(button);
+      if (suspended || !Object.hasOwn(examples, nextSource)) return;
+      cancelHover();
+      if (nextSource !== source) { source = nextSource; render(); }
+      details?.setAttribute('open', '');
+      document.dispatchEvent(new CustomEvent('proton:discovery-source', {detail:{source}}));
+    }
+    function pointerOver(event) {
+      const button = sourceButton(event.target);
+      if (!button || button.contains(event.relatedTarget) || !hoverPreference.matches || event.pointerType === 'touch') return;
+      pointerSource = button;
+      cancelHover();
+      if (sourceID(button) === blockedHoverSource) return;
+      hoverButton = button;
+      hoverTimer = setTimeout(() => {
+        if (hoverButton === button && hoverPreference.matches && !document.hidden) activate(button);
+      }, 120);
+    }
+    function pointerOut(event) {
+      const button = sourceButton(event.target);
+      if (!button || button.contains(event.relatedTarget)) return;
+      if (pointerSource === button) pointerSource = null;
+      if (hoverButton === button) cancelHover();
+      if (sourceID(button) === blockedHoverSource) blockedHoverSource = null;
+    }
+    listen(root, 'pointerover', pointerOver);
+    listen(root, 'pointerout', pointerOut);
+    listen(root, 'pointercancel', () => { cancelHover(); pointerFocus = null; });
+    listen(root, 'pointerdown', event => { pointerFocus = sourceButton(event.target); cancelHover(); });
+    listen(document, 'pointerup', () => { pointerFocus = null; });
+    listen(document, 'keydown', () => { pointerFocus = null; }, true);
+    listen(root, 'focus', event => {
+      const button = sourceButton(event.target);
+      if (!button || restoringFocus || pointerFocus === button) return;
+      // Globe tags disappear with the globe. Keep keyboard focus on the
+      // equivalent permanent control before revealing the sculpture.
+      if (button.dataset.globeSource) {
+        restoringFocus = true;
+        sourceButtons.find(item => item.dataset.researchSource === sourceID(button))?.focus({preventScroll:true});
+        restoringFocus = false;
+      }
+      activate(button);
+    }, true);
+    listen(root, 'click', event => {
+      const button = sourceButton(event.target);
+      if (button) { blockedHoverSource = null; activate(button); }
     });
+    listen(document, 'proton:discovery-back', event => {
+      cancelHover(); pointerFocus = null;
+      details?.removeAttribute('open');
+      // Only a pointer already resting over a source needs suppression. A fresh
+      // hover after pressing Back should reopen that source on the first try.
+      blockedHoverSource = sourceID(pointerSource) || null;
+      const selected = event.detail?.source || source;
+      const button = sourceButtons.find(item => item.dataset.researchSource === selected);
+      restoringFocus = true;
+      button?.focus({preventScroll:true});
+      restoringFocus = false;
+    });
+    listen(document, 'visibilitychange', () => { if (document.hidden) cancelHover(); });
+    listen(hoverPreference, 'change', cancelHover);
+    listen(window, 'pagehide', event => {
+      suspended = true; cancelHover();
+      if (!event.persisted) listeners.splice(0).forEach(remove => remove());
+    });
+    listen(window, 'pageshow', () => { suspended = false; });
 
     tabs.forEach((button, index) => {
-      button.addEventListener('click', () => {
+      listen(button, 'click', () => {
         activeTab = button.dataset.researchTab;
         render();
       });
-      button.addEventListener('keydown', event => {
+      listen(button, 'keydown', event => {
         if (event.altKey || event.ctrlKey || event.metaKey) return;
         let nextIndex;
         if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;

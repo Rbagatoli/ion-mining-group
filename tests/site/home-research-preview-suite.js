@@ -49,6 +49,8 @@ Element.prototype.replaceChildren = function (...nodes) {
 
 function fixture({loading = false, markup = html} = {}) {
   const document = parse(markup), events = [], eventViews = [];
+  const windows = new Element('window'), hover = new Element('media');
+  hover.matches = true;
   document.readyState = loading ? 'loading' : 'complete';
   document.getElementById = id => document.querySelector('#' + id);
   document.createElement = tag => new Element(tag);
@@ -61,7 +63,7 @@ function fixture({loading = false, markup = html} = {}) {
       selected: document.querySelector('[data-research-source="' + event.detail.source + '"]').getAttribute('aria-pressed')
     });
   });
-  const sandbox = vm.createContext({document, CustomEvent: class {
+  const sandbox = vm.createContext({document, window:windows, matchMedia:() => hover, setTimeout, clearTimeout, CustomEvent: class {
     constructor(type, options) { this.type = type; this.detail = options.detail; }
   }});
   const run = () => script.runInContext(sandbox);
