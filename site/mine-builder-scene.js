@@ -1230,20 +1230,63 @@ export function disposeYard(yard) {
 // A bounding sphere wastes most of a wide preview on these long, low sites.
 function cameraPose(bounds, target, aspect, direction, sweep = 0, fov = 38, frameWidth = .92, frameHeight = .75) {
     const tanV = Math.tan(THREE.MathUtils.degToRad(fov)/2), tanH = tanV*aspect;
+    const regions = Array.isArray(bounds) ? bounds : [bounds];
     let distance = 1;
     const angles = sweep === Math.PI ? Array.from({length:16},(_,i) => i*Math.PI/8) : [-sweep,0,sweep];
     for (const angle of angles) {
         const toward = direction.clone().applyAxisAngle(UP,angle).normalize();
         const right = new THREE.Vector3().crossVectors(UP,toward).normalize();
         const up = new THREE.Vector3().crossVectors(toward,right).normalize();
-        for (const x of [bounds.min.x,bounds.max.x]) for (const y of [bounds.min.y,bounds.max.y]) for (const z of [bounds.min.z,bounds.max.z]) {
+        for (const region of regions) for (const x of [region.min.x,region.max.x]) for (const y of [region.min.y,region.max.y]) for (const z of [region.min.z,region.max.z]) {
             const point = new THREE.Vector3(x,y,z).sub(target), depth = point.dot(toward);
             distance = Math.max(distance,depth+Math.abs(point.dot(right))/(tanH*frameWidth),depth+Math.abs(point.dot(up))/(tanV*frameHeight));
         }
     }
     return target.clone().add(direction.clone().normalize().multiplyScalar(distance*1.02));
 }
-export function yardCameraPose(yard, aspect, {compact = false} = {}) {
+function showcaseBounds(yard) {
+    if (yard.showcaseBounds) return yard.showcaseBounds;
+    // Frame the actual plant, not the empty slab surrounding it. Include both
+    // existing and added equipment so the comparison never shifts the camera.
+    const bounds = new THREE.Box3(), subjects = new Set(yard.containers.map(unit => unit.root));
+    for (const [id,object] of Object.entries(yard.targets || {})) {
+        if (!['ground','space','mine'].includes(id) && object && object !== yard.root) subjects.add(object);
+    }
+    const meshes = new Set();
+    subjects.forEach(object => object.traverse(child => { if (child.isMesh) meshes.add(child); }));
+    yard.showcaseRegions = Array.from(meshes,mesh => new THREE.Box3().setFromObject(mesh)).filter(box => !box.isEmpty());
+    yard.showcaseRegions.forEach(box => bounds.union(box));
+    if (!yard.showcaseRegions.length) yard.showcaseRegions = [yard.bounds];
+    return yard.showcaseBounds = bounds.isEmpty() ? yard.bounds.clone() : bounds;
+}
+export function yardCameraPose(yard, aspect, {compact = false, showcase = false} = {}) {
+    const view = yard.configuredSite || yard.view;
+    if (showcase && ['site','hosting','landfill','pad'].includes(view)) {
+        const bounds = showcaseBounds(yard), target = bounds.getCenter(new THREE.Vector3());
+        const pitch = THREE.MathUtils.degToRad(view === 'site' ? 25 : view === 'hosting' ? 20 : 15);
+        const yaw = THREE.MathUtils.degToRad(view === 'site' ? 55 : view === 'hosting' ? 50 : 0);
+        const direction = new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
+        const narrow = compact || aspect < 2;
+        const right = new THREE.Vector3().crossVectors(UP,direction).normalize(), up = new THREE.Vector3().crossVectors(direction,right).normalize();
+        const tanV = Math.tan(THREE.MathUtils.degToRad(38)/2), tanH = tanV*aspect;
+        let position;
+        // Perspective makes the nearer end of a long container larger. Center
+        // its projected silhouette before fitting, instead of wasting space on
+        // the empty corners of one large bounding box.
+        for (let pass = 0; pass < 4; pass++) {
+            position = cameraPose(yard.showcaseRegions,target,aspect,direction,.075,38,narrow ? .97 : .57,narrow ? .86 : .82);
+            if (pass === 3) break;
+            const distance = position.distanceTo(target);
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const box of yard.showcaseRegions) for (const x of [box.min.x,box.max.x]) for (const y of [box.min.y,box.max.y]) for (const z of [box.min.z,box.max.z]) {
+                const point = new THREE.Vector3(x,y,z).sub(target), depth = distance-point.dot(direction);
+                const px = point.dot(right)/(depth*tanH), py = point.dot(up)/(depth*tanV);
+                minX = Math.min(minX,px); maxX = Math.max(maxX,px); minY = Math.min(minY,py); maxY = Math.max(maxY,py);
+            }
+            target.addScaledVector(right,(minX+maxX)*.5*distance*tanH).addScaledVector(up,(minY+maxY)*.5*distance*tanV);
+        }
+        return {target,position,fov:38,verticalOffset:0,overviewSweep:.075};
+    }
     if (compact && ['site','hosting','asic'].includes(yard.view)) {
         // Mobile equipment pickers no longer occupy the drawing. Center the
         // real subject (including its base) instead of the authored ground-level
@@ -1328,7 +1371,8 @@ export function mountMineScene(host, callbacks = {}) {
     let highlight = null, focus = null, hoveredPart = null;
     let motionEnabled = true, autoRotate = !reduced, dragging = false, resumeAt = 0;
     let annotations = [], viewportWidth = 0, viewportHeight = 0;
-    let viewOffset = 0, desiredViewOffset = 0;
+    let viewOffset = 0, desiredViewOffset = 0, overviewSweep = 0, overviewPhase = 0;
+    const overviewOffset = new THREE.Vector3();
     let raf = 0, last = 0, elapsed = 0, buildTime = 0, key = '', transitioning = false;
     const desiredPosition = new THREE.Vector3(), desiredTarget = new THREE.Vector3(), homePosition = new THREE.Vector3();
     const homeTarget = new THREE.Vector3(0,.7,0);
@@ -1355,11 +1399,13 @@ export function mountMineScene(host, callbacks = {}) {
     }
     function fit(instant) {
         if (!yard) return;
-        const pose = yardCameraPose(yard,camera.aspect,{compact:compactView()});
+        const pose = yardCameraPose(yard,camera.aspect,{compact:compactView(),showcase:callbacks.showcaseView === true});
         camera.fov = pose.fov || 38;
         desiredViewOffset = pose.verticalOffset || 0;
         camera.updateProjectionMatrix();
         homePosition.copy(pose.position); homeTarget.copy(pose.target);
+        overviewSweep = pose.overviewSweep || 0; overviewPhase = 0;
+        overviewOffset.copy(homePosition).sub(homeTarget);
         desiredTarget.copy(homeTarget); desiredPosition.copy(homePosition);
         controls.minDistance = yard.view === 'asic' ? 1.2 : yard.view ? homePosition.distanceTo(homeTarget)*.2 : 6;
         controls.maxDistance = homePosition.distanceTo(homeTarget)*2.5;
@@ -1422,6 +1468,11 @@ export function mountMineScene(host, callbacks = {}) {
             if (focus) {
                 focus.phase += dt*.5;
                 camera.position.copy(controls.target).add(focus.offset.clone().applyAxisAngle(UP,Math.sin(focus.phase)*.18));
+            } else if (overviewSweep) {
+                // Keep the closer presentation near its chosen angle. Manual
+                // orbit and zoom still work freely, and resume from that pose.
+                overviewPhase += dt*.22;
+                camera.position.copy(controls.target).add(overviewOffset.clone().applyAxisAngle(UP,Math.sin(overviewPhase)*overviewSweep));
             } else {
                 const offset = camera.position.clone().sub(controls.target);
                 offset.applyAxisAngle(UP,-dt*1000/(yard?.layout?.PERIOD || yard?.comparisonView?.PERIOD || 60000)*Math.PI*2);
@@ -1590,6 +1641,7 @@ export function mountMineScene(host, callbacks = {}) {
     function reset() { setFocus(null); highlightPart(null); manual = false; selected = -1; fit(false); callbacks.onInspect?.(false); wake(); }
     function pauseOrbit() {
         manual = true; transitioning = false; resumeAt = elapsed+3;
+        if (overviewSweep) { overviewOffset.copy(camera.position).sub(controls.target); overviewPhase = 0; }
         if (focus) { focus.offset.copy(camera.position).sub(controls.target); focus.phase = 0; }
     }
     const startInteraction = () => { dragging = true; pauseOrbit(); wake(); };

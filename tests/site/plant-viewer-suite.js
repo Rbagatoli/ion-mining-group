@@ -379,21 +379,37 @@ const ref = (group,name) => group.querySelector('[data-plant="'+name+'"]');
     const buildPanel = unified.document.querySelector('#mb-builder');
     const mode = end => sharedGroup.closest('.dg-fuel-pane').querySelector('[data-mb-end="'+end+'"]').fire('click');
     const change = (id,value) => { const input=unified.document.querySelector('#mb-'+id);input.value=value;input.fire('input');unified.flushInputs();shared.draw(); };
-    check('the SVG handoff, delayed builder update and Reset preserve the reference camera angle', () => {
+    check('the SVG handoff, delayed builder update and Reset preserve the close equipment framing', () => {
         assert.ok(sharedGroup.classList.contains('plant-ready'),'the modern viewer has replaced the SVG');
         const referenceFrame = () => {
-            const ground = new T.Box3().setFromObject(shared.world.getObjectByName('site-ground')), points = [];
-            for (const x of [ground.min.x,ground.max.x]) for (const z of [ground.min.z,ground.max.z]) points.push(new T.Vector3(x,0,z).project(shared.camera));
+            const offset=shared.camera.position.clone().sub(shared.controls.target);
+            const pitch=T.MathUtils.radToDeg(Math.asin(offset.y/offset.length()));
+            assert.ok(pitch>12&&pitch<18,'the landfill opens from a low viewing angle');
+            assert.ok(Math.abs(offset.x/offset.length())<.05,'the source site faces forward');
+            const points=[];
+            for(const name of ['cell','plant','flare','configured-mine']) {
+                const object=shared.world.getObjectByName(name);assert.ok(object,name+' remains in the overview');
+                object.traverse(mesh=>{
+                    if(!mesh.isMesh)return;
+                    const box=new T.Box3().setFromObject(mesh);
+                    for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]) {
+                        const p=new T.Vector3(x,y,z).project(shared.camera);points.push(p);
+                        assert.ok(Math.abs(p.x)<.60&&Math.abs(p.y)<.86,'all equipment fits between the desktop cards');
+                    }
+                });
+            }
             const width = (Math.max(...points.map(p=>p.x))-Math.min(...points.map(p=>p.x)))/2;
-            const bottom = (1-Math.min(...points.map(p=>p.y)))/2;
-            const top = (1-Math.max(...points.map(p=>p.y)))/2;
-            assert.ok(width>.70 && width<.75,'the modern foreground matches the screenshot reference width');
-            assert.ok(bottom>.86 && bottom<.91,'the modern front edge matches the reference height');
-            assert.ok(top>.31 && top<.35,'the modern back edge preserves the raised viewing angle');
+            const height = (Math.max(...points.map(p=>p.y))-Math.min(...points.map(p=>p.y)))/2;
+            assert.ok(width>.38||height>.60,'the equipment fills its available frame');
         };
         referenceFrame();
+        const initial=shared.camera.position.clone(),target=shared.controls.target.clone(),projection=shared.camera.projectionMatrix.clone();
         unified.flushInputs(); shared.draw(); referenceFrame();
+        assert.ok(shared.camera.position.distanceTo(initial)<1e-8&&shared.controls.target.distanceTo(target)<1e-8,'the delayed builder update keeps the opening view');
+        shared.api.zoom(.7);shared.draw();
         ref(sharedGroup,'reset').fire('click'); shared.draw(); referenceFrame();
+        assert.ok(shared.camera.position.distanceTo(initial)<1e-8&&shared.controls.target.distanceTo(target)<1e-8,'Reset restores the opening view');
+        assert.ok(shared.camera.projectionMatrix.equals(projection),'Reset restores the opening projection');
     });
     check('Today and the 10 MW build share one canvas, camera, ground and existing infrastructure', () => {
         const originalCanvas=shared.canvas, source=shared.world.getObjectByName('wellfield'), ground=shared.world.getObjectByName('site-ground');

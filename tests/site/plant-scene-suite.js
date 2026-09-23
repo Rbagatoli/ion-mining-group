@@ -280,6 +280,47 @@ class Surface {
             assert.ok(before.position.equals(compact.position) && before.target.equals(compact.target),'configured '+view+' retains its working mobile framing');
         }
     });
+    check('showcase opening angles keep equipment large, visible and clear of desktop callout columns', () => {
+        const samples = [['site',25],['hosting',20],['landfill',15],['pad',15]];
+        for(const [view,pitch] of samples) for(const configuredView of ['landfill','pad'].includes(view) ? [false,true] : [false]) {
+            const yard=configuredView ? shared.buildConfiguredSite(configured(view,M.defaults)) : buildPresentation(view);
+            const subjects=[...new Set(Object.entries(yard.targets).filter(([id])=>!['ground','space','mine'].includes(id)).map(([,object])=>object))];
+            const equipment=new Set();subjects.forEach(object=>object.traverse(child=>{if(child.isMesh)equipment.add(child);}));
+            const boxes=[...equipment].map(object=>new T.Box3().setFromObject(object)).filter(box=>!box.isEmpty());
+            for(const [aspect,compact] of [[1280/470,false],[1518/558,false],[272/204,true],[348/261,true]]) {
+                const pose=yardCameraPose(yard,aspect,{compact,showcase:true}),offset=pose.position.clone().sub(pose.target);
+                const actualPitch=T.MathUtils.radToDeg(Math.asin(offset.y/offset.length()));
+                const actualYaw=T.MathUtils.radToDeg(Math.atan2(-offset.x,offset.z));
+                assert.ok(Math.abs(actualPitch-pitch)<3,view+' opens at the requested low viewing angle');
+                assert.ok(['site','hosting'].includes(view)?actualYaw>30&&actualYaw<65:Math.abs(actualYaw)<3,view+' presents the intended front face');
+                assert.equal(pose.verticalOffset || 0,0,'equipment is centered without the legacy label offset');
+                const camera=new T.PerspectiveCamera(pose.fov||38,aspect,.1,2000);
+                for(const sweep of [-.075,0,.075]) {
+                    camera.position.copy(offset).applyAxisAngle(new T.Vector3(0,1,0),sweep).add(pose.target);
+                    camera.lookAt(pose.target);camera.updateMatrixWorld();
+                    const points=[];
+                    for(const box of boxes) for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]) {
+                        const point=new T.Vector3(x,y,z).project(camera);points.push(point);
+                        assert.ok(Math.abs(point.x)<(compact?.99:.60),view+' clears '+(compact?'mobile edges':'desktop cards'));
+                        assert.ok(Math.abs(point.y)<(compact?.90:.86),view+' fits vertically throughout its idle arc');
+                    }
+                    if(sweep===0) {
+                        const extent=Math.max(...points.map(p=>Math.max(Math.abs(p.x)/(compact?.97:.57),Math.abs(p.y)/(compact?.86:.82))));
+                        assert.ok(extent>.82,view+' uses its available equipment frame');
+                        for(const axis of ['x','y']) {
+                            const center=(Math.max(...points.map(p=>p[axis]))+Math.min(...points.map(p=>p[axis])))/2;
+                            assert.ok(Math.abs(center)<.06,view+' centers its projected equipment on '+axis);
+                        }
+                    }
+                }
+            }
+        }
+        for(const compact of [false,true]) {
+            const yard=buildPresentation('asic'),before=yardCameraPose(yard,4/3,{compact}),after=yardCameraPose(yard,4/3,{compact,showcase:true});
+            assert.ok(after.position.equals(before.position)&&after.target.equals(before.target),'ASIC framing is unchanged');
+            assert.equal(after.fov,before.fov);assert.equal(after.verticalOffset,before.verticalOffset);
+        }
+    });
     check('detailed utilities share the same models across layouts and retain their authored positions', () => {
         for (const view of ['site','landfill','pad']) {
             const scene = buildPresentation(view), main = definition(view).main;
@@ -1000,6 +1041,48 @@ class Surface {
         preview.setProgress(0); flush(); assert.equal(focusedParts.at(-1),null);
         const count=focusedParts.length; preview.focusPart('not-a-part',false); assert.equal(focusedParts.length,count,'invalid part does not claim a selection');
         preview.dispose(); assert.equal(frames.size,0);
+    });
+    check('showcase initial, resized and reset views share their equipment framing', () => {
+        for(const view of ['site','hosting','landfill','pad'])for(const compact of [false,true]) {
+            const openingHost=new Surface();document.appendChild(openingHost);
+            openingHost.clientWidth=compact?348:1280;openingHost.clientHeight=compact?261:470;
+            const openingApi=mount(openingHost,{showcaseView:true,compactView:()=>compact});
+            openingApi.setConfig({view,definition:definition(view)});openingApi.setActive(true);flush();
+            const initial=renderer.camera.position.clone(),target=controls.target.clone(),projection=renderer.camera.projectionMatrix.clone();
+            const expected=yardCameraPose(buildPresentation(view),openingHost.clientWidth/openingHost.clientHeight,{compact,showcase:true});
+            assert.ok(initial.distanceTo(expected.position)<1e-8,view+' opens at its showcase pose');
+            openingApi.zoom(.7);openingHost.canvas.fire('keydown',{key:'ArrowRight'});flush();
+            assert.ok(renderer.camera.position.distanceTo(initial)>.1,'the user can leave the opening pose');
+            openingApi.reset();flush();
+            assert.ok(renderer.camera.position.distanceTo(initial)<1e-8,view+' Reset restores its opening position');
+            assert.ok(controls.target.distanceTo(target)<1e-8&&renderer.camera.projectionMatrix.equals(projection),'Reset restores centering and projection');
+            openingHost.clientWidth-=40;resizeScene();flush();openingHost.clientWidth+=40;resizeScene();flush();
+            assert.ok(renderer.camera.position.distanceTo(initial)<1e-8,view+' returns to the same framing after a resize');
+            openingApi.dispose();
+        }
+    });
+    check('showcase idle motion stays near its opening angle while manual rotation stays unrestricted', () => {
+        const openingHost=new Surface();document.appendChild(openingHost);
+        const openingApi=mount(openingHost,{showcaseView:true});
+        openingApi.setConfig({view:'site',definition:definition('site')});openingApi.setActive(true);flush();
+        const initial=renderer.camera.position.clone(),target=controls.target.clone(),offset=initial.clone().sub(target),radius=offset.length();
+        const openingYaw=Math.atan2(offset.x,offset.z);let maximumTurn=0;
+        media.fire('change',{matches:false});
+        for(let i=0;i<160;i++) {
+            step(50);
+            const current=renderer.camera.position.clone().sub(target);
+            const turn=Math.abs(Math.atan2(current.x,current.z)-openingYaw);maximumTurn=Math.max(maximumTurn,turn);
+            assert.ok(turn<.08,'idle movement stays within the close opening composition');
+            assert.ok(Math.abs(current.length()-radius)<1e-7,'idle motion preserves the selected zoom');
+        }
+        assert.ok(maximumTurn>.01,'the close overview still moves');
+        media.fire('change',{matches:true});flush();
+        for(let i=0;i<8;i++)openingHost.canvas.fire('keydown',{key:'ArrowRight'});
+        flush();
+        const manual=renderer.camera.position.clone().sub(controls.target);
+        assert.ok(Math.abs(Math.atan2(manual.x,manual.z)-openingYaw)>.3,'manual orbit can leave the idle arc');
+        openingApi.reset();flush();assert.ok(renderer.camera.position.distanceTo(initial)<1e-8);
+        openingApi.dispose();
     });
     console.log('\n  '+passed+' shared 3D scene checks passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

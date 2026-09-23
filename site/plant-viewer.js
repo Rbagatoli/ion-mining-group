@@ -200,7 +200,7 @@
                 preview.querySelectorAll('[data-plant]').forEach(function (el) { refs[el.getAttribute('data-plant')] = el; }); group.appendChild(preview);
                 if (window.ProtonField) { field = window.ProtonField.mount(refs.field); if (field) field.setActive(false); }
                 scene = module.mountMineScene(refs.host,{
-                    interactionSurface:refs.surface,scrollFriendlyTouch:true,compactView:function () { return !!compactMedia && compactMedia.matches; },
+                    interactionSurface:refs.surface,scrollFriendlyTouch:true,showcaseView:true,compactView:function () { return !!compactMedia && compactMedia.matches; },
                     onProject:project,onPart:highlight,onFocus:describePart,onReady:ready,
                     onInspect:function (value) { inspecting = value; syncControls(); },
                     onXray:function (value) { xray = value; if (current) xrayStates[current] = value; syncControls(); },
