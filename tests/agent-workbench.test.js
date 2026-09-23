@@ -187,6 +187,43 @@ test('review path shows every linked Quality row but requires explicit selection
   assert.deepEqual(state,before);
 });
 
+function correctedSourceFixture(){
+  let s=fixture('done','revise');
+  s=apply(s,'task.revise',{id:'source',note:'Correct the independently reviewed v1.',review:{actor:'coordinator',reviewer:'Revenue',basis:'Original exact-version REVISE finding.',evidenceTaskId:'qa',checks:{evidence:'revise',arithmetic:'na',fit:'pass'}}});
+  return apply(s,'task.result',{id:'source',result:'Corrected source version two.',sources:['https://example.test/source-v2']});
+}
+
+test('only closed older reviews guide a distinct current-version QA while preserving the original finding',()=>{
+  for(const closedStatus of ['done','cancelled']){
+    const s=correctedSourceFixture();s.tasks.find(t=>t.id==='qa').status=closedStatus;
+    const before=clone(s),path=W.reviewPath(s,'source','qa');
+    assert.equal(path.sourceVersion,2);assert.equal(path.needsCurrentReview,true);assert.match(path.reason,/cannot certify version 2.*Request Quality Review once.*Ready for handoff/);
+    assert.equal(path.linked.length,1);assert.equal(path.selected.eligible,false);assert.equal(path.selected.needsReady,false);assert.equal(path.selected.sourceVersion,1);assert.equal(path.selected.reason,path.reason);
+    assert.throws(()=>W.template(s,'source','qa'),/cannot certify version 2/);assert.deepEqual(s,before);
+    const next=apply(s,'task.add',{id:'qa_v2',role:'review',title:'Actual v2 review',brief:'Review the corrected v2.',parentTaskId:'source'});
+    assert.deepEqual(next.tasks.find(t=>t.id==='qa'),s.tasks.find(t=>t.id==='qa'));assert.equal(next.tasks.find(t=>t.id==='qa_v2').reviewOfVersion,2);
+    assert.equal(W.reviewPath(next,'source').needsCurrentReview,false);
+    assert.throws(()=>apply(next,'task.add',{id:'duplicate',role:'review',title:'Duplicate v2',brief:'Must reject',parentTaskId:'source'}),/open Quality Review/);
+  }
+});
+
+test('older-review guidance does not override current, open, unknown, future, paused or routed review gates',()=>{
+  const scenarios=[
+    {name:'current',change:s=>{s.tasks.find(t=>t.id==='qa').reviewOfVersion=2;return s;}},
+    {name:'open',change:s=>{s.tasks.find(t=>t.id==='qa').status='review';return s;}},
+    {name:'unknown',change:s=>{delete s.tasks.find(t=>t.id==='qa').reviewOfVersion;return s;}},
+    {name:'future',change:s=>{s.tasks.find(t=>t.id==='qa').reviewOfVersion=3;return s;}},
+    {name:'paused',change:s=>apply(s,'pause',{}),reason:/queue is paused/},
+    {name:'owner QA',change:s=>apply(s,'task.route',{id:'qa',kind:'work',reviewOwner:'owner',reason:'Existing owner gate',recordedBy:'Revenue'})},
+    {name:'historical QA',change:s=>apply(s,'task.route',{id:'qa',kind:'reference',reviewOwner:'team',reason:'Existing historical routing',recordedBy:'Revenue'})},
+    {name:'owner source',change:s=>apply(s,'task.route',{id:'source',kind:'work',reviewOwner:'owner',reason:'Existing owner gate',recordedBy:'Revenue'})}
+  ];
+  for(const scenario of scenarios){
+    const s=scenario.change(correctedSourceFixture()),before=clone(s),path=W.reviewPath(s,'source','qa');
+    assert.equal(path.needsCurrentReview,false,scenario.name);assert.doesNotMatch(path.reason,/Request Quality Review once/,scenario.name);if(scenario.reason)assert.match(path.reason,scenario.reason);assert.deepEqual(s,before);
+  }
+});
+
 test('Draft review-path guidance preserves actual paused, stale, owner and historical gates without mutating the register',()=>{
   const scenarios=[
     {name:'paused',change:s=>apply(s,'pause',{}),reason:/Resume the queue before preparing a handoff/},

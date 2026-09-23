@@ -159,7 +159,8 @@
   }
   function reviewPath(state,sourceId,qaId=''){
     const source=state.tasks.find(t=>t.id===sourceId);
-    const linked=state.tasks.filter(q=>q.role==='review'&&q.parentTaskId===sourceId).map(qa=>{
+    const reviews=state.tasks.filter(q=>q.role==='review'&&q.parentTaskId===sourceId);
+    const linked=reviews.map(qa=>{
       const eligible=A.completedReviewEligibility(state,source,qa);
       let needsReady=false,reason=eligible.reason;
       if(qa.status==='draft'&&reason==='This Quality assignment is not eligible for a completed team review.'){
@@ -175,11 +176,16 @@
       return {qaId:qa.id,status:qa.status,resultVersion:A.resultVersion(qa),sourceVersion:qa.reviewOfVersion??null,...eligible,needsReady,reason};
     });
     const selected=linked.find(q=>q.qaId===qaId)||null;
-    let reason=selected?.reason||'Choose an existing linked Quality assignment below. Reuse its exact ID; do not create a duplicate.';
+    let needsCurrentReview=false,reason=selected?.reason||'Choose an existing linked Quality assignment below. Reuse its exact ID; do not create a duplicate.';
     if(!source||source.role==='review'||A.taskKind(source)!=='work'||source.status!=='review'||!source.result||source.routing?.reviewOwner==='owner')reason=A.completedReviewEligibility(state,source,null).reason;
     else if(qaId&&!selected)reason='Choose an existing Quality assignment linked to this exact source.';
     else if(!linked.length)reason='A linked Quality assignment is required for REVISE as well as acceptance. Open the source and use Request Quality Review once. Keep the generated brief intact. The new assignment starts Draft; it must pass the existing Ready for handoff step before this historical review can be recorded.';
-    return {sourceId,sourceVersion:source?A.resultVersion(source):null,linked,selected,reason};
+    else if(reviews.every(qa=>['done','cancelled'].includes(qa.status)&&A.taskKind(qa)==='work'&&qa.routing?.reviewOwner!=='owner'&&Number.isSafeInteger(qa.reviewOfVersion)&&qa.reviewOfVersion>=0&&qa.reviewOfVersion<A.resultVersion(source))){
+      needsCurrentReview=!state.paused;
+      reason=state.paused?'Only closed reviews of earlier source versions are linked. The queue is paused; preserve those reviews and resolve the existing pause before preparing a current-version review.':'These closed reviews cover earlier source versions and cannot certify version '+A.resultVersion(source)+'. Preserve their history. Open the source and use Request Quality Review once for this version. Prepare that Draft with Ready for handoff, then record the actual independent review of version '+A.resultVersion(source)+'. Do not relabel an earlier review or copy its verdict forward.';
+      linked.forEach(row=>{row.reason=reason;});
+    }
+    return {sourceId,sourceVersion:source?A.resultVersion(source):null,linked,selected,needsCurrentReview,reason};
   }
   function template(state,sourceId,qaId,options={}){
     const source=state.tasks.find(t=>t.id===sourceId),qa=state.tasks.find(t=>t.id===qaId),eligible=A.completedReviewEligibility(state,source,qa);
@@ -240,7 +246,7 @@
         label.textContent=row.qaId+' · '+row.status+' · result version '+row.resultVersion+' · '+row.reason+' ';
         use.type='button';use.className='text-button';use.textContent='Use this Quality assignment';use.onclick=()=>{el('qa').value=row.qaId;invalidate();el('guidance').textContent=row.reason;el('notice').textContent='Selection changed; load the exact pair to replace the retained JSON draft.';};item.append(label,use);el('linked').append(item);
       }
-      const id=path.selected?.qaId||sourceId;if(state.tasks.some(t=>t.id===id)){const link=document.createElement('a');link.className='text-button';link.href='#team/task/'+encodeURIComponent(id);link.textContent=path.selected?'Open selected Quality assignment':'Open source assignment';el('linked').append(link);}
+      const id=path.needsCurrentReview?sourceId:path.selected?.qaId||sourceId;if(state.tasks.some(t=>t.id===id)){const link=document.createElement('a');link.className='text-button';link.href='#team/task/'+encodeURIComponent(id);link.textContent=path.selected&&!path.needsCurrentReview?'Open selected Quality assignment':'Open source assignment';el('linked').append(link);}
       return path;
     }
     el('find').onclick=()=>run(async()=>{invalidate();const snapshot=await controller.readRegister();if(valid())return showPath(snapshot.state,el('source').value.trim(),el('qa').value.trim());});

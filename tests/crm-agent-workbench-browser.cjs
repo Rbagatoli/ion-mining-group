@@ -38,6 +38,13 @@ function reviewFixture(status='draft',siblings=false,paused=true){
   if(status==='review')s=apply(s,'task.result',{id:'qa',result:'Immutable original independent review.',sources:['https://example.test/quality'],qualityVerdict:'revise',confirmCurrentSource:true});
   return paused?apply(s,'pause',{}):s;
 }
+function correctedSourceFixture(){
+  let s=reviewFixture('review',false,false);
+  const review={actor:'coordinator',reviewer:'Synthetic Revenue',basis:'Actual synthetic v1 REVISE.',checks:{evidence:'pass',arithmetic:'na',fit:'pass'}};
+  s=apply(s,'task.accept',{id:'qa',note:'Accept accurate independent REVISE.',review});
+  s=apply(s,'task.revise',{id:'source',note:'Correct the v1 source.',review:{...review,evidenceTaskId:'qa',checks:{evidence:'revise',arithmetic:'na',fit:'pass'}}});
+  return apply(s,'task.result',{id:'source',result:'Corrected synthetic source version two.',sources:['https://example.test/source-v2']});
+}
 
 // Inject only in the fake server response. Dispatch still executes the real CRM
 // adapter, local store lock and reducer. No Firebase identity or remote write exists.
@@ -196,6 +203,32 @@ async function prepare(){await fill();await independent().check();await exact().
     await button('Find linked Quality').click();await idle();
     assert.equal(await linked.getByRole('button',{name:'Use this Quality assignment',exact:true}).count(),3);
     assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
+  });
+  await check('closed stale reviews point to the corrected source without reusing old findings or creating work',async()=>{
+    const before=await seed(correctedSourceFixture());await page.getByLabel('Source task ID',{exact:true}).fill('source');
+    await button('Find linked Quality').click();await idle();
+    assert.match(await guidance().innerText(),/cannot certify version 2.*Request Quality Review once.*Ready for handoff/);
+    const linked=page.locator('#agentWorkbench [data-wb=linked]');assert.equal(await linked.getByRole('button',{name:'Use this Quality assignment',exact:true}).count(),1);assert.match(await linked.innerText(),/qa · done/);
+    assert.equal(await linked.getByRole('link',{name:'Open source assignment',exact:true}).getAttribute('href'),'#team/task/source');
+    await linked.getByRole('button',{name:'Use this Quality assignment',exact:true}).click();await button('Load exact pair and template').click();await idle();
+    assert.match(await notice().innerText(),/cannot certify version 2/);assert.equal(await linked.getByRole('link',{name:'Open source assignment',exact:true}).getAttribute('href'),'#team/task/source');
+    assert.equal(await jsonInput().inputValue(),'');assert(await button('Record completed team review').isDisabled());assert.equal(await journal(),null);assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.deepEqual(await state(),before);
+    await linked.getByRole('link',{name:'Open source assignment',exact:true}).click();await button('Request Quality Review').click();
+    await page.getByRole('heading',{name:'New assignment',exact:true}).waitFor();assert.match(await page.getByLabel('Brief & expected result',{exact:true}).inputValue(),/Corrected synthetic source version two/);
+    assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.deepEqual(await state(),before);
+  });
+  await check('current or open reviews, unknown versions and a paused queue never suggest replacement QA',async()=>{
+    for(const kind of ['current','open','unknown','paused']){
+      let initial=correctedSourceFixture();
+      if(kind==='current')initial=apply(initial,'task.add',{id:'qa_v2',role:'review',title:'Existing v2 QA',brief:'Review this version.',parentTaskId:'source'});
+      else if(kind==='open')initial.tasks.find(t=>t.id==='qa').status='review';
+      else if(kind==='unknown')delete initial.tasks.find(t=>t.id==='qa').reviewOfVersion;
+      else initial=apply(initial,'pause',{});
+      const before=await seed(initial);await page.getByLabel('Source task ID',{exact:true}).fill('source');await button('Find linked Quality').click();await idle();
+      assert.doesNotMatch(await guidance().innerText(),/Request Quality Review once/,kind);if(kind==='paused')assert.match(await guidance().innerText(),/queue is paused/);
+      assert.equal(await page.locator('#agentWorkbench [data-wb=linked]').getByRole('button',{name:'Use this Quality assignment',exact:true}).count(),kind==='current'?2:1);
+      assert.equal(await page.evaluate(()=>__workbenchHarness.calls.length),0);assert.equal(await journal(),null);assert.deepEqual(await state(),before);
+    }
   });
   await check('Draft Quality exposes exact evidence and the existing readiness gate without altering its brief or queue hold',async()=>{
     for(const paused of [false,true]){
