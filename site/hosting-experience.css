@@ -34,12 +34,6 @@
 .hx-regions button[aria-pressed="true"]::after { content:''; position:absolute; inset:auto 0 -1px; height:2px; background:var(--metal-btc); }
 .hx-regions button[aria-pressed="true"]>span { color:var(--btc-200); }
 .hx-globe-stage { background:radial-gradient(ellipse at 50% 45%,rgba(94,108,121,.13),transparent 66%),#030405; }
-.hx-globe-leaders,.hx-globe-markers { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
-.hx-globe-leaders line { stroke:var(--btc-300); stroke-width:1; opacity:.72; vector-effect:non-scaling-stroke; }
-.hx-globe-markers button { position:absolute; transform:translate(-50%,-50%); width:44px; height:44px; padding:6px; display:grid; place-items:center; border:0; border-radius:0; color:var(--plat-100); background:transparent; font:600 11px/1 var(--mono); pointer-events:auto; cursor:pointer; }
-.hx-marker-face { display:grid; place-items:center; width:30px; height:24px; border:1px solid #a0a4a6; border-left:2px solid #f7931a; border-radius:0; background:#151a1f; box-shadow:0 1px 3px #0008; letter-spacing:.04em; }
-.hx-globe-markers button:hover .hx-marker-face,.hx-globe-markers button:focus-visible .hx-marker-face { border-color:#f7931a; color:#f7c280; outline:1px solid #f7931a; outline-offset:2px; }
-.hx-globe-markers button[aria-pressed="true"] .hx-marker-face { background:#f7931a; color:#100b05; border-color:#ffb858; box-shadow:0 1px 3px #0008; }
 .hx-globe-place { position:absolute; z-index:2; bottom:70px; right:30px; max-width:240px; text-align:right; pointer-events:none; text-shadow:0 1px 8px #000; }
 .hx-globe-place span { display:block; font:12px/1.6 var(--mono); color:var(--btc-200); }
 .hx-globe-place strong { display:block; font:500 25px/1.2 var(--sans); margin-top:6px; color:var(--plat-200); letter-spacing:-.03em; }
@@ -177,12 +171,6 @@
 .hx-globe-panel .hx-toolbar button { display:grid; place-items:center; min-width:44px; min-height:44px; padding:0; border:0; border-radius:8px; font:400 20px/1 var(--sans); touch-action:manipulation; }
 .hx-globe-panel .hx-toolbar button:hover:not(:disabled) { background:rgba(229,228,226,.08); color:var(--btc-200); }
 .hx-globe-panel .scene-gesture-hint { inset:auto auto 28px 20px; padding:0; background:none; font:11px/1.4 var(--sans); color:var(--plat-400); }
-.hx-globe-panel .hx-globe-markers button { padding:0; border-radius:50%; }
-.hx-globe-panel .hx-marker-face { width:17px; height:17px; border:1px solid #c3c6c5; border-radius:50%; background:rgba(12,15,18,.8); box-shadow:0 0 0 3px rgba(229,228,226,.04); }
-.hx-marker-face::after { content:''; width:6px; height:6px; transform:rotate(45deg); background:var(--metal-btc); box-shadow:0 0 7px rgba(247,147,26,.3); }
-.hx-globe-panel .hx-globe-markers button[aria-pressed="true"] .hx-marker-face { background:rgba(247,147,26,.16); border-color:#ffc67d; box-shadow:0 0 0 5px rgba(247,147,26,.09),0 0 18px rgba(247,147,26,.24); }
-.hx-globe-panel .hx-globe-markers button:hover .hx-marker-face,.hx-globe-panel .hx-globe-markers button:focus-visible .hx-marker-face { outline-offset:4px; }
-.hx-globe-panel .hx-globe-leaders line { stroke-width:.8; }
 .hx-globe-panel .hx-summary { grid-column:2; align-self:center; display:flex; flex-direction:column; align-items:stretch; gap:24px; padding:34px 32px 34px 20px; }
 .hx-summary-head { display:flex; flex-wrap:wrap; align-items:flex-start; gap:14px; }
 .hx-place { flex:1 1 190px; }

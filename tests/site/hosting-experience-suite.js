@@ -100,6 +100,12 @@ function rendererFixture(globe,T,aspect){
             f.scene.zoom(.8);assert.equal(f.stage.zoomFactor,.8);f.scene.setActive(false);assert.equal(f.stage.active,false);
             f.options.tick(0,10,true);const cap=root.getObjectByName('region-pin-'+selected).getObjectByName('orange-pin-head'),still=cap.material.emissiveIntensity;
             f.options.tick(0,20,true);assert.equal(cap.material.emissiveIntensity,still,'reduced motion holds marker brightness steady');
+            f.scene.setActive(true);f.scene.select('permian',true);f.options.tick(0,20,true);root.updateMatrixWorld(true);
+            const target=f.points.find(point=>point.id==='bakken'),bounds=f.stage.canvas.getBoundingClientRect();
+            assert.ok(target.visible);
+            const click={pointerId:1,button:0,clientX:bounds.left+target.x*bounds.width,clientY:bounds.top+target.y*bounds.height};
+            f.stage.canvas.fire('pointerdown',click);f.stage.canvas.fire('pointerup',click);
+            assert.equal(f.selections.at(-1),'bakken','surface pins remain selectable through the canvas without HTML callouts');
             f.scene.dispose();assert.equal(f.stage.disposed,true);assert.equal(f.stage.canvas.listeners.pointerup.length,0);
         }
     });
@@ -107,6 +113,7 @@ function rendererFixture(globe,T,aspect){
         assert.ok(!html.includes('hosting-tour'));assert.ok(!html.includes('data-tour'));assert.ok(!fs.existsSync(__dirname+'/../../site/hosting-tour-scene.js'));assert.ok(html.includes('Markers identify regions, not exact facilities.'));assert.ok(html.includes(F.INDICATIVE_NOTE));
         for(const asset of ['hosting-experience.js','hosting-stage.js','hosting-globe-scene.js','hosting-earth-data.js'])assert.ok(new RegExp(asset.replace('.','\\.')+'\\?v=[a-f0-9]{8}').test(html));
         assert.equal(parse(html).querySelector('#hosting-globe').querySelectorAll('[data-region]').length,F.all().length);
+        assert.equal(parse(html).querySelector('[data-globe="markers"]'),null);assert.equal(parse(html).querySelector('[data-globe="leaders"]'),null);
         assert.ok(!html.includes('hosting-terrain.js'));assert.ok(!html.includes('ht-stage'));
     });
     const early=fixture({delay:true,search:'?site=cold-lake'});early.approach();early.click('[data-region="dubai"]');early.release();await settle();await settle();
@@ -120,37 +127,17 @@ function rendererFixture(globe,T,aspect){
         gs.cb.onError();const previous=gs.selections.length;early.click('[data-region="bakken"]');assert.equal(gs.selections.length,previous);assert.equal(early.ref('globe','reset').disabled,true);
         assert.equal(early.ref('globe','name').textContent,'Bakken');gs.cb.onRestore();gs.cb.onReady();assert.equal(gs.current,'bakken');assert.equal(early.ref('globe','reset').disabled,false);
     });
-    check('mobile location choices, map markers and region controls share the same selection',()=>{
+    check('mobile location choices, surface pins and region controls share the same selection',()=>{
         const location=early.ref('globe','location');
         assert.deepEqual(location.querySelectorAll('option').map(option=>option.value),F.all().map(site=>site.id));
         location.value='cold-lake';location.fire('change');
         assert.equal(gs.current,'cold-lake');assert.equal(early.ref('globe','name').textContent,F.byId('cold-lake').name);
         assert.equal(early.ref('region','cold-lake').getAttribute('aria-pressed'),'true');
         assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=cold-lake');
-        early.click('[data-marker="permian"]');assert.equal(location.value,'permian');assert.equal(gs.current,'permian');
-    });
-    check('clustered markers keep the chosen region anchored and hide off-globe leaders',()=>{
-        early.click('[data-region="cold-lake"]');
-        const surface=early.ref('globe','surface'),ids=F.all().map(site=>site.id),leaders=early.ref('globe','leaders').querySelectorAll('line');
-        const points=ids.map((id,index)=>({id,x:.5,y:id==='cold-lake'?.52:.48+index*.005,visible:id!=='dubai'}));
-        for(const [width,height] of [[360,340],[1280,470]]){
-            Object.defineProperties(surface,{clientWidth:{value:width,configurable:true},clientHeight:{value:height,configurable:true}});
-            gs.cb.onProject(points.map(point=>({...point,visible:true})));
-            assert.equal(early.ref('marker','dubai').hidden,false);
-            assert.equal(leaders[ids.indexOf('dubai')].getAttribute('visibility'),'visible');
-            gs.cb.onProject(points);
-            const chosen=early.ref('marker','cold-lake'),anchor=points.find(point=>point.id==='cold-lake');
-            assert.equal(parseFloat(chosen.style.left),anchor.x*width,'selected marker retains its geographic x position');
-            assert.equal(parseFloat(chosen.style.top),anchor.y*height,'selected marker retains its geographic y position');
-            const visible=points.filter(point=>point.visible).map(point=>early.ref('marker',point.id));
-            for(let i=0;i<visible.length;i++)for(let j=i+1;j<visible.length;j++){
-                assert.equal(visible[i].hidden,false);
-                assert.ok(Math.hypot(parseFloat(visible[i].style.left)-parseFloat(visible[j].style.left),parseFloat(visible[i].style.top)-parseFloat(visible[j].style.top))>=44-1e-7,'clustered targets retain 44px spacing');
-            }
-            assert.equal(early.ref('marker','dubai').hidden,true);
-            assert.equal(leaders[ids.indexOf('dubai')].getAttribute('visibility'),'hidden','a previously visible leader disappears with its marker');
-        }
-        delete surface.clientWidth;delete surface.clientHeight;
+        early.click('[data-region="permian"]');assert.equal(location.value,'permian');assert.equal(gs.current,'permian');
+        gs.cb.onSelect('alberta');assert.equal(location.value,'alberta');assert.equal(early.ref('region','alberta').getAttribute('aria-pressed'),'true');
+        assert.equal(early.ref('globe','cta').getAttribute('href'),'./hardware.html?site=alberta');
+        assert.equal(early.document.querySelectorAll('[data-marker]').length,0,'the controller creates no floating callout buttons');
     });
     const offline=fixture({fail:true});offline.approach();await settle();await settle();
     check('import failure leaves all regional pricing usable',()=>{

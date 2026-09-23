@@ -154,9 +154,10 @@ export function mountHomeDiscoveryGlobe(host) {
         camera.lookAt(0,0,0); camera.updateMatrixWorld();
         const front = camera.position.clone().normalize();
         const right = new T.Vector3().crossVectors(new T.Vector3(0,1,0),front).normalize();
+        const viewUp = new T.Vector3().crossVectors(front,right).normalize();
         lightingRig.key.position.copy(front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0));
         lightingRig.fill.position.copy(front).multiplyScalar(4).addScaledVector(right,9);
-        lightingRig.rim.position.copy(front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0));
+        lightingRig.rim.position.copy(front).multiplyScalar(-8).addScaledVector(right,-7).addScaledVector(viewUp,6);
         return true;
     }
     function setVisuals() {
@@ -316,12 +317,13 @@ export function mountHomeDiscoveryGlobe(host) {
             earth.root.add(divisions);
             world.add(new T.HemisphereLight(0xf7f5ef,0x111318,.48));
             const right = new T.Vector3().crossVectors(new T.Vector3(0,1,0),earth.front).normalize();
+            const viewUp = new T.Vector3().crossVectors(earth.front,right).normalize();
             const key = new T.DirectionalLight(0xffffff,2.0);
             key.position.copy(earth.front).multiplyScalar(9).addScaledVector(right,-7).add(new T.Vector3(0,8,0)); world.add(key);
             const fill = new T.DirectionalLight(0xd7e0e8,.55);
             fill.position.copy(earth.front).multiplyScalar(4).addScaledVector(right,9); world.add(fill);
             const rim = new T.DirectionalLight(0xf7931a,1.05);
-            rim.position.copy(earth.front).multiplyScalar(-8).addScaledVector(right,7).add(new T.Vector3(0,-1,0)); world.add(rim);
+            rim.position.copy(earth.front).multiplyScalar(-8).addScaledVector(right,-7).addScaledVector(viewUp,6); world.add(rim);
 
             lightingRig = {key,fill,rim};
 
